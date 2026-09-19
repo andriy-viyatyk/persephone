@@ -1,4 +1,5 @@
 import { app } from "../../api/app";
+import { appServiceDescriptors, type AppServiceKey, type AppServiceSurface } from "../../api/app-service-registry";
 import { PageCollectionWrapper } from "./PageCollectionWrapper";
 import type { PageWrapper } from "./PageWrapper";
 import type { EventChannel, EventHandler } from "../../api/events/EventChannel";
@@ -54,15 +55,15 @@ function createEventsProxy<T extends object>(target: T, releaseList: Array<() =>
 
 /**
  * Safe wrapper around App for script access.
- * Mirrors the IApp interface from api/types/app.d.ts — every member IApp declares must
- * have a getter here, enforced by the compile-time check at the bottom of this file.
+ * Mirrors the IApp interface from api/types/app.d.ts. Service members are descriptor-backed;
+ * the compile-time check at the bottom protects the remaining fixed members.
  *
  * - Most sub-interfaces (settings, fs, ui, etc.) pass through directly —
  *   they expose only the safe public .d.ts surface.
  * - `pages` is wrapped to return PageWrapper instances.
  * - `events` is wrapped to auto-track subscriptions for cleanup.
  */
-export class AppWrapper {
+class AppWrapperImplementation {
     private readonly _pages: PageCollectionWrapper;
     private _events: unknown;
     private readonly releaseList: Array<() => void>;
@@ -75,58 +76,15 @@ export class AppWrapper {
     ) {
         this.releaseList = releaseList;
         this._pages = new PageCollectionWrapper(app.pages, releaseList, openedByAgent);
+        for (const { key } of appServiceDescriptors) {
+            Object.defineProperty(this, key, {
+                get: () => app[key],
+            });
+        }
     }
 
     get version() {
         return app.version;
-    }
-
-    get settings() {
-        return app.settings;
-    }
-
-    get editors() {
-        return app.editors;
-    }
-
-    get recent() {
-        return app.recent;
-    }
-
-    get fs() {
-        return app.fs;
-    }
-
-    get window() {
-        return app.window;
-    }
-
-    get shell() {
-        return app.shell;
-    }
-
-    get ui() {
-        return app.ui;
-    }
-
-    get downloads() {
-        return app.downloads;
-    }
-
-    get menuFolders() {
-        return app.menuFolders;
-    }
-
-    get proc() {
-        return app.proc;
-    }
-
-    get boards() {
-        return app.boards;
-    }
-
-    get boardVars() {
-        return app.boardVars;
     }
 
     get pages(): PageCollectionWrapper {
@@ -154,7 +112,7 @@ export class AppWrapper {
             ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
         };
         const callContext = { timeoutMs: options?.timeoutMs };
-        const result = await resolveCall(new AiRoot(this, {
+        const result = await resolveCall(new AiRoot(this as unknown as AppWrapper, {
             page: this.contextPage,
             callContext,
         }), request);
@@ -176,21 +134,33 @@ export class AppWrapper {
     };
 }
 
+export type AppWrapper = AppWrapperImplementation & AppServiceSurface;
+
+export const AppWrapper: {
+    new (
+        releaseList: Array<() => void>,
+        openedByAgent?: boolean,
+        contextPage?: PageWrapper,
+    ): AppWrapper;
+} = AppWrapperImplementation as unknown as {
+    new (
+        releaseList: Array<() => void>,
+        openedByAgent?: boolean,
+        contextPage?: PageWrapper,
+    ): AppWrapper;
+};
+
 /**
- * Compile-time guard: every member IApp declares must have a getter/property on AppWrapper.
+ * The descriptor table covers service names and is exhaustively checked in the registry.
+ * This assertion protects the remaining fixed IApp members whose wrapper behavior is special.
  *
  * `implements IApp` is not usable here. The wrapper deliberately returns richer concrete types
  * than the script-facing interfaces — `pages` yields `PageCollectionWrapper` (whose `PageWrapper`
  * facades are structurally narrower than `IPage`'s), and `events` is an `unknown`-typed lazy
  * proxy — so a structural assertion fails on types that are intentionally mismatched.
  *
- * This checks member *names* only, which is the failure this guards against: a namespace can be
- * added to `App` and `IApp` yet silently omitted here, leaving it `undefined` for every script
- * (which is how `app.boardVars` shipped unreachable for a release). If the facade types are ever
- * reconciled with their interfaces, replace this with `implements IApp` and delete it.
- *
- * On failure tsc names the offender:
- *   Type '"boardVars"' does not satisfy the constraint 'never'.
  */
 type AssertNever<T extends never> = T;
-type _AppWrapperCoversIApp = AssertNever<Exclude<keyof IApp, keyof AppWrapper>>;
+type _AppWrapperCoversFixedIApp = AssertNever<
+    Exclude<Exclude<keyof IApp, AppServiceKey>, keyof AppWrapper>
+>;

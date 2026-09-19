@@ -1,7 +1,8 @@
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { pagesModel } from "../../../api/pages";
+import { app } from "../../../api/app";
+import { guard } from "../../../core/utils/guard";
 import { MarkdownBlockView } from "../../markdown/MarkdownBlockView";
 import type { MarkdownOutputEntry } from "../logTypes";
 import { DialogHeaderView } from "./DialogHeader";
@@ -35,6 +36,11 @@ export class MarkdownOutputView extends VanillaView<MarkdownOutputViewProps> {
 
     private readonly handleOpenInEditor = (): void => {
         const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Markdown";
-        pagesModel.addEditorPage("md-view", "markdown", title, this.props.entry.text);
+        void guard("Failed to open Markdown editor", () => app.capabilities.invoke("content.view", {
+            representation: "markdown",
+            content: this.props.entry.text,
+            language: "markdown",
+            title,
+        }));
     };
 }

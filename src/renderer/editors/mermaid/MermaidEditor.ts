@@ -6,13 +6,8 @@ import { TextFileModel } from "../text/TextEditorModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
-import { pagesModel } from "../../api/pages";
-import {
-    buildExcalidrawJsonWithImage,
-    buildExcalidrawJsonFromMermaid,
-    getImageDimensions,
-} from "../draw/drawExport";
+import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
+import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 
@@ -204,10 +199,15 @@ export class MermaidEditor
         try {
             const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`;
-            const dims = await getImageDimensions(dataUrl);
-            const json = buildExcalidrawJsonWithImage(dataUrl, "image/svg+xml", dims.width, dims.height);
+            const dimensions = await getImageDimensions(dataUrl);
             const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
-            pagesModel.addEditorPage("draw-view", "json", title, json);
+            await app.capabilities.invoke("image.edit", {
+                dataUrl,
+                mimeType: "image/svg+xml",
+                naturalWidth: dimensions.width,
+                naturalHeight: dimensions.height,
+                title,
+            });
         } catch (error) {
             throw new Error(`Mermaid preview cannot open in Drawing Editor: ${errMessage(error)}`);
         }
@@ -219,24 +219,21 @@ export class MermaidEditor
             throw new Error("Mermaid preview cannot convert to Excalidraw because the source is empty or unavailable.");
         }
         const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
-        let conversion: { json: string; imageOnly: boolean };
+        let result: Awaited<ReturnType<typeof app.capabilities.invoke>>;
         try {
-            conversion = await buildExcalidrawJsonFromMermaid(source);
+            result = await app.capabilities.invoke("diagram.edit", { source, title });
         } catch (error) {
+            throw new Error(`Mermaid preview cannot open the Excalidraw page: ${errMessage(error)}`);
+        }
+        if (result.status === "conversion-failed") {
             ui.notify(
-                `Couldn't convert to editable shapes (${errMessage(error)}) - opening as an image instead.`,
+                `Couldn't convert to editable shapes (${result.message}) - opening as an image instead.`,
                 "info",
             );
             await this.openInDrawingEditor();
             return;
         }
-
-        try {
-            pagesModel.addEditorPage("draw-view", "json", title, conversion.json);
-        } catch (error) {
-            throw new Error(`Mermaid preview cannot open the Excalidraw page: ${errMessage(error)}`);
-        }
-        if (conversion.imageOnly) {
+        if (result.imageOnly) {
             ui.notify(
                 "This diagram type can't be converted to editable shapes - opened as an image.",
                 "info",

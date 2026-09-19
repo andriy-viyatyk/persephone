@@ -231,6 +231,7 @@ interface IApp {
     readonly proc: IProc;
     readonly boards: IBoards;
     readonly boardVars: IBoardVars;
+    readonly capabilities: ICapabilities;
     readonly pages: IPageCollection;
     readonly events: IAppEvents;
 
@@ -246,6 +247,19 @@ interface IApp {
     ): Promise<TResult>;
 }
 ```
+
+### `app.capabilities` — Built-in content handoffs
+
+`app.capabilities` is the stable script-facing handoff surface for opening content in a built-in
+editor. It is populated from capability declarations on the editor registry rather than from
+editor-specific imports. `text.open` opens a text editor; `content.view` selects a built-in
+representation (`svg`, `html`, `markdown`, `mermaid`, `grid`, or `log`); `image.edit` opens the
+Drawing editor for an image payload; and `diagram.edit` converts diagram source for the Drawing
+editor. Page-producing calls return a `pageId`; diagram conversion can return a failure result.
+
+The service is loaded through the same app-service descriptor table as the other `app.*` members.
+Its type contract is [`api/types/capabilities.d.ts`](../../src/renderer/api/types/capabilities.d.ts),
+and editor declarations remain the source of truth for which built-in handoffs exist.
 
 ### `app.boards` — Local inventory and lifecycle
 
@@ -1076,6 +1090,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `common.d.ts` | `IDisposable`, `IEvent`, `Language`, `EditorView` |
 | `boards.d.ts` | `IBoards` — `app.boards` board lifecycle + published-catalog operations |
 | `board-editor.d.ts` | `IBoardEditor` — board metadata, trust/render state, shared automation, secondary views, and reload |
+| `capabilities.d.ts` | `ICapabilities` — built-in content-opening and editing handoffs |
 | `board-info-editor.d.ts` | `IBoardInfoEditor` — Board Info install/properties snapshots and safe screen-local actions |
 | `toolset-editor.d.ts` | `IToolsetEditor` — registered toolset state and open/refresh actions |
 | `tools.d.ts` | `ITools`, `IToolsets` — root-only Agent Tools call-tree contract (not an `app.tools` property) |

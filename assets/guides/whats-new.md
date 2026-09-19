@@ -17,6 +17,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Agents can read Image Viewer pixels inline:** after narrowing an image page's editor to
   `image-view`, call `read()` to receive a bounded PNG image block with applied and original
   dimensions. It works for inactive pages and does not write a temporary file.
+- **Scripts can register custom content providers and URL schemes:** use `io.registerProvider()`
+  and `io.registerScheme()` to make script-defined content readable through Persephone's normal
+  link-opening flow. Registrations remain available in the current window until it is reloaded or
+  restarted. See the [`io` API reference](./scripting/api/io.md#registering-providers-and-url-schemes).
 
 ### Improvements
 
@@ -1274,7 +1278,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   - `new io.RawLinkEvent("url")` → `io.createLinkData("url")`
   - `new io.RawLinkEvent("url", target, metadata)` → `io.createLinkData("url", { target, ...metadata })`
   - `new io.OpenLinkEvent("url", target, metadata)` → `io.createLinkData("url", { url: "url", target, ...metadata })`
-  - See the [io API reference](./scripting/api/io.md#link-pipeline-helpers) for the full list of available options.
+  - See the [io API reference](./scripting/api/io.md#link-helpers) for the full list of available options.
 
 ---
 

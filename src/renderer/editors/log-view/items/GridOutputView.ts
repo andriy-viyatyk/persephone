@@ -3,7 +3,8 @@ import type { Column, DataGridProps } from "../../../uikit/DataGrid/types";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { pagesModel } from "../../../api/pages";
+import { app } from "../../../api/app";
+import { guard } from "../../../core/utils/guard";
 import { getGridDataWithColumns, getRowKey } from "../../grid/utils/grid-utils";
 import type { GridColumn } from "../../grid/utils/grid-utils";
 import type { GridOutputEntry } from "../logTypes";
@@ -111,6 +112,11 @@ export class GridOutputView extends VanillaView<GridOutputViewProps> {
 
     private readonly handleOpenInGrid = (): void => {
         const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Grid Data";
-        pagesModel.addEditorPage("grid-json", "json", title, JSON.stringify(this.props.entry.data, null, 2));
+        void guard("Failed to open Grid editor", () => app.capabilities.invoke("content.view", {
+            representation: "grid",
+            content: JSON.stringify(this.props.entry.data, null, 2),
+            language: "json",
+            title,
+        }));
     };
 }

@@ -18,6 +18,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Cross-process helpers (`debounce` with idempotent `cancel()`; `concatChunks`; `errMessage(e, fallback?)` — the one way to turn a caught `unknown` into a message, in `shared/` because main, renderer and the board shim all need it) | `/src/shared/utils.ts` |
 | Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
+| App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
+| Built-in app capabilities (`app.capabilities`) | `/src/renderer/api/capabilities.ts`               |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Page container (tab; sidebar composition, composite active-panel fallback, and automatic close of editorless pages whose last panel is removed) | `/src/renderer/api/pages/PageModel.ts` |
@@ -77,6 +79,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
 | Content pipe registry    | `/src/renderer/content/registry.ts`               |
+| URL scheme registry      | `/src/renderer/content/scheme-registry.ts`        |
+| Built-in URL-scheme hooks | `/src/renderer/content/builtin-schemes.ts`       |
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
@@ -113,6 +117,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Async worker (renderer)  | `/src/renderer/scripting/worker/WorkerRunner.ts`  |
 | Async worker (main)      | `/src/main/worker-host.ts`                        |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
+| Capability API types (`ICapabilities`) | `/src/renderer/api/types/capabilities.d.ts`      |
 | Script-facing page wrapper and current-editor facade factory (page-identified wrapper for every open tab, including editorless pages; `workspaceFolder`; read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
 | Script-facing page collection wrapper (tab-ordered page projection and folder/workspace-aware page summaries) | `/src/renderer/scripting/api-wrapper/PageCollectionWrapper.ts` |
 | Image editor facade (source state, bounded headless PNG read for inline MCP results, PNG/original export, Drawing Editor, and clipboard actions) | `/src/renderer/scripting/api-wrapper/ImageEditorFacade.ts` |
@@ -403,7 +408,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Namespace collision dialog (non-blocking advisory at board registration; Register-anyway / Cancel) | `/src/renderer/ui/dialogs/NamespaceCollisionDialog.ts` |
 | `*.env.json` built-in editor (namespace list + profile tabs + a DataGrid name/value editor per profile; target of `persephone.var.show()` / `app.boardVars.show(namespace)`) | `/src/renderer/editors/env-vars/EnvVarsEditor.ts` |
 | Custom-editor registry (reactive `mask → trusted board` map over `boardTrust`; file and direct-folder axes; `board-editor:<root>` virtual ids via `boardEditorId`/`parseBoardEditorId`; `resolveEditorIdForFile` and `resolveEditorIdForFolder` merge built-in + trusted-board candidates; folder switch candidates preserve built-ins-first order; `isBoardEditorId` for MCP/automation board detection; `refresh()` is generation-guarded so a stale overlapping refresh cannot clobber the newer result) | `/src/renderer/editors/board/custom-editor-registry.ts` |
-| `persephone-board://` link scheme (encode/decode; parsed in `parsers.ts` → `target: "board-view"`) | `/src/renderer/content/persephone-board-link.ts` |
+| `persephone-board://` link scheme (encode/decode; dispatched by the registered-scheme adapter to `target: "board-view"`) | `/src/renderer/content/persephone-board-link.ts` |
 | Board editor model (single-board lifecycle, per-board trust, live iframe ref, icon; file/folder sources keep installed `boardRoot` separate from `filePath`/`folderPath`; folder boards expose `getFolderPath()` and use stable `board-view` persistence; busy keep-alive — while `persephone.setBoardBusy(true)`, survives navigation as an invisible ownership handle so its spawned processes outlive the iframe; dispose reaps them; **secondary views + shared state** (base for every board) — seeds `secondaryViewDefs` from the manifest, derives `state.secondaryView = board-secondary:<id>` list, `setSecondaryViews`, `sharedState`/`sharedStateRestorableKeys` with a monotonic `sharedStateSeq`, opt-in `getRestoreData` persistence; **multi-frame** — a per-tab frame map + `activeTabId`, `markFrameLoaded`/`waitForFrameLoad` (deterministic `reload()`); **file materialization** — `getFilePath()` always resolves to a readable LOCAL path for file sources) | `/src/renderer/editors/board/BoardEditorModel.ts` |
 | Content-host board model (`BoardContentEditorModel extends BoardEditorModel` — composes an `IContentHost`/`TextFileModel` via `CONTENT_HOST_TRAIT`; manifest `editorKind: "content-host"`; switches with built-in editors by transferring the shared host — no reload; delegates save/dirty to the host, `skipSave=false`; persists the host descriptor in `getRestoreData` — `d.host` on a `board-view` descriptor is the content-host discriminator; no busy — host transfers out on switch; content over the `persephone.host.*` bridge; always reports the `board-editor:<root>` editorId + falls back to the page title as the file name when path-less, so the switch appears and round-trips on an untitled page renamed to a matching name; `override get modified()` delegates to the host so `page.modified` / `pages` report a dirty content-host board correctly) | `/src/renderer/editors/board/BoardContentEditorModel.ts` |
 | Busy-boards reactive registry (busy board roots → Boards panel "running" dot) | `/src/renderer/editors/board/busy-boards.ts` |
@@ -466,7 +471,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Per-toolset execution log (self-rotating; `TOOLS_EXECUTION_LOG_FILE`) | `/src/renderer/api/tools/tool-log.ts` |
 | Toolset scaffold (`createToolset` call path — copy `tool-template`; trust-gated) | `/src/renderer/api/tools/tool-scaffold.ts` |
 | Agent Tools call-tree node (discovery, execution, toolsets, scaffold, unregistration) | `/src/renderer/scripting/ai-vision/namespaces/tools.ts` |
-| `persephone-toolset://` link scheme (encode/decode + `openToolset`; parsed in `parsers.ts` → `target: "toolset-view"`) | `/src/renderer/content/persephone-toolset-link.ts` |
+| `persephone-toolset://` link scheme (encode/decode + `openToolset`; dispatched by the registered-scheme adapter to `target: "toolset-view"`) | `/src/renderer/content/persephone-toolset-link.ts` |
 | Per-toolset editor model (`toolset-view`; manifest info + tool list + open-log) | `/src/renderer/editors/toolset/ToolsetEditorModel.ts` |
 | Shared registered-toolsets tree (native `ToolsTreeView` + `buildToolsTree`) | `/src/renderer/editors/tools/ToolsTreeView.ts` |
 | Toolset registration dialog (`showRegisterToolsetDialog`; RCE gate, MCP-initiated only) | `/src/renderer/ui/dialogs/RegisterToolsetDialog.ts` |

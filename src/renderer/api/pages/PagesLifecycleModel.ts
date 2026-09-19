@@ -35,6 +35,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
+import { app } from "../app";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
 
@@ -95,7 +96,7 @@ export class PagesLifecycleModel {
 
     // ── Pipe helpers ──────────────────────────────────────────────────
 
-    private createPipeFromPath(path: string): IContentPipe {
+    private async createPipeFromPath(path: string): Promise<IContentPipe> {
         return pipeFromSourcePath(path);
     }
 
@@ -371,10 +372,13 @@ export class PagesLifecycleModel {
     };
 
     addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
-        const { buildExcalidrawJsonFromDataUrl } =
-            await import("../../editors/draw/drawExport");
-        const json = await buildExcalidrawJsonFromDataUrl(dataUrl);
-        return this.addEditorPage("draw-view", "json", title ?? "untitled.excalidraw", json);
+        const { pageId } = await app.capabilities.invoke("image.edit", {
+            dataUrl,
+            title: title ?? "untitled.excalidraw",
+        });
+        const page = this.model.query.findPage(pageId);
+        if (!page) throw new Error(`Drawing page was not found after opening: ${pageId}`);
+        return page;
     };
 
     openLinks = (
@@ -586,14 +590,14 @@ export class PagesLifecycleModel {
         // Either side can fail to build; report and abort rather than grouping a
         // half-built comparison (US-1163's shape).
         if (!existingFirst) {
-            const pipe = this.createPipeFromPath(firstPath);
+            const pipe = await this.createPipeFromPath(firstPath);
             const editor = await guard(`Failed to open ${fpBasename(firstPath)}`, () =>
                 this.createEditorFromFile(firstPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
             existingFirst = this.addPage(wrap(editor));
         }
         if (!existingSecond) {
-            const pipe = this.createPipeFromPath(secondPath);
+            const pipe = await this.createPipeFromPath(secondPath);
             const editor = await guard(`Failed to open ${fpBasename(secondPath)}`, () =>
                 this.createEditorFromFile(secondPath, pipe));
             if (!editor) { pipe?.dispose(); return; }

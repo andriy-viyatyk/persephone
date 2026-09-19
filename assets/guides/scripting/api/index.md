@@ -184,9 +184,9 @@ ui.log("Hello");
       - `.itemContextMenu` — Right-click on file/folder → add custom menu items
     - **[.browser](./events.md#browseronbookmark)** — Browser events
       - `.onBookmark` — Before Add/Edit Bookmark dialog → modify title, URL, images, category, tags
-    - **[.openRawLink](./events.md#openrawlink)** — Layer 1: parse a raw string (path, URL, cURL) into a structured link
-    - **[.openLink](./events.md#openlink)** — Layer 2: resolve a URL into a content pipe
-    - **[.openContent](./events.md#opencontent)** — Layer 3: content pipe + target → open page (subscribe to observe/intercept page opens)
+    - **[.openRawLink](./events.md#openrawlink)** — Parse a raw string (path, URL, cURL) into a structured link
+    - **[.openLink](./events.md#openlink)** — Resolve a URL into a content pipe
+    - **[.openContent](./events.md#opencontent)** — Open prepared content in a target page (subscribe to observe/intercept page opens)
     - All channels support `.subscribe()`, `.send()`, and `.sendAsync()`
   - **[.editors](./editors.md)** — Editor registry
     - `.getAll()` / `.getById(id)` / `.resolve(filePath)` / `.resolveId(filePath)`
@@ -242,12 +242,14 @@ ui.log("Hello");
 
 ---
 
-- **[io](./io.md)** — Content pipe builder (providers, transformers, link pipeline helpers)
+- **[io](./io.md)** — Content pipes, custom providers and URL schemes, and link helpers
   - `new io.FileProvider(filePath)` — local file data source
   - `new io.HttpProvider(url, options?)` — HTTP/HTTPS data source
   - `new io.ArchiveTransformer(archivePath, entryPath)` — extract an archive entry (ZIP, RAR, 7z, TAR, etc.)
   - `new io.DecryptTransformer(password)` — decrypt AES-GCM content
   - `io.createPipe(provider, ...transformers)` — assemble a content pipe
+  - `io.registerProvider(type, factory)` — register a session-scoped provider factory
+  - `io.registerScheme(scheme, hooks)` — register session-scoped parse/resolve hooks
   - `io.createLinkData(href, options?)` — create an `ILinkData` for the link pipeline (`openRawLink`)
   - `io.linkToLinkData(link)` — convert an `ILink` to `ILinkData` preserving all fields
 

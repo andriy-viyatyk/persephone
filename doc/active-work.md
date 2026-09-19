@@ -23,7 +23,7 @@ below tracks which phases have shipped.
 
 | Phase | Epic | Status |
 |---|---|---|
-| A — Refactor the seams | — | not started |
+| A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
 | B — Bridge contract and module service process | — | not started |
 | C — Open providers with ranged streaming | — | not started |
 | D — Capability bus and in-memory data channel | — | not started |
@@ -37,6 +37,17 @@ below tracks which phases have shipped.
 ## Planned
 
 - *(no epic)*
+  - [ ] [US-1464: Agent-visible and dismissable alerts](tasks/US-1464-agent-visible-alerts/README.md)
+    — `app.ui` can raise a toast but nothing can read or close one, so an agent cannot confirm a
+    failure it caused. Error alerts are never evicted automatically, so they accumulate.
+  - [ ] [US-1465: Validate a script-registered provider's shape](tasks/US-1465-validate-script-provider-shape/README.md)
+    — a hand-written provider missing a required member fails later as an opaque `TypeError`
+    instead of being named at first use. Found while verifying US-1461.
+  - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
+    — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
+    before returning it and `EventChannel` has no replay, so the `openRawLink` fired during
+    `pages.init()` reaches no subscriber. **Diagnosed from code reading only** — confirm the
+    runtime reproduction in the task document before fixing.
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

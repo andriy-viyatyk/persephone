@@ -1,6 +1,6 @@
 import type { IProvider } from "./io.provider";
 import type { ITransformer } from "./io.transformer";
-import type { IContentPipe } from "./io.pipe";
+import type { IContentPipe, IPipeDescriptor } from "./io.pipe";
 import type { ILinkData } from "./io.link-data";
 import type { ILink } from "./io.tree";
 
@@ -44,6 +44,29 @@ export interface IArchiveTransformerConstructor {
  */
 export interface IDecryptTransformerConstructor {
     new(password: string): ITransformer;
+}
+
+/** Factory used to reconstruct a provider from a persisted descriptor. */
+export type IProviderFactory = (config: Record<string, unknown>) => IProvider;
+
+/** Context supplied to a registered scheme hook by the normal link pipeline. */
+export interface ISchemeHookContext {
+    /** The open pipeline phase, or source-path reconstruction phase. */
+    readonly phase: "open" | "source-path";
+    /** Continue through the existing EventChannel pipeline. */
+    readonly delegate: () => Promise<boolean>;
+    /** Reconstruct a content pipe from its persistable descriptor. */
+    readonly createPipe: (descriptor: IPipeDescriptor) => IContentPipe;
+}
+
+/** Structural parse or resolve callback for a registered URL scheme. */
+export type ISchemeHook =
+    (data: ILinkData, context: ISchemeHookContext) => void | Promise<void>;
+
+/** The parse and resolve callbacks that implement one URL scheme. */
+export interface ISchemeHooks {
+    parse: ISchemeHook;
+    resolve: ISchemeHook;
 }
 
 /**
@@ -101,6 +124,53 @@ export interface IIoNamespace {
      * await app.events.openRawLink.sendAsync(io.linkToLinkData(link));
      */
     linkToLinkData(link: ILink): ILinkData;
+    /**
+     * Register a provider factory for this renderer session.
+     *
+     * Factories are called with descriptor configuration and may return a plain object
+     * implementing the IProvider shape. Re-registering a script-owned type replaces it and
+     * reports an info notification; platform-owned types remain first-wins and report an error.
+     * Registrations survive script completion and autoload re-execution, but a renderer
+     * reload/restart clears them. Existing live pipes keep their current provider object.
+     *
+     * @example
+     * io.registerProvider("memory", (config) => ({
+     *     type: "memory", displayName: "Memory", sourceUrl: "memory://item",
+     *     restorable: true, writable: false,
+     *     readBinary: async () => Buffer.from(String(config.text ?? "")),
+     *     toDescriptor: () => ({ type: "memory", config }),
+     * }));
+     */
+    registerProvider(type: string, factory: IProviderFactory): void;
+    /**
+     * Register parse and resolve hooks for a URL scheme in this renderer session.
+     * Hooks must use `context.delegate()` to enter the existing openRawLink → openLink →
+     * openContent pipeline. In `source-path` phase, resolve should build the pipe and return
+     * without delegating into page opening. Script-owned re-registration replaces the prior
+     * script entry with an info report; platform-owned schemes remain first-wins with an error.
+     * Registrations are cleared by a renderer reload/restart, and replacements affect only
+     * subsequent dispatches; existing live pipes are unchanged.
+     *
+     * @example
+     * io.registerScheme("memory", {
+     *     async parse(data, context) {
+     *         data.url = data.href;
+     *         data.handled = false;
+     *         await context.delegate();
+     *         data.handled = true;
+     *     },
+     *     async resolve(data, context) {
+     *         data.target = "monaco";
+     *         data.pipeDescriptor = { provider: { type: "memory", config: {} }, transformers: [] };
+     *         data.pipe = context.createPipe(data.pipeDescriptor);
+     *         if (context.phase === "source-path") return;
+     *         data.handled = false;
+     *         await context.delegate();
+     *         data.handled = true;
+     *     },
+     * });
+     */
+    registerScheme(scheme: string, hooks: ISchemeHooks): void;
     /** Create a content pipe from a provider and optional transformers. */
     createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
 }

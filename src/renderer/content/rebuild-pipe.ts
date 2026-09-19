@@ -3,6 +3,8 @@ import { ContentPipe } from "./ContentPipe";
 import { FileProvider } from "./providers/FileProvider";
 import { HttpProvider } from "./providers/HttpProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
+import "./builtin-schemes";
+import { resolveRegisteredSourcePath } from "./scheme-registry";
 
 /**
  * Rebuild a content pipe from a source path alone.
@@ -14,12 +16,19 @@ import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
  * headers, body). Prefer `createPipeFromDescriptor(pipeDescriptor)` when a persisted
  * descriptor is available; reach for this only when it isn't.
  *
- * Recognized shapes:
- * - `http://…` / `https://…`            → `HttpProvider`
- * - `archive.zip!path/inside.txt`       → `FileProvider` + `ArchiveTransformer`
- * - anything else                       → `FileProvider`
+ * Resolution order:
+ * - a registered scheme                   → the registry's source-path pipe
+ * - `http://…` / `https://…`            → `HttpProvider` fallback
+ * - `archive.zip!path/inside.txt`       → `FileProvider` + `ArchiveTransformer` fallback
+ * - anything else                       → `FileProvider` fallback
+ *
+ * Unknown schemes retain the final shape guess. This remains asynchronous so registered
+ * resolvers may do their own async work, and `createPipeFromDescriptor(pipeDescriptor)` remains
+ * preferred whenever a persisted descriptor is available.
  */
-export function pipeFromSourcePath(path: string): IContentPipe {
+export async function pipeFromSourcePath(path: string): Promise<IContentPipe> {
+    const registered = await resolveRegisteredSourcePath(path);
+    if (registered) return registered;
     if (path.startsWith("http://") || path.startsWith("https://")) {
         return new ContentPipe(new HttpProvider(path));
     }

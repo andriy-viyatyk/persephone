@@ -444,12 +444,16 @@ packaged guide corpus, without `.md`; it is used by editor-facade help and the a
 entry points. User-facing editors should point to their editor or screen guide, while development-
 only editors may omit it. Registration lives in
 `/src/renderer/editors/register-editors.ts` as a **table + loop**: one row per editor
-(`{ id, name, guidePath?, hasContentHost?, accepts?, load }`), with `match` derived from
+(`{ id, name, guidePath?, hasContentHost?, accepts?, capabilities?, load }`), with `match` derived from
 `EDITOR_MATCHERS[id]` and `accepts` defaulting to `makeAccepts(match)` (or `() => -1` for
 standalone editors with no matcher). Monaco and `file-diff` carry explicit `accepts`
 overrides. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is
 preserved, and row order is preserved deliberately — it breaks priority ties in
 `resolveForFile`.
+
+`capabilities?` declares built-in handoffs owned by the editor. The renderer capability service
+seeds `app.capabilities` from these declarations at startup, keeping page/editor construction in
+the editor registry while exposing a stable handoff surface to scripts and other callers.
 
 ## Editor Construction Paths
 

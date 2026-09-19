@@ -3496,3 +3496,15 @@ tracked in `persephone-boards`.
 - [x] US-1404: Board object model — cross-editor page creation, graph color tokens, manifest content detection
 - [x] US-1405: Remove the built-in Force Graph editor
 - [x] US-1406: Boards supply their own documentation to the guide system
+## EPIC-105 — [Platform seams — registries before boards use them](EPIC-105.md)
+
+Completed 2026-09-20. Phase A of the [platform roadmap](../platform-roadmap.md): the URL-scheme
+registry, the capability seam and the exported provider surface, built with the built-ins as the
+only registrants. No user-visible change by design.
+
+- [x] US-1457: Editor-handoff inventory — 70 call sites classified; 23 in scope
+- [x] US-1458: Scheme registry — `registerScheme`, eleven built-ins migrated, `PIPELINE_SCHEMES` derived (`parsers.ts` 215→87, `resolvers.ts` 361→83)
+- [x] US-1459: Registry-aware `pipeFromSourcePath` — a registered scheme no longer becomes a `FileProvider` over a nonexistent path
+- [x] US-1460: `app.capabilities` — four seed ids, 23 handoff sites rewritten, Excalidraw construction moved behind `image.edit` / `diagram.edit`
+- [x] US-1461: Script `io` exports — a script can register a provider and a URL scheme for the session
+- [x] US-1462: App service descriptor table — `keyof IApp` exhaustiveness check plus a named runtime failure

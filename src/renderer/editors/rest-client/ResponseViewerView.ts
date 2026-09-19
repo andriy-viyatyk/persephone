@@ -3,6 +3,7 @@ import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
 import { toClipboard } from "../../core/utils/utils";
+import { guard } from "../../core/utils/guard";
 import { createDepsGate, type DepsGate } from "../../uikit/shared/deps-gate";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { KeyedList } from "../../uikit/shared/keyed-list";
@@ -383,7 +384,11 @@ class ResponseBranchView extends VanillaView<ResponseBranchProps> {
 
     private readonly openInTab = (): void => {
         if (!this.props.response) return;
-        app.pages.addEditorPage("monaco", this.props.derived.language, "Response", this.props.derived.formattedBody);
+        void guard("Failed to open response", () => app.capabilities.invoke("text.open", {
+            content: this.props.derived.formattedBody,
+            language: this.props.derived.language,
+            title: "Response",
+        }));
     };
     private readonly copyHeaders = async (): Promise<void> => {
         if (!this.props.response) return;

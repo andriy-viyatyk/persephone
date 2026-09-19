@@ -1,9 +1,11 @@
 const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
+import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard, withTimeout } from "../../core/utils/utils";
+import { guard } from "../../core/utils/guard";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 const SVG_PROBE_TIMEOUT = 250;
@@ -224,7 +226,11 @@ export async function showBrowserContextMenu({
                 const resp = await webview.executeJavaScript(
                     `fetch(location.href).then(r => r.text())`,
                 );
-                pagesModel.addEditorPage("monaco", "html", "Source: " + (tab?.pageTitle || pageUrl), resp);
+                await app.capabilities.invoke("text.open", {
+                    content: resp,
+                    language: "html",
+                    title: "Source: " + (tab?.pageTitle || pageUrl),
+                });
             },
         });
 
@@ -237,7 +243,11 @@ export async function showBrowserContextMenu({
                     BrowserChannel.collectDom,
                     regKey,
                 );
-                pagesModel.addEditorPage("monaco", "html", "DOM: " + (tab?.pageTitle || pageUrl), html);
+                await app.capabilities.invoke("text.open", {
+                    content: html,
+                    language: "html",
+                    title: "DOM: " + (tab?.pageTitle || pageUrl),
+                });
             },
         });
 
@@ -252,7 +262,11 @@ export async function showBrowserContextMenu({
             items.push({
                 label: "Open SVG in Editor",
                 onClick: () => {
-                    pagesModel.addEditorPage("monaco", "xml", "untitled.svg", svgSource);
+                    void guard("Failed to open SVG source", () => app.capabilities.invoke("text.open", {
+                        content: svgSource,
+                        language: "xml",
+                        title: "untitled.svg",
+                    }));
                 },
             });
         }

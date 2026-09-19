@@ -6,6 +6,31 @@ The content delivery pipeline (`/src/renderer/content/`) is a unified I/O layer 
 
 The pipeline replaces scattered file I/O calls across the codebase. It handles encoding detection, file watching, caching, and serialization for session restore.
 
+## Registry layout
+
+The content registry is split by the kind of extension point it owns:
+
+- `registry.ts` maps persisted provider and transformer type names to factories and
+  reconstructs `IContentPipe` instances from `IPipeDescriptor`. It contains the built-in
+  provider/transformer registrations and is also the target of the script-facing
+  `io.registerProvider()` API.
+- `scheme-registry.ts` maps URL schemes to paired parse and resolve hooks. It normalizes scheme
+  names, dispatches both the normal open pipeline and the `source-path` reconstruction path, and
+  supplies hooks with `delegate()` and descriptor-based pipe creation. Platform and script
+  registrations have separate duplicate/replacement rules; an existing live pipe is never
+  changed by a later registration.
+- `builtin-schemes.ts` owns the platform scheme hooks and their scheme-specific parsing and
+  resolution behavior. It registers HTTP(S), data URLs, folder/editor links, Mneme links, board,
+  guide, toolset, tree-category, and Git-tree schemes. `parsers.ts` and `resolvers.ts` remain the
+  event-channel adapters: they dispatch registered schemes and retain the plain-file and archive
+  `!` fallbacks.
+
+The `pages.openUrl` validation boundary asks `scheme-registry.ts` whether a scheme is registered,
+so adding a platform or script scheme does not require a second hand-maintained allow-list. Plain
+filesystem paths and archive `archive.zip!entry` paths are intentionally fallbacks rather than
+scheme registrations; the archive adapter is registered after the file fallback so LIFO dispatch
+evaluates archive paths ahead of plain files.
+
 ## 3-Layer Pipeline
 
 Opening content flows through three event-driven layers. Each layer is registered as an `EventChannel` subscriber during bootstrap. Subscribers execute in LIFO order, so later registrations act as higher-priority interceptors.
@@ -14,9 +39,9 @@ Opening content flows through three event-driven layers. Each layer is registere
   Caller creates ILinkData via createLinkData(href, options?)
          │
   ┌──────▼──────────────────────────────────────────────┐
-  │  Layer 1 — Parsers (parsers.ts)                     │
+  │  Layer 1 — Parsers + scheme registry                │
   │  openRawLink → openLink                             │
-  │  Parse href, enrich ILinkData (set url, target, etc)│
+  │  Dispatch schemes; retain file/archive fallbacks   │
   └──────┬──────────────────────────────────────────────┘
          │  ILinkData { href, url, target?, ...fields }
   ┌──────▼──────────────────────────────────────────────┐
@@ -32,31 +57,24 @@ Opening content flows through three event-driven layers. Each layer is registere
   └─────────────────────────────────────────────────────┘
 ```
 
-### Layer 1 — Parsers
+### Layer 1 — Parsers and registered schemes
 
-Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser receives an `ILinkData` object, reads `data.href`, enriches the object (sets `data.url`, HTTP fields, etc.), and forwards the same object on `app.events.openLink`. Registration order (LIFO):
+`registerRawLinkParsers()` in `parsers.ts` installs the event-channel adapters. The generic
+registered-scheme adapter delegates to the hooks in `scheme-registry.ts`; the platform hook
+implementations are in `builtin-schemes.ts`. Each hook receives the same `ILinkData` object,
+enriches it, and delegates to `app.events.openLink`. Registration order is LIFO:
 
-| Parser | Detects | Example input |
+| Adapter | Detects | Owner |
 |--------|---------|---------------|
-| cURL/fetch | `curl ` or `fetch(` prefix | `curl -H "Auth: x" https://api.com/data.json` |
-| tree-category | `tree-category://` prefix | `tree-category://base64...` (folder navigation) |
-| mneme | `mneme://` prefix | `mneme://{root}/{path}` (Mneme document or attachment) |
-| git-tree | `git-tree://` prefix | `git-tree://...` (Git history view) |
-| mneme-folder | `mneme-folder://` prefix | `mneme-folder://...` (Mneme root view) |
-| folder-editor | `folder-editor://` prefix | `folder-editor://base64...` (trusted board for a claimed folder) |
-| Persephone board | `persephone-board://` prefix | `persephone-board://...` (board root) |
-| Persephone toolset | `persephone-toolset://` prefix | `persephone-toolset://...` (toolset root) |
-| Persephone guide | `persephone-guide://` prefix | `persephone-guide://editors/grid#sorting` |
-| data: URL | `data:` prefix | `data:text/javascript;base64,Y29uc3Q...` (inline content) |
-| HTTP | `http://` or `https://` prefix | `https://example.com/file.json` |
-| Archive | `!` separator (via `isArchivePath`) | `C:\docs.zip!data/report.json` |
-| File | Everything else (fallback) | `C:\Users\file.txt`, `file:///path` |
+| cURL/fetch auxiliary parser | `curl ` or `fetch(` prefix | `parsers.ts` |
+| Registered scheme dispatcher | Platform schemes such as `https://`, `data:`, `mneme://`, `persephone-guide://`, `persephone-board://`, and `tree-category://`; script schemes use the same hook contract | `scheme-registry.ts` + `builtin-schemes.ts` |
+| Archive fallback | `!` separator (via `isArchivePath`) | `parsers.ts` |
+| File fallback | Everything else, including plain paths and `file://` URLs | `parsers.ts` |
 
 The scripting/MCP `pages.openUrl` boundary applies the same pipeline-input validation before
 dispatch. In addition to HTTP(S), `file://`, Windows/UNC paths, and `data:` URLs, it accepts the
-registered schemes `folder-editor`, `git-tree`, `mneme`, `mneme-folder`, `persephone-board`,
-`persephone-guide`, `persephone-toolset`, and `tree-category`. A scheme must be listed here and in
-`api/pages/open-url-validation.ts` before `pages.openUrl` will accept it.
+any URL whose scheme is currently registered. Built-in schemes are loaded before validation;
+script registrations are session-scoped and are therefore accepted by the same registry lookup.
 
 **Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive, `mneme://`, and `persephone-guide://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`, `persephone-guide://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
 
@@ -205,7 +223,7 @@ interface IPipeDescriptor {
 Key rules:
 - Only transformers with `persistent === true` are included. `DecryptTransformer` (password) is excluded.
 - `createPipeFromDescriptor()` in `registry.ts` reconstructs a pipe from its descriptor using registered factories.
-- Provider and transformer types are registered at module load time in `registry.ts` (e.g., `registerProvider("file", ...)`, `registerTransformer("zip", ...)`).
+- Provider and transformer types are registered at module load time in `registry.ts` (e.g., `registerProvider("file", ...)`, `registerTransformer("archive", ...)`). Script-owned provider registrations can replace earlier script-owned entries; platform-owned entries remain first-wins and report a duplicate.
 
 ## Key Files
 
@@ -214,8 +232,10 @@ Key rules:
 | `/src/renderer/content/ContentPipe.ts` | `ContentPipe` class -- pipe implementation |
 | `/src/renderer/content/PipePair.ts` | Paired TextFile source/cache pipe lifetime owner |
 | `/src/renderer/content/registry.ts` | Provider/transformer factory registry, `createPipeFromDescriptor()` |
-| `/src/renderer/content/parsers.ts` | Layer 1 -- raw link parsers |
-| `/src/renderer/content/resolvers.ts` | Layer 2 -- link resolvers, editor mapping |
+| `/src/renderer/content/scheme-registry.ts` | Parse/resolve registry for platform and script URL schemes, including source-path reconstruction |
+| `/src/renderer/content/builtin-schemes.ts` | Built-in URL-scheme hooks and browser/content resolution |
+| `/src/renderer/content/parsers.ts` | Layer 1 -- scheme dispatch plus plain-file/archive and cURL/fetch adapters |
+| `/src/renderer/content/resolvers.ts` | Layer 2 -- fallback resolver and registered-scheme dispatch |
 | `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution (reusable by tree providers) |
 | `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
 | `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |

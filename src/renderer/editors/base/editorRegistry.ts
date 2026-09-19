@@ -3,6 +3,13 @@ import type { IContentHost } from "./IContentHost";
 import type { EditorConfig } from "./EditorConfig";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
+import type { ContentRepresentation } from "../../api/types/capabilities";
+
+export type EditorCapabilityDeclaration =
+    | { readonly id: "text.open"; readonly representation?: never }
+    | { readonly id: "content.view"; readonly representation: ContentRepresentation }
+    | { readonly id: "image.edit"; readonly representation?: never }
+    | { readonly id: "diagram.edit"; readonly representation?: never };
 
 export interface AcceptanceInput {
     fileName?: string;
@@ -84,6 +91,9 @@ export interface EditorDefinition {
 
     /** Icon token used for a directory claimed by this editor. */
     readonly folderIcon?: string;
+
+    /** Built-in capability declarations served by this editor. */
+    readonly capabilities?: readonly EditorCapabilityDeclaration[];
 
     /** Granular matching rules. Absent for pure standalone editors
      *  (browser / settings / about / mcp / storybook) that never match a file

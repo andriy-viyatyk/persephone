@@ -396,6 +396,15 @@ A  refactor seams
 
 ### Phase A — Refactor the seams (no new user-visible behavior)
 
+> **Shipped 2026-09-20 as [EPIC-105](epics/EPIC-105.md).** Two decisions were revised during the
+> epic and are recorded here because later phases depend on them. **`ILinkData.target` is the
+> pipeline's seam, not a capability call** — the 15 call sites that set `target` on a link were
+> left alone, so only the 23 page-creating handoffs were rewritten, and whether a link may name a
+> capability is a Phase D question. **The seed set is four ids** (`text.open`, `content.view`,
+> `image.edit`, `diagram.edit`), with `content.view` dispatching on a declared `representation`;
+> the fifth-to-eighth ids a first pass proposed all belonged to link-target rows. Registry entries
+> now carry an `origin`, which is what Phase C's board ownership rule should hang from.
+
 Everything later plugs into registries that do not exist yet. Build them with the built-ins as the
 only registrants, so the abstraction is exercised before any board touches it.
 

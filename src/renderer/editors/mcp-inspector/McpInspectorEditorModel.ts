@@ -13,7 +13,7 @@ import {
     McpTransportType,
 } from "./McpConnectionManager";
 import { mcpConnectionStore, SavedMcpConnection } from "./McpConnectionStore";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
 import type { McpRequestEntry } from "../log-view/logTypes";
 import { errMessage } from "../../../shared/utils";
 
@@ -786,7 +786,12 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
     showHistory = async (): Promise<void> => {
         if (this._history.length === 0) return;
         const content = this._history.map((e) => JSON.stringify(e)).join("\n");
-        pagesModel.addEditorPage("log-view", "jsonl", "MCP Inspector History", content);
+        await app.capabilities.invoke("content.view", {
+            representation: "log",
+            content,
+            language: "jsonl",
+            title: "MCP Inspector History",
+        });
     };
 
     clearHistory = (): void => {

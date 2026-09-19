@@ -1,14 +1,15 @@
 ---
 title: "io"
 audience: user
-summary: "The content-pipe builder for files, HTTP URLs, and archives."
+summary: "Build content pipes and register custom providers and URL schemes."
 ---
 
 # io
 
-The content pipe builder. Available as the global `io` variable in scripts.
+The content-pipe and link helper namespace. Available as the global `io` variable in scripts.
 
-Use `io` to read and write binary content from files, HTTP URLs, and archives. It exposes the same content pipeline that Persephone uses internally when you open a file or URL -- but from script code you control the provider, transformers, and pipe directly.
+Use `io` to read and write binary content from files, HTTP URLs, and archives. You can also add a
+custom provider or URL scheme for the current window session.
 
 ```javascript
 // Read a CSV from inside a ZIP archive
@@ -19,6 +20,127 @@ const pipe = io.createPipe(
 const text = await pipe.readText();
 return text;
 ```
+
+---
+
+## Registering providers and URL schemes
+
+Scripts can add a provider factory and a URL scheme to Persephone's link-opening flow. These
+registrations belong to the current window session: they remain available after the script
+finishes and after another script runs, but a reload or restart clears them. There is currently no
+unregister method.
+
+### `io.registerProvider(type, factory)`
+
+The factory receives the descriptor's `config` object and must return an `IProvider`. It is called
+without `new`, so return either a plain object or an instance created inside the factory. Build the
+provider from the configuration rather than capturing a page, UI object, or other short-lived
+script value; this allows the provider to be recreated when a saved page is opened.
+
+The provider contract has these mandatory and optional members:
+
+| Member | Required | Purpose |
+|--------|----------|---------|
+| `type: string` | Yes | Provider type used in descriptors. |
+| `displayName: string` | Yes | Name shown by the page and pipe. |
+| `sourceUrl: string` | Yes | URL or path that identifies the provider's source. |
+| `restorable: boolean` | Yes | Declares whether the provider can be reconstructed. |
+| `writable: boolean` | Yes | Declares whether the pipe can write. |
+| `readBinary(): Promise<Buffer>` | Yes | Reads the provider bytes. |
+| `toDescriptor(): IProviderDescriptor` | Yes | Serializes the provider configuration. |
+| `createReadStream(range?: { start: number; end: number })` | No | Optional ranged stream for large binary content. |
+| `writeBinary(data: Buffer)` | No | Optional write operation for writable providers. |
+| `stat(): Promise<IProviderStat>` | No | Optional size, modification-time, and existence metadata. |
+| `watch(callback: (event: string) => void): () => void` | No | Optional external-change notifications. |
+| `dispose(): void` | No | Optional resource cleanup. |
+
+Registering a type already registered by your scripts replaces that factory and reports an `info`
+notification. Built-in provider types cannot be replaced; trying to register one reports an error.
+Replacement affects content opened afterward, while an already-open pipe keeps its existing
+provider.
+
+### `io.registerScheme(scheme, hooks)`
+
+The hooks object must provide `parse` and `resolve` functions. They receive the `ILinkData` object
+used by the link-opening events, plus a context containing `phase`, `delegate()`, and
+`createPipe(descriptor)`. Scheme names are trimmed and matched case-insensitively; a trailing `:`
+is optional.
+
+The parse hook should set `data.url`, set `data.handled = false`, call `context.delegate()`, and
+then set `data.handled = true`. The resolve hook should set `data.target`, provide a persistable
+`data.pipeDescriptor`, and create `data.pipe` with `context.createPipe()`. In the `open` phase,
+call `context.delegate()` after preparing the data. In the `source-path` phase, create the pipe
+and return without delegating.
+
+Registering a scheme already registered by your scripts replaces the hooks and reports an `info`
+notification. Built-in schemes cannot be replaced; trying to register one reports an error. The
+replacement affects links opened afterward, while existing pipes are unchanged.
+
+### Complete example
+
+This example registers a read-only provider and opens it as a text page:
+
+```javascript
+const providerType = "script-demo-provider";
+const scheme = "script-demo";
+
+io.registerProvider(providerType, (config) => {
+    const text = typeof config.text === "string" ? config.text : "";
+
+    return {
+        type: providerType,
+        displayName: "Script demo",
+        sourceUrl: `${scheme}://hello`,
+        restorable: true,
+        writable: false,
+        async readBinary() {
+            return Buffer.from(text, "utf8");
+        },
+        toDescriptor() {
+            return {
+                type: providerType,
+                config: { text },
+            };
+        },
+    };
+});
+
+io.registerScheme(scheme, {
+    async parse(data, context) {
+        data.url = data.href;
+        data.handled = false;
+        await context.delegate();
+        data.handled = true;
+    },
+
+    async resolve(data, context) {
+        data.target = "monaco";
+        data.pipeDescriptor = {
+            provider: {
+                type: providerType,
+                config: { text: "Hello from a script-registered provider." },
+            },
+            transformers: [],
+        };
+        data.pipe = context.createPipe(data.pipeDescriptor);
+
+        if (context.phase === "source-path") return;
+
+        data.handled = false;
+        await context.delegate();
+        data.handled = true;
+    },
+});
+
+await app.events.openRawLink.sendAsync(
+    io.createLinkData(`${scheme}://hello`),
+);
+```
+
+Run the example again in the same window after changing its descriptor text. The second run reports
+an info notification for both replacements, a newly opened page uses the new factory and hooks,
+and the already-open page keeps its old provider. If a saved page uses this provider, run the
+registration script before opening that page after a restart.
 
 ---
 
@@ -247,15 +369,18 @@ Release the provider's resources (file handles, connections). Call this when you
 
 ---
 
-## Link Pipeline Helpers
+## Link Helpers
 
-The `io` namespace provides helper functions for creating `ILinkData` objects — the unified event type that flows through the `openRawLink → openLink → openContent` pipeline. Send these objects through `app.events` to open content programmatically.
+The `io` namespace provides helper functions for creating `ILinkData` objects. Send these objects
+through `app.events` to open content programmatically.
 
 For full details on event channels and the pipeline, see [app.events](./events.md).
 
 ### io.createLinkData(href, options?)
 
-Creates an `ILinkData` object for sending through `app.events.openRawLink`. The object flows through Layer 1 (raw string parsing) → Layer 2 (URL resolution) → Layer 3 (page open). All options are optional top-level fields on `ILinkData`.
+Creates an `ILinkData` object for sending through `app.events.openRawLink`. Persephone parses the
+link, resolves its content, and opens the appropriate page. All options are optional top-level
+fields on `ILinkData`.
 
 ```javascript
 // Open any URL or file — Persephone auto-selects the editor
@@ -288,7 +413,7 @@ await app.events.openRawLink.sendAsync(
 | Field | Type | Description |
 |-------|------|-------------|
 | `target` | `string?` | Target editor ID override (e.g., `"browser"`, `"monaco"`). Auto-resolved from URL if omitted. |
-| `url` | `string?` | Normalized URL — skip Layer 1 parsing by providing the resolved URL directly. |
+| `url` | `string?` | Resolved URL to use directly instead of parsing `href`. |
 | `pageId` | `string?` | Open in this specific existing page instead of a new tab. |
 | `revealLine` | `number?` | Scroll to this line after opening. |
 | `highlightText` | `string?` | Highlight occurrences of this text after opening. |
@@ -314,9 +439,10 @@ for (const link of linkEditor.links) {
 }
 ```
 
-### Opening a pre-assembled pipe (Layer 3)
+### Opening a pre-assembled pipe
 
-To open a pre-assembled content pipe directly in an editor (bypassing URL parsing and provider resolution), use `app.events.openContent.sendAsync()` with a `createLinkData` call that includes `pipe` and `target`:
+To open a pre-assembled content pipe directly in an editor, use `app.events.openContent.sendAsync()`
+with a `createLinkData` call that includes `pipe` and `target`:
 
 ```javascript
 const pipe = io.createPipe(

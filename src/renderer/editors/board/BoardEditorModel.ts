@@ -519,9 +519,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             // with its method/headers), which a path-shape guess cannot reconstruct. Falls back to
             // the path-derived pipe for the switch path, which has no sourceLink.
             const descriptor = this.state.get().sourceLink?.pipeDescriptor;
-            this.pipe = descriptor
-                ? createPipeFromDescriptor(descriptor)
-                : pipeFromSourcePath(source);
+            if (descriptor) {
+                this.pipe = createPipeFromDescriptor(descriptor);
+            } else {
+                this.pipe = await pipeFromSourcePath(source);
+            }
         }
 
         // A plain file pipe already points at a real local file — hand over the source path

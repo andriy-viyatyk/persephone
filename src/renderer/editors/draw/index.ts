@@ -14,6 +14,7 @@ import type { DataURL } from "@excalidraw/excalidraw/dist/types/excalidraw/types
 import type { FileId } from "@excalidraw/excalidraw/dist/types/excalidraw/element/types";
 import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/dist/types/excalidraw/data/transform";
 import { ui } from "../../api/ui";
+import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
@@ -274,7 +275,12 @@ class DrawToolbarView extends VanillaView<{ model: DrawEditor }> {
                     if (!api || !this.hasElements()) return;
                     await guard("Export failed", async () => {
                         const svgText = await exportAsSvgText(api);
-                        pagesModel.addEditorPage("svg-view", "xml", this.getDefaultName("svg"), svgText);
+                        await app.capabilities.invoke("content.view", {
+                            representation: "svg",
+                            content: svgText,
+                            language: "xml",
+                            title: this.getDefaultName("svg"),
+                        });
                     });
                 },
             },

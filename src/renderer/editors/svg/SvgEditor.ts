@@ -3,9 +3,8 @@ import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
-import { pagesModel } from "../../api/pages";
-import { buildExcalidrawJsonWithImage, getImageDimensions } from "../draw/drawExport";
+import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
+import { app } from "../../api/app";
 import { errMessage } from "../../../shared/utils";
 
 export type SvgQueueEvent = { type: "focus" };
@@ -65,10 +64,15 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueu
         const content = this.requireSource("open in Drawing Editor");
         try {
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`;
-            const dims = await getImageDimensions(dataUrl);
-            const json = buildExcalidrawJsonWithImage(dataUrl, "image/svg+xml", dims.width, dims.height);
+            const dimensions = await getImageDimensions(dataUrl);
             const title = (this.host?.state.get().title || "SVG").replace(/\.svg$/i, "") + ".excalidraw";
-            pagesModel.addEditorPage("draw-view", "json", title, json);
+            await app.capabilities.invoke("image.edit", {
+                dataUrl,
+                mimeType: "image/svg+xml",
+                naturalWidth: dimensions.width,
+                naturalHeight: dimensions.height,
+                title,
+            });
         } catch (error) {
             throw new Error(`SVG preview cannot open in Drawing Editor: ${errMessage(error)}`);
         }

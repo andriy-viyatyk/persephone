@@ -15,6 +15,17 @@ The live execution, privilege, timeout, result, and dialog contract is owned by 
 Use this resource for longer API examples and reference material; do not infer a second execution
 protocol from the examples below.
 
+## The `io` registry
+
+Renderer scripts can call `io.registerProvider(type, factory)` and
+`io.registerScheme(scheme, hooks)` to add a provider and URL scheme for the current renderer
+session. Factories return the structural provider shape; scheme hooks should delegate through the
+normal pipeline. Open registered schemes with `app.events.openRawLink.sendAsync(io.createLinkData(url))`
+or the existing `app.openRawLink` helper. Script-owned re-registration replaces the previous entry
+with an info report, while platform-owned duplicates remain first-wins errors. Registrations are
+cleared by a renderer reload/restart, not by autoload re-execution; existing live pipes keep their
+provider objects, and persisted script providers do not recover until the registration script runs.
+
 ## Main-process scripts via `call`
 
 The `call` tree also exposes `main.script.execute(code)`, guarded by Settings → MCP Server →

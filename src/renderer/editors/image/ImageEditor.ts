@@ -9,18 +9,27 @@ import { createFileIconElement } from "../../components/icons/icon-elements";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
 import { ui } from "../../api/ui";
-import { pagesModel } from "../../api/pages";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import type { IImageExport } from "../base/IImageExport";
 import type { MenuItem } from "../../uikit";
-import { rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
+import { getImageDimensions, rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
 import { filePathMenuItems } from "../shared/editor-menu-items";
-import {
-    buildExcalidrawJsonWithImage,
-    getImageDimensions,
-    extToMime,
-} from "../draw/drawExport";
+import { app } from "../../api/app";
 import { errMessage } from "../../../shared/utils";
+
+function extToMime(ext: string): string {
+    const mimeTypes: Record<string, string> = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+        ".ico": "image/x-icon",
+        ".svg": "image/svg+xml",
+    };
+    return mimeTypes[ext.toLowerCase()] || "image/png";
+}
 
 export interface ImageEditorState extends EditorStateBase {
     /** Discriminator — preserved for legacy `newEditorModelFromState`
@@ -67,11 +76,11 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
 
     /** Reconstruct pipe from `filePath` if not already present. Legacy
      *  compat for restore paths that don't carry a live pipe. */
-    private ensurePipe(): void {
+    private async ensurePipe(): Promise<void> {
         if (this.pipe) return;
         const filePath = this.state.get().filePath;
         if (!filePath) return;
-        this.pipe = pipeFromSourcePath(filePath);
+        this.pipe = await pipeFromSourcePath(filePath);
     }
 
     private async cacheImageBuffer(buffer: Buffer): Promise<void> {
@@ -111,7 +120,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             });
         }
 
-        this.ensurePipe();
+        await this.ensurePipe();
         if (this.pipe) {
             if (!url) {
                 // No URL yet — read from pipe and create blob URL
@@ -237,7 +246,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
      *  cached URL) and falls back to fetching the runtime URL. */
     saveOriginal = async (): Promise<void> => {
         const { filePath, url } = this.state.get();
-        this.ensurePipe();
+        await this.ensurePipe();
         const sourceName = filePath
             ? fpBasename(filePath)
             : (this.pipe?.provider.sourceUrl
@@ -292,12 +301,17 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         } else {
             return;
         }
-        const dims = await getImageDimensions(dataUrl);
-        const json = buildExcalidrawJsonWithImage(dataUrl, mimeType, dims.width, dims.height);
+        const dimensions = await getImageDimensions(dataUrl);
         const baseName = filePath
             ? fpBasename(filePath).replace(/\.\w+$/, "")
             : "image";
-        pagesModel.addEditorPage("draw-view", "json", baseName + ".excalidraw", json);
+        await app.capabilities.invoke("image.edit", {
+            dataUrl,
+            mimeType,
+            naturalWidth: dimensions.width,
+            naturalHeight: dimensions.height,
+            title: baseName + ".excalidraw",
+        });
     };
 
     getIconElement = (): Element => createFileIconElement({

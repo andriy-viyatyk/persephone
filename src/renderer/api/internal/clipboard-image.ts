@@ -1,4 +1,6 @@
 import { pagesModel } from "../pages";
+import { app } from "../app";
+import { guard } from "../../core/utils/guard";
 
 /**
  * Shared helpers for the "paste clipboard content → open it in a viewer" feature.
@@ -89,6 +91,13 @@ export function openPastedImage(file: File): void {
 
 /** Open pasted clipboard HTML in a new HTML viewer tab. */
 export function openPastedHtml(html: string): void {
-    const page = pagesModel.addEditorPage("html-view", "html", "Pasted HTML", html);
-    pagesModel.showPage(page.id);
+    void guard("Failed to open pasted HTML", async () => {
+        const { pageId } = await app.capabilities.invoke("content.view", {
+            representation: "html",
+            content: html,
+            language: "html",
+            title: "Pasted HTML",
+        });
+        pagesModel.showPage(pageId);
+    });
 }

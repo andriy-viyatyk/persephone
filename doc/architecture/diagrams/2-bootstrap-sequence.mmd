@@ -27,24 +27,14 @@ sequenceDiagram
     rect rgb(232, 245, 233)
         Note over App,S: Layer 1 — Services
         R->>App: app.initServices()
-        par
-            App->>S: import("./settings")
-        and
-            App->>S: import("./editors")
-        and
-            App->>S: import("./recent")
-        and
-            App->>S: import("./fs")
-        and
-            App->>S: import("./window")
-        and
-            App->>S: import("./shell")
-        and
-            App->>S: import("./ui")
-        and
-            App->>S: import("./downloads")
+        loop For each app-service-registry descriptor
+            App->>S: descriptor.load() via dynamic import
+            S-->>App: service value
+            opt descriptor.initialize(value)
+                App->>S: initialize service
+            end
         end
-        Note right of S: 8 APIs loaded in parallel<br/>UI notifications ready ✓
+        Note right of S: Service failures are recorded and reported<br/>after the descriptor pass ✓
     end
 
     rect rgb(255, 243, 224)

@@ -1,6 +1,7 @@
 import type { LogViewEditor } from "../../editors/log-view";
 import type { StyledText, MermaidOutputEntry } from "../../editors/log-view/logTypes";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { guard } from "../../core/utils/guard";
 
 /**
  * Mermaid helper returned by `ui.show.mermaid()`.
@@ -35,6 +36,11 @@ export class Mermaid {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Mermaid Diagram");
-        pagesModel.addEditorPage("mermaid-view", "mermaid", title, this._text);
+        void guard("Failed to open Mermaid editor", () => app.capabilities.invoke("content.view", {
+            representation: "mermaid",
+            content: this._text,
+            language: "mermaid",
+            title,
+        }));
     }
 }

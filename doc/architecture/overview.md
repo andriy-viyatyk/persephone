@@ -68,6 +68,30 @@ The **Object Model** is the central architectural concept. It provides a single,
 | `app.menuFolders` | `IMenuFolders` | Sidebar folder shortcuts |
 | `app.pages` | `PagesModel` | Page/tab collection, lifecycle |
 | `app.proc` | `IProc` | Spawn external processes + stream output (scripts, boards) |
+| `app.capabilities` | `ICapabilities` | Built-in content-opening and editing handoffs |
+
+### App service descriptors
+
+The service-valued members of `app` are declared in the descriptor table in
+[`api/app-service-registry.ts`](../../src/renderer/api/app-service-registry.ts). Each descriptor
+contains the public key, a dynamic `load()` function, and an optional `initialize(value)` hook.
+The table currently covers `settings`, `editors`, `recent`, `fs`, `window`, `shell`, `ui`,
+`downloads`, `menuFolders`, `proc`, `boards`, `boardVars`, and `capabilities`. A type-level
+exhaustiveness check keeps the table aligned with `IApp`.
+
+`app.initServices()` walks this table in declaration order, stores each loaded value behind the
+corresponding app getter, and invokes that descriptor's initializer when present. Loading and
+initialization failures are recorded per service and reported after the pass; one failed service
+does not prevent the remaining descriptors from being loaded. This generic path is why a service
+with startup work does not require a special case in `App` (the current example is `downloads`).
+
+`app.capabilities` is the built-in handoff surface. Its handlers are seeded from capability
+declarations on the editor registry, so callers can request a page/editor without importing an
+editor module or duplicating page construction. The supported ids are `text.open`,
+`content.view` (with `svg`, `html`, `markdown`, `mermaid`, `grid`, or `log` representations),
+`image.edit`, and `diagram.edit`. Page-producing calls return a `pageId`; diagram editing may
+also return a conversion-failed result. The draw editor owns the image/diagram handlers, while
+the other handlers create the declared built-in editor page.
 
 Type definitions live in `/src/renderer/api/types/*.d.ts` and serve triple duty:
 1. TypeScript compilation contracts

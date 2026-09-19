@@ -5,6 +5,7 @@ import {
 } from "../../../ipc/browser-ipc";
 import type { IAiHostSignal, IAiVisionShape } from "ai-vision";
 import type { MenuItem } from "../../uikit/Menu";
+import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
 
@@ -470,7 +471,11 @@ export class BrowserWebviewModel {
                     const resp = await webview.executeJavaScript(
                         `fetch(location.href).then(r => r.text())`,
                     );
-                    pagesModel.addEditorPage("monaco", "html", "Source: " + (tab?.pageTitle || pageUrl), resp);
+                    await app.capabilities.invoke("text.open", {
+                        content: resp,
+                        language: "html",
+                        title: "Source: " + (tab?.pageTitle || pageUrl),
+                    });
                 },
             },
             {
@@ -481,7 +486,11 @@ export class BrowserWebviewModel {
                         BrowserChannel.collectDom,
                         regKey,
                     );
-                    pagesModel.addEditorPage("monaco", "html", "DOM: " + (tab?.pageTitle || pageUrl), html);
+                    await app.capabilities.invoke("text.open", {
+                        content: html,
+                        language: "html",
+                        title: "DOM: " + (tab?.pageTitle || pageUrl),
+                    });
                 },
             },
             {

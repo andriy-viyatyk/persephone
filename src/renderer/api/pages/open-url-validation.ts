@@ -1,14 +1,5 @@
-const PIPELINE_SCHEMES = new Set([
-    "data",
-    "folder-editor",
-    "git-tree",
-    "mneme",
-    "mneme-folder",
-    "persephone-board",
-    "persephone-guide",
-    "persephone-toolset",
-    "tree-category",
-]);
+import { isSchemeRegistered } from "../../content/scheme-registry";
+import "../../content/builtin-schemes";
 
 const PIPELINE_INPUT_FORMS =
     "an HTTP(S) URL, a file:// URL, a Windows/UNC path, or a registered Persephone link scheme";
@@ -67,7 +58,7 @@ function isValidDataUrl(value: string): boolean {
 
 function isValidRegisteredScheme(value: string): boolean {
     const match = /^([a-z][a-z\d+.-]*):\/\//.exec(value);
-    if (!match || !PIPELINE_SCHEMES.has(match[1])) return false;
+    if (!match || !isSchemeRegistered(match[1])) return false;
     if (/\s/.test(value) || value.slice(match[0].length).length === 0) return false;
     try {
         return new URL(value).protocol === `${match[1]}:`;

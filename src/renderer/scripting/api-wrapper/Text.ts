@@ -1,6 +1,7 @@
 import type { LogViewEditor } from "../../editors/log-view";
 import type { StyledText, TextOutputEntry } from "../../editors/log-view/logTypes";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { guard } from "../../core/utils/guard";
 
 /**
  * Text helper returned by `ui.show.text()`.
@@ -59,6 +60,10 @@ export class Text {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Text");
-        pagesModel.addEditorPage("monaco", this._language || "plaintext", title, this._text);
+        void guard("Failed to open text editor", () => app.capabilities.invoke("text.open", {
+            content: this._text,
+            language: this._language || "plaintext",
+            title,
+        }));
     }
 }

@@ -127,6 +127,13 @@ and their descendants; use helpSearch when you need to discover another path. Th
 execution contract for script.execute. The separate main.script.execute path runs settings-gated
 main-process code.
 
+The script-only io global also exposes registerProvider(type, factory) and
+registerScheme(scheme, hooks). Factories and hooks are structural values; registrations belong
+to the current renderer session and survive script completion and autoload re-execution. Reusing a
+script-owned provider type or scheme replaces the previous entry with an info report, while
+platform-owned duplicates remain first-wins errors. A renderer reload/restart clears registrations;
+restart recovery for persisted script providers is not available in Phase A.
+
 Inside a renderer script, app.call(path, options?) resolves the renderer tree only; it cannot
 resolve the MCP router's main.* or windows[i].* paths. It returns a bounded plain value, accepts
 args or value (not both), and never returns hints or resolver metadata.

@@ -3,7 +3,8 @@ import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { createTextElement } from "../../../uikit/Text/text-style";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { pagesModel } from "../../../api/pages";
+import { app } from "../../../api/app";
+import { guard } from "../../../core/utils/guard";
 import { themeState } from "../../../theme/theme-state";
 import { renderMermaidSvg, svgToDataUrl } from "../../mermaid/render-mermaid";
 import { copyPngBlobToClipboard } from "../../shared/image-export";
@@ -120,6 +121,11 @@ export class MermaidOutputView extends VanillaView<MermaidOutputViewProps> {
 
     private readonly handleOpenInEditor = (): void => {
         const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Mermaid Diagram";
-        pagesModel.addEditorPage("mermaid-view", "mermaid", title, this.props.entry.text);
+        void guard("Failed to open Mermaid editor", () => app.capabilities.invoke("content.view", {
+            representation: "mermaid",
+            content: this.props.entry.text,
+            language: "mermaid",
+            title,
+        }));
     };
 }

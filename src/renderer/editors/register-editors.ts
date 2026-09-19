@@ -1,5 +1,9 @@
 import { editorRegistry } from "./base/editorRegistry";
-import type { EditorDefinition, EditorModule } from "./base/editorRegistry";
+import type {
+    EditorCapabilityDeclaration,
+    EditorDefinition,
+    EditorModule,
+} from "./base/editorRegistry";
 import { EDITOR_MATCHERS, makeAccepts } from "./base/editor-matchers";
 import { customEditorRegistry } from "./board/custom-editor-registry";
 import { BOARD_SECONDARY_PREFIX } from "./board/board-secondary";
@@ -133,6 +137,7 @@ interface EditorRow {
     hasContentHost?: boolean;
     mcpHint?: string;
     folderIcon?: string;
+    capabilities?: readonly EditorCapabilityDeclaration[];
     /** Explicit acceptance override (monaco, file-diff). */
     accepts?: EditorDefinition["accepts"];
     load: () => Promise<EditorModule>;
@@ -154,17 +159,18 @@ const EDITORS: EditorRow[] = [
             if (input.mode === "view") return 10;
             return 50;
         },
+        capabilities: [{ id: "text.open" }],
         load: async () => (await import("./monaco")).monacoModule,
     },
-    { id: "grid-json", name: "Grid (JSON)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
+    { id: "grid-json", name: "Grid (JSON)", guidePath: "editors/grid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "grid" }], load: async () => (await import("./grid")).gridJsonModule },
     { id: "grid-csv", name: "Grid (CSV)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
     { id: "grid-jsonl", name: "Grid (JSONL)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
-    { id: "log-view", name: "Log View", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
-    { id: "md-view", name: "Preview", guidePath: "editors/markdown", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
-    { id: "svg-view", name: "Preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
-    { id: "html-view", name: "Preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
-    { id: "mermaid-view", name: "Mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
-    { id: "draw-view", name: "Drawing", guidePath: "editors/draw", hasContentHost: true, load: async () => (await import("./draw")).drawModule },
+    { id: "log-view", name: "Log View", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', capabilities: [{ id: "content.view", representation: "log" }], load: async () => (await import("./log-view")).logViewModule },
+    { id: "md-view", name: "Preview", guidePath: "editors/markdown", hasContentHost: true, capabilities: [{ id: "content.view", representation: "markdown" }], load: async () => (await import("./markdown")).markdownModule },
+    { id: "svg-view", name: "Preview", guidePath: "editors/svg", hasContentHost: true, capabilities: [{ id: "content.view", representation: "svg" }], load: async () => (await import("./svg")).svgModule },
+    { id: "html-view", name: "Preview", guidePath: "editors/html", hasContentHost: true, capabilities: [{ id: "content.view", representation: "html" }], load: async () => (await import("./html")).htmlModule },
+    { id: "mermaid-view", name: "Mermaid", guidePath: "editors/mermaid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "mermaid" }], load: async () => (await import("./mermaid")).mermaidModule },
+    { id: "draw-view", name: "Drawing", guidePath: "editors/draw", hasContentHost: true, capabilities: [{ id: "image.edit" }, { id: "diagram.edit" }], load: async () => (await import("./draw")).drawModule },
     { id: "link-view", name: "Links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
     { id: "rest-client", name: "Rest Client", guidePath: "editors/rest-client", hasContentHost: true, load: async () => (await import("./rest-client")).restClientModule },
     { id: "notebook-view", name: "Notebook", guidePath: "editors/notebook", hasContentHost: true, load: async () => (await import("./notebook")).notebookModule },
@@ -222,6 +228,7 @@ for (const e of EDITORS) {
         hasContentHost: e.hasContentHost ?? false,
         mcpHint: e.mcpHint,
         folderIcon: e.folderIcon,
+        capabilities: e.capabilities,
         accepts: e.accepts ?? (match ? makeAccepts(match) : () => -1),
         match,
         loadModule: e.load,

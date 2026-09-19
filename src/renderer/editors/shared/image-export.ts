@@ -36,6 +36,16 @@ export async function rasterToPngBlob(src: string): Promise<Blob> {
     return imageElementToPngBlob(await loadImage(src));
 }
 
+/** Load an image source and report its natural dimensions. */
+export async function getImageDimensions(src: string): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = () => reject(new Error("Failed to load image"));
+        image.src = src;
+    });
+}
+
 export interface RasterizedPng {
     blob: Blob;
     width: number;

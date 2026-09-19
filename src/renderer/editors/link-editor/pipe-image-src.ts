@@ -74,7 +74,8 @@ export async function resolvePipeImageSrc(src: string): Promise<string | null> {
 
     const read = (async () => {
         try {
-            const buffer = await pipeFromSourcePath(src).readBinary();
+            const pipe = await pipeFromSourcePath(src);
+            const buffer = await pipe.readBinary();
             const mime = MIME_BY_EXT[fpExtname(src).toLowerCase()] ?? "image/png";
             const url = URL.createObjectURL(
                 new Blob([new Uint8Array(buffer)], { type: mime }),

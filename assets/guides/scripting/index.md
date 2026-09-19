@@ -200,7 +200,7 @@ See the [ui API reference](./api/ui-log.md) for complete details.
 
 ## The `io` Namespace
 
-Scripts have access to a global `io` object for building **content pipes** — a way to read (and sometimes write) binary content from files, HTTP URLs, and archives. This is the same pipeline that Persephone uses internally when you open a file or URL.
+Scripts have access to a global `io` object for building **content pipes** — a way to read (and sometimes write) binary content from files, HTTP URLs, and archives.
 
 ### Providers
 
@@ -228,6 +228,28 @@ Transformers process the raw bytes before they reach your code.
 const pipe = io.createPipe(provider, ...transformers);
 const text = await pipe.readText();
 ```
+
+### Register custom providers and URL schemes
+
+Scripts can extend the `io` namespace for the current window session:
+
+```javascript
+io.registerProvider("memory", (config) => ({
+    type: "memory",
+    displayName: "Memory",
+    sourceUrl: "memory://item",
+    restorable: true,
+    writable: false,
+    readBinary: async () => Buffer.from(String(config.text ?? "")),
+    toDescriptor: () => ({ type: "memory", config }),
+}));
+```
+
+Use `io.registerScheme(scheme, { parse, resolve })` to connect a URL scheme to that provider and
+open it with `app.events.openRawLink.sendAsync(io.createLinkData(url))`. Registrations remain
+available after the script finishes and are cleared when the window is reloaded or restarted.
+See the [`io` API reference](./api/io.md#registering-providers-and-url-schemes) for the provider
+contract, hook context, duplicate handling, and a complete example.
 
 ### Examples
 
@@ -273,7 +295,7 @@ await app.events.openRawLink.sendAsync(
 ```
 
 ```javascript
-// Open a specific file path (skip Layer 1 raw parsing, go directly to Layer 2)
+// Open a specific file path by supplying its resolved URL
 await app.events.openLink.sendAsync(
     io.createLinkData("C:/data/file.json", { url: "C:/data/file.json" })
 );

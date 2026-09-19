@@ -1,7 +1,8 @@
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { toClipboard } from "../../core/utils/utils";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { guard } from "../../core/utils/guard";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
 import { renderMermaidSvg, svgToDataUrl } from "../mermaid/render-mermaid";
 import { copyPngBlobToClipboard } from "../shared/image-export";
@@ -231,7 +232,12 @@ export class MermaidBlockView extends VanillaView<MermaidBlockProps> {
     }
 
     private readonly onOpenClick = (): void => {
-        pagesModel.addEditorPage("mermaid-view", "mermaid", "Mermaid Diagram", this.props.code);
+        void guard("Failed to open Mermaid editor", () => app.capabilities.invoke("content.view", {
+            representation: "mermaid",
+            content: this.props.code,
+            language: "mermaid",
+            title: "Mermaid Diagram",
+        }));
     };
 
     private readonly onCopyClick = (): void => {

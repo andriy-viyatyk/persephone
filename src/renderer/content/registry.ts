@@ -1,3 +1,5 @@
+import { errMessage } from "../../shared/utils";
+import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 import type { IProvider, IProviderDescriptor } from "../api/types/io.provider";
 import type { ITransformer, ITransformerDescriptor } from "../api/types/io.transformer";
 import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
@@ -9,28 +11,85 @@ import { DataUrlProvider } from "./providers/DataUrlProvider";
 import { MnemeProvider } from "./providers/MnemeProvider";
 import { GuideProvider } from "./providers/GuideProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
-import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 
 type ProviderFactory = (config: Record<string, unknown>) => IProvider;
 type TransformerFactory = (config: Record<string, unknown>) => ITransformer;
 
-const providerFactories = new Map<string, ProviderFactory>();
+export type RegistrationOrigin = "platform" | "script" | (string & {});
+
+export interface RegistrationOptions {
+    readonly origin: RegistrationOrigin;
+}
+
+interface ProviderRegistration {
+    readonly factory: ProviderFactory;
+    readonly origin: RegistrationOrigin;
+}
+
+const providerFactories = new Map<string, ProviderRegistration>();
 const transformerFactories = new Map<string, TransformerFactory>();
 
-export function registerProvider(type: string, factory: ProviderFactory): void {
-    providerFactories.set(type, factory);
+function reportDuplicate(kind: string, name: string, existingOrigin?: RegistrationOrigin): void {
+    const ownerMessage = existingOrigin
+        ? ` The existing ${existingOrigin} registration remains active.`
+        : " The first registration remains active.";
+    void import("../api/ui")
+        .then(({ ui }) => ui.notify(
+            `Duplicate ${kind} registration: "${name}".${ownerMessage}`,
+            "error",
+        ))
+        .catch((error: unknown) => {
+            console.error(`Failed to report duplicate ${kind} registration: ${errMessage(error)}`);
+        });
+}
+
+function reportReplacement(
+    kind: string,
+    name: string,
+    previousOrigin: RegistrationOrigin,
+): void {
+    void import("../api/ui")
+        .then(({ ui }) => ui.notify(
+            `Replaced ${kind} registration: "${name}" (previous origin: ${previousOrigin}).`,
+            "info",
+        ))
+        .catch((error: unknown) => {
+            console.error(`Failed to report replaced ${kind} registration: ${errMessage(error)}`);
+        });
+}
+
+export function registerProvider(
+    type: string,
+    factory: ProviderFactory,
+    options: RegistrationOptions,
+): void {
+    const existing = providerFactories.get(type);
+    if (existing) {
+        if (existing.origin === "script" && options.origin === "script") {
+            providerFactories.set(type, { factory, origin: options.origin });
+            reportReplacement("provider", type, existing.origin);
+            return;
+        }
+        reportDuplicate("provider", type, existing.origin);
+        return;
+    }
+    providerFactories.set(type, { factory, origin: options.origin });
 }
 
 export function registerTransformer(type: string, factory: TransformerFactory): void {
+    if (transformerFactories.has(type)) {
+        reportDuplicate("transformer", type);
+        return;
+    }
     transformerFactories.set(type, factory);
 }
 
 export function createProviderFromDescriptor(descriptor: IProviderDescriptor): IProvider {
-    const factory = providerFactories.get(descriptor.type);
-    if (!factory) {
+    const registration = providerFactories.get(descriptor.type);
+    if (!registration) {
         throw new Error(`Unknown provider type: "${descriptor.type}"`);
     }
-    return factory(descriptor.config);
+    return registration.factory(descriptor.config);
 }
 
 export function createTransformerFromDescriptor(descriptor: ITransformerDescriptor): ITransformer {
@@ -47,10 +106,10 @@ export function createPipeFromDescriptor(descriptor: IPipeDescriptor): IContentP
     return new ContentPipe(provider, transformers, descriptor.encoding);
 }
 
-// ── Built-in registrations ──────────────────────────────────────────
+// ── Built-in provider and transformer registrations ─────────────────────────
 
-registerProvider("file", (config) => new FileProvider(config.path as string));
-registerProvider("cache", (config) => new CacheFileProvider(config.pageId as string));
+registerProvider("file", (config) => new FileProvider(config.path as string), { origin: "platform" });
+registerProvider("cache", (config) => new CacheFileProvider(config.pageId as string), { origin: "platform" });
 registerProvider("http", (config) => new HttpProvider(
     config.url as string,
     {
@@ -58,16 +117,16 @@ registerProvider("http", (config) => new HttpProvider(
         headers: config.headers as Record<string, string> | undefined,
         body: config.body as string | undefined,
     },
-));
-registerProvider("data", (config) => new DataUrlProvider(config.url as string));
-registerProvider("mneme", (config) => new MnemeProvider(config.path as string));
+), { origin: "platform" });
+registerProvider("data", (config) => new DataUrlProvider(config.url as string), { origin: "platform" });
+registerProvider("mneme", (config) => new MnemeProvider(config.path as string), { origin: "platform" });
 registerProvider("guide", (config) => {
     const path = config && typeof config.path === "string" ? config.path : undefined;
     if (!path || !isCanonicalGuidePath(path)) {
         throw new Error("Invalid guide provider descriptor: expected a safe corpus-relative path.");
     }
     return new GuideProvider(path);
-});
+}, { origin: "platform" });
 registerTransformer("archive", (config) => new ArchiveTransformer(config.archivePath as string, config.entryPath as string));
 registerTransformer("decrypt", () => {
     throw new Error("DecryptTransformer cannot be created from descriptor — use clone() instead");

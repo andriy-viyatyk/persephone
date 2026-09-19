@@ -1,7 +1,8 @@
 import type { LogViewEditor } from "../../editors/log-view";
 import type { StyledText, GridOutputEntry } from "../../editors/log-view/logTypes";
 import type { GridColumn } from "../../editors/grid/utils/grid-utils";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { guard } from "../../core/utils/guard";
 
 /**
  * Grid helper returned by `ui.show.grid()`.
@@ -42,6 +43,11 @@ export class Grid {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Grid Data");
-        pagesModel.addEditorPage("grid-json", "json", title, JSON.stringify(this._data, null, 2));
+        void guard("Failed to open Grid editor", () => app.capabilities.invoke("content.view", {
+            representation: "grid",
+            content: JSON.stringify(this._data, null, 2),
+            language: "json",
+            title,
+        }));
     }
 }

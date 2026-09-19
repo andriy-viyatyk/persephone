@@ -68,7 +68,7 @@ app.events.fileExplorer.itemContextMenu.subscribe((event) => {
 
 `IEventChannel<ILinkData>`
 
-Layer 1 of the content open pipeline. Fired when a raw string (file path, URL, cURL command) needs to be parsed into a structured link. Parsers subscribe here and set `event.handled = true` when they recognize the format.
+Fired when a raw string (file path, URL, cURL command) needs to be parsed into a structured link. Subscribers set `event.handled = true` when they recognize the format.
 
 Scripts can also **send** to this channel to programmatically open content:
 
@@ -79,7 +79,7 @@ await app.events.openRawLink.sendAsync(
 );
 ```
 
-#### ILinkData properties (Layer 1)
+#### ILinkData properties
 
 When subscribing to `openRawLink`, the event IS the `ILinkData` object:
 
@@ -95,9 +95,9 @@ When subscribing to `openRawLink`, the event IS the `ILinkData` object:
 
 `IEventChannel<ILinkData>`
 
-Layer 2 of the content open pipeline. Fired with a normalized URL to be resolved into a content pipe. Resolvers subscribe here and build provider + transformer chains.
+Fired with a normalized URL to be resolved into a content pipe. Subscribers build the provider and transformer chain here.
 
-Scripts can send to this channel to open a known URL directly (skipping Layer 1 raw parsing):
+Scripts can send to this channel to open a URL that is already known:
 
 ```javascript
 // Open a specific URL, optionally specifying the target editor
@@ -110,7 +110,7 @@ await app.events.openLink.sendAsync(
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `url` | `string` | Normalized URL or file path. Set by Layer 1 parsers (or by the caller directly). |
+| `url` | `string` | Normalized URL or file path. Set by link parsing or by the caller directly. |
 | `target` | `string \| undefined` | Target editor ID. Optional — auto-resolved if omitted. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 
@@ -138,7 +138,7 @@ Open hint fields on `ILinkData`. All fields are optional.
 
 `IEventChannel<ILinkData>`
 
-Layer 3 of the content open pipeline. Fired with an assembled content pipe and target editor. The app's open handler subscribes here and creates/navigates pages.
+Fired with an assembled content pipe and target editor. Persephone opens or navigates the target page here.
 
 Scripts can subscribe to observe or intercept page opens:
 
@@ -151,13 +151,13 @@ app.events.openContent.subscribe((event) => {
 
 #### OpenContentEvent properties
 
-When subscribing to `openContent`, the event IS the `ILinkData` object enriched by Layers 1–2. Key fields:
+When subscribing to `openContent`, the event IS the `ILinkData` object with parsed and resolved fields. Key fields:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). Set by Layer 2 resolvers. |
-| `target` | `string` | Resolved editor ID. Set by Layer 2. |
-| `url` | `string` | Resolved URL or file path from Layer 1. |
+| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). |
+| `target` | `string` | Resolved editor ID. |
+| `url` | `string` | Resolved URL or file path. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 | *(other fields)* | | All original `ILinkData` fields (title, headers, pageId, etc.) pass through unchanged. |
 

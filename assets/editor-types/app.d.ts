@@ -10,6 +10,7 @@ import type { IMenuFolders } from "./menu-folders";
 import type { IProc } from "./proc";
 import type { IBoards } from "./boards";
 import type { IBoardVars } from "./board-vars";
+import type { ICapabilities } from "./capabilities";
 import type { IPageCollection } from "./pages";
 import type { IAppEvents } from "./events";
 
@@ -62,6 +63,9 @@ export interface IApp {
 
     /** Board environment variables / secrets — administration across all namespaces. */
     readonly boardVars: IBoardVars;
+
+    /** Built-in capability handoffs for opening and editing in-app content. */
+    readonly capabilities: ICapabilities;
 
     /** Open pages (tabs) in the current window. */
     readonly pages: IPageCollection;

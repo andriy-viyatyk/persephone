@@ -1,22 +1,17 @@
 import { app } from "../api/app";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
-import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
-import { GIT_TREE_PREFIX } from "./git-tree-link";
-import { MNEME_FOLDER_PREFIX } from "./mneme-folder-link";
-import { decodeFolderEditorLink, FOLDER_EDITOR_PREFIX } from "./folder-editor-link";
-import { PERSEPHONE_BOARD_PREFIX } from "./persephone-board-link";
-import { PERSEPHONE_TOOLSET_PREFIX } from "./persephone-toolset-link";
-import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../shared/guides/guide-links";
+import { dispatchRegisteredSchemeParse } from "./scheme-registry";
+import "./builtin-schemes";
 import { normalizeFileUrl, isFileUrl, isPlausibleFilePath } from "./link-utils";
 
 /**
  * Split a trailing `#fragment` off a URL-shaped href (US-901).
  *
  * Safe ONLY for real URLs (`file://`, `mneme://`) where a literal "#" must be
- * percent-encoded as `%23` — `url.pathToFileURL` does encode it, so the split is
- * unambiguous. Never call this on a bare filesystem path: "#" is legal in Windows
- * file and folder names (`C:\notes\C#\readme.md`).
+ * percent-encoded as `%23` — `url.pathToFileURL` does encode it, so the split
+ * is unambiguous. Never call this on a bare filesystem path: "#" is legal in
+ * Windows file and folder names (`C:\notes\C#\readme.md`).
  */
 function splitUrlFragment(href: string): { url: string; fragment?: string } {
     const hashIndex = href.indexOf("#");
@@ -31,23 +26,12 @@ function splitUrlFragment(href: string): { url: string; fragment?: string } {
     return { url: href.slice(0, hashIndex), fragment: fragment || undefined };
 }
 
-/**
- * Register Layer 1 parsers on openRawLink.
- *
- * Registration order matters (LIFO execution):
- * 1. fileParser registered first → runs last (fallback)
- * 2. archiveParser registered second → runs first (checks for "!")
- *
- * Call during app bootstrap, before scripts load. The bootstrap parser registry
- * owns these process-lifetime handlers; no view/model should dispose them.
- */
+/** Register Layer 1 fallbacks and the registry-backed scheme dispatcher. */
 export function registerRawLinkParsers(): void {
-    // File parser — fallback for plain file paths and file:// URLs
+    // File parser — fallback for plain file paths and file:// URLs.
     app.events.openRawLink.subscribe(async (data) => {
         let filePath = data.href;
         if (isFileUrl(filePath)) {
-            // A `#fragment` on a file:// URL is an in-document anchor, not part of the
-            // path — carry it as metadata so the editor can scroll to it (US-901).
             const split = splitUrlFragment(filePath);
             filePath = normalizeFileUrl(split.url);
             if (split.fragment) data.fragment ??= split.fragment;
@@ -64,7 +48,7 @@ export function registerRawLinkParsers(): void {
         data.handled = true;
     });
 
-    // Archive parser — detects "!" separator
+    // Archive parser — registered after the file fallback so LIFO keeps archive ahead of file.
     app.events.openRawLink.subscribe(async (data) => {
         if (!isArchivePath(data.href)) return;
         let archivePath = data.href;
@@ -79,139 +63,12 @@ export function registerRawLinkParsers(): void {
         data.handled = true;
     });
 
-    // HTTP parser — detects http:// and https:// URLs
+    // Registered schemes run before the file fallback but after the cURL/fetch auxiliary parser.
     app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith("http://") && !data.href.startsWith("https://")) return;
-        data.url = data.href;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
+        await dispatchRegisteredSchemeParse(data, () => app.events.openLink.sendAsync(data));
     });
 
-    // data: URL parser — inline content (scripts, styles)
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith("data:")) return;
-        data.url = data.href;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // mneme:// parser — Mneme wiki documents (EPIC-032). Routes to MnemeProvider
-    // via the mneme:// resolver. Registered after the file fallback so it runs
-    // first (LIFO) and the file parser never sees the scheme.
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith("mneme://")) return;
-        // Same fragment treatment as the file parser — a `#anchor` must not become
-        // part of the mneme document address (US-901).
-        const split = splitUrlFragment(data.href);
-        data.url = split.url;
-        if (split.fragment) data.fragment ??= split.fragment;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // tree-category:// parser — detects category links for folder/category navigation
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(TREE_CATEGORY_PREFIX)) return;
-        data.url = data.href;
-        data.target ??= "category-view";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // git-tree:// parser — repo history view; navigates the current page
-    // (the Explorer passes pageId, so openContent → navigatePageTo). Mirrors the
-    // tree-category:// parser. (EPIC-030 / US-612)
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(GIT_TREE_PREFIX)) return;
-        data.url = data.href;
-        data.target ??= "git-tree";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // mneme-folder:// parser — Mneme root editor; navigates the current page
-    // (the Explorer passes pageId, so openContent → navigatePageTo). Mirrors the
-    // git-tree:// parser. Opens the editor for a `.mneme` folder's root, distinct
-    // from the `mneme://` document scheme above. (EPIC-032 / US-663)
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(MNEME_FOLDER_PREFIX)) return;
-        data.url = data.href;
-        data.target ??= "mneme-root";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // folder-editor:// parser — opens a trusted board for its claimed folder.
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(FOLDER_EDITOR_PREFIX)) return;
-        const parsed = decodeFolderEditorLink(data.href);
-        if (!parsed) {
-            const { ui } = await import("../api/ui");
-            ui.notify(`Invalid folder editor link: ${data.href}`, "warning");
-            data.handled = true;
-            return;
-        }
-        data.url = data.href;
-        data.target = parsed.editorId;
-        data.folderPath = parsed.anchorFolder;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // persephone-board:// parser — opens a single board by its own root path
-    // (US-748); routes to the board-view target. The link is a pure board
-    // identifier — any per-open param rides as ILinkData metadata.
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        data.url = data.href;
-        data.target ??= "board-view";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // persephone-toolset:// parser — opens a single toolset by its own root path
-    // (US-805); routes to the toolset-view target. Mirrors the persephone-board://
-    // parser above.
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(PERSEPHONE_TOOLSET_PREFIX)) return;
-        data.url = data.href;
-        data.target ??= "toolset-view";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // persephone-guide:// parser — guide identities are corpus-relative and must never
-    // reach the file fallback. Layer 2 validates membership in the shared guide index.
-    app.events.openRawLink.subscribe(async (data) => {
-        if (!data.href.startsWith(PERSEPHONE_GUIDE_PREFIX)) return;
-        const parsed = parseGuideUrl(data.href);
-        if (!parsed) {
-            const { ui } = await import("../api/ui");
-            ui.notify(
-                `Invalid guide link: ${data.href}. Expected persephone-guide://<corpus-path>[#anchor].`,
-                "warning",
-            );
-            data.handled = true;
-            return;
-        }
-        data.url = parsed.url;
-        if (parsed.fragment) data.fragment ??= parsed.fragment;
-        data.target ??= "md-view";
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
-
-    // cURL / fetch parser — detects "curl " or "fetch(" commands
+    // cURL / fetch is an auxiliary parser, not a registry scheme. It must run first for commands.
     app.events.openRawLink.subscribe(async (data) => {
         const trimmed = data.href.trim();
         if (!/^(curl\s|fetch\()/i.test(trimmed)) return;
@@ -219,7 +76,6 @@ export function registerRawLinkParsers(): void {
         const parsed = parseHttpRequest(trimmed);
         if (!parsed) return;
 
-        // Set cURL-parsed fields, but don't override caller-provided values
         if (parsed.method !== "GET") data.method ??= parsed.method;
         if (Object.keys(parsed.headers).length > 0) data.headers ??= parsed.headers;
         if (parsed.body) data.body ??= parsed.body;

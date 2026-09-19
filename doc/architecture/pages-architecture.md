@@ -22,7 +22,7 @@ graph TD
     B -->|Parallel load| C["import Renderer Code<br/>+ app.init"]
     C -->|Side effects| C1["configure-monaco<br/>register-editors"]
     B -->|await| D["app.initServices<br/>Layer 1"]
-    D -->|Load 8 APIs| D1["settings, editors, recent,<br/>fs, window, shell, ui, downloads"]
+    D -->|Walk app-service-registry descriptors| D1["load each service<br/>then invoke optional initializer"]
     D1 --> E["app.initPages<br/>Layer 2"]
     E -->|Phase 1: Restore| E1["app.pages.restore<br/>Load persisted pages"]
     E1 -->|Phase 2: HandleArgs| E2["app.pages.handleArgs<br/>--file, --url, --diff"]
@@ -49,7 +49,12 @@ graph TD
     style H fill:#c8e6c9
 ```
 
-**Layer 1 — Services** (`app.initServices()`): Loads 8 core APIs in parallel via dynamic imports: settings, editors, recent, fs, window, shell, ui, downloads. After this layer, the notification system is ready for error reporting.
+**Layer 1 — Services** (`app.initServices()`): Walks the descriptor table in
+`api/app-service-registry.ts` in declaration order. Each descriptor dynamically loads one
+service-valued `app.*` member and may provide an `initialize(value)` hook; the current initializer
+is `downloads.init()`. Values are installed behind the root app getters, and load/initialize
+failures are recorded and reported after the pass so one service does not abort the rest. This
+layer includes `capabilities`, whose handlers are seeded from editor capability declarations.
 
 **Layer 2 — Pages** (`app.initPages()`): Restores pages from persistent storage, then processes CLI arguments (`--file`, `--url`, `--diff`). Ensures at least one page exists.
 

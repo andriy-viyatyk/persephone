@@ -3,7 +3,8 @@ import { errMessage } from "../../../../shared/utils";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { pagesModel } from "../../../api/pages";
+import { app } from "../../../api/app";
+import { guard } from "../../../core/utils/guard";
 import type { TextOutputEntry } from "../logTypes";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import { DialogHeaderView } from "./DialogHeader";
@@ -133,6 +134,10 @@ export class TextOutputView extends VanillaView<TextOutputViewProps> {
 
     private readonly handleOpenInEditor = (): void => {
         const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Text";
-        pagesModel.addEditorPage("monaco", this.props.entry.language || "plaintext", title, this.props.entry.text);
+        void guard("Failed to open text editor", () => app.capabilities.invoke("text.open", {
+            content: this.props.entry.text,
+            language: this.props.entry.language || "plaintext",
+            title,
+        }));
     };
 }

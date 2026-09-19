@@ -115,6 +115,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │
 ├── api/                    # Object Model — application interfaces
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
+│   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
+│   ├── capabilities.ts      # Built-in capability lookup and invocation (`app.capabilities`)
 │   ├── settings.ts         # ISettings implementation
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
@@ -214,6 +216,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   └── types/              # TypeScript interfaces (.d.ts)
 │       ├── index.d.ts      # Global `app` and `page` declarations
 │       ├── app.d.ts        # IApp interface
+│       ├── capabilities.d.ts # ICapabilities and built-in handoff payloads
 │       ├── common.d.ts     # IDisposable, IEvent, Language
 │       ├── pages.d.ts      # IPageCollection interface
 │       ├── page.d.ts       # IPage interface (with `editor` and `editorSwitches`)
@@ -258,15 +261,17 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
 │   ├── PipePair.ts         # Paired TextFile source/cache pipe ownership and disposal
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
+│   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
+│   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
-│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:, folder-editor, built-in folder links, board/toolset/guide) on openRawLink
-│   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive, guide) on openLink
+│   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
+│   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
 │   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
 │   ├── rebuild-pipe.ts     # pipeFromSourcePath() — rebuild a pipe from a persisted source path (plain, archive-bang, http); shared by the Image editor, board file materialization and page restore
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
 │   ├── folder-editor-link.ts # folder-editor:// UTF-8-safe board-folder link; maps built-in folder ids to their existing links
-│   ├── persephone-board-link.ts # persephone-board:// link encode/decode (addresses a board root); parsed in parsers.ts → target "board-view"
-│   ├── persephone-toolset-link.ts # persephone-toolset:// link encode/decode (addresses a toolset root) + openToolset() helper; parsed in parsers.ts → target "toolset-view"
+│   ├── persephone-board-link.ts # persephone-board:// link encode/decode (addresses a board root); dispatched by the registered-scheme adapter → target "board-view"
+│   ├── persephone-toolset-link.ts # persephone-toolset:// link encode/decode (addresses a toolset root) + openToolset() helper; dispatched by the registered-scheme adapter → target "toolset-view"
 │   ├── mneme-folder-link.ts # mneme-folder:// link encode/decode (addresses a Mneme root)
 │   ├── mneme-link.ts        # mneme:// document scheme — canonical href ⇄ MCP address (toMnemeHref / toMnemeAddress)
 │   ├── providers/
@@ -892,6 +897,18 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │
 └── index.ts                # mount(container): application composition root
 ```
+
+### Renderer registry and service modules
+
+The renderer API service table lives in `/src/renderer/api/app-service-registry.ts`; the root
+`App` class loads each descriptor and invokes its optional initializer. The built-in handoff
+surface is implemented by `/src/renderer/api/capabilities.ts` and typed by
+`/src/renderer/api/types/capabilities.d.ts`.
+
+The content directory has three registry-facing modules: `registry.ts` owns provider and
+transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hooks, and
+`builtin-schemes.ts` installs the platform scheme implementations. `parsers.ts` and
+`resolvers.ts` are the event-pipeline adapters around those registries.
 
 ## Main Process Structure
 
