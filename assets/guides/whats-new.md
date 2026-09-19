@@ -21,6 +21,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   and `io.registerScheme()` to make script-defined content readable through Persephone's normal
   link-opening flow. Registrations remain available in the current window until it is reloaded or
   restarted. See the [`io` API reference](./scripting/api/io.md#registering-providers-and-url-schemes).
+- **Scripts and agents can inspect and dismiss toast alerts:** use `app.ui.alerts` in scripts or
+  `ui.alerts` through the application object model to check alert severity, message, and creation
+  time, then dismiss one or more alerts when that serves the user's intent. See the [`app.ui` API
+  reference](./scripting/api/ui.md#alerts).
 
 ### Improvements
 

@@ -19,6 +19,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
+| Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
 | Built-in app capabilities (`app.capabilities`) | `/src/renderer/api/capabilities.ts`               |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
@@ -78,7 +79,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | ILink trait definition   | `/src/renderer/core/traits/linkTraits.ts` |
 | Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
-| Content pipe registry    | `/src/renderer/content/registry.ts`               |
+| Content pipe registry and script-provider shape validation (first-construction validation, cached verdicts, and registration diagnostics) | `/src/renderer/content/registry.ts` |
 | URL scheme registry      | `/src/renderer/content/scheme-registry.ts`        |
 | Built-in URL-scheme hooks | `/src/renderer/content/builtin-schemes.ts`       |
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |
@@ -113,6 +114,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page editor-switches AiVision node (current editor, toolbar-identical options, verified switching, and switch control elements) | `/src/renderer/scripting/ai-vision/page-editor-switches.ts` |
 | Page compare-mode AiVision node (active pairs, enter/exit actions, and page-scoped compare controls) | `/src/renderer/scripting/ai-vision/page-compare.ts` |
 | Curated element visibility and named highlight protocol | `ai-vision/dom`, `/src/renderer/scripting/ai-vision/namespaces/ui.ts` |
+| Agent-visible alert AiVision node (list/count/dismiss projection over the renderer alert bar) | `/src/renderer/scripting/ai-vision/namespaces/ui-alerts.ts` |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
 | Async worker (renderer)  | `/src/renderer/scripting/worker/WorkerRunner.ts`  |
 | Async worker (main)      | `/src/main/worker-host.ts`                        |

@@ -151,6 +151,32 @@ export interface IHighlightResult {
 /** Notification type for toast alerts. */
 export type NotificationType = "info" | "success" | "warning" | "error";
 
+/** Plain data for one toast alert currently held by the notification bar. */
+export interface IAlert {
+    /** Stable key for this alert during the renderer session. */
+    readonly key: number;
+    /** Alert severity. */
+    readonly type: NotificationType;
+    /** Text displayed in the toast. */
+    readonly message: string;
+    /** Time when the alert was created, as milliseconds since Unix epoch. */
+    readonly createdAt: number;
+    /** Whether this alert is among the first three alerts currently rendered. */
+    readonly visible: boolean;
+}
+
+/** Read and dismiss the toast notifications held by this renderer window. */
+export interface IAlerts {
+    /** Return every held alert in insertion order, including alerts not currently rendered. */
+    list(): IAlert[];
+    /** Count all held alerts, optionally filtered by severity. */
+    count(type?: NotificationType): number;
+    /** Dismiss one alert and resolve the promise returned by its notify call. */
+    close(key: number): boolean;
+    /** Dismiss all held alerts, optionally filtered by severity, and return the number closed. */
+    closeAll(type?: NotificationType): number;
+}
+
 /**
  * Dialogs and notifications.
  *
@@ -161,6 +187,9 @@ export type NotificationType = "info" | "success" | "warning" | "error";
  * app.ui.notify("File saved", "success");
  */
 export interface IUserInterface {
+    /** Read or dismiss toast notifications in this renderer window. */
+    readonly alerts: IAlerts;
+
     /**
      * Show a confirmation dialog.
      * Returns the clicked button label, or `null` if dismissed.

@@ -37,12 +37,6 @@ below tracks which phases have shipped.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1464: Agent-visible and dismissable alerts](tasks/US-1464-agent-visible-alerts/README.md)
-    — `app.ui` can raise a toast but nothing can read or close one, so an agent cannot confirm a
-    failure it caused. Error alerts are never evicted automatically, so they accumulate.
-  - [ ] [US-1465: Validate a script-registered provider's shape](tasks/US-1465-validate-script-provider-shape/README.md)
-    — a hand-written provider missing a required member fails later as an opaque `TypeError`
-    instead of being named at first use. Found while verifying US-1461.
   - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
     — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
     before returning it and `EventChannel` has no replay, so the `openRawLink` fired during

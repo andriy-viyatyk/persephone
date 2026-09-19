@@ -54,6 +54,12 @@ The provider contract has these mandatory and optional members:
 | `watch(callback: (event: string) => void): () => void` | No | Optional external-change notifications. |
 | `dispose(): void` | No | Optional resource cleanup. |
 
+When a script-registered factory is first used, Persephone checks that the returned provider has
+the required members. If it is malformed, one error names the provider type and all missing
+members, for example `Provider "demo-mem" is missing required member(s): toDescriptor().` The
+check is cached for that registration, while optional members remain optional. Platform providers
+are not subject to this script registration check.
+
 Registering a type already registered by your scripts replaces that factory and reports an `info`
 notification. Built-in provider types cannot be replaced; trying to register one reports an error.
 Replacement affects content opened afterward, while an already-open pipe keeps its existing

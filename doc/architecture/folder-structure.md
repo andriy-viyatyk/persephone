@@ -230,7 +230,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── fs.d.ts         # IFileSystem
 │       ├── window.d.ts     # IWindow and IWindowScreen
 │       ├── shell.d.ts      # IShell + sub-services
-│       ├── ui.d.ts         # IUserInterface
+│       ├── ui.d.ts         # IUserInterface and IAlerts
 │       ├── downloads.d.ts  # IDownloads
 │       ├── menu-folders.d.ts # IMenuFolders
 │       ├── text-editor.d.ts    # ITextEditor
@@ -332,9 +332,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── CreateBoardVarsStorageDialog.ts # First-use "Create environment variables storage" prompt (default path, editable) — shown by both persephone.var.* and app.boardVars.*
 │   │   ├── NamespaceCollisionDialog.ts # Non-blocking advisory at board registration when the new board's author/name namespace collides with an already-registered board
 │   │   ├── TextDialog.ts            # Multi-purpose text dialog (Monaco editor)
-│   │   ├── alerts/                 # Notification bar
-│   │   │   ├── AlertsBar.ts
-│   │   │   └── AlertItem.ts
 │   │   ├── progress/               # Progress overlay, notifications, screen lock
 │   │   │   ├── ProgressModel.ts    # State + API (showProgress, createProgress, notifyProgress, addScreenLock)
 │   │   │   └── ProgressOverlay.ts  # Two-zone overlay model
@@ -800,7 +797,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── Popover/            # Portal-based floating element (replaces Popper)
 │   ├── Tooltip/            # Hover tooltip
 │   ├── Dialog/             # Modal dialog
-│   ├── Notification/       # Alert / toast notification + AlertsBar
+│   ├── Notification/       # Alert / toast notification state, views, and AlertsBar
 │   ├── Progress/           # Progress overlay + screen lock
 │   ├── DataGrid/            # av-grid boundary: RenderGrid, MeasuredRowGrid, and data-grid mounting
 │   └── shared/             # Internal helpers (overlay layer, focus restoration, native slots, and view lifecycle)

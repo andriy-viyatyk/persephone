@@ -78,16 +78,43 @@ guaranteed by the compiler.
 
 ## Concerns
 
-- **Do not extend this to transformers in the same change** unless the same failure is reachable
-  there; check `registerTransformer` and say so either way rather than widening silently.
-- **Do not validate platform providers.** Adding a runtime check for shapes TypeScript already
-  guarantees is cost for no benefit, and it would fire during bootstrap.
+- **Transformer scope — resolved 2026-09-20.** `registerTransformer` is not exposed to scripts;
+  its only registrations are the built-in `archive` and `decrypt` factories, and its registry has
+  no script origin. A script-registered transformer object missing a required member therefore
+  cannot reach this path. Transformer validation remains out of scope.
+- **Platform providers — resolved 2026-09-20.** The validator wraps factories only when their
+  registration origin is `"script"`; platform factories remain untouched, avoiding bootstrap
+  checks for compiler-guaranteed shapes.
+- **Reaching the alerts bar — resolved 2026-09-20 (found in live verification).** Throwing from the
+  wrapped factory is *not* enough on its own. The throw travels up through the scheme `resolve`
+  hook into `EventChannel.sendAsync`, whose default error handler only does
+  `console.error` (`src/renderer/api/events/EventChannel.ts:27`), so the message never reached the
+  alerts bar and the page open failed silently — verified live before the fix. The registry now
+  calls `reportProviderShapeFailure` at the point validation first fails, using the same dynamic
+  `import("../api/ui")` + `ui.notify` pattern as the neighbouring `reportDuplicate` and
+  `reportReplacement` helpers. Because it fires inside the branch that caches the verdict, it
+  raises exactly one toast per registered type, not one per page open — confirmed live over two
+  successive opens.
+
 - **Duck-typing limits.** A member that is present but wrong (a `toDescriptor` that returns
   nonsense) still fails later. That is acceptable; this task closes the common, cheap case —
   a member simply not written.
-- **Phase C boards.** When a board registers a provider across the bridge, it will need the same
-  validation with a message naming the board rather than a script. Keep the check in one function
-  so Phase C reuses it instead of writing a second one.
+- **First construction and caching — resolved 2026-09-20.** Script factories are not invoked at
+  registration. The first construction validates the returned object and caches either success or
+  the validation error by registered type. Script replacement clears that type's cached verdict.
+- **Reusable validator — resolved 2026-09-20.** `validateProviderShape` is exported from the
+  registry and accepts a subject name, so a future board registration can reuse the same check
+  while naming the board-facing subject.
+- **Phase C boards — addressed by the reusable validator above.** When a board registers a
+  provider across the bridge, it can call the same function with a board-specific subject name
+  rather than writing a second check.
+
+## Progress
+
+- [x] Add first-construction shape validation for script-origin providers with per-type caching.
+- [x] Keep platform factories unwrapped and inspect `registerTransformer` without widening scope.
+- [x] Document the first-use malformed-provider error in the scripting guide.
+- [x] Run typecheck, lint, and production build.
 
 ## Acceptance criteria
 

@@ -24,6 +24,7 @@ export interface AlertData {
     message: string;
     type: TMessageType;          // "info" | "success" | "warning" | "error"
     key: number;
+    createdAt: number;
     onClose: (value?: unknown) => void;
 }
 ```
@@ -106,15 +107,18 @@ for every other `ui` capability.
 
 ## Concerns
 
-- **No timestamp.** `AlertData` has no creation time, so `list()` can only give insertion order.
-  Adding `createdAt` is a one-line change to `addAlert` and would let an agent distinguish "this
-  error is from my last action" from "this was already here". Recommended, but it touches a UIKit
-  type, so it is called out rather than assumed — decide during implementation.
-- **`key` wraps.** `getAlertId()` (`AlertsBar.ts:10-14`) resets to 0 above 1,000,000, so keys are
-  unique in practice but not guaranteed across a very long session. `close(key)` must tolerate a
-  missing key by returning `false` rather than throwing.
-- **Closing someone else's alert.** An agent clearing alerts removes information the user may not
-  have read. `closeAll()` should be documented as an explicit user-serving action ("clear the
+- **Timestamp — resolved.** Adopt `createdAt: number` on `AlertData` and set it to `Date.now()` in
+  `addAlert`. A timestamp is a generic, Persephone-agnostic property, so it does not violate the
+  UIKit rules; it costs one line and lets an autonomous agent distinguish an error caused by its
+  last action from one already on screen. `ui.alerts.list()` includes it.
+- **`key` wraps — resolved.** `getAlertId()` (`AlertsBar.ts:10-14`) resets to 0 above 1,000,000,
+  so keys are unique in practice but not guaranteed across a very long session. `close(key)`
+  returns `false` for a missing key and never throws.
+- **Promise settlement — resolved.** `close` and `closeAll` call each matching alert's own
+  `onClose()` instead of splicing the state array, preserving the existing behavior that settles a
+  promise awaiting `ui.notify(...)`.
+- **Closing someone else's alert — resolved.** An agent clearing alerts removes information the user
+  may not have read, so `closeAll()` is documented as an explicit user-serving action ("clear the
   errors I just caused"), and the members carry `caution` text like the `downloads` actions do.
 - **Multi-window.** `alertsBarModel` is a module singleton per renderer, so `ui.alerts` is
   window-scoped like the rest of `ui`. Nothing to do; worth one line in the help text.

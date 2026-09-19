@@ -248,6 +248,17 @@ interface IApp {
 }
 ```
 
+### `app.ui` — Renderer UI service
+
+`app.ui` is the script-facing Object Model projection of renderer-owned dialogs, notifications,
+progress, and highlights. Its `alerts` child reads the same renderer-window alert state as the
+AiVision `ui.alerts` node: `list()` returns every held toast with its severity, message, creation
+time, and current visibility; `count()` filters by severity; and `close()` / `closeAll()` dismiss
+alerts and settle the corresponding `app.ui.notify()` promises. Alert dismissal is intentionally
+explicit because it removes a notification the user may not have read. The implementation is
+`/src/renderer/api/ui.ts`; the AiVision projection is in
+`/src/renderer/scripting/ai-vision/namespaces/ui-alerts.ts`.
+
 ### `app.capabilities` — Built-in content handoffs
 
 `app.capabilities` is the stable script-facing handoff surface for opening content in a built-in
@@ -333,6 +344,13 @@ await app.events.openRawLink.sendAsync(io.createLinkData(url));
 // Open a URL through the link pipeline
 await app.events.openRawLink.sendAsync(io.createLinkData("https://api.com/data.json"));
 ```
+
+Provider registrations carry an origin. Factories registered by scripts are wrapped so the first
+descriptor construction checks the returned object for the required provider members and caches the
+success or validation error by provider type; replacing a script registration clears that cached
+verdict. A malformed script provider throws on construction and reports one error through the
+alerts bar. Platform providers remain unwrapped, and this check validates member shape only—the
+pipeline still owns value and return-type validation.
 
 ### `ai` — AI Model Integrations
 
@@ -1110,7 +1128,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `file-diff-editor.d.ts` | `IFileDiffEditor` |
 | `compare.d.ts` | `ICompareMode`, `IComparePair` |
 | `browser-editor.d.ts` | `IBrowserEditor` plus browser/board/app-window automation result types |
-| `ui.d.ts` | `IUserInterface`, `ITextDialogOptions`, `ITextDialogResult`, `IHighlightOptions`, `IHighlightResult` — dialogs, notifications, and element highlights |
+| `ui.d.ts` | `IUserInterface`, `IAlerts`, `IAlert`, `ITextDialogOptions`, `ITextDialogResult`, `IHighlightOptions`, `IHighlightResult` — dialogs, notifications, alert inspection, and element highlights |
 | `ui-log.d.ts` | `IUiLog`, `IUiDialog`, `IUiShow`, `IProgress`, `IGrid`, `IGridColumn`, `IDialogResult`, `IStyledTextBuilder`, `IStyledLogBuilder` — Log View UI facade |
 
 These files serve dual purpose: TypeScript type checking **and** IDE IntelliSense for script authors.
@@ -1169,6 +1187,8 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 │   ├── boards.ts                # Local board inventory and published-catalog namespace
 │   ├── tools.ts                 # Registered Agent Tools search, execution, toolsets, and unregistration
 │   ├── window-screen.ts          # Descriptor for the complete app-window automation host
+│   ├── ui.ts                     # UI namespace descriptor and app.ui member projection
+│   ├── ui-alerts.ts              # Read/dismiss projection for the renderer alert bar
 │   └── index.ts                 # Namespace registration and descriptor wiring
 └── page-compare.ts              # pages.compare pair projection and controls
 
@@ -1178,7 +1198,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── page.d.ts                    # IPage, IPageInfo
 ├── pages.d.ts                   # IPageCollection
 ├── tools.d.ts                   # Root-only ITools call-tree contract (not app.tools)
-├── ui.d.ts                      # IUserInterface, ITextDialogOptions, ITextDialogResult, IHighlightOptions, IHighlightResult
+├── ui.d.ts                      # IUserInterface, IAlerts, IAlert, ITextDialogOptions, ITextDialogResult, IHighlightOptions, IHighlightResult
 ├── ui-log.d.ts                  # IUiLog, IUiDialog, IDialogResult
 ├── common.d.ts                  # IDisposable, IEvent, EditorView, Language
 ├── text-editor.d.ts             # ITextEditor

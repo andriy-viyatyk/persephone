@@ -215,3 +215,41 @@ if (result === "clicked") {
     await app.pages.openFile("C:/logs/app.log");
 }
 ```
+
+## alerts
+
+Read and dismiss the toast notifications held by this renderer window. Scripts use
+`app.ui.alerts`; agents using the application object model see the same node as `ui.alerts`.
+Use it after an action that may have reported a failure, and before concluding that the operation
+succeeded.
+
+### list() → `IAlert[]`
+
+Returns every alert still held by the notification bar in insertion order. The first three alerts
+in the returned list have `visible: true`; later returned alerts are held but are not currently
+rendered. The bar may evict older non-error alerts when it is full. Each entry has `key`, `type`,
+`message`, `createdAt` (milliseconds since the Unix epoch), and `visible`.
+
+### count(type?) → `number`
+
+Count all held alerts, optionally filtering by `"info"`, `"success"`, `"warning"`, or `"error"`.
+
+### close(key) → `boolean`
+
+Dismiss the alert with the given key. Returns `true` when an alert was found, otherwise `false`.
+Closing an alert resolves the promise returned by its `app.ui.notify()` call, just as clicking the
+toast does.
+
+### closeAll(type?) → `number`
+
+Dismiss every held alert, or only alerts of the requested type, and return the number closed. This
+is a user-serving action: use it explicitly to clear notifications, such as errors caused by the
+action you just took, rather than merely because the alerts are inconvenient.
+
+```javascript
+const alerts = app.ui.alerts.list();
+const errors = app.ui.alerts.count("error");
+if (errors > 0) {
+    app.ui.alerts.closeAll("error");
+}
+```

@@ -25,6 +25,9 @@ or the existing `app.openRawLink` helper. Script-owned re-registration replaces 
 with an info report, while platform-owned duplicates remain first-wins errors. Registrations are
 cleared by a renderer reload/restart, not by autoload re-execution; existing live pipes keep their
 provider objects, and persisted script providers do not recover until the registration script runs.
+The first construction from a script-registered factory checks the required provider members and
+reports one error naming the provider type and missing members if the shape is invalid; that result
+is cached until the script-owned registration is replaced.
 
 ## Main-process scripts via `call`
 
@@ -209,6 +212,8 @@ const pw = await app.ui.password({ mode: "encrypt" });  // "encrypt" shows confi
 // Toast notification — "info", "success", "warning", "error"
 app.ui.notify("Done!", "success");
 const clicked = await app.ui.notify("Click me", "info");  // Returns "clicked" or undefined
+const alerts = app.ui.alerts.list();                      // Held toast data, including createdAt
+app.ui.alerts.closeAll("error");                          // Dismiss matching toasts
 ```
 
 ### app.shell

@@ -8,11 +8,52 @@ import type {
     ITextDialogResult,
     IHighlightOptions,
     IHighlightResult,
+    IAlerts,
+    IAlert,
     NotificationType,
 } from "./types/ui";
 import type { IAiHighlightApi } from "ai-vision/dom";
 import { installHighlightOverlay } from "ai-vision/dom";
-import { alertsBarModel } from "../uikit";
+import { alertsBarModel, maxAlerts } from "../uikit/Notification/AlertsBar";
+import type { AlertData } from "../uikit/Notification/AlertItem";
+
+export function listAlerts(): IAlert[] {
+    return alertsBarModel.state.get().alerts.map((alert, index) => ({
+        key: alert.key,
+        type: alert.type,
+        message: alert.message,
+        createdAt: alert.createdAt,
+        visible: index < maxAlerts,
+    }));
+}
+
+function findAlert(key: number): AlertData | undefined {
+    return alertsBarModel.state.get().alerts.find((alert) => alert.key === key);
+}
+
+export function countAlerts(type?: NotificationType): number {
+    return alertsBarModel.state.get().alerts.filter((alert) => type === undefined || alert.type === type).length;
+}
+
+export function closeAlert(key: number): boolean {
+    const alert = findAlert(key);
+    if (!alert) return false;
+    alert.onClose();
+    return true;
+}
+
+export function closeAllAlerts(type?: NotificationType): number {
+    const alerts = alertsBarModel.state.get().alerts.filter((alert) => type === undefined || alert.type === type);
+    alerts.forEach((alert) => alert.onClose());
+    return alerts.length;
+}
+
+const alerts: IAlerts = {
+    list: listAlerts,
+    count: countAlerts,
+    close: closeAlert,
+    closeAll: closeAllAlerts,
+};
 
 /** Internal renderer request for a declaration-scoped temporary reveal. */
 export interface IHighlightRevealRequest {
@@ -35,6 +76,8 @@ declare global {
 }
 
 class UserInterface implements IUserInterface {
+    readonly alerts = alerts;
+
     async confirm(message: string, options?: IConfirmOptions): Promise<string | null> {
         const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
         const result = await showConfirmationDialog({

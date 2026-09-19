@@ -6,7 +6,7 @@ import { VanillaView } from "../shared/vanilla-view";
 import { AlertItemView, type AlertItemViewProps } from "./AlertItemView";
 import type { AlertData } from "./AlertItem";
 
-const maxAlerts = 3;
+export const maxAlerts = 3;
 let alertId = 0;
 const getAlertId = () => {
     alertId = alertId > 1000000 ? 0 : ++alertId;
@@ -38,6 +38,7 @@ class AlertsBarModel extends TModel<AlertsBarState> {
                 message,
                 type,
                 key: getAlertId(),
+                createdAt: Date.now(),
                 // eslint-disable-next-line @typescript-eslint/no-empty-function
                 onClose: () => {},
             };

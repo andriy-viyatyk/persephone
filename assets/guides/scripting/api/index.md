@@ -141,6 +141,7 @@ ui.log("Hello");
     - `.onChanged` — Setting change event
     - `settings.sections` / `settings.highlight(key)` — Find and point at Settings rows through `app.call()` (not `app.settings`)
   - **[.ui](./ui.md)** — Dialogs and notifications
+    - `.alerts` — Read and dismiss held toast notifications
     - `.confirm(message, options?)` — Confirmation dialog
     - `.input(message, options?)` — Text input dialog
     - `.password(options?)` — Password dialog

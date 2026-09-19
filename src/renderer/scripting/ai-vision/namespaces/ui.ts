@@ -2,6 +2,7 @@ import { ui } from "../../../api/ui";
 import { createElements } from "ai-vision/dom";
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 import { guideNode } from "./ui-guide";
+import { alertsNode } from "./ui-alerts";
 import { HEADER_ELEMENTS } from "./ui-elements";
 
 const USER_INTERFACE_MEMBERS: readonly IAiMember[] = [
@@ -16,6 +17,7 @@ const USER_INTERFACE_MEMBERS: readonly IAiMember[] = [
     { name: "addScreenLock", kind: "method", signature: "addScreenLock()", summary: "Lock the screen with a blocking overlay until released.", caution: "blocks user interaction" },
     { name: "highlightElement", kind: "method", signature: "highlightElement(selector: string, text?: string, options?: IHighlightOptions)", summary: "Draw an explanatory highlight in the app window.", caution: "changes the visible UI; returns as soon as the overlay is drawn — the user dismisses it afterwards" },
     { name: "clearHighlights", kind: "method", signature: "clearHighlights(id?: string)", summary: "Remove one or all highlights.", caution: "changes the visible UI" },
+    { name: "alerts", kind: "property", node: true, summary: "Read and dismiss the toast notifications currently on screen." },
     { name: "guide", kind: "property", node: true, summary: "Walk the user through curated shell controls, waiting for Skip or Next." },
 ];
 
@@ -25,7 +27,9 @@ export function describeUserInterface(_instance: unknown): IAiVisionDescriptor {
         kind: "UserInterface",
         summary: "Dialogs, notifications, progress overlays, screen locks, app-window highlights, and curated shell controls through ui.elements.",
         members: [...USER_INTERFACE_MEMBERS, ...elements.members],
-        provide: (name) => name === "guide" ? { value: guideNode } : elements.provide(name),
+        provide: (name) => name === "alerts"
+            ? { value: alertsNode }
+            : name === "guide" ? { value: guideNode } : elements.provide(name),
         elements: HEADER_ELEMENTS,
         help: "Use UI methods only when the requested interaction or visible feedback is intended for the user. Use ui.elements for curated shell controls with purpose lines, selectors, live visibility, and highlighting; prefer it when you need a named shell control or its purpose. Use window.screen.snapshot() for the complete, purpose-free accessibility tree when you need everything currently on screen, including content or controls not in the curated list. An individual page tab and its controls are owned by pages[i].tab. For Log View output use pages.logView; scripts also have the global ui facade. Use `guides.screens` or `guides.screens.index` for the app's screen and control documentation; use `ui.elements` for live selectors and `ui.highlight` to point at a named control. For a walkthrough, use ui.guide.step(target, message) for each curated or owning-node target; it points at the control and waits for the user to press Skip or Next, then call ui.guide.end() after the final step.",
         summarize: () => ({ kind: "UserInterface" }),

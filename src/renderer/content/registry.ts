@@ -28,6 +28,90 @@ interface ProviderRegistration {
 
 const providerFactories = new Map<string, ProviderRegistration>();
 const transformerFactories = new Map<string, TransformerFactory>();
+const providerShapeValidationErrors = new Map<string, Error | null>();
+
+const REQUIRED_PROVIDER_PROPERTIES = [
+    "type",
+    "displayName",
+    "sourceUrl",
+    "restorable",
+    "writable",
+] as const;
+
+const REQUIRED_PROVIDER_METHODS = ["readBinary", "toDescriptor"] as const;
+
+/**
+ * Validate the runtime shape of a provider returned by a registered factory.
+ *
+ * This deliberately checks only member presence and method callability. The
+ * provider pipeline remains responsible for validating values and return types.
+ */
+export function validateProviderShape(
+    provider: unknown,
+    providerType: string,
+    subjectName = "Provider",
+): asserts provider is IProvider {
+    const providerObject = provider !== null
+        && (typeof provider === "object" || typeof provider === "function")
+        ? provider as Record<string, unknown>
+        : undefined;
+    const missingMembers: string[] = [];
+
+    for (const property of REQUIRED_PROVIDER_PROPERTIES) {
+        if (!providerObject || !(property in providerObject)) {
+            missingMembers.push(property);
+        }
+    }
+
+    for (const method of REQUIRED_PROVIDER_METHODS) {
+        if (!providerObject || typeof providerObject[method] !== "function") {
+            missingMembers.push(`${method}()`);
+        }
+    }
+
+    if (providerObject?.writable === true && typeof providerObject.writeBinary !== "function") {
+        missingMembers.push("writeBinary()");
+    }
+
+    if (missingMembers.length > 0) {
+        throw new Error(
+            `${subjectName} "${providerType}" is missing required member(s): `
+            + `${missingMembers.join(", ")}.\n`
+            + "See the io guide: scripting/api/io.md",
+        );
+    }
+}
+
+function reportProviderShapeFailure(message: string): void {
+    void import("../api/ui")
+        .then(({ ui }) => ui.notify(message, "error"))
+        .catch((error: unknown) => {
+            console.error(`Failed to report provider shape failure: ${errMessage(error)}`);
+        });
+}
+
+function wrapScriptProviderFactory(type: string, factory: ProviderFactory): ProviderFactory {
+    return (config) => {
+        const cachedValidationError = providerShapeValidationErrors.get(type);
+        if (cachedValidationError) throw cachedValidationError;
+
+        const provider = factory(config);
+        if (!providerShapeValidationErrors.has(type)) {
+            try {
+                validateProviderShape(provider, type);
+                providerShapeValidationErrors.set(type, null);
+            } catch (error: unknown) {
+                const validationError = new Error(errMessage(error));
+                providerShapeValidationErrors.set(type, validationError);
+                reportProviderShapeFailure(validationError.message);
+            }
+        }
+
+        const validationError = providerShapeValidationErrors.get(type);
+        if (validationError) throw validationError;
+        return provider;
+    };
+}
 
 function reportDuplicate(kind: string, name: string, existingOrigin?: RegistrationOrigin): void {
     const ownerMessage = existingOrigin
@@ -66,14 +150,23 @@ export function registerProvider(
     const existing = providerFactories.get(type);
     if (existing) {
         if (existing.origin === "script" && options.origin === "script") {
-            providerFactories.set(type, { factory, origin: options.origin });
+            providerShapeValidationErrors.delete(type);
+            providerFactories.set(type, {
+                factory: wrapScriptProviderFactory(type, factory),
+                origin: options.origin,
+            });
             reportReplacement("provider", type, existing.origin);
             return;
         }
         reportDuplicate("provider", type, existing.origin);
         return;
     }
-    providerFactories.set(type, { factory, origin: options.origin });
+    providerFactories.set(type, {
+        factory: options.origin === "script"
+            ? wrapScriptProviderFactory(type, factory)
+            : factory,
+        origin: options.origin,
+    });
 }
 
 export function registerTransformer(type: string, factory: TransformerFactory): void {
