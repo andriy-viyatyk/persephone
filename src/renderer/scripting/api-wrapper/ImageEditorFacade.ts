@@ -1,6 +1,11 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
-import { copyImageToClipboard, writePngToFile } from "../../editors/shared/image-export";
+import {
+    blobToBuffer,
+    copyImageToClipboard,
+    rasterToPngBlobWithDimensions,
+    writePngToFile,
+} from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
@@ -12,10 +17,23 @@ const IMAGE_ELEMENTS = [
     { name: "image-copy", purpose: "Copy the rendered image to the clipboard as PNG.", where: "right side of the image toolbar, after Open in Drawing" },
 ] as const;
 
+const DEFAULT_READ_MAX_DIMENSION = 2048;
+
+interface ImageReadResult {
+    type: "image";
+    data: string;
+    mimeType: "image/png";
+    width: number;
+    height: number;
+    originalWidth: number;
+    originalHeight: number;
+}
+
 const IMAGE_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "source", kind: "property", summary: "The original image path when available, otherwise its loaded runtime URL; undefined when no image is loaded." },
+    { name: "read", kind: "method", signature: "read(options?: { maxDimension?: number }): Promise<ImageReadResult>", summary: "Read the loaded image as a bounded PNG image result for inline MCP display; reports applied and original dimensions." },
     { name: "savePngToFile", kind: "method", signature: "savePngToFile(filePath: string): Promise<string>", summary: "Re-encode the displayed image to PNG (1x scale) and write it to filePath. Parent directories are created as needed. Returns the written path.", caution: "writes a PNG and may overwrite the target" },
     { name: "saveAsPng", kind: "method", signature: "saveAsPng(): Promise<void>", summary: "Open the Save Image dialog and save the displayed image as PNG.", caution: "opens a save dialog and writes a PNG" },
     { name: "saveOriginal", kind: "method", signature: "saveOriginal(): Promise<void>", summary: "Open the Save Image dialog and save the original image bytes in their source format.", caution: "opens a save dialog and writes the original image bytes" },
@@ -25,6 +43,12 @@ const IMAGE_EDITOR_MEMBERS: readonly IAiMember[] = [
 
 const IMAGE_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "image-view".
 Image viewer facade with source state, PNG/original export, Drawing Editor, and clipboard actions.
+read(options?) returns the loaded image as a { type: "image", data, mimeType: "image/png" } result
+with applied width/height and originalWidth/originalHeight metadata for inline MCP display. It
+re-encodes the pixels as PNG, uses a default maximum longer side of 2048 pixels, accepts a positive
+integer maxDimension, works for inactive pages, and fails while the image is not yet loaded. It
+does not write a file. call.maxLength is applied before image conversion: raise it to roughly 1.4x
+the PNG byte size plus result overhead; an empty or partial object means the bound was too low.
 elements is the page-scoped curated inventory of image-save, image-open-draw, and image-copy.
 image-save is hidden until an image URL is loaded; when opened, its transient image-save-menu
 contains Save as .png and Save original. The save actions use the native Save Image dialog.
@@ -63,6 +87,34 @@ export class ImageEditorFacade implements IAiVisible {
     get source(): string | undefined {
         const state = this.editor.state.get();
         return state.filePath || state.url || undefined;
+    }
+
+    async read(options?: { maxDimension?: number }): Promise<ImageReadResult> {
+        const requestedMaxDimension = options?.maxDimension;
+        if (
+            requestedMaxDimension !== undefined
+            && (!Number.isInteger(requestedMaxDimension) || requestedMaxDimension <= 0)
+        ) {
+            throw new Error('Invalid argument "maxDimension" for image-view.read: expected a positive integer.');
+        }
+
+        const url = this.editor.state.get().url;
+        if (!url) throw new Error("No image to read: the image is not loaded yet.");
+
+        const rasterized = await rasterToPngBlobWithDimensions(
+            url,
+            requestedMaxDimension ?? DEFAULT_READ_MAX_DIMENSION,
+        );
+        const data = (await blobToBuffer(rasterized.blob)).toString("base64");
+        return {
+            type: "image",
+            data,
+            mimeType: "image/png",
+            width: rasterized.width,
+            height: rasterized.height,
+            originalWidth: rasterized.originalWidth,
+            originalHeight: rasterized.originalHeight,
+        };
     }
 
     /** Re-encode the image to PNG and write it to `filePath`. Returns the path. */

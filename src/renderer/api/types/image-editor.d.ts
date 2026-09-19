@@ -14,6 +14,16 @@ export interface IImageEditor {
     readonly name: string;
     /** Original image path when available, otherwise the loaded runtime URL. */
     readonly source?: string;
+    /** Read the loaded image as a bounded PNG result for inline MCP display. */
+    read(options?: { maxDimension?: number }): Promise<{
+        type: "image";
+        data: string;
+        mimeType: "image/png";
+        width: number;
+        height: number;
+        originalWidth: number;
+        originalHeight: number;
+    }>;
     /** Curated persistent controls owned by this image viewer, with live visibility. */
     readonly elements: readonly {
         readonly name: string;

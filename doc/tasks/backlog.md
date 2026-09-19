@@ -158,15 +158,13 @@ of [`active-work.md`](../active-work.md) along with its task list.
 
 ### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
 
-**Roadmap:** [doc/ai-vision-library-roadmap.md](../ai-vision-library-roadmap.md) (2026-09-08). Three
-epics; **[EPIC-096](../epics/completed.md) is done** — the library exists at
-[andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision) — and EPIC-097 and EPIC-098
-are recorded, not scheduled: the AiVision engine is published as an MIT library from its own repository
-(`C:\projects\ai-vision`, core / dom / remote entry points plus a demo page); Persephone adopts it,
-deletes the internal copy, and mounts a remote party's descriptor **shape** as a proxy node under
-`pages[id].editor.app` — boards over the shim port, browser pages over CDP, one proxy for both,
-page-origin results labelled untrusted; the todo board in `persephone-boards` exposes its model as the
-final test. No remote party ever ships an engine; the contract is versioned like `board-manifest.json`.
+**Delivered.** All three epics are complete — see [EPIC-096, EPIC-097 and EPIC-098](../epics/completed.md).
+The engine is published as an MIT library from its own repository
+([andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision), `C:\projects\ai-vision`),
+Persephone adopted it and deleted the internal copy, and a remote party's descriptor **shape** mounts
+as a proxy node under `pages[id].editor.app`. `doc/ai-vision-library-roadmap.md` was deleted
+2026-09-19 once the last epic landed; it remains in git history. Kept here only as a pointer —
+nothing in this entry is outstanding work.
 
 ### De-React package 8 — teardown-rebuild renders, `{state,setState}` props, ref drilling
 
@@ -841,6 +839,7 @@ rather than on the dashboard.
 | Orphaned duplicate webview repro hunt | Observed once during US-806: two live guest webContents for one browser tab (stale element stayed mounted after an abandoned view tree; pins a whole guest renderer process). Trigger unknown. A detector in `BrowserView.tsx` logs `[browser] duplicate webview mount…` when it recurs — investigate on first sighting. Evidence summary in the US-806 entry of `completed.md`. | Medium |
 | Browser editor selector split | `BrowserEditorView` subscribes to a ~28-key selector; every browser state update re-renders the toolbar/URL-bar subtree (~110 components). Webview subtree is already memoized (US-806); splitting the selector / extracting memoized toolbar components would cut the remaining per-event render cost. | Medium |
 | Explorer tree keyboard actions (remainder) | Selection/focus visuals and Ctrl+C/X/V, Delete, F2 keys are covered by US-808. Remaining: multi-select, dimming cut items. | Medium |
+| ai-vision: exempt image `data` from the `maxLength` text budget | The published resolver applies its generic text/JSON bound to `{ type: "image", data, mimeType }` records before the host emits the separate MCP image content block, so a small bound strips the discriminator fields and yields `{}` plus a generic item-count notice. Measured during US-1453: `maxLength: 200` over such a record returns `{}`. The default 20,000 admits only ~14 KB of image at 1.37x base64 expansion. Fix belongs in the `ai-vision` package (`core/result-shaper.js`): recognize image records and exempt the binary `data`, keeping structured metadata bounded. Repairs browser `screenshot()` and `clipboard.read()` too; Persephone's `image-view.read()` keeps its bounded `maxDimension` contract until it lands. | Medium |
 | `moveItemsInto` skips the refresh after a directory-only category move | In `tree-drop-actions.ts`, when a provider has `renameCategoryPath` and the dragged set is **all** directories, the sub-trees move but `remaining` is empty, so every following branch fails and the function returns `false` — the caller never re-lists. Affects link-collection trees only (the file provider has no `renameCategoryPath`); the move itself succeeds, the tree just shows stale rows until the next refresh. Pre-existing; preserved verbatim by the US-941 refactor rather than fixed inside it. | Low |
 
 ---

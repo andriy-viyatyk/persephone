@@ -36,6 +36,43 @@ export async function rasterToPngBlob(src: string): Promise<Blob> {
     return imageElementToPngBlob(await loadImage(src));
 }
 
+export interface RasterizedPng {
+    blob: Blob;
+    width: number;
+    height: number;
+    originalWidth: number;
+    originalHeight: number;
+}
+
+/** Load `src` and rasterise it within a maximum longer-side dimension. */
+export async function rasterToPngBlobWithDimensions(
+    src: string,
+    maxDimension: number,
+): Promise<RasterizedPng> {
+    const image = await loadImage(src);
+    const originalWidth = image.naturalWidth;
+    const originalHeight = image.naturalHeight;
+    if (originalWidth <= 0 || originalHeight <= 0) {
+        throw new Error("Loaded image has no raster dimensions");
+    }
+
+    const scale = Math.min(1, maxDimension / Math.max(originalWidth, originalHeight));
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to obtain a 2D canvas context");
+    ctx.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png"),
+    );
+    if (!blob) throw new Error("Failed to encode PNG");
+
+    return { blob, width, height, originalWidth, originalHeight };
+}
+
 export async function blobToBuffer(blob: Blob): Promise<Buffer> {
     return Buffer.from(await blob.arrayBuffer());
 }

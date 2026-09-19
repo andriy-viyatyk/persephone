@@ -62,8 +62,10 @@ boards](../boards.md#direct-folder-boards).
 ## Browsing and file operations
 
 Each folder remembers its list or tile layout. Breadcrumb navigation and image thumbnails also work
-for images inside archives, such as `document.docx!word/media`. In writable local folders, the context
-menu offers open, rename, delete, copy path, **New File**, **New Folder**, and **Paste**.
+for images inside archives, such as `document.docx!word/media`. In writable local folders, a row's
+context menu keeps **Cut**, **Copy**, and **Paste** together, followed by the shared edit group
+**Rename**, **Delete**, **New File**, **New Folder**. Paste and new-item actions target the row's
+folder; for a file row, that is its parent folder.
 
 ### Selecting multiple items
 

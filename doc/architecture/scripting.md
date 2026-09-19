@@ -500,7 +500,7 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `ToolsHubEditorFacade` | `ToolsHubEditor` | Hub tab state |
 | `page.editor` | `MnemeConfigEditorFacade` | `MnemeConfigEditorModel` | Mneme configuration/status/actions |
 | `page.editor` | `MnemeRootEditorFacade` | `MnemeRootEditorModel` | Mneme search state/actions |
-| `page.editor` | `ImageEditorFacade` | `ImageEditor` | `savePngToFile()` |
+| `page.editor` | `ImageEditorFacade` | `ImageEditor` | `source`, bounded `read()` PNG result, `savePngToFile()` |
 | `page.editor` | `VideoEditorFacade` | `VideoEditor` | source/player state, live media state, playback, playlist, and visualizer actions |
 | `page.editor` | `FileDiffEditorFacade` | `FileDiffEditor` | selected revisions, staged-state and read-only projection |
 | `page.editor` | `ArchiveEditorFacade` | `ArchiveEditor` | archive entry snapshots, open entry, extract |
@@ -554,6 +554,15 @@ then read the written file). The rendering is host-independent and runs at the m
 works even when the page is not the active tab; the Mermaid editor renders on demand if its preview
 has not been generated yet. The underlying capability is the `IImageExport` interface (see
 [editors.md](editors.md)).
+
+The Image editor additionally exposes `read(options?)`, which returns a plain `{ type: "image",
+data, mimeType: "image/png", width, height, originalWidth, originalHeight }` record for the MCP
+`call` image-result path. It re-encodes the loaded runtime image through the headless raster helper,
+defaults to a 2048-pixel maximum longer side, preserves aspect ratio, and does not write a file or
+depend on the active page's viewport. Callers may provide a positive integer `maxDimension`; a
+missing runtime URL is reported as an unavailable/loading error. Because AiVision result shaping
+applies `call.maxLength` before image conversion, callers should allow roughly 1.4 times the PNG
+byte size plus result overhead; an empty or partial record means the bound was too low.
 Interface definitions: `/src/renderer/api/types/*.d.ts`
 
 ## Auto-Cleanup Lifecycle
@@ -1117,7 +1126,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only + savePngToFile)
-    ├── ImageEditorFacade.ts     # Image viewer (savePngToFile)
+    ├── ImageEditorFacade.ts     # Image viewer (bounded read, export, Drawing Editor, clipboard)
     ├── VideoEditorFacade.ts     # Video/audio playback and media state
     ├── FileDiffEditorFacade.ts  # File Diff revision state
     ├── BrowserEditorFacade.ts   # Browser page operations

@@ -12,7 +12,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.4 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Agents can read Image Viewer pixels inline:** after narrowing an image page's editor to
+  `image-view`, call `read()` to receive a bounded PNG image block with applied and original
+  dimensions. It works for inactive pages and does not write a temporary file.
+
+### Improvements
+
+- **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now
+  stay together, followed by the shared **Rename**, **Delete**, **New File**, **New Folder** edit
+  group. Pasting or creating from a file row targets its parent folder.
 
 ---
 

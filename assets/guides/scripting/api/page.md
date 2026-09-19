@@ -119,7 +119,8 @@ narrowed:
 - `mneme-config`: Mneme service, root, reindex, and model state, with refresh/restart, root-config,
   reindex, and model-update actions.
 - `mneme-root`: Mneme search query, mode, tag/date filters, result state, and search/filter actions.
-- `image-view`: image source, PNG/original save, drawing export, and clipboard copy.
+- `image-view`: image source, bounded inline PNG reads, PNG/original save, drawing export, and
+  clipboard copy.
 - `video-view`: video/audio source and playback state, playback controls, next-track and
   visualizer settings, and VLC handoff.
 - `file-diff`: selected original/modified revisions, staged-state detection, and read-only state.
@@ -136,6 +137,11 @@ that state apart from genuinely empty content. Mermaid's `svgUrl` is different b
 means its state-backed diagram has not rendered yet or rendered with an error.
 
 Every facade's `$help` describes access through `page.editor` and gives its id-narrowing example.
+
+For an image page, `page.editor.read(options?)` returns a PNG image result with applied and original
+dimensions for inline MCP display. It defaults to a 2048-pixel maximum longer side, accepts a
+positive-integer `maxDimension`, works for inactive pages, and does not write a file. Use
+`savePngToFile(path)` when the image should be written to disk.
 
 The browser and board facades may also expose an optional remote model at `page.editor.app`. A
 trusted board publishes it with `persephone.aiVision.expose(root)`; a participating web page

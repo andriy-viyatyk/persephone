@@ -694,10 +694,10 @@ export class CategoryViewModel extends TComponentModel<
     // rather than the provider root.
     onBackgroundContextMenu = (e: MouseEvent) => {
         const ctxEvent = e.contextMenuEvent;
-        const isFolder = ctxEvent?.target && (ctxEvent.target as ITreeProviderItem).isDirectory;
         const { provider } = this.props;
-
-        if (isFolder) return;
+        // Only empty space — a file or folder row builds its own New File / New Folder into
+        // the edit group, rooted at the right directory rather than the open category.
+        if (ctxEvent?.target) return;
 
         const items = getBackgroundMenuItems(provider, this.props.category, this.itemMenuActions);
         if (!items.length) return;
@@ -734,7 +734,8 @@ export class CategoryViewModel extends TComponentModel<
     }
 
     private getFileMenuItems = (item: ITreeProviderItem): MenuItem[] =>
-        getFileMenuItems(this.props.provider, item, this.itemMenuActions);
+        // The open category is the file's parent here, and the folder Paste targets.
+        getFileMenuItems(this.props.provider, item, this.itemMenuActions, this.props.category);
 
     private getFolderMenuItems = (item: ITreeProviderItem): MenuItem[] =>
         getFolderMenuItems({

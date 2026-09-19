@@ -344,9 +344,13 @@ page.editor.savePngToFile("D:/tmp/image.png");
 page.editor.savePngToFile("D:/tmp/photo.png");
 ```
 
-To simply *look at* an image page, you usually don't need a script at all: `pages[i].content`
-returns the rendered PNG directly as an image block in the tool result. `savePngToFile` remains
-the way to put the image on disk (or to read one that is too large to inline).
+To simply *look at* an image page through the agent surface, narrow `page.editor.id` to
+`"image-view"` and call `read()`. It returns `{ type: "image", data, mimeType: "image/png", width,
+height, originalWidth, originalHeight }`; MCP `call` renders that as metadata text plus a native
+image block. It works for inactive pages, defaults to a 2048-pixel maximum longer side, and accepts
+a positive-integer `maxDimension`. `call.maxLength` still applies before image conversion, so raise
+it to about 1.4 times the PNG byte size plus overhead; an empty or partial result means it was too
+low. `read()` does not write a file, while `savePngToFile` remains the way to put the image on disk.
 
 ### `page.editor` when `id === "video-view"` — Video/audio facade
 

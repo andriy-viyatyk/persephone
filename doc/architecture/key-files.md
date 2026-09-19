@@ -114,6 +114,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
 | Script-facing page wrapper and current-editor facade factory (page-identified wrapper for every open tab, including editorless pages; `workspaceFolder`; read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
 | Script-facing page collection wrapper (tab-ordered page projection and folder/workspace-aware page summaries) | `/src/renderer/scripting/api-wrapper/PageCollectionWrapper.ts` |
+| Image editor facade (source state, bounded headless PNG read for inline MCP results, PNG/original export, Drawing Editor, and clipboard actions) | `/src/renderer/scripting/api-wrapper/ImageEditorFacade.ts` |
 | Video/audio editor facade (model state, live media state, playback and source actions) | `/src/renderer/scripting/api-wrapper/VideoEditorFacade.ts` |
 | File Diff editor facade (revision identity and shared text controls) | `/src/renderer/scripting/api-wrapper/FileDiffEditorFacade.ts` |
 | REST client editor facade (collection, selected request, response, send; no member accepts a header/body value) | `/src/renderer/scripting/api-wrapper/RestClientEditorFacade.ts` |
@@ -171,7 +172,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native editor toolbar view | `/src/renderer/editors/base/EditorToolbarView.ts` |
 | Shared text-host footer (`script` toggle · `footerContributions` slot · provider icon · encoding label; shared by built-in text editors and content-host boards via `BoardEditorView` — boards fill the contributions slot with a footer status label via `persephone.setStatusText`) | `/src/renderer/editors/base/ContentHostFooterView.ts` |
 | Image-export capability (`exportPng`/`suggestedImageName`; Mermaid/SVG/Image/HTML) | `/src/renderer/editors/base/IImageExport.ts` |
-| Image-export helpers (canvas→PNG, save-to-file/dialog) | `/src/renderer/editors/shared/image-export.ts` |
+| Image-export helpers (headless canvas→PNG, bounded dimension metadata, save-to-file/dialog) | `/src/renderer/editors/shared/image-export.ts` |
 | Reusable image viewport (view-owned zoom/pan DOM plus model geometry and clipboard copy for Image/SVG/Mermaid previews) | `/src/renderer/uikit/ImageViewport/` |
 | Reusable minimap (view-owned source mirror/observation, model-owned geometry, drag navigation, and viewport indicator) | `/src/renderer/uikit/Minimap/` |
 | ISO date input seam (native date input view composed over `InputView`, with the public prop type retained for callers) | `/src/renderer/uikit/DateInput/DateInputView.ts`, `/src/renderer/uikit/DateInput/DateInput.ts` |

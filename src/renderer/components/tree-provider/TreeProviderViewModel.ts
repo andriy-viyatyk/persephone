@@ -864,9 +864,11 @@ export class TreeProviderViewModel extends TComponentModel<
 
     onBackgroundContextMenu = (e: MouseEvent) => {
         const ctxEvent = e.contextMenuEvent;
-        const isFolder = ctxEvent?.target && (ctxEvent.target as any).isDirectory; // eslint-disable-line @typescript-eslint/no-explicit-any
         const { provider } = this.props;
-        if (isFolder) return;
+        // Only empty space. A file or folder row now builds its own New File / New Folder /
+        // Paste into the edit group, rooted at the right directory; these appended after every
+        // other layer and always targeted the provider root.
+        if (ctxEvent?.target) return;
 
         const items = getBackgroundMenuItems(provider, provider.rootPath, this.itemMenuActions);
         if (!items.length) return;
@@ -901,7 +903,13 @@ export class TreeProviderViewModel extends TComponentModel<
         );
 
     private getFileMenuItems = (node: TreeProviderNode): MenuItem[] =>
-        getFileMenuItems(this.props.provider, node.data, this.itemMenuActions);
+        getFileMenuItems(
+            this.props.provider,
+            node.data,
+            this.itemMenuActions,
+            // Same target the Ctrl+V handler uses for a file row: its parent folder.
+            node.data.category || this.props.provider.rootPath,
+        );
 
     private getFolderMenuItems = (node: TreeProviderNode): MenuItem[] =>
         getFolderMenuItems({

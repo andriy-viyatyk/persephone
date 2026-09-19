@@ -84,6 +84,9 @@ ui.log("Hello");
   - **[.editor](./page.md#editor-facades)** when `.editor.id === "mermaid-view"` — Mermaid diagram preview
     - `.svgUrl` — Rendered SVG data URL
     - `.loading` / `.error` — Render state
+  - **[.editor](./page.md#editor-facades)** when `.editor.id === "image-view"` — Image viewer facade
+    - `.read(options?)` — Bounded PNG image result for inline MCP display
+    - `.savePngToFile(path)` / `.saveAsPng()` / `.saveOriginal()` — Save image data
   - **[.editor](./page.md#editor-facades)** when `.editor.id === "draw-view"` — Drawing (Excalidraw) facade
     - `.elementCount` / `.editorIsMounted`
     - `.addImage(dataUrl, options?)` — Insert image onto canvas

@@ -23,10 +23,69 @@ export interface ItemMenuActions {
     deleteItem(item: ITreeProviderItem): void;
 }
 
+/**
+ * The four "change what is on disk" actions, as one group placed directly after the
+ * clipboard group. File and folder rows build it from here so the two menus agree: before
+ * this, folders opened with New File / New Folder and kept Rename / Delete near the bottom,
+ * while files got New File / New Folder appended last of all by the background handler.
+ *
+ * `directory` is where New File / New Folder create — the folder itself for a folder row,
+ * the file's parent for a file row. Rename and Delete are suppressed for a tree root, which
+ * owns neither operation.
+ */
+function pushEditGroup(
+    items: MenuItem[],
+    options: {
+        provider: ITreeProvider;
+        item: ITreeProviderItem;
+        directory: string;
+        actions: Pick<ItemMenuActions, "createFile" | "createFolder" | "rename" | "deleteItem">;
+        allowRenameDelete: boolean;
+    },
+): void {
+    const { provider, item, directory, actions, allowRenameDelete } = options;
+    const startIndex = items.length;
+
+    if (allowRenameDelete && provider.writable && provider.rename) {
+        items.push({
+            label: "Rename...",
+            icon: RenameIcon.createElement(),
+            onClick: () => actions.rename(item),
+        });
+    }
+    if (allowRenameDelete && provider.writable && provider.deleteItem) {
+        items.push({
+            label: "Delete",
+            icon: DeleteIcon.createElement(),
+            onClick: () => actions.deleteItem(item),
+        });
+    }
+    if (provider.writable && provider.mkdir) {
+        items.push(
+            {
+                label: "New File...",
+                icon: NewFileIcon.createElement(),
+                onClick: () => actions.createFile(directory),
+            },
+            {
+                label: "New Folder...",
+                icon: NewFolderIcon.createElement(),
+                onClick: () => actions.createFolder(directory),
+            },
+        );
+    }
+
+    // Whichever of the four survived the provider's capabilities opens the group.
+    const first = items[startIndex];
+    if (first && startIndex > 0) first.startGroup = true;
+}
+
 export function getFileMenuItems(
     provider: ITreeProvider,
     item: ITreeProviderItem,
-    actions: Pick<ItemMenuActions, "rename" | "deleteItem">,
+    actions: ItemMenuActions,
+    /** The file's parent — what Paste and New File / New Folder target, as Ctrl+V does. */
+    directory: string,
 ): MenuItem[] {
     const items: MenuItem[] = [{
         label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
@@ -48,23 +107,17 @@ export function getFileMenuItems(
                 onClick: () => copyPathToOsClipboard(item.href, false),
             },
         );
+        // Paste belongs with Cut/Copy, as it already does on a folder row. The background
+        // handler that used to contribute it appends after every other layer, which stranded
+        // it at the bottom of the menu next to Inspect.
+        items.push({
+            label: "Paste",
+            icon: PasteIcon.createElement(),
+            onClick: () => actions.paste(directory),
+        });
     }
 
-    if (provider.writable && provider.rename) {
-        items.push({
-            startGroup: true,
-            label: "Rename...",
-            icon: RenameIcon.createElement(),
-            onClick: () => actions.rename(item),
-        });
-    }
-    if (provider.writable && provider.deleteItem) {
-        items.push({
-            label: "Delete",
-            icon: DeleteIcon.createElement(),
-            onClick: () => actions.deleteItem(item),
-        });
-    }
+    pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: true });
     return items;
 }
 
@@ -84,21 +137,6 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
 
     if (onOpen) {
         items.push({ label: "Open", icon: FolderOpenIcon.createElement(), onClick: onOpen });
-    }
-    if (provider.writable && provider.mkdir) {
-        items.push(
-            {
-                startGroup: !!onOpen,
-                label: "New File...",
-                icon: NewFileIcon.createElement(),
-                onClick: () => actions.createFile(directory),
-            },
-            {
-                label: "New Folder...",
-                icon: NewFolderIcon.createElement(),
-                onClick: () => actions.createFolder(directory),
-            },
-        );
     }
 
     items.push({
@@ -129,31 +167,20 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
                 icon: PasteIcon.createElement(),
                 onClick: () => actions.paste(directory),
             },
-            {
-                startGroup: true,
-                label: "Open Terminal here",
-                icon: TerminalIcon.createElement(),
-                onClick: async () => {
-                    const { openTerminalAt } = await import("../../api/terminal");
-                    openTerminalAt(item.href);
-                },
-            },
         );
     }
 
-    if (provider.writable && !isRoot && provider.rename) {
+    pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: !isRoot });
+
+    if (supportsOsClipboard(provider)) {
         items.push({
             startGroup: true,
-            label: "Rename...",
-            icon: RenameIcon.createElement(),
-            onClick: () => actions.rename(item),
-        });
-    }
-    if (provider.writable && !isRoot && provider.deleteItem) {
-        items.push({
-            label: "Delete",
-            icon: DeleteIcon.createElement(),
-            onClick: () => actions.deleteItem(item),
+            label: "Open Terminal here",
+            icon: TerminalIcon.createElement(),
+            onClick: async () => {
+                const { openTerminalAt } = await import("../../api/terminal");
+                openTerminalAt(item.href);
+            },
         });
     }
     return items;

@@ -20,7 +20,11 @@ normal Monaco fallback.
 `pages[i].content` and the page's editor facade adapt to the page type:
 
 - **Text-based pages** (monaco, markdown, grid, notebook, mermaid, svg, …) return `{ id, title, content }` — the source text.
-- **Image pages** (`image-view`, e.g. screen snips or opened image files) return the rendered PNG **as an image block in the tool result** — you see the picture directly. Works for background (non-active) pages too. Very large images degrade to a hint pointing at `page.editor.savePngToFile(path)`.
+- **Image pages** (`image-view`, e.g. screen snips or opened image files) expose their pixels through
+  `page.editor.read()`, not `pages[i].content`. It returns a bounded PNG result that MCP `call`
+  emits as metadata text plus a native image block, and works for background (non-active) pages too.
+  The default maximum longer side is 2048 pixels; pass `maxDimension` for another positive-integer
+  bound. Use `page.editor.savePngToFile(path)` when the image belongs on disk.
 - **Other non-text pages** (browser, board, video, PDF, …) expose their live behavior through
   `pages[i].editor`, `window.screen`, or the relevant `script.execute` facade.
 

@@ -58,12 +58,28 @@ intercepted.
 
 ## Agent API
 
-After narrowing `page.editor.id` to `image-view`, the Image facade exposes image state and save
-operations. Verified elements are `image-save`, `image-open-draw`, and `image-copy`; the save API can
-write PNG data to a file.
+After narrowing `page.editor.id` to `image-view`, the Image facade exposes image state, inline
+reading, and save operations. Verified elements are `image-save`, `image-open-draw`, and
+`image-copy`; the save API can write PNG data to a file.
+
+`read(options?)` returns the loaded pixels as a bounded PNG result. The default maximum longer side
+is 2048 pixels; pass a positive integer `maxDimension` to choose another bound. The result includes
+`width`, `height`, `originalWidth`, and `originalHeight` alongside base64 PNG data. Through MCP
+`call`, it appears as metadata text plus a native inline image block, works for inactive image pages,
+and does not write a file. `call.maxLength` is applied before image conversion, so raise it to about
+1.4 times the PNG byte size plus result overhead; an empty or partial object means the bound was too
+low.
+
+```javascript
+if (page.editor.id === "image-view") {
+    const image = await page.editor.read({ maxDimension: 2048 });
+    console.log(image.width, image.height, image.originalWidth, image.originalHeight);
+}
+```
 
 ## Errors and limits
 
 Unsupported or corrupt image data cannot be rendered. If a remote image cannot be fetched and no
 cached copy is available, Persephone shows a load-failure notification. Saving as PNG changes the
-encoding; use Save original when byte-for-byte preservation matters.
+encoding; use Save original when byte-for-byte preservation matters. `read()` fails until an image is
+loaded and always re-encodes pixels as PNG rather than preserving the source format.
