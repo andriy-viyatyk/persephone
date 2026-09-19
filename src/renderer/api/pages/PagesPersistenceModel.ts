@@ -85,8 +85,13 @@ export class PagesPersistenceModel {
         await this.applyState(data as WindowState);
     };
 
-    restorePage = async (desc: PageDescriptor): Promise<PageModel | null> => {
-        const page = new PageModel(desc.id);
+    restorePage = async (
+        desc: PageDescriptor,
+        options: { seedSecondaryViewsWidth?: boolean } = {},
+    ): Promise<PageModel | null> => {
+        const page = new PageModel(desc.id, {
+            seedSecondaryViewsWidth: options.seedSecondaryViewsWidth ?? false,
+        });
         page.pinned = desc.pinned;
         page.seedNavBack(desc.navBack);
         let invalidFolderBoard: { editorId: string; folderPath: string } | undefined;

@@ -150,7 +150,7 @@ class App {
         if (this._servicesInitialized) return;
         this._servicesInitialized = true;
 
-        const [{ settings }, { editors }, { recent }, { fs }, win, { shell }, { ui }, { downloads }, { menuFolders }, { proc }, { boards }, { boardVarsAdmin }] = await Promise.all([
+        const [{ settings }, { editors }, { recent }, { fs }, win, { shell }, { ui }, { downloads }, { menuFolders }, { proc }, { boards }, { boardVarsAdmin }, { load: loadUiPreferences }] = await Promise.all([
             import("./settings"),
             import("./editors"),
             import("./recent"),
@@ -163,6 +163,7 @@ class App {
             import("./proc"),
             import("./boards"),
             import("./board-vars/admin-api"),
+            import("./ui-preferences"),
         ]);
         this._settings = settings;
         this._editors = editors;
@@ -176,6 +177,8 @@ class App {
         this._proc = proc;
         this._boards = boards;
         this._boardVars = boardVarsAdmin;
+
+        await loadUiPreferences();
 
         // Initialize downloads tracking
         await this._downloads.init();

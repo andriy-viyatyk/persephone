@@ -106,6 +106,10 @@ Each renderer window bootstraps via `src/renderer.ts`:
 
 Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previous).
 
+`app.initServices()` also hydrates the renderer's synchronous UI-preference cache before
+`app.initPages()` creates or restores pages. The cache reads a snapshot from the main-process
+JSON owner over typed IPC; writes update the cache immediately and persist best-effort.
+
 ## Renderer Architecture
 
 The renderer has a framework-free application shell. `src/renderer.ts` performs the asynchronous

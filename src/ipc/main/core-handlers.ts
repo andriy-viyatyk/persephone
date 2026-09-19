@@ -1,6 +1,7 @@
 import { app, BrowserWindow, IpcMainEvent, nativeTheme, shell } from "electron";
 import { CaptureRect, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
+import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
 import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
@@ -40,6 +41,18 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
 
     getDataFolder = async (_event: IpcMainEvent): Promise<string> => {
         return getDataFolder();
+    }
+
+    getUiPreferences = async (_event: IpcMainEvent) => {
+        return getUiPreferences();
+    }
+
+    setUiPreference = async (
+        _event: IpcMainEvent,
+        key: string,
+        value: string | number | boolean,
+    ) => {
+        return setUiPreference(key, value);
     }
 
     maximizeWindow = async (event: IpcMainEvent): Promise<void> => {
@@ -355,6 +368,8 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.getAppRootPath, controllerInstance.getAppRootPath);
     bindEndpoint(Endpoint.getAssetsPath, controllerInstance.getAssetsPath);
     bindEndpoint(Endpoint.getDataFolder, controllerInstance.getDataFolder);
+    bindEndpoint(Endpoint.getUiPreferences, controllerInstance.getUiPreferences);
+    bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);
     bindEndpoint(Endpoint.minimizeWindow, controllerInstance.minimizeWindow);
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);

@@ -10,7 +10,10 @@ export interface ISecondaryViewsState {
     activePanel: string;
 }
 
-const DEFAULT_WIDTH = 240;
+export const SECONDARY_VIEWS_WIDTH_KEY = "secondary-views.width";
+export const DEFAULT_WIDTH = 240;
+export const MIN_WIDTH = 120;
+export const MAX_WIDTH = 1200;
 
 // =============================================================================
 // Model
@@ -28,10 +31,10 @@ const DEFAULT_WIDTH = 240;
 export class SecondaryViewsModel {
     state: TComponentState<ISecondaryViewsState>;
 
-    constructor() {
+    constructor(initialWidth = DEFAULT_WIDTH) {
         this.state = new TComponentState<ISecondaryViewsState>({
             open: true,
-            width: DEFAULT_WIDTH,
+            width: initialWidth,
             activePanel: "explorer",
         });
     }

@@ -508,6 +508,15 @@ when a window is closing, so there is no mirrored copy in main to keep in sync, 
 divergence, and no startup window in which a stale default would be consulted. Prefer this
 whenever the decision point is already a renderer→main message.
 
+### Non-reactive UI preferences
+
+Small cross-session UI dimensions use the main-process preference owner rather than a reactive
+renderer state primitive. `api/ui-preferences.ts` hydrates a validated scalar snapshot during
+`app.initServices()`, then exposes synchronous typed reads to page and editor construction. A
+write updates that cache immediately and sends the last value as-is to the main process for
+best-effort JSON persistence. Page-specific persisted state still wins during restore; learned
+preferences are used only when a genuinely new page first creates its lazy layout model.
+
 ## Using State in Components
 
 ### Via Object Model

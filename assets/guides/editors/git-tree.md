@@ -83,6 +83,12 @@ unstage, reset, and commit files. The Changes tab separates Unstaged and Staged 
 selected file in Git Diff. The commit panel shows commit metadata and an inline diff of changed files.
 Multiple repositories can have independent Git panels. Refresh is automatic after repository changes.
 
+## Remembered layout
+
+Git Tree remembers the commit-history column widths and order, along with the height of the lower
+Commit/Diff panel. These choices seed new Git Tree pages, while an existing page keeps its own
+layout when you return to it.
+
 ## Agent API
 
 After narrowing `page.editor.id` to `git-tree`, the `GitTreeEditor` facade exposes repository and

@@ -21,6 +21,11 @@ import type { GitBranchesState } from "../../components/git-tree/GitBranchesMode
 import { GitTreeEditorModel, type GitTreeEditorState } from "./GitTreeEditorModel";
 import { CommitDiffPanelView, type CommitDiffPanelProps } from "./CommitDiffPanel";
 import { CommitInfoPanelView, type CommitInfoPanelProps } from "./CommitInfoPanel";
+import {
+    readGitTreeBottomPanelHeight,
+    readGitTreeColumnLayout,
+    writeGitTreeBottomPanelHeight,
+} from "./git-tree-preferences";
 import color from "../../theme/color";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
@@ -320,12 +325,13 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
 
     private syncLayout(): void {
         const maxHeight = this.containerHeight > 0 ? Math.round(this.containerHeight * 0.8) : Infinity;
-        const panelHeight = Math.min(this.bottomPanelHeight ?? DEFAULT_PANEL_H, maxHeight);
+        const panelHeight = this.panelHeight();
         this.bottomSplitter?.update({
             name: "git-tree-bottom-splitter",
             orientation: "horizontal",
             value: panelHeight,
             onChange: this.model.setBottomPanelHeight,
+            onEnd: this.rememberBottomPanelHeight,
             side: "after",
             border: "before",
             min: 120,
@@ -363,7 +369,7 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             model: this.model.gitTree,
             selectedHash: this.model.selectedCommitHash,
             onSelectCommit: this.model.selectCommit,
-            initialColumnLayout: this.columnLayout,
+            initialColumnLayout: this.columnLayout ?? readGitTreeColumnLayout(),
             onColumnLayoutChange: this.model.setColumnLayout,
             getContextMenuItems: this.getContextMenuItems,
         };
@@ -397,6 +403,7 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
                 orientation: "horizontal",
                 value: this.panelHeight(),
                 onChange: this.model.setBottomPanelHeight,
+                onEnd: this.rememberBottomPanelHeight,
                 side: "after",
                 border: "before",
                 min: 120,
@@ -519,8 +526,16 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
     }
 
     private panelHeight(): number {
-        return Math.min(this.bottomPanelHeight ?? DEFAULT_PANEL_H, this.maxPanelHeight());
+        return Math.min(
+            this.bottomPanelHeight ?? readGitTreeBottomPanelHeight() ?? DEFAULT_PANEL_H,
+            this.maxPanelHeight(),
+        );
     }
+
+    private readonly rememberBottomPanelHeight = (): void => {
+        const height = this.model.state.get().bottomPanelHeight ?? this.panelHeight();
+        writeGitTreeBottomPanelHeight(height);
+    };
 
     private maxPanelHeight(): number {
         return this.containerHeight > 0 ? Math.round(this.containerHeight * 0.8) : Infinity;

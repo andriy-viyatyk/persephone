@@ -113,6 +113,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
             nav,
             onActivatePanel: this.activatePanel,
             onResizeWidth: this.resizeWidth,
+            onResizeEnd: this.resizeWidthEnd,
         };
         if (!this.secondaryView) {
             this.secondaryView = this.child(new SecondaryViewsView(props));
@@ -149,6 +150,10 @@ export class PageContentView extends VanillaView<PageContentProps> {
 
     private readonly resizeWidth = (width: number): void => {
         this.page?.setSecondaryViewsState({ width });
+    };
+
+    private readonly resizeWidthEnd = (width: number): void => {
+        this.page?.rememberSecondaryViewsWidth(width);
     };
 
     private syncContent(editor: EditorModel | null): void {

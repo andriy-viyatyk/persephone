@@ -27,6 +27,8 @@ export enum Endpoint {
     getAppRootPath = "getAppRootPath",
     getAssetsPath = "getAssetsPath",
     getDataFolder = "getDataFolder",
+    getUiPreferences = "getUiPreferences",
+    setUiPreference = "setUiPreference",
     maximizeWindow = "maximizeWindow",
     minimizeWindow = "minimizeWindow",
     restoreWindow = "restoreWindow",
@@ -164,6 +166,11 @@ export type Api = {
     [Endpoint.getAppRootPath]: () => Promise<string>;
     [Endpoint.getAssetsPath]: (fileName: string) => Promise<string>;
     [Endpoint.getDataFolder]: () => Promise<string>;
+    [Endpoint.getUiPreferences]: () => Promise<Record<string, string | number | boolean>>;
+    [Endpoint.setUiPreference]: (
+        key: string,
+        value: string | number | boolean,
+    ) => Promise<string | number | boolean>;
     [Endpoint.maximizeWindow]: () => Promise<void>;
     [Endpoint.minimizeWindow]: () => Promise<void>;
     [Endpoint.restoreWindow]: () => Promise<void>;

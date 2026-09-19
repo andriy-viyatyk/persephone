@@ -30,6 +30,8 @@ export interface SecondaryViewsProps {
     onActivatePanel: (panelId: string) => void;
     /** Commit a splitter drag, running the owner's clamp and mirror. */
     onResizeWidth: (width: number) => void;
+    /** Learn the final width after a moved splitter gesture. */
+    onResizeEnd?: (width: number) => void;
 }
 
 interface RenderedPanel {
@@ -265,6 +267,11 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
             name: "secondary-views-container",
             direction: "column" as const,
             width,
+            // The splitter has no upper bound, so `width` alone lets the panel grow past
+            // the page and squeeze the editor out. Cap it against the page area (the
+            // `page-slot` box: this view's root and PageContentView's are `display:contents`),
+            // which for a grouped page is correctly the half-pane rather than the window.
+            maxWidth: "90%",
             shrink: false,
             overflow: "hidden" as const,
             height: "100%",
@@ -291,6 +298,7 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
             orientation: "vertical" as const,
             value: width,
             onChange: this.setWidth,
+            onEnd: this.resizeEnd,
             side: "before" as const,
             min: 120,
             border: "after" as const,
@@ -305,6 +313,10 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
 
     private readonly setWidth = (width: number): void => {
         this.props.onResizeWidth(width);
+    };
+
+    private readonly resizeEnd = (): void => {
+        this.props.onResizeEnd?.(this.props.nav.state.get().width);
     };
 
     private bindNav(nav: SecondaryViewsModel): void {

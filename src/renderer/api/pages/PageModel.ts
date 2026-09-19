@@ -7,7 +7,14 @@ import {
     toggleNavigator as togglePageNavigator,
 } from "../../editors/explorer/page-explorer";
 import type { NavEntry, PageDescriptor } from "../../../shared/persistence";
-import { SecondaryViewsModel, ISecondaryViewsState } from "../../ui/secondary-views/SecondaryViewsModel";
+import {
+    DEFAULT_WIDTH,
+    MAX_WIDTH,
+    MIN_WIDTH,
+    SECONDARY_VIEWS_WIDTH_KEY,
+    SecondaryViewsModel,
+    ISecondaryViewsState,
+} from "../../ui/secondary-views/SecondaryViewsModel";
 import type { IPageHost } from "./IPageHost";
 import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
@@ -15,6 +22,11 @@ import { NavBackStack } from "./NavBackStack";
 import { secondaryViewsToggled, panelExpanded } from "../../core/state/events";
 import { panelKey, parsePanelKey, panelIdOf, isCompositePanelKey } from "../../ui/secondary-views/panel-key";
 import { DisposableStore } from "../../core/utils/DisposableStore";
+import { uiPreferences } from "../ui-preferences";
+
+interface PageModelOptions {
+    seedSecondaryViewsWidth?: boolean;
+}
 
 /** Unwrap a text-bearing editor to its TextFileModel host, so legacy consumers
  *  (tab strip, OpenTabsList, PageTabs) see `filePath` / `language` / `encrypted`
@@ -84,6 +96,7 @@ export class PageModel implements IPageHost {
     /** Pre-model seed for `activePanel`, used before the sidebar model is lazily
      *  created (and to carry the value into it on creation). */
     private _activePanel = "explorer";
+    private readonly seedSecondaryViewsWidth: boolean;
     private hadPanels = false;
     private emptyPanelCloseScheduled = false;
 
@@ -158,8 +171,9 @@ export class PageModel implements IPageHost {
         this._navBack.seed(entries);
     }
 
-    constructor(id?: string) {
+    constructor(id?: string, options: PageModelOptions = {}) {
         this.id = id ?? crypto.randomUUID();
+        this.seedSecondaryViewsWidth = options.seedSecondaryViewsWidth ?? true;
     }
 
     // ── Derived getters ───────────────────────────────────────────────
@@ -559,6 +573,13 @@ export class PageModel implements IPageHost {
         }
     };
 
+    /** Remember the final width of a completed secondary-views resize gesture. */
+    rememberSecondaryViewsWidth(width?: number): void {
+        const currentWidth = width ?? this.secondaryViewsModel?.state.get().width;
+        if (currentWidth === undefined) return;
+        uiPreferences.write(SECONDARY_VIEWS_WIDTH_KEY, currentWidth);
+    }
+
     /** Set the active panel. Delegates to the controlled setState (which fires
      *  onPanelExpanded + panelExpanded). */
     setActivePanel(panel: string): void {
@@ -679,7 +700,11 @@ export class PageModel implements IPageHost {
     /** Lazy-create SecondaryViewsModel on first access. */
     ensureSecondaryViewsModel(): SecondaryViewsModel {
         if (!this.secondaryViewsModel) {
-            this.secondaryViewsModel = new SecondaryViewsModel();
+            const initialWidth = this.seedSecondaryViewsWidth
+                ? uiPreferences.readNumber(SECONDARY_VIEWS_WIDTH_KEY, MIN_WIDTH, MAX_WIDTH)
+                    ?? DEFAULT_WIDTH
+                : DEFAULT_WIDTH;
+            this.secondaryViewsModel = new SecondaryViewsModel(initialWidth);
             // Carry the current activePanel seed into the new model.
             this.secondaryViewsModel.setStateQuiet({ activePanel: this._activePanel });
             // Bump version so UI knows sidebar exists. Persistence subscription

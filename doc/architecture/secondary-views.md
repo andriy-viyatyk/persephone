@@ -256,11 +256,18 @@ This replaces per-panel hand-rolled portal + layout. Native children are directl
 **Owner/view contract:** `SecondaryViewsView` receives the owner-supplied `views` list and the
 `SecondaryViewsModel` as `nav`. It binds the model's `width` and `activePanel` fields directly, so
 layout notifications do not pump a snapshot through the panel tree. The owner supplies two stable
-commands: `onActivatePanel(panelId)` routes through `setSecondaryViewsState({ activePanel: panelId })`
+commands and an optional completion callback: `onActivatePanel(panelId)` routes through `setSecondaryViewsState({ activePanel: panelId })`
 and preserves panel-expansion side effects; `onResizeWidth(width)` routes through
-`setSecondaryViewsState({ width })` and preserves clamping and persistence mirrors. Owners update
+`setSecondaryViewsState({ width })` and preserves clamping and persistence mirrors; `onResizeEnd(width)`
+runs after a moved gesture so the owner can persist the settled value. Owners update
 the child only when the ordered `views` model list changes; a fresh array with the same model
 identities is not itself a change.
+
+The sidebar container is capped at 90% of its page area, including the half-pane area of a grouped
+page. The splitter continues to report live width changes to the page model, while an optional
+drag-end signal records the final moved width in the global UI-preference cache; a click without
+movement does not record a value. The same splitter completion callback is used by other layout
+surfaces that need to persist a settled dimension without handling every pointer move.
 
 **Reactivity:** `secondaryViews` is a plain array (EditorModel instances can't be in TOneState — Immer proxies would corrupt them). PageModel's page-state notifications cause the owner to re-read `panelEditors`; it uses element-wise model identity to update the child only when the ordered list changes. Once mounted, `SecondaryViewsView` binds `width` and `activePanel` directly from `SecondaryViewsModel.state`.
 
@@ -271,6 +278,10 @@ Each registration still provides an `id`, `label`, `loadView()` factory, and opt
 ---
 
 ## 7. Persistence
+
+The sidebar's page-specific `open`, `width`, and `activePanel` state remains in the page cache. A
+global learned width is only a seed for a new page's first lazy sidebar model; restoring a page or
+moving one between windows does not consult it.
 
 Secondary view state is saved as `SecondaryModelDescriptor[]` in the PageModel sidebar cache (`_saveState()`). Each descriptor contains the model's serialized `IEditorState` from `getRestoreData()`.
 

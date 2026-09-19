@@ -101,6 +101,10 @@ dev server.
 
 ## Renderer Structure
 
+The renderer API includes `api/ui-preferences.ts`, a synchronous cache for scalar UI preferences
+owned and persisted by the main process. It is hydrated during service initialization so page
+construction never waits for a preference read.
+
 The renderer entry is `src/renderer.ts`: after asynchronous application bootstrap it calls
 `mount(container)` exported by `src/renderer/index.ts`. The application shell, coupled views,
 editors, and UIKit are framework-free `VanillaView` classes. The only React root is the Excalidraw
@@ -890,6 +894,9 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 ```
 
 ## Main Process Structure
+
+`ui-preferences.ts` is the main-process owner for the small scalar preference JSON file under
+`<userData>/data`; renderer access is provided through the typed IPC layer.
 
 ```
 /src/main/

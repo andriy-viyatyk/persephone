@@ -749,7 +749,9 @@ export class PagesLifecycleModel {
             sidebar: undefined,
         };
 
-        const newPage = await this.model.persistence.restorePage(desc);
+        const newPage = await this.model.persistence.restorePage(desc, {
+            seedSecondaryViewsWidth: true,
+        });
         if (newPage) {
             this.model.attachPage(newPage);
             this.model.state.update((s) => {

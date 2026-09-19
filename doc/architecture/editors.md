@@ -550,6 +550,11 @@ directory at priority 0, while Git Tree and Mneme claim only enabled, marker-ver
 `.mneme` directories at priority 20. The marker probe is isolated in
 `/src/renderer/editors/base/folder-markers.ts` because the registry contract is synchronous.
 
+The Git Tree view remembers its column order/width layout and bottom-panel height through
+the global UI-preference cache. The editor model keeps page-local state for the current instance;
+the view seeds only missing values for a newly opened page and writes settled splitter values after
+a moved gesture.
+
 `editorRegistry.resolveForFolder(folderPath)` selects the highest-priority folder claimant and
 falls back to `category-view`; `getFolderEditors(folderPath)` returns all non-negative claimants
 in ascending priority for the switch widget. `FileTreeProvider` uses the resolved id and its

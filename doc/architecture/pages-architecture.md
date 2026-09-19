@@ -123,6 +123,12 @@ sidebar Explorer (`toggleNavigator`, auto-init beside a mandatory sidebar — co
 [`NavBackStack.ts`](../../src/renderer/api/pages/NavBackStack.ts) is the Markdown
 back-navigation stack the page owns, mirrors into `navBackCount`, and persists.
 
+The lazy `secondaryViewsModel` uses the cached learned sidebar width only for newly constructed
+pages. Session restore and cross-window page transfer construct a restore-mode `PageModel`, so
+their persisted sidebar width remains authoritative; a new page keeps the default until its
+sidebar is first created. The same boundary applies to duplicated pages, which are fresh page
+descriptors rather than restored sidebar state.
+
 ### Page lifecycle
 
 - **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)` (or `mainEditor = null` for empty pages with sidebar only)

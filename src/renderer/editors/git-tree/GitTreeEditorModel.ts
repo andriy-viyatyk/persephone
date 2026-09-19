@@ -21,6 +21,7 @@ import type { GitFileChange, GitSwitchTarget, GitPullOptions } from "../../../ip
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import { createIconElement } from "../../uikit/shared/slots";
 import { editorRegistry } from "../base/editorRegistry";
+import { writeGitTreeColumnLayout } from "./git-tree-preferences";
 
 export interface GitTreeEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -237,6 +238,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
      *  can pass it straight to `<GitTree onColumnLayoutChange>`. */
     setColumnLayout = (layout: GitColumnLayout): void => {
         this.state.update((s) => { s.columnLayout = layout; });
+        writeGitTreeColumnLayout(layout);
     };
 
     /** Persist the bottom panel's height (US-629). Bound so the view can pass it

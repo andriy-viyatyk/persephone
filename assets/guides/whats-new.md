@@ -23,6 +23,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now
   stay together, followed by the shared **Rename**, **Delete**, **New File**, **New Folder** edit
   group. Pasting or creating from a file row targets its parent folder.
+- **Sidebar sizing is remembered for new pages:** resize the sidebar once and new pages start with
+  that width; the sidebar is capped at 90% of the page area so the editor remains visible.
+- **Git Tree remembers its layout for new pages:** column widths and order, plus the lower
+  Commit/Diff panel height, carry forward when you open another Git Tree page.
 
 ---
 

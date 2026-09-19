@@ -18,6 +18,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Cross-process helpers (`debounce` with idempotent `cancel()`; `concatChunks`; `errMessage(e, fallback?)` — the one way to turn a caught `unknown` into a message, in `shared/` because main, renderer and the board shim all need it) | `/src/shared/utils.ts` |
 | Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
+| Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Page container (tab; sidebar composition, composite active-panel fallback, and automatic close of editorless pages whose last panel is removed) | `/src/renderer/api/pages/PageModel.ts` |
 | Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
@@ -361,6 +362,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Clipboard IPC types and renderer event payloads (`ClipboardHistoryItem.dropEffect` for file lists) | `/src/ipc/clipboard-ipc.ts` |
 | Git renderer API         | `/src/renderer/api/git.ts`                        |
 | Native Git Tree view | `/src/renderer/components/git-tree/GitTreeView.ts` |
+| Git Tree layout preferences (full-mode column order/widths and bottom-panel height) | `/src/renderer/editors/git-tree/git-tree-preferences.ts` |
 | Git Tree native view       | `/src/renderer/components/git-tree/GitTreeView.ts` |
 | Git ref palette bridge   | `/src/renderer/components/git-tree/git-ref-color.ts` |
 | Git Tree model (load/paginate) | `/src/renderer/components/git-tree/GitTreeModel.ts` |

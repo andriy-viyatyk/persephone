@@ -71,6 +71,14 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.getDataFolder);
     };
 
+    getUiPreferences = async () => {
+        return executeOnce<Record<string, string | number | boolean>>(Endpoint.getUiPreferences);
+    };
+
+    setUiPreference = async (key: string, value: string | number | boolean) => {
+        return executeOnce<string | number | boolean>(Endpoint.setUiPreference, key, value);
+    };
+
     maximizeWindow = async () => {
         return executeOnce<void>(Endpoint.maximizeWindow);
     };

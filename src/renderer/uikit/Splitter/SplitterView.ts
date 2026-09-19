@@ -9,6 +9,7 @@ export interface SplitterProps
     orientation?: "vertical" | "horizontal";
     value: number;
     onChange: (value: number) => void;
+    onEnd?: () => void;
     side?: "before" | "after";
     min?: number;
     max?: number;
@@ -24,6 +25,7 @@ export class SplitterView extends VanillaView<SplitterProps> {
     private startValue = 0;
     private pointerId: number | undefined;
     private dragging = false;
+    private moved = false;
 
     public constructor(props: SplitterProps) {
         super(props, document.createElement("div"));
@@ -56,6 +58,7 @@ export class SplitterView extends VanillaView<SplitterProps> {
             orientation = "vertical",
             value,
             onChange: _onChange,
+            onEnd: _onEnd,
             side = "before",
             min = 0,
             max = Infinity,
@@ -91,6 +94,7 @@ export class SplitterView extends VanillaView<SplitterProps> {
             orientation: _orientation,
             value: _value,
             onChange: _onChange,
+            onEnd: _onEnd,
             side: _side,
             min: _min,
             max: _max,
@@ -121,6 +125,7 @@ export class SplitterView extends VanillaView<SplitterProps> {
         this.pointerId = event.pointerId;
         this.startCoord = this.coordinate(event);
         this.startValue = this.props.value;
+        this.moved = false;
         this.dragging = true;
         this.applyProps(this.props);
     };
@@ -132,13 +137,17 @@ export class SplitterView extends VanillaView<SplitterProps> {
         const delta = this.coordinate(event) - this.startCoord;
         const sign = side === "before" ? 1 : -1;
         const next = Math.min(Math.max(this.startValue + delta * sign, min), max);
+        this.moved = true;
         this.props.onChange(next);
     };
 
     private readonly onPointerUp = (event: PointerEvent): void => {
         if (this.pointerId !== event.pointerId) return;
+        const moved = this.moved;
         this.releaseCapture();
         this.applyProps(this.props);
+        this.moved = false;
+        if (moved) this.props.onEnd?.();
     };
 
     private coordinate(event: PointerEvent): number {

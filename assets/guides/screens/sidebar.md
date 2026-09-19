@@ -188,6 +188,11 @@ Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolb
 | Sidebar panel stack | The collapsible stack of page panels | `[data-name="secondary-views-stack"]` |
 | Sidebar width splitter | Resizes the sidebar | `[data-name="secondary-views-splitter"]` |
 
+Drag the **Sidebar width splitter** to choose how much room the sidebar uses. Persephone remembers
+the last width you chose for new pages; pages that already have their own sidebar width keep it.
+The sidebar cannot grow beyond 90% of the current page area, so the page editor always retains room
+to display its content.
+
 ### Explorer
 
 Explorer shows the current page's file or folder context. Its root can be a directory, archive, or
