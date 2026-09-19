@@ -21,6 +21,7 @@ The in-app copy in `/assets/guides/` is canonical: users read these guides in th
 - [Architecture Overview](./architecture/overview.md)
 - [Active Work Dashboard](./active-work.md)
 - [Coding Style Guide](./standards/coding-style.md)
+- [Platform Roadmap](./platform-roadmap.md) — proposal for boards as modules, capability registry, external providers
 
 ## Future Work
 

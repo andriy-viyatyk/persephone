@@ -156,6 +156,15 @@ dashboard so it only shows what is actually being worked on. Each doc keeps its 
 the task ids below are reserved. To pick one up, move its entry back to the **Planned** section
 of [`active-work.md`](../active-work.md) along with its task list.
 
+### Platform roadmap — boards as modules, capability registry, external providers
+
+**Proposal, unscheduled.** [`doc/platform-roadmap.md`](../platform-roadmap.md) maps the current
+extension seams and lays out six phases in dependency order: refactor the pipeline/capability
+seams, bridge contract + module service process, open providers with ranged streaming, the
+capability bus + in-memory data channel, then two closing proofs — the torrent board + audio
+player, and the Excalidraw extraction. Video / REST extraction follow the roadmap as
+ordinary epics.
+
 ### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
 
 **Delivered.** All three epics are complete — see [EPIC-096, EPIC-097 and EPIC-098](../epics/completed.md).
