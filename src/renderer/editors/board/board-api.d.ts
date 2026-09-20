@@ -258,6 +258,11 @@ interface PersephoneServiceApi {
     request(message: unknown): Promise<unknown>;
 }
 
+interface PersephoneHostApi {
+    /** Origin-local URL for the platform-owned content pipe. */
+    streamUrl(): Promise<string>;
+}
+
 interface PersephoneBoardApi {
     /** Bridge version, e.g. "1.6.0" — the release that added `openContent()`, the `--p-graph-*`
      *  family, manifest `contentMasks`, and the bridge contract declarations. Compare
@@ -344,6 +349,7 @@ interface PersephoneBoardApi {
     readonly storage: PersephoneStorageApi;
     /** Lazily-started request/reply access to this board's trusted module service. */
     readonly service: PersephoneServiceApi;
+    readonly host: PersephoneHostApi;
 }
 
 interface Window {

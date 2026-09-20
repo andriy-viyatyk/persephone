@@ -265,13 +265,18 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const port = this.pendingPort;
         if (!this.live || !host || !frame || !port) return;
         const filePath = this.props.model.currentFilePath();
+        const pageId = this.props.model.page?.id;
+        const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
+        if (pageId) void api.registerBoardPipePage(pageId, host);
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
             busy: !!this.props.model.state.get().busy,
+            pageId,
+            pipeUrlEnabled,
             filePath,
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
-            materialize: !!filePath && !isPlainLocalPath(filePath),
+            materialize: !!filePath && !isPlainLocalPath(filePath) && !this.props.model.isStreamHost,
         };
         frame.contentWindow?.postMessage(init, `board://${host}`, [port]);
         this.pendingPort = null;

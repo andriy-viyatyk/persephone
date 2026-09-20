@@ -104,7 +104,7 @@ export interface PublishedBoardInfo {
     /** Direct folder resolution priority; normalized by the renderer on ingress. */
     folderEditorPriority?: number;
     editorName?: string;
-    editorKind?: "simple" | "content-host";
+    editorKind?: "simple" | "content-host" | "stream-host";
     standalone?: boolean;
     minAppVersion?: string;
     /** Screenshot file name inside the board's catalog folder (e.g. `"screenshot.png"`).

@@ -7,6 +7,18 @@ export type BoardInfoInstallState =
     | "downloaded"
     | "registered";
 
+export interface IBoardInfoContentProviderDeclaration {
+    readonly type: string;
+    readonly schemes?: readonly string[];
+}
+
+export interface IBoardInfoRegistrationIssue {
+    readonly kind: "provider" | "scheme";
+    readonly name: string;
+    readonly reason: string;
+    readonly owner?: string;
+}
+
 /** A copied catalog record shown by Board Info. Archive URL and hash are intentionally absent. */
 export interface IBoardInfoCatalogMatch {
     readonly id: string;
@@ -20,7 +32,7 @@ export interface IBoardInfoCatalogMatch {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     readonly folderEditorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host";
+    readonly editorKind?: "simple" | "content-host" | "stream-host";
     readonly standalone?: boolean;
     readonly minAppVersion?: string;
     readonly screenshotUrl?: string;
@@ -50,7 +62,9 @@ export interface IBoardInfoProperties {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     readonly folderEditorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host";
+    readonly editorKind?: "simple" | "content-host" | "stream-host";
+    readonly contentProviders?: readonly IBoardInfoContentProviderDeclaration[];
+    readonly registrationIssues?: readonly IBoardInfoRegistrationIssue[];
     readonly root: string;
     readonly trusted: boolean;
     readonly isCatalogInstall: boolean;

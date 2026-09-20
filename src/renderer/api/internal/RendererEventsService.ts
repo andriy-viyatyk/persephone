@@ -5,6 +5,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
+import { isSchemeRegistered } from "../../content/scheme-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
@@ -27,6 +28,7 @@ export class RendererEventsService {
 
         // URL opening
         rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
+        rendererEvents.eOpenPipelineCandidate.subscribe(this.handlePipelineCandidate);
         rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
 
         // Quit handler
@@ -74,6 +76,15 @@ export class RendererEventsService {
     };
 
     private handleOpenUrl = async (url: string) => {
+        await guard("Failed to open URL", () =>
+            app.events.openRawLink.sendAsync(createLinkData(url)),
+        );
+    };
+
+    private handlePipelineCandidate = async (url: string) => {
+        const scheme = /^([a-z][a-z\d+.-]*):/i.exec(url)?.[1];
+        if (!scheme || !isSchemeRegistered(scheme)) return;
+
         await guard("Failed to open URL", () =>
             app.events.openRawLink.sendAsync(createLinkData(url)),
         );

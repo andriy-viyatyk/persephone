@@ -21,11 +21,23 @@ import { boardTrust } from "../../api/board-trust";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import {
+    registerProvider,
+    unregisterBoardProviders,
+} from "../../content/registry";
+import {
+    registerScheme,
+    unregisterBoardSchemes,
+    type SchemeHooks,
+} from "../../content/scheme-registry";
+import { createBoardProvider } from "../../content/board-provider-factory";
+import {
+    normalizeContentProviders,
     getBoardEditorAssociation,
     matchesBoardMasks,
     matchesContentMasks,
     matchesFolderEditorMasks,
     readBoardManifest,
+    type BoardContentProviderDeclaration,
 } from "./board-manifest";
 
 /** Prefix marking a virtual custom-editor id. The remainder is the board root VERBATIM
@@ -69,9 +81,9 @@ export interface CustomEditorMatch {
     /** The board's normalized content-detection regex sources (US-1404). Empty = none. Consumed
      *  ONLY by `getBoardsForContent` (the editor-switch path); content never opens a file. */
     contentMasks: string[];
-    /** Board editor kind (US-843): "simple" (EPIC-042, direct file I/O) or "content-host"
-     *  (EPIC-043, Persephone owns the content host). Consumed by the construction path (US-845). */
-    editorKind: "simple" | "content-host";
+    /** Board editor kind (US-843): "simple", "content-host", or the declared "stream-host"
+     *  value. Consumed by the construction path (US-845 and later stream-host work). */
+    editorKind: "simple" | "content-host" | "stream-host";
     /** Which sources the board accepts: "local" (plain local files only — the default) or "any"
      *  (also archive entries and `http(s)` URLs, materialized by Persephone into a local cache
      *  file). Consumed by the non-local branch of `resolveEditorIdForFile`. */
@@ -84,14 +96,78 @@ export interface CustomEditorIncompatibility {
     reason: string;
 }
 
+export type CustomEditorRegistrationIssueKind = "provider" | "scheme";
+
+export interface CustomEditorRegistrationIssue {
+    boardRoot: string;
+    kind: CustomEditorRegistrationIssueKind;
+    name: string;
+    reason: string;
+    owner?: string;
+}
+
+interface BoardRegistrationIntent {
+    boardRoot: string;
+    declaration: BoardContentProviderDeclaration;
+}
+
 interface CustomEditorRegistryState {
     /** Every trusted board association, in trusted-list (registration) order. */
     entries: CustomEditorMatch[];
     /** Compatibility diagnostics retained for Board Info and future board listings. */
     incompatibilities: CustomEditorIncompatibility[];
+    /** Provider and scheme declarations refused during the latest trusted-board rebuild. */
+    registrationIssues: CustomEditorRegistrationIssue[];
 }
 
-const defaultState: CustomEditorRegistryState = { entries: [], incompatibilities: [] };
+const defaultState: CustomEditorRegistryState = {
+    entries: [],
+    incompatibilities: [],
+    registrationIssues: [],
+};
+
+function createBoardSchemeHooks(providerType: string): SchemeHooks {
+    return {
+        async parse(data, context) {
+            data.url = data.href;
+            data.handled = false;
+            await context.delegate();
+            data.handled = true;
+        },
+        async resolve(data, context) {
+            data.target ||= "monaco";
+            data.pipeDescriptor = {
+                provider: {
+                    type: providerType,
+                    config: { url: data.url },
+                },
+                transformers: [],
+            };
+            data.pipe = context.createPipe(data.pipeDescriptor);
+            if (context.phase === "source-path") return;
+            data.handled = false;
+            await context.delegate();
+            data.handled = true;
+        },
+    };
+}
+
+function addRegistrationIssue(
+    issues: CustomEditorRegistrationIssue[],
+    boardRoot: string,
+    kind: CustomEditorRegistrationIssueKind,
+    name: string,
+    reason: string | undefined,
+    owner: string | undefined,
+): void {
+    issues.push({
+        boardRoot,
+        kind,
+        name,
+        reason: reason ?? `The ${kind} registration was refused.`,
+        ...(owner !== undefined ? { owner } : {}),
+    });
+}
 
 class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     private initialized = false;
@@ -127,6 +203,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const roots = boardTrust.listPaths();
         const entries: CustomEditorMatch[] = [];
         const incompatibilities: CustomEditorIncompatibility[] = [];
+        const registrationIntents: BoardRegistrationIntent[] = [];
+        const registrationIssues: CustomEditorRegistrationIssue[] = [];
         for (const root of roots) {
             const manifest = await readBoardManifest(root);
             const bridgeCompatibility = getBoardCompatibility(
@@ -138,6 +216,20 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     incompatibilities.push({ boardRoot: root, reason: bridgeCompatibility.reason });
                 }
                 continue;
+            }
+            for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
+                if (!declaration.type.includes("/")) {
+                    addRegistrationIssue(
+                        registrationIssues,
+                        root,
+                        "provider",
+                        declaration.type,
+                        `Provider type "${declaration.type}" must contain "/"; un-namespaced provider types are reserved for the platform.`,
+                        undefined,
+                    );
+                    continue;
+                }
+                registrationIntents.push({ boardRoot: root, declaration });
             }
             const assoc = getBoardEditorAssociation(manifest);
             if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
@@ -160,9 +252,50 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             });
         }
         if (gen !== this.refreshGen) return; // superseded by a newer refresh — discard
+
+        // Registry maps and reactive state are committed synchronously as one rebuild. In
+        // particular, clear every board-origin registration, including boards no longer in the
+        // trust list after an untrust, uninstall, or folder rename.
+        unregisterBoardProviders();
+        unregisterBoardSchemes();
+        for (const { boardRoot, declaration } of registrationIntents) {
+            const providerResult = registerProvider(
+                declaration.type,
+                (config) => createBoardProvider(boardRoot, declaration.type, config),
+                { origin: "board", owner: boardRoot },
+            );
+            if (!providerResult.accepted) {
+                addRegistrationIssue(
+                    registrationIssues,
+                    boardRoot,
+                    "provider",
+                    declaration.type,
+                    providerResult.reason,
+                    providerResult.owner,
+                );
+            }
+            for (const scheme of declaration.schemes ?? []) {
+                const schemeResult = registerScheme(
+                    scheme,
+                    createBoardSchemeHooks(declaration.type),
+                    { origin: "board", owner: boardRoot },
+                );
+                if (!schemeResult.accepted) {
+                    addRegistrationIssue(
+                        registrationIssues,
+                        boardRoot,
+                        "scheme",
+                        scheme,
+                        schemeResult.reason,
+                        schemeResult.owner,
+                    );
+                }
+            }
+        }
         this.state.update((s) => {
             s.entries = entries;
             s.incompatibilities = incompatibilities;
+            s.registrationIssues = registrationIssues;
         });
     }
 
@@ -174,6 +307,11 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     /** Trusted boards excluded by the bridge compatibility gate, with a readable reason. */
     get incompatibilities(): readonly CustomEditorIncompatibility[] {
         return this.state.get().incompatibilities;
+    }
+
+    /** Registration refusals for one board, retained for the Board Info properties view. */
+    getRegistrationIssues(boardRoot: string): readonly CustomEditorRegistrationIssue[] {
+        return this.state.get().registrationIssues.filter((issue) => issue.boardRoot === boardRoot);
     }
 
     /**
@@ -263,7 +401,12 @@ export function resolveEditorIdForFile(
         // `getFilePath()` because Persephone materializes the pipe into a cache file for it. Any
         // OTHER simple board would fail inside `readFile`, so it stays unoffered and the built-in
         // editor keeps the file — a clean fallback beats a board that opens and errors.
-        if (!local && b.editorKind !== "content-host" && b.editorSources !== "any") continue;
+        if (
+            !local
+            && b.editorKind !== "content-host"
+            && b.editorKind !== "stream-host"
+            && b.editorSources !== "any"
+        ) continue;
         // Strict `>` so the FIRST (earliest-trusted) board wins ties among boards.
         if (!best || b.priority > best.priority) best = b;
     }

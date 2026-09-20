@@ -40,6 +40,11 @@ export interface SecondaryViewDecl {
     title?: string;
 }
 
+export interface BoardContentProviderDeclaration {
+    type: string;
+    schemes?: string[];
+}
+
 export interface BoardManifest {
     /** Schema version of this manifest. */
     schemaVersion: number;
@@ -70,10 +75,15 @@ export interface BoardManifest {
     /** Minimum bridge version this board requires (semver; absent = no requirement). */
     minBridgeVersion?: string;
 
-    /** Optional capabilities declared by the board. Values are disclosed and forward-compatible. */
+    /** Optional capabilities declared by the board. Values are disclosed and forward-compatible.
+     * Known disclosure values include `service`, `contentProviders`, and `capabilities`; unknown
+     * non-empty values remain visible so newer boards can be inspected by older Persephone builds.
+     */
     permissions?: string[];
     /** Board-relative Node service entry path, honored only by the service supervisor. */
     service?: string;
+    /** Provider types and URL schemes contributed by a trusted board. */
+    contentProviders?: BoardContentProviderDeclaration[];
 
     // ── Custom Editor axis (EPIC-042) — acted upon only when the board is TRUSTED ──
     /**
@@ -149,7 +159,7 @@ export interface BoardManifest {
      * Honored only when the board is TRUSTED, like every other Custom Editor field. Inert until
      * the construction path consumes it (US-845).
      */
-    editorKind?: "simple" | "content-host";
+    editorKind?: "simple" | "content-host" | "stream-host";
     /**
      * Which SOURCES this board's `fileMasks` association accepts.
      * - absent / "local": plain local files only.
@@ -235,6 +245,29 @@ export function normalizePermissions(raw: unknown): string[] {
         const permission = entry.trim();
         if (!permission || out.includes(permission)) continue;
         out.push(permission);
+    }
+    return out;
+}
+
+/** Normalize provider declarations while retaining non-empty, un-namespaced types for refusal
+ * diagnostics. Blank declarations and blank schemes are unusable and are omitted. */
+export function normalizeContentProviders(raw: unknown): BoardContentProviderDeclaration[] {
+    if (!Array.isArray(raw)) return [];
+    const out: BoardContentProviderDeclaration[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+        const candidate = entry as { type?: unknown; schemes?: unknown };
+        const type = typeof candidate.type === "string" ? candidate.type.trim() : "";
+        if (!type) continue;
+        const schemes: string[] = [];
+        if (Array.isArray(candidate.schemes)) {
+            for (const schemeEntry of candidate.schemes) {
+                if (typeof schemeEntry !== "string") continue;
+                const scheme = schemeEntry.trim().toLowerCase().replace(/:$/, "");
+                if (scheme && !schemes.includes(scheme)) schemes.push(scheme);
+            }
+        }
+        out.push({ type, schemes });
     }
     return out;
 }
@@ -469,8 +502,8 @@ export interface BoardEditorAssociation {
     folderEditorPriority: number;
     /** Optional switch-widget display name (trimmed; empty → undefined). */
     editorName?: string;
-    /** Normalized board editor kind. Any value other than "content-host" → "simple". */
-    editorKind: "simple" | "content-host";
+    /** Normalized board editor kind. Unknown values → "simple". */
+    editorKind: "simple" | "content-host" | "stream-host";
     /** Normalized accepted sources. Any value other than "any" → "local". */
     editorSources: "local" | "any";
 }
@@ -512,7 +545,9 @@ export function getBoardEditorAssociation(
             ? rawFolderEditorPriority
             : 0;
     const name = typeof manifest.editorName === "string" ? manifest.editorName.trim() : "";
-    const editorKind = manifest.editorKind === "content-host" ? "content-host" : "simple";
+    const editorKind = manifest.editorKind === "content-host" || manifest.editorKind === "stream-host"
+        ? manifest.editorKind
+        : "simple";
     const editorSources = manifest.editorSources === "any" ? "any" : "local";
     return {
         fileMasks,

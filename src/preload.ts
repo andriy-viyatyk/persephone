@@ -6,14 +6,15 @@ import {
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Endpoint, EventEndpoint } from "./ipc/api-types";
+import type { BoardPipeChannel } from "./ipc/board-pipe-channels";
 
 const electronHandler = {
     ipcRenderer: {
-        sendMessage(channel: Endpoint | EventEndpoint, ...args: unknown[]) {
+        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel, ...args: unknown[]) {
             ipcRenderer.send(channel, ...args);
         },
         on(
-            channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint,
+            channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel,
             func: (...args: unknown[]) => void
         ) {
             const subscription = (
@@ -27,7 +28,7 @@ const electronHandler = {
             };
         },
         once(
-            channel: Endpoint | `${Endpoint}_${number}`,
+            channel: Endpoint | `${Endpoint}_${number}` | BoardPipeChannel,
             func: (...args: unknown[]) => void
         ) {
             ipcRenderer.once(channel, (_event, ...args) => func(...args));

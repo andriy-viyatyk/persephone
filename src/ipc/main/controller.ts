@@ -1,4 +1,5 @@
 import { initBoardHandlers } from "./board-handlers";
+import { initBoardPipeHandlers } from "./board-pipe-handlers";
 import { initCoreHandlers } from "./core-handlers";
 import { initGitHandlers } from "./git-handlers";
 import { initRendererEvents } from "./renderer-events";
@@ -8,6 +9,7 @@ const init = (): void => {
     initCoreHandlers();
     initGitHandlers();
     initBoardHandlers();
+    initBoardPipeHandlers();
     initRendererEvents();
 };
 

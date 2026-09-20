@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { VideoStreamSessionConfig, VideoStreamSessionResult } from "../ipc/api-param-types";
+import { parseRangeHeader } from "../shared/range-utils";
 
 const DEFAULT_PORT = 7866;
 const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
@@ -15,7 +16,6 @@ interface Mp4Atom {
     offset: number;
     size: number;
 }
-
 /** A segment of the virtual faststart file. */
 interface VirtualSegment {
     virtualStart: number;
@@ -79,7 +79,6 @@ export function deleteSessionsByPage(pageId: string): void {
         }
     }
 }
-
 export function stopVideoStreamServer(): void {
     if (cleanupInterval) {
         clearInterval(cleanupInterval);
@@ -600,31 +599,4 @@ function getContentTypeFromPath(filePath: string): string {
         case ".ts":   return "video/mp2t";
         default:      return "application/octet-stream";
     }
-}
-
-function parseRangeHeader(
-    rangeHeader: string,
-    totalSize: number,
-): { start: number; end: number } | null {
-    const match = rangeHeader.match(/^bytes=(\d*)-(\d*)$/);
-    if (!match) return null;
-
-    const [, startStr, endStr] = match;
-    let start: number;
-    let end: number;
-
-    if (!startStr && endStr) {
-        // Suffix range: bytes=-500 means last 500 bytes
-        const suffixLen = parseInt(endStr, 10);
-        start = Math.max(0, totalSize - suffixLen);
-        end = totalSize - 1;
-    } else {
-        start = startStr ? parseInt(startStr, 10) : 0;
-        end = endStr ? parseInt(endStr, 10) : totalSize - 1;
-    }
-
-    if (start > end || start >= totalSize) return null;
-    end = Math.min(end, totalSize - 1);
-
-    return { start, end };
 }

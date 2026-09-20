@@ -13,6 +13,11 @@ export interface IBoardSecondaryViewDeclaration {
     readonly title?: string;
 }
 
+export interface IBoardContentProviderDeclaration {
+    readonly type: string;
+    readonly schemes?: readonly string[];
+}
+
 export interface IBoardManifest {
     readonly schemaVersion: number;
     readonly name?: string;
@@ -25,6 +30,7 @@ export interface IBoardManifest {
     readonly permissions?: readonly string[];
     readonly minBridgeVersion?: string;
     readonly service?: string;
+    readonly contentProviders?: readonly IBoardContentProviderDeclaration[];
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
@@ -33,7 +39,7 @@ export interface IBoardManifest {
     readonly folderEditorPriority?: number;
     readonly editorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host";
+    readonly editorKind?: "simple" | "content-host" | "stream-host";
     readonly editorSources?: "local" | "any";
     readonly secondaryViews?: readonly IBoardSecondaryViewDeclaration[];
 }

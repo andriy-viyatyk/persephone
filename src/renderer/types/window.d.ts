@@ -1,4 +1,5 @@
 import { Endpoint, EventEndpoint } from "../../ipc/api-types";
+import type { BoardPipeChannel } from "../../ipc/board-pipe-channels";
 
 declare global {
     /** Active script context set by ScriptContext.customRequire() during require() calls.
@@ -9,15 +10,15 @@ declare global {
         electron: {
             ipcRenderer: {
                 sendMessage(
-                    channel: Endpoint | EventEndpoint | PreloadEvent,
+                    channel: Endpoint | EventEndpoint | BoardPipeChannel | PreloadEvent,
                     ...args: unknown[]
                 ): void;
                 on(
-                    channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint,
+                    channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel,
                     func: (...args: unknown[]) => void
                 ): () => void;
                 once(
-                    channel: Endpoint | `${Endpoint}_${number}`,
+                    channel: Endpoint | `${Endpoint}_${number}` | BoardPipeChannel,
                     func: (...args: unknown[]) => void
                 ): void;
                 /** Ports-aware listener (EPIC-037 / US-771) — surfaces a transferred

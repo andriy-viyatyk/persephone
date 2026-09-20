@@ -10,7 +10,7 @@ import { boardTrust } from "../../api/board-trust";
 import { createPipeFromDescriptor } from "../../content/registry";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { boardEditorId } from "./custom-editor-registry";
+import { boardEditorId, customEditorRegistry } from "./custom-editor-registry";
 import { isBoardFolder, normalizeSecondaryViews, readBoardManifest, readBoardSecondaryViews, type BoardManifest, type SecondaryViewDecl } from "./board-manifest";
 import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
@@ -21,6 +21,7 @@ import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
+import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export type BoardAiVisionRequestHandler = (
@@ -492,6 +493,43 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return s.filePath ?? s.sourceLink?.filePath;
     }
 
+    /** Manifest editor kind for this board's trusted association. */
+    get editorKind(): "simple" | "content-host" | "stream-host" {
+        const boardRoot = this.state.get().boardRoot;
+        return customEditorRegistry.entries.find((entry) => entry.boardRoot === boardRoot)?.editorKind
+            ?? "simple";
+    }
+
+    /** Whether the board bridge may address this page's platform-owned pipe by URL. */
+    get pipeUrlEnabled(): boolean {
+        return this.editorKind === "content-host" || this.editorKind === "stream-host";
+    }
+
+    get isStreamHost(): boolean {
+        return this.editorKind === "stream-host";
+    }
+
+    /** Resolve the pipe used by `board://…/__pipe/…`. A live first-open pipe always wins;
+     * only a restored stream-host without one is rebuilt from persisted source state. */
+    async resolveStreamPipe(): Promise<IContentPipe> {
+        const host = this.contentHost as unknown as { pipe?: IContentPipe | null } | null;
+        if (host?.pipe) return host.pipe;
+        if (this.pipe) return this.pipe;
+        if (this.editorKind !== "stream-host") {
+            throw new Error("The content-host board has no live content pipe.");
+        }
+
+        const descriptor = this.state.get().sourceLink?.pipeDescriptor;
+        const pipe = descriptor
+            ? createPipeFromDescriptor(descriptor)
+            : this.currentFilePath()
+                ? await pipeFromSourcePath(this.currentFilePath() as string)
+                : null;
+        if (!pipe) throw new Error("The board has no content pipe to stream.");
+        this.pipe = pipe;
+        return pipe;
+    }
+
     /**
      * Resolve a readable LOCAL path holding this board's content — what `getFilePath()` returns to
      * the board. Plain local file → the source path itself, untouched and with no I/O. Any other
@@ -509,6 +547,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      * instead of a silent "no file".
      */
     async ensureContentPath(): Promise<string | undefined> {
+        if (this.editorKind === "stream-host") {
+            throw new Error("stream-host boards do not expose a materialized content path.");
+        }
         const existing = this.state.get().contentPath;
         if (existing) return existing;
         const source = this.currentFilePath();

@@ -83,14 +83,20 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     }
     const boardMatches = local
         ? boardMatchesAll
-        : boardMatchesAll.filter((board) => board.editorKind === "content-host");
+        : boardMatchesAll.filter(
+            (board) => board.editorKind === "content-host" || board.editorKind === "stream-host",
+        );
     const catalogAll = publishedBoards.catalogBoardsForFile(fileName);
     const installed = boardInstallRegistry.listInstalled();
     const trustedRoots = new Set(
         boardMatches.map((board) => fpNormalizeForCompare(board.boardRoot)),
     );
     const catalogMatches = catalogAll.filter((catalogBoard) => {
-        if (!local && catalogBoard.editorKind !== "content-host") return false;
+        if (
+            !local
+            && catalogBoard.editorKind !== "content-host"
+            && catalogBoard.editorKind !== "stream-host"
+        ) return false;
         const installedEntry = installed.find((entry) => entry.id === catalogBoard.id);
         return !installedEntry || !trustedRoots.has(fpNormalizeForCompare(installedEntry.root));
     });

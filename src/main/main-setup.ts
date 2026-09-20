@@ -23,6 +23,7 @@ import { stopVideoStreamServer } from "./video-stream-server";
 import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
+import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
 
@@ -173,6 +174,7 @@ export function setupMainProcess() {
         stopPipeServer();
         stopMcpHttpServer();
         stopVideoStreamServer();
+        boardPipeService.dispose();
         shutdownMneme();
         shutdownClipboard();
     });

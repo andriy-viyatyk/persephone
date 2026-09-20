@@ -152,6 +152,24 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
                 : {}),
             ...(properties.editorName !== undefined ? { editorName: properties.editorName } : {}),
             ...(properties.editorKind !== undefined ? { editorKind: properties.editorKind } : {}),
+            ...(properties.contentProviders !== undefined
+                ? {
+                    contentProviders: properties.contentProviders.map((provider) => ({
+                        type: provider.type,
+                        ...(provider.schemes !== undefined ? { schemes: [...provider.schemes] } : {}),
+                    })),
+                }
+                : {}),
+            ...(properties.registrationIssues !== undefined
+                ? {
+                    registrationIssues: properties.registrationIssues.map((issue) => ({
+                        kind: issue.kind,
+                        name: issue.name,
+                        reason: issue.reason,
+                        ...(issue.owner !== undefined ? { owner: issue.owner } : {}),
+                    })),
+                }
+                : {}),
             root: properties.root,
             trusted: properties.missing ? false : boardTrust.isTrusted(properties.root),
             isCatalogInstall: properties.isCatalogInstall,
@@ -207,7 +225,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             folderEditorMasks?: string[];
             folderEditorPriority?: number;
             editorName?: string;
-            editorKind?: "simple" | "content-host";
+            editorKind?: "simple" | "content-host" | "stream-host";
             standalone?: boolean;
             minAppVersion?: string;
             screenshotUrl?: string;

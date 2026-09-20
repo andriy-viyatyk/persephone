@@ -157,6 +157,8 @@ export class PagesLifecycleModel {
                 model.adoptHost(newTextFileModel(filePath));
                 return model as unknown as EditorOrHost;
             }
+            // stream-host deliberately stays on the base board model: it owns a live pipe URL,
+            // not a text host, autosave pair, or materialized content path.
             const { boardModule } = await import("../../editors/board");
             const model = boardModule.createEditor() as unknown as BoardEditorModel;
             model.initFromBoardRoot(boardRoot, filePath);

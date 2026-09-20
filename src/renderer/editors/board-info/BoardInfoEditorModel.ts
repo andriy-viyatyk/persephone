@@ -10,14 +10,17 @@ import {
     boardEditorId,
     customEditorRegistry,
     getFolderEditorsForFolder,
+    type CustomEditorRegistrationIssue,
 } from "../board/custom-editor-registry";
 import {
+    normalizeContentProviders,
     getBoardEditorAssociation,
     isBoardFolder,
     normalizeBoardServicePath,
     normalizeBoardVersionRequirement,
     normalizePermissions,
     readBoardManifest,
+    type BoardContentProviderDeclaration,
 } from "../board/board-manifest";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
@@ -74,7 +77,9 @@ export interface BoardPropsInfo {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     folderEditorPriority?: number;
     editorName?: string;
-    editorKind?: "simple" | "content-host";
+    editorKind?: "simple" | "content-host" | "stream-host";
+    contentProviders?: BoardContentProviderDeclaration[];
+    registrationIssues?: CustomEditorRegistrationIssue[];
     root: string;
     trusted: boolean;
     /** True when the board has an install-registry entry (came from the catalog). Drives
@@ -194,6 +199,15 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 s.props.serviceStatus = moduleServiceStatus.getStatus(root);
             });
         });
+        this.own(customEditorRegistry.state.subscribe(() => {
+            const root = this.state.get().boardRoot;
+            if (!root) return;
+            this.state.update((s) => {
+                if (!s.props || s.props.root !== root) return;
+                const issues = customEditorRegistry.getRegistrationIssues(root);
+                s.props.registrationIssues = issues.length > 0 ? [...issues] : undefined;
+            });
+        }));
         const trait: IContentHostTrait = {
             extractContentHost: (): IContentHost => {
                 const host = this._host;
@@ -338,6 +352,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async loadProperties(): Promise<void> {
         const root = this.state.get().boardRoot;
         if (!root) return;
+        await customEditorRegistry.ensureInitialized();
         if (!(await isBoardFolder(root))) {
             this.state.update((s) => {
                 s.props = {
@@ -363,6 +378,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         );
         await moduleServiceStatus.refresh();
         const serviceStatus = moduleServiceStatus.getStatus(root);
+        const contentProviders = Array.isArray(manifest?.contentProviders)
+            ? normalizeContentProviders(manifest.contentProviders)
+            : undefined;
+        const registrationIssues = customEditorRegistry.getRegistrationIssues(root);
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
             description: manifest?.description,
@@ -380,6 +399,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             folderEditorPriority: assoc?.folderEditorPriority,
             editorName: assoc?.editorName,
             editorKind: assoc?.editorKind,
+            contentProviders,
+            registrationIssues: registrationIssues.length > 0 ? [...registrationIssues] : undefined,
             root,
             trusted: boardTrust.isTrusted(root),
             isCatalogInstall: !!reg,

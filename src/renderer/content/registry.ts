@@ -19,11 +19,19 @@ export type RegistrationOrigin = "platform" | "script" | (string & {});
 
 export interface RegistrationOptions {
     readonly origin: RegistrationOrigin;
+    readonly owner?: string;
+}
+
+export interface RegistrationResult {
+    readonly accepted: boolean;
+    readonly reason?: string;
+    readonly owner?: string;
 }
 
 interface ProviderRegistration {
     readonly factory: ProviderFactory;
     readonly origin: RegistrationOrigin;
+    readonly owner?: string;
 }
 
 const providerFactories = new Map<string, ProviderRegistration>();
@@ -142,11 +150,39 @@ function reportReplacement(
         });
 }
 
+function reportRejected(kind: string, name: string, reason: string): void {
+    void import("../api/ui")
+        .then(({ ui }) => ui.notify(
+            `Rejected ${kind} registration: "${name}". ${reason}`,
+            "error",
+        ))
+        .catch((error: unknown) => {
+            console.error(`Failed to report rejected ${kind} registration: ${errMessage(error)}`);
+        });
+}
+
+function duplicateResult(
+    kind: string,
+    name: string,
+    existing: ProviderRegistration,
+): RegistrationResult {
+    const reason = existing.owner
+        ? `${kind} "${name}" is already owned by board "${existing.owner}".`
+        : `${kind} "${name}" is already registered by ${existing.origin}.`;
+    reportDuplicate(kind, name, existing.origin);
+    return { accepted: false, reason, owner: existing.owner };
+}
+
 export function registerProvider(
     type: string,
     factory: ProviderFactory,
     options: RegistrationOptions,
-): void {
+): RegistrationResult {
+    if (options.origin === "board" && !type.includes("/")) {
+        const reason = `Provider type "${type}" must contain "/"; un-namespaced provider types are reserved for the platform.`;
+        reportRejected("provider", type, reason);
+        return { accepted: false, reason };
+    }
     const existing = providerFactories.get(type);
     if (existing) {
         if (existing.origin === "script" && options.origin === "script") {
@@ -154,19 +190,28 @@ export function registerProvider(
             providerFactories.set(type, {
                 factory: wrapScriptProviderFactory(type, factory),
                 origin: options.origin,
+                owner: options.owner,
             });
             reportReplacement("provider", type, existing.origin);
-            return;
+            return { accepted: true };
         }
-        reportDuplicate("provider", type, existing.origin);
-        return;
+        return duplicateResult("provider", type, existing);
     }
     providerFactories.set(type, {
         factory: options.origin === "script"
             ? wrapScriptProviderFactory(type, factory)
             : factory,
         origin: options.origin,
+        owner: options.owner,
     });
+    return { accepted: true };
+}
+
+/** Remove every board-owned provider so a full trusted-board refresh can rebuild ownership. */
+export function unregisterBoardProviders(): void {
+    for (const [type, registration] of providerFactories) {
+        if (registration.origin === "board") providerFactories.delete(type);
+    }
 }
 
 export function registerTransformer(type: string, factory: TransformerFactory): void {

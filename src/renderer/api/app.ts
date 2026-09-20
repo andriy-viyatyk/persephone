@@ -215,6 +215,8 @@ class App {
         registerResolvers();
         registerRawLinkParsers();
         registerTreeContextMenuHandlers();
+        const { initBoardPipeHandler } = await import("../editors/board/board-pipe-handler");
+        initBoardPipeHandler();
 
         // Import and initialize all event services
         const [

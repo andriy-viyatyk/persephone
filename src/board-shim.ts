@@ -141,6 +141,8 @@ let filePathSettled = false;
 let filePathValue: string | undefined;
 const filePathResolvers: Array<(p: string | undefined) => void> = [];
 let folderPathValue: string | undefined;
+let pipePageId: string | undefined;
+let pipeUrlEnabled = false;
 
 // True when the handshake `filePath` is NOT directly readable — its real source is an archive entry
 // or an `http(s)` URL. `getFilePath()` then resolves through a `board:filePath` request, so the
@@ -627,6 +629,7 @@ onHostMessage((event) => {
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
+            pageId?: string; pipeUrlEnabled?: boolean;
         }
         | undefined;
     if (!data || data.__persephoneInit !== true) return;
@@ -644,6 +647,8 @@ onHostMessage((event) => {
     }
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
+    pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
+    pipeUrlEnabled = data.pipeUrlEnabled === true;
     const p = event.ports && event.ports[0];
     if (p) attachPort(p);
 });
@@ -1076,6 +1081,19 @@ function createHandle(
      *  Safe to call at ANY time — each method awaits the handshake internally before deciding,
      *  so boot ordering never matters (no ready-gate needed by the board). */
     host: {
+        /** Origin-local URL for the platform-owned pipe. Available to content-host and
+         * stream-host pages; plain boards reject rather than touching a cache path. */
+        async streamUrl(): Promise<string> {
+            await whenHandshake();
+            if (!pipeUrlEnabled) {
+                throw new Error("persephone.host.streamUrl is unavailable on this board");
+            }
+            if (!pipePageId) {
+                throw new Error("Persephone did not provide a page id for streamUrl()");
+            }
+            return new URL(`/__pipe/${encodeURIComponent(pipePageId)}`, location.origin).toString();
+        },
+
         /** Current content — resolves to the first pushed snapshot (await any time). */
         async getContent(): Promise<string> {
             await whenHandshake();

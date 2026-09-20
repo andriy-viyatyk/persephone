@@ -4,6 +4,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { BoardThemePalette } from "../ipc/board-bridge-channels";
+import { MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
+import {
+    contentLength,
+    contentRangeHeader,
+    parseRangeHeader,
+    unsatisfiableContentRangeHeader,
+} from "../shared/range-utils";
+import type { BoardPipeReadReply } from "../ipc/board-pipe-channels";
+import { BoardPipeError, boardPipeService } from "./board-pipe-service";
+import { errMessage } from "../shared/utils";
 
 /**
  * `board://` scheme handler (EPIC-034 / US-723; host-routed in EPIC-037 / US-770) —
@@ -178,6 +188,8 @@ function boardMimeType(file: string): string {
             return "application/json";
         case ".svg":
             return "image/svg+xml";
+        case ".avif":
+            return "image/avif";
         case ".png":
             return "image/png";
         case ".jpg":
@@ -201,6 +213,37 @@ function boardMimeType(file: string): string {
             return "application/wasm";
         case ".txt":
             return "text/plain";
+        case ".aac":
+            return "audio/aac";
+        case ".flac":
+            return "audio/flac";
+        case ".m4a":
+            return "audio/mp4";
+        case ".mp3":
+            return "audio/mpeg";
+        case ".oga":
+        case ".ogg":
+            return "audio/ogg";
+        case ".opus":
+            return "audio/opus";
+        case ".wav":
+            return "audio/wav";
+        case ".avi":
+            return "video/x-msvideo";
+        case ".mkv":
+            return "video/x-matroska";
+        case ".mov":
+            return "video/quicktime";
+        case ".mp4":
+            return "video/mp4";
+        case ".m3u8":
+            return "application/vnd.apple.mpegurl";
+        case ".ts":
+            return "video/mp2t";
+        case ".webm":
+            return "video/webm";
+        case ".ogv":
+            return "video/ogg";
         default:
             return "application/octet-stream";
     }
@@ -244,8 +287,111 @@ function logBoardDocMissing(root: string, rel: string, reason: string): void {
     }
 }
 
-async function serveBoardFile(url: string): Promise<Response> {
-    const { host, pathname } = new URL(url);
+async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string): Promise<Response> {
+    let first: BoardPipeReadReply;
+    try {
+        first = await boardPipeService.read(host, pageId, rangeHeader);
+    } catch (error: unknown) {
+        const status = error instanceof BoardPipeError ? error.status : 503;
+        return new Response(status === 404 ? "Not found" : errMessage(error, "Board pipe unavailable."), { status });
+    }
+    if (first.ok === false) {
+        return new Response(first.error, { status: first.status });
+    }
+
+    const totalSize = first.totalSize;
+    const requestedRange = rangeHeader === undefined
+        ? totalSize > 0 ? { start: 0, end: totalSize - 1 } : null
+        : parseRangeHeader(rangeHeader, totalSize);
+    if (!requestedRange) {
+        if (rangeHeader !== undefined) {
+            return new Response(null, {
+                status: 416,
+                headers: {
+                    "Content-Range": unsatisfiableContentRangeHeader(totalSize),
+                    "Accept-Ranges": "bytes",
+                },
+            });
+        }
+        return new Response(null, {
+            status: 200,
+            headers: {
+                "Content-Type": first.contentType,
+                "Accept-Ranges": "bytes",
+                "Content-Length": "0",
+            },
+        });
+    }
+    if (!first.range
+        || first.range.start !== requestedRange.start
+        || first.range.end < first.range.start
+        || first.range.end > requestedRange.end
+        || first.range.end !== first.range.start + first.data.length - 1
+        || first.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
+        return new Response("Board pipe returned an invalid byte range.", { status: 503 });
+    }
+
+    const headers = new Headers({
+        "Content-Type": first.contentType || "application/octet-stream",
+        "Accept-Ranges": "bytes",
+        "Content-Length": String(contentLength(requestedRange)),
+    });
+    const status = rangeHeader === undefined ? 200 : 206;
+    if (status === 206) headers.set("Content-Range", contentRangeHeader(requestedRange, totalSize));
+
+    const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+            void (async () => {
+                try {
+                    controller.enqueue(first.data);
+                    let nextStart = first.range!.end + 1;
+                    while (nextStart <= requestedRange.end) {
+                        const nextEnd = Math.min(
+                            requestedRange.end,
+                            nextStart + MAX_BOARD_PIPE_CHUNK_BYTES - 1,
+                        );
+                        const chunk = await boardPipeService.read(
+                            host,
+                            pageId,
+                            undefined,
+                            { start: nextStart, end: nextEnd },
+                        );
+                        if (chunk.ok === false) throw new BoardPipeError(chunk.status, chunk.error);
+                        if (!chunk.range
+                            || chunk.totalSize !== totalSize
+                            || chunk.range.start !== nextStart
+                            || chunk.range.end < chunk.range.start
+                            || chunk.range.end > nextEnd
+                            || chunk.range.end !== chunk.range.start + chunk.data.length - 1
+                            || chunk.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
+                            throw new Error("Board pipe returned an invalid continuation range.");
+                        }
+                        controller.enqueue(chunk.data);
+                        nextStart = chunk.range.end + 1;
+                    }
+                    controller.close();
+                } catch (error: unknown) {
+                    controller.error(new Error(errMessage(error, "Board pipe unavailable.")));
+                }
+            })();
+        },
+    });
+    return new Response(body, { status, headers });
+}
+
+async function serveBoardFile(request: Request): Promise<Response> {
+    const { host, pathname } = new URL(request.url);
+    if (pathname === "/__pipe" || pathname.startsWith("/__pipe/")) {
+        const encodedPageId = pathname.slice("/__pipe/".length);
+        if (!encodedPageId || encodedPageId.includes("/")) return new Response("Not found", { status: 404 });
+        let pageId: string;
+        try {
+            pageId = decodeURIComponent(encodedPageId);
+        } catch {
+            return new Response("Not found", { status: 404 });
+        }
+        return serveBoardPipe(host, pageId, request.headers.get("Range") || undefined);
+    }
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });
 
@@ -299,7 +445,7 @@ async function serveBoardFile(url: string): Promise<Response> {
  *  populated by `registerBoard`. */
 export function initBoardProtocol(partition: string): void {
     const ses = session.fromPartition(partition);
-    ses.protocol.handle("board", (request) => serveBoardFile(request.url));
+    ses.protocol.handle("board", (request) => serveBoardFile(request));
 }
 
 /** Map a board into the host-routed registry; returns its stable `board://` host.

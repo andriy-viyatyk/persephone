@@ -36,7 +36,11 @@ import {
 import type { WaitMode } from "../../automation/operations";
 import { boardTrust } from "../../api/board-trust";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
-import type { BoardManifest, SecondaryViewDecl } from "../../editors/board/board-manifest";
+import type {
+    BoardContentProviderDeclaration,
+    BoardManifest,
+    SecondaryViewDecl,
+} from "../../editors/board/board-manifest";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
 import { explicitBoardCallTimeoutMs } from "../../api/boards";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
@@ -557,13 +561,28 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
     if (Array.isArray(manifest.permissions)) copy.permissions = manifest.permissions.filter(isString);
     if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
     if (typeof manifest.service === "string") copy.service = manifest.service;
+    if (Array.isArray(manifest.contentProviders)) {
+        copy.contentProviders = manifest.contentProviders
+            .filter((provider): provider is BoardContentProviderDeclaration =>
+                !!provider && typeof provider.type === "string" && provider.type.trim().length > 0)
+            .map((provider) => ({
+                type: provider.type,
+                schemes: Array.isArray(provider.schemes)
+                    ? provider.schemes.filter(isString)
+                    : [],
+            }));
+    }
     if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);
     if (Array.isArray(manifest.folderMasks)) copy.folderMasks = manifest.folderMasks.filter(isString);
     if (Array.isArray(manifest.folderEditorMasks)) copy.folderEditorMasks = manifest.folderEditorMasks.filter(isString);
     if (typeof manifest.folderEditorPriority === "number") copy.folderEditorPriority = manifest.folderEditorPriority;
     if (typeof manifest.editorPriority === "number") copy.editorPriority = manifest.editorPriority;
     if (typeof manifest.editorName === "string") copy.editorName = manifest.editorName;
-    if (manifest.editorKind === "simple" || manifest.editorKind === "content-host") copy.editorKind = manifest.editorKind;
+    if (
+        manifest.editorKind === "simple"
+        || manifest.editorKind === "content-host"
+        || manifest.editorKind === "stream-host"
+    ) copy.editorKind = manifest.editorKind;
     if (manifest.editorSources === "local" || manifest.editorSources === "any") copy.editorSources = manifest.editorSources;
     if (Array.isArray(manifest.secondaryViews)) {
         copy.secondaryViews = manifest.secondaryViews

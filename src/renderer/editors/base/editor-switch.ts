@@ -160,7 +160,7 @@ export async function switchMainEditor(
         // a simple board (EPIC-042) has no host and dispose-and-rebuilds. Determine the
         // NEW board's kind from the registry (a plain built-in is host-capable iff it
         // declares `hasContentHost`).
-        let newBoardKind: "simple" | "content-host" | undefined;
+        let newBoardKind: "simple" | "content-host" | "stream-host" | undefined;
         if (newBoardRoot !== null) {
             newBoardKind =
                 customEditorRegistry.entries.find((e) => e.editorId === newEditorId)

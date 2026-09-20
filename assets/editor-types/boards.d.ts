@@ -18,7 +18,7 @@ export interface PublishedBoardResult {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     folderEditorPriority?: number;
     editorName?: string;
-    editorKind?: "simple" | "content-host";
+    editorKind?: "simple" | "content-host" | "stream-host";
     /** True when the board can be pinned / opened empty (tool/dashboard-style). */
     standalone?: boolean;
     /** Minimum Persephone version this latest release requires (semver; absent = no requirement). */

@@ -25,14 +25,25 @@ below tracks which phases have shipped.
 |---|---|---|
 | A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
 | B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
-| C — Open providers with ranged streaming | — | not started |
+| C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **in progress** |
 | D — Capability bus and in-memory data channel | — | not started |
 | E — Torrent board and audio player (proof 1) | — | not started |
 | F — Excalidraw extraction (proof 2) | — | not started |
 
 ## Active
 
-*(no active epic)*
+- **EPIC-107** — [Open providers, ranged streaming and the stream-host](epics/EPIC-107.md)
+  — Phase C of the platform roadmap. A trusted board becomes a **data source**: it declares a
+  content provider, the pipeline builds pipes on it with no board page open, a missing provider
+  degrades to a placeholder instead of throwing, and `editorKind: "stream-host"` serves a page's
+  pipe at `board://<host>/__pipe/<pageId>` with `Range` support and nothing written to disk.
+  - [ ] [US-1471: `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule](tasks/US-1471-board-provider-axes/README.md)
+  - [ ] [US-1472: *Provider missing* placeholder and `PendingProvider`](tasks/US-1472-provider-placeholder/README.md)
+  - [ ] [US-1473: `ProxyProvider` and `persephone.providers.register` over the service port](tasks/US-1473-proxy-provider/README.md)
+  - [ ] [US-1474: Credit-based ranged streaming through the bridge and the pipe](tasks/US-1474-ranged-streaming/README.md)
+  - [ ] [US-1475: `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving](tasks/US-1475-stream-host/README.md)
+  - [ ] [US-1476: Browser routing of `magnet:` and `.torrent` into `openRawLink`](tasks/US-1476-browser-scheme-routing/README.md)
+  - [ ] [US-1477: Demo-board provider and stream-host fixtures, and the authoring documentation](tasks/US-1477-provider-fixtures-docs/README.md)
 
 ## Planned
 

@@ -102,6 +102,7 @@ function validateBoard(entry: unknown): PublishedBoardInfo | null {
     }
     const editorKind =
         e.editorKind === "content-host" ? "content-host"
+        : e.editorKind === "stream-host" ? "stream-host"
         : e.editorKind === "simple" ? "simple"
         : undefined;
     return {

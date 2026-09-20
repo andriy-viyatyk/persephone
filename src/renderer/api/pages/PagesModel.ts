@@ -15,6 +15,7 @@ import { PagesNavigationModel } from "./PagesNavigationModel";
 import { PagesPersistenceModel } from "./PagesPersistenceModel";
 import { PagesLayoutModel } from "./PagesLayoutModel";
 import { PagesLifecycleModel } from "./PagesLifecycleModel";
+import { api } from "../../../ipc/renderer/api";
 
 // ── State ────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     attachPage = (page: PageModel) => {
         const pageId = page.id;
+        void api.registerBoardPipePage(pageId);
         const editorSubs = new Map<string, () => void>();
 
         const reconcileEditorSubs = () => {
@@ -110,6 +112,10 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     detachPage = (page: PageModel) => {
         const pageId = page.id;
+        void api.unregisterBoardPipePage(pageId);
+        void import("../../editors/board/board-pipe-handler").then(({ invalidateBoardPipePage }) => {
+            invalidateBoardPipePage(pageId);
+        });
         const unsubscribe = this.pageSubscriptions.get(pageId);
         if (unsubscribe) {
             unsubscribe();

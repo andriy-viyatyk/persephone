@@ -16,6 +16,8 @@ export type BoardEndpoint =
     | Endpoint.reapBoardOwner
     | Endpoint.registerBoardFrame
     | Endpoint.unregisterBoardFrame
+    | Endpoint.registerBoardPipePage
+    | Endpoint.unregisterBoardPipePage
     | Endpoint.getPublishedBoards
     | Endpoint.getBoardVersions
     | Endpoint.downloadBoardArchive

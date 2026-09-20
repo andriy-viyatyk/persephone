@@ -17,12 +17,21 @@ import {
     BrowserRegisterRequest,
     BrowserEvent,
 } from "../ipc/browser-ipc";
+import { EventEndpoint } from "../ipc/api-types";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
+const CHROMIUM_NAVIGATION_PROTOCOLS = [
+    "http:",
+    "https:",
+    "about:",
+    "blob:",
+    "mailto:",
+    "tel:",
+];
 
 /** Generic event-listener shape — used for storing handlers we attach to
  *  WebContents. WebContents extends EventEmitter; this matches that surface
@@ -93,6 +102,16 @@ function sendEvent(
         }
     } catch {
         // Sender may have been destroyed
+    }
+}
+
+function sendHostEvent(sender: WebContents, endpoint: EventEndpoint, data: string): void {
+    try {
+        if (!sender.isDestroyed()) {
+            sender.send(endpoint, data);
+        }
+    } catch {
+        // The host renderer may be destroyed before the webview is disposed.
     }
 }
 
@@ -282,6 +301,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
                     "did-start-navigation",
                     { url, blocked: true },
                 );
+                return;
+            }
+            if (!CHROMIUM_NAVIGATION_PROTOCOLS.includes(parsed.protocol)) {
+                event.preventDefault();
+                sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
             }
         } catch {
             // Invalid URL

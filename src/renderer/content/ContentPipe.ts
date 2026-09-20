@@ -1,5 +1,5 @@
 import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
-import type { IProvider } from "../api/types/io.provider";
+import type { IProvider, IProviderStat } from "../api/types/io.provider";
 import type { ITransformer } from "../api/types/io.transformer";
 import { createProviderFromDescriptor } from "./registry";
 import { decodeBuffer, encodeString } from "./encoding";
@@ -72,6 +72,31 @@ export class ContentPipe implements IContentPipe {
         const decoded = decodeBuffer(buffer, this._encoding);
         this._encoding = decoded.encoding;
         return decoded.content;
+    }
+
+    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+        if (this._transformers.length === 0 && this.provider.createReadStream) {
+            return this.provider.createReadStream(range);
+        }
+
+        const { Readable } = require("stream") as typeof import("stream");
+        const read = this.readBinary().then((buffer) => {
+            const selected = range
+                ? buffer.subarray(range.start, Math.min(buffer.length, range.end + 1))
+                : buffer;
+            return selected;
+        });
+        return Readable.from((async function* () {
+            yield await read;
+        })());
+    }
+
+    async stat(): Promise<IProviderStat> {
+        if (this._transformers.length === 0 && this.provider.stat) {
+            return this.provider.stat();
+        }
+        const buffer = await this.readBinary();
+        return { exists: true, size: buffer.length };
     }
 
     // ── Write ───────────────────────────────────────────────────────

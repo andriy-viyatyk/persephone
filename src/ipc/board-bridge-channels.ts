@@ -231,6 +231,10 @@ export type MainToBoard =
  *  `event.ports[0]`; the shim validates `event.origin`/`event.source` before use. */
 export interface BoardPortInitMsg {
     __persephoneInit: true;
+    /** Stable page identity used by the host-local pipe URL. */
+    pageId?: string;
+    /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
+    pipeUrlEnabled?: boolean;
     /** The board's current busy flag (US-799) — carried at handshake so a re-created
      *  board can read `persephone.getBoardBusy()` and reinitialize its running state. */
     busy?: boolean;

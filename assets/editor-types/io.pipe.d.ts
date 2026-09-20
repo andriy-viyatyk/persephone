@@ -1,4 +1,4 @@
-import type { IProvider, IProviderDescriptor } from "./io.provider";
+import type { IProvider, IProviderDescriptor, IProviderStat } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 
 /** Serializable pipe descriptor for persistence (stored in IEditorState). */
@@ -36,6 +36,10 @@ export interface IContentPipe {
     toDescriptor(): IPipeDescriptor;
     /** Read binary content — provider.readBinary() piped through all transformers. */
     readBinary(): Promise<Buffer>;
+    /** Create a stream of logical pipe bytes for an inclusive range. */
+    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream;
+    /** Read logical pipe metadata, including the post-transform size when known. */
+    stat(): Promise<IProviderStat>;
     /** Read as text — readBinary() then decode using detected encoding (auto-detected on first read, defaults to UTF-8). */
     readText(): Promise<string>;
     /** Write binary content — reverse-piped through transformers back to provider.

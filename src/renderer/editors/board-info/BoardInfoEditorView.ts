@@ -403,6 +403,27 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             for (const permission of info.permissions ?? []) permissions.append(this.maskChip(permission));
             metadata.append(this.infoRow("Permissions", permissions));
         }
+        if ((info.contentProviders?.length ?? 0) > 0) {
+            const providers = panel({ direction: "column", gap: "xs", align: "stretch" });
+            for (const provider of info.contentProviders ?? []) {
+                const schemes = (provider.schemes?.length ?? 0) > 0
+                    ? ` (${provider.schemes?.join(", ")})`
+                    : "";
+                providers.append(text(`${provider.type}${schemes}`, { size: "sm" }));
+            }
+            metadata.append(this.infoRow("Content providers", providers));
+        }
+        if ((info.registrationIssues?.length ?? 0) > 0) {
+            const issues = panel({ direction: "column", gap: "xs", align: "stretch" });
+            for (const issue of info.registrationIssues ?? []) {
+                const owner = issue.owner ? ` Owner: ${issue.owner}.` : "";
+                issues.append(text(
+                    `${issue.kind === "provider" ? "Provider" : "Scheme"} "${issue.name}": ${issue.reason}${owner}`,
+                    { size: "sm", color: "warning" },
+                ));
+            }
+            metadata.append(this.infoRow("Registration warnings", issues));
+        }
         if (info.minBridgeVersion) {
             metadata.append(this.infoRow(
                 "Minimum bridge",

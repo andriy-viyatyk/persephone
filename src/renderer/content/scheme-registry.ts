@@ -1,7 +1,11 @@
 import type { ILinkData } from "../../shared/link-data";
 import { errMessage } from "../../shared/utils";
 import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
-import { createPipeFromDescriptor, type RegistrationOptions } from "./registry";
+import {
+    createPipeFromDescriptor,
+    type RegistrationOptions,
+    type RegistrationResult,
+} from "./registry";
 
 export type SchemePhase = "open" | "source-path";
 
@@ -24,9 +28,18 @@ export interface SchemeHooks {
 interface SchemeRegistration {
     readonly hooks: SchemeHooks;
     readonly origin: RegistrationOptions["origin"];
+    readonly owner?: string;
 }
 
 const schemeHooks = new Map<string, SchemeRegistration>();
+const HARD_RESERVED_SCHEMES = new Set([
+    "http",
+    "https",
+    "file",
+    "data",
+    "blob",
+    "mneme",
+]);
 
 function normalizeScheme(scheme: string): string {
     return scheme.trim().toLowerCase().replace(/:$/, "");
@@ -67,23 +80,70 @@ function reportReplacement(
         });
 }
 
+function reportRejected(kind: string, name: string, reason: string): void {
+    void import("../api/ui")
+        .then(({ ui }) => ui.notify(
+            `Rejected ${kind} registration: "${name}". ${reason}`,
+            "error",
+        ))
+        .catch((error: unknown) => {
+            console.error(`Failed to report rejected ${kind} registration: ${errMessage(error)}`);
+        });
+}
+
+function duplicateResult(
+    kind: string,
+    name: string,
+    existing: SchemeRegistration,
+): RegistrationResult {
+    const reason = existing.owner
+        ? `${kind} "${name}" is already owned by board "${existing.owner}".`
+        : `${kind} "${name}" is already registered by ${existing.origin}.`;
+    reportDuplicate(kind, name, existing.origin);
+    return { accepted: false, reason, owner: existing.owner };
+}
+
+function isHardReservedScheme(scheme: string): boolean {
+    return HARD_RESERVED_SCHEMES.has(scheme) || scheme.startsWith("persephone-");
+}
+
 export function registerScheme(
     scheme: string,
     hooks: SchemeHooks,
     options: RegistrationOptions,
-): void {
+): RegistrationResult {
     const normalizedScheme = normalizeScheme(scheme);
+    if (options.origin === "board" && isHardReservedScheme(normalizedScheme)) {
+        const reason = `Scheme "${normalizedScheme}" is reserved for the platform.`;
+        reportRejected("scheme", normalizedScheme, reason);
+        return { accepted: false, reason };
+    }
     const existing = schemeHooks.get(normalizedScheme);
     if (existing) {
         if (existing.origin === "script" && options.origin === "script") {
-            schemeHooks.set(normalizedScheme, { hooks, origin: options.origin });
+            schemeHooks.set(normalizedScheme, {
+                hooks,
+                origin: options.origin,
+                owner: options.owner,
+            });
             reportReplacement("scheme", normalizedScheme, existing.origin);
-            return;
+            return { accepted: true };
         }
-        reportDuplicate("scheme", normalizedScheme, existing.origin);
-        return;
+        return duplicateResult("scheme", normalizedScheme, existing);
     }
-    schemeHooks.set(normalizedScheme, { hooks, origin: options.origin });
+    schemeHooks.set(normalizedScheme, {
+        hooks,
+        origin: options.origin,
+        owner: options.owner,
+    });
+    return { accepted: true };
+}
+
+/** Remove every board-owned scheme so a full trusted-board refresh can rebuild ownership. */
+export function unregisterBoardSchemes(): void {
+    for (const [scheme, registration] of schemeHooks) {
+        if (registration.origin === "board") schemeHooks.delete(scheme);
+    }
 }
 
 export function isSchemeRegistered(scheme: string): boolean {

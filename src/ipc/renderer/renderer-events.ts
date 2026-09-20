@@ -87,6 +87,10 @@ class RendererEvents implements EventApi {
         EventEndpoint.eOpenUrl
     );
 
+    [EventEndpoint.eOpenPipelineCandidate] = new RendererEventObject<string>(
+        EventEndpoint.eOpenPipelineCandidate
+    );
+
     [EventEndpoint.eOpenExternalUrl] = new RendererEventObject<string>(
         EventEndpoint.eOpenExternalUrl
     );
