@@ -1,7 +1,15 @@
 {
   "schemaVersion": 1,
-  "name": "Excalidraw Smoke Board",
-  "description": "A read-only smoke board for the bundled Excalidraw library.",
+  "name": "Excalidraw",
+  "description": "The bundled Excalidraw editor.",
   "author": "Persephone",
+  "permissions": ["capabilities"],
+  "capabilities": [
+    { "id": "image.edit", "version": 1, "priority": 60, "title": "Edit image" },
+    { "id": "diagram.edit", "version": 1, "priority": 60, "title": "Edit diagram" }
+  ],
+  "fileMasks": ["*.excalidraw"],
+  "editorKind": "content-host",
+  "editorPriority": 60,
   "standalone": true
 }

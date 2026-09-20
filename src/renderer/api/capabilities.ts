@@ -247,6 +247,18 @@ function noHandlerError(id: string, version?: number): CapabilityError {
     return new CapabilityError("no-handler", `No capability handler matches "${id}"${suffix}.`);
 }
 
+function unwrapBoardCapabilityResult(value: unknown): unknown {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const envelope = value as { pageId?: unknown; result?: unknown };
+    if (typeof envelope.pageId !== "string") return value;
+    const result = envelope.result;
+    if (result && typeof result === "object" && !Array.isArray(result)) {
+        if ((result as { status?: unknown }).status === "conversion-failed") return result;
+        return { ...(result as Record<string, unknown>), pageId: envelope.pageId };
+    }
+    return { pageId: envelope.pageId };
+}
+
 /** Register one board declaration, returning a readable refusal for Board Info diagnostics. */
 export function registerCapability(
     declaration: BoardCapabilityDeclaration,
@@ -329,11 +341,12 @@ class Capabilities implements ICapabilities {
                 }
             }
 
-            return await capabilityBus.invoke(
+            const result = await capabilityBus.invoke(
                 registration,
                 payload,
                 parsed.version === undefined ? opts : { ...opts, version: parsed.version },
             );
+            return unwrapBoardCapabilityResult(result);
         } catch (error) {
             if (error instanceof CapabilityError) throw error;
             throw new CapabilityError(

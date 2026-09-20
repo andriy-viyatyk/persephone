@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Excalidraw Smoke Board</title>
+    <title>Excalidraw</title>
     <link rel="stylesheet" href="./lib/index.css" />
     <style>
         html, body, #root {
@@ -62,14 +62,414 @@
         const reactModule = await import("react");
         const React = reactModule.default ?? reactModule;
         const { createRoot } = await import("react-dom/client");
-        const { Excalidraw } = await import("./lib/index.js");
-
-        createRoot(document.getElementById("root")).render(
-            React.createElement(Excalidraw, {
-                initialData: {},
-                viewModeEnabled: true,
-            }),
+        const {
+            Excalidraw,
+            FONT_FAMILY,
+            convertToExcalidrawElements,
+            exportToBlob,
+            exportToSvg,
+            serializeAsJSON,
+        } = await import("./lib/index.js");
+        const { parseMermaidToExcalidraw } = await import(
+            "./lib/deps/excalidraw-mermaid-to-excalidraw.js",
         );
+
+        const EMPTY_SCENE = { elements: [], appState: {}, files: {} };
+        const IMAGE_OFFSET_X = 250;
+        const IMAGE_OFFSET_Y = 120;
+        const MAX_DIMENSION = 1200;
+        const AI_VISION_MEMBERS = [
+            { name: "id", kind: "property", summary: "The concrete current editor id." },
+            { name: "name", kind: "property", summary: "The editor's registry display name." },
+            { name: "addImage", kind: "method", signature: "addImage(dataUrl: string, options?: { x?: number; y?: number; maxDimension?: number }): Promise<void>", summary: "Insert an image onto the live canvas. Requires the drawing editor to be mounted (editorIsMounted === true)." },
+            { name: "exportAsSvg", kind: "method", signature: "exportAsSvg(): Promise<string>", summary: "Export the drawing as SVG markup string." },
+            { name: "exportAsPng", kind: "method", signature: "exportAsPng(options?: { scale?: number }): Promise<string>", summary: "Export the drawing as PNG data URL." },
+            { name: "elementCount", kind: "property", summary: "Number of elements on the canvas." },
+            { name: "editorIsMounted", kind: "property", summary: "Whether the Excalidraw editor is currently mounted. When true, addImage() works. When false, addImage() throws." },
+        ];
+
+        function parseExcalidrawContent(content) {
+            if (typeof content !== "string" || content.trim() === "") return EMPTY_SCENE;
+            const data = JSON.parse(content);
+            return {
+                elements: data.elements || [],
+                appState: data.appState || {},
+                files: data.files || {},
+            };
+        }
+
+        function sceneFingerprint(elements, files) {
+            const elementPart = elements.map(
+                (element) => `${element.id}:${element.version ?? 0}:${element.versionNonce ?? 0}`,
+            ).join(";");
+            const fileKeys = files ? Object.keys(files).sort().join(",") : "";
+            return `${elementPart}|${fileKeys}`;
+        }
+
+        function capDimensions(width, height, maxDimension = MAX_DIMENSION) {
+            const longer = Math.max(width, height);
+            if (longer <= maxDimension) return { width, height };
+            const scale = maxDimension / longer;
+            return { width: Math.round(width * scale), height: Math.round(height * scale) };
+        }
+
+        function getImageDimensions(dataUrl) {
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+                image.onerror = () => reject(new Error("Failed to load image"));
+                image.src = dataUrl;
+            });
+        }
+
+        function mimeFromDataUrl(dataUrl) {
+            return /^data:([^;,]+)/i.exec(dataUrl)?.[1] || "image/png";
+        }
+
+        function isPositiveDimension(value) {
+            return typeof value === "number" && Number.isFinite(value) && value > 0;
+        }
+
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Failed to convert PNG to data URL"));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // A board page can exist without a content host: the "New Excalidraw" creatable row
+        // opens one standalone, and a capability intent will too. `persephone.host.getContent`
+        // rejects in that case, and letting it reject here kills the module before anything
+        // renders — which is a blank page, not a degraded one.
+        let hostAttached = true;
+        let initialContent = "";
+        try {
+            initialContent = await persephone.host.getContent();
+        } catch {
+            hostAttached = false;
+        }
+        const initialScene = parseExcalidrawContent(initialContent);
+        let scene = initialScene;
+        let excalidrawApi = null;
+        let saveTimer;
+        let lastFingerprint = sceneFingerprint(scene.elements, scene.files);
+        // Do not let Excalidraw's initial empty onChange callbacks write a serialized empty
+        // scene over a host that this instance has not populated. Once the user or an intent
+        // creates an element/file, an intentional later delete-to-empty is allowed.
+        let allowEmptySceneWrite = scene.elements.length > 0 || Object.keys(scene.files).length > 0;
+        let resolveEditorReady;
+        let editorReadySettled = false;
+        const editorReady = new Promise((resolve) => { resolveEditorReady = resolve; });
+
+        // Excalidraw applies `initialData` ASYNCHRONOUSLY, after it hands back the imperative
+        // API. Treating the API callback as "ready" loses any programmatic insertion made in
+        // between: the component commits `initialData` afterwards and wipes it. Measured on a
+        // capability page - the image inserted at +33ms was gone by +111ms, and the board then
+        // serialized the empty scene over the good content. The first `onChange` after adoption
+        // is the earliest point at which the opening scene is committed, so gate on that. The
+        // timer is a floor, not the mechanism: if a build ever stops firing that first change,
+        // an intent waits a beat instead of hanging forever.
+        function markEditorReady() {
+            if (editorReadySettled) return;
+            editorReadySettled = true;
+            resolveEditorReady();
+        }
+
+        function getCurrentScene() {
+            if (!excalidrawApi) return scene;
+            return {
+                elements: excalidrawApi.getSceneElements(),
+                appState: excalidrawApi.getAppState(),
+                files: excalidrawApi.getFiles(),
+            };
+        }
+
+        function cancelScheduledSave() {
+            if (saveTimer !== undefined) {
+                clearTimeout(saveTimer);
+                saveTimer = undefined;
+            }
+        }
+
+        function applyExternalScene(nextScene) {
+            cancelScheduledSave();
+            scene = nextScene;
+            lastFingerprint = sceneFingerprint(scene.elements, scene.files);
+            if (!excalidrawApi) return;
+            excalidrawApi.addFiles(Object.values(scene.files));
+            excalidrawApi.updateScene({
+                elements: scene.elements,
+                appState: scene.appState,
+            });
+        }
+
+        function scheduleHostWrite(elements, appState, files) {
+            // Excalidraw has committed its opening scene by the time it reports the first
+            // change, so this is where an intent may safely start drawing.
+            if (excalidrawApi) markEditorReady();
+            scene = { elements, appState, files };
+            const fingerprint = sceneFingerprint(elements, files);
+            if (fingerprint === lastFingerprint) return;
+            const isEmpty = elements.length === 0 && Object.keys(files || {}).length === 0;
+            if (isEmpty && !allowEmptySceneWrite) {
+                lastFingerprint = fingerprint;
+                cancelScheduledSave();
+                return;
+            }
+            if (!isEmpty) allowEmptySceneWrite = true;
+            lastFingerprint = fingerprint;
+            cancelScheduledSave();
+            saveTimer = setTimeout(() => {
+                saveTimer = undefined;
+                if (!hostAttached) return;
+                persephone.host.setContent(
+                    serializeAsJSON(scene.elements, scene.appState, scene.files, "local"),
+                );
+            }, 500);
+        }
+
+        function writeCurrentSceneToHost() {
+            if (!hostAttached) throw new Error("The drawing board has no content host.");
+            cancelScheduledSave();
+            const currentScene = getCurrentScene();
+            scene = currentScene;
+            lastFingerprint = sceneFingerprint(scene.elements, scene.files);
+            persephone.host.setContent(
+                serializeAsJSON(scene.elements, scene.appState, scene.files, "local"),
+            );
+        }
+
+        function insertImage(dataUrl, mimeType, dimensions, options) {
+            const api = excalidrawApi;
+            if (!api) throw new Error("The drawing editor is not mounted.");
+            const fileId = crypto.randomUUID();
+            const { width, height } = capDimensions(
+                dimensions.width,
+                dimensions.height,
+                options?.maxDimension,
+            );
+            api.addFiles([{
+                id: fileId,
+                dataURL: dataUrl,
+                mimeType,
+                created: Date.now(),
+            }]);
+            const newElements = convertToExcalidrawElements([{
+                type: "image",
+                x: options?.x ?? IMAGE_OFFSET_X,
+                y: options?.y ?? IMAGE_OFFSET_Y,
+                width,
+                height,
+                fileId,
+                status: "saved",
+            }]);
+            api.updateScene({
+                elements: [...api.getSceneElements(), ...newElements],
+            });
+        }
+
+        const unsubscribe = hostAttached
+            ? persephone.host.onContentChange((nextContent) => {
+                applyExternalScene(parseExcalidrawContent(nextContent));
+            })
+            : () => {};
+
+        const model = {
+            aiVision: {
+                kind: "DrawEditor",
+                summary: "Drawing (Excalidraw) facade.",
+                members: AI_VISION_MEMBERS,
+                summarize: () => ({
+                    kind: "DrawEditor",
+                    id: "excalidraw",
+                    name: "Excalidraw",
+                    elementCount: model.elementCount,
+                    editorIsMounted: model.editorIsMounted,
+                }),
+            },
+            id: "excalidraw",
+            name: "Excalidraw",
+            get elementCount() {
+                return excalidrawApi?.getSceneElements().length ?? scene.elements.length;
+            },
+            get editorIsMounted() {
+                return excalidrawApi !== null;
+            },
+            async addImage(dataUrl, options) {
+                const api = excalidrawApi;
+                if (!api) {
+                    throw new Error(
+                        "addImage() requires the drawing editor to be mounted. " +
+                        "Use app.pages.addDrawPage(dataUrl) to create a new page with an image instead.",
+                    );
+                }
+
+                const dimensions = await getImageDimensions(dataUrl);
+                insertImage(dataUrl, mimeFromDataUrl(dataUrl), dimensions, options);
+            },
+            async exportAsSvg() {
+                const currentScene = getCurrentScene();
+                const svg = await exportToSvg({
+                    elements: currentScene.elements,
+                    appState: {
+                        ...currentScene.appState,
+                        exportBackground: true,
+                        exportWithDarkMode: currentScene.appState.theme === "dark",
+                    },
+                    files: currentScene.files,
+                });
+                return svg.outerHTML;
+            },
+            async exportAsPng(options) {
+                const currentScene = getCurrentScene();
+                const blob = await exportToBlob({
+                    elements: currentScene.elements,
+                    appState: {
+                        ...currentScene.appState,
+                        exportBackground: true,
+                        exportWithDarkMode: currentScene.appState.theme === "dark",
+                        exportScale: options?.scale ?? 2,
+                    },
+                    files: currentScene.files,
+                    mimeType: "image/png",
+                });
+                return blobToDataUrl(blob);
+            },
+        };
+
+        persephone.aiVision.expose(model);
+
+        // Excalidraw carries its own light/dark palette and defaults to light, so without
+        // this it stays bright inside a dark Persephone. `initialData` is read once at
+        // mount, so re-rendering only updates `theme`; the scene is untouched.
+        const root = createRoot(document.getElementById("root"));
+
+        // Stable across renders, and seeds the scene only once: a theme re-render must not
+        // push the opening scene back over whatever the user has drawn since.
+        function adoptExcalidrawApi(api) {
+            if (excalidrawApi) return;
+            excalidrawApi = api;
+            api.addFiles(Object.values(scene.files));
+            api.updateScene({ elements: scene.elements, appState: scene.appState });
+            setTimeout(markEditorReady, 1000);
+        }
+
+        function objectPayload(intent, capability) {
+            const payload = intent.payload;
+            if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+                throw new TypeError(`${capability} expects an object payload.`);
+            }
+            return payload;
+        }
+
+        function requiredText(payload, key, capability) {
+            if (typeof payload[key] !== "string" || !payload[key].trim()) {
+                throw new TypeError(`${capability} expects a non-empty string ${key}.`);
+            }
+            return payload[key];
+        }
+
+        async function handleImageIntent(intent) {
+            const payload = objectPayload(intent, "image.edit");
+            const dataUrl = requiredText(payload, "dataUrl", "image.edit");
+            requiredText(payload, "title", "image.edit");
+            const suppliedMime = payload.mimeType;
+            if (suppliedMime !== undefined
+                && (typeof suppliedMime !== "string" || !suppliedMime.trim())) {
+                throw new TypeError("image.edit expects mimeType to be a non-empty string.");
+            }
+            const hasWidth = payload.naturalWidth !== undefined;
+            const hasHeight = payload.naturalHeight !== undefined;
+            if (hasWidth !== hasHeight
+                || (hasWidth && (!isPositiveDimension(payload.naturalWidth)
+                    || !isPositiveDimension(payload.naturalHeight)))) {
+                throw new TypeError("image.edit expects positive naturalWidth and naturalHeight together.");
+            }
+            await editorReady;
+            const dimensions = hasWidth
+                ? { width: payload.naturalWidth, height: payload.naturalHeight }
+                : await getImageDimensions(dataUrl);
+            insertImage(dataUrl, suppliedMime?.trim() || mimeFromDataUrl(dataUrl), dimensions);
+            writeCurrentSceneToHost();
+            intent.resolve({});
+        }
+
+        async function handleDiagramIntent(intent) {
+            const payload = objectPayload(intent, "diagram.edit");
+            const source = requiredText(payload, "source", "diagram.edit");
+            requiredText(payload, "title", "diagram.edit");
+            let conversion;
+            try {
+                const converted = await parseMermaidToExcalidraw(source, {
+                    themeVariables: { fontSize: "16px" },
+                });
+                const skeleton = converted.elements || [];
+                for (const element of skeleton) {
+                    if (element.type === "text") element.fontFamily = FONT_FAMILY.Helvetica;
+                    if (element.label) element.label.fontFamily = FONT_FAMILY.Helvetica;
+                }
+                const elements = convertToExcalidrawElements(skeleton);
+                conversion = {
+                    elements,
+                    files: converted.files || {},
+                    imageOnly: elements.length > 0 && elements.every((element) => element.type === "image"),
+                };
+            } catch (error) {
+                const message = typeof error === "string"
+                    ? error
+                    : error && typeof error === "object" && typeof error.message === "string"
+                        ? error.message
+                        : "Failed to convert Mermaid diagram.";
+                intent.resolve({ status: "conversion-failed", message });
+                return;
+            }
+            await editorReady;
+            excalidrawApi.addFiles(Object.values(conversion.files));
+            excalidrawApi.updateScene({
+                elements: [...excalidrawApi.getSceneElements(), ...conversion.elements],
+                appState: {
+                    ...excalidrawApi.getAppState(),
+                    currentItemFontFamily: FONT_FAMILY.Helvetica,
+                },
+            });
+            writeCurrentSceneToHost();
+            intent.resolve({ status: "opened", imageOnly: conversion.imageOnly });
+        }
+
+        async function handleCapabilityIntent(intent) {
+            if (intent.version !== undefined && intent.version !== 1) {
+                throw new Error(`Unsupported capability intent version: ${intent.version}.`);
+            }
+            if (intent.id === "image.edit") return handleImageIntent(intent);
+            if (intent.id === "diagram.edit") return handleDiagramIntent(intent);
+            throw new Error(`Unsupported capability intent: ${intent.id}.`);
+        }
+
+        function renderBoard() {
+            root.render(
+                React.createElement(Excalidraw, {
+                    initialData: scene,
+                    theme: persephone.theme.isDark ? "dark" : "light",
+                    onChange: scheduleHostWrite,
+                    excalidrawAPI: adoptExcalidrawApi,
+                }),
+            );
+        }
+
+        // `onThemeChange` invokes its callback immediately, which performs the first render.
+        const unsubscribeTheme = persephone.onThemeChange(renderBoard);
+        const unsubscribeIntent = persephone.intent.onRequest((intent) => {
+            void handleCapabilityIntent(intent).catch((error) => intent.reject(error));
+        });
+
+        window.addEventListener("beforeunload", () => {
+            cancelScheduledSave();
+            unsubscribe();
+            unsubscribeTheme();
+            unsubscribeIntent();
+        }, { once: true });
     </script>
 </body>
 </html>

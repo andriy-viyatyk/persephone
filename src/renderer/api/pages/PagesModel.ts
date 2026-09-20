@@ -9,6 +9,7 @@ import { createLinkData } from "../../../shared/link-data";
 import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
 import type { NavigatePageToOptions } from "./PageNavigator";
+import type { IBoardIntent } from "../types/io.link-data";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -230,8 +231,12 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
     addEditorPage = (editor: EditorView, language: string, title: string, content?: string) =>
         this.lifecycle.addEditorPage(editor, language, title, content);
-    addBundledBoardPage = (boardRoot: string, language: string, title: string) =>
-        this.lifecycle.addBundledBoardPage(boardRoot, language, title);
+    addBundledBoardPage = (
+        boardRoot: string,
+        language: string,
+        title: string,
+        intent?: IBoardIntent,
+    ) => this.lifecycle.addBundledBoardPage(boardRoot, language, title, intent);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
     openLinks = (links: (ILink | string)[], title?: string) =>

@@ -355,6 +355,14 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             };
             registerBoardCapabilityFrame(this.capabilityFrame);
         }
+        const contentHost = model.contentHost;
+        const win = frame.contentWindow;
+        if (contentHost && win) {
+            const { content, language } = contentHost.state.get();
+            this.lastBoardContent = undefined;
+            const message: BoardHostContentMsg = { __persephone: "host:content", content, language };
+            win.postMessage(message, `board://${host}`);
+        }
         void api.requestBoardPort(this.boardId, host, model.id);
         void api.registerBoardFrame(model.id, host, this.boardId, this.tabId).then(() => {
             if (this.live && generation === this.generation) model.markFrameLoaded(this.tabId);
@@ -368,14 +376,6 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             }
         });
 
-        const contentHost = model.contentHost;
-        const win = frame.contentWindow;
-        if (contentHost && win) {
-            const { content, language } = contentHost.state.get();
-            this.lastBoardContent = undefined;
-            const message: BoardHostContentMsg = { __persephone: "host:content", content, language };
-            win.postMessage(message, `board://${host}`);
-        }
         if (win) {
             const message: BoardStateSyncMsg = {
                 __persephone: "state:sync",
@@ -780,22 +780,24 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 pageId: model.page?.id,
                 deadlineMs: message.deadlineMs,
             });
-            // `app.capabilities.invoke` resolves a `{ pageId, result? }` envelope for a board
-            // handler, and a handler-specific value for a built-in one (which may carry no page
-            // at all — `diagram.edit` resolves `{ status: "conversion-failed" }`). The board-facing
-            // contract carries `pageId` at the TOP level, so split the envelope here rather than
-            // nesting it; nesting it made every board-originated invoke fail as a malformed reply.
-            const envelope = result as { pageId?: unknown; result?: unknown } | null | undefined;
-            const hasPageEnvelope = !!envelope && typeof envelope === "object"
-                && typeof envelope.pageId === "string";
-            reply = hasPageEnvelope
-                ? {
+            // The public capability result carries its page id inside the declared result.
+            // Board-originated calls retain the bridge's top-level pageId/result envelope.
+            // Conversion failures have no page id, so they remain a plain public result.
+            const publicResult = result as { pageId?: unknown } | null | undefined;
+            const hasPageId = !!publicResult && typeof publicResult === "object"
+                && typeof publicResult.pageId === "string";
+            if (hasPageId) {
+                const { pageId, ...handlerResult } = publicResult as Record<string, unknown>;
+                const hasHandlerResult = Object.keys(handlerResult).length > 0;
+                reply = {
                     __persephone: "capabilities:invoke:result",
                     reqId: message.reqId,
-                    pageId: envelope.pageId as string,
-                    result: envelope.result,
-                }
-                : { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+                    pageId: pageId as string,
+                    ...(hasHandlerResult ? { result: handlerResult } : {}),
+                };
+            } else {
+                reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+            }
         } catch (error: unknown) {
             reply = {
                 __persephone: "capabilities:invoke:result",

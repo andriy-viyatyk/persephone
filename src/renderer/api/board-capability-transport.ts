@@ -5,7 +5,6 @@ import type {
     IntentRequest,
 } from "../../ipc/capability-bus-channels";
 import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/board-access";
-import { boards } from "./boards";
 import { pagesModel } from "./pages";
 import { boardPagesForRoot } from "./board-updates";
 import type { PageModel } from "./pages/PageModel";
@@ -65,6 +64,7 @@ interface PendingDispatch {
     readonly resolve: (value: unknown) => void;
     readonly reject: (error: BoardCapabilityTransportError) => void;
     page?: PageModel;
+    createdPage: boolean;
     pageUnsubscribe?: () => void;
     frame?: BoardCapabilityFrame;
     settled: boolean;
@@ -83,6 +83,29 @@ function clearInitialIntent(page: PageModel | undefined, requestId: string): voi
 
 function clearInitialIntentOnRoot(root: string, requestId: string): void {
     for (const page of boardPagesForRoot(root)) clearInitialIntent(page, requestId);
+}
+
+function isContentHostBoardPage(page: PageModel): boolean {
+    const editor = page.mainEditorInstance as unknown as { contentHost?: unknown } | undefined;
+    return editor?.contentHost !== null && editor?.contentHost !== undefined;
+}
+
+function capabilityTitle(request: IntentRequest): string {
+    const payload = request.payload;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        const title = (payload as { title?: unknown }).title;
+        if (typeof title === "string" && title.trim()) return title;
+    }
+    return "untitled.excalidraw";
+}
+
+function isDiagramConversionFailure(result: unknown): boolean {
+    return !!result && typeof result === "object"
+        && (result as { status?: unknown }).status === "conversion-failed";
+}
+
+function isPageProducingEditCapability(id: string): boolean {
+    return id === "image.edit" || id === "diagram.edit";
 }
 
 function normalizeTransportError(error: unknown): BoardCapabilityTransportError {
@@ -138,6 +161,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
                 request,
                 resolve,
                 reject,
+                createdPage: false,
                 settled: false,
             };
             this.pending.set(request.requestId, pending);
@@ -165,7 +189,9 @@ class BoardCapabilityTransport implements CapabilityTransport {
 
     private async resolveHandler(pending: PendingDispatch, root: string): Promise<void> {
         const pages = boardPagesForRoot(root);
-        const page = pages[0];
+        const page = isPageProducingEditCapability(pending.request.id)
+            ? undefined
+            : pages.find(isContentHostBoardPage);
         if (page) {
             this.attachPage(pending, page);
             pagesModel.navigation.showPage(page.id);
@@ -190,8 +216,13 @@ class BoardCapabilityTransport implements CapabilityTransport {
         try {
             // Keep the pending map populated before this call: opening a board can synchronously
             // mount its first frame and deliver the handshake before the promise resolves.
-            await boards.openBoard(root, { intent });
-            const openedPage = boardPagesForRoot(root)[0];
+            const openedPage = await pagesModel.addBundledBoardPage(
+                root,
+                "json",
+                capabilityTitle(pending.request),
+                intent,
+            );
+            pending.createdPage = true;
             if (openedPage) {
                 this.attachPage(pending, openedPage);
                 const frame = boardCapabilityFrameForPage(openedPage.id);
@@ -229,6 +260,10 @@ class BoardCapabilityTransport implements CapabilityTransport {
         for (const pending of this.pending.values()) {
             if (pending.settled || pending.frame || fpNormalizeForCompare(frame.boardRoot)
                 !== fpNormalizeForCompare(pending.registration.boardRoot ?? "")) continue;
+            // A newly-created page is attached only after addBundledBoardPage() returns.
+            // Until then, a frame for another open page of the same board root must not steal
+            // the request while that page is being constructed.
+            if (!pending.page) continue;
             if (pending.page && pending.page.id !== frame.pageId) continue;
             this.dispatchToFrame(pending, frame);
         }
@@ -251,7 +286,12 @@ class BoardCapabilityTransport implements CapabilityTransport {
         });
         this.pageChains.set(frame.pageId, requests);
         void frame.dispatch(pending.request).then(
-            (result) => this.settle(pending, undefined, false, { pageId: frame.pageId, result }),
+            (result) => this.settle(
+                pending,
+                undefined,
+                false,
+                isDiagramConversionFailure(result) ? result : { pageId: frame.pageId, result },
+            ),
             (error: unknown) => this.settle(pending, normalizeTransportError(error), false),
         );
     }
@@ -267,6 +307,9 @@ class BoardCapabilityTransport implements CapabilityTransport {
         this.pending.delete(pending.request.requestId);
         pending.pageUnsubscribe?.();
         pending.pageUnsubscribe = undefined;
+        if (!error && pending.createdPage && isDiagramConversionFailure(result)) {
+            void pending.page?.close();
+        }
         if (sendCancel) {
             try { pending.frame?.cancel(pending.request.requestId); } catch { /* best effort */ }
         }

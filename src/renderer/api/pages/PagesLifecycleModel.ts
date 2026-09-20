@@ -252,6 +252,7 @@ export class PagesLifecycleModel {
         boardRoot: string,
         language: string,
         title: string,
+        intent?: IBoardIntent,
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const match = customEditorRegistry.entries.find(
@@ -262,6 +263,7 @@ export class PagesLifecycleModel {
         }
 
         const editor = await this.buildEditorById(editorId);
+        setInitialBoardIntent(editor, intent);
         const host = (editor as EditorModel).contentHost as unknown as TextFileModel | null;
         if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
         host.state.update((state) => {
