@@ -3508,3 +3508,29 @@ only registrants. No user-visible change by design.
 - [x] US-1460: `app.capabilities` — four seed ids, 23 handoff sites rewritten, Excalidraw construction moved behind `image.edit` / `diagram.edit`
 - [x] US-1461: Script `io` exports — a script can register a provider and a URL scheme for the session
 - [x] US-1462: App service descriptor table — `keyof IApp` exhaustiveness check plus a named runtime failure
+
+## EPIC-106 — [Bridge contract and the module service process](EPIC-106.md)
+
+Completed 2026-09-20. Phase B of the [platform roadmap](../platform-roadmap.md): a board can
+declare what it needs, and its Node code gets a platform-owned place to run that outlives any
+page. Phase C's `ProxyProvider` depends on the service process existing, which is why this phase
+came before it.
+
+- [x] US-1466: `permissions`, `minBridgeVersion` and `service` manifest axes; the trust dialog shows manifest content for the first time; bridge moved to 1.6.0 behind one shared constant
+- [x] US-1467: Module service supervisor — Electron `utilityProcess`, lazy start, handshake deadline, rolling restart budget, request cap, sanitized environment, `ui.log` capture, untrust and quit teardown
+- [x] US-1468: Service surface — live status in `boards.list()` and Board Info, re-acquirable renderer port lease, `persephone.service.request()`, the service-side storage adapter, and `app.boards.requestService` / `startService` / `stopService`
+- [x] US-1469: `persephone.storage` — per-board folder keyed by a hash of the board root, a self-describing `board.json` sidecar, async writes behind a per-board mutation queue
+- [x] US-1470: Demo board service fixture with crash-on-demand and handshake-hang controls, plus the authoring documentation across five guides
+
+The epic's defining decision was a **reversal of the roadmap's framing**: `permissions` cannot be
+a security boundary while trust already implies RCE — a trusted board spawns unrestricted Node
+through `executeNode` today with no declaration at all. The axis was kept for disclosure and
+lifecycle hygiene, and the grant record was deferred to the trust-model merge, which has to make
+trust per-board and recorded first. The roadmap's frame-to-service MessagePort was also dropped:
+by the roadmap's own reasoning it saves neither a process hop nor a serialization step.
+
+**Four defects reached a green build and were caught only by driving the running app**, the
+second epic in a row where that happened. The two that matter: storage was refused until a
+service reached `running`, which deadlocked the ordinary "load state, then declare ready" startup
+shape; and the trust-snapshot generation reset on every renderer reload, so after one reload
+untrust stopped propagating to main and revocation silently stopped working.

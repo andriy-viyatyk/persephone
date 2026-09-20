@@ -24,7 +24,7 @@ below tracks which phases have shipped.
 | Phase | Epic | Status |
 |---|---|---|
 | A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
-| B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **in progress** |
+| B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
 | C — Open providers with ranged streaming | — | not started |
 | D — Capability bus and in-memory data channel | — | not started |
 | E — Torrent board and audio player (proof 1) | — | not started |
@@ -32,17 +32,7 @@ below tracks which phases have shipped.
 
 ## Active
 
-- **EPIC-106** — [Bridge contract and the module service process](epics/EPIC-106.md)
-  — Phase B of the platform roadmap. A board declares what it needs (`permissions`,
-  `minBridgeVersion`) and gets a platform-supervised Node **service** in an Electron
-  `utilityProcess`, reachable from the renderer with no board page open. The permission
-  *grant record* is deliberately out of scope (epic D1) — trust already implies RCE, so the
-  axis is disclosure and lifecycle, not a boundary.
-  - [ ] [US-1466: `permissions` and `minBridgeVersion` manifest axes, disclosed at trust and in Board Info](tasks/US-1466-board-permissions-axis/README.md)
-  - [ ] [US-1467: Module service process — `utilityProcess` host, handshake, restart budget, untrust shutdown](tasks/US-1467-module-service-process/README.md)
-  - [ ] [US-1468: Service surface — status in `boards.list()`, renderer port, `persephone.service.request`](tasks/US-1468-service-surface/README.md)
-  - [ ] [US-1469: `persephone.storage` — per-board folder and key/value store](tasks/US-1469-board-storage/README.md)
-  - [ ] [US-1470: Demo board service fixture and authoring-guide documentation](tasks/US-1470-service-docs-fixture/README.md)
+*(no active epic)*
 
 ## Planned
 

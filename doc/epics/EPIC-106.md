@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-20
+**Completed:** 2026-09-20
 **Roadmap phase:** [Platform roadmap](../platform-roadmap.md) — **Phase B, Bridge contract and the
 module service process**
 
@@ -244,11 +245,11 @@ Stated plainly so the roadmap stays honest:
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1466 | `permissions` and `minBridgeVersion` manifest axes, disclosed at trust and in Board Info | Planned |
-| US-1467 | Module service process: `utilityProcess` host, handshake, restart budget, untrust shutdown | Planned |
-| US-1468 | Service surface: status in `boards.list()`, renderer port, `persephone.service.request` | Planned |
-| US-1469 | `persephone.storage` — per-board folder and key/value store | Planned |
-| US-1470 | Demo board service fixture and the authoring-guide documentation for every new axis | Planned |
+| [US-1466](../tasks/US-1466-board-permissions-axis/README.md) | `permissions` and `minBridgeVersion` manifest axes, disclosed at trust and in Board Info | Done |
+| [US-1467](../tasks/US-1467-module-service-process/README.md) | Module service process: `utilityProcess` host, handshake, restart budget, untrust shutdown | Done |
+| [US-1468](../tasks/US-1468-service-surface/README.md) | Service surface: status in `boards.list()`, renderer port, `persephone.service.request` | Done |
+| [US-1469](../tasks/US-1469-board-storage/README.md) | `persephone.storage` — per-board folder and key/value store | Done |
+| [US-1470](../tasks/US-1470-service-docs-fixture/README.md) | Demo board service fixture and the authoring-guide documentation for every new axis | Done |
 
 Order: US-1466 and US-1469 are independent of the service work and of each other, so they run in
 parallel with US-1467. US-1468 depends on US-1467 (there is no status without a supervisor) and on
@@ -332,3 +333,53 @@ Each is an observation, per D8.
 - The phase is otherwise taken whole: the service process, the declaration axes and per-board
   storage all land, because Phase C cannot begin without the first and would have to invent the
   other two.
+
+### 2026-09-20 — close-out
+
+All five tasks implemented, reviewed and landed in `588f10d6`, `ab9f12d4`, `b79c8cfd`,
+`b0e3069e` and `8a96fb8a`.
+
+**Verified live over MCP against the running app.** Criteria 1, 2, 3, 4, 5, 6, 7, 10 (service
+half), 11 and 12 were observed, not inferred:
+
+- a request with **no board page open** returned from a real `utilityProcess` (pid, `cwd` at the
+  board root, and exactly the two injected environment variables — the sanitized environment is
+  real);
+- a **full renderer reload** left the service with an **identical pid and `startedAt`**, still
+  answering, with the renderer status cache re-hydrated from main — which is the actual proof that
+  main owns the lifecycle rather than the window;
+- the **restart budget** ran its whole course: restarts at counts 1 and 2 with fresh pids, then
+  terminal `failed` at 3 with reason `service-exited:1` retained and no further restarts, and an
+  explicit `startService` cleared it (D4);
+- the **handshake deadline** killed an armed hang, restarted, and the one-shot flag cleared itself
+  so the fixture came back healthy;
+- **losing trust** stopped a running service with reason `untrusted` and rejected its requests;
+- a board declaring `service` without the `"service"` permission was refused with
+  `permission-denied`, the reason readable from `boards.list()`;
+- storage round-tripped from the service to
+  `<userData>/data/board-storage/<64-hex>/store.json`, with the `board.json` sidecar present;
+- `service` is **omitted** from every listing for boards that declare none — no existing consumer
+  sees a new key — and all 29 boards / 27 trusted were unchanged throughout.
+
+**Four defects were found this way, none of which typecheck, lint or `build-prod` could see.**
+They are described in `8a96fb8a`; the two worth remembering are that storage was refused until a
+service reached `running`, which deadlocked the ordinary "load state, then declare ready" startup
+shape, and that the trust-snapshot generation reset on every renderer reload, so **untrust stopped
+propagating to main after the first reload** — revocation silently stopped working. That one has
+security consequences and was invisible to every static check.
+
+This is the second epic in a row (after EPIC-105) where live verification found real defects past
+a green build. Treat the verification script as the deliverable it is.
+
+**Behaviour worth knowing, discovered during verification and not a defect:** the `"service"`
+permission gate is evaluated at **start**, not per request, so a service already running keeps
+serving if the permission is removed from its manifest while it runs. That is consistent with D1
+— the axis is lifecycle hygiene, not a per-call security check — but it should not surprise anyone.
+
+**Not verified, and recorded for the user** in the roadmap's *Needs user verification* section:
+the app-quit orphan check (it requires quitting the app the user is using), criterion 9's
+incompatible-listing path, and the trust dialog's new disclosure rows rendered on screen — the
+dialog's `permissions` and `serviceDeclared` members were confirmed present through its AiVision
+facade, but clicking **Trust Board** is the user's decision and was deliberately not taken.
+
+Task folders kept, per the standing preference.

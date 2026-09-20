@@ -375,6 +375,27 @@ was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 
 ## 4. Phases
 
+> ### Needs user verification
+>
+> Left from **EPIC-106 (Phase B)**, 2026-09-20. Everything else in that epic was observed live
+> against the running app; these three could not be, and none is known to be broken.
+>
+> 1. **No orphaned service process after app quit.** The quit gate is written so the app always
+>    quits — a bounded race, `app.quit()` in a `finally`, and a guarded synchronous last-resort
+>    kill — but proving no `utilityProcess` outlives Persephone means actually quitting the app,
+>    which was in use. To check: start the demo board's service, note its pid from
+>    `boards.list()`, quit Persephone, then confirm the pid is gone.
+> 2. **The trust dialog's new disclosure rows, on screen.** The dialog now carries `permissions`
+>    and `serviceDeclared` — confirmed present through its AiVision facade — but clicking
+>    **Trust Board** is your decision, not an agent's, so it was never clicked. Registering any
+>    board that declares `permissions` will show the rows.
+> 3. **Criterion 9, the incompatible listing.** A board declaring a `minBridgeVersion` above the
+>    shipped `1.6.0` should be listed incompatible and register no editors. Unverified because it
+>    needs a throwaway board to be trusted. Note the scope cut behind it: local `minAppVersion` is
+>    still **not** enforced at registration — it never was, and fixing that would have changed
+>    behaviour for existing installed boards, so it is left as its own task.
+
+
 **Scope decision (2026-09-19):** this roadmap ends when the architecture can host an extracted
 editor and has been proven twice — once on the pipeline side by the **torrent board and audio
 player** (3.8), once on the editor side by **extracting Excalidraw**. Video, REST client and any
@@ -425,6 +446,24 @@ title, and every restore fixture in the QA surface set restores as before. `pars
 `resolvers.ts` shrink; one new public service.
 
 ### Phase B — Bridge contract and the module service process
+
+> **Shipped 2026-09-20 as [EPIC-106](epics/EPIC-106.md).** Three decisions bind later phases.
+> **`permissions` is disclosure and lifecycle hygiene, not a security boundary** (D1): a trusted
+> board already spawns unrestricted Node through `executeNode` with no declaration, so gating
+> `service` behind a permission stops nothing. The grant record, the *changed grant* re-prompt on
+> update and per-board consent under inherited trust are all deferred to the trust-model merge in
+> §5 — a phase that wants `permissions` to be a boundary must first make trust per-board and
+> recorded. **The service gets a port to the renderer only** (D3); the frame-to-service port this
+> document proposed was dropped because it saves neither a process hop nor a serialization step by
+> §3.1a's own reasoning, and the frame uses an ordinary main-routed bridge call. The renderer
+> lease is therefore reserved for Phase C's high-volume provider traffic, and **a service is not
+> obliged to implement that port at all** — Phase C must not assume one is attached. **A service
+> may use storage before it is `ready`**, because loading persisted state before declaring
+> readiness is the normal startup shape. Two corrections to this document: `minAppVersion` is
+> enforced on the **catalog path only** and never on local registration (so the "incompatible
+> listing machinery" Phase B was meant to reuse did not exist for local boards, and only
+> `minBridgeVersion` is gated), and **`ui-preferences` is main-owned but not broadcast**, so §3.6's
+> `registryChanged(kind)` is entirely new work rather than a pattern to copy.
 
 The two things every later axis assumes: a way to say what a board needs, and a place for a
 board's Node code to run under platform control.
