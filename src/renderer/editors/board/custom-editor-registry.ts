@@ -35,13 +35,19 @@ import {
 import { createBoardProvider } from "../../content/board-provider-factory";
 import {
     normalizeContentProviders,
+    normalizeCapabilities,
     getBoardEditorAssociation,
     matchesBoardMasks,
     matchesContentMasks,
     matchesFolderEditorMasks,
     readBoardManifest,
     type BoardContentProviderDeclaration,
+    type BoardCapabilityDeclaration,
 } from "./board-manifest";
+import {
+    registerCapability,
+    unregisterBoardCapabilities,
+} from "../../api/capabilities";
 
 /** Prefix marking a virtual custom-editor id. The remainder is the board root VERBATIM
  *  (original case, may contain ':' and '\\' on Windows — parse by prefix, never by split). */
@@ -99,7 +105,7 @@ export interface CustomEditorIncompatibility {
     reason: string;
 }
 
-export type CustomEditorRegistrationIssueKind = "provider" | "scheme";
+export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability";
 
 export interface CustomEditorRegistrationIssue {
     boardRoot: string;
@@ -112,6 +118,11 @@ export interface CustomEditorRegistrationIssue {
 interface BoardRegistrationIntent {
     boardRoot: string;
     declaration: BoardContentProviderDeclaration;
+}
+
+interface BoardCapabilityRegistrationIntent {
+    boardRoot: string;
+    declaration: BoardCapabilityDeclaration;
 }
 
 interface CustomEditorRegistryState {
@@ -208,6 +219,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const entries: CustomEditorMatch[] = [];
         const incompatibilities: CustomEditorIncompatibility[] = [];
         const registrationIntents: BoardRegistrationIntent[] = [];
+        const capabilityRegistrationIntents: BoardCapabilityRegistrationIntent[] = [];
         const registrationIssues: CustomEditorRegistrationIssue[] = [];
         const providerDeclarations: ProviderDeclaration[] = [];
         for (const root of roots) {
@@ -221,6 +233,9 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     incompatibilities.push({ boardRoot: root, reason: bridgeCompatibility.reason });
                 }
                 continue;
+            }
+            for (const declaration of normalizeCapabilities(manifest?.capabilities)) {
+                capabilityRegistrationIntents.push({ boardRoot: root, declaration });
             }
             for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
                 if (!declaration.type.includes("/")) {
@@ -289,7 +304,27 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         // trust list after an untrust, uninstall, or folder rename.
         unregisterBoardProviders(roots);
         unregisterBoardSchemes(roots);
+        // `roots` is only the next rebuild snapshot. Release the complete board-origin set so an
+        // already-untrusted board, absent from `roots`, cannot leave a stale capability behind.
+        unregisterBoardCapabilities(roots);
         replaceProviderDeclarations(providerDeclarations);
+        for (const { boardRoot, declaration } of capabilityRegistrationIntents) {
+            const result = registerCapability(declaration, {
+                boardRoot,
+                handlerKey: boardEditorId(boardRoot),
+                origin: "board",
+            });
+            if (!result.accepted) {
+                addRegistrationIssue(
+                    registrationIssues,
+                    boardRoot,
+                    "capability",
+                    declaration.id || "<empty id>",
+                    result.reason,
+                    result.owner,
+                );
+            }
+        }
         for (const { boardRoot, declaration } of registrationIntents) {
             const providerResult = registerProvider(
                 declaration.type,

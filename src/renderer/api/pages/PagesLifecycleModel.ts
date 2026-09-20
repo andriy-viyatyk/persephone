@@ -4,7 +4,7 @@ import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
-import type { ILinkDiffRevision } from "../types/io.link-data";
+import type { IBoardIntent, ILinkDiffRevision } from "../types/io.link-data";
 import {
     newTextFileModel,
     TextFileModel,
@@ -38,6 +38,14 @@ import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { app } from "../app";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
+
+function setInitialBoardIntent(editor: EditorOrHost, intent: IBoardIntent | undefined): void {
+    if (!intent) return;
+    const candidate = editor as unknown as {
+        setInitialIntent?: (value: IBoardIntent) => void;
+    };
+    candidate.setInitialIntent?.(intent);
+}
 
 /** Attach an `EditorModel` or `TextFileModel` host to a `PageModel`.
  *  - `EditorModel` input: returned unchanged.
@@ -422,6 +430,7 @@ export class PagesLifecycleModel {
             diffFrom?: ILinkDiffRevision;
             diffTo?: ILinkDiffRevision;
             fragment?: string;
+            intent?: IBoardIntent;
         },
     ): Promise<PageModel | undefined> => {
         if (!filePath && options?.folderPath === undefined) return undefined;
@@ -459,6 +468,7 @@ export class PagesLifecycleModel {
             pipe?.dispose();
             return undefined;
         }
+        setInitialBoardIntent(editor, options?.intent);
         if (options?.folderPath !== undefined) pipe?.dispose();
         if (options?.sourceLink) {
             editor.state.update((s) => { s.sourceLink = options.sourceLink; });

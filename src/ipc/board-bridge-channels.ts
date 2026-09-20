@@ -233,6 +233,13 @@ export interface BoardPortInitMsg {
     __persephoneInit: true;
     /** Stable page identity used by the host-local pipe URL. */
     pageId?: string;
+    /** One-shot capability request delivered to a newly opened handler board. */
+    intent?: {
+        id: string;
+        version?: number;
+        requestId: string;
+        payload: unknown;
+    };
     /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
     pipeUrlEnabled?: boolean;
     /** The board's current busy flag (US-799) — carried at handshake so a re-created
@@ -388,6 +395,94 @@ export interface BoardAiVisionResultMsg {
     reqId: number;
     response: IAiRemoteResponse;
 }
+
+/** Renderer → board: deliver one capability request to the board frame. */
+export interface BoardCapabilityIntentRequestMsg {
+    __persephone: "capabilities:intent";
+    requestId: string;
+    id: string;
+    version?: number;
+    payload: unknown;
+}
+
+/** Board → renderer: settle a capability request delivered to this frame. */
+export interface BoardCapabilityIntentResultMsg {
+    __persephone: "capabilities:intent:result";
+    requestId: string;
+    result?: unknown;
+    error?: {
+        code:
+            | "no-handler"
+            | "untrusted"
+            | "handler-closed"
+            | "crashed"
+            | "cancelled"
+            | "timeout"
+            | "cycle"
+            | "payload-too-large"
+            | "busy"
+            | "rejected";
+        message: string;
+    };
+}
+
+/** Renderer → board: best-effort cancellation of an active capability request. */
+export interface BoardCapabilityIntentCancelMsg {
+    __persephone: "capabilities:intent:cancel";
+    requestId: string;
+}
+
+/** Board → renderer: request the capabilities visible in this renderer. */
+export interface BoardCapabilityListRequestMsg {
+    __persephone: "board:capabilities:list";
+    reqId: number;
+}
+
+/** Renderer → board: reply to a capability-list request. */
+export interface BoardCapabilityListResultMsg {
+    __persephone: "capabilities:list:result";
+    reqId: number;
+    result?: unknown;
+    error?: { code: string; message: string };
+}
+
+/** Board → renderer: invoke a capability from this board frame. */
+export interface BoardCapabilityInvokeRequestMsg {
+    __persephone: "board:capabilities:invoke";
+    reqId: number;
+    id: string;
+    version?: number;
+    payload: unknown;
+    deadlineMs?: number;
+}
+
+/** Renderer → board: reply to a board capability invocation. */
+export interface BoardCapabilityInvokeResultMsg {
+    __persephone: "capabilities:invoke:result";
+    reqId: number;
+    pageId?: string;
+    result?: unknown;
+    error?: { code: string; message: string };
+}
+
+/** All `__persephone:` envelopes exchanged between a board frame and its host renderer. */
+export type BoardHostFrameMsg =
+    | BoardToHostMsg
+    | BoardHostContentMsg
+    | BoardStateSyncMsg
+    | BoardFilePathResultMsg
+    | BoardVarResultMsg
+    | BoardAiVisionRegistrationMsg
+    | BoardAiVisionNotifyMsg
+    | BoardAiVisionRequestMsg
+    | BoardAiVisionResultMsg
+    | BoardCapabilityIntentRequestMsg
+    | BoardCapabilityIntentResultMsg
+    | BoardCapabilityIntentCancelMsg
+    | BoardCapabilityListRequestMsg
+    | BoardCapabilityListResultMsg
+    | BoardCapabilityInvokeRequestMsg
+    | BoardCapabilityInvokeResultMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

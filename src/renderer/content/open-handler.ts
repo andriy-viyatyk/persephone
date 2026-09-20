@@ -39,6 +39,7 @@ export function registerOpenHandler(): void {
                     fragment: data.fragment,
                     title: data.title,
                     sourceLink,
+                    intent: data.intent,
                     pipe: data.pipe,
                     target: data.target,
                     folderPath: data.folderPath,
@@ -56,6 +57,7 @@ export function registerOpenHandler(): void {
             try {
                 const page = await pagesModel.lifecycle.openFile(filePath, data.pipe, {
                     sourceLink,
+                    intent: data.intent,
                     fragment: data.fragment,
                     target: data.target,
                     folderPath: data.folderPath,

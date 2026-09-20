@@ -1,3 +1,5 @@
+import type { IBoardIntent } from "./io.link-data";
+
 /**
  * One published-catalog board, annotated with its install state on this machine
  * ({@link IBoards.searchPublished}).
@@ -159,7 +161,7 @@ export interface IBoards {
      *
      * @param boardRoot - Absolute path of the board's root folder.
      */
-    openBoard(boardRoot: string): Promise<void>;
+    openBoard(boardRoot: string, options?: { intent?: IBoardIntent }): Promise<void>;
 
     /**
      * Register (trust) an existing board so it renders and runs. Shows the **user** a

@@ -19,7 +19,7 @@ import type { IPageHost } from "./IPageHost";
 import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
 import { NavBackStack } from "./NavBackStack";
-import { secondaryViewsToggled, panelExpanded } from "../../core/state/events";
+import { secondaryViewsToggled, panelExpanded, Subscription } from "../../core/state/events";
 import { panelKey, parsePanelKey, panelIdOf, isCompositePanelKey } from "../../ui/secondary-views/panel-key";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { uiPreferences } from "../ui-preferences";
@@ -127,6 +127,22 @@ export class PageModel implements IPageHost {
     private _editorSubs = new Map<string, () => void>();
     private readonly subscriptions = new DisposableStore();
     private pageDisposed = false;
+    private disposedNotified = false;
+
+    /**
+     * Fires exactly once, at the start of `dispose()` — this page's *true* teardown.
+     *
+     * Use this, not `onClose`, to release anything keyed on a page. `onClose` is a single
+     * field that `PagesModel.attachPage()` **assigns** and `detachPage()` **clears**, and the
+     * cross-window transfer path deliberately relies on that (see the comment on
+     * `PagesModel.removePage`) — so a wrapper composed onto `onClose` is silently dropped when
+     * a page moves between windows. `onClose` also fires only from the interactive `close()`,
+     * while `dispose()` is reached by every teardown path.
+     *
+     * Added by EPIC-108 (US-1480) for the capability bus, which must settle a caller's
+     * in-flight intents when its page goes away.
+     */
+    readonly disposed = new Subscription<void>();
     private readonly pendingCleanupPromises = new Set<Promise<void>>();
 
     // ── Transient state (not persisted) ────────────────────────────
@@ -802,6 +818,12 @@ export class PageModel implements IPageHost {
 
     async dispose(): Promise<void> {
         this.pageDisposed = true;
+        // Notify before anything is torn down, so a subscriber can still read the page it is
+        // releasing state for. Guarded because dispose() has no early return of its own.
+        if (!this.disposedNotified) {
+            this.disposedNotified = true;
+            this.disposed.send(undefined);
+        }
         await this.drainDeferredEditorCleanup();
         // Defensively drain slice subscriptions before disposing editors.
         this.subscriptions.dispose();
@@ -817,6 +839,7 @@ export class PageModel implements IPageHost {
 
         this.secondaryViewsModel?.dispose();
         this.secondaryViewsModel = null;
+        this.disposed.dispose();
         // No page-level cache file; per-editor caches were cleaned in the
         // loop above.
     }

@@ -22,6 +22,7 @@ import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
+import type { IBoardIntent } from "../../api/types/io.link-data";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export type BoardAiVisionRequestHandler = (
@@ -172,6 +173,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private reloadAwaitingRegistration = false;
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
+    private initialIntent: IBoardIntent | undefined;
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
      *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
@@ -197,6 +199,30 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  (BoardTargetModel.switchTab / ensureReady). Defaults to the main frame, so a
      *  single-frame board and the default automation path are unchanged (US-858). */
     activeTabId = BOARD_CDP_TAB;
+
+    /** Hold a capability request only for the first frame handshake; this never enters editor state. */
+    setInitialIntent(intent: IBoardIntent): void {
+        this.initialIntent = intent;
+    }
+
+    /** Read the pending request without consuming it, so a failed post cannot lose the request. */
+    peekInitialIntent(): IBoardIntent | undefined {
+        return this.initialIntent;
+    }
+
+    /** Consume the one-shot request after the host accepts the handshake post. */
+    consumeInitialIntent(): IBoardIntent | undefined {
+        const intent = this.initialIntent;
+        this.initialIntent = undefined;
+        return intent;
+    }
+
+    /** Release a pending request when its caller or handler is torn down before the handshake. */
+    clearInitialIntent(requestId?: string): void {
+        if (requestId === undefined || this.initialIntent?.requestId === requestId) {
+            this.initialIntent = undefined;
+        }
+    }
 
     setIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
         if (this.frames.get(tab) !== el) {
@@ -825,6 +851,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  `reapBoardOwner` tree-kills every job this board owner kept alive while busy —
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
+        this.initialIntent = undefined;
         this.aiVisionDisposed = true;
         this.reloadAwaitingRegistration = false;
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the

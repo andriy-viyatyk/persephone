@@ -86,7 +86,13 @@ export const appServiceDescriptors = [
     {
         key: "capabilities",
         load: async (): Promise<IApp["capabilities"]> => (await import("./capabilities")).capabilities,
-        initialize: undefined as undefined,
+        initialize: async (): Promise<void> => {
+            const [{ registerCapabilityTransport }, { boardCapabilityTransport }] = await Promise.all([
+                import("./capability-bus"),
+                import("./board-capability-transport"),
+            ]);
+            registerCapabilityTransport(boardCapabilityTransport);
+        },
     },
 ] as const satisfies readonly AppServiceDescriptorUnion[];
 

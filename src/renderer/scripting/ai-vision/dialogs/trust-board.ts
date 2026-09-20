@@ -8,6 +8,7 @@ const MEMBERS = [
     { name: "boardPath", kind: "property", summary: "The board root folder." },
     { name: "permissions", kind: "property", summary: "Manifest permissions disclosed by the board." },
     { name: "serviceDeclared", kind: "property", summary: "Whether a valid service entry is declared." },
+    { name: "capabilities", kind: "property", summary: "Capability ids disclosed by the board." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
     {
         name: "click", kind: "method", signature: "click(button: string)",
@@ -42,6 +43,9 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
     }
     get serviceDeclared(): boolean {
         return dialogState<TrustBoardDialogProps>(this.entry).serviceDeclared;
+    }
+    get capabilities(): readonly string[] {
+        return dialogState<TrustBoardDialogProps>(this.entry).capabilities;
     }
     get buttons(): readonly string[] { return ["Cancel", "Trust Board"]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }

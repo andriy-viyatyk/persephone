@@ -8,6 +8,7 @@ import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
 import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
 import { app } from "../../api/app";
+import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 
@@ -219,7 +220,7 @@ export class MermaidEditor
             throw new Error("Mermaid preview cannot convert to Excalidraw because the source is empty or unavailable.");
         }
         const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
-        let result: Awaited<ReturnType<typeof app.capabilities.invoke>>;
+        let result: DiagramEditResult;
         try {
             result = await app.capabilities.invoke("diagram.edit", { source, title });
         } catch (error) {

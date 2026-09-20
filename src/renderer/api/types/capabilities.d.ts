@@ -1,5 +1,37 @@
-/** Capability ids provided by the built-in renderer handlers. */
-export type CapabilityId = "text.open" | "content.view" | "image.edit" | "diagram.edit";
+/** Capability ids provided by platform and trusted-board handlers. */
+export type CapabilityId = string;
+
+export type CapabilityOrigin = "platform" | "board" | "script";
+
+export interface CapabilityInfo {
+    readonly id: string;
+    readonly version: number;
+    readonly priority: number;
+    /**
+     * Which handler serves this candidate — a built-in editor id (`md-view`, `draw-view`) for a
+     * `platform` origin, or the board's handler key otherwise. Without it two candidates for the
+     * same id are indistinguishable, which matters most for `content.view`: six built-in editors
+     * register it and they differ only by this field.
+     */
+    readonly handlerKey: string;
+    readonly origin: CapabilityOrigin;
+    readonly boardRoot?: string;
+    readonly accepts?: readonly string[];
+    readonly payloadSchema?: unknown;
+    readonly title?: string;
+}
+
+export interface CapabilityHandlerFilter {
+    readonly mime?: string;
+}
+
+export interface CapabilityInvokeOptions {
+    readonly version?: number;
+    readonly filter?: CapabilityHandlerFilter;
+    readonly pageId?: string;
+    readonly signal?: AbortSignal;
+    readonly deadlineMs?: number;
+}
 
 /** Representations supported by the built-in content viewer capability. */
 export type ContentRepresentation = "svg" | "html" | "markdown" | "mermaid" | "grid" | "log";
@@ -44,4 +76,7 @@ export interface ICapabilities {
     invoke(id: "content.view", payload: ContentViewPayload): Promise<CapabilityPageResult>;
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
     invoke(id: "diagram.edit", payload: DiagramEditPayload): Promise<DiagramEditResult>;
+    invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
+    list(): readonly CapabilityInfo[];
+    handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[];
 }

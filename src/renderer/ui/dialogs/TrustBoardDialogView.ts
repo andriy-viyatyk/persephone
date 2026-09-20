@@ -33,6 +33,12 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 ...(state.serviceDeclared
                     ? [createTextElement("Service: declared", { color: "warning" })]
                     : []),
+                ...(state.capabilities.length > 0
+                    ? [createTextElement(
+                        `Capabilities: ${state.capabilities.map((id) => id || "<empty id>").join(", ")}`,
+                        { color: "light" },
+                    )]
+                    : []),
             ],
         );
         const bodyPanel = createPanelElement(
@@ -48,7 +54,9 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     { color: "warning" },
                 ),
                 boardPathElement,
-                ...(state.permissions.length > 0 || state.serviceDeclared ? [declarationPanel] : []),
+                ...(state.permissions.length > 0 || state.serviceDeclared || state.capabilities.length > 0
+                    ? [declarationPanel]
+                    : []),
             ],
         );
         const cancelButton = new ButtonView({

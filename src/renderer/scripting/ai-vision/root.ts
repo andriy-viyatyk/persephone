@@ -70,6 +70,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "tools", kind: "property", node: true, summary: "Agent Tools: search and execute registered tool scripts, inspect or refresh toolsets, and request user registration or remove one.", caution: "execution runs registered scripts with the user's privileges and registration requires user consent" },
     { name: "boardVars", kind: "property", node: true, summary: "Administer board environment variables and secrets." },
     { name: "editors", kind: "property", node: true, summary: "The editor registry: which editors exist and which languages they take." },
+    { name: "capabilities", kind: "property", node: true, summary: "Read-only discovery of indexed capability candidates and handlers." },
     { name: "recent", kind: "property", node: true, summary: "Recently opened files." },
     { name: "downloads", kind: "property", node: true, summary: "Download manager." },
     { name: "menuFolders", kind: "property", node: true, summary: "Configured folders shown in the sidebar." },
@@ -255,6 +256,7 @@ export class AiRoot implements IAiVisible {
     get tools() { return toolsNode; }
     get boardVars() { return this.app.boardVars; }
     get editors() { return this.app.editors; }
+    get capabilities() { return this.app.capabilities; }
     get recent() { return this.app.recent; }
     get downloads() { return this.app.downloads; }
     get menuFolders() { return this.app.menuFolders; }

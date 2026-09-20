@@ -14,6 +14,7 @@ import {
 } from "../board/custom-editor-registry";
 import {
     normalizeContentProviders,
+    normalizeCapabilities,
     getBoardEditorAssociation,
     isBoardFolder,
     normalizeBoardServicePath,
@@ -21,6 +22,7 @@ import {
     normalizePermissions,
     readBoardManifest,
     type BoardContentProviderDeclaration,
+    type BoardCapabilityDeclaration,
 } from "../board/board-manifest";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
@@ -79,6 +81,7 @@ export interface BoardPropsInfo {
     editorName?: string;
     editorKind?: "simple" | "content-host" | "stream-host";
     contentProviders?: BoardContentProviderDeclaration[];
+    capabilities?: BoardCapabilityDeclaration[];
     registrationIssues?: CustomEditorRegistrationIssue[];
     root: string;
     trusted: boolean;
@@ -381,6 +384,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const contentProviders = Array.isArray(manifest?.contentProviders)
             ? normalizeContentProviders(manifest.contentProviders)
             : undefined;
+        const capabilities = Array.isArray(manifest?.capabilities)
+            ? normalizeCapabilities(manifest.capabilities)
+            : undefined;
         const registrationIssues = customEditorRegistry.getRegistrationIssues(root);
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
@@ -400,6 +406,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             editorName: assoc?.editorName,
             editorKind: assoc?.editorKind,
             contentProviders,
+            capabilities,
             registrationIssues: registrationIssues.length > 0 ? [...registrationIssues] : undefined,
             root,
             trusted: boardTrust.isTrusted(root),
@@ -643,6 +650,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const ok = await showTrustBoardDialog(root, {
             permissions: normalizePermissions(manifest?.permissions),
             serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
+            capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
         });
         if (!ok) return;
         const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");

@@ -18,6 +18,15 @@ export interface IBoardContentProviderDeclaration {
     readonly schemes?: readonly string[];
 }
 
+export interface IBoardCapabilityDeclaration {
+    readonly id: string;
+    readonly version?: number;
+    readonly priority?: number;
+    readonly accepts?: readonly string[];
+    readonly payloadSchema?: unknown;
+    readonly title?: string;
+}
+
 export interface IBoardManifest {
     readonly schemaVersion: number;
     readonly name?: string;
@@ -31,6 +40,7 @@ export interface IBoardManifest {
     readonly minBridgeVersion?: string;
     readonly service?: string;
     readonly contentProviders?: readonly IBoardContentProviderDeclaration[];
+    readonly capabilities?: readonly IBoardCapabilityDeclaration[];
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */

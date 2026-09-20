@@ -160,6 +160,20 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
                     })),
                 }
                 : {}),
+            ...(properties.capabilities !== undefined
+                ? {
+                    capabilities: properties.capabilities.map((capability) => ({
+                        id: capability.id,
+                        ...(capability.version !== undefined ? { version: capability.version } : {}),
+                        ...(capability.priority !== undefined ? { priority: capability.priority } : {}),
+                        ...(capability.accepts !== undefined ? { accepts: [...capability.accepts] } : {}),
+                        ...(Object.prototype.hasOwnProperty.call(capability, "payloadSchema")
+                            ? { payloadSchema: capability.payloadSchema }
+                            : {}),
+                        ...(capability.title !== undefined ? { title: capability.title } : {}),
+                    })),
+                }
+                : {}),
             ...(properties.registrationIssues !== undefined
                 ? {
                     registrationIssues: properties.registrationIssues.map((issue) => ({

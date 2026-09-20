@@ -9,6 +9,13 @@ import type {
     BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
+    BoardCapabilityIntentCancelMsg,
+    BoardCapabilityIntentRequestMsg,
+    BoardCapabilityIntentResultMsg,
+    BoardCapabilityInvokeRequestMsg,
+    BoardCapabilityInvokeResultMsg,
+    BoardCapabilityListRequestMsg,
+    BoardCapabilityListResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
     BoardOpenContentRequest,
@@ -18,6 +25,7 @@ import type {
     BoardToHostMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
+import type { CapabilityErrorCode, IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace, resolveBoardVarRequest } from "../../api/board-vars";
 import { resolveBoardOpenContent } from "./board-open-content";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
@@ -36,6 +44,13 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import "../../uikit/Panel/Panel.css";
 import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../scripting/ai-vision/event-log";
+import {
+    BoardCapabilityTransportError,
+    registerBoardCapabilityFrame,
+    unregisterBoardCapabilityFrame,
+    type BoardCapabilityFrame,
+} from "../../api/board-capability-transport";
+import { app } from "../../api/app";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -90,6 +105,16 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         contentWindow: Window;
     }>();
     private aiVisionRequestId = 0;
+    private readonly pendingCapability = new Map<string, {
+        resolve: (value: unknown) => void;
+        reject: (error: BoardCapabilityTransportError) => void;
+        timer: ReturnType<typeof setTimeout>;
+        generation: number;
+        iframe: HTMLIFrameElement;
+        contentWindow: Window;
+    }>();
+    private readonly initialIntentIds = new Set<string>();
+    private capabilityFrame: BoardCapabilityFrame | undefined;
 
     public constructor(props: BoardWebviewProps) {
         super(props, createPanelElement({
@@ -108,6 +133,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.ownSubscription(boardTrust.subscribePaths(() => {
             if (!boardTrust.isTrusted(this.props.boardRoot)) {
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
+                this.rejectPendingCapability("untrusted", "The board is no longer trusted.", true);
+                this.unregisterCapabilityFrame();
             }
         }));
         ensureBoardThemeSubscription();
@@ -123,6 +150,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.live = false;
         this.generation++;
         this.rejectPendingAiVision(new Error("Board frame was replaced."));
+        this.rejectPendingCapability("handler-closed", "The board frame was replaced.", false);
+        this.unregisterCapabilityFrame();
+        this.initialIntentIds.clear();
         if (this.focusTimer !== undefined) {
             clearTimeout(this.focusTimer);
             this.focusTimer = undefined;
@@ -188,6 +218,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.setIframe(iframe, this.tabId);
         this.props.model.setAiVisionTransport(this.tabId, iframe, this.generation, this.requestAiVision);
         this.listen(iframe, "load", this.handleLoad);
+        this.listen(iframe, "error", this.handleFrameError);
         window.addEventListener("message", this.handleMessage);
         this.ownSubscription(() => window.removeEventListener("message", this.handleMessage));
         this.root.append(iframe);
@@ -279,22 +310,56 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
             materialize: !!filePath && !isPlainLocalPath(filePath) && !this.props.model.isStreamHost,
+            intent: this.props.model.peekInitialIntent(),
         };
-        frame.contentWindow?.postMessage(init, `board://${host}`, [port]);
-        this.pendingPort = null;
+        const contentWindow = frame.contentWindow;
+        if (!contentWindow) return;
+        const intent = this.props.model.peekInitialIntent();
+        if (intent) this.initialIntentIds.add(intent.requestId);
+        try {
+            contentWindow.postMessage(init, `board://${host}`, [port]);
+            this.props.model.consumeInitialIntent();
+            this.pendingPort = null;
+        } catch (error: unknown) {
+            this.rejectPendingCapability("crashed", errMessage(error, "The board handshake failed."), false);
+            this.closePendingPort();
+        }
     }
 
     private readonly handleLoad = (): void => {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
+        if (this.capabilityFrame?.iframe === frame) {
+            this.rejectPendingCapability("crashed", "The board frame was reloaded.", false);
+            this.unregisterCapabilityFrame();
+        }
         const generation = this.generation;
         const model = this.props.model;
+        const initialIntent = model.peekInitialIntent();
+        if (initialIntent) this.initialIntentIds.add(initialIntent.requestId);
+        if (this.isMain && model.page?.id && frame.contentWindow) {
+            this.capabilityFrame = {
+                boardRoot: this.props.boardRoot,
+                pageId: model.page.id,
+                generation,
+                iframe: frame,
+                contentWindow: frame.contentWindow,
+                dispatch: this.dispatchCapabilityIntent,
+                cancel: this.cancelCapabilityIntent,
+            };
+            registerBoardCapabilityFrame(this.capabilityFrame);
+        }
         void api.requestBoardPort(this.boardId, host, model.id);
         void api.registerBoardFrame(model.id, host, this.boardId, this.tabId).then(() => {
             if (this.live && generation === this.generation) model.markFrameLoaded(this.tabId);
             else if (model.frames.get(this.tabId) === frame) {
                 void api.unregisterBoardFrame(model.id, this.tabId, this.boardId);
+            }
+        }).catch((error: unknown) => {
+            if (this.live && generation === this.generation) {
+                this.rejectPendingCapability("crashed", errMessage(error, "The board frame failed to register."), false);
+                this.unregisterCapabilityFrame();
             }
         });
 
@@ -321,7 +386,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
-        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg | BoardAiVisionResultMsg | undefined;
+        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg
+            | BoardAiVisionResultMsg | BoardCapabilityIntentResultMsg | BoardCapabilityListRequestMsg
+            | BoardCapabilityInvokeRequestMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
@@ -387,6 +454,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
             case "board:aiResult":
                 this.handleAiVisionResult(data as BoardAiVisionResultMsg, frame);
+                break;
+            case "capabilities:intent:result":
+                this.handleCapabilityResult(data as BoardCapabilityIntentResultMsg, frame);
+                break;
+            case "board:capabilities:list":
+                void this.resolveCapabilityList(data as BoardCapabilityListRequestMsg, frame, host);
+                break;
+            case "board:capabilities:invoke":
+                void this.resolveCapabilityInvoke(data as BoardCapabilityInvokeRequestMsg, model, frame, host);
                 break;
             case "board:filePath":
                 if (typeof legacy.reqId === "number") void this.resolveFilePath(legacy.reqId, model, host, frame);
@@ -517,6 +593,195 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.pendingAiVision.clear();
     }
 
+    private readonly dispatchCapabilityIntent = (request: IntentRequest): Promise<unknown> => {
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        if (!this.live || !host || !frame || !contentWindow || !this.isMain
+            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame
+            || !boardTrust.isTrusted(this.props.boardRoot)) {
+            return Promise.reject(new BoardCapabilityTransportError(
+                "handler-closed",
+                "The board frame is unavailable or untrusted.",
+            ));
+        }
+        if (this.pendingCapability.has(request.requestId)) {
+            return Promise.reject(new BoardCapabilityTransportError(
+                "rejected",
+                `Capability request ${request.requestId} was dispatched twice.`,
+            ));
+        }
+        const generation = this.generation;
+        const initial = this.initialIntentIds.delete(request.requestId);
+        return new Promise<unknown>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                this.settleCapability(request.requestId, new BoardCapabilityTransportError(
+                    "timeout",
+                    "The capability request deadline elapsed.",
+                ), true);
+            }, Math.max(0, request.deadlineAt - Date.now()));
+            this.pendingCapability.set(request.requestId, {
+                resolve,
+                reject,
+                timer,
+                generation,
+                iframe: frame,
+                contentWindow,
+            });
+            if (initial) return;
+            const message: BoardCapabilityIntentRequestMsg = {
+                __persephone: "capabilities:intent",
+                requestId: request.requestId,
+                id: request.id,
+                ...(request.version === undefined ? {} : { version: request.version }),
+                payload: request.payload,
+            };
+            try {
+                contentWindow.postMessage(message, `board://${host}`);
+            } catch (error: unknown) {
+                this.settleCapability(request.requestId, new BoardCapabilityTransportError(
+                    "crashed",
+                    errMessage(error, "The board frame is unavailable."),
+                ), false);
+            }
+        });
+    };
+
+    private readonly cancelCapabilityIntent = (requestId: string): void => {
+        const pending = this.pendingCapability.get(requestId);
+        try {
+            if (pending) {
+                pending.contentWindow.postMessage(
+                    { __persephone: "capabilities:intent:cancel", requestId } as BoardCapabilityIntentCancelMsg,
+                    this.host ? `board://${this.host}` : "*",
+                );
+            }
+        } catch {
+            // Cancellation is deliberately best-effort during teardown.
+        }
+        if (pending) {
+            this.settleCapability(requestId, new BoardCapabilityTransportError(
+                "cancelled",
+                "The capability request was cancelled.",
+            ), false);
+        }
+    };
+
+    private handleCapabilityResult(message: BoardCapabilityIntentResultMsg, frame: HTMLIFrameElement): void {
+        const pending = this.pendingCapability.get(message.requestId);
+        if (!pending || pending.generation !== this.generation || pending.iframe !== frame
+            || pending.contentWindow !== frame.contentWindow) return;
+        if (message.error) {
+            this.settleCapability(message.requestId, new BoardCapabilityTransportError(
+                isCapabilityErrorCode(message.error.code) ? message.error.code : "rejected",
+                message.error.message,
+            ), false);
+        } else {
+            this.settleCapability(message.requestId, undefined, false, message.result);
+        }
+    }
+
+    private settleCapability(
+        requestId: string,
+        error: BoardCapabilityTransportError | undefined,
+        sendCancel: boolean,
+        result?: unknown,
+    ): void {
+        const pending = this.pendingCapability.get(requestId);
+        if (!pending) return;
+        this.pendingCapability.delete(requestId);
+        clearTimeout(pending.timer);
+        if (sendCancel) {
+            try {
+                pending.contentWindow.postMessage(
+                    { __persephone: "capabilities:intent:cancel", requestId } as BoardCapabilityIntentCancelMsg,
+                    this.host ? `board://${this.host}` : "*",
+                );
+            } catch {
+                // Teardown may have already removed the content window.
+            }
+        }
+        if (error) pending.reject(error);
+        else pending.resolve(result);
+    }
+
+    private rejectPendingCapability(
+        code: CapabilityErrorCode,
+        message: string,
+        sendCancel: boolean,
+    ): void {
+        for (const requestId of [...this.pendingCapability.keys()]) {
+            this.settleCapability(requestId, new BoardCapabilityTransportError(code, message), sendCancel);
+        }
+    }
+
+    private unregisterCapabilityFrame(): void {
+        if (!this.capabilityFrame) return;
+        unregisterBoardCapabilityFrame(this.capabilityFrame.pageId, this.capabilityFrame);
+        this.capabilityFrame = undefined;
+    }
+
+    private readonly handleFrameError = (): void => {
+        this.rejectPendingCapability("crashed", "The board frame failed to load.", false);
+        this.unregisterCapabilityFrame();
+    };
+
+    private async resolveCapabilityList(
+        message: BoardCapabilityListRequestMsg,
+        frame: HTMLIFrameElement,
+        host: string,
+    ): Promise<void> {
+        let reply: BoardCapabilityListResultMsg;
+        try {
+            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+                throw new BoardCapabilityTransportError(
+                    "untrusted",
+                    "The board is no longer trusted.",
+                );
+            }
+            reply = { __persephone: "capabilities:list:result", reqId: message.reqId, result: app.capabilities.list() };
+        } catch (error: unknown) {
+            reply = {
+                __persephone: "capabilities:list:result",
+                reqId: message.reqId,
+                error: capabilityError(error),
+            };
+        }
+        if (!this.live || frame !== this.iframe || !frame.contentWindow) return;
+        try { frame.contentWindow.postMessage(reply, `board://${host}`); } catch { /* frame teardown */ }
+    }
+
+    private async resolveCapabilityInvoke(
+        message: BoardCapabilityInvokeRequestMsg,
+        model: BoardEditorModel,
+        frame: HTMLIFrameElement,
+        host: string,
+    ): Promise<void> {
+        let reply: BoardCapabilityInvokeResultMsg;
+        try {
+            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+                throw new BoardCapabilityTransportError(
+                    "untrusted",
+                    "The board is no longer trusted.",
+                );
+            }
+            const result = await app.capabilities.invoke(message.id, message.payload, {
+                ...(message.version === undefined ? {} : { version: message.version }),
+                pageId: model.page?.id,
+                deadlineMs: message.deadlineMs,
+            });
+            reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+        } catch (error: unknown) {
+            reply = {
+                __persephone: "capabilities:invoke:result",
+                reqId: message.reqId,
+                error: capabilityError(error),
+            };
+        }
+        if (!this.live || frame !== this.iframe || !frame.contentWindow) return;
+        try { frame.contentWindow.postMessage(reply, `board://${host}`); } catch { /* frame teardown */ }
+    }
+
     private async resolveFilePath(
         reqId: number,
         model: BoardEditorModel,
@@ -642,4 +907,17 @@ function warnUnknownAiVisionViews(
 
 interface IAiElementWithView {
     readonly view?: unknown;
+}
+
+function isCapabilityErrorCode(value: string): value is CapabilityErrorCode {
+    return value === "no-handler" || value === "untrusted" || value === "handler-closed"
+        || value === "crashed" || value === "cancelled" || value === "timeout"
+        || value === "cycle" || value === "payload-too-large" || value === "busy"
+        || value === "rejected";
+}
+
+function capabilityError(error: unknown): { code: string; message: string } {
+    const value = error as { code?: unknown } | null;
+    const code = typeof value?.code === "string" ? value.code : "rejected";
+    return { code, message: errMessage(error, "The capability request failed.") };
 }

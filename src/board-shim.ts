@@ -33,6 +33,12 @@ import type {
     BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
+    BoardCapabilityIntentCancelMsg,
+    BoardCapabilityIntentResultMsg,
+    BoardCapabilityInvokeRequestMsg,
+    BoardCapabilityInvokeResultMsg,
+    BoardCapabilityListRequestMsg,
+    BoardCapabilityListResultMsg,
     BoardBootContext,
     BoardJsonValue,
     BoardFireMethod,
@@ -45,6 +51,7 @@ import type {
     BoardToMain,
     MainToBoard,
 } from "./ipc/board-bridge-channels";
+import type { CapabilityErrorCode } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
 import type {
@@ -396,6 +403,122 @@ const pendingOpenContent = new Map<
 >();
 let openContentReqId = 0;
 
+interface BoardIntentInit {
+    id: string;
+    version?: number;
+    requestId: string;
+    payload: unknown;
+}
+
+interface BoardIntentContext extends BoardIntentInit {
+    cancelled: boolean;
+    settled: boolean;
+    resolve(value: unknown): void;
+    reject(reason?: unknown): void;
+}
+
+class BoardCapabilityError extends Error {
+    readonly code: CapabilityErrorCode;
+
+    constructor(code: CapabilityErrorCode, message: string) {
+        super(message);
+        this.name = "BoardCapabilityError";
+        this.code = code;
+    }
+}
+
+let activeIntent: BoardIntentContext | undefined;
+let intentDelivered = false;
+const intentHandlers: Array<(request: BoardIntentContext) => void> = [];
+
+function settleIntent(error?: { code: CapabilityErrorCode; message: string }, result?: unknown): void {
+    const intent = activeIntent;
+    if (!intent || intent.cancelled || intent.settled) return;
+    intent.settled = true;
+    try {
+        window.parent.postMessage({
+            __persephone: "capabilities:intent:result",
+            requestId: intent.requestId,
+            ...(error ? { error } : { result }),
+        } as BoardCapabilityIntentResultMsg, hostPostTarget);
+    } catch {
+        // The parent may disappear while a handler is settling.
+    }
+}
+
+function deliverIntent(): void {
+    if (!activeIntent || intentDelivered || intentHandlers.length === 0) return;
+    intentDelivered = true;
+    for (const handler of intentHandlers) {
+        try {
+            handler(activeIntent);
+        } catch (error: unknown) {
+            console.error("persephone.intent.onRequest callback error:", errMessage(error));
+        }
+    }
+}
+
+const pendingCapabilityCalls = new Map<number, {
+    resolve: (value: unknown) => void;
+    reject: (error: BoardCapabilityError) => void;
+}>();
+let capabilityReqId = 0;
+
+function capabilityErrorFromReply(error: { code?: unknown; message?: unknown } | string | undefined): BoardCapabilityError {
+    const code = typeof error === "object" && error && isCapabilityErrorCode(error.code)
+        ? error.code
+        : "rejected";
+    const message = typeof error === "string"
+        ? error
+        : typeof error?.message === "string" ? error.message : "The capability request failed.";
+    return new BoardCapabilityError(code, message);
+}
+
+function isCapabilityErrorCode(value: unknown): value is CapabilityErrorCode {
+    return value === "no-handler" || value === "untrusted" || value === "handler-closed"
+        || value === "crashed" || value === "cancelled" || value === "timeout"
+        || value === "cycle" || value === "payload-too-large" || value === "busy"
+        || value === "rejected";
+}
+
+function capabilityListRpc(): Promise<unknown> {
+    return new Promise<unknown>((resolve, reject) => {
+        const reqId = ++capabilityReqId;
+        pendingCapabilityCalls.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage({ __persephone: "board:capabilities:list", reqId } as BoardCapabilityListRequestMsg, hostPostTarget);
+        } catch (error: unknown) {
+            pendingCapabilityCalls.delete(reqId);
+            reject(new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
+        }
+    });
+}
+
+function capabilityInvokeRpc(
+    id: string,
+    payload: unknown,
+    options?: { version?: number; deadlineMs?: number },
+): Promise<unknown> {
+    return new Promise<unknown>((resolve, reject) => {
+        const reqId = ++capabilityReqId;
+        pendingCapabilityCalls.set(reqId, { resolve, reject });
+        const request: BoardCapabilityInvokeRequestMsg = {
+            __persephone: "board:capabilities:invoke",
+            reqId,
+            id,
+            ...(options?.version === undefined ? {} : { version: options.version }),
+            payload,
+            ...(options?.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
+        };
+        try {
+            window.parent.postMessage(request, hostPostTarget);
+        } catch (error: unknown) {
+            pendingCapabilityCalls.delete(reqId);
+            reject(new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
+        }
+    });
+}
+
 /**
  * Ask the host page to create a new in-memory page in another editor and hand back its page id.
  *
@@ -606,6 +729,12 @@ function attachPort(p: MessagePort): void {
             pending.reject(bridgeReplaced);
         }
         pendingCalls.clear();
+        const capabilityBridgeReplaced = new BoardCapabilityError(
+            "handler-closed",
+            "Persephone bridge was replaced.",
+        );
+        for (const pending of pendingCapabilityCalls.values()) pending.reject(capabilityBridgeReplaced);
+        pendingCapabilityCalls.clear();
     }
     port = p;
     p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data as MainToBoard);
@@ -638,7 +767,7 @@ onHostMessage((event) => {
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
-            pageId?: string; pipeUrlEnabled?: boolean;
+            pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
         }
         | undefined;
     if (!data || data.__persephoneInit !== true) return;
@@ -658,8 +787,65 @@ onHostMessage((event) => {
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
     pipeUrlEnabled = data.pipeUrlEnabled === true;
+    if (!activeIntent && data.intent && typeof data.intent.id === "string"
+        && typeof data.intent.requestId === "string") {
+        const context: BoardIntentContext = {
+            id: data.intent.id,
+            ...(typeof data.intent.version === "number" ? { version: data.intent.version } : {}),
+            requestId: data.intent.requestId,
+            payload: data.intent.payload,
+            cancelled: false,
+            settled: false,
+            resolve: (value: unknown) => {
+                if (!context.cancelled) settleIntent(undefined, value);
+            },
+            reject: (reason?: unknown) => {
+                if (!context.cancelled) {
+                    settleIntent({ code: "rejected", message: errMessage(reason, "The board rejected the request.") });
+                }
+            },
+        };
+        activeIntent = context;
+        deliverIntent();
+    }
     const p = event.ports && event.ports[0];
     if (p) attachPort(p);
+});
+
+// Capability cancel/list/invoke results — renderer → board over window.postMessage.
+// Same source and origin gate as the handshake.
+onHostMessage((event) => {
+    const data = event.data as BoardCapabilityIntentCancelMsg | undefined;
+    if (!data || data.__persephone !== "capabilities:intent:cancel"
+        || typeof data.requestId !== "string") return;
+    if (activeIntent?.requestId === data.requestId) activeIntent.cancelled = true;
+});
+
+// Capability list result from the renderer.
+onHostMessage((event) => {
+    const data = event.data as BoardCapabilityListResultMsg | undefined;
+    if (!data || data.__persephone !== "capabilities:list:result" || typeof data.reqId !== "number") return;
+    const pending = pendingCapabilityCalls.get(data.reqId);
+    if (!pending) return;
+    pendingCapabilityCalls.delete(data.reqId);
+    if (data.error) pending.reject(capabilityErrorFromReply(data.error));
+    else pending.resolve(data.result);
+});
+
+// Capability invoke result from the renderer.
+onHostMessage((event) => {
+    const data = event.data as BoardCapabilityInvokeResultMsg | undefined;
+    if (!data || data.__persephone !== "capabilities:invoke:result" || typeof data.reqId !== "number") return;
+    const pending = pendingCapabilityCalls.get(data.reqId);
+    if (!pending) return;
+    pendingCapabilityCalls.delete(data.reqId);
+    if (data.error) {
+        pending.reject(capabilityErrorFromReply(data.error));
+    } else if (typeof data.pageId === "string") {
+        pending.resolve({ pageId: data.pageId, result: data.result });
+    } else {
+        pending.reject(new BoardCapabilityError("rejected", "Malformed capability invoke response."));
+    }
 });
 
 // Host content push (EPIC-043) — renderer → board over window.postMessage. Same trust gate as the
@@ -886,7 +1072,9 @@ function createHandle(
     // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390);
     // 1.4.0 adds the host-frame AiVision notify bridge (US-1399); 1.5.0 adds `openContent()`,
     // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404);
-    // 1.6.0 adds the bridge contract declarations for service and storage (EPIC-106).
+    // 1.6.0 adds the bridge contract declarations for service and storage (EPIC-106);
+    // 1.7.0 adds board capability declarations and the renderer-local capability bus (EPIC-108);
+    // 1.8.0 adds intent delivery and board-to-board capability invocation (US-1481).
     version: BOARD_BRIDGE_VERSION,
 
     aiVision: {
@@ -965,6 +1153,44 @@ function createHandle(
             title: options.title,
             content: options.content,
         });
+    },
+
+    /** The one capability request currently delivered to this board, if any. */
+    intent: {
+        get(): BoardIntentContext | undefined {
+            return activeIntent;
+        },
+        onRequest(callback: (request: BoardIntentContext) => void): () => void {
+            intentHandlers.push(callback);
+            deliverIntent();
+            return () => {
+                const index = intentHandlers.indexOf(callback);
+                if (index >= 0) intentHandlers.splice(index, 1);
+            };
+        },
+        resolve(value: unknown): void {
+            activeIntent?.resolve(value);
+        },
+        reject(reason?: unknown): void {
+            activeIntent?.reject(reason);
+        },
+    },
+
+    /** Discover and invoke renderer-local capability handlers from this board frame. */
+    capabilities: {
+        list(): Promise<unknown> {
+            return capabilityListRpc();
+        },
+        invoke(
+            id: string,
+            payload: unknown,
+            options?: { version?: number; deadlineMs?: number },
+        ): Promise<unknown> {
+            if (typeof id !== "string" || !id) {
+                return Promise.reject(new BoardCapabilityError("rejected", "Capability id must not be empty."));
+            }
+            return capabilityInvokeRpc(id, payload, options);
+        },
     },
 
     notify(message: string, type?: "info" | "success" | "warning" | "error"): void {

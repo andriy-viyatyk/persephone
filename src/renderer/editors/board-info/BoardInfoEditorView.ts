@@ -413,12 +413,30 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             }
             metadata.append(this.infoRow("Content providers", providers));
         }
+        if ((info.capabilities?.length ?? 0) > 0) {
+            const capabilities = panel({ direction: "column", gap: "xs", align: "stretch" });
+            for (const declaration of info.capabilities ?? []) {
+                const id = declaration.id || "<empty id>";
+                const details = [
+                    `${id} (version ${declaration.version ?? 1}, priority ${declaration.priority ?? 50})`,
+                ];
+                if (declaration.title) details.push(`title: ${declaration.title}`);
+                if ((declaration.accepts?.length ?? 0) > 0) {
+                    details.push(`accepts: ${declaration.accepts?.join(", ")}`);
+                }
+                if ("payloadSchema" in declaration) details.push("schema: declared");
+                capabilities.append(text(details.join("; "), { size: "sm" }));
+            }
+            metadata.append(this.infoRow("Capabilities", capabilities));
+        }
         if ((info.registrationIssues?.length ?? 0) > 0) {
             const issues = panel({ direction: "column", gap: "xs", align: "stretch" });
             for (const issue of info.registrationIssues ?? []) {
                 const owner = issue.owner ? ` Owner: ${issue.owner}.` : "";
                 issues.append(text(
-                    `${issue.kind === "provider" ? "Provider" : "Scheme"} "${issue.name}": ${issue.reason}${owner}`,
+                    `${issue.kind === "provider"
+                        ? "Provider"
+                        : issue.kind === "scheme" ? "Scheme" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
                     { size: "sm", color: "warning" },
                 ));
             }

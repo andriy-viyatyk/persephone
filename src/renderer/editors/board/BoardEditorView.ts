@@ -9,6 +9,7 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { BoardEditorModel } from "./BoardEditorModel";
 import {
     normalizeBoardServicePath,
+    normalizeCapabilities,
     normalizePermissions,
     readBoardManifest,
 } from "./board-manifest";
@@ -270,6 +271,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
         if (await showTrustBoardDialog(boardRoot, {
             permissions: normalizePermissions(manifest?.permissions),
             serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
+            capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
         })) {
             const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
             if (await confirmNamespaceNotColliding(boardRoot)) await boardTrust.trust(boardRoot);

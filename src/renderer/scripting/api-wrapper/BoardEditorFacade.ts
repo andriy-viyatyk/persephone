@@ -38,6 +38,7 @@ import { boardTrust } from "../../api/board-trust";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import type {
     BoardContentProviderDeclaration,
+    BoardCapabilityDeclaration,
     BoardManifest,
     SecondaryViewDecl,
 } from "../../editors/board/board-manifest";
@@ -570,6 +571,21 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
                 schemes: Array.isArray(provider.schemes)
                     ? provider.schemes.filter(isString)
                     : [],
+            }));
+    }
+    if (Array.isArray(manifest.capabilities)) {
+        copy.capabilities = manifest.capabilities
+            .filter((capability): capability is BoardCapabilityDeclaration =>
+                !!capability && typeof capability.id === "string")
+            .map((capability) => ({
+                id: capability.id,
+                ...(capability.version !== undefined ? { version: capability.version } : {}),
+                ...(capability.priority !== undefined ? { priority: capability.priority } : {}),
+                ...(capability.accepts !== undefined ? { accepts: [...capability.accepts] } : {}),
+                ...(Object.prototype.hasOwnProperty.call(capability, "payloadSchema")
+                    ? { payloadSchema: capability.payloadSchema }
+                    : {}),
+                ...(capability.title !== undefined ? { title: capability.title } : {}),
             }));
     }
     if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);

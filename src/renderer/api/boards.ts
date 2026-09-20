@@ -22,6 +22,7 @@ import { api } from "../../ipc/renderer/api";
 import { errMessage } from "../../shared/utils";
 import { type BoardServiceStatus } from "../../ipc/module-service-channels";
 import { moduleServiceStatus } from "./module-service-status";
+import { createLinkData } from "../../shared/link-data";
 
 export const BOARDS_ASSETS_BASE_URL =
     "https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/";
@@ -278,7 +279,7 @@ export const boards: IBoards = {
     },
     createBoard: (name, dir) => create(name, dir, "board-template"),
     createDemoBoard: (name, dir) => create(name, dir, "demo-board"),
-    openBoard: async (boardRoot: string) => {
+    openBoard: async (boardRoot: string, options?: { intent?: { id: string; version?: number; requestId: string; payload: unknown } }) => {
         const { isBoardFolder } = await import("../editors/board/board-manifest");
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
@@ -286,7 +287,10 @@ export const boards: IBoards = {
         // Encode the persephone-board:// link in one tested place and open it via
         // the generic pipeline (US-748). The agent never builds the link by hand.
         const { encodePersephoneBoardLink } = await import("../content/persephone-board-link");
-        await app.openRawLink(encodePersephoneBoardLink(boardRoot));
+        await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(boardRoot), {
+            sourceId: "app-api",
+            intent: options?.intent,
+        }));
     },
 
     // ── Board lifecycle — trust / untrust / rename (EPIC-045 / US-868) ──────────

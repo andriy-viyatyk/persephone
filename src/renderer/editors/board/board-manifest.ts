@@ -45,6 +45,15 @@ export interface BoardContentProviderDeclaration {
     schemes?: string[];
 }
 
+export interface BoardCapabilityDeclaration {
+    id: string;
+    version?: number;
+    priority?: number;
+    accepts?: string[];
+    payloadSchema?: unknown;
+    title?: string;
+}
+
 export interface BoardManifest {
     /** Schema version of this manifest. */
     schemaVersion: number;
@@ -84,6 +93,8 @@ export interface BoardManifest {
     service?: string;
     /** Provider types and URL schemes contributed by a trusted board. */
     contentProviders?: BoardContentProviderDeclaration[];
+    /** Capability handlers contributed by a trusted board. */
+    capabilities?: BoardCapabilityDeclaration[];
 
     // ── Custom Editor axis (EPIC-042) — acted upon only when the board is TRUSTED ──
     /**
@@ -268,6 +279,41 @@ export function normalizeContentProviders(raw: unknown): BoardContentProviderDec
             }
         }
         out.push({ type, schemes });
+    }
+    return out;
+}
+
+/** Normalize capability declaration shape while leaving registry validation to the consumer. */
+export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[] {
+    if (!Array.isArray(raw)) return [];
+    const out: BoardCapabilityDeclaration[] = [];
+    for (const entry of raw) {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+        const candidate = entry as {
+            id?: unknown;
+            version?: unknown;
+            priority?: unknown;
+            accepts?: unknown;
+            payloadSchema?: unknown;
+            title?: unknown;
+        };
+        const accepts: string[] = [];
+        if (Array.isArray(candidate.accepts)) {
+            for (const acceptEntry of candidate.accepts) {
+                if (typeof acceptEntry !== "string") continue;
+                const value = acceptEntry.trim();
+                if (value && !accepts.includes(value)) accepts.push(value);
+            }
+        }
+        const declaration: BoardCapabilityDeclaration = {
+            id: typeof candidate.id === "string" ? candidate.id.trim() : "",
+            ...(typeof candidate.version === "number" ? { version: candidate.version } : {}),
+            ...(typeof candidate.priority === "number" ? { priority: candidate.priority } : {}),
+            ...(accepts.length > 0 ? { accepts } : {}),
+            ...("payloadSchema" in candidate ? { payloadSchema: candidate.payloadSchema } : {}),
+            ...(typeof candidate.title === "string" ? { title: candidate.title.trim() } : {}),
+        };
+        out.push(declaration);
     }
     return out;
 }

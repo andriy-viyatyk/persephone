@@ -16,6 +16,14 @@ export type ILinkDiffRevision =
     | { kind: "head" }
     | { kind: "commit"; hash: string; shortHash: string };
 
+/** One-shot capability request metadata carried only through an in-memory open. */
+export interface IBoardIntent {
+    id: string;
+    version?: number;
+    requestId: string;
+    payload: unknown;
+}
+
 /**
  * Persistable link identity, link-item metadata, and HTTP request information.
  * This shape is independent of a single open attempt, so it can be stored on a
@@ -93,6 +101,8 @@ export interface ILinkPipeline {
     fallbackTarget?: string;
     /** Decoded claimed folder for one folder-board open; never persisted. */
     folderPath?: string;
+    /** One-shot capability request for a newly opened board; never persisted. */
+    intent?: IBoardIntent;
 }
 
 /**

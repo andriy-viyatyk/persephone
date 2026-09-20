@@ -289,9 +289,55 @@ interface PersephoneHostApi {
     streamUrl(): Promise<string>;
 }
 
+type PersephoneCapabilityErrorCode =
+    | "no-handler" | "untrusted" | "handler-closed" | "crashed" | "cancelled"
+    | "timeout" | "cycle" | "payload-too-large" | "busy" | "rejected";
+
+interface PersephoneIntentRequest {
+    readonly id: string;
+    readonly version?: number;
+    readonly requestId: string;
+    readonly payload: unknown;
+    readonly cancelled: boolean;
+    resolve(value: unknown): void;
+    reject(reason?: unknown): void;
+}
+
+interface PersephoneIntentApi {
+    get(): PersephoneIntentRequest | undefined;
+    onRequest(callback: (request: PersephoneIntentRequest) => void): () => void;
+    resolve(value: unknown): void;
+    reject(reason?: unknown): void;
+}
+
+interface PersephoneCapabilityInfo {
+    readonly id: string;
+    readonly version: number;
+    readonly priority: number;
+    readonly origin: "platform" | "board" | "script";
+    readonly boardRoot?: string;
+    readonly accepts?: readonly string[];
+    readonly payloadSchema?: unknown;
+    readonly title?: string;
+}
+
+interface PersephoneCapabilityResult {
+    readonly pageId: string;
+    readonly result?: unknown;
+}
+
+interface PersephoneCapabilitiesApi {
+    list(): Promise<readonly PersephoneCapabilityInfo[]>;
+    invoke(
+        id: string,
+        payload: unknown,
+        options?: { version?: number; deadlineMs?: number },
+    ): Promise<PersephoneCapabilityResult>;
+}
+
 interface PersephoneBoardApi {
-    /** Bridge version, e.g. "1.7.0" — the release that added board provider registration and
-     *  `host.streamUrl()` to the existing bridge contract. Compare
+    /** Bridge version, e.g. "1.8.0" — the release that added board intent delivery and
+     *  board-to-board capability invocation to the existing bridge contract. Compare
      *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
@@ -377,6 +423,8 @@ interface PersephoneBoardApi {
     readonly service: PersephoneServiceApi;
     /** Service-only provider registration guard. */
     readonly providers: PersephoneProviderApi;
+    readonly intent: PersephoneIntentApi;
+    readonly capabilities: PersephoneCapabilitiesApi;
     readonly host: PersephoneHostApi;
 }
 

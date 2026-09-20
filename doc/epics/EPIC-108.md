@@ -300,6 +300,14 @@ Instead of leaving the gap silent, the inline path is **capped and typed**:
 uses for `MAX_BUFFERED_PIPE_BYTES`) with a `payload-too-large` rejection naming the limit. A
 future handle store then *raises* a documented ceiling rather than fixing a silent truncation.
 
+**The cap applies to board-bound invocations only, and that is deliberate.** Confirmed live: a
+9 MiB payload to the built-in `text.open` resolves normally. A `platform` handler is an in-process
+function call with no structured-clone boundary and no second process, so the reason for the cap
+does not exist there — and imposing one would be a regression, because `PagesLifecycleModel` and
+the clipboard-image path already invoke `image.edit` with full-size data URLs and Monaco already
+opens files far larger than 8 MiB. The cap guards the hop the handle store would later replace,
+which is precisely the board hop.
+
 **Deferral trigger, so it is not forgotten:** Phase F is the first real consumer — Excalidraw's
 `image.edit` carries a data URL whose size is bounded by the user's canvas, and the snip-tool
 integration hands it a screenshot. If Phase F measures a single `image.edit` payload above the cap

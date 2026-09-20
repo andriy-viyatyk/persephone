@@ -12,8 +12,17 @@ export interface IBoardInfoContentProviderDeclaration {
     readonly schemes?: readonly string[];
 }
 
+export interface IBoardInfoCapabilityDeclaration {
+    readonly id: string;
+    readonly version?: number;
+    readonly priority?: number;
+    readonly accepts?: readonly string[];
+    readonly payloadSchema?: unknown;
+    readonly title?: string;
+}
+
 export interface IBoardInfoRegistrationIssue {
-    readonly kind: "provider" | "scheme";
+    readonly kind: "provider" | "scheme" | "capability";
     readonly name: string;
     readonly reason: string;
     readonly owner?: string;
@@ -64,6 +73,7 @@ export interface IBoardInfoProperties {
     readonly editorName?: string;
     readonly editorKind?: "simple" | "content-host" | "stream-host";
     readonly contentProviders?: readonly IBoardInfoContentProviderDeclaration[];
+    readonly capabilities?: readonly IBoardInfoCapabilityDeclaration[];
     readonly registrationIssues?: readonly IBoardInfoRegistrationIssue[];
     readonly root: string;
     readonly trusted: boolean;
