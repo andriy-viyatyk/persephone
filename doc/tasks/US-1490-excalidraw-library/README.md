@@ -238,10 +238,21 @@ as an exit criterion. [`EPIC-111.md:20-34`](../../epics/EPIC-111.md#L20-L34)
   await excalidrawAPI.updateLibrary({
       libraryItems: libraryBlob,
       merge: true,
-      prompt: true,
+      prompt: false,   // see below — NOT `true`
       openLibraryMenu: true,
   });
   ```
+
+  **`prompt` must be `false`, and the board asks the question itself.** Excalidraw implements
+  `prompt: true` as a raw `window.confirm()` (`alerts.confirmAddLibrary`) — an unthemed Chromium
+  dialog, invisible to an agent and out of place inside Persephone. The built-in editor was changed
+  to ask with `ui.confirm()` instead and install unprompted, and the board must not regress to the
+  native prompt. Boards have no confirm of their own — `src/board-shim.ts` exposes only the file
+  dialogs — so raise it through `persephone.call("ui.confirm", ...)`, which a bundled board is
+  entitled to use. Count the items for the message the way `countLibraryItems()` in
+  `DrawBodyView.ts` does: **both** formats occur in the wild, v2 under `libraryItems` and v1 under
+  `library`, and several libraries published on libraries.excalidraw.com are still v1 (Software
+  Architecture is one). Fall back to a countless wording rather than refusing to install.
 
 - Await the update so `onLibraryChange` completes persistence before reporting success. Keep the
   existing library items, mark the remote items as published through Excalidraw's normal import

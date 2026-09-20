@@ -26,6 +26,29 @@ import type { DrawEditor, DrawEditorState } from "./DrawEditor";
 import { createExcalidrawIslandElement } from "./ExcalidrawIsland";
 import { createLibraryAdapter, initDefaultLibraryPath } from "./drawLibrary";
 
+/**
+ * How many items a downloaded `.excalidrawlib` holds, for the confirmation message.
+ *
+ * Returns `undefined` rather than throwing when the payload is not the shape we expect: the count
+ * is only there to make the prompt specific, and failing to read it is no reason to refuse an
+ * install that `updateLibrary()` may well accept. A malformed library still fails there, loudly.
+ */
+async function countLibraryItems(blob: Blob): Promise<number | undefined> {
+    try {
+        const parsed = JSON.parse(await blob.text()) as {
+            libraryItems?: unknown;
+            library?: unknown;
+        };
+        // Both shipped formats count: v2 holds `libraryItems`, v1 holds `library` as an array of
+        // element arrays. Excalidraw reads either, and plenty of v1 files are still published —
+        // the Software Architecture library on libraries.excalidraw.com is one.
+        const items = parsed?.libraryItems ?? parsed?.library;
+        return Array.isArray(items) ? items.length : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 type DrawTheme = typeof THEME[keyof typeof THEME];
 
 interface DrawBodyProjection {
@@ -280,11 +303,23 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
         const decoded = decodeURIComponent(libraryUrl);
         fetch(decoded)
             .then((response) => response.blob())
-            .then((blob) => {
+            .then(async (blob) => {
+                // `prompt: true` would hand the confirmation to Excalidraw, which implements it
+                // as a raw `window.confirm()` — an unthemed Chromium dialog in the middle of a
+                // themed app. We ask with Persephone's own dialog instead and then install
+                // unprompted. Reading the blob for a count does not consume it.
+                const count = await countLibraryItems(blob);
+                const answer = await ui.confirm(
+                    count === undefined
+                        ? "Add the downloaded library to your drawing library?"
+                        : `This will add ${count} item${count === 1 ? "" : "s"} to your library.`,
+                    { title: "Add library", buttons: ["Add", "Cancel"] },
+                );
+                if (answer !== "Add") return;
                 api.updateLibrary({
                     libraryItems: blob as unknown as LibraryItemsSource,
                     merge: true,
-                    prompt: true,
+                    prompt: false,
                     openLibraryMenu: true,
                 });
             })
