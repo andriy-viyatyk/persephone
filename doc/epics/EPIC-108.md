@@ -532,3 +532,81 @@ Each is an observation, per D10.
   window, resolving a conflict inside §3.1), and D7 (the handle store deferred). D8 is the one
   that deliberately changes *nothing*: it holds EPIC-107 D3's line so that EPIC-106's unreviewed
   D1 reversal is not compounded for a third epic running.
+
+### 2026-09-20 — live verification, and three defects a green build did not catch
+
+Every claim below was observed through `mcp__persephone__call` against the running app, using
+throwaway boards scaffolded at verification time (auto-trusted by provenance per D10), then
+untrusted and deleted. `.persephone/boards/Demo` and `assets/demo-board` were re-checksummed
+afterwards and are byte-identical to their pre-run baselines.
+
+**Three defects were found, all of which passed `npm run typecheck`, `npm run lint` and
+`npm run build-prod`.** That is the fourth consecutive epic in which the build proved nothing about
+behaviour, and two of the three would have made the feature useless in ordinary use.
+
+1. **`CapabilityInfo` omitted `handlerKey`.** `list()` and `handlers("content.view")` returned six
+   *identical* rows — same id, version, priority and origin — with nothing to tell `md-view` from
+   `grid-json`. The indexed record carried `handlerKey` all along; only the public projection
+   dropped it. Discovery, which is the stated purpose of `list()` (roadmap §3.1), was therefore
+   non-functional for the platform's most-registered id. Fixed before the first commit.
+
+2. **An intent dispatched to an already-open handler page was never delivered.** The renderer
+   posted `capabilities:intent` and the message type was declared, but `board-shim.ts` had no
+   handler for it — only for `:cancel`. The *first* request a board receives arrives by an entirely
+   different route (the `intent` field on `BoardPortInitMsg`, delivered when the page is opened
+   *for* it), which is why the happy path looked fine. Every later invoke against that open page
+   was silently undelivered and reported `timeout` at its deadline. **The bus worked exactly once
+   per board page.** Fixed in `e48d1236`, which also made the intent state per-request: a
+   module-level `intentDelivered` boolean became a set of delivered request ids, and `settleIntent`
+   now takes the context to settle rather than closing over `activeIntent`, so a late settle cannot
+   resolve a newer request.
+
+3. **Every board-originated `capabilities.invoke` failed as "Malformed capability invoke
+   response".** `BoardCapabilityInvokeResultMsg` declares `pageId` at the top level and the shim
+   read it there; the renderer put the whole `{ pageId, result }` envelope into `result` and never
+   set `pageId`. So board-to-board calls — the entire point of the bus — did not work at all.
+   Fixed in `c25990b7` on the renderer side, which is the side that disagreed with the declared
+   contract. The shim's "malformed" branch was also relaxed: a capability need not open a page
+   (`diagram.edit` resolves `{ status: "conversion-failed" }` with none), so a reply without a
+   `pageId` now resolves with an absent one.
+
+Defects 2 and 3 are the same shape and worth naming as a pattern: **a contract split across two
+parallel tasks, where one side posts and the other never receives.** Typecheck cannot catch it
+because neither side is wrong in isolation — the message is declared, the sender sends, and nobody
+is required to listen. The only thing that finds it is invoking the feature twice.
+
+**What was observed working:**
+
+- Criterion 1 — `demo.greet`, an id existing nowhere but a board manifest, discoverable through
+  `capabilities.handlers()` with **no board page open**.
+- Criterion 2 — the round trip: the platform opened the handler, delivered the payload
+  *structurally* (the handler saw an object, not JSON text), and returned a result whose
+  `Uint8Array` arrived with its bytes intact.
+- Criterion 3 — the board-to-board hop: a board frame invoked by id, the platform resolved it to a
+  *different* board, opened it, and returned the result across both frame boundaries.
+- Criterion 4 — two windows: an invoke from window 1 opened the handler **in window 1** although
+  that board already had a page in window 0, confirming D3's caller's-window rule; discovery agreed
+  across windows with no broadcast, which is D1's claim.
+- Criterion 5 (part) — `no-handler` (unknown id, and a pinned `demo.greet@2` against a `@1`
+  handler), `timeout` (2505 ms against a 2500 ms deadline), `rejected` carrying the handler's own
+  message, and `cycle` on a handler re-entering itself.
+- Criterion 6 — **untrust settles rather than merely stopping.** With a request in flight on a
+  30-second deadline, untrusting the handler board settled it as `untrusted` **0 ms later**, and its
+  registration was gone from `handlers()` in the same tick. This is the case that shipped broken in
+  three consecutive epics, and D9 is why it did not here.
+- Criterion 7 — priority: the built-in `image.edit` at 50 ordered ahead of a board's at 10, with
+  the loser still listed.
+- Criterion 8 — per-declaration refusal: an empty id, an id containing `@`, and a non-integer
+  version were each refused while the same board's valid declarations registered.
+- Criterion 9 — the payload never touched disk: nothing new under `<userData>/cache/`, and no
+  `intent`, `requestId` or payload text anywhere in persisted page state.
+- Criterion 10 — three pinned pages untouched, zero alerts, every throwaway board untrusted and
+  deleted, both demo-board copies byte-identical.
+
+**Not verified, and honestly so:** `handler-closed`, `cancelled` and `busy` were not each driven to
+an observation; `payload-too-large` needs a board handler and an oversized payload and was only
+confirmed *not* to apply to platform handlers (see D7, which was clarified because of it); the
+Board Info capability rows could not be reached, because switching a board page to `board-info`
+lands in install mode with no properties — the same limitation EPIC-107 recorded as its *Needs user
+verification* item 6; and the trust dialog's capability rows need **Trust Board** clicked, which is
+the user's decision and not an agent's.

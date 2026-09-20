@@ -426,6 +426,48 @@ was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 >    **registered** type whose `ProxyProvider` was unavailable at read time, and it has no recovery
 >    trigger today. Needs a decision: re-read pages whose `ProxyProvider` failed when the provider
 >    becomes available, or give the page an explicit retry. Not fixed in EPIC-107.
+>
+> Added by **EPIC-108 (Phase D)**, 2026-09-20.
+>
+> 8. **EPIC-106's D1 reversal is *still* unreviewed, and EPIC-108 D8 again declined to extend it.**
+>    This is now the third epic in a row to route around the same undecided question, and the third
+>    to leave a deliberate one-conditional seam rather than compound it. `capabilities` is disclosed
+>    in `permissions` and shown in the trust dialog, but the functional trigger is the
+>    `capabilities` manifest array, exactly as EPIC-107 D3 did for `contentProviders`. **The
+>    infrastructure half of the roadmap is now complete with this question still open**, so it is
+>    worth deciding before Phase F, which is the first phase whose board (Excalidraw) ships inside
+>    the installer and therefore interacts with the bundled-board trust decision of §6.
+>
+> 9. **The trust dialog's capability rows, on screen.** As with EPIC-106's item 2: the dialog now
+>    carries declared capabilities, confirmed present through its AiVision facade, but clicking
+>    **Trust Board** is your decision and was never done. Registering any board that declares
+>    `capabilities` will show the rows.
+>
+> 10. **Board Info's capability section and capability refusal rows were not observed on screen.**
+>    This extends EPIC-107's item 6 with a sharper finding: switching an *open board page* to
+>    `board-info` (`editors/base/editor-switch.ts`) lands the editor in **install** mode with
+>    `properties` undefined, so the properties view — where the Capabilities section and the
+>    `kind: "capability"` refusal rows live — is not reachable that way either. The refusal
+>    *behaviour* was confirmed live (an empty id, an id containing `@`, and a non-integer version
+>    were each refused while the same board's valid declarations registered); only their Board Info
+>    presentation is unconfirmed. Worth a look, because it now blocks observing two epics' worth of
+>    diagnostics.
+>
+> 11. **Three typed rejection codes have no recorded observation: `handler-closed`, `cancelled` and
+>    `busy`.** Each is implemented and reachable by construction, and the epic's other six codes were
+>    each driven to a live observation, but these three were not. `payload-too-large` was
+>    deliberately confirmed *not* to apply to platform handlers — capping an in-process call would
+>    break opening a large file in Monaco or a full-size `image.edit` data URL — and that
+>    clarification is recorded in EPIC-108 D7. A board-handler payload above the cap was not tested.
+>
+> 12. **The pattern behind two of EPIC-108's three live defects is worth a standing habit.** Both
+>    were a message contract split across two parallel tasks where one side posted and the other
+>    never received: the renderer posted `capabilities:intent` to a reused board frame and the shim
+>    had no handler for it, and the renderer nested the invoke reply envelope while the shim read
+>    the top-level field the contract declares. Neither side is wrong in isolation, so typecheck,
+>    lint and `build-prod` all passed, and the happy path worked because the *first* request reaches
+>    a board by a different route entirely. Invoking any such feature **twice** is what finds it.
+>    Four consecutive epics have now shipped defects that a green build did not catch.
 
 
 **Scope decision (2026-09-19):** this roadmap ends when the architecture can host an extracted
