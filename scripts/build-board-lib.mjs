@@ -165,8 +165,24 @@ async function scanVendorSpecifiers(copiedFiles) {
     const namedImportPattern = /import\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?\{([^}]*)\}\s*from\s*"([^"./][^"]*)"/g;
     const namedReExportPattern = /export\s*\{([^}]*)\}\s*from\s*"([^"./][^"]*)"/g;
 
+    // `import*as Popover from"@radix-ui/react-popover"` binds NO names, so the patterns
+    // above see nothing and the entry is emitted as a bare side-effect import - an empty
+    // module whose every member reads `undefined`. That is what shipped in US-1486: both
+    // Radix entries were 0 bytes, and the board died with React error #130 as soon as a
+    // tool opened a popover. A namespace consumer needs the whole surface.
+    const namespaceImportPattern = /import\s*\*\s*as\s+[A-Za-z_$][\w$]*\s*from\s*"([^"./][^"]*)"/g;
+
+    // A dynamic `import("spec")` binds no names either, and the graph consumes the result
+    // three different ways: as a whole namespace (`u.parseMermaidToExcalidraw`), as just
+    // the default (`.then(i => i.default)`), or not at all - canvas-roundrect-polyfill is
+    // awaited purely for its side effect and correctly has no exports. One shape for all
+    // three would be wrong in two of them, so the use is classified from the call site.
+    const dynamicImportPattern = /import\(\s*"([^"./][^"]*)"\s*\)/g;
+
     const specifiers = new Set(additionalSpecifiers);
     const defaultImported = new Set();
+    const namespaceImported = new Set();
+    const sideEffectOnly = new Set();
     const namedImports = new Map();
     const addNames = (specifier, clause) => {
         const names = namedImports.get(specifier) ?? new Set();
@@ -186,6 +202,24 @@ async function scanVendorSpecifiers(copiedFiles) {
         for (const match of source.matchAll(defaultImportPattern)) defaultImported.add(match[1]);
         for (const match of source.matchAll(namedImportPattern)) addNames(match[2], match[1]);
         for (const match of source.matchAll(namedReExportPattern)) addNames(match[2], match[1]);
+        for (const match of source.matchAll(namespaceImportPattern)) namespaceImported.add(match[1]);
+        for (const match of source.matchAll(dynamicImportPattern)) {
+            const specifier = match[1];
+            const tail = match.index + match[0].length;
+            const before = source.slice(Math.max(0, match.index - 24), match.index);
+            const after = source.slice(tail, tail + 48);
+            // `x=await import(...)`, `key:import(...)`, `import(...).then(...)` and
+            // `(await import(...)).member` all keep the module object; a bare statement
+            // discards it and wants nothing re-exported.
+            const resultUsed = /[=:]\s*(?:await\s+)?$/u.test(before) || /^\s*[.)]/u.test(after);
+            if (!resultUsed) {
+                sideEffectOnly.add(specifier);
+            } else if (/^[^;]{0,40}\.default/u.test(after)) {
+                defaultImported.add(specifier);
+            } else {
+                namespaceImported.add(specifier);
+            }
+        }
     }
 
     // The board's own bootstrap imports these, so they are required even though the
@@ -193,19 +227,29 @@ async function scanVendorSpecifiers(copiedFiles) {
     addNames("react", "createElement");
     addNames("react-dom/client", "createRoot");
 
-    return { specifiers: [...specifiers].sort(), defaultImported, namedImports };
+    return {
+        specifiers: [...specifiers].sort(),
+        defaultImported,
+        namespaceImported,
+        sideEffectOnly,
+        namedImports,
+    };
 }
 
 function isValidExportName(name) {
     return /^[$A-Z_a-z][$\w]*$/u.test(name) && name !== "default";
 }
 
-function collectDependencies(specifiers, defaultImported, namedImports) {
+function collectDependencies(
+    specifiers, defaultImported, namespaceImported, sideEffectOnly, namedImports,
+) {
     const dependencies = new Map();
     for (const specifier of specifiers) {
         dependencies.set(specifier, {
             names: [...(namedImports.get(specifier) ?? new Set())].sort(),
             hasDefault: defaultImported.has(specifier),
+            needsNamespace: namespaceImported.has(specifier),
+            sideEffectOnly: sideEffectOnly.has(specifier),
             bundleWithReact: false,
         });
     }
@@ -249,7 +293,16 @@ function createVirtualEntryPlugin(specifiers, dependencies) {
                 if (!dependency) throw new Error(`Missing module inspection for ${args.path}.`);
 
                 const lines = [];
-                if (dependency.names.length) lines.push(`export { ${dependency.names.join(", ")} } from ${quoted};`);
+                if (dependency.needsNamespace) {
+                    // A namespace consumer reads arbitrary members, so the whole surface
+                    // has to come across. `export *` works here only because every
+                    // namespace-read package resolves to a real ESM build, where the names
+                    // are statically known; it cannot re-export CommonJS bindings, which is
+                    // why the explicit named path below exists at all.
+                    lines.push(`export * from ${quoted};`);
+                } else if (dependency.names.length) {
+                    lines.push(`export { ${dependency.names.join(", ")} } from ${quoted};`);
+                }
                 if (dependency.hasDefault) lines.push(`export { default } from ${quoted};`);
                 if (!lines.length) lines.push(`import ${quoted};`);
                 return { contents: lines.join("\n"), resolveDir: vendorPackageDirectory };
@@ -287,6 +340,28 @@ async function buildDependencies(specifiers, dependencies) {
     const reactOutput = await readFile(join(dependencyRoot, "react.js"), "utf8");
     if (reactOutput.includes("%s")) {
         throw new Error("deps/react.js carries development-only warning formatting; the production define did not apply.");
+    }
+
+    // Every entry must actually expose something. An entry that emits an empty file, or
+    // carries no export while the graph reads members off it, is a dependency whose
+    // bindings were never derived: it imports cleanly, then reads `undefined` for every
+    // member, and surfaces far away as a React "element type is invalid" crash rather
+    // than as a build failure. US-1486 shipped two such entries at 0 bytes.
+    for (const specifier of specifiers) {
+        const outputName = toOutputName(specifier);
+        const entrySource = await readFile(join(dependencyRoot, `${outputName}.js`), "utf8");
+        if (entrySource.trim() === "") {
+            throw new Error(
+                `deps/${outputName}.js is empty; "${specifier}" produced no bindings. A form `
+                + "the scanner does not recognize yields an entry with nothing in it.",
+            );
+        }
+        if (!dependencies.get(specifier).sideEffectOnly && !/export\s*[{*]/u.test(entrySource)) {
+            throw new Error(
+                `deps/${outputName}.js carries no export; "${specifier}" would read as `
+                + "undefined for every member at runtime.",
+            );
+        }
     }
 
     const emitted = await collectFiles(dependencyRoot);
@@ -333,8 +408,12 @@ async function writeImportMap(specifiers) {
 await mkdir(boardRoot, { recursive: true });
 const { sourceFiles, copiedFiles, localeFile, fontFamilies } = await copyVendorGraph();
 await validateRelativeTargets(copiedFiles, localeFile);
-const { specifiers, defaultImported, namedImports } = await scanVendorSpecifiers(copiedFiles);
-const dependencies = collectDependencies(specifiers, defaultImported, namedImports);
+const {
+    specifiers, defaultImported, namespaceImported, sideEffectOnly, namedImports,
+} = await scanVendorSpecifiers(copiedFiles);
+const dependencies = collectDependencies(
+    specifiers, defaultImported, namespaceImported, sideEffectOnly, namedImports,
+);
 for (const specifier of ["react", "react-dom", "react-dom/client", "react/jsx-runtime"]) {
     dependencies.get(specifier).bundleWithReact = true;
 }
