@@ -34,6 +34,7 @@ import type {
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
     BoardCapabilityIntentCancelMsg,
+    BoardCapabilityIntentRequestMsg,
     BoardCapabilityIntentResultMsg,
     BoardCapabilityInvokeRequestMsg,
     BoardCapabilityInvokeResultMsg,
@@ -428,11 +429,16 @@ class BoardCapabilityError extends Error {
 }
 
 let activeIntent: BoardIntentContext | undefined;
-let intentDelivered = false;
+/** Delivery is tracked per request, not once per frame: a board page is reused for
+ *  every later request, so a single module-level flag would deliver only the first. */
+const deliveredIntentIds = new Set<string>();
 const intentHandlers: Array<(request: BoardIntentContext) => void> = [];
 
-function settleIntent(error?: { code: CapabilityErrorCode; message: string }, result?: unknown): void {
-    const intent = activeIntent;
+function settleIntent(
+    intent: BoardIntentContext | undefined,
+    error?: { code: CapabilityErrorCode; message: string },
+    result?: unknown,
+): void {
     if (!intent || intent.cancelled || intent.settled) return;
     intent.settled = true;
     try {
@@ -446,12 +452,44 @@ function settleIntent(error?: { code: CapabilityErrorCode; message: string }, re
     }
 }
 
+/** Build the context for one request. Shared by both delivery routes: the initial intent
+ *  carried on `BoardPortInitMsg` (a page opened *for* the request) and the `capabilities:intent`
+ *  message (a page that was already open and is being reused). */
+function makeIntentContext(init: {
+    id: string;
+    version?: number;
+    requestId: string;
+    payload: unknown;
+}): BoardIntentContext {
+    const context: BoardIntentContext = {
+        id: init.id,
+        ...(typeof init.version === "number" ? { version: init.version } : {}),
+        requestId: init.requestId,
+        payload: init.payload,
+        cancelled: false,
+        settled: false,
+        resolve: (value: unknown) => {
+            if (!context.cancelled) settleIntent(context, undefined, value);
+        },
+        reject: (reason?: unknown) => {
+            if (!context.cancelled) {
+                settleIntent(context, {
+                    code: "rejected",
+                    message: errMessage(reason, "The board rejected the request."),
+                });
+            }
+        },
+    };
+    return context;
+}
+
 function deliverIntent(): void {
-    if (!activeIntent || intentDelivered || intentHandlers.length === 0) return;
-    intentDelivered = true;
+    const intent = activeIntent;
+    if (!intent || deliveredIntentIds.has(intent.requestId) || intentHandlers.length === 0) return;
+    deliveredIntentIds.add(intent.requestId);
     for (const handler of intentHandlers) {
         try {
-            handler(activeIntent);
+            handler(intent);
         } catch (error: unknown) {
             console.error("persephone.intent.onRequest callback error:", errMessage(error));
         }
@@ -789,27 +827,50 @@ onHostMessage((event) => {
     pipeUrlEnabled = data.pipeUrlEnabled === true;
     if (!activeIntent && data.intent && typeof data.intent.id === "string"
         && typeof data.intent.requestId === "string") {
-        const context: BoardIntentContext = {
+        activeIntent = makeIntentContext({
             id: data.intent.id,
             ...(typeof data.intent.version === "number" ? { version: data.intent.version } : {}),
             requestId: data.intent.requestId,
             payload: data.intent.payload,
-            cancelled: false,
-            settled: false,
-            resolve: (value: unknown) => {
-                if (!context.cancelled) settleIntent(undefined, value);
-            },
-            reject: (reason?: unknown) => {
-                if (!context.cancelled) {
-                    settleIntent({ code: "rejected", message: errMessage(reason, "The board rejected the request.") });
-                }
-            },
-        };
-        activeIntent = context;
+        });
         deliverIntent();
     }
     const p = event.ports && event.ports[0];
     if (p) attachPort(p);
+});
+
+// Capability request delivered to an ALREADY-OPEN board page — renderer → board.
+// The initial request of a page arrives on `BoardPortInitMsg` instead, because the page is
+// created for it; every later request reuses this frame and arrives here. Without this
+// handler a reused handler page silently receives nothing and every such call hangs to its
+// deadline, which is exactly how it shipped before being caught in live testing.
+onHostMessage((event) => {
+    const data = event.data as BoardCapabilityIntentRequestMsg | undefined;
+    if (!data || data.__persephone !== "capabilities:intent"
+        || typeof data.requestId !== "string" || typeof data.id !== "string") return;
+    if (activeIntent && !activeIntent.settled && !activeIntent.cancelled
+        && activeIntent.requestId !== data.requestId) {
+        // One request at a time per frame. The renderer's per-handler cap normally prevents
+        // this; refuse rather than silently replace the request a handler is still serving.
+        try {
+            window.parent.postMessage({
+                __persephone: "capabilities:intent:result",
+                requestId: data.requestId,
+                error: { code: "busy", message: "The board is already serving a capability request." },
+            } as BoardCapabilityIntentResultMsg, hostPostTarget);
+        } catch {
+            // The parent may disappear while the frame is refusing.
+        }
+        return;
+    }
+    if (deliveredIntentIds.has(data.requestId)) return; // at-most-once: never re-deliver
+    activeIntent = makeIntentContext({
+        id: data.id,
+        ...(typeof data.version === "number" ? { version: data.version } : {}),
+        requestId: data.requestId,
+        payload: data.payload,
+    });
+    deliverIntent();
 });
 
 // Capability cancel/list/invoke results — renderer → board over window.postMessage.
