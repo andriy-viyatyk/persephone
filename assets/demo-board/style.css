@@ -192,6 +192,28 @@ pre {
 .ss-frame { padding: var(--p-space-xl, 16px); }
 .ss-frame h3 { margin: 0 0 var(--p-space-sm, 6px); color: var(--p-text-strong, inherit); }
 
+.service-status {
+    margin: var(--p-space-lg, 12px) 0 var(--p-space-md, 8px);
+    padding: var(--p-space-md, 8px) var(--p-space-lg, 12px);
+    border-left: 3px solid var(--p-accent);
+    background: var(--p-overlay);
+    font-family: ui-monospace, monospace;
+    font-size: var(--p-font-sm, 12px);
+}
+.service-readout {
+    min-height: 96px;
+    margin: 0;
+    padding: var(--p-space-lg, 12px);
+    overflow: auto;
+    border: 1px solid var(--p-border);
+    border-radius: var(--p-radius-md, 4px);
+    background: var(--p-panel);
+    color: var(--p-text);
+    font-family: ui-monospace, monospace;
+    font-size: var(--p-font-sm, 12px);
+    white-space: pre-wrap;
+}
+
 /* Compact layout for a secondary (sidebar) frame: hide the main-view chrome and show only
    #secondary-root. Applied by app.js (body.secondary-frame) when persephone.view is a
    secondary role; detail.html sets the class itself (its .ss-frame provides its own padding). */

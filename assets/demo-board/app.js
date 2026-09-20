@@ -30,7 +30,7 @@
     const tabs = document.querySelectorAll(".tab");
     const panels = document.querySelectorAll(".panel");
     // The shared console is only meaningful on the interactive tabs.
-    const consoleTabs = new Set(["theming", "capabilities"]);
+    const consoleTabs = new Set(["theming", "capabilities", "service"]);
 
     function activate(name) {
         tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
@@ -47,6 +47,30 @@
 
     // node -e helper — keeps the inline JS readable.
     const nodeEval = (js) => `node -e "${js.replace(/"/g, '\\"')}"`;
+
+    const serviceStatusElement = document.getElementById("service-status");
+    const serviceReadoutElement = document.getElementById("service-readout");
+    const serviceStorageKey = "demo-service-value";
+
+    function serviceErrorText(error) {
+        return error?.message ?? "unknown lifecycle error";
+    }
+
+    function printServiceError(prefix, error) {
+        print(`${prefix}: ${serviceErrorText(error)}`);
+    }
+
+    async function refreshServiceStatus() {
+        const listings = await P.call("boards.list");
+        const boardRoot = await P.call("page.editor.boardRoot");
+        const listing = listings.find((entry) => entry.root === boardRoot) ?? null;
+        const status = listing?.service ?? null;
+        serviceStatusElement.textContent = status
+            ? `service ${status.state} · reason=${status.reason ?? "—"} · pid=${status.pid ?? "—"} · startedAt=${status.startedAt ?? "—"} · restartCount=${status.restartCount}`
+            : "No service status is registered for this board.";
+        serviceReadoutElement.textContent = JSON.stringify(status, null, 2);
+        return status;
+    }
 
     // ── Demo actions (wired to [data-test] buttons) ─────────────────────
     const tests = {
@@ -139,6 +163,90 @@
             print("killed the server (a real board keeps it alive with setBoardBusy).");
         },
 
+        // --- declared module service ---------------------------------------
+        async serviceRequest() {
+            header("service request → echo");
+            try {
+                const result = await P.service.request({ op: "echo", value: "demo-request" });
+                print(JSON.stringify(result, null, 2));
+                await refreshServiceStatus();
+            } catch (error) {
+                printServiceError("expected service request error", error);
+                await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+            }
+        },
+        async serviceStorageRoundTrip() {
+            header("service/storage round-trip");
+            try {
+                const frameValue = { source: "frame", value: "before-service-write" };
+                await P.storage.set(serviceStorageKey, frameValue);
+                const serviceRead = await P.service.request({ op: "storage-get", key: serviceStorageKey });
+                const serviceValue = { source: "service", value: "after-service-write" };
+                const serviceWrite = await P.service.request({
+                    op: "storage-set",
+                    key: serviceStorageKey,
+                    value: serviceValue,
+                });
+                const frameRead = await P.storage.get(serviceStorageKey);
+                const serviceKeys = await P.service.request({ op: "storage-keys" });
+                print(JSON.stringify({ frameValue, serviceRead, serviceWrite, frameRead, serviceKeys }, null, 2));
+                await refreshServiceStatus();
+            } catch (error) {
+                printServiceError("expected storage lifecycle error", error);
+                await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+            }
+        },
+        async serviceStorageDelete() {
+            header("service storage-delete");
+            try {
+                const result = await P.service.request({ op: "storage-delete", key: serviceStorageKey });
+                print(JSON.stringify(result, null, 2));
+                await refreshServiceStatus();
+            } catch (error) {
+                printServiceError("expected storage lifecycle error", error);
+                await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+            }
+        },
+        async serviceStatus() {
+            header("boards.list → service status");
+            try {
+                print(JSON.stringify(await refreshServiceStatus(), null, 2));
+            } catch (error) {
+                printServiceError("expected status error", error);
+            }
+        },
+        async serviceDelay() {
+            header("service request → delay (leave pending for untrust)");
+            try {
+                const result = await P.service.request({ op: "delay", ms: 8_000 });
+                print("delay resolved: " + JSON.stringify(result));
+            } catch (error) {
+                printServiceError("expected delay lifecycle rejection", error);
+            }
+            await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+        },
+        async serviceCrash() {
+            header("service request → crash");
+            try {
+                await P.service.request({ op: "crash" });
+                print("✗ unexpectedly resolved");
+            } catch (error) {
+                printServiceError("expected crash rejection", error);
+            }
+            await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+        },
+        async serviceHangHandshake() {
+            header("service request → arm one-shot handshake hang");
+            try {
+                const result = await P.service.request({ op: "arm-handshake-hang" });
+                print("armed and acknowledged: " + JSON.stringify(result));
+                print("The next service import consumes the flag, skips ready, and is killed at the handshake deadline.");
+            } catch (error) {
+                printServiceError("expected handshake-arm lifecycle error", error);
+            }
+            await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+        },
+
         // --- integration tier ----------------------------------------------
         async notify() {
             header("notify");
@@ -216,7 +324,7 @@
             try {
                 await tests[name]();
             } catch (e) {
-                print("❌ error: " + (e && e.message ? e.message : String(e)));
+                print("❌ error: " + serviceErrorText(e));
             }
         });
     });

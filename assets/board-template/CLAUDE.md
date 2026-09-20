@@ -44,6 +44,9 @@ fields that let the board act as a file editor:
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
+  "minBridgeVersion": "1.6.0",
+  "permissions": ["service"],
+  "service": "scripts/service.mjs",
 
   "fileMasks": ["*.drawio"],
   "editorPriority": 100,
@@ -53,6 +56,13 @@ fields that let the board act as a file editor:
 
 - `name` (optional) — display name; defaults to the **folder name** when omitted or empty.
 - `description` / `author` / `repository` (optional) — metadata only, for humans/agents.
+- `minBridgeVersion` (optional) — the bridge version required by the board. A board above the
+  shipped bridge is listed as incompatible and does not register its editors.
+- `permissions` (optional) — an ordered list of requested surfaces shown during trust and in Board
+  Info. This is **disclosure and lifecycle hygiene, not a security boundary**: trust already lets
+  a board run arbitrary renderer and Node code, so `"service"` is not a privilege grant or sandbox.
+- `service` (optional) — a board-relative ESM entry for a platform-owned module service. A board
+  with only this field is still a valid service board even when it has no editor association.
 
 **Custom Editor fields (optional)** — only honored when the board is **trusted**:
 
@@ -230,6 +240,45 @@ const handle = persephone.executeNode(script, args?, { cwd, env, name });
   identically.
 - The runtime is **Node 24** with **`node:sqlite` built in** (incl. FTS5) — no npm
   install needed for SQLite. A missing script fires the handle's `error` event.
+
+## Declared module services: `manifest.service`
+
+A declared service is the platform-owned counterpart to a page-owned Node job. The choice is:
+
+```text
+executeNode(): board-page child process; page-started; frame-lifetime by default.
+service: platform-started utility process; lazy; supervised; usable with no page open.
+```
+
+Use `executeNode()` for work initiated by the visible board page. Use `service` for background or
+platform-owned work that must survive a page reload, serve requests with no board page open, or
+have supervised lifecycle status. The declaration is board-relative and must point to an ESM entry,
+for example `"service": "scripts/service.mjs"`; the service starts with the board root as its
+current working directory, resolves imports and `node_modules` from that board root, and runs in
+Persephone's bundled utility-process Node runtime.
+
+The service can use standard Node built-ins, including filesystem, networking, streams, crypto,
+workers, and timers. It does not receive `electron`, `app`, `BrowserWindow`, `webContents`, or
+`ipcMain`. Its environment is sanitized to Persephone's runtime allowlist plus
+`PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`; do not assume arbitrary shell/user variables.
+The static service host injects `persephone.storage`, so use that adapter for the shared per-board
+JSON store instead of opening `store.json` or inventing a persistence path. The frame uses the same
+store through `persephone.storage`.
+
+The frame reaches the service through structured-clone request/reply messages:
+
+```js
+const result = await persephone.service.request({ op: "refresh", value });
+await persephone.storage.set("last-result", result);
+```
+
+Requests start the service lazily and may reject with readable lifecycle errors such as
+`untrusted`, `service-not-declared`, `permission-denied`, `service-busy`, `service-timeout`,
+`service-exited`, or `service-failed`; catch them and render a useful result. A service's stdout
+and stderr are captured in `<boardRoot>/ui.log`, which is the first place to inspect when an ESM
+import, handshake, request, or dependency fails. Service status is visible in `app.boards.list()`
+as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The host starts, supervises,
+restart-budgets, and stops the process on untrust; the service must not restart itself.
 
 ### Resident backend server (the key pattern)
 
@@ -837,6 +886,9 @@ Once the user has opened this board in Persephone, an agent can drive it with
 - `pages[pageId].editor.snapshot()` → read the page's accessibility tree (element refs).
 - `pages[pageId].editor.click/type/pressKey/evaluate(...)` → interact, using refs from
   the snapshot. Pass a ref as `{ ref: "e12" }`; a plain string is always a selector.
+- `persephone.service.request(message)` → reach the declared service from the board frame; use
+  `persephone.storage` for shared JSON state and call `app.boards.list()` from the host renderer
+  when you need the service lifecycle payload.
 - **Secondary views** (if this board declares any): every `pages[pageId].editor` call targets the
   main frame by default. `pages[pageId].editor.tabs` lists the main view (`index: 0`,
   id `"main"`) plus one frame per secondary view (id `board-secondary:<viewId>`);
@@ -865,7 +917,8 @@ than creating/closing tabs.
 
 Persephone ships a full **Demo board** that exercises the whole surface — the
 `persephone.execute()` channel (buffered / streaming / stdin / kill / cwd), the
-integration tier, the `--p-*` theme + token contract, secondary views + shared state
+integration tier, the declared `service.mjs` process (`persephone.service.request`, shared
+storage, lifecycle failures, and `boards.list().service`), the `--p-*` theme + token contract, secondary views + shared state
 (`persephone.state.*`), and a tabbed multi-view layout with a pinned output console. When you
 need a richer reference than this starter,
 read the Demo board's files (`index.html`, `app.js`, `style.css`, `board-base.css`):

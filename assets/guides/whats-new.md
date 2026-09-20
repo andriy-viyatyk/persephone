@@ -25,6 +25,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `ui.alerts` through the application object model to check alert severity, message, and creation
   time, then dismiss one or more alerts when that serves the user's intent. See the [`app.ui` API
   reference](./scripting/api/ui.md#alerts).
+- **Boards can declare supervised module services:** a trusted board can name an ESM service entry
+  that starts lazily under main-process supervision, answers requests with no board page open, and
+  shares the board frame's `persephone.storage`. Live state, failures, restart counts, and process
+  identity are visible through `boards.list()`; `permissions` is disclosure and lifecycle hygiene,
+  not a privilege grant or sandbox. See [Boards — declared services](./boards.md#declared-services-storage-and-lifecycle)
+  and the [canonical service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
 
 ### Improvements
 

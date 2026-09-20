@@ -31,6 +31,7 @@ the HTML.
 |---|---|
 | `persephone.execute(command)` | Any command line, **through the OS shell by default**, with the user's full privileges and inherited environment. Working directory defaults to the board folder — it is not a boundary. |
 | `persephone.executeNode(script, args)` | The board's own script on Persephone's bundled Node. Argv-style (no shell), but Node has no CSP: unrestricted filesystem and network. |
+| Declared `service` / `scripts/service.mjs` | A platform-owned Node process that can run without a page; inspect its imports, storage, network, handshake, request routing, and failure behavior. |
 | `persephone.readFile` / `writeFile` | **Absolute paths are accepted.** These are not scoped to the board folder; they reach anything the user can read or write. |
 | `persephone.call(path, options)` | The full **renderer** Persephone object model, gated only by trust: `fs`, `proc`, `shell`, `settings`, `tools.execute`, `boardVars` (administration of stored environment variables and secrets across namespaces), and `script.execute` — arbitrary JavaScript in the renderer with Node access. It cannot reach the process-owned `main` or `windows` roots. A board never needs most of this. |
 | Trust scope | Per board-root folder, remembered across restarts, and **inherited**: trusting a folder trusts every board nested inside it, including ones added later. |
@@ -40,10 +41,11 @@ can it change after the user clicks Trust?**
 
 ## What to read
 
-1. **`board-manifest.json` first.** It declares the board's identity and, for an editor board,
-   `fileMasks` / `contentMasks` / `folderMasks` and `editorKind`. These say which of the user's
-   files this board will be handed automatically. Broad masks on a board whose stated purpose is
-   narrow is a finding on its own.
+1. **`board-manifest.json` first.** It declares the board's identity, `permissions`,
+   `minBridgeVersion`, and any `service` entry, plus (for an editor board) `fileMasks` /
+   `contentMasks` / `folderMasks` and `editorKind`. These say which of the user's files this board
+   will be handed automatically. Broad masks on a board whose stated purpose is narrow is a finding
+   on its own.
 2. **Every file in the folder.** `index.html`, the app scripts, **all of `scripts/`**, and anything
    in `lib/`. Boards are plain files; there is no hidden part.
 3. **Then re-read the entry points**: what runs at load, on a timer, and on each user action.
@@ -55,13 +57,20 @@ board may legitimately spawn a process — but every one of them needs a reason 
 
 | Search for | Why it matters |
 |---|---|
-| `execute(`, `executeNode(` | Every process the board can start. Read the command string. |
+| `execute(`, `executeNode(`, `service`, `scripts/service.mjs` | Every process the board can start. Read the command string or service entry. For a service, inspect the handshake, request routing, `persephone.storage` calls, crash and handshake-hang behavior, imports, network use, and `ui.log`. |
 | `persephone.call(` | Check the path. `fs`, `proc`, `shell`, `script.execute`, `tools.execute`, `boardVars`, `settings` each need a purpose; `script.execute` is arbitrary code and is rarely justified. |
 | `fetch(`, `http`, `https`, `axios`, `curl`, `Invoke-WebRequest`, `wget` | Where the board talks to the network — in backend scripts, where nothing blocks it. |
 | `readFile(`/`writeFile(` with an absolute path, `..`, `~`, `%APPDATA%`, `$HOME` | Reaching outside the board folder. |
 | `process.env`, `.env`, `.ssh`, `credentials`, `token`, `cookie`, browser-profile paths | Credential access. Dangerous in combination with any network call. |
 | `eval(`, `new Function(`, `atob(`, `Buffer.from(..., "base64")`, long hex/base64 literals | Code or payloads that only become readable at runtime. In a backend script there is no CSP to stop them. |
 | `child_process`, `spawn`, `exec`, `-Command`, `cmd /c` | Process execution inside a backend script, one level below `persephone.execute`. |
+
+Declaring `service` is **not a security boundary**. `permissions` is disclosure and lifecycle
+hygiene, not a privilege grant or sandbox, because trust already permits arbitrary renderer and
+Node execution. Review the service as another process and supply-chain surface. For the
+service-versus-`executeNode()` ownership decision, use the canonical wording in the
+[board-authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice)
+instead of creating a second rule here.
 
 ## Code that arrives after you trust it
 

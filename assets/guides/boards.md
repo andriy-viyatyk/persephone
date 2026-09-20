@@ -116,6 +116,23 @@ Because `persephone.execute()` runs programs with your full user privileges, **e
 
 **How to have it reviewed:** [Reviewing a board before you trust it](./agents/board-review.md) is the checklist to hand your AI agent — what trusting actually grants, what to look for in the board's scripts, and why a board that downloads code and runs it cannot be reviewed at all.
 
+### Service declarations in `board-manifest.json`
+
+Boards may declare `minBridgeVersion`, `permissions`, and a board-relative `service` entry:
+
+```json
+{
+  "minBridgeVersion": "1.6.0",
+  "permissions": ["service"],
+  "service": "scripts/service.mjs"
+}
+```
+
+The minimum bridge is a compatibility requirement. `permissions` is shown as disclosure and used
+for lifecycle hygiene, not as a security boundary or a grant; trust already gives a board arbitrary
+renderer and Node execution. A declared service is shown in Board Info and in the live
+`app.boards.list()` status payload.
+
 ---
 
 ## Getting started
@@ -260,6 +277,43 @@ srv.write(JSON.stringify({ id: 1, sql: "SELECT ..." }) + "\n");  // per request 
 ```
 
 One spawn when the board opens; after that, each request costs only its own work (e.g. a SQLite query against an already-open, warm database). Pair this with `setBoardBusy(true)` (see below) so the server survives a board reload, and re-attach to it by `name` via `getJobs()`.
+
+### Declared services, storage, and lifecycle
+
+The [board template's authoring guide](../board-template/CLAUDE.md#declared-module-services-manifestservice)
+is the canonical choice guide for service versus `executeNode()`. A service is declared with a
+board-relative ESM entry such as:
+
+```json
+{
+  "minBridgeVersion": "1.6.0",
+  "permissions": ["service"],
+  "service": "scripts/service.mjs"
+}
+```
+
+The platform starts the service lazily in its bundled utility-process Node runtime. Its cwd is the
+board root, imports resolve `node_modules` from that root, and standard Node built-ins are
+available, including filesystem, networking, streams, crypto, workers, and timers. It does not
+receive Electron objects such as `electron`, `app`, `BrowserWindow`, `webContents`, or `ipcMain`.
+The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1` and
+`PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in `<boardRoot>/ui.log`.
+
+The service host injects `persephone.storage`, and the service shares the frame's per-board JSON
+store. Use the bridge rather than writing `store.json` yourself:
+
+```js
+await persephone.storage.set("last-result", { ok: true });
+const reply = await persephone.service.request({ op: "refresh" });
+const sameValue = await persephone.storage.get("last-result");
+```
+
+`persephone.service.request(message)` uses structured-clone messages, starts the service on first
+use, and rejects with lifecycle errors such as `untrusted`, `permission-denied`, `service-busy`,
+`service-timeout`, `service-exited`, or `service-failed`. Service status is visible in
+`app.boards.list()` as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The
+`permissions` field is disclosure and lifecycle hygiene, not a security boundary or privilege
+grant: trusting a board already permits arbitrary renderer and Node code.
 
 ### Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 
@@ -986,6 +1040,7 @@ The Demo board (`"Create Demo board"`) is a full working example that demonstrat
 - Streaming `execute()` — a long-running script with live output
 - Stdin / kill — sending input and stopping a process
 - The integration tier — `notify`, `openFileDialog`, `openRawLink`
+- A declared `service.mjs` — lazy supervision, no-page requests, shared `persephone.storage`, and visible lifecycle status
 - The `--p-*` theme contract and JS token access
 - A multi-tab layout with a pinned output console
 

@@ -237,6 +237,50 @@ srv.on("stdout", chunk => handleJsonLine(chunk));   // {id, columns, rows} | {id
 srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays open, no re-spawn
 ```
 
+### Declared services and shared storage
+
+The canonical service-versus-`executeNode()` choice is maintained in the board template's
+[authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice). Use that
+wording when choosing process ownership; this section records the service contract and agent
+observations.
+
+A manifest may declare a board-relative ESM entry and its bridge requirement:
+
+```json
+{
+  "minBridgeVersion": "1.6.0",
+  "permissions": ["service"],
+  "service": "scripts/service.mjs"
+}
+```
+
+The service runs in Persephone's bundled utility-process Node runtime with the board root as its
+cwd. Standard Node built-ins (filesystem, networking, streams, crypto, workers, and timers) are
+available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are not. Imports resolve
+from the board root, including its `node_modules`. The environment is sanitized to the supervisor
+allowlist plus `PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`. The host injects
+`persephone.storage`, shared with the frame and routed through main; a service must not open
+`store.json` itself. Service stdout/stderr goes to `<boardRoot>/ui.log`.
+
+From the frame, send structured-clone messages and handle lifecycle rejection:
+
+```js
+const reply = await persephone.service.request({ op: "index", value: input });
+await persephone.storage.set("last-reply", reply);
+```
+
+Requests start the service lazily and can reject with `untrusted`, `permission-denied`,
+`service-busy`, `service-timeout`, `service-exited`, or `service-failed`. From the host renderer,
+`app.boards.requestService(root, message)` reaches the same service with no page open;
+`app.boards.startService(root)` explicitly starts and resets its restart budget, and
+`app.boards.stopService(root)` tears it down. Read `app.boards.list()` and inspect the matching
+`service` object (`state`, `reason`, `pid`, `startedAt`, `restartCount`) after every lifecycle
+observation. For the Demo board, create it with `app.boards.createDemoBoard(name, dir)`, find its
+`pageId` under `pages`, use `pages[pageId].editor.snapshot()` and the Service tab's controls, then
+use `boards.list()` to confirm the result. A full renderer reload is script-driven with
+`script.execute("setTimeout(() => location.reload(), 50); return 'reloading'")`; the editor's
+`reload()` only reloads the board iframe.
+
 ### Integration tier (in-app effects `execute()` can't express)
 
 - `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
@@ -616,7 +660,9 @@ the manifest's `loadOrder`.
 ### Manifest, icon, reload
 
 - `board-manifest.json` — keep `schemaVersion: 1`; add optional `name`/`description`/`author`/
-  `repository` (metadata only). No secrets, no trust flags. To make the board a **custom editor**
+  `repository` (metadata only). `minBridgeVersion` rejects a board on an older bridge;
+  `permissions` discloses requested surfaces and drives lifecycle hygiene, not security or a grant;
+  `service` names a board-relative ESM module-service entry. No secrets, no trust flags. To make the board a **custom editor**
   for a file type, add `fileMasks` (glob masks matched against the file name, e.g. `["*.drawio"]`;
   a wildcard-free mask with a dot inside it is an exact file **name**, e.g. `["DASHBOARD.md"]`),
   optional `folderMasks` to scope those masks to certain folders (e.g. `"fileMasks": ["DASHBOARD.md"]`
@@ -694,6 +740,14 @@ A board never navigates, so it has no navigation members and cannot add or close
 `tabs` and `switchTab("board-secondary:<viewId>")` members select which board frame to drive
 (see next).
 
+For a declared service, run the normal Service-tab request first, then inspect
+`app.boards.list()`/`boards.list()` for the matching `service` payload. Use the public host calls
+`app.boards.requestService(root, { op: "echo", value: "no-page" })`, `startService(root)`, and
+`stopService(root)` for no-page requests and lifecycle control. The Demo fixture's service request
+operations are `echo`, `storage-get`, `storage-set`, `storage-delete`, `storage-keys`, `delay`,
+`crash`, and `arm-handshake-hang`; the last mode is consumed and deleted by the service before it
+withholds `ready`, so verification must wait for the following normal retry and confirm echo works.
+
 ### Inspecting secondary views
 
 By default every editor call targets the board's **main** frame. To inspect a
@@ -762,7 +816,8 @@ The debugging surfaces, in the order to check them:
 ## Richer reference — the bundled Demo board
 
 Persephone ships a full **Demo board** that exercises the whole surface (buffered/streaming/
-stdin/kill/cwd `execute()`, the integration tier, the `--p-*` theme + token contract, secondary
+stdin/kill/cwd `execute()`, the integration tier, the declared supervised `service.mjs` with
+shared storage and lifecycle failure controls, the `--p-*` theme + token contract, secondary
 views + shared state via `persephone.state.*`, a tabbed layout with a pinned output console).
 For a richer example than the blank template, create one with `app.boards.createDemoBoard(name,
 dir)` and read its files, or read the source under the install's `resources/assets/demo-board/`
