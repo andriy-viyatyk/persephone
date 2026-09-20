@@ -224,6 +224,27 @@ interface PersephoneAiVisionApi {
     createElements(declarations: readonly PersephoneAiVisionElementDeclaration[]): PersephoneAiVisionElements;
 }
 
+type PersephoneJsonValue = null | string | boolean | number
+    | PersephoneJsonValue[] | { [key: string]: PersephoneJsonValue };
+
+/** Main-owned, per-board JSON storage shared by the board frame and its trusted module service.
+ * Values must be JSON values with finite numbers; unsupported values, malformed persisted data,
+ * quota violations, and persistence/I/O failures reject. The store is keyed by the canonical
+ * board root, not the manifest name, and missing keys resolve to `undefined`. Calls are direct
+ * bridge requests with no renderer snapshot or cross-window change broadcast. Concurrent writes
+ * are serialized in arrival order with last-writer-wins semantics. An untrusted board receives
+ * no bridge and therefore no storage capability. */
+interface PersephoneStorageApi {
+    /** Read a value, or `undefined` when this board has not stored the key. */
+    get(key: string): Promise<PersephoneJsonValue | undefined>;
+    /** Persist a value; resolution means the new whole-store JSON was written successfully. */
+    set(key: string, value: PersephoneJsonValue): Promise<void>;
+    /** Delete a key and resolve `true` only when it existed. */
+    delete(key: string): Promise<boolean>;
+    /** Return this board's keys in sorted order. */
+    keys(): Promise<string[]>;
+}
+
 interface PersephoneBoardApi {
     /** Bridge version, e.g. "1.6.0" — the release that added `openContent()`, the `--p-graph-*`
      *  family, manifest `contentMasks`, and the bridge contract declarations. Compare
@@ -306,6 +327,8 @@ interface PersephoneBoardApi {
     onThemeChange(cb: (theme: PersephoneThemePalette) => void): () => void;
     /** Board environment variables (EPIC-046) — get/set/list this board's own namespace. */
     readonly var: PersephoneVarApi;
+    /** Main-owned per-board storage; see {@link PersephoneStorageApi}. */
+    readonly storage: PersephoneStorageApi;
 }
 
 interface Window {

@@ -147,7 +147,16 @@ export type BoardRpcMethod =
     | "openFolderDialog"
     | "readFile"
     | "writeFile"
-    | "getJobs";
+    | "getJobs"
+    | "storageGet"
+    | "storageSet"
+    | "storageDelete"
+    | "storageKeys";
+
+/** JSON values accepted by the board-owned storage API. Runtime validation also rejects
+ * non-finite numbers, cyclic values, class instances, oversized documents, and deep values. */
+export type BoardJsonValue = null | string | boolean | number
+    | BoardJsonValue[] | { [key: string]: BoardJsonValue };
 
 /** A live job owned by this board (US-799) — the `getJobs` RPC result element.
  *  Plain data over the port; the shim wraps each in a control handle

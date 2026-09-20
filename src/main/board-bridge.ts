@@ -61,6 +61,14 @@ import {
 import { errMessage } from "../shared/utils";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../shared/ai-vision-timeout";
 import { sendToRendererForWebContents } from "./mcp/renderer-bridge";
+import {
+    deleteBoardStorageValue,
+    getBoardStorageKeys,
+    getBoardStorageValue,
+    setBoardStorageValue,
+    validateBoardStorageKey,
+    validateBoardStorageValue,
+} from "./board-storage";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -245,6 +253,14 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         const owner = ownerSinks.get(entry.ownerId);
         return owner ? getJobsBySinkIds(owner.sinkIds) : [];
     },
+    storageGet: (entry, args) => getBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
+    storageSet: (entry, args) => setBoardStorageValue(
+        entry.root,
+        validateBoardStorageKey(args[0]),
+        validateBoardStorageValue(args[1]),
+    ),
+    storageDelete: (entry, args) => deleteBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
+    storageKeys: (entry) => getBoardStorageKeys(entry.root),
 };
 
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */

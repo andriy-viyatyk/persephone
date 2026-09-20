@@ -34,6 +34,7 @@ import type {
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
     BoardBootContext,
+    BoardJsonValue,
     BoardFireMethod,
     BoardHostContentMsg,
     BoardJobInfo,
@@ -955,6 +956,22 @@ function createHandle(
     notify(message: string, type?: "info" | "success" | "warning" | "error"): void {
         if (type === "error") console.error("[board]", message);
         fire("notify", [message, type]);
+    },
+
+    /** Main-owned per-board JSON storage. Every call crosses the bridge; there is no local cache. */
+    storage: {
+        get(key: string): Promise<BoardJsonValue | undefined> {
+            return rpc("storageGet", [key]) as Promise<BoardJsonValue | undefined>;
+        },
+        set(key: string, value: BoardJsonValue): Promise<void> {
+            return rpc("storageSet", [key, value]) as Promise<void>;
+        },
+        delete(key: string): Promise<boolean> {
+            return rpc("storageDelete", [key]) as Promise<boolean>;
+        },
+        keys(): Promise<string[]> {
+            return rpc("storageKeys", []) as Promise<string[]>;
+        },
     },
 
     openFileDialog(params?: unknown): Promise<string[] | undefined> {
