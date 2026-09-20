@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend plus the Excalidraw React island (see below)
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy)
+│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -36,6 +36,7 @@ persephone/
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
+│   ├── module-service-host.mjs # Static utility-process host that injects persephone.storage and imports a board's ESM service entry
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
 │   ├── tool-template/      # Scaffold copied into every new toolset
@@ -144,6 +145,9 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── board-trust.ts      # Per-board trust registry — persists trusted board roots (trustedBoards.txt); untrusted boards block rendering. This list IS the known-boards registry
+│   ├── board-trust-sync.ts # Complete generation-numbered trust/service snapshot mirror from renderer to main
+│   ├── module-service.ts   # Renderer client for main-routed service requests and the optional host-renderer lease
+│   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
 │   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
 │   ├── board-install.ts    # Install engine — downloadBoard (download→extract→validate→registry, traversal-guarded) + installVersion/updateBoard folder-swap + uninstallCatalogBoard
@@ -641,7 +645,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields (fileMasks/folderMasks/folderEditorMasks/editorPriority/folderEditorPriority/editorName) + matcher/accessor helpers
+│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields plus permissions/minBridgeVersion/service axes and matcher/accessor helpers
+│   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + trusted board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache; gates pin affordances)
@@ -945,6 +950,10 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── command-runner.ts       # Streaming command runner — spawns child processes, streams stdout/stderr/exit over IPC by jobId; shared by app.proc.execute and the board bridge's execute(); whole-tree kill via taskkill; jobs carry an optional caller-chosen name + a getJobsBySinkIds query (board job re-association)
 ├── board-protocol-service.ts # board:// scheme handler — host→board-root registry; serves board files + CSP; injects --p-* palette, boot context, and the bridge shim into served HTML
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
+├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, trust gating, handshake deadline, restart budget, request settlement, renderer lease, untrust and quit teardown
+├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
+├── board-root-key.ts       # Canonical board-root normalization and SHA-256 storage key
+├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
@@ -978,6 +987,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
+├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshots, renderer lease and storage wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
 │   ├── controller.ts       # Compact IPC composition root — initializes endpoint registrars and renderer events
@@ -992,6 +1002,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
     ├── api.ts              # IPC API (typed method calls)
     └── renderer-events.ts  # Events received FROM main
 ```
+
+Module services cross these boundaries intentionally: the renderer owns the complete trust snapshot,
+main owns the `utilityProcess` lifecycle and ordinary request path, and the static asset host is the
+utility-process entry that imports the board-relative ESM module. The optional renderer lease is a
+separate channel for future high-volume provider traffic, not a requirement of every service.
 
 ## When to Create New Folders
 

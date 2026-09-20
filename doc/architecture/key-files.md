@@ -480,3 +480,14 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Trusted-toolsets sidebar tab (native list with open/remove actions) | `/src/renderer/ui/sidebar/TrustedToolsListView.ts` |
 | Toolset authoring guide (manifest, stdin/stdout contract, `.env`, requirements) | `/assets/tool-template/CLAUDE.md` |
 | Agent-facing tools resource | `/assets/guides/agents/tools.md` |
+| Module-service supervisor (main; lazy Electron `utilityProcess` host, complete trust-snapshot consumer, service-entry validation, ready/probe deadline, restart budget, ordinary request settlement, renderer lease, untrust and quit teardown) | `/src/main/module-service-supervisor.ts` |
+| Module-service protocol and lifecycle types (main/utility-process parent messages, renderer lease messages, trust snapshots, status records, storage frames and bounded request constants) | `/src/ipc/module-service-channels.ts` |
+| Per-board JSON storage owner (root-hash folder, `store.json`, `board.json` sidecar, JSON validation/limits, lazy cache and per-board mutation queue shared by frames and services) | `/src/main/board-storage.ts` |
+| Canonical board-root identity and full SHA-256 storage key | `/src/main/board-root-key.ts` |
+| Utility-process storage adapter (routes service storage requests through the main-owned board store and its mutation queue) | `/src/main/module-service-storage.ts` |
+| Renderer module-service client (main-routed ordinary requests plus the optional host-renderer `MessagePort` lease) | `/src/renderer/api/module-service.ts` |
+| Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
+| Renderer-to-main trust/service snapshot synchronizer (complete generation-numbered snapshots with clock-seeded reload-safe ordering) | `/src/renderer/api/board-trust-sync.ts` |
+| Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
+| Shared board bridge-version source of truth used by the board shim and compatibility gate | `/src/shared/board-bridge-version.ts` |
+| Static utility-process module-service host (injects `persephone.storage` and imports the board-relative ESM service entry) | `/assets/module-service-host.mjs` |

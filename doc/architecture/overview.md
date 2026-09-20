@@ -341,6 +341,20 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 - The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks all remote network access — CDNs, fetch, XHR to external hosts are all forbidden. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the trade-off is accepted because a board is the user's own trusted code (it can already run arbitrary processes via `execute()`).
 - Trust is **per board**: only boards the user has explicitly trusted render. The decision is persisted by `board-trust.ts` (a path-keyed registry, `trustedBoards.txt` under `<userData>/persephone/data/`) and never read from the manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar.
 
+**Module services and trust synchronization:** A board manifest may declare `service` as a Node ESM
+entry resolved from the board root. The related manifest axes are `permissions` and
+`minBridgeVersion`; permissions disclose requested capabilities and guide lifecycle handling, but
+are not a security boundary because trusting a board already authorizes arbitrary code execution.
+The platform hosts a declared service in an Electron `utilityProcess`, started lazily on the first
+request or explicit start — never at application launch. Main owns process start, the bounded restart
+budget, the ready/probe handshake deadline, and teardown on untrust and application quit.
+
+The renderer mirrors complete, generation-numbered trust snapshots to main, including normalized
+service declarations and the service-permission decision. The generation is clock-seeded rather
+than reset to a renderer-local counter: a counter that restarted at zero after reload made main drop
+later snapshots as stale, silently preventing trust changes (including untrust) from reaching the
+supervisor.
+
 **Bridge (`window.persephone`):**
 - `persephone.call(path, options?)` is a page-scoped bridge operation over the board's MessagePort. The renderer resolves the AiVision tree using the Board's hosting page (not whichever tab is active), returns JSON-safe shaped values with hints disabled, and rechecks Board trust for every call. It exposes the renderer tree only; process-wide `main` and `windows` routing belongs to the MCP tool.
 - Board `.app` registration has two lifecycles. The main frame's initial `expose()` (and a new remote after reload or a second `expose()`) sends `reason: "register"`; `remote.refresh()` sends `reason: "refresh"` when the same live remote republishes a changed shape. `BoardEditorModel` increments `token` for every shape publication so the facade rebuilds its proxy, but increments `incarnation` only for a new remote. The token is the proxy-cache/shape-generation key; the incarnation is the in-flight-request validity key, so refresh replaces the cached shape without cancelling requests already using the same live handlers.
@@ -349,6 +363,19 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 - Integration tier: `openRawLink(href, opts?)` (optional `{ editor }` requests a specific editor — e.g. `"md-view"` — routed via `ILinkData.target`), `notify(msg, type)`, `openFileDialog` / `saveFileDialog` / `openFolderDialog`, and `readFile(path, opts?)` / `writeFile(path, data, opts?)` (relative paths resolve against the board root; text or `base64`; a sanctioned persistence primitive that avoids shelling a script).
 - Process retention (busy boards): by default, everything a board spawned is tree-killed when its iframe unloads (page navigation or board reload). `setBoardBusy(true)` opts out — main keys job sinks by the owning `BoardEditorModel` id (stable across mounts) and keeps a busy owner's jobs when the port is disposed; the model itself survives navigation as an invisible ownership handle, so page/tab close (or app quit) still kills everything. The renderer is the authoritative busy holder (shim → host-frame `postMessage` → model → IPC mirror to main). On re-open the board reinitializes itself: `getBoardBusy()` (carried in the port handshake) and `getJobs()` — live jobs including previous board lifetimes, re-associated by the `execute()` `name`, control-only (kill/stdin work; no output streaming, output produced while unloaded is dropped). The Boards panel shows a green "running" dot for busy boards; a cross-window page move kills a busy board's processes.
 - Theme/tokens: `--p-*` CSS variables are injected into the served HTML `<head>` at serve time by the `board://` handler, so the first paint is themed (no white flash). Live theme switches are pushed host→board over the port. Also available as `persephone.theme` / `persephone.tokens` (snapshots) and `persephone.getTheme()` / `persephone.getTokens()` (live). `persephone.onThemeChange(cb)` fires on every switch.
+
+Service requests deliberately use two channels. An ordinary request goes through main with
+`app.boards.requestService(boardRoot, message)` or, from the board frame,
+`persephone.service.request(message)`. The renderer `MessagePort` lease is a separate host-renderer
+channel reserved for Phase C's high-volume provider traffic; a service is not required to implement
+that port at all. A request API must not assume that the lease is attached.
+
+`persephone.storage` is a JSON key/value store in a per-board folder under
+`<userData>/data/board-storage/`, keyed by the SHA-256 hash of the canonical board root. The folder
+contains `store.json` and a `board.json` metadata sidecar. Frame and service calls share one
+main-owned store and one per-board mutation queue, so neither process writes a substitute file.
+Storage is available while the service process is alive, including during `starting` before `ready`;
+loading persisted state before declaring readiness is a normal service startup shape.
 
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload** toolbar action and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each load starts a fresh `ui.log` (reset to a single "board loaded" line, so the log only ever holds the current board lifetime — clicking Show-log never opens an empty page). Load failures funnel into that `ui.log` and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.
 

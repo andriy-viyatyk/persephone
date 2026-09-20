@@ -309,6 +309,19 @@ The same channel backs a board's `persephone.execute()` — both the board bridg
 
 Type definitions: `/src/renderer/api/types/proc.d.ts` (`IProc`, `IExecuteHandle`, `IExecuteOptions`).
 
+### Board module-service requests
+
+`app.boards.requestService(boardRoot, message)` is the ordinary script and agent request path for a
+declared, trusted board service. It is routed through main, starts the service lazily, and returns
+the structured response; `app.boards.startService()` and `stopService()` are explicit lifecycle
+controls. The board frame's equivalent is `persephone.service.request(message)`, which also uses
+the main-owned parent channel.
+
+The renderer `MessagePort` lease is not this request path. It is reserved for Phase C's high-volume
+provider traffic, and a service is not required to implement that port. `persephone.storage` is the
+board-side JSON store shared with the service through main; it remains available while the process
+is alive, including before the service's `ready` handshake.
+
 ### `io` — Content Delivery API
 
 Provides access to content pipe providers, transformers, pipe assembly, and link events.
