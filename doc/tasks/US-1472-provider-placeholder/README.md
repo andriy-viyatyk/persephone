@@ -410,3 +410,29 @@ The following files need **no changes in US-1472**: `src/renderer/api/types/io.p
 The US-1471-owned manifest axis, trusted provider/scheme registration, owner-aware registries, and
 Board Info diagnostics are prerequisites to consume, not edits to make in this task. Catalog-driven
 provider discovery is deferred until the external catalog publishes the required field.
+
+## Live verification, 2026-09-20 (Claude)
+
+Observed against the running app after implementation.
+
+**D8's contract holds exactly.** Building a pipe from a descriptor naming an unregistered provider
+type returned a placeholder instead of throwing, with:
+
+- `restorable: true`, `writable: false`;
+- `toDescriptor()` round-tripping the **original** descriptor including its config
+  (`{"type":"nope/missing","config":{"a":1}}`) — this is the page-state preservation guarantee that
+  lets a reinstall recover the page without the user reopening it;
+- `readBinary()` rejecting with a readable typed message:
+  `Provider "nope/missing" is unavailable. Reinstall or trust the board from Tools & Editors → Search boards.`
+- a **malformed** descriptor still throwing:
+  `Malformed provider descriptor: expected an object with a string type.`
+
+**The US-1471 refusal-toast dedup fix is confirmed.** The same Demo-board manifest that previously
+produced the identical reserved-scheme alert **twice** from one window bootstrap now produces it
+**once**.
+
+**Not verified this session:** the Board Info rendering of refusal diagnostics. A board-info page is
+reached by *switching* an existing page to `board-info` (`src/renderer/editors/base/editor-switch.ts:87`)
+rather than by a programmatic open, so there is no MCP route to it without UI automation. The
+refusal *reason* itself is proven readable through the alerts surface; only its Board Info
+presentation is unconfirmed. Recorded for the user in the roadmap's *Needs user verification*.

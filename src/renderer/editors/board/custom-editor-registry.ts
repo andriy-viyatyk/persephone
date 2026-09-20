@@ -18,11 +18,14 @@ import { TGlobalState } from "../../core/state/state";
 import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
+import { boardInstallRegistry } from "../../api/board-install-registry";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import {
+    replaceProviderDeclarations,
     registerProvider,
     unregisterBoardProviders,
+    type ProviderDeclaration,
 } from "../../content/registry";
 import {
     registerScheme,
@@ -192,6 +195,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         if (this.initialized) return;
         this.initialized = true;
         await boardTrust.load();
+        await boardInstallRegistry.load();
         await this.refresh();
     }
 
@@ -205,6 +209,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const incompatibilities: CustomEditorIncompatibility[] = [];
         const registrationIntents: BoardRegistrationIntent[] = [];
         const registrationIssues: CustomEditorRegistrationIssue[] = [];
+        const providerDeclarations: ProviderDeclaration[] = [];
         for (const root of roots) {
             const manifest = await readBoardManifest(root);
             const bridgeCompatibility = getBoardCompatibility(
@@ -230,6 +235,13 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     continue;
                 }
                 registrationIntents.push({ boardRoot: root, declaration });
+                providerDeclarations.push({
+                    type: declaration.type,
+                    boardRoot: root,
+                    boardName: (manifest?.name && manifest.name.trim()) || fpBasename(root),
+                    trusted: true,
+                    source: "trusted",
+                });
             }
             const assoc = getBoardEditorAssociation(manifest);
             if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
@@ -251,13 +263,33 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 editorSources: assoc.editorSources,
             });
         }
+        for (const installed of boardInstallRegistry.listInstalled()) {
+            if (boardTrust.isTrusted(installed.root)) continue;
+            const manifest = await readBoardManifest(installed.root);
+            const bridgeCompatibility = getBoardCompatibility(
+                { minBridgeVersion: manifest?.minBridgeVersion },
+                { bridgeVersion: BOARD_BRIDGE_VERSION },
+            );
+            if (!bridgeCompatibility.compatible) continue;
+            for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
+                if (!declaration.type.includes("/")) continue;
+                providerDeclarations.push({
+                    type: declaration.type,
+                    boardRoot: installed.root,
+                    boardName: (manifest?.name && manifest.name.trim()) || fpBasename(installed.root),
+                    trusted: false,
+                    source: "installed",
+                });
+            }
+        }
         if (gen !== this.refreshGen) return; // superseded by a newer refresh — discard
 
         // Registry maps and reactive state are committed synchronously as one rebuild. In
         // particular, clear every board-origin registration, including boards no longer in the
         // trust list after an untrust, uninstall, or folder rename.
-        unregisterBoardProviders();
-        unregisterBoardSchemes();
+        unregisterBoardProviders(roots);
+        unregisterBoardSchemes(roots);
+        replaceProviderDeclarations(providerDeclarations);
         for (const { boardRoot, declaration } of registrationIntents) {
             const providerResult = registerProvider(
                 declaration.type,

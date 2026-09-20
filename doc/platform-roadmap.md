@@ -394,6 +394,30 @@ was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 >    needs a throwaway board to be trusted. Note the scope cut behind it: local `minAppVersion` is
 >    still **not** enforced at registration — it never was, and fixing that would have changed
 >    behaviour for existing installed boards, so it is left as its own task.
+>
+> Added by **EPIC-107 (Phase C)**, 2026-09-20.
+>
+> 4. **The renderer `MessagePort` lease shipped in Phase B has no service-side counterpart, and
+>    never had one.** `attach-renderer` is only ever *sent* (`main/module-service-supervisor.ts:400`),
+>    the renderer waits for the service to post `hello` and replies `hello-ack`
+>    (`renderer/api/module-service.ts:142-160`), and nothing in `src/**` or `assets/**` handled
+>    `attach-renderer` or sent `hello`. So `moduleService.acquire()` timed out for every board that
+>    shipped. This is **consistent with EPIC-106 D3** ("a service is not obliged to implement that
+>    port at all") and is not a defect in Phase B — but EPIC-106's evidence for "a request with no
+>    board page open" was the **main-routed** `requestModuleService` endpoint, not the lease, so the
+>    port was never exercised. EPIC-107's US-1473 builds the service side of it. Worth your eye
+>    because it means Phase B's lease criterion was proven by a different path than the one it names.
+> 5. **EPIC-106's D1 reversal is still unreviewed, and EPIC-107 D3 deliberately did not extend it.**
+>    `contentProviders` is disclosed in `permissions` but the **functional** trigger is the
+>    `contentProviders` manifest array, not the permission string — unlike `service`, which has a
+>    functional hygiene gate. That inconsistency is intentional, so that whichever way you decide on
+>    the `permissions` axis, the change is one conditional. See EPIC-107 D3.
+> 6. **Board Info's rendering of provider/scheme refusal diagnostics was not observed on screen.**
+>    A board-info page is reached by *switching* an existing page to `board-info`
+>    (`editors/base/editor-switch.ts:87`), not by a programmatic open, so there was no MCP route to
+>    it. The refusal *reasons* were confirmed readable through the alerts surface
+>    (`Rejected scheme registration: "https". Scheme "https" is reserved for the platform.`); only
+>    their Board Info presentation is unconfirmed.
 
 
 **Scope decision (2026-09-19):** this roadmap ends when the architecture can host an extracted

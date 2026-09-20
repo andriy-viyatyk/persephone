@@ -59,10 +59,11 @@ export type ServiceParentMessage =
     | { kind: "probe"; nonce: number }
     | { kind: "request"; requestId: string; message: unknown }
     | {
+        /** The transferred MessagePortMain arrives in `event.ports[0]`, NOT in this body —
+         *  a port is not structured-cloneable as a message value. */
         kind: "attach-renderer";
         generation: number;
         leaseNonce: string;
-        rendererPort: unknown;
     }
     | { kind: "drop-renderer"; generation: number; leaseNonce: string }
     | { kind: "shutdown"; nonce: number; reason: ServiceStopReason }
@@ -81,9 +82,65 @@ export type ServiceMainMessage =
         args: unknown[];
     };
 
+export type ProviderOperation =
+    | "readBinary"
+    | "writeBinary"
+    | "stat"
+    | "watchSubscribe"
+    | "watchUnsubscribe";
+
+export interface ProviderRequest {
+    kind: "provider";
+    operation: ProviderOperation;
+    type: string;
+    config: Record<string, unknown>;
+    subscriptionId?: string;
+    data?: Uint8Array;
+}
+
+export interface ProviderWireStat {
+    exists: boolean;
+    size?: number;
+    mtime?: string;
+}
+
+export type ProviderWireErrorCode =
+    | "provider-not-registered"
+    | "provider-read-only"
+    | "provider-invalid-result"
+    | "provider-failed"
+    | "provider-payload-too-large";
+
+export interface ProviderWireError {
+    kind: "provider-error";
+    code: ProviderWireErrorCode;
+    message: string;
+}
+
+export type ProviderResult =
+    | { kind: "provider-result"; operation: "readBinary"; ok: true; data: Uint8Array }
+    | { kind: "provider-result"; operation: "writeBinary"; ok: true }
+    | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
+    | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe"; ok: true }
+    | { kind: "provider-result"; ok: false; error: ProviderWireError };
+
+export interface ProviderEvent {
+    kind: "provider-event";
+    subscriptionId: string;
+    event: string;
+}
+
+export interface ProviderCapabilities {
+    kind: "provider-capabilities";
+    type: string;
+    writable: boolean;
+}
+
 export type RendererServiceMessage =
     | { kind: "hello"; generation: number; leaseNonce: string }
     | { kind: "hello-ack"; generation: number; leaseNonce: string }
     | { kind: "request"; requestId: string; message: unknown }
     | { kind: "response"; requestId: string; result?: unknown; error?: unknown }
+    | ProviderEvent
+    | ProviderCapabilities
     | { kind: "lease-lost"; reason: RendererLeaseLostReason };

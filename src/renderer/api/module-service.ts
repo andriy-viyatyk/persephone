@@ -6,6 +6,7 @@ import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
     SERVICE_REQUEST_DEADLINE_MS,
     type BoardServiceStatus,
+    type ProviderRequest,
     type RendererLeaseLostReason,
     type RendererServiceMessage,
 } from "../../ipc/module-service-channels";
@@ -26,6 +27,12 @@ interface Acquisition {
     timer?: ReturnType<typeof setTimeout>;
 }
 
+interface ProviderWatchIntent {
+    request: ProviderRequest;
+    callback: (event: string) => void;
+    acknowledged: boolean;
+}
+
 interface ServiceLeaseClient {
     boardRoot: string;
     state: "idle" | "attaching" | "attached" | "lost";
@@ -35,6 +42,8 @@ interface ServiceLeaseClient {
     acquisition?: Promise<void>;
     acquisitionState?: Acquisition;
     pending: Map<string, PendingRequest>;
+    capabilities: Map<string, boolean>;
+    watchIntents: Map<string, ProviderWatchIntent>;
     requestNumber: number;
     disposed: boolean;
 }
@@ -59,6 +68,10 @@ const lifecycleCodes = new Set([
 
 function normalizeRoot(boardRoot: string): string {
     return fpNormalizeForCompare(boardRoot);
+}
+
+function watchKey(subscriptionId: string): string {
+    return subscriptionId;
 }
 
 function errorForCode(code: string, fallback = "service-error"): Error {
@@ -111,6 +124,8 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             boardRoot,
             state: "idle",
             pending: new Map(),
+            capabilities: new Map(),
+            watchIntents: new Map(),
             requestNumber: 0,
             disposed: false,
         };
@@ -166,6 +181,24 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
             client.acquisitionState = undefined;
             acquisition.resolve();
         }
+        void replayWatchIntents(client);
+        return;
+    }
+    if (message.kind === "provider-capabilities") {
+        if (client.state === "attached" && typeof message.type === "string") {
+            client.capabilities.set(message.type, message.writable === true);
+        }
+        return;
+    }
+    if (message.kind === "provider-event") {
+        if (client.state !== "attached" || typeof message.subscriptionId !== "string") return;
+        const intent = client.watchIntents.get(watchKey(message.subscriptionId));
+        if (!intent || !intent.acknowledged) return;
+        try {
+            intent.callback(message.event);
+        } catch (error: unknown) {
+            console.error(`Provider watch callback failed: ${errMessage(error)}`);
+        }
         return;
     }
     if (message.kind === "lease-lost") {
@@ -197,6 +230,8 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     const port = client.port;
     client.port = undefined;
     client.state = "lost";
+    client.capabilities.clear();
+    for (const intent of client.watchIntents.values()) intent.acknowledged = false;
     if (port) {
         port.onmessage = null;
         port.onmessageerror = null;
@@ -279,6 +314,94 @@ function request(boardRoot: string, message: unknown, deadlineMs?: number): Prom
     });
 }
 
+function isWatchAcknowledgement(result: unknown): boolean {
+    if (!result || typeof result !== "object") return false;
+    const candidate = result as { kind?: unknown; operation?: unknown; ok?: unknown };
+    return candidate.kind === "provider-result"
+        && candidate.operation === "watchSubscribe"
+        && candidate.ok === true;
+}
+
+function replayWatchIntents(client: ServiceLeaseClient): void {
+    for (const [subscriptionId, intent] of client.watchIntents) {
+        intent.acknowledged = false;
+        void request(client.boardRoot, intent.request).then(
+            (result) => {
+                const current = client.watchIntents.get(subscriptionId);
+                if (!current) {
+                    if (isWatchAcknowledgement(result)) {
+                        void request(client.boardRoot, {
+                            ...intent.request,
+                            operation: "watchUnsubscribe",
+                        }).catch((): undefined => undefined);
+                    }
+                    return;
+                }
+                current.acknowledged = isWatchAcknowledgement(result);
+            },
+            () => {
+                // Keep the caller-owned intent for a later lease. This attempt has settled.
+            },
+        );
+    }
+}
+
+function subscribeProvider(
+    boardRoot: string,
+    requestMessage: ProviderRequest,
+    callback: (event: string) => void,
+): () => void {
+    ensureInitialized();
+    const client = getClient(boardRoot);
+    const subscriptionId = requestMessage.subscriptionId;
+    if (!subscriptionId) return (): void => undefined;
+    const key = watchKey(subscriptionId);
+    const intent: ProviderWatchIntent = {
+        request: requestMessage,
+        callback,
+        acknowledged: false,
+    };
+    client.watchIntents.set(key, intent);
+    void request(boardRoot, requestMessage).then(
+        (result) => {
+            const current = client.watchIntents.get(key);
+            if (!current) {
+                if (isWatchAcknowledgement(result)) {
+                    void request(boardRoot, {
+                        ...requestMessage,
+                        operation: "watchUnsubscribe",
+                    }).catch((): undefined => undefined);
+                }
+                return;
+            }
+            current.acknowledged = isWatchAcknowledgement(result);
+        },
+        () => {
+            // A missing service or port is a settled subscribe attempt, not a retained Promise.
+        },
+    );
+
+    let disposed = false;
+    return () => {
+        if (disposed) return;
+        disposed = true;
+        const current = client.watchIntents.get(key);
+        if (!current) return;
+        client.watchIntents.delete(key);
+        if (current.acknowledged) {
+            void request(boardRoot, {
+                ...requestMessage,
+                operation: "watchUnsubscribe",
+            }).catch((): undefined => undefined);
+        }
+    };
+}
+
+function providerWritable(boardRoot: string, type: string): boolean | undefined {
+    const client = clients.get(normalizeRoot(boardRoot));
+    return client?.capabilities.get(type);
+}
+
 function dispose(): void {
     portSubscription?.();
     statusSubscription?.();
@@ -294,5 +417,7 @@ function dispose(): void {
 export const moduleService = {
     acquire,
     request,
+    subscribeProvider,
+    providerWritable,
     dispose,
 };

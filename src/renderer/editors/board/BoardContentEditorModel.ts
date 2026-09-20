@@ -108,9 +108,12 @@ export class BoardContentEditorModel extends BoardEditorModel {
     adoptHost(host: TextFileModel): void {
         this._host = host;
         this._hostStateUnsub?.();
-        this._hostStateUnsub = host.state.subscribe(() =>
-            this.descriptorChanged.send(undefined),
-        );
+        this._hostStateUnsub = host.state.subscribe(() => {
+            this.descriptorChanged.send(undefined);
+            if (!host.io.providerError && this.state.get().contentHostError) {
+                this.state.update((s) => { s.contentHostError = undefined; });
+            }
+        });
         const { filePath, title, id } = host.state.get();
         this.state.update((s) => {
             // Tab shows the FILE name; the board's own icon remains state-derived.
@@ -149,7 +152,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
                 await this._host.restore();
             }
             this.adoptHost(this._host);
-            this.state.update((s) => { s.contentHostError = undefined; });
+            this.state.update((s) => { s.contentHostError = this._host?.io.providerError; });
         } catch (err) {
             const message = errMessage(err, "Failed to restore board content.");
             ui.notify(message, "error");

@@ -13,6 +13,8 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 import { PipePair } from "../../content/PipePair";
 import { DisposableStore } from "../../core/utils/DisposableStore";
+import { isProviderResolutionError } from "../../content/registry";
+import { ui } from "../../api/ui";
 
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
@@ -21,6 +23,7 @@ export class TextFileIOModel {
     private readonly disposables = new DisposableStore();
     private modificationSaved = true;
     private isSavingModifications = false;
+    private lastProviderError: string | undefined;
 
     constructor(private model: TextFileModel) {
         this.pipes = new PipePair(() => this.model.state.get().id);
@@ -29,6 +32,23 @@ export class TextFileIOModel {
 
     get cachePipe(): IContentPipe | null {
         return this.pipes.cache;
+    }
+
+    get providerError(): string | undefined {
+        return this.lastProviderError;
+    }
+
+    private recordProviderError(error: unknown): void {
+        if (!isProviderResolutionError(error)) return;
+        const message = errMessage(error, "The content provider is unavailable.");
+        if (this.lastProviderError !== message) {
+            this.lastProviderError = message;
+            ui.notify(message, "error");
+        }
+    }
+
+    private clearProviderError(): void {
+        this.lastProviderError = undefined;
     }
 
     // ── Pipe helpers ─────────────────────────────────────────────────
@@ -270,7 +290,9 @@ export class TextFileIOModel {
                     s.deleted = false;
                     s.temp = false;
                 });
-            } catch {
+                this.clearProviderError();
+            } catch (error: unknown) {
+                this.recordProviderError(error);
                 // File read failed — check if deleted
                 try {
                     const stat = await pipe.provider.stat?.();
@@ -321,7 +343,9 @@ export class TextFileIOModel {
                     s.encrypted = shell.encryption.isEncrypted(s.content);
                     s.encoding = pipe.encoding;
                 });
-            } catch {
+                this.clearProviderError();
+            } catch (error: unknown) {
+                this.recordProviderError(error);
                 // read failed — ignore
             }
         }

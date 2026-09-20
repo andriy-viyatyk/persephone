@@ -23,6 +23,12 @@
 
 import { isArchivePath, fpExtname } from "../../core/utils/file-path";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
+import {
+    isProviderResolutionError,
+    subscribeProviderAvailability,
+} from "../../content/registry";
+import { ui } from "../../api/ui";
+import { errMessage } from "../../../shared/utils";
 
 const MIME_BY_EXT: Record<string, string> = {
     ".png": "image/png",
@@ -46,6 +52,7 @@ const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
 // Sources whose read failed. Kept so a broken entry is attempted once, not once per scroll.
 const failed = new Set<string>();
+subscribeProviderAvailability(() => failed.clear());
 
 /**
  * True when `src` must be read through a content pipe rather than handed to the DOM.
@@ -83,8 +90,9 @@ export async function resolvePipeImageSrc(src: string): Promise<string | null> {
             cache.set(src, url);
             evictOverflow();
             return url;
-        } catch {
+        } catch (error: unknown) {
             failed.add(src);
+            if (isProviderResolutionError(error)) ui.notify(errMessage(error), "error");
             return null;
         } finally {
             pending.delete(src);

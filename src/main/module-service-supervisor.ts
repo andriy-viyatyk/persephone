@@ -397,7 +397,11 @@ class ModuleServiceSupervisor {
 
         try {
             process.postMessage(
-                { kind: "attach-renderer", generation, leaseNonce, rendererPort: port2 } satisfies ServiceParentMessage,
+                // The MessagePortMain travels ONLY in the transfer list. Putting it in the
+                // message body too makes Electron try to structured-clone it, which throws
+                // "object could not be cloned" and fails every lease attach. The service
+                // reads it from `event.ports[0]`, exactly as the renderer below does.
+                { kind: "attach-renderer", generation, leaseNonce } satisfies ServiceParentMessage,
                 [port2],
             );
             if (target.isDestroyed()) throw new ServiceError("renderer-port-attach-failed");

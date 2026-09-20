@@ -69,6 +69,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
      *  file for the image (true for non-local sources AND blob-URL
      *  imports). Gates the dispose() cleanup. */
     private cacheFileCreated = false;
+    private pipeWatch: (() => void) | undefined;
 
     constructor(state: TComponentState<ImageEditorState>) {
         super(state);
@@ -122,6 +123,12 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
 
         await this.ensurePipe();
         if (this.pipe) {
+            if (!this.pipeWatch && this.pipe.watch) {
+                this.pipeWatch = this.pipe.watch(() => {
+                    if (!this.hasImage) void this.restore();
+                });
+                this.own(() => this.pipeWatch?.());
+            }
             if (!url) {
                 // No URL yet — read from pipe and create blob URL
                 try {

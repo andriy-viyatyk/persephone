@@ -59,6 +59,15 @@ import { installBoardDiagnostics } from "./board-console-mirror";
 import { installBoardContextMenu } from "./board-context-menu";
 import { errMessage } from "./shared/utils";
 
+class ProviderRegistrationServiceOnlyError extends Error {
+    readonly code = "provider-registration-service-only";
+
+    constructor() {
+        super("persephone.providers.register() is available only in the board module service.");
+        this.name = "ProviderRegistrationServiceOnlyError";
+    }
+}
+
 // ── Boot context (injected synchronously before this script) ─────────────────
 
 const boot: BoardBootContext =
@@ -968,6 +977,14 @@ function createHandle(
         /** Request the trusted board module service. The service starts lazily on first use. */
         request(message: unknown): Promise<unknown> {
             return rpc("serviceRequest", [message]);
+        },
+    },
+
+    /** Provider registration is intentionally service-only: implementations retain functions and
+     * must outlive any board frame. */
+    providers: {
+        register(_type: string, _implementation: unknown): never {
+            throw new ProviderRegistrationServiceOnlyError();
         },
     },
 

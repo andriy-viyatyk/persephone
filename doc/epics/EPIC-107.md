@@ -402,6 +402,25 @@ Each is an observation, per D10.
   the one the user should read first: it is where EPIC-106's unreviewed reversal of the roadmap's
   `permissions` framing would otherwise have been compounded, and it is deliberately the
   unwindable option instead.
+- **Finding, 2026-09-20 — the renderer MessagePort lease from Phase B has no service-side
+  counterpart in the tree.** Found while reviewing US-1473. `attach-renderer` is only ever *sent*
+  (`src/main/module-service-supervisor.ts:400`); the renderer *waits* for the service to post
+  `hello` and replies `hello-ack` (`src/renderer/api/module-service.ts:142-160`); and `grep` across
+  `src/**` and `assets/**` finds **no handler for `attach-renderer` and no sender of `hello`** —
+  not in `assets/module-service-host.mjs` (whose only `parentPort` handler matches
+  `storage-response`), and not in `assets/demo-board/scripts/service.mjs` (which owns the rest of
+  the parent protocol itself). So `moduleService.acquire()` times out for every board shipping
+  today and the lease is unexercised code.
+
+  This is **consistent with EPIC-106 D3**, which said in terms that "a service is not obliged to
+  implement that port at all" — so it is not a defect in Phase B. But EPIC-106's recorded evidence
+  for a service answering "with no board page open" was the **main-routed** `requestModuleService`
+  endpoint (`src/ipc/main/board-handlers.ts`), not the lease, so nothing has ever exercised the
+  port. The consequence for this epic: **US-1473 must build the service side of the lease**, not
+  reuse it — the host gains `attach-renderer`, the transferred port, the `hello`/`hello-ack`
+  handshake and provider dispatch. That is materially more work than "install the delegate", and it
+  is why US-1473 is the task most likely to slip after US-1474.
+
 - **Live finding, 2026-09-20, before any code was written:** in a Browser tab, clicking a link to
   an **already-registered** pipeline scheme (`mneme://qa/test.md`, verified through a real
   `editor.click` so the navigation was page-initiated and therefore *not* exempt under

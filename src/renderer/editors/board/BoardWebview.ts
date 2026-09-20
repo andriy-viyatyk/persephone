@@ -29,6 +29,8 @@ import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 import { boardTrust } from "../../api/board-trust";
 import { errMessage } from "../../../shared/utils";
+import { ui } from "../../api/ui";
+import { isProviderResolutionError } from "../../content/registry";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
@@ -525,8 +527,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: { path?: string; error?: string };
         try {
             reply = { path: await model.ensureContentPath() };
-        } catch (error) {
-            reply = { error: errMessage(error) };
+        } catch (error: unknown) {
+            const message = errMessage(error);
+            if (isProviderResolutionError(error)) ui.notify(message, "error");
+            reply = { error: message };
         }
         if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardFilePathResultMsg = {

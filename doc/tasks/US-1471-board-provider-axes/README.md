@@ -458,3 +458,9 @@ accumulate an error alert per refresh for the life of the session. That is a use
 storm and it breaches EPIC-107 exit criterion 13 (alerts empty after a run). Board Info is the
 intended durable surface for these refusals (EPIC-107 D2); the toast should be supplemental and
 raised at most once per `(board, kind, name, reason)`, not once per refresh.
+
+### Fix applied
+
+US-1472 now deduplicates board registration refusal toasts by `(board root, kind, name, reason)`
+across refreshes while retaining every refusal in Board Info; the dedup record is released when the
+board leaves the trusted registration set.

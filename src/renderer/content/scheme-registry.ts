@@ -6,6 +6,7 @@ import {
     type RegistrationOptions,
     type RegistrationResult,
 } from "./registry";
+import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 export type SchemePhase = "open" | "source-path";
 
@@ -32,6 +33,7 @@ interface SchemeRegistration {
 }
 
 const schemeHooks = new Map<string, SchemeRegistration>();
+const boardRegistrationRefusalToasts = new Map<string, Set<string>>();
 const HARD_RESERVED_SCHEMES = new Set([
     "http",
     "https",
@@ -51,13 +53,43 @@ function schemeFromValue(value: string | undefined): string | undefined {
     return scheme ? normalizeScheme(scheme) : undefined;
 }
 
-function reportDuplicate(kind: string, name: string, existingOrigin?: RegistrationOptions["origin"]): void {
+function refusalToastKey(kind: string, name: string, reason: string): string {
+    return `${kind}\u0000${name}\u0000${reason}`;
+}
+
+function shouldReportBoardRefusal(
+    owner: string | undefined,
+    kind: string,
+    name: string,
+    reason: string,
+): boolean {
+    if (!owner) return true;
+    const root = fpNormalizeForCompare(owner);
+    let refusals = boardRegistrationRefusalToasts.get(root);
+    if (!refusals) {
+        refusals = new Set<string>();
+        boardRegistrationRefusalToasts.set(root, refusals);
+    }
+    const key = refusalToastKey(kind, name, reason);
+    if (refusals.has(key)) return false;
+    refusals.add(key);
+    return true;
+}
+
+function reportDuplicate(
+    kind: string,
+    name: string,
+    existingOrigin?: RegistrationOptions["origin"],
+    owner?: string,
+): void {
     const ownerMessage = existingOrigin
         ? ` The existing ${existingOrigin} registration remains active.`
         : " The first registration remains active.";
+    const reason = `Duplicate ${kind} registration: "${name}".${ownerMessage}`;
+    if (!shouldReportBoardRefusal(owner, kind, name, reason)) return;
     void import("../api/ui")
         .then(({ ui }) => ui.notify(
-            `Duplicate ${kind} registration: "${name}".${ownerMessage}`,
+            reason,
             "error",
         ))
         .catch((error: unknown) => {
@@ -80,7 +112,8 @@ function reportReplacement(
         });
 }
 
-function reportRejected(kind: string, name: string, reason: string): void {
+function reportRejected(kind: string, name: string, reason: string, owner?: string): void {
+    if (!shouldReportBoardRefusal(owner, kind, name, reason)) return;
     void import("../api/ui")
         .then(({ ui }) => ui.notify(
             `Rejected ${kind} registration: "${name}". ${reason}`,
@@ -95,11 +128,12 @@ function duplicateResult(
     kind: string,
     name: string,
     existing: SchemeRegistration,
+    owner?: string,
 ): RegistrationResult {
     const reason = existing.owner
         ? `${kind} "${name}" is already owned by board "${existing.owner}".`
         : `${kind} "${name}" is already registered by ${existing.origin}.`;
-    reportDuplicate(kind, name, existing.origin);
+    reportDuplicate(kind, name, existing.origin, owner);
     return { accepted: false, reason, owner: existing.owner };
 }
 
@@ -115,7 +149,7 @@ export function registerScheme(
     const normalizedScheme = normalizeScheme(scheme);
     if (options.origin === "board" && isHardReservedScheme(normalizedScheme)) {
         const reason = `Scheme "${normalizedScheme}" is reserved for the platform.`;
-        reportRejected("scheme", normalizedScheme, reason);
+        reportRejected("scheme", normalizedScheme, reason, options.owner);
         return { accepted: false, reason };
     }
     const existing = schemeHooks.get(normalizedScheme);
@@ -129,7 +163,7 @@ export function registerScheme(
             reportReplacement("scheme", normalizedScheme, existing.origin);
             return { accepted: true };
         }
-        return duplicateResult("scheme", normalizedScheme, existing);
+        return duplicateResult("scheme", normalizedScheme, existing, options.owner);
     }
     schemeHooks.set(normalizedScheme, {
         hooks,
@@ -140,9 +174,17 @@ export function registerScheme(
 }
 
 /** Remove every board-owned scheme so a full trusted-board refresh can rebuild ownership. */
-export function unregisterBoardSchemes(): void {
+export function unregisterBoardSchemes(activeBoardRoots?: readonly string[]): void {
     for (const [scheme, registration] of schemeHooks) {
         if (registration.origin === "board") schemeHooks.delete(scheme);
+    }
+    if (!activeBoardRoots) {
+        boardRegistrationRefusalToasts.clear();
+        return;
+    }
+    const active = new Set(activeBoardRoots.map(fpNormalizeForCompare));
+    for (const root of boardRegistrationRefusalToasts.keys()) {
+        if (!active.has(root)) boardRegistrationRefusalToasts.delete(root);
     }
 }
 

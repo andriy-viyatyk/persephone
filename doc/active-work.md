@@ -48,6 +48,12 @@ below tracks which phases have shipped.
 ## Planned
 
 - *(no epic)*
+  - [ ] US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`
+    — split out of [US-1476](tasks/US-1476-browser-scheme-routing/README.md) during review. A download
+    takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`, so it
+    never reaches the content pipeline. Routing it needs a product decision (cancel the download and
+    open the source URL, or save first and hand the saved path to `openRawLink`) plus download-manager
+    lifecycle work — larger than the navigation fix US-1476 owned. **Not part of EPIC-107.**
   - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
     — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
     before returning it and `EventChannel` has no replay, so the `openRawLink` fired during

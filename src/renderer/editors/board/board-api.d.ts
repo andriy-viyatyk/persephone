@@ -258,6 +258,17 @@ interface PersephoneServiceApi {
     request(message: unknown): Promise<unknown>;
 }
 
+/** The frame-side failure returned by the service-only provider registration guard. */
+interface PersephoneProviderRegistrationServiceOnlyError extends Error {
+    readonly code: "provider-registration-service-only";
+}
+
+/** Provider implementations retain functions and therefore belong to the module service. */
+interface PersephoneProviderApi {
+    /** Always throws `PersephoneProviderRegistrationServiceOnlyError` in a board frame. */
+    register(type: string, implementation: unknown): never;
+}
+
 interface PersephoneHostApi {
     /** Origin-local URL for the platform-owned content pipe. */
     streamUrl(): Promise<string>;
@@ -349,6 +360,8 @@ interface PersephoneBoardApi {
     readonly storage: PersephoneStorageApi;
     /** Lazily-started request/reply access to this board's trusted module service. */
     readonly service: PersephoneServiceApi;
+    /** Service-only provider registration guard. */
+    readonly providers: PersephoneProviderApi;
     readonly host: PersephoneHostApi;
 }
 
