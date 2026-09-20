@@ -85,6 +85,17 @@ export interface BoardListing {
     };
     /** All current page ids running this root; [] means no page is open. */
     readonly openPageIds: string[];
+    /**
+     * Live status from the main-owned module-service registry. This key is omitted when the
+     * board has no registered service status. `startedAt` is epoch milliseconds.
+     */
+    readonly service?: {
+        readonly state: "stopped" | "starting" | "running" | "stopping" | "failed";
+        readonly reason?: string;
+        readonly restartCount: number;
+        readonly pid?: number;
+        readonly startedAt?: number;
+    };
 }
 
 /**
@@ -190,6 +201,20 @@ export interface IBoards {
 
     /** One-call local machine inventory; does not discover remote catalog boards. */
     list(): Promise<BoardListing[]>;
+
+    /**
+     * Request an opaque message from the board's declared service, starting it lazily if needed.
+     * Rejects with a readable lifecycle reason such as `untrusted`, `service-not-declared`,
+     * `permission-denied`, `service-busy`, `service-timeout`, `service-exited`, or
+     * `service-failed`.
+     */
+    requestService(boardRoot: string, message: unknown): Promise<unknown>;
+
+    /** Explicitly start the board's declared service and reset its restart budget. */
+    startService(boardRoot: string): Promise<void>;
+
+    /** Explicitly stop the board's declared service. */
+    stopService(boardRoot: string): Promise<void>;
 
     // ── Published catalog (remote) — discover / install / update (EPIC-045 / US-869) ──────
 

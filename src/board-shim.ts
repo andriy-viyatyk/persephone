@@ -959,6 +959,14 @@ function createHandle(
     },
 
     /** Main-owned per-board JSON storage. Every call crosses the bridge; there is no local cache. */
+    service: {
+        /** Request the trusted board module service. The service starts lazily on first use. */
+        request(message: unknown): Promise<unknown> {
+            return rpc("serviceRequest", [message]);
+        },
+    },
+
+    /** Main-owned per-board JSON storage. Every call crosses the bridge; there is no local cache. */
     storage: {
         get(key: string): Promise<BoardJsonValue | undefined> {
             return rpc("storageGet", [key]) as Promise<BoardJsonValue | undefined>;

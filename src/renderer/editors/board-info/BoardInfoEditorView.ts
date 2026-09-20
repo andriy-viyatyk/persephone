@@ -418,7 +418,22 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 text(info.bridgeCompatibilityReason, { size: "sm", color: "warning" }),
             ));
         }
-        // US-1468 adds the live service STATUS row after these declaration metadata rows.
+        if (info.service) {
+            const status = info.serviceStatus;
+            const serviceDetails = panel({ direction: "column", gap: "xs", align: "stretch" });
+            if (!status) {
+                serviceDetails.append(text("Status unavailable", { size: "sm", color: "light" }));
+            } else {
+                serviceDetails.append(text(`State: ${status.state}`, { size: "sm" }));
+                if (status.reason) serviceDetails.append(text(`Reason: ${status.reason}`, { size: "sm" }));
+                if (status.pid !== undefined) serviceDetails.append(text(`PID: ${status.pid}`, { size: "sm" }));
+                if (status.startedAt !== undefined) {
+                    serviceDetails.append(text(`Started: ${new Date(status.startedAt).toISOString()}`, { size: "sm" }));
+                }
+                serviceDetails.append(text(`Restarts: ${status.restartCount}`, { size: "sm" }));
+            }
+            metadata.append(this.infoRow("Service status", serviceDetails));
+        }
         if (info.isCatalogInstall && info.catalogId) {
             metadata.append(this.infoRow("Catalog id", text(info.catalogId, { size: "sm" })));
         }

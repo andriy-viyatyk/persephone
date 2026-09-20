@@ -35,9 +35,11 @@ import { fpBasename, fpJoin, fpNormalizeForCompare } from "../../core/utils/file
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
+import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
+import { moduleServiceStatus } from "../../api/module-service-status";
 
 /** Transient per-board download UI (not persisted). Downloaded/registered state is read from
  *  `boardInstallRegistry` + `boardTrust`, which are authoritative; this only tracks the in-flight
@@ -61,6 +63,7 @@ export interface BoardPropsInfo {
     permissions?: string[];
     minBridgeVersion?: string;
     service?: string;
+    serviceStatus?: BoardServiceStatus;
     bridgeCompatibilityReason?: string;
     /** Editor association (masks / editorName / kind), if the board is a file editor. */
     fileMasks?: string[];
@@ -172,6 +175,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     private _hostStateUnsub: (() => void) | null = null;
     private _pendingHost: HostDescriptor | undefined = undefined;
     private _catalogSub: (() => void) | null = null;
+    private _serviceStatusSub: (() => void) | null = null;
     /** installId of the in-flight download per catalog id (for Cancel). */
     private readonly _activeDownloads = new Map<string, string>();
     /** installIds the user cancelled — so the rejected download isn't shown as an error. */
@@ -181,6 +185,15 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         super(state);
         this.own(() => this._hostStateUnsub?.());
         this.own(() => this._catalogSub?.());
+        this.own(() => this._serviceStatusSub?.());
+        this._serviceStatusSub = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
+            const root = this.state.get().boardRoot;
+            if (!root || fpNormalizeForCompare(root) !== fpNormalizeForCompare(status.boardRoot)) return;
+            this.state.update((s) => {
+                if (!s.props || fpNormalizeForCompare(s.props.root) !== fpNormalizeForCompare(root)) return;
+                s.props.serviceStatus = moduleServiceStatus.getStatus(root);
+            });
+        });
         const trait: IContentHostTrait = {
             extractContentHost: (): IContentHost => {
                 const host = this._host;
@@ -348,6 +361,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             { minBridgeVersion },
             { bridgeVersion: BOARD_BRIDGE_VERSION },
         );
+        await moduleServiceStatus.refresh();
+        const serviceStatus = moduleServiceStatus.getStatus(root);
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
             description: manifest?.description,
@@ -357,6 +372,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             permissions: normalizePermissions(manifest?.permissions),
             minBridgeVersion,
             service: normalizeBoardServicePath(manifest?.service) ?? undefined,
+            serviceStatus,
             bridgeCompatibilityReason: bridgeCompatibility.reason,
             fileMasks: assoc?.fileMasks,
             folderMasks: assoc?.folderMasks,

@@ -13,7 +13,15 @@ import {
     VideoStreamSessionConfig,
     VideoStreamSessionResult,
 } from "../api-param-types";
-import { Api, CaptureRect, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
+import {
+    Api,
+    CaptureRect,
+    Endpoint,
+    EventEndpoint,
+    McpStatus,
+    MnemeStatus,
+    type ModuleServicePortPayload,
+} from "../api-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../git-ipc";
 import type { BoardThemePalette } from "../board-bridge-channels";
 import type {
@@ -21,7 +29,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "../clipboard-ipc";
-import type { TrustedBoardSnapshot } from "../module-service-channels";
+import type { BoardServiceStatus, TrustedBoardSnapshot } from "../module-service-channels";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -504,6 +512,40 @@ class ApiCalls implements Api {
 
     syncTrustedBoardSnapshot = async (snapshot: TrustedBoardSnapshot) => {
         return executeOnce<void>(Endpoint.syncTrustedBoardSnapshot, snapshot);
+    };
+
+    getModuleServiceStatuses = async () => {
+        return executeOnce<BoardServiceStatus[]>(Endpoint.getModuleServiceStatuses);
+    };
+
+    requestModuleServicePort = async (boardRoot: string) => {
+        return executeOnce<void>(Endpoint.requestModuleServicePort, boardRoot);
+    };
+
+    startModuleService = async (boardRoot: string) => {
+        return executeOnce<void>(Endpoint.startModuleService, boardRoot);
+    };
+
+    stopModuleService = async (boardRoot: string) => {
+        return executeOnce<void>(Endpoint.stopModuleService, boardRoot);
+    };
+
+    onModuleServicePort = (
+        cb: (payload: ModuleServicePortPayload, port: MessagePort) => void,
+    ): (() => void) => {
+        return window.electron.ipcRenderer.onPort(EventEndpoint.eModuleServicePort, (rawPayload, ports) => {
+            const payload = rawPayload as Partial<ModuleServicePortPayload> | undefined;
+            if (typeof payload?.boardRoot !== "string" || payload.boardRoot.length === 0) return;
+            if (!Number.isInteger(payload.generation) || payload.generation < 0) return;
+            if (typeof payload.leaseNonce !== "string" || payload.leaseNonce.length === 0) return;
+            const port = ports[0];
+            if (!port || typeof port.start !== "function" || typeof port.postMessage !== "function") return;
+            cb({
+                boardRoot: payload.boardRoot,
+                generation: payload.generation,
+                leaseNonce: payload.leaseNonce,
+            }, port);
+        });
     };
 }
 

@@ -127,6 +127,10 @@ export enum Endpoint {
     downloadBoardArchive = "downloadBoardArchive",
     cancelBoardDownload = "cancelBoardDownload",
     syncTrustedBoardSnapshot = "syncTrustedBoardSnapshot",
+    getModuleServiceStatuses = "getModuleServiceStatuses",
+    requestModuleServicePort = "requestModuleServicePort",
+    startModuleService = "startModuleService",
+    stopModuleService = "stopModuleService",
 }
 
 /** Synthetic CDP "tab" id for a board (boards have no tabs). The automation
@@ -287,7 +291,21 @@ export type Api = {
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Private renderer-bootstrap snapshot; not a script-facing service API. */
     [Endpoint.syncTrustedBoardSnapshot]: (snapshot: TrustedBoardSnapshot) => Promise<void>;
+    /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
+    [Endpoint.getModuleServiceStatuses]: () => Promise<BoardServiceStatus[]>;
+    /** Request the renderer-only lease for a board module service. */
+    [Endpoint.requestModuleServicePort]: (boardRoot: string) => Promise<void>;
+    /** Explicitly start a board module service and reset its restart budget. */
+    [Endpoint.startModuleService]: (boardRoot: string) => Promise<void>;
+    /** Explicitly stop a board module service. */
+    [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
 };
+
+export interface ModuleServicePortPayload {
+    boardRoot: string;
+    generation: number;
+    leaseNonce: string;
+}
 
 export enum EventEndpoint {
     eWindowMaximized = "eWindowMaximized",

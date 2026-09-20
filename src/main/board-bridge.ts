@@ -22,6 +22,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import {
     BrowserWindow,
     MessageChannelMain,
@@ -43,6 +44,7 @@ import {
 } from "../ipc/board-bridge-channels";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
 import { EventEndpoint } from "../ipc/api-types";
+import { SERVICE_REQUEST_DEADLINE_MS } from "../ipc/module-service-channels";
 import {
     showOpenFileDialog,
     showOpenFolderDialog,
@@ -69,6 +71,7 @@ import {
     validateBoardStorageKey,
     validateBoardStorageValue,
 } from "./board-storage";
+import { moduleServiceSupervisor } from "./module-service-supervisor";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -253,6 +256,12 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         const owner = ownerSinks.get(entry.ownerId);
         return owner ? getJobsBySinkIds(owner.sinkIds) : [];
     },
+    serviceRequest: (entry, args) => moduleServiceSupervisor.request(
+        entry.root,
+        crypto.randomUUID(),
+        args[0],
+        SERVICE_REQUEST_DEADLINE_MS,
+    ),
     storageGet: (entry, args) => getBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
     storageSet: (entry, args) => setBoardStorageValue(
         entry.root,

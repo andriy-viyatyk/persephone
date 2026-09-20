@@ -10,12 +10,21 @@ export const SERVICE_SHUTDOWN_TIMEOUT_MS = 2000;
 export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
 export const MAX_OUTSTANDING_REQUESTS_PER_SERVICE = 32;
+export const SERVICE_REQUEST_DEADLINE_MS = 10_000;
 export const MAX_SERVICE_LOG_BYTES = 256 * 1024;
 export const MAX_SERVICE_LOG_CHUNK_BYTES = 8 * 1024;
 
 export type BoardServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
 export type RendererLeaseState = "none" | "attaching" | "attached" | "lost";
 export type ServiceStopReason = "untrusted" | "explicit" | "quit";
+export type RendererLeaseLostReason =
+    | "superseded"
+    | "stopping"
+    | "untrusted"
+    | "quit"
+    | "service-exited"
+    | "renderer-port-attach-failed";
+export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
 
 export interface BoardServiceStatus {
     boardRoot: string;
@@ -56,18 +65,25 @@ export type ServiceParentMessage =
         rendererPort: unknown;
     }
     | { kind: "drop-renderer"; generation: number; leaseNonce: string }
-    | { kind: "shutdown"; nonce: number; reason: ServiceStopReason };
+    | { kind: "shutdown"; nonce: number; reason: ServiceStopReason }
+    | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown };
 
 export type ServiceMainMessage =
     | { kind: "ready"; nonce: number }
     | { kind: "probe-ack"; nonce: number }
     | { kind: "renderer-attached"; generation: number; leaseNonce: string }
     | { kind: "response"; requestId: string; result: unknown }
-    | { kind: "response"; requestId: string; error: unknown };
+    | { kind: "response"; requestId: string; error: unknown }
+    | {
+        kind: "storage-request";
+        requestId: string;
+        operation: ServiceStorageOperation;
+        args: unknown[];
+    };
 
 export type RendererServiceMessage =
     | { kind: "hello"; generation: number; leaseNonce: string }
     | { kind: "hello-ack"; generation: number; leaseNonce: string }
     | { kind: "request"; requestId: string; message: unknown }
-    | { kind: "response"; requestId: string; result?: unknown; error?: unknown };
-
+    | { kind: "response"; requestId: string; result?: unknown; error?: unknown }
+    | { kind: "lease-lost"; reason: RendererLeaseLostReason };

@@ -245,6 +245,19 @@ interface PersephoneStorageApi {
     keys(): Promise<string[]>;
 }
 
+/** A request/reply surface for the trusted board module service. */
+interface PersephoneServiceApi {
+    /**
+     * Send an opaque structured-clone message to the module service. The service starts lazily
+     * on first use and works without a board page being open. Rejections use these readable
+     * codes: `service-not-declared` when no service is registered, `trust-not-ready` before the
+     * first trust snapshot, `service-failed` after terminal failure, `service-busy` at the
+     * concurrency cap, `service-timeout` at the request deadline, `untrusted` after revocation,
+     * and `service-exited` when the running service exits.
+     */
+    request(message: unknown): Promise<unknown>;
+}
+
 interface PersephoneBoardApi {
     /** Bridge version, e.g. "1.6.0" — the release that added `openContent()`, the `--p-graph-*`
      *  family, manifest `contentMasks`, and the bridge contract declarations. Compare
@@ -329,6 +342,8 @@ interface PersephoneBoardApi {
     readonly var: PersephoneVarApi;
     /** Main-owned per-board storage; see {@link PersephoneStorageApi}. */
     readonly storage: PersephoneStorageApi;
+    /** Lazily-started request/reply access to this board's trusted module service. */
+    readonly service: PersephoneServiceApi;
 }
 
 interface Window {

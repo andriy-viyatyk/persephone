@@ -129,6 +129,8 @@ class App {
 
         const { load: loadUiPreferences } = await import("./ui-preferences");
         await loadUiPreferences();
+        const { initModuleServiceStatus } = await import("./module-service-status");
+        await initModuleServiceStatus();
         this._reportServiceFailures();
 
         // Subscribe the published-boards catalog model to main's broadcast and pull the

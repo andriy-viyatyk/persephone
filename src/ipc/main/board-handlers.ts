@@ -2,7 +2,7 @@ import type { IpcMainEvent } from "electron";
 import { BOARD_CDP_TAB, Endpoint } from "../api-types";
 import type { BoardArchiveDownloadRequest, PublishedBoardsResult, PublishedBoardVersions } from "../api-param-types";
 import type { BoardThemePalette } from "../board-bridge-channels";
-import type { TrustedBoardSnapshot } from "../module-service-channels";
+import type { BoardServiceStatus, TrustedBoardSnapshot } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 
 export type BoardEndpoint =
@@ -20,7 +20,11 @@ export type BoardEndpoint =
     | Endpoint.getBoardVersions
     | Endpoint.downloadBoardArchive
     | Endpoint.cancelBoardDownload
-    | Endpoint.syncTrustedBoardSnapshot;
+    | Endpoint.syncTrustedBoardSnapshot
+    | Endpoint.getModuleServiceStatuses
+    | Endpoint.requestModuleServicePort
+    | Endpoint.startModuleService
+    | Endpoint.stopModuleService;
 
 /** Register Board lifecycle, bridge, automation, and catalog endpoints. Each
  * handler keeps its service dynamic import so Board infrastructure stays lazy. */
@@ -80,5 +84,20 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.syncTrustedBoardSnapshot, async (_event, snapshot: TrustedBoardSnapshot): Promise<void> => {
         (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.syncTrustedBoardSnapshot(snapshot);
+    });
+    bindEndpoint(Endpoint.getModuleServiceStatuses, async (): Promise<BoardServiceStatus[]> => {
+        return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.getStatuses();
+    });
+    bindEndpoint(Endpoint.requestModuleServicePort, async (event: IpcMainEvent, boardRoot: string): Promise<void> => {
+        await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.transferRendererPort(
+            boardRoot,
+            event.sender,
+        );
+    });
+    bindEndpoint(Endpoint.startModuleService, async (_event, boardRoot: string): Promise<void> => {
+        await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.start(boardRoot, "explicit");
+    });
+    bindEndpoint(Endpoint.stopModuleService, async (_event, boardRoot: string): Promise<void> => {
+        await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.stop(boardRoot, "explicit");
     });
 }

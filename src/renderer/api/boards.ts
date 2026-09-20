@@ -20,6 +20,12 @@ import { publishedBoards } from "./published-boards";
 import { boardPagesForRoot, getBoardUpdate } from "./board-updates";
 import { api } from "../../ipc/renderer/api";
 import { errMessage } from "../../shared/utils";
+import {
+    SERVICE_REQUEST_DEADLINE_MS,
+    type BoardServiceStatus,
+} from "../../ipc/module-service-channels";
+import { moduleServiceStatus } from "./module-service-status";
+import { moduleService } from "./module-service";
 
 export const BOARDS_ASSETS_BASE_URL =
     "https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/";
@@ -206,6 +212,7 @@ function installedListing(
 function toBoardListing(
     source: BoardListingSource,
     manifest: { name?: string; description?: string } | undefined,
+    serviceStatus: BoardServiceStatus | undefined,
 ): BoardListing {
     // Absent optionals are OMITTED, never set to `undefined`: a key explicitly holding
     // `undefined` crosses the MCP/IPC boundary as `null`, which is exactly the falsy
@@ -219,11 +226,23 @@ function toBoardListing(
         trusted: source.trusted,
         ...(installed !== undefined ? { installed } : {}),
         openPageIds: [...source.openPageIds],
+        ...(serviceStatus
+            ? {
+                service: {
+                    state: serviceStatus.state,
+                    ...(serviceStatus.reason !== undefined ? { reason: serviceStatus.reason } : {}),
+                    restartCount: serviceStatus.restartCount,
+                    ...(serviceStatus.pid !== undefined ? { pid: serviceStatus.pid } : {}),
+                    ...(serviceStatus.startedAt !== undefined ? { startedAt: serviceStatus.startedAt } : {}),
+                },
+            }
+            : {}),
     };
 }
 
 function currentBoardListings(): BoardListing[] {
-    return mergeBoardSources(currentBoardSources()).map((source) => toBoardListing(source, undefined));
+    return mergeBoardSources(currentBoardSources()).map((source) =>
+        toBoardListing(source, undefined, moduleServiceStatus.getStatus(source.root)));
 }
 
 /** Current local board inventory without disk or network access. */
@@ -238,11 +257,12 @@ export function getCurrentBoardListingAt(index: number): BoardListing | undefine
 }
 
 async function enumerateBoardListings(): Promise<BoardListing[]> {
+    await moduleServiceStatus.refresh();
     const sources = await readBoardSources();
     const merged = mergeBoardSources(sources);
     return Promise.all(merged.map(async (source) => {
         const manifest = await readBoardManifest(source.root);
-        return toBoardListing(source, manifest ?? undefined);
+        return toBoardListing(source, manifest ?? undefined, moduleServiceStatus.getStatus(source.root));
     }));
 }
 
@@ -379,6 +399,16 @@ export const boards: IBoards = {
 
     /** Return the merged local trust, install, and open-page inventory. */
     list: (): Promise<BoardListing[]> => enumerateBoardListings(),
+
+    /** Request a reply from the board's declared service, starting it lazily if needed. */
+    requestService: (boardRoot: string, message: unknown): Promise<unknown> =>
+        moduleService.request(boardRoot, message, SERVICE_REQUEST_DEADLINE_MS),
+
+    /** Explicitly start a declared service and reset its restart budget. */
+    startService: (boardRoot: string): Promise<void> => api.startModuleService(boardRoot),
+
+    /** Explicitly stop a running service. */
+    stopService: (boardRoot: string): Promise<void> => api.stopModuleService(boardRoot),
 
     // ── Published catalog — discover / install / update (EPIC-045 / US-869) ──────
 

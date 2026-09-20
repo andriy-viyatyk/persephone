@@ -15,9 +15,11 @@ import {
     MAX_SERVICE_LOG_CHUNK_BYTES,
     SERVICE_HANDSHAKE_TIMEOUT_MS,
     SERVICE_RENDERER_LEASE_TIMEOUT_MS,
+    SERVICE_REQUEST_DEADLINE_MS,
     SERVICE_SHUTDOWN_TIMEOUT_MS,
     type BoardServiceStatus,
     type BoardServiceState,
+    type RendererLeaseLostReason,
     type ServiceMainMessage,
     type ServiceParentMessage,
     type ServiceStopReason,
@@ -26,7 +28,9 @@ import {
     type TrustedBoardSnapshotEntry,
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
+import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
+import { getAssetPath } from "./utils";
 
 const FAILURE_WINDOW_MS = 60_000;
 
@@ -73,6 +77,7 @@ interface ServiceRecord {
     requests: Map<string, PendingRequest>;
     pendingRequestSlots: number;
     lease?: RendererLease;
+    storageAdapter?: ModuleServiceStorageAdapter;
     leaseCounter: number;
     stopRequested: boolean;
 }
@@ -222,6 +227,13 @@ class ModuleServiceSupervisor {
                 stopRequested: false,
             };
             this.records.set(key, record);
+            record.storageAdapter = new ModuleServiceStorageAdapter({
+                getBoardRoot: () => record.boardRoot,
+                getUnavailableCode: () => this.storageUnavailableCode(record),
+                getOutstandingRequestCount: () => record.pendingRequestSlots + record.requests.size,
+                isAvailable: () => this.isStorageAvailable(record),
+                postMessage: (message) => record.process?.postMessage(message),
+            });
             this.emit(record);
         }
 
@@ -241,6 +253,10 @@ class ModuleServiceSupervisor {
     getStatus(boardRoot: string): BoardServiceStatus | undefined {
         const record = this.records.get(normalizeRoot(boardRoot));
         return record ? this.statusOf(record) : undefined;
+    }
+
+    getStatuses(): BoardServiceStatus[] {
+        return [...this.records.values()].map((record) => this.statusOf(record));
     }
 
     async start(boardRoot: string, mode: "explicit" | "request"): Promise<StartResult> {
@@ -310,7 +326,7 @@ class ModuleServiceSupervisor {
         if (!record.process || record.state !== "running") {
             throw new ServiceError(record.reason === "untrusted" ? "untrusted" : "service-exited");
         }
-        const timeout = Number.isFinite(deadlineMs) && deadlineMs > 0 ? deadlineMs : 10_000;
+        const timeout = Number.isFinite(deadlineMs) && deadlineMs > 0 ? deadlineMs : SERVICE_REQUEST_DEADLINE_MS;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 record.requests.delete(requestId);
@@ -335,7 +351,7 @@ class ModuleServiceSupervisor {
 
         const oldLease = record.lease;
         if (oldLease) {
-            this.failLease(record, oldLease, "renderer-reloaded");
+            this.failLease(record, oldLease, "superseded");
             try {
                 process.postMessage({
                     kind: "drop-renderer",
@@ -415,6 +431,7 @@ class ModuleServiceSupervisor {
             }
             try {
                 this.rejectRequests(record, "quit");
+                record.storageAdapter?.settle("quit");
                 if (record.lease) this.failLease(record, record.lease, "quit");
                 record.state = "stopped";
                 record.reason = "quit";
@@ -450,6 +467,19 @@ class ModuleServiceSupervisor {
             this.emit(record);
             throw new ServiceError("permission-denied");
         }
+    }
+
+    private isStorageAvailable(record: ServiceRecord): boolean {
+        return record.state === "running"
+            && record.process !== undefined
+            && this.isEffectivelyTrusted(record.boardRoot);
+    }
+
+    private storageUnavailableCode(record: ServiceRecord): string {
+        if (record.reason === "untrusted") return "untrusted";
+        if (record.reason === "quit" || this.disposing) return "quit";
+        if (record.state === "failed" || record.terminalFailure) return "service-failed";
+        return "service-exited";
     }
 
     private isEffectivelyTrusted(boardRoot: string): boolean {
@@ -512,7 +542,11 @@ class ModuleServiceSupervisor {
         const generation = ++record.generation;
         let process: UtilityProcess;
         try {
-            process = utilityProcess.fork(absoluteEntry, [], {
+            process = utilityProcess.fork(getAssetPath("module-service-host.mjs"), [
+                absoluteEntry,
+                String(SERVICE_REQUEST_DEADLINE_MS),
+                String(MAX_OUTSTANDING_REQUESTS_PER_SERVICE),
+            ], {
                 cwd: record.boardRoot,
                 env: this.buildServiceEnvironment(record.boardRoot),
                 stdio: "pipe",
@@ -562,6 +596,10 @@ class ModuleServiceSupervisor {
             process.on("message", (rawMessage: unknown) => {
                 if (!isCurrent(record, process, generation)) return;
                 const message = rawMessage as ServiceMainMessage;
+                if (message.kind === "storage-request") {
+                    record.storageAdapter?.handle(message);
+                    return;
+                }
                 if (message.kind === "renderer-attached") {
                     const lease = record.lease;
                     if (lease
@@ -681,6 +719,7 @@ class ModuleServiceSupervisor {
         record.pid = undefined;
         record.startedAt = undefined;
         this.rejectRequests(record, "service-exited");
+        record.storageAdapter?.settle("service-exited");
         if (record.lease) this.failLease(record, record.lease, "service-exited");
         const reason = `service-exited:${code}`;
         this.countFailure(record, reason);
@@ -720,9 +759,20 @@ class ModuleServiceSupervisor {
         record.process = undefined;
         record.state = "stopping";
         record.reason = reason;
-        this.rejectRequests(record, reason === "untrusted" ? "untrusted" : "quit");
-        if (record.lease) this.failLease(record, record.lease, reason === "untrusted" ? "untrusted" : "quit");
-        record.cancelAttempt?.(new ServiceError(reason === "untrusted" ? "untrusted" : "quit"));
+        const stopCode = reason === "untrusted"
+            ? "untrusted"
+            : reason === "quit"
+                ? "quit"
+                : "service-exited";
+        const leaseReason: RendererLeaseLostReason = reason === "untrusted"
+            ? "untrusted"
+            : reason === "quit"
+                ? "quit"
+                : "stopping";
+        this.rejectRequests(record, stopCode);
+        record.storageAdapter?.settle(stopCode);
+        if (record.lease) this.failLease(record, record.lease, leaseReason);
+        record.cancelAttempt?.(new ServiceError(stopCode));
         record.cancelAttempt = undefined;
 
         const stopPromise = (async () => {
@@ -767,16 +817,30 @@ class ModuleServiceSupervisor {
         }
     }
 
-    private failLease(record: ServiceRecord, lease: RendererLease, code: string): void {
+    private failLease(record: ServiceRecord, lease: RendererLease, reason: RendererLeaseLostReason): void {
         if (record.lease !== lease) return;
         clearTimeout(lease.timer);
         lease.state = "lost";
         record.lease = undefined;
         try {
+            lease.rendererPort.postMessage({ kind: "lease-lost", reason });
+        } catch {
+            // The renderer may already have gone away.
+        }
+        try {
             lease.rendererPort.close();
         } catch {
             // Already closed by Chromium.
         }
+        const code = reason === "superseded"
+            ? "renderer-reloaded"
+            : reason === "untrusted"
+                ? "untrusted"
+                : reason === "quit"
+                    ? "quit"
+                    : reason === "renderer-port-attach-failed"
+                        ? reason
+                        : "service-exited";
         lease.reject(new ServiceError(code));
     }
 
@@ -819,5 +883,5 @@ export const moduleServiceSupervisor = new ModuleServiceSupervisor();
 
 export type ModuleServiceSupervisorApi = Pick<
     ModuleServiceSupervisor,
-    "syncTrustedBoardSnapshot" | "getStatus" | "start" | "stop" | "request" | "transferRendererPort" | "disposeAll"
+    "syncTrustedBoardSnapshot" | "getStatus" | "getStatuses" | "start" | "stop" | "request" | "transferRendererPort" | "disposeAll"
 >;
