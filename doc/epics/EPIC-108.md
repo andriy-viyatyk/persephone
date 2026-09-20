@@ -95,6 +95,15 @@ Verified against the source on 2026-09-20, not taken from the roadmap.
   (`board:var`, `board:filePath`, `board:openContent`). A capability handler dispatch is
   renderer→frame and its result is frame→renderer, so it is the host-frame channel's shape, not
   main's.
+- **The renderer→frame correlated request already exists, and it is a good template.** A first
+  reading suggested the renderer→frame direction was fire-and-forget only; that is **wrong**.
+  `BoardWebview.requestAiVision` (`:477-500`) is a complete correlated RPC: a monotonic `reqId`, a
+  `pendingAiVision` map, a per-request timeout, a trust check before dispatch
+  (`boardTrust.isTrusted`), a `generation` guard plus an `iframe`/`contentWindow` identity check on
+  the reply (`handleAiVisionResult`, `:502-510`), and `rejectPendingAiVision` for teardown. The
+  intent dispatch is the same shape with three additions — a cancel frame, the typed error codes of
+  D5, and settlement by reason rather than one generic error. This lowers US-1481's risk
+  substantially and it is the code the task should start from.
 - **`BoardPortInitMsg`** (`board-bridge-channels.ts:232-256`) is constructed in exactly one place,
   `BoardWebview.transferPort()` (`:264-284`), and already carries seven optional per-open fields
   (`pageId`, `filePath`, `contentHost`, `materialize`, …). The roadmap's `intent` field is an
@@ -469,20 +478,31 @@ Each is an observation, per D10.
 
 ## Concerns
 
-- **US-1481 is the task most likely to overrun.** The host-frame channel is request/reply in one
-  direction today (`board:var`, `board:openContent` — frame asks, renderer answers). An intent
-  dispatch is the *reverse*: renderer asks, frame answers. That direction exists only for
-  fire-and-forget messages (`host:content`, state sync), so the correlated reverse call is new
-  protocol. If the epic has to stop early it stops after wave 2's US-1480, with the bus, the
-  registry and the built-in handlers complete and board handlers deferred — a coherent slice,
-  because Phase A's four built-in ids already flow through `invoke()`.
+- **US-1481 is still the task most likely to overrun, but less so than first judged.** A first
+  reading had it inventing the correlated renderer→frame call; in fact `requestAiVision` already
+  is one (see *What already exists*), so the task is an adaptation with three additions rather
+  than new protocol. What remains genuinely new is the **cancel frame** — nothing anywhere in the
+  tree delivers a cancel to a callee — and settlement by typed reason. If the epic has to stop
+  early it stops after wave 2's US-1480, with the bus, the registry and the built-in handlers
+  complete and board handlers deferred: a coherent slice, because Phase A's four built-in ids
+  already flow through `invoke()` and would gain the whole lifecycle without any board being able
+  to serve one yet.
 - **The page-scoped chain of D6 is the design's weakest joint** and is recorded as such. Its
   failure mode is a false `cycle`, which is loud and recoverable, rather than an undetected loop,
   which is not. That asymmetry is why it was chosen.
-- **`invoke()` changing shape is a breaking change to a shipped surface.** Phase A's `invoke()`
-  has typed overloads over a closed union and eight internal callers. Widening `CapabilityId` to
-  `string` must keep those eight call sites type-safe — the overloads stay and a general
-  `(id: string, payload: unknown, opts?)` signature is added beneath them, not instead of them.
+- **`invoke()` changing shape is a breaking change to a shipped surface, and it has one
+  landmine.** Phase A's `invoke()` has four typed overloads over a closed union and **23** call
+  sites across `editors/`, `api/` and `scripting/api-wrapper/` (counted, not estimated). Widening
+  `CapabilityId` to `string` must keep all of them type-safe — the overloads stay and a general
+  `(id: string, payload: unknown, opts?)` signature is added **beneath** them, not instead of them.
+
+  The landmine: `editors/mermaid/MermaidEditor.ts:222` declares
+  `let result: Awaited<ReturnType<typeof app.capabilities.invoke>>;`. For an overloaded function
+  `ReturnType` resolves to the **last** overload, so adding a general signature at the bottom
+  silently retypes that variable to the general return type — the narrowing on the next lines
+  (which reads `diagram.edit`'s `status` discriminant) would then either break the build or, worse,
+  widen to something that still compiles. Whichever task lands the widened signature must open
+  that file and give the variable an explicit type instead of deriving it.
 - **The trust dialog is the one surface an agent cannot fully verify**, since clicking **Trust
   Board** is the user's decision. Its new `capabilities` rows are confirmed through the AiVision
   facade, as EPIC-106 did for `permissions`, and anything left unproven goes to *Needs user
