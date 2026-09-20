@@ -111,12 +111,26 @@ packaged builds and changes if the user reinstalls elsewhere**, which would orph
 `.excalidraw` page. This project has hit this class before: EPIC-107 D1 kept provider types verbatim
 precisely because deriving them from the board root would orphan persisted state.
 
-So: keep the real path as the root, and re-alias a stale bundled root to the current one **by
-manifest id** at the restore seam that already parses it (`api/pages/PagesLifecycleModel.ts:137`).
-One place.
+So: keep the real path as the root, and re-alias a stale bundled root to the current one by the
+stable folder id.
+
+> **Corrected by US-1484, 2026-09-20.** This decision originally named
+> `api/pages/PagesLifecycleModel.ts:137` as "the restore seam", and "one place". Both were wrong.
+> That line is the *runtime construction* branch; the real session restore runs through
+> `PagesPersistenceModel.restorePage()`, and `BoardEditorModel.getRestoreData()` deliberately
+> persists the **stable** `board-view` id while stashing `boardRoot` in editor state. So the alias
+> applies to the descriptor's `boardRoot`, not only to an editor id, and US-1484's audit found
+> twelve persistence sites in total — including board vars, which fall back to the absolute root
+> when a manifest lacks `author` + `name`.
+>
+> The alias also needs a **staleness test**, not just a shape match: it fires only when the
+> persisted root no longer holds a readable manifest. Keying on basename plus a `boards` parent
+> alone would let a user board at `<any>/boards/<name>` be silently re-pointed at the app-shipped
+> board of the same name — which is permitted without being user-trusted.
 
 Board storage has the same path dependence — keyed `sha256(normalized root)`
-(`main/board-storage.ts:15-18`) — and takes the same fix: bundled boards key on manifest id.
+(`main/board-storage.ts:15-18`) — and takes the same fix: bundled boards key on the stable folder
+id, domain-separated as `bundled:<id>`, while every non-bundled root keeps its existing hash.
 
 **D6 — Disabling with no replacement installed yields `no-handler`, and must say so.**
 
