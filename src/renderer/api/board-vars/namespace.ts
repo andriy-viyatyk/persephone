@@ -1,4 +1,6 @@
 import { readBoardManifest } from "../../editors/board/board-manifest";
+import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 
 // =============================================================================
 // Board vars namespace resolution (EPIC-046 / US-887).
@@ -6,8 +8,9 @@ import { readBoardManifest } from "../../editors/board/board-manifest";
 
 /**
  * The per-board vars namespace: the manifest's `author/name` when BOTH are explicitly set
- * (trimmed, non-empty), otherwise the board root path (unique — collision-free but not portable
- * across locations). The namespace is a plain JSON object key, so spaces / "/" inside the display
+ * (trimmed, non-empty), otherwise `bundled:<folder-id>` for a bundled board or the board root path
+ * for an ordinary board (unique — collision-free but not portable across locations). The namespace
+ * is a plain JSON object key, so spaces / "/" inside the display
  * strings are fine ("Persephone/Excel Viewer"); it is deliberately NOT slugged or charset-restricted.
  *
  * A stable `author/name` lets a board keep one namespace across its dev-repo copy and its installed
@@ -19,6 +22,13 @@ export async function resolveBoardNamespace(boardRoot: string): Promise<string> 
     const author = typeof manifest?.author === "string" ? manifest.author.trim() : "";
     const name = typeof manifest?.name === "string" ? manifest.name.trim() : "";
     if (author && name) return `${author}/${name}`;
+
+    await bundledBoardRegistry.ensureInitialized();
+    const rootKey = fpNormalizeForCompare(boardRoot);
+    const bundled = bundledBoardRegistry.list().find(
+        (record) => fpNormalizeForCompare(record.root) === rootKey,
+    );
+    if (bundled) return `bundled:${bundled.id}`;
     return boardRoot;
 }
 

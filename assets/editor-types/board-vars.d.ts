@@ -22,8 +22,9 @@
 export interface IBoardVars {
     /**
      * Resolves `boardRoot`'s vars namespace — its manifest's `author/name` when both fields are
-     * explicitly set, otherwise the board's root path. Always call this rather than constructing
-     * the namespace string by hand; it matches what the board itself sees via `persephone.var.*`.
+     * explicitly set, `bundled:<folder-id>` for a bundled board, otherwise the board's root path.
+     * Always call this rather than constructing the namespace string by hand; it matches what the
+     * board itself sees via `persephone.var.*`.
      *
      * @param boardRoot - Absolute path of the board's root folder.
      */

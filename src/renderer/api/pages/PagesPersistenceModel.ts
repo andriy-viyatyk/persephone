@@ -20,9 +20,78 @@ import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
 import { panelKey, parsePanelKey } from "../../ui/secondary-views/panel-key";
 import type { BoardEditorState } from "../../editors/board";
-import { customEditorRegistry } from "../../editors/board/custom-editor-registry";
+import {
+    customEditorRegistry,
+    resolveBoardEditorId,
+} from "../../editors/board/custom-editor-registry";
+import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
+import {
+    decodePersephoneBoardLink,
+    encodePersephoneBoardLink,
+} from "../../content/persephone-board-link";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function repairBoardLink(value: unknown): Promise<unknown> {
+    if (typeof value !== "string") return value;
+    const decoded = decodePersephoneBoardLink(value);
+    if (!decoded) return value;
+
+    const currentRoot = await bundledBoardRegistry.resolvePersistedRoot(decoded.boardRoot);
+    return currentRoot === undefined ? value : encodePersephoneBoardLink(currentRoot);
+}
+
+async function normalizeEditorDescriptor(
+    descriptor: PageDescriptor["editors"][number],
+): Promise<PageDescriptor["editors"][number]> {
+    const state = { ...descriptor.state };
+    const persistedBoardRoot = typeof state.boardRoot === "string"
+        ? state.boardRoot
+        : undefined;
+    const currentBoardRoot = persistedBoardRoot === undefined
+        ? undefined
+        : await bundledBoardRegistry.resolvePersistedRoot(persistedBoardRoot);
+    if (currentBoardRoot !== undefined) state.boardRoot = currentBoardRoot;
+
+    const sourceLink = state.sourceLink;
+    if (isRecord(sourceLink)) {
+        const normalizedSourceLink = { ...sourceLink };
+        if ("href" in sourceLink) {
+            normalizedSourceLink.href = await repairBoardLink(sourceLink.href);
+        }
+        if ("url" in sourceLink) {
+            normalizedSourceLink.url = await repairBoardLink(sourceLink.url);
+        }
+        state.sourceLink = normalizedSourceLink;
+    }
+
+    if (typeof state.editor === "string") {
+        state.editor = await resolveBoardEditorId(state.editor);
+    }
+
+    return {
+        ...descriptor,
+        editorId: await resolveBoardEditorId(descriptor.editorId),
+        state,
+    };
+}
+
+async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescriptor> {
+    return {
+        ...desc,
+        editors: await Promise.all(desc.editors.map(normalizeEditorDescriptor)),
+        navBack: desc.navBack
+            ? await Promise.all(desc.navBack.map(async (entry) => ({
+                ...entry,
+                href: String(await repairBoardLink(entry.href)),
+            })))
+            : undefined,
+    };
+}
 
 function sameBoardRoot(left: string, right: string): boolean {
     return fpNormalizeForCompare(left) === fpNormalizeForCompare(right);
@@ -86,9 +155,10 @@ export class PagesPersistenceModel {
     };
 
     restorePage = async (
-        desc: PageDescriptor,
+        descriptor: PageDescriptor,
         options: { seedSecondaryViewsWidth?: boolean } = {},
     ): Promise<PageModel | null> => {
+        const desc = await normalizePageDescriptor(descriptor);
         const page = new PageModel(desc.id, {
             seedSecondaryViewsWidth: options.seedSecondaryViewsWidth ?? false,
         });

@@ -68,6 +68,15 @@ export function parseBoardEditorId(editorId: string): string | null {
         : null;
 }
 
+/** Resolve a persisted dynamic board id while preserving the real-root id format. */
+export async function resolveBoardEditorId(editorId: string): Promise<string> {
+    const boardRoot = parseBoardEditorId(editorId);
+    if (boardRoot === null) return editorId;
+
+    const currentRoot = await bundledBoardRegistry.resolvePersistedRoot(boardRoot);
+    return currentRoot === undefined ? editorId : boardEditorId(currentRoot);
+}
+
 /** A trusted or bundled board association resolved from its manifest. One per source board that declares
  *  usable file, content, or direct-folder claims; it may be file-only, folder-only, or both. */
 export interface CustomEditorMatch {

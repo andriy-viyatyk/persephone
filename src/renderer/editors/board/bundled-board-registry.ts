@@ -1,6 +1,11 @@
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
-import { fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
+import {
+    fpBasename,
+    fpDirname,
+    fpJoin,
+    fpNormalizeForCompare,
+} from "../../core/utils/file-path";
 import {
     readBoardManifest,
     type BoardManifest,
@@ -67,6 +72,34 @@ class BundledBoardRegistry {
     isBundled(root: string): boolean {
         const key = fpNormalizeForCompare(root);
         return this.records.some((record) => fpNormalizeForCompare(record.root) === key);
+    }
+
+    /**
+     * Resolve a persisted board root to its current path when it is a stale bundled root.
+     * A readable manifest at the persisted path always wins: a user board must never be
+     * adopted merely because its folder resembles an app-owned board.
+     */
+    async resolvePersistedRoot(persistedRoot: string): Promise<string | undefined> {
+        await this.ensureInitialized();
+
+        if (await readBoardManifest(persistedRoot)) return persistedRoot;
+
+        const candidateId = fpBasename(persistedRoot);
+        const parentName = fpBasename(fpDirname(persistedRoot));
+        const parentMatchesBoards = process.platform === "win32"
+            ? parentName.toLowerCase() === "boards"
+            : parentName === "boards";
+        if (!candidateId || !parentMatchesBoards) return undefined;
+
+        const candidateKey = process.platform === "win32"
+            ? candidateId.toLowerCase()
+            : candidateId;
+        return this.records.find((record) => {
+            const recordKey = process.platform === "win32"
+                ? record.id.toLowerCase()
+                : record.id;
+            return recordKey === candidateKey;
+        })?.root;
     }
 
     subscribe(listener: () => void): () => void {

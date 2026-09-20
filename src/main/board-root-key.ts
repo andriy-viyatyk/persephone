@@ -27,3 +27,12 @@ export function boardRootKey(boardRoot: string): string {
     }
     return digest;
 }
+
+/** Return the stable SHA-256 digest for a bundled board folder id. */
+export function bundledBoardKey(boardId: string): string {
+    const digest = crypto.createHash("sha256").update(`bundled:${boardId}`).digest("hex");
+    if (!/^[0-9a-f]{64}$/.test(digest)) {
+        throw new Error("Failed to derive a valid bundled board storage key.");
+    }
+    return digest;
+}

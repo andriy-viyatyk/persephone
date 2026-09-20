@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { BoardJsonValue } from "../ipc/board-bridge-channels";
 import { errMessage } from "../shared/utils";
-import { getDataFolder } from "./utils";
-import { boardRootKey, normalizeBoardRoot } from "./board-root-key";
+import { getAssetPath, getDataFolder } from "./utils";
+import { boardRootKey, bundledBoardKey, normalizeBoardRoot } from "./board-root-key";
 
 export type JsonValue = BoardJsonValue;
 export type BoardStorageState = Record<string, JsonValue>;
@@ -20,6 +20,7 @@ const BOARD_KEY_PATTERN = /^[0-9a-f]{64}$/;
 interface BoardStorageContext {
     boardRoot: string;
     boardKey: string;
+    bundledId?: string;
     folderPath: string;
     storePath: string;
     metadataPath: string;
@@ -111,7 +112,10 @@ function cloneJsonValue(value: JsonValue): JsonValue {
 
 function contextForRoot(boardRoot: string): BoardStorageContext {
     const normalizedRoot = normalizeBoardRoot(boardRoot);
-    const boardKey = boardRootKey(normalizedRoot);
+    const bundledId = bundledBoardId(normalizedRoot);
+    const boardKey = bundledId === undefined
+        ? boardRootKey(normalizedRoot)
+        : bundledBoardKey(bundledId);
     if (!BOARD_KEY_PATTERN.test(boardKey)) {
         throw new Error("Failed to derive a valid board storage key.");
     }
@@ -126,10 +130,27 @@ function contextForRoot(boardRoot: string): BoardStorageContext {
     return {
         boardRoot: normalizedRoot,
         boardKey,
+        bundledId,
         folderPath,
         storePath: path.join(folderPath, STORE_FILE),
         metadataPath: path.join(folderPath, METADATA_FILE),
     };
+}
+
+function bundledBoardId(normalizedRoot: string): string | undefined {
+    const boardsRoot = path.resolve(getAssetPath("boards"));
+    const relativePath = path.relative(boardsRoot, normalizedRoot);
+    if (
+        !relativePath
+        || relativePath === ".."
+        || relativePath.startsWith(`..${path.sep}`)
+        || path.isAbsolute(relativePath)
+    ) {
+        return undefined;
+    }
+
+    const segments = relativePath.split(/[\\/]/).filter(Boolean);
+    return segments.length === 1 ? segments[0] : undefined;
 }
 
 async function loadStore(context: BoardStorageContext): Promise<BoardStorageState> {
@@ -204,6 +225,14 @@ async function ensureMetadata(context: BoardStorageContext): Promise<void> {
     }
 
     try {
+        await fs.promises.access(context.metadataPath);
+        await refreshBundledMetadata(context);
+        return;
+    } catch (error) {
+        if (errorCode(error) !== "ENOENT") return;
+    }
+
+    try {
         const name = await readManifestName(context.boardRoot);
         const metadata = {
             boardRoot: context.boardRoot,
@@ -216,8 +245,35 @@ async function ensureMetadata(context: BoardStorageContext): Promise<void> {
             { encoding: "utf8", flag: "wx" },
         );
     } catch (error) {
-        if (errorCode(error) === "EEXIST") return;
+        if (errorCode(error) === "EEXIST") {
+            await refreshBundledMetadata(context);
+            return;
+        }
         throw new Error(`Failed to create board storage metadata: ${errMessage(error)}`);
+    }
+}
+
+async function refreshBundledMetadata(context: BoardStorageContext): Promise<void> {
+    if (context.bundledId === undefined) return;
+
+    try {
+        const content = await fs.promises.readFile(context.metadataPath, "utf8");
+        const parsed: unknown = JSON.parse(content);
+        if (
+            typeof parsed !== "object"
+            || parsed === null
+            || Array.isArray(parsed)
+            || !isPlainObject(parsed)
+        ) return;
+        const metadata = parsed as Record<string, unknown>;
+        if (metadata.boardRoot === context.boardRoot) return;
+        await fs.promises.writeFile(
+            context.metadataPath,
+            JSON.stringify({ ...metadata, boardRoot: context.boardRoot }, null, 2),
+            "utf8",
+        );
+    } catch {
+        // A diagnostic sidecar must never block the store itself.
     }
 }
 

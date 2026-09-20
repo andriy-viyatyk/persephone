@@ -34,8 +34,8 @@ class BoardVarsAdmin {
     }
 
     /** Resolves a board's namespace the same way registration/collision-checking does —
-     *  `author/name` when both manifest fields are set, else the board's root path. Always use
-     *  this rather than guessing the namespace string by hand. */
+     *  `author/name` when both manifest fields are set, `bundled:<folder-id>` for a bundled board,
+     *  else the board's root path. Always use this rather than guessing the namespace string. */
     namespaceFor = (boardRoot: string): Promise<string> => resolveBoardNamespace(boardRoot);
 
     get = async (namespace: string, name: string, env?: string): Promise<string | undefined> => {

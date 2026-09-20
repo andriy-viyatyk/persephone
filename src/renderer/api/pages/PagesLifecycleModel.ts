@@ -19,6 +19,7 @@ import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorR
 import {
     resolveEditorIdForFile,
     parseBoardEditorId,
+    resolveBoardEditorId,
     customEditorRegistry,
 } from "../../editors/board/custom-editor-registry";
 import type { BoardEditorModel } from "../../editors/board";
@@ -130,6 +131,7 @@ export class PagesLifecycleModel {
         filePath?: string,
         folderPath?: string,
     ): Promise<EditorOrHost> => {
+        editorId = await resolveBoardEditorId(editorId);
         // Custom-editor board (EPIC-042): a `board-editor:<root>` id has no static
         // registry def, so branch BEFORE the `!def` text fallback (which would else
         // open the file silently as text). Build the board initialized with the file
