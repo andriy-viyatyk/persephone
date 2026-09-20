@@ -7,6 +7,11 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { BoardEditorModel } from "./BoardEditorModel";
+import {
+    normalizeBoardServicePath,
+    normalizePermissions,
+    readBoardManifest,
+} from "./board-manifest";
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
 import { BoardWebview } from "./BoardWebview";
@@ -261,7 +266,11 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
     }
 
     private async trustBoard(boardRoot: string): Promise<void> {
-        if (await showTrustBoardDialog(boardRoot)) {
+        const manifest = await readBoardManifest(boardRoot);
+        if (await showTrustBoardDialog(boardRoot, {
+            permissions: normalizePermissions(manifest?.permissions),
+            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
+        })) {
             const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
             if (await confirmNamespaceNotColliding(boardRoot)) await boardTrust.trust(boardRoot);
         }

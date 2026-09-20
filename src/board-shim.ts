@@ -27,6 +27,7 @@ import {
     type RunnerInboundMsg,
 } from "./ipc/runner-channels";
 import { createExecuteHandle } from "./shared/execute-handle";
+import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
 import type {
     BoardAiVisionRegistrationMsg,
     BoardAiVisionNotifyMsg,
@@ -869,8 +870,9 @@ function createHandle(
     // Bridge API version — bumped when the `persephone.*` surface gains something.
     // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390);
     // 1.4.0 adds the host-frame AiVision notify bridge (US-1399); 1.5.0 adds `openContent()`,
-    // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404).
-    version: "1.5.0",
+    // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404);
+    // 1.6.0 adds the bridge contract declarations for service and storage (EPIC-106).
+    version: BOARD_BRIDGE_VERSION,
 
     aiVision: {
         schemaVersion: AI_VISION_SCHEMA_VERSION,

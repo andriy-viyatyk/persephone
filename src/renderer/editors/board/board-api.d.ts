@@ -225,8 +225,8 @@ interface PersephoneAiVisionApi {
 }
 
 interface PersephoneBoardApi {
-    /** Bridge version, e.g. "1.5.0" — the release that added `openContent()`, the `--p-graph-*`
-     *  family and manifest `contentMasks`. Compare
+    /** Bridge version, e.g. "1.6.0" — the release that added `openContent()`, the `--p-graph-*`
+     *  family, manifest `contentMasks`, and the bridge contract declarations. Compare
      *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */

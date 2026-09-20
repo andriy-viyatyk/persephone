@@ -18,6 +18,8 @@ import { TGlobalState } from "../../core/state/state";
 import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
+import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
+import { getBoardCompatibility } from "../../../shared/version-utils";
 import {
     getBoardEditorAssociation,
     matchesBoardMasks,
@@ -76,12 +78,20 @@ export interface CustomEditorMatch {
     editorSources: "local" | "any";
 }
 
+/** A trusted board omitted from the editor registry because its bridge requirement is too new. */
+export interface CustomEditorIncompatibility {
+    boardRoot: string;
+    reason: string;
+}
+
 interface CustomEditorRegistryState {
     /** Every trusted board association, in trusted-list (registration) order. */
     entries: CustomEditorMatch[];
+    /** Compatibility diagnostics retained for Board Info and future board listings. */
+    incompatibilities: CustomEditorIncompatibility[];
 }
 
-const defaultState: CustomEditorRegistryState = { entries: [] };
+const defaultState: CustomEditorRegistryState = { entries: [], incompatibilities: [] };
 
 class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     private initialized = false;
@@ -116,8 +126,19 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const gen = ++this.refreshGen;
         const roots = boardTrust.listPaths();
         const entries: CustomEditorMatch[] = [];
+        const incompatibilities: CustomEditorIncompatibility[] = [];
         for (const root of roots) {
             const manifest = await readBoardManifest(root);
+            const bridgeCompatibility = getBoardCompatibility(
+                { minBridgeVersion: manifest?.minBridgeVersion },
+                { bridgeVersion: BOARD_BRIDGE_VERSION },
+            );
+            if (!bridgeCompatibility.compatible) {
+                if (bridgeCompatibility.reason) {
+                    incompatibilities.push({ boardRoot: root, reason: bridgeCompatibility.reason });
+                }
+                continue;
+            }
             const assoc = getBoardEditorAssociation(manifest);
             if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
             const name =
@@ -141,12 +162,18 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         if (gen !== this.refreshGen) return; // superseded by a newer refresh — discard
         this.state.update((s) => {
             s.entries = entries;
+            s.incompatibilities = incompatibilities;
         });
     }
 
     /** All file-associated boards (sync, non-reactive). */
     get entries(): CustomEditorMatch[] {
         return this.state.get().entries;
+    }
+
+    /** Trusted boards excluded by the bridge compatibility gate, with a readable reason. */
+    get incompatibilities(): readonly CustomEditorIncompatibility[] {
+        return this.state.get().incompatibilities;
     }
 
     /**

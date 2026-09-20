@@ -39,6 +39,10 @@ export interface IBoardInfoProperties {
     readonly author?: string;
     readonly repository?: string;
     readonly manifestVersion?: string;
+    readonly permissions?: readonly string[];
+    readonly minBridgeVersion?: string;
+    readonly service?: string;
+    readonly bridgeCompatibilityReason?: string;
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */

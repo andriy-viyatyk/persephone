@@ -22,6 +22,9 @@ export interface IBoardManifest {
     readonly version?: string;
     readonly standalone?: boolean;
     readonly minAppVersion?: string;
+    readonly permissions?: readonly string[];
+    readonly minBridgeVersion?: string;
+    readonly service?: string;
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */

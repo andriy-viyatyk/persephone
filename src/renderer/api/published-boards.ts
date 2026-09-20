@@ -12,7 +12,7 @@ import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../ipc/api-types";
 import { PublishedBoardInfo, PublishedBoardsCatalog, PublishedBoardVersions } from "../../ipc/api-param-types";
-import { compareVersions } from "../../shared/version-utils";
+import { getBoardCompatibility } from "../../shared/version-utils";
 import {
     normalizeFileMasks,
     normalizeFolderMasks,
@@ -126,7 +126,10 @@ class PublishedBoards {
     isCompatible(minAppVersion?: string): boolean {
         if (!minAppVersion) return true;
         if (!this.appVersion) return true; // not yet loaded — don't hide boards
-        return compareVersions(this.appVersion, minAppVersion) <= 0;
+        return getBoardCompatibility(
+            { minAppVersion },
+            { appVersion: this.appVersion },
+        ).compatible;
     }
 
     /** Compatible catalog boards whose masks match the given file name (sync, non-reactive).

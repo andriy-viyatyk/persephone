@@ -22,6 +22,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "./clipboard-ipc";
+import type { BoardServiceStatus, TrustedBoardSnapshot } from "./module-service-channels";
 
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
@@ -125,6 +126,7 @@ export enum Endpoint {
     getBoardVersions = "getBoardVersions",
     downloadBoardArchive = "downloadBoardArchive",
     cancelBoardDownload = "cancelBoardDownload",
+    syncTrustedBoardSnapshot = "syncTrustedBoardSnapshot",
 }
 
 /** Synthetic CDP "tab" id for a board (boards have no tabs). The automation
@@ -283,6 +285,8 @@ export type Api = {
     [Endpoint.getBoardVersions]: (id: string) => Promise<PublishedBoardVersions | null>;
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
+    /** Private renderer-bootstrap snapshot; not a script-facing service API. */
+    [Endpoint.syncTrustedBoardSnapshot]: (snapshot: TrustedBoardSnapshot) => Promise<void>;
 };
 
 export enum EventEndpoint {
@@ -313,10 +317,14 @@ export enum EventEndpoint {
     // is consumed through the preload's ports-aware `onPort` (NOT the typed event
     // system, which drops `event.ports`). No EventApi entry for that reason.
     eBoardPort = "eBoardPort",
+    // Main → host renderer: a live module-service MessagePort (US-1467/US-1468).
+    // It is delivered with webContents.postMessage and therefore is not an EventApi entry.
+    eModuleServicePort = "eModuleServicePort",
     // Published-boards catalog changed (US-862) — carries the new catalog.
     ePublishedBoardsUpdated = "ePublishedBoardsUpdated",
     // Board-archive download progress (US-863) — throttled byte progress per installId.
     eBoardInstallProgress = "eBoardInstallProgress",
+    eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
 }
 
 export interface EventObject<T> {
@@ -361,6 +369,7 @@ export type EventApi = {
     // Board-archive download progress (US-863): main streams the ZIP and broadcasts
     // throttled byte progress; the install UI (US-864) renders it from editor state.
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
+    [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
 };
 
 export enum RendererEvent {

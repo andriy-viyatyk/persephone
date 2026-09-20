@@ -2,6 +2,7 @@ import type { IpcMainEvent } from "electron";
 import { BOARD_CDP_TAB, Endpoint } from "../api-types";
 import type { BoardArchiveDownloadRequest, PublishedBoardsResult, PublishedBoardVersions } from "../api-param-types";
 import type { BoardThemePalette } from "../board-bridge-channels";
+import type { TrustedBoardSnapshot } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 
 export type BoardEndpoint =
@@ -18,7 +19,8 @@ export type BoardEndpoint =
     | Endpoint.getPublishedBoards
     | Endpoint.getBoardVersions
     | Endpoint.downloadBoardArchive
-    | Endpoint.cancelBoardDownload;
+    | Endpoint.cancelBoardDownload
+    | Endpoint.syncTrustedBoardSnapshot;
 
 /** Register Board lifecycle, bridge, automation, and catalog endpoints. Each
  * handler keeps its service dynamic import so Board infrastructure stays lazy. */
@@ -75,5 +77,8 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
+    });
+    bindEndpoint(Endpoint.syncTrustedBoardSnapshot, async (_event, snapshot: TrustedBoardSnapshot): Promise<void> => {
+        (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.syncTrustedBoardSnapshot(snapshot);
     });
 }

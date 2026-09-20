@@ -22,6 +22,9 @@ import { shutdownClipboard } from "./clipboard-service";
 import { stopVideoStreamServer } from "./video-stream-server";
 import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
+import { moduleServiceSupervisor } from "./module-service-supervisor";
+import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
+import { errMessage } from "../shared/utils";
 
 export function setupMainProcess() {
     // US-800: recover standard Windows folder/system env vars before any child
@@ -133,7 +136,37 @@ export function setupMainProcess() {
         }, 5000);
     });
 
-    app.on("will-quit", () => {
+    let serviceQuitGateStarted = false;
+    let serviceQuitGateReleased = false;
+
+    app.on("will-quit", (event) => {
+        if (!serviceQuitGateReleased) {
+            event.preventDefault();
+            if (!serviceQuitGateStarted) {
+                serviceQuitGateStarted = true;
+                void (async () => {
+                    try {
+                        const disposal = moduleServiceSupervisor.disposeAll().catch((error: unknown) => {
+                            console.warn(`Module service disposal failed: ${errMessage(error)}`);
+                        });
+                        await Promise.race([
+                            disposal,
+                            new Promise<void>((resolve) => setTimeout(resolve, SERVICE_QUIT_GATE_TIMEOUT_MS)),
+                        ]);
+                    } finally {
+                        // `app.quit()` must run on every path. A throw here would leave the gate
+                        // latched and the app unquittable, which is worse than an orphaned child.
+                        try {
+                            moduleServiceSupervisor.forceKillAllSync();
+                        } catch (error: unknown) {
+                            console.warn(`Module service force-kill failed: ${errMessage(error)}`);
+                        }
+                        serviceQuitGateReleased = true;
+                        app.quit();
+                    }
+                })();
+            }
+        }
         torService.shutdown();
         killAllCommands();
         disposeAllBoardPorts();

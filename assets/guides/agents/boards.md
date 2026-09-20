@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.5.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.6.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
 
 ## What a board is

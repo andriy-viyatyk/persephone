@@ -9,7 +9,11 @@ import type {
 } from "./types/boards";
 import type { EditorModel } from "../editors/base/EditorModel";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
-import { readBoardManifest } from "../editors/board/board-manifest";
+import {
+    normalizeBoardServicePath,
+    normalizePermissions,
+    readBoardManifest,
+} from "../editors/board/board-manifest";
 import { boardTrust, pathCovers } from "./board-trust";
 import { boardInstallRegistry, InstalledBoardEntry } from "./board-install-registry";
 import { publishedBoards } from "./published-boards";
@@ -283,7 +287,11 @@ export const boards: IBoards = {
         await boardTrust.load();
         if (boardTrust.isTrusted(boardRoot)) return true; // already trusted (incl. via ancestor)
         const { showTrustBoardDialog } = await import("../ui/dialogs/TrustBoardDialog");
-        const ok = await showTrustBoardDialog(boardRoot);
+        const manifest = await readBoardManifest(boardRoot);
+        const ok = await showTrustBoardDialog(boardRoot, {
+            permissions: normalizePermissions(manifest?.permissions),
+            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
+        });
         if (!ok) return false;
         const { confirmNamespaceNotColliding } = await import("./board-vars/namespace");
         if (!(await confirmNamespaceNotColliding(boardRoot))) return false;

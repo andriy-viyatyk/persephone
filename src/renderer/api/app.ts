@@ -246,6 +246,15 @@ class App {
         // Initialize MCP command handler (listens for IPC from main process)
         initMcpHandler();
 
+        // Mirror the renderer-owned trust decision to main for module-service
+        // supervision. This is process-lifetime bootstrap wiring, not an app API
+        // service and it never starts a board service by itself.
+        import("./board-trust-sync")
+            .then(({ initBoardTrustSync }) => initBoardTrustSync())
+            .catch((error: unknown) => {
+                console.error(`Board service trust sync failed: ${errMessage(error)}`);
+            });
+
         // Ensure settings are loaded from disk before checking mcp.enabled
         const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");
         await settingsInstance.wait();

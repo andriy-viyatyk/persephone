@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.5.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.6.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
 
 > ## 📌 Agent: rewrite this file once the board is built

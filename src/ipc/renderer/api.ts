@@ -21,6 +21,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "../clipboard-ipc";
+import type { TrustedBoardSnapshot } from "../module-service-channels";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -499,6 +500,10 @@ class ApiCalls implements Api {
 
     cancelBoardDownload = async (installId: string) => {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
+    };
+
+    syncTrustedBoardSnapshot = async (snapshot: TrustedBoardSnapshot) => {
+        return executeOnce<void>(Endpoint.syncTrustedBoardSnapshot, snapshot);
     };
 }
 

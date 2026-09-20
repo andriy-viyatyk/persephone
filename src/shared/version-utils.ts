@@ -27,3 +27,51 @@ export function compareVersions(current: string, latest: string): number {
 
     return 0;
 }
+
+/** Return a usable semver-like version requirement, or undefined for malformed input. */
+export function normalizeVersionRequirement(raw: unknown): string | undefined {
+    if (typeof raw !== "string") return undefined;
+    const version = raw.trim();
+    return /^v?\d+(?:\.\d+)*$/.test(version) ? version : undefined;
+}
+
+export interface BoardCompatibilityRequirements {
+    minAppVersion?: unknown;
+    minBridgeVersion?: unknown;
+}
+
+export interface BoardCompatibilityVersions {
+    appVersion?: string;
+    bridgeVersion?: string;
+}
+
+export interface BoardCompatibilityResult {
+    compatible: boolean;
+    reason?: string;
+}
+
+/** Compare the independent app and bridge requirements of a board. */
+export function getBoardCompatibility(
+    requirements: BoardCompatibilityRequirements,
+    versions: BoardCompatibilityVersions,
+): BoardCompatibilityResult {
+    const minAppVersion = normalizeVersionRequirement(requirements.minAppVersion);
+    if (minAppVersion && versions.appVersion
+        && compareVersions(versions.appVersion, minAppVersion) > 0) {
+        return {
+            compatible: false,
+            reason: `Requires Persephone ${minAppVersion} or newer (current ${versions.appVersion}).`,
+        };
+    }
+
+    const minBridgeVersion = normalizeVersionRequirement(requirements.minBridgeVersion);
+    if (minBridgeVersion && versions.bridgeVersion
+        && compareVersions(versions.bridgeVersion, minBridgeVersion) > 0) {
+        return {
+            compatible: false,
+            reason: `Requires bridge ${minBridgeVersion} or newer (current ${versions.bridgeVersion}).`,
+        };
+    }
+
+    return { compatible: true };
+}

@@ -554,6 +554,9 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
     if (typeof manifest.version === "string") copy.version = manifest.version;
     if (typeof manifest.standalone === "boolean") copy.standalone = manifest.standalone;
     if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
+    if (Array.isArray(manifest.permissions)) copy.permissions = manifest.permissions.filter(isString);
+    if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
+    if (typeof manifest.service === "string") copy.service = manifest.service;
     if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);
     if (Array.isArray(manifest.folderMasks)) copy.folderMasks = manifest.folderMasks.filter(isString);
     if (Array.isArray(manifest.folderEditorMasks)) copy.folderEditorMasks = manifest.folderEditorMasks.filter(isString);

@@ -11,7 +11,16 @@ import {
     customEditorRegistry,
     getFolderEditorsForFolder,
 } from "../board/custom-editor-registry";
-import { isBoardFolder, readBoardManifest, getBoardEditorAssociation } from "../board/board-manifest";
+import {
+    getBoardEditorAssociation,
+    isBoardFolder,
+    normalizeBoardServicePath,
+    normalizeBoardVersionRequirement,
+    normalizePermissions,
+    readBoardManifest,
+} from "../board/board-manifest";
+import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
+import { getBoardCompatibility } from "../../../shared/version-utils";
 import { BOARD_INFO_EDITOR_ID } from "./board-info-id";
 import { publishedBoards } from "../../api/published-boards";
 import { boardInstallRegistry } from "../../api/board-install-registry";
@@ -49,6 +58,10 @@ export interface BoardPropsInfo {
     repository?: string;
     /** `version` from the board's own manifest (may lag the registry after a rollback). */
     manifestVersion?: string;
+    permissions?: string[];
+    minBridgeVersion?: string;
+    service?: string;
+    bridgeCompatibilityReason?: string;
     /** Editor association (masks / editorName / kind), if the board is a file editor. */
     fileMasks?: string[];
     /** Folder globs narrowing `fileMasks` to certain locations (absent/empty = any folder). */
@@ -330,12 +343,21 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const reg = boardInstallRegistry.getByRoot(root);
         const manifest = await readBoardManifest(root);
         const assoc = getBoardEditorAssociation(manifest);
+        const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
+        const bridgeCompatibility = getBoardCompatibility(
+            { minBridgeVersion },
+            { bridgeVersion: BOARD_BRIDGE_VERSION },
+        );
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
             description: manifest?.description,
             author: manifest?.author,
             repository: manifest?.repository,
             manifestVersion: manifest?.version,
+            permissions: normalizePermissions(manifest?.permissions),
+            minBridgeVersion,
+            service: normalizeBoardServicePath(manifest?.service) ?? undefined,
+            bridgeCompatibilityReason: bridgeCompatibility.reason,
             fileMasks: assoc?.fileMasks,
             folderMasks: assoc?.folderMasks,
             folderEditorMasks: assoc?.folderEditorMasks,
@@ -580,7 +602,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = boardInstallRegistry.getById(entry.id)?.root;
         if (!root) return;
         const { showTrustBoardDialog } = await import("../../ui/dialogs/TrustBoardDialog");
-        const ok = await showTrustBoardDialog(root);
+        const manifest = await readBoardManifest(root);
+        const ok = await showTrustBoardDialog(root, {
+            permissions: normalizePermissions(manifest?.permissions),
+            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
+        });
         if (!ok) return;
         const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
         if (!(await confirmNamespaceNotColliding(root))) return;

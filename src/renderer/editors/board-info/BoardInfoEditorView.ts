@@ -398,6 +398,27 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             }
             metadata.append(this.infoRow("Folder editor", masks));
         }
+        if ((info.permissions?.length ?? 0) > 0) {
+            const permissions = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
+            for (const permission of info.permissions ?? []) permissions.append(this.maskChip(permission));
+            metadata.append(this.infoRow("Permissions", permissions));
+        }
+        if (info.minBridgeVersion) {
+            metadata.append(this.infoRow(
+                "Minimum bridge",
+                text(info.minBridgeVersion, { size: "sm" }),
+            ));
+        }
+        if (info.service) {
+            metadata.append(this.infoRow("Service", text(info.service, { size: "sm" })));
+        }
+        if (info.bridgeCompatibilityReason) {
+            metadata.append(this.infoRow(
+                "Bridge compatibility",
+                text(info.bridgeCompatibilityReason, { size: "sm", color: "warning" }),
+            ));
+        }
+        // US-1468 adds the live service STATUS row after these declaration metadata rows.
         if (info.isCatalogInstall && info.catalogId) {
             metadata.append(this.infoRow("Catalog id", text(info.catalogId, { size: "sm" })));
         }

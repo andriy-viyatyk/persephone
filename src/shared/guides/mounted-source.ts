@@ -27,16 +27,15 @@ export const BOARD_GUIDES_PREFIX = "installed-boards";
 export const BOARD_SELF_EDITOR_ID = "board";
 
 /**
- * Normalize a board manifest's `guides` value into a safe, board-relative folder path, or null when
- * the board declares none / declares an unusable one. Separators are unified to "/" and a leading
- * "./" plus a trailing "/" are stripped; an absolute path, a drive letter, a UNC path, or any "."
- * / ".." segment is REJECTED outright rather than repaired -- a board must not be able to point the
- * guide mount at a folder outside itself. Never throws.
+ * Normalize a board-relative manifest path, or null when the value is unusable. Separators are
+ * unified to "/" and a leading "./" plus a trailing "/" are stripped; an absolute path, a drive
+ * letter, a UNC path, or any "." / ".." segment is REJECTED outright rather than repaired -- a
+ * board must not be able to point a host-owned path outside itself. Never throws.
  *
  * Lives here rather than in the renderer's `board-manifest.ts` because the main process resolves
  * the same mounts for the MCP guide index and cannot import renderer modules.
  */
-export function normalizeBoardGuidesFolder(raw: unknown): string | null {
+export function normalizeBoardRelativePath(raw: unknown): string | null {
     if (typeof raw !== "string") return null;
     const trimmed = raw.trim();
     if (!trimmed) return null;
@@ -46,6 +45,11 @@ export function normalizeBoardGuidesFolder(raw: unknown): string | null {
     const segments = unified.split("/");
     if (segments.some(segment => !segment || segment === "." || segment === "..")) return null;
     return segments.join("/");
+}
+
+/** Normalize the board-relative `guides` declaration. */
+export function normalizeBoardGuidesFolder(raw: unknown): string | null {
+    return normalizeBoardRelativePath(raw);
 }
 
 export type GuideEntryKind = "directory" | "file";

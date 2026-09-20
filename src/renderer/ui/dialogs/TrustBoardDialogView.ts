@@ -24,6 +24,17 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const model = props.model as TrustBoardDialogModel;
         const state = model.state.get();
         const boardPathElement = createTextElement(state.boardPath, { color: "light" });
+        const declarationPanel = createPanelElement(
+            { direction: "column", gap: "xs" },
+            [
+                ...(state.permissions.length > 0
+                    ? [createTextElement(`Permissions: ${state.permissions.join(", ")}`, { color: "light" })]
+                    : []),
+                ...(state.serviceDeclared
+                    ? [createTextElement("Service: declared", { color: "warning" })]
+                    : []),
+            ],
+        );
         const bodyPanel = createPanelElement(
             { direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" },
             [
@@ -37,6 +48,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     { color: "warning" },
                 ),
                 boardPathElement,
+                ...(state.permissions.length > 0 || state.serviceDeclared ? [declarationPanel] : []),
             ],
         );
         const cancelButton = new ButtonView({

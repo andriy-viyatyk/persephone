@@ -1,8 +1,12 @@
 import { fs } from "../../api/fs";
 import { fpBasename, fpDirname, fpJoin } from "../../core/utils/file-path";
-import { normalizeBoardGuidesFolder } from "../../../shared/guides/mounted-source";
+import {
+    normalizeBoardGuidesFolder,
+    normalizeBoardRelativePath,
+} from "../../../shared/guides/mounted-source";
+import { normalizeVersionRequirement } from "../../../shared/version-utils";
 
-export { normalizeBoardGuidesFolder };
+export { normalizeBoardGuidesFolder, normalizeBoardRelativePath };
 
 /** File name of the board-identity manifest, at the board folder root. */
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
@@ -63,6 +67,13 @@ export interface BoardManifest {
      * requirement, EPIC-045). Per-version app-compatibility gate.
      */
     minAppVersion?: string;
+    /** Minimum bridge version this board requires (semver; absent = no requirement). */
+    minBridgeVersion?: string;
+
+    /** Optional capabilities declared by the board. Values are disclosed and forward-compatible. */
+    permissions?: string[];
+    /** Board-relative Node service entry path, honored only by the service supervisor. */
+    service?: string;
 
     // ── Custom Editor axis (EPIC-042) — acted upon only when the board is TRUSTED ──
     /**
@@ -168,7 +179,8 @@ export interface BoardManifest {
      * (`title`, `audience`, `summary`, `screen`, `editorId`).
      *
      * A single relative folder name/path, validated by `normalizeBoardGuidesFolder`: absolute
-     * paths, drive letters, `..` segments and backslashes are rejected. Absent → the board
+     * paths, drive letters, `..` segments and empty segments are rejected; interior backslashes
+     * are repaired to `/`. Absent → the board
      * contributes no documentation, which is what every board built before US-1406 does.
      * Honored only when the board is TRUSTED, like every other capability-bearing field: an
      * untrusted board renders nothing at all, and its Markdown (which may carry raw HTML) is
@@ -207,6 +219,29 @@ export async function readBoardManifest(boardRoot: string): Promise<BoardManifes
     } catch {
         return null;
     }
+}
+
+/** Normalize a manifest version requirement. Invalid values are treated as absent. */
+export function normalizeBoardVersionRequirement(raw: unknown): string | undefined {
+    return normalizeVersionRequirement(raw);
+}
+
+/** Normalize a raw permissions declaration into ordered, unique strings. */
+export function normalizePermissions(raw: unknown): string[] {
+    if (!Array.isArray(raw)) return [];
+    const out: string[] = [];
+    for (const entry of raw) {
+        if (typeof entry !== "string") continue;
+        const permission = entry.trim();
+        if (!permission || out.includes(permission)) continue;
+        out.push(permission);
+    }
+    return out;
+}
+
+/** Normalize the board-relative service entry path, or return null for an unsafe declaration. */
+export function normalizeBoardServicePath(raw: unknown): string | null {
+    return normalizeBoardRelativePath(raw);
 }
 
 /**

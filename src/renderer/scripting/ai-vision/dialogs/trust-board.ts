@@ -6,6 +6,8 @@ const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
     { name: "message", kind: "property", summary: "The trust warning." },
     { name: "boardPath", kind: "property", summary: "The board root folder." },
+    { name: "permissions", kind: "property", summary: "Manifest permissions disclosed by the board." },
+    { name: "serviceDeclared", kind: "property", summary: "Whether a valid service entry is declared." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
     {
         name: "click", kind: "method", signature: "click(button: string)",
@@ -35,6 +37,12 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
         return "Trusting this board lets it run programs on your computer with your full user privileges — including reading and changing your files and using any signed-in command-line tools (cloud CLIs, git, etc.).";
     }
     get boardPath(): string { return dialogState<TrustBoardDialogProps>(this.entry).boardPath; }
+    get permissions(): readonly string[] {
+        return dialogState<TrustBoardDialogProps>(this.entry).permissions;
+    }
+    get serviceDeclared(): boolean {
+        return dialogState<TrustBoardDialogProps>(this.entry).serviceDeclared;
+    }
     get buttons(): readonly string[] { return ["Cancel", "Trust Board"]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 

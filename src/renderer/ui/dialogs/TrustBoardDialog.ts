@@ -8,12 +8,19 @@ export const trustBoardDialogId = Symbol("trustBoardDialog");
 
 export interface TrustBoardDialogProps {
     boardPath: string; // absolute board-root path, for display
+    permissions: readonly string[];
+    serviceDeclared: boolean;
 }
 
 registerDialogView(trustBoardDialogId, TrustBoardDialogView);
 
-export function showTrustBoardDialog(boardPath: string) {
-    const model = new TDialogModel<TrustBoardDialogProps, boolean>(new TComponentState({ boardPath }));
+export function showTrustBoardDialog(
+    boardPath: string,
+    disclosure: Omit<TrustBoardDialogProps, "boardPath">,
+) {
+    const model = new TDialogModel<TrustBoardDialogProps, boolean>(
+        new TComponentState({ boardPath, ...disclosure }),
+    );
     return showDialog({
         viewId: trustBoardDialogId,
         model,
