@@ -237,6 +237,18 @@ class ModuleServiceSupervisor {
             this.emit(record);
         }
 
+        // A board that STOPS declaring a service must lose its record entirely. Without this a
+        // stale entry survives forever and `boards.list()` keeps reporting a `service` for a
+        // manifest that no longer has one — which breaks the contract that the key is absent for
+        // boards with no service, and shows an agent something that does not exist. A record
+        // still holding a live process is stopped first so the declaration cannot be dropped
+        // while its `utilityProcess` keeps running.
+        for (const [key, record] of [...this.records]) {
+            if (serviceEntries.has(key)) continue;
+            void this.stopRecord(record, "explicit");
+            this.records.delete(key);
+        }
+
         for (const record of this.records.values()) {
             if (this.isEffectivelyTrusted(record.boardRoot)) {
                 if (previouslyUntrusted.has(record.key) && record.reason === "untrusted") {

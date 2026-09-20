@@ -7,8 +7,10 @@ import { fpNormalizeForCompare } from "../core/utils/file-path";
 import { withTimeout } from "../core/utils/utils";
 
 const statuses = new Map<string, BoardServiceStatus>();
+const statusEventRevisions = new Map<string, number>();
 let statusSubscription: (() => void) | undefined;
 let refreshPromise: Promise<void> | undefined;
+let statusRevision = 0;
 
 function statusKey(boardRoot: string): string {
     return fpNormalizeForCompare(boardRoot);
@@ -16,18 +18,34 @@ function statusKey(boardRoot: string): string {
 
 function replaceStatus(status: BoardServiceStatus): void {
     if (typeof status?.boardRoot !== "string" || status.boardRoot.length === 0) return;
-    statuses.set(statusKey(status.boardRoot), status);
+    const key = statusKey(status.boardRoot);
+    statusRevision += 1;
+    statusEventRevisions.set(key, statusRevision);
+    statuses.set(key, status);
 }
 
 async function hydrate(): Promise<void> {
+    const hydrationRevision = statusRevision;
     const request = api.getModuleServiceStatuses();
     void request.catch((error: unknown) => {
         console.error(`Module service status hydration failed: ${errMessage(error)}`);
     });
     const snapshot = await withTimeout(request, SERVICE_REQUEST_DEADLINE_MS, undefined);
     if (!snapshot) return;
-    statuses.clear();
-    for (const status of snapshot) replaceStatus(status);
+    const snapshotStatuses = new Map<string, BoardServiceStatus>();
+    for (const status of snapshot) {
+        if (typeof status?.boardRoot !== "string" || status.boardRoot.length === 0) continue;
+        snapshotStatuses.set(statusKey(status.boardRoot), status);
+    }
+    for (const key of statuses.keys()) {
+        if (!snapshotStatuses.has(key) && (statusEventRevisions.get(key) ?? 0) <= hydrationRevision) {
+            statuses.delete(key);
+        }
+    }
+    for (const [key, status] of snapshotStatuses) {
+        if ((statusEventRevisions.get(key) ?? 0) > hydrationRevision) continue;
+        statuses.set(key, status);
+    }
 }
 
 /** Initialize the renderer-lifetime cache before trust synchronization can emit records. */

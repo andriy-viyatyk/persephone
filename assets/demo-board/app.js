@@ -53,7 +53,9 @@
     const serviceStorageKey = "demo-service-value";
 
     function serviceErrorText(error) {
-        return error?.message ?? "unknown lifecycle error";
+        return typeof error === "string"
+            ? error
+            : error?.message ?? "unknown lifecycle error";
     }
 
     function printServiceError(prefix, error) {

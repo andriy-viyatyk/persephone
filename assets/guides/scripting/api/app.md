@@ -293,6 +293,9 @@ await app.boards.openBoard("C:/work/boards/Existing Board");
 | `createDemoBoard(name, dir)` | `Promise<string>` | Same as `createBoard`, but scaffolds from the bundled Demo board template — a full working example of the bridge API, theme contract, and multi-tab layout. Returns the board root. |
 | `openBoard(boardRoot)` | `Promise<void>` | Open an existing board by its absolute root folder path (the folder containing `board-manifest.json`). Opens a new tab or reuses an existing one. Boards created by Persephone open immediately; foreign boards prompt for trust. Throws if `boardRoot` is missing or has no `board-manifest.json`. |
 | `list()` | `Promise<BoardListing[]>` | List local trusted, installed, and open boards. Read-only and does not contact the remote catalog. |
+| `requestService(boardRoot, message)` | `Promise<unknown>` | Send an opaque structured-clone message to the board's declared service, starting it lazily when needed. Rejects with a readable lifecycle reason such as `untrusted`, `service-not-declared`, `service-busy`, `service-timeout`, `service-exited`, or `service-failed`. |
+| `startService(boardRoot)` | `Promise<void>` | Explicitly start the board's declared service and reset its restart budget. |
+| `stopService(boardRoot)` | `Promise<void>` | Explicitly stop the board's declared service. |
 | `registerBoard(boardRoot)` | `Promise<boolean>` | Trust an existing board on disk — shows the user a trust dialog; nothing is trusted without that click. Resolves to whether the board ended up trusted (`true` also when already trusted, including via a trusted ancestor folder). Use after downloading/reviewing a board. |
 | `unregisterBoard(boardRoot)` | `Promise<void>` | Untrust a board and remove its pin. No dialog — untrusting only reduces privilege. Idempotent. |
 | `renameBoard(boardRoot, newName)` | `Promise<string>` | Rename a board's folder, carrying its trust, pin, and catalog-install registration to the new path with no dialog, and re-pointing any open page for it. Returns the new root. Throws if the board is busy, not a board, or the new name already exists. |
@@ -328,7 +331,11 @@ await app.boards.uninstallBoard("drawio-viewer");
 
 `list()` returns one entry per locally known board. Each entry has `root`, optional manifest
 `name`/`description`, `trusted`, optional `installed` metadata (`id`, `version`, and known update
-information), and `openPageIds`. It does not discover boards from the remote catalog.
+information), and `openPageIds`. A board with a registered module-service status also has an
+optional `service` object with `state` (`stopped`, `starting`, `running`, `stopping`, or
+`failed`), an optional `reason`, `restartCount`, and optional process fields `pid` and
+`startedAt` (epoch milliseconds). Boards without a registered service status omit the key. It does
+not discover boards from the remote catalog.
 
 ---
 
