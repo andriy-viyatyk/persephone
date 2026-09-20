@@ -108,6 +108,26 @@ export function logRemoteNotify(text: string, path?: string, origin: "board" | "
     });
 }
 
+/**
+ * Record a toast the agent should know about without being told to look.
+ *
+ * `ui.alerts` (US-1464) made toasts readable, but only on request, so an error raised by the
+ * agent's own last call stayed invisible until it thought to ask — and the whole point of an
+ * error toast is that nobody was expecting it. This pushes the same information through the
+ * event feed, which every MCP reply already carries.
+ *
+ * Only `error` and `warning` are reported. `info`/`success` toasts are routine confirmations
+ * and would drown the feed in noise for every save and copy.
+ */
+export function logAlertRaised(key: number, type: "error" | "warning", message: string): void {
+    const singleLineText = message.replace(/\s+/g, " ").trim();
+    eventLog.push({
+        kind: "alert-raised",
+        text: `${type === "error" ? "An error" : "A warning"} notification appeared: ${singleLineText} `
+            + `Read them all with ui.alerts.list() and dismiss it with ui.alerts.close(${key}).`,
+    });
+}
+
 export interface GuideButtonSignal {
     readonly stepId: string;
     readonly target: string;

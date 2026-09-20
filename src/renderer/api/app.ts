@@ -209,6 +209,11 @@ class App {
         const { initBoardNavigationReturn } = await import("./board-navigation-return");
         initBoardNavigationReturn();
 
+        // Error/warning toasts reach the agent event feed, so an agent sees a failure it caused
+        // on its very next call instead of having to think to ask ui.alerts.list().
+        const { initAlertEventFeed } = await import("../scripting/ai-vision/alert-watch");
+        initAlertEventFeed();
+
         // Register link pipeline handlers first — they're the fallback handlers
         // (oldest in LIFO, run last). Scripts subscribe later and run first.
         // Registration order: opener first (runs last in LIFO), then resolvers, then parsers.
