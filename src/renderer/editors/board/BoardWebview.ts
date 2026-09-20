@@ -20,6 +20,8 @@ import type {
     BoardHostContentMsg,
     BoardOpenContentRequest,
     BoardOpenContentResultMsg,
+    BoardNavigationCreateReturnUrlMsg,
+    BoardNavigationReturnUrlResultMsg,
     BoardPortInitMsg,
     BoardStateSyncMsg,
     BoardToHostMsg,
@@ -51,6 +53,7 @@ import {
     type BoardCapabilityFrame,
 } from "../../api/board-capability-transport";
 import { app } from "../../api/app";
+import { boardNavigationReturnService } from "../../api/board-navigation-return";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -176,6 +179,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const iframe = this.iframe;
         this.iframe = undefined;
         if (iframe) {
+            boardNavigationReturnService.releaseBoardFrame(this.props.model, iframe, this.tabId);
             const ownsFrame = this.props.model.frames.get(this.tabId) === iframe;
             this.props.model.clearIframe(iframe, this.tabId);
             if (ownsFrame) void api.unregisterBoardFrame(this.props.model.id, this.tabId, this.boardId);
@@ -335,6 +339,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
+        boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
+        this.generation++;
+        this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
         if (this.capabilityFrame?.iframe === frame) {
             this.rejectPendingCapability("crashed", "The board frame was reloaded.", false);
             this.unregisterCapabilityFrame();
@@ -393,7 +400,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !host || !frame) return;
         const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg
             | BoardAiVisionResultMsg | BoardCapabilityIntentResultMsg | BoardCapabilityListRequestMsg
-            | BoardCapabilityInvokeRequestMsg | undefined;
+            | BoardCapabilityInvokeRequestMsg | BoardNavigationCreateReturnUrlMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
@@ -475,6 +482,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             case "board:openContent":
                 if (typeof legacy.reqId === "number") {
                     this.resolveOpenContent(legacy.reqId, legacy.openContent, host, frame);
+                }
+                break;
+            case "navigation:createReturnUrl":
+                if (typeof data.reqId === "number") {
+                    this.resolveNavigationReturnUrl(data as BoardNavigationCreateReturnUrlMsg, model, host, frame);
                 }
                 break;
             case "board:var":
@@ -829,6 +841,47 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             __persephone: "filePath:result", reqId, path: reply.path, error: reply.error,
         };
         frame.contentWindow.postMessage(message, `board://${host}`);
+    }
+
+    private resolveNavigationReturnUrl(
+        request: BoardNavigationCreateReturnUrlMsg,
+        model: BoardEditorModel,
+        host: string,
+        frame: HTMLIFrameElement,
+    ): void {
+        const generation = this.generation;
+        let reply: BoardNavigationReturnUrlResultMsg;
+        try {
+            if (!isBoardPermitted(this.props.boardRoot)) {
+                throw new Error("This board is not trusted.");
+            }
+            if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
+                throw new Error("The board frame is unavailable.");
+            }
+            const url = boardNavigationReturnService.createBoardClaim({
+                pageId: model.page?.id,
+                model,
+                frame,
+                tabId: this.tabId,
+                targetOrigin: `board://${host}`,
+                generation,
+                currentGeneration: () => this.generation,
+                isCurrent: () => this.live && this.iframe === frame && this.generation === generation,
+            });
+            reply = { __persephone: "navigation:returnUrl", reqId: request.reqId, url };
+        } catch (error: unknown) {
+            reply = {
+                __persephone: "navigation:returnUrl",
+                reqId: request.reqId,
+                error: errMessage(error, "The navigation return URL could not be created."),
+            };
+        }
+        if (!this.live || this.iframe !== frame || !frame.contentWindow) return;
+        try {
+            frame.contentWindow.postMessage(reply, `board://${host}`);
+        } catch {
+            // The frame may have been replaced while the reply was being posted.
+        }
     }
 
     /**

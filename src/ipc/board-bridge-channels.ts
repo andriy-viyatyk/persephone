@@ -396,6 +396,28 @@ export interface BoardAiVisionResultMsg {
     response: IAiRemoteResponse;
 }
 
+/** Board -> host renderer: mint one opaque navigation-return URL for this live frame. */
+export interface BoardNavigationCreateReturnUrlMsg {
+    __persephone: "navigation:createReturnUrl";
+    reqId: number;
+}
+
+/** Host renderer -> board: reply to a navigation-return URL request. */
+export interface BoardNavigationReturnUrlResultMsg {
+    __persephone: "navigation:returnUrl";
+    reqId: number;
+    url?: string;
+    error?: string;
+}
+
+/** Host renderer -> board: deliver a claimed navigation return to the exact owning frame. */
+export interface BoardNavigationReturnMsg {
+    __persephone: "navigation:return";
+    url: string;
+    query: Readonly<Record<string, readonly string[]>>;
+    hash: Readonly<Record<string, readonly string[]>>;
+}
+
 /** Renderer → board: deliver one capability request to the board frame. */
 export interface BoardCapabilityIntentRequestMsg {
     __persephone: "capabilities:intent";
@@ -482,7 +504,10 @@ export type BoardHostFrameMsg =
     | BoardCapabilityListRequestMsg
     | BoardCapabilityListResultMsg
     | BoardCapabilityInvokeRequestMsg
-    | BoardCapabilityInvokeResultMsg;
+    | BoardCapabilityInvokeResultMsg
+    | BoardNavigationCreateReturnUrlMsg
+    | BoardNavigationReturnUrlResultMsg
+    | BoardNavigationReturnMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

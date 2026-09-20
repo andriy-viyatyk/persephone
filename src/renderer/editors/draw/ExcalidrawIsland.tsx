@@ -18,7 +18,6 @@ import type { LibraryPersistenceAdapter } from "@excalidraw/excalidraw/dist/type
 // eslint-disable-next-line import/no-unresolved -- CSS subpath; bundled by Vite, not by ESLint's TS resolver
 import "@excalidraw/excalidraw/index.css";
 
-const LIBRARY_RETURN_URL = "https://jsnotepad.excalidraw-library/";
 const UI_OPTIONS: NonNullable<ExcalidrawProps["UIOptions"]> = {
     canvasActions: {
         loadScene: false,
@@ -47,6 +46,7 @@ export interface ExcalidrawIslandProps {
     theme: typeof THEME[keyof typeof THEME];
     initialData: ExcalidrawInitialDataState;
     libraryAdapter: LibraryPersistenceAdapter;
+    libraryReturnUrl: string;
     onApi: NonNullable<ExcalidrawProps["excalidrawAPI"]>;
     onChange: NonNullable<ExcalidrawProps["onChange"]>;
 }
@@ -55,6 +55,7 @@ export function ExcalidrawIsland({
     theme,
     initialData,
     libraryAdapter,
+    libraryReturnUrl,
     onApi,
     onChange,
 }: ExcalidrawIslandProps) {
@@ -69,7 +70,7 @@ export function ExcalidrawIsland({
     return (
         <Excalidraw
             excalidrawAPI={handleApi}
-            libraryReturnUrl={LIBRARY_RETURN_URL}
+            libraryReturnUrl={libraryReturnUrl}
             initialData={initialData}
             theme={theme}
             onChange={onChange}
@@ -83,5 +84,3 @@ export function createExcalidrawIslandElement(
 ) {
     return <ExcalidrawIsland {...props} />;
 }
-
-export { LIBRARY_RETURN_URL };

@@ -45,6 +45,8 @@ import type {
     BoardFireMethod,
     BoardHostContentMsg,
     BoardJobInfo,
+    BoardNavigationReturnMsg,
+    BoardNavigationReturnUrlResultMsg,
     BoardOpenContentRequest,
     BoardRpcMethod,
     BoardStateSyncMsg,
@@ -403,6 +405,45 @@ const pendingOpenContent = new Map<
     { resolve: (v: string) => void; reject: (e: Error) => void }
 >();
 let openContentReqId = 0;
+
+/** The board-facing return event: the documented shape, with no wire discriminator. */
+interface PersephoneNavigationReturnEvent {
+    readonly url: string;
+    readonly query: Readonly<Record<string, readonly string[]>>;
+    readonly hash: Readonly<Record<string, readonly string[]>>;
+}
+
+/** Pending navigation-return URL request/reply promises keyed by request id. */
+const pendingNavigationReturnUrls = new Map<number, {
+    resolve: (url: string) => void;
+    reject: (error: Error) => void;
+}>();
+let navigationReturnReqId = 0;
+const navigationReturnCbs: Array<(event: PersephoneNavigationReturnEvent) => void> = [];
+
+function navigationReturnUrlRpc(): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        const reqId = ++navigationReturnReqId;
+        pendingNavigationReturnUrls.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage(
+                { __persephone: "navigation:createReturnUrl", reqId },
+                hostPostTarget,
+            );
+        } catch {
+            pendingNavigationReturnUrls.delete(reqId);
+            reject(new Error("Persephone host is unavailable."));
+        }
+    });
+}
+
+function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) => void): () => void {
+    navigationReturnCbs.push(callback);
+    return () => {
+        const index = navigationReturnCbs.indexOf(callback);
+        if (index >= 0) navigationReturnCbs.splice(index, 1);
+    };
+}
 
 interface BoardIntentInit {
     id: string;
@@ -1014,6 +1055,39 @@ onHostMessage((event) => {
     else p.reject(new Error("Malformed persephone.openContent() response."));
 });
 
+// Navigation-return request replies and claimed return events. Both use the same
+// source/origin gate as every other host-frame message.
+onHostMessage((event) => {
+    const data = event.data as BoardNavigationReturnUrlResultMsg | undefined;
+    if (!data || data.__persephone !== "navigation:returnUrl" || typeof data.reqId !== "number") return;
+    const pending = pendingNavigationReturnUrls.get(data.reqId);
+    if (!pending) return;
+    pendingNavigationReturnUrls.delete(data.reqId);
+    if (typeof data.error === "string") pending.reject(new Error(data.error));
+    else if (typeof data.url === "string") pending.resolve(data.url);
+    else pending.reject(new Error("Malformed navigation return URL response."));
+});
+
+onHostMessage((event) => {
+    const data = event.data as BoardNavigationReturnMsg | undefined;
+    if (!data || data.__persephone !== "navigation:return"
+        || typeof data.url !== "string" || !data.query || !data.hash) return;
+    // Hand the board the documented shape only. Forwarding the raw message would leak
+    // the internal `__persephone` discriminator into the public event object.
+    const returnEvent: PersephoneNavigationReturnEvent = {
+        url: data.url,
+        query: data.query,
+        hash: data.hash,
+    };
+    for (const callback of navigationReturnCbs) {
+        try {
+            callback(returnEvent);
+        } catch (error: unknown) {
+            console.error("persephone.navigation.onReturn callback error:", error);
+        }
+    }
+});
+
 // Automatic save (EPIC-043 / CH3) — a content-host board saves through Persephone's pipe on
 // Ctrl/Cmd+S with zero board code. `window` bubble phase, so a board handler on document/an element
 // runs FIRST and can opt out via preventDefault(). Harmless on a plain board (main ignores it).
@@ -1138,8 +1212,17 @@ function createHandle(
     // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404);
     // 1.6.0 adds the bridge contract declarations for service and storage (EPIC-106);
     // 1.7.0 adds board capability declarations and the renderer-local capability bus (EPIC-108);
-    // 1.8.0 adds intent delivery and board-to-board capability invocation (US-1481).
+    // 1.8.0 adds intent delivery and board-to-board capability invocation (US-1481);
+    // 1.9.0 adds renderer-owned navigation return URLs (US-1489).
     version: BOARD_BRIDGE_VERSION,
+
+    /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
+    navigation: {
+        createReturnUrl(): Promise<string> {
+            return navigationReturnUrlRpc();
+        },
+        onReturn: onNavigationReturn,
+    },
 
     aiVision: {
         schemaVersion: AI_VISION_SCHEMA_VERSION,

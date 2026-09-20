@@ -1,6 +1,6 @@
 # US-1489 - Board navigation return URLs
 
-**Status:** Planned | **Epic:** [EPIC-109: Bundled boards and the Excalidraw board](../../epics/EPIC-109.md) | **Depends on:** [US-1487: The Excalidraw board](../US-1487-excalidraw-board/README.md)
+**Status:** In progress | **Epic:** [EPIC-109: Bundled boards and the Excalidraw board](../../epics/EPIC-109.md) | **Depends on:** [US-1487: The Excalidraw board](../US-1487-excalidraw-board/README.md)
 
 This is an investigation and implementation plan only. It contains no implementation, tests, harnesses,
 app interaction, runtime-state changes, or commit.
@@ -442,3 +442,73 @@ start or interact with the running Persephone instance.
 | `doc/epics/EPIC-109.md` | No change; US-1489 Linked Tasks row already links this document. |
 | `assets/boards/excalidraw/**` | No change; US-1490 consumes the API, while this task only migrates the built-in draw editor. |
 | Unit tests/test harnesses | No change; explicitly out of scope for this investigation task. |
+
+## Live verification, and the four defects it found
+
+Everything below was found by driving the running app. `typecheck`, `lint` and `build-prod`
+were green for all four.
+
+### The navigation the plan was built around never fires
+
+The plan assumed a return arrives through `BrowserWebviewModel.applyNavigation`, and specified
+the publisher-side rewind for it. It does not arrive there. `https://<nonce>.board-return.persephone.invalid/`
+is unresolvable *by construction* — that is the whole point of the reserved suffix — so a same-tab
+navigation to it dies at DNS with `ERR_NAME_NOT_RESOLVED (-105)`. `did-navigate` never fires,
+`browser-service.ts` relays nothing, and `browserUrlChanged` is never published. Traced: a same-tab
+`navigate()` to a minted URL produced an empty trace and left the tab on the invalid URL.
+
+The path that *does* work is the other one. Excalidraw asks for `?target=_blank`, so the library
+site calls `window.open(returnUrl)`, which reaches the `new-window` publish site and its
+`browserUrlChanged.send()` — that publish does not depend on a navigation completing. This is also
+why the pre-US-1489 built-in flow worked with its equally unresolvable sentinel.
+
+Consequences, deliberately left as they are:
+
+- `restoreClaimedNavigation()` is kept. It is correct for the event it handles, and it is the only
+  thing that would prevent a stranded tab if a same-tab return ever became observable. It is
+  currently unreachable for minted URLs.
+- **A board whose third-party site returns in the same tab will not be heard, and will strand that
+  tab on a Chromium error page.** Making that case work needs `did-fail-load` relayed from
+  `src/main/browser-service.ts` — outside this task's stated scope, and a design question for D10
+  rather than an implementation detail. Recorded, not fixed.
+- Board authors must be told the return URL has to be opened in a new tab/window. Both guides say so.
+
+### Focus never came back — and had not for the built-in editor either
+
+`createNativeClaim({ pageId: this.model.host?.state.get().id })` hands over the **host
+`TextFileModel`'s** id. `pagesModel.showPage()` accepts only a page id and silently does nothing
+with anything else; `findPage()` accepts either, which is what hid it. Verified directly:
+`showPage(hostId)` left the active page unchanged, `showPage(pageId)` switched it.
+
+This is copied verbatim from the built-in handler this task replaced (`pagesModel.showPage(hostId)`),
+so returning from the library browser has never actually restored focus to the drawing. Fixed by
+passing `this.model.page?.id`.
+
+### An active claim was consumed on first delivery
+
+The service deleted the matched claim from `activeClaims` before delivering. Nothing in this
+document asks for one-shot claims; the specified lifetime ends at frame disposal or reload. An
+owner mints one URL for its whole lifetime, so the second trip to the library browser would have
+found no claim: no install, and a stranded tab. Now only a *retired* nonce is consumed. Verified by
+firing two returns at one nonce and receiving both.
+
+### The wire discriminator leaked into the board's event
+
+The shim forwarded the raw message to `onReturn` handlers, so boards received a fourth
+`__persephone: "navigation:return"` property. It now builds the documented `{ url, query, hash }`
+shape. Verified: `Object.keys(event)` is exactly those three.
+
+### What was exercised
+
+| Check | Result |
+|---|---|
+| Built-in draw mints the D10 URL and passes it to Excalidraw | `?referrer=https://<uuid>.board-return.persephone.invalid/`, old sentinel gone |
+| Claim survives the owning page going inactive | Active while the user browses the library site |
+| Real library install, end to end | Excalidraw confirm dialog raised, accepted by the user; library grew 53 → 60 items |
+| Focus returns to the drawing | After the page-id fix |
+| Return-created tab | Closed; original tab still on the library site, no `.invalid` in it |
+| `persephone.navigation.createReturnUrl()` from a board frame | Returns the minted URL; `onReturn` returns a function |
+| Delivered payload | `query {tag:[a,b], name:["hello world"]}`, `hash {addLibrary:["https://example.com/x.excalidrawlib"], flag:[1,2]}` — duplicates preserved, decoded once, `url` complete |
+| Claim reuse | Two returns on one nonce, both delivered |
+
+Not exercised: an untrusted board's refusal, frame-reload invalidation, and tombstone expiry.

@@ -204,6 +204,11 @@ class App {
         this._eventsInitialized = true;
         const services = this as unknown as AppServiceSurface;
 
+        // The navigation-return registry owns the sole browser URL claim subscription.
+        // Initialize it after pages exist and before any browser or board view mounts.
+        const { initBoardNavigationReturn } = await import("./board-navigation-return");
+        initBoardNavigationReturn();
+
         // Register link pipeline handlers first — they're the fallback handlers
         // (oldest in LIFO, run last). Scripts subscribe later and run first.
         // Registration order: opener first (runs last in LIFO), then resolvers, then parsers.

@@ -5,11 +5,11 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.8.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.9.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.8.0` adds board capability declarations, in-memory intent delivery, and
-`persephone.capabilities.*` board-to-board calls to the `1.7.0` provider/service/stream surface;
-the change is additive and existing boards remain unaffected.
+Bridge `1.9.0` adds renderer-owned navigation return URLs to the additive `1.8.0` capability,
+intent, provider, service, and stream surface; the change is additive and existing boards remain
+unaffected.
 
 > ## 📌 Agent: rewrite this file once the board is built
 >
@@ -47,7 +47,7 @@ fields that let the board act as a file editor:
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
-  "minBridgeVersion": "1.8.0",
+  "minBridgeVersion": "1.9.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs",
   "contentProviders": [
@@ -79,7 +79,7 @@ hygiene, not a security boundary or a grant.
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
+  "minBridgeVersion": "1.9.0",
   "permissions": ["capabilities"],
   "capabilities": [
     {
@@ -461,6 +461,37 @@ server survives a board reload, and re-attach by `name` via `getJobs()` (see bel
 close reaps the child.
 
 ## Integration tier (in-app effects `execute()` can't express)
+
+### Navigation returns
+
+When a third-party site must return to this board, mint one opaque URL and pass that exact value to
+the site's return/redirect option. There is no pattern argument and no way for a board to claim an
+arbitrary real origin:
+
+```js
+const returnUrl = await persephone.navigation.createReturnUrl();
+const stop = persephone.navigation.onReturn(({ url, query, hash }) => {
+    const selected = query.item?.[0];
+    const library = hash.addLibrary?.[0];
+    console.log({ url, selected, library });
+});
+thirdParty.start({ returnUrl });
+// stop(); // unsubscribe when the board no longer needs returns
+```
+
+`url` is the complete returned URL. `query` and `hash` are plain records with array values;
+duplicate keys are preserved in order, a key without a value is `""`, and percent-encoding is
+decoded once. This API requires bridge `1.9.0` or newer (`minBridgeVersion: "1.9.0"`) and is
+available to trusted or bundled boards. Claims belong to the current board frame: disposing or
+reloading the frame invalidates them, so a reloaded document must mint a new URL. A late return is
+consumed and the browser navigation is restored when possible, but it is never delivered to a
+replacement board or frame.
+
+**The site must open the return URL in a new tab or window** (Excalidraw does this by asking for
+`?target=_blank`, so the library site calls `window.open(returnUrl)`). The minted host is under the
+reserved `.invalid` suffix and can never resolve, so a site that navigates to it *in place* dies at
+DNS before Persephone sees anything: the return is lost and that tab is left on a browser error
+page. Persephone closes the tab the return created and leaves the tab the user was reading alone.
 
 ### `persephone.call(path, options?)`
 

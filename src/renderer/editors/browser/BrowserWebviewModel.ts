@@ -10,7 +10,7 @@ import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
-import { browserUrlChanged } from "../../core/state/events";
+import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
 import { DEFAULT_URL, type BrowserEditorModel } from "./BrowserEditorModel";
 import { showBrowserContextMenu } from "./webview-context-menu";
 import { agentMayAccessBrowserPage } from "./agent-access";
@@ -205,6 +205,7 @@ export class BrowserWebviewModel {
         data: { url?: string; canGoBack?: boolean; canGoForward?: boolean },
         inPage: boolean,
     ) => {
+        const previousUrl = this.model.tabs.currentUrls.get(internalTabId);
         const url = data.url || "";
         this.model.tabs.currentUrls.set(internalTabId, url);
         if (internalTabId === this.model.state.get().activeTabId) {
@@ -217,10 +218,46 @@ export class BrowserWebviewModel {
             canGoForward: data.canGoForward,
             ...(!inPage ? { favicon: this.model.tabs.getCachedFavicon(url) } : {}),
         });
-        this.model.addNavHistory(internalTabId, url);
+        let handled = false;
+        if (data.url) {
+            const event: BrowserUrlEvent = { url: data.url };
+            browserUrlChanged.send(event);
+            handled = !!event.handled;
+            if (handled) this.restoreClaimedNavigation(internalTabId, previousUrl, data.canGoBack);
+        }
+        if (!handled) this.model.addNavHistory(internalTabId, url);
         if (!inPage) this.model.bookmarksUI.shiftTrackedImages(internalTabId);
-        if (data.url) browserUrlChanged.send({ url: data.url });
     };
+
+    private restoreClaimedNavigation(
+        internalTabId: string,
+        previousUrl: string | undefined,
+        reportedCanGoBack: boolean | undefined,
+    ): void {
+        if (!this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
+        const webview = this.webviewRefs.get(internalTabId);
+        if (webview && this.webviewReady.has(internalTabId)) {
+            let canGoBack = !!reportedCanGoBack;
+            try {
+                canGoBack = webview.canGoBack();
+            } catch {
+                canGoBack = false;
+            }
+            if (canGoBack) {
+                webview.goBack();
+                return;
+            }
+            if (previousUrl) {
+                webview.loadURL(previousUrl);
+                return;
+            }
+            webview.loadURL(DEFAULT_URL);
+            return;
+        }
+        const safeUrl = previousUrl || DEFAULT_URL;
+        this.model.tabs.currentUrls.set(internalTabId, safeUrl);
+        this.model.updateTab(internalTabId, { url: safeUrl });
+    }
 
     private handleBrowserEvent = async (
         _event: Electron.IpcRendererEvent,
@@ -282,8 +319,10 @@ export class BrowserWebviewModel {
                         break;
                     }
                     const parentTab = this.model.state.get().tabs.find((t) => t.id === internalTabId);
-                    this.model.addTab(data.url, parentTab?.groupId);
-                    browserUrlChanged.send({ url: data.url });
+                    const newInternalTabId = this.model.addTab(data.url, parentTab?.groupId);
+                    const event: BrowserUrlEvent = { url: data.url };
+                    browserUrlChanged.send(event);
+                    if (event.handled) this.model.closeTab(newInternalTabId);
                 }
                 break;
             }

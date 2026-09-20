@@ -11,11 +11,10 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.8.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.9.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.8.0` adds the `capabilities` manifest axis, in-memory intents, and board-to-board
-`persephone.capabilities.*` calls to the additive `1.7.0` provider/service/stream surface; existing
-boards are unaffected.
+Bridge `1.9.0` adds renderer-owned navigation return URLs to the additive `1.8.0` capability,
+intent, provider, service, and stream surface; existing boards are unaffected.
 
 ## What a board is
 
@@ -251,7 +250,7 @@ A manifest may declare a board-relative ESM entry and its bridge requirement:
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
+  "minBridgeVersion": "1.9.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
@@ -311,7 +310,7 @@ not a security boundary.
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
+  "minBridgeVersion": "1.9.0",
   "permissions": ["capabilities"],
   "capabilities": [
     { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
@@ -385,6 +384,37 @@ and a restored page does not receive them again. This is broker policy, not an O
 can be paged and Chromium may retain its own caches.
 
 ### Integration tier (in-app effects `execute()` can't express)
+
+#### Navigation returns
+
+For a third-party site that needs to return to this board, mint one opaque URL and give that exact
+value to the site's return/redirect option. There is no pattern argument and a board cannot claim a
+real origin:
+
+```js
+const returnUrl = await persephone.navigation.createReturnUrl();
+const stop = persephone.navigation.onReturn(({ url, query, hash }) => {
+    const selected = query.item?.[0];
+    const library = hash.addLibrary?.[0];
+    console.log({ url, selected, library });
+});
+thirdParty.start({ returnUrl });
+// stop(); // unsubscribe when the board no longer needs returns
+```
+
+`url` is the complete returned URL. `query` and `hash` are plain records whose values are arrays;
+duplicate keys stay in order, a key without a value is `""`, and `URLSearchParams` percent-decodes
+each component once. The API is available to trusted and bundled boards, and requires bridge
+version `1.9.0` or newer (`minBridgeVersion: "1.9.0"`). A claim belongs to the current board frame:
+disposing the frame or reloading it invalidates the claim, so the reloaded document must mint a new
+URL. A late return for an invalidated claim is consumed and the browser navigation is restored when
+possible, but it is never delivered to a replacement board or frame.
+
+**The site must open the return URL in a new tab or window** (Excalidraw does this by asking for
+`?target=_blank`, so the library site calls `window.open(returnUrl)`). The minted host is under the
+reserved `.invalid` suffix and can never resolve, so a site that navigates to it *in place* dies at
+DNS before Persephone sees anything: the return is lost and that tab is left on a browser error
+page. Persephone closes the tab the return created and leaves the tab the user was reading alone.
 
 - `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
   `{ editor }` to request a specific editor (e.g. `openRawLink(path, { editor: "md-view" })` to render

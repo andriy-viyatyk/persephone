@@ -9,7 +9,10 @@ import type {
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/dist/types/excalidraw/element/types";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
-import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
+import {
+    boardNavigationReturnService,
+    type BoardNavigationReturnEvent,
+} from "../../api/board-navigation-return";
 import { guard } from "../../core/utils/guard";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
@@ -20,7 +23,7 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { errMessage } from "../../../shared/utils";
 import type { DrawEditor, DrawEditorState } from "./DrawEditor";
-import { createExcalidrawIslandElement, LIBRARY_RETURN_URL } from "./ExcalidrawIsland";
+import { createExcalidrawIslandElement } from "./ExcalidrawIsland";
 import { createLibraryAdapter, initDefaultLibraryPath } from "./drawLibrary";
 
 type DrawTheme = typeof THEME[keyof typeof THEME];
@@ -91,6 +94,7 @@ interface DrawReadyViewProps {
     editor: DrawEditor;
     theme: DrawTheme;
     libraryAdapter: ReturnType<typeof createLibraryAdapter>;
+    libraryReturnUrl: string;
     onApi: (api: ExcalidrawImperativeAPI) => void;
     onChange: (
         elements: readonly OrderedExcalidrawElement[],
@@ -104,6 +108,7 @@ class DrawReadyView extends VanillaView<DrawReadyViewProps> {
     private readonly libraryAdapter: DrawReadyViewProps["libraryAdapter"];
     private readonly onApi: DrawReadyViewProps["onApi"];
     private readonly onChange: DrawReadyViewProps["onChange"];
+    private readonly libraryReturnUrl: string;
     private readonly initialData: ExcalidrawInitialDataState;
     private theme: DrawTheme;
     private reactHandle: MountedReactRoot | undefined;
@@ -141,6 +146,7 @@ class DrawReadyView extends VanillaView<DrawReadyViewProps> {
         this.libraryAdapter = props.libraryAdapter;
         this.onApi = props.onApi;
         this.onChange = props.onChange;
+        this.libraryReturnUrl = props.libraryReturnUrl;
         this.theme = props.theme;
         this.initialData = {
             elements: props.editor.elements,
@@ -189,6 +195,7 @@ class DrawReadyView extends VanillaView<DrawReadyViewProps> {
             theme: this.theme,
             initialData: this.initialData,
             libraryAdapter: this.libraryAdapter,
+            libraryReturnUrl: this.libraryReturnUrl,
             onApi: this.onApi,
             onChange: this.onChange,
         });
@@ -203,6 +210,7 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
     private activeBranch: DrawErrorView | DrawLoadingView | DrawReadyView | undefined;
     private activeBranchKey: DrawBranchKey | undefined;
     private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    private libraryReturnUrl = "";
 
     public constructor(props: { model: DrawEditor }) {
         super(props, createContentsRoot());
@@ -222,7 +230,17 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
             }
             this.model.clearExcalidrawApi();
         });
-        this.own(browserUrlChanged.subscribe(this.handleBrowserUrl));
+        const returnClaim = boardNavigationReturnService.createNativeClaim({
+            // `model.page.id`, NOT `model.host.state.get().id`: the host's id is the
+            // TextFileModel's, and `pagesModel.showPage()` silently does nothing when
+            // handed one. `findPage()` accepts either, which is what hid this - the old
+            // built-in handler passed the host id too, so returning from the library
+            // browser never actually restored focus to the drawing.
+            pageId: this.model.page?.id,
+            onReturn: this.handleLibraryReturn,
+        });
+        this.libraryReturnUrl = returnClaim.url;
+        this.own(returnClaim.dispose);
         void guard("Failed to initialize drawing library", initDefaultLibraryPath);
         this.bind(
             this.model.state,
@@ -253,19 +271,12 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
         this.model.setExcalidrawApi(api);
     };
 
-    private readonly handleBrowserUrl = (event?: BrowserUrlEvent): void => {
+    private readonly handleLibraryReturn = (event: BoardNavigationReturnEvent): void => {
         const api = this.model.excalidrawApi;
-        if (!event || event.handled || !api) return;
-        if (!event.url.startsWith(LIBRARY_RETURN_URL)) return;
-        const hashIndex = event.url.indexOf("#");
-        if (hashIndex === -1) return;
-        const params = new URLSearchParams(event.url.slice(hashIndex + 1));
-        const libraryUrl = params.get("addLibrary");
+        if (!api) return;
+        const libraryUrl = event.hash.addLibrary?.[0];
         if (!libraryUrl) return;
 
-        event.handled = true;
-        const hostId = this.model.host?.state.get().id;
-        if (hostId) pagesModel.showPage(hostId);
         const decoded = decodeURIComponent(libraryUrl);
         fetch(decoded)
             .then((response) => response.blob())
@@ -297,6 +308,7 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
                     editor: this.model,
                     theme: projection.darkMode ? THEME.DARK : THEME.LIGHT,
                     libraryAdapter: this.libraryAdapter,
+                    libraryReturnUrl: this.libraryReturnUrl,
                     onApi: this.handleApi,
                     onChange: this.handleChange,
                 });
@@ -328,6 +340,7 @@ export class DrawBodyView extends VanillaView<{ model: DrawEditor }> {
             editor: this.model,
             theme: projection.darkMode ? THEME.DARK : THEME.LIGHT,
             libraryAdapter: this.libraryAdapter,
+            libraryReturnUrl: this.libraryReturnUrl,
             onApi: this.handleApi,
             onChange: this.handleChange,
         });
