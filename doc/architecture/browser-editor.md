@@ -203,6 +203,11 @@ did-start-navigation    →   Check protocol →   If blocked: wc.stop()
 it stops a page from *navigating* to `file:` or `app-asset:` — it does not and cannot stop a
 `fetch`, an `XMLHttpRequest`, a `<script src>`, or an `<iframe src>`.
 
+Page-initiated URLs outside Chromium's navigation set are intercepted in the same
+`will-navigate` handler and sent to the host renderer's `openRawLink` pipeline. This includes
+registered board-contributed schemes, so a custom provider URL is opened by Persephone instead of
+being handed to Chromium as an unsupported navigation.
+
 What actually keeps `app-asset:` out of reach of web content is that **the protocol handler is
 never registered on a browser page's session.** `registerAssetProtocol` (`src/main/main-setup.ts`)
 installs it on the app partition and the file-access partition only, while browser pages run in

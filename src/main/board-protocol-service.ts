@@ -344,7 +344,11 @@ async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string
             void (async () => {
                 try {
                     controller.enqueue(first.data);
-                    let nextStart = first.range!.end + 1;
+                    // `first.range` is present for every successful read, but assert nothing:
+                    // a malformed reply would otherwise throw inside the stream start callback,
+                    // where it surfaces as a broken response body rather than a handled error.
+                    if (!first.range) throw new Error("board-pipe-missing-range");
+                    let nextStart = first.range.end + 1;
                     while (nextStart <= requestedRange.end) {
                         const nextEnd = Math.min(
                             requestedRange.end,

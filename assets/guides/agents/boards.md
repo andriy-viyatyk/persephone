@@ -273,8 +273,8 @@ the implementation contains functions that cannot cross the board frame's struct
 The implementation supplies `readBinary(config)` and may supply `writeBinary(config, data)`,
 `stat(config)`, and `watch(config, onChange)`; `watch` returns a disposer. Payloads are bounded
 (currently 256 MiB) and reads are whole-resource buffered. `ProxyProvider` has no
-`createReadStream`, so a board provider does not receive a pushed-down Range; that is deferred to
-Phase E under EPIC-107 D11.
+`createReadStream`, so a board provider receives the requested range only after the pipe buffers
+the resource.
 
 Provider types must contain `/` because un-namespaced types are reserved for the platform. The
 type is persisted in page state, so renaming it orphans old pages. Types and schemes are

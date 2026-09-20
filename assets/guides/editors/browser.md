@@ -124,6 +124,10 @@ the expected browser behavior, with a loading indicator below the toolbar. One P
 contain inner browser tabs, isolated profiles, incognito sessions, bookmarks, downloads, find-in-page,
 DevTools (`F12`), and session restore.
 
+When a page link uses a scheme registered by a trusted board, clicking it leaves the browser tab and
+opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
+blocked rather than being sent to Chromium.
+
 ## Agent API
 
 After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` facade exposes browser

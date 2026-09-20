@@ -305,6 +305,21 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     providerResult.reason,
                     providerResult.owner,
                 );
+                // A declaration whose provider type was refused must NOT claim its schemes.
+                // Registering them anyway would point this board's scheme at a provider type it
+                // does not own — on a collision, at the WINNING board's provider — so a link in
+                // one board's scheme would silently read through another board's provider.
+                for (const scheme of declaration.schemes ?? []) {
+                    addRegistrationIssue(
+                        registrationIssues,
+                        boardRoot,
+                        "scheme",
+                        scheme,
+                        `Not registered because provider type "${declaration.type}" was refused.`,
+                        providerResult.owner,
+                    );
+                }
+                continue;
             }
             for (const scheme of declaration.schemes ?? []) {
                 const schemeResult = registerScheme(

@@ -151,6 +151,27 @@ reported with its owner in Board Info. Boards may not claim `http`, `https`, `fi
 surface; that list is not the functional gate, because the `contentProviders` declaration itself
 drives registration.
 
+Register the implementation from the declared module service, not from the board page:
+
+```js
+persephone.providers.register("acme/mem", {
+    readBinary(config) {
+        return new TextEncoder().encode(`content for ${config.name}`);
+    },
+    stat() {
+        return { exists: true };
+    },
+});
+```
+
+`readBinary()` must return a `Uint8Array`; `writeBinary()`, `stat()`, and `watch()` are optional.
+The service starts when a page first needs its provider. A saved page keeps its provider descriptor
+while the board is absent or untrusted: it reports **Provider missing** and remains restorable. If
+the board is trusted but its service is still starting, the same page waits briefly for registration;
+if the service cannot attach or register the type, it reports **Provider unavailable** instead of
+hanging. Reinstall or trust the declaring board to make the page recover with its original descriptor;
+if the service itself was fixed, reload the page to retry the read.
+
 ---
 
 ## Getting started

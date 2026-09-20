@@ -269,6 +269,17 @@ Unified content I/O layer in `/src/renderer/content/` that decouples editors fro
 
 **Script access:** The `io` global namespace exposes providers, transformers, `createPipe()`, `createLinkData()`, and `linkToLinkData()` to scripts.
 
+Trusted boards extend the same pipeline through manifest `contentProviders` declarations. Provider
+types are author-namespaced (they must contain `/`), and schemes and provider types have one
+owner: platform/reserved names are protected and the first trusted board registration wins.
+Unknown persisted provider types restore as a restorable missing provider; a trusted board whose
+service is still starting uses the pending state and lazy module-service acquisition.
+
+Custom-editor boards may use `editorKind: "stream-host"` to keep the platform-owned pipe in memory
+and receive `persephone.host.streamUrl()`. The resulting
+`board://<host>/__pipe/<pageId>` URL is served by main through the owning renderer, which applies
+Range requests to the page's pipe without materializing a cache file.
+
 ### 6. Trait System
 
 See [trait-system.md](./trait-system.md).
@@ -368,7 +379,9 @@ Service requests deliberately use two channels. An ordinary request goes through
 `app.boards.requestService(boardRoot, message)` or, from the board frame,
 `persephone.service.request(message)`. The renderer `MessagePort` lease is a separate host-renderer
 channel reserved for Phase C's high-volume provider traffic; a service is not required to implement
-that port at all. A request API must not assume that the lease is attached.
+that port at all. A request API must not assume that the lease is attached. When a board declares a
+content provider, `ProxyProvider` uses the renderer lease for bounded whole-resource provider
+operations; unavailable leases surface as typed provider-unavailable errors.
 
 `persephone.storage` is a JSON key/value store in a per-board folder under
 `<userData>/data/board-storage/`, keyed by the SHA-256 hash of the canonical board root. The folder

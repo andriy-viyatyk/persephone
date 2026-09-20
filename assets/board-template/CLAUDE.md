@@ -333,8 +333,7 @@ persephone.providers.register("acme/mem", {
 disposer. Omit unsupported optional methods. Read and write payloads are bounded by the platform
 (currently 256 MiB); this API is whole-resource buffered I/O. In particular, `ProxyProvider`
 does not implement `createReadStream`, so a `Range` request for a board provider falls back to a
-buffered read. Do not write a seeking provider expecting ranges to reach it yet: that is EPIC-107
-D11 and is deferred to Phase E.
+buffered read.
 
 ### Resident backend server (the key pattern)
 
@@ -604,8 +603,7 @@ copying the source into a cache file and returning that local path through `getF
 
 The pipe can range-read platform providers and falls back to buffering when needed. A board
 provider's `readBinary()` is still whole-resource: `ProxyProvider` has no `createReadStream`, so
-the range is not pushed down into the board service. Ranged provider reads are deferred to Phase E
-(EPIC-107 D11).
+the range is buffered before it is returned to the board.
 
 ## Secondary views & shared state
 

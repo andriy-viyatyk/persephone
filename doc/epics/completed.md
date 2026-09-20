@@ -1,3 +1,42 @@
+## EPIC-107 — Open providers, ranged streaming and the stream-host
+
+Completed 2026-09-20. Platform roadmap **Phase C**. [Epic document](EPIC-107.md).
+
+- [x] US-1471: `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule
+- [x] US-1472: *Provider missing* placeholder and `PendingProvider`
+- [x] US-1473: `ProxyProvider` and `persephone.providers.register` over the service port
+- [x] US-1475: `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving
+- [x] US-1476: Browser routing of registered schemes into `openRawLink`
+- [x] US-1477: Demo-board provider and stream-host fixtures, and the authoring documentation
+- US-1474 (credit-based ranged streaming into a board provider) **deferred to Phase E** — decision D11
+
+A trusted board became a **data source**. It declares content providers in its manifest, implements
+them in its module service, and the pipeline builds pipes on them **with no board page open** — the
+shape the torrent flow of roadmap §3.8 needs. A persisted pipe whose provider is absent now degrades
+to a placeholder that keeps the page, its title and its original descriptor, instead of throwing, so
+reinstalling or re-trusting the board recovers the page. `editorKind: "stream-host"` serves a page's
+pipe as an origin-local `board://<host>/__pipe/<pageId>` URL with working `Range` requests and
+nothing written to disk — the no-copy alternative to the existing `editorSources: "any"`, which
+solves the same problem by materializing the source into a cache file. And a page-initiated Browser
+navigation to a registered scheme now reaches the content pipeline instead of being silently dropped.
+
+Decisions later phases inherit: board provider types are **namespaced by the author** and registered
+verbatim (D1), because deriving them from the manifest name or the board root would orphan persisted
+pages on a rename or a reinstall; `contentProviders` is disclosed in `permissions` but the functional
+trigger is the manifest array (D3), deliberately unlike `service`, so EPIC-106's still-unreviewed D1
+reversal is not compounded; `__pipe` ranges are served through the owning renderer rather than pulled
+from the service port (D4), with the direct pull deferred behind a stated measurement trigger.
+
+Building on Phase B found that its **renderer `MessagePort` lease was broken, not merely
+unimplemented**: the supervisor put the `MessagePortMain` in the message body as well as the transfer
+list, so every attach threw "object could not be cloned". Nothing had ever exercised it, because no
+service implemented the receiving side. Fixed here.
+
+Nine defects were caught that typecheck, lint and `build-prod` all passed — seven at plan review,
+two in live verification, two of them revocation-shaped. Both headline criteria were observed in the
+running app rather than inferred: bytes produced inside a board's `utilityProcess` with no page open,
+and a 206 `Content-Range` response with a clean `userData` sweep.
+
 ## EPIC-104 — Clipboard tracker
 
 Completed 2026-09-17. [Epic document](EPIC-104.md).

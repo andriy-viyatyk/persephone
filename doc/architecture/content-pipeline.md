@@ -17,8 +17,8 @@ The content registry is split by the kind of extension point it owns:
 - `scheme-registry.ts` maps URL schemes to paired parse and resolve hooks. It normalizes scheme
   names, dispatches both the normal open pipeline and the `source-path` reconstruction path, and
   supplies hooks with `delegate()` and descriptor-based pipe creation. Platform and script
-  registrations have separate duplicate/replacement rules; an existing live pipe is never
-  changed by a later registration.
+  registrations have separate duplicate/replacement rules; trusted-board registrations use the
+  same hook contract and an existing live pipe is never changed by a later registration.
 - `builtin-schemes.ts` owns the platform scheme hooks and their scheme-specific parsing and
   resolution behavior. It registers HTTP(S), data URLs, folder/editor links, Mneme links, board,
   guide, toolset, tree-category, and Git-tree schemes. `parsers.ts` and `resolvers.ts` remain the
@@ -30,6 +30,27 @@ so adding a platform or script scheme does not require a second hand-maintained 
 filesystem paths and archive `archive.zip!entry` paths are intentionally fallbacks rather than
 scheme registrations; the archive adapter is registered after the file fallback so LIFO dispatch
 evaluates archive paths ahead of plain files.
+
+### Board provider and scheme registrations
+
+A trusted board contributes providers through the manifest's `contentProviders` array. Each
+declaration pairs a persisted provider `type` with one or more URL `schemes`; the type is registered
+verbatim and the scheme registry resolves those schemes through the normal Layer 1/Layer 2 hooks.
+Board provider types must contain `/`, because un-namespaced provider types are reserved for the
+platform. The board author therefore owns the stable namespace (`acme/torrent`, for example); it is
+not derived from the mutable board display name or install path.
+
+Provider types and schemes have one owner. Platform registrations and the hard-reserved names
+(`http`, `https`, `file`, `data`, `blob`, `mneme`, and every `persephone-*` scheme) cannot be
+claimed by a board. Among trusted boards, the first registration wins; a later collision is
+rejected and retained as a Board Info registration issue with the existing owner. A trust refresh
+rebuilds board-owned registrations, so untrusted or removed boards no longer own their names.
+`permissions: ["contentProviders"]` discloses the requested surface and participates in service
+lifecycle metadata; the `contentProviders` array is the functional provider-registration axis.
+
+The same registered-scheme lookup is used by `pages.openUrl` and by browser page-initiated
+navigation. A registered custom scheme is therefore routed into `openRawLink` rather than being
+left for Chromium's navigation machinery.
 
 ## 3-Layer Pipeline
 
@@ -134,6 +155,22 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 - `writable` -- true only if the provider is writable AND all transformers implement `write`.
 - `watch` -- delegates to `provider.watch()` if supported. Returns a `() => void` disposer.
 
+### Missing and pending providers
+
+`createProviderFromDescriptor()` preserves a valid descriptor even when its provider type is not
+currently registered. It returns a read-only, restorable `MissingProvider` whose `toDescriptor()`
+returns the original descriptor unchanged; the first read rejects with a typed error naming the
+provider and, when available, its declaring board. A malformed descriptor (not an object or
+without a string `type`) still throws immediately.
+
+When the descriptor belongs to a trusted board whose provider has not become available yet, the
+same placeholder enters its pending state on the first read. It acquires the board's module-service
+renderer lease, waits for the service registration, then delegates the read to `ProxyProvider`.
+Service startup is lazy and bounded; a service that never attaches the lease produces a typed
+provider-unavailable error instead of leaving the page pending forever. The placeholder watches
+provider availability so a persisted page can recover while retaining its page identity, source
+link, and original pipe descriptor.
+
 ## Built-in Providers
 
 | Provider | Type | Writable | Watch | Description |
@@ -142,8 +179,36 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 | `HttpProvider` | `http` | No | No | HTTP/HTTPS fetch via `nodeFetch`; adds the content-pipe default User-Agent only when the caller supplied none. Supports method, headers, body. Re-fetches on each read (no internal caching). |
 | `CacheFileProvider` | `cache` | Yes | No | Cache directory file (`{userData}/cache/{pageId}.txt`). Used as provider for cache pipes. |
 | `GuideProvider` | `guide` | No | No | Read-only access to application-shipped Markdown guides through `persephone-guide://`; strips front matter and returns UTF-8 body bytes. |
+| `ProxyProvider` | board-declared type | Depends on service | Service-defined | Renderer-side delegate to a trusted board's module service over the optional renderer `MessagePort` lease. Whole-resource reads and writes are bounded by the buffered payload limit. |
 
 All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity. `HttpProvider` builds request headers at call time so its default `CONTENT_USER_AGENT` is not written into the descriptor; an explicitly supplied User-Agent, including one with different casing, wins. `nodeFetch` remains header-neutral because REST requests must send exactly the headers the user supplied. `GuideProvider` is the intentional encoding exception: its packaged corpus has a known UTF-8 encoding, so it decodes the source to remove front matter before returning body bytes.
+
+## Board stream-host delivery
+
+`editorKind: "stream-host"` is the no-materialization custom-editor variant. Persephone owns the
+page's `IContentPipe` but does not create the text-host or cache-file path used by `content-host`,
+and it does not call `ensureContentPath()` for the board. `persephone.host.streamUrl()` is available
+to both content-host and stream-host pages and returns an origin-local
+`board://<host>/__pipe/<pageId>` URL.
+
+The range path deliberately stays renderer-mediated because the renderer owns the composed pipe:
+
+```
+board fetch(Range)
+  → board:// protocol handler in main
+  → BoardPipeService → board-pipe:read IPC
+  → board-pipe-handler in the owning renderer
+  → page's IContentPipe
+  → byte reply back through main
+```
+
+The handler parses one inclusive byte range, returns `206` with `Content-Range` and
+`Accept-Ranges: bytes`, and returns `416` with `bytes */<total>` for an unsatisfiable range. A
+transformer-free provider with `createReadStream()` is read directly for bounded chunks; transformed
+pipes and providers without a stream are read through a bounded in-memory buffer. Each IPC chunk is
+limited to 1 MiB and fallback buffering is limited to 256 MiB. This path can serve a local file,
+HTTP source, transformed pipe, or service-backed provider, but a `ProxyProvider` remains a
+whole-resource provider, so a range is buffered before it is sent to the board.
 
 ## Built-in Transformers
 

@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-20
+**Completed:** 2026-09-20
 **Roadmap phase:** [Platform roadmap](../platform-roadmap.md) — **Phase C, Open providers with
 ranged streaming**
 
@@ -328,13 +329,13 @@ provider omits it, so nothing is broken by its absence.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1471 | `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule | Planned |
-| US-1472 | *Provider missing* placeholder and `PendingProvider` | Planned |
-| US-1473 | `ProxyProvider` and `persephone.providers.register` over the service port | Planned |
+| US-1471 | `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule | Done |
+| US-1472 | *Provider missing* placeholder and `PendingProvider` | Done |
+| US-1473 | `ProxyProvider` and `persephone.providers.register` over the service port | Done |
 | US-1474 | Credit-based ranged streaming: `createReadStream(range)` through the bridge and the pipe | **Deferred to Phase E** (D11) |
-| US-1475 | `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving | Planned |
-| US-1476 | Browser routing of `magnet:` and `.torrent` into `openRawLink` | Planned |
-| US-1477 | Demo-board provider and stream-host fixtures, and the authoring documentation | Planned |
+| US-1475 | `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving | Done |
+| US-1476 | Browser routing of `magnet:` and `.torrent` into `openRawLink` | Done |
+| US-1477 | Demo-board provider and stream-host fixtures, and the authoring documentation | Done |
 
 Order, chosen so parallel sessions never touch one file:
 
@@ -458,3 +459,51 @@ Each is an observation, per D10.
   already exists in `video-stream-server.ts` and should be extracted rather than rewritten; and
   the `board://` protocol handler **discards the request**, so Range support is a signature change
   at `board-protocol-service.ts:302` rather than a new branch.
+
+### 2026-09-20 — close-out
+
+Six of seven tasks implemented, reviewed and landed in `e1b2e4f2`, `9a9a82bd` and `d4aec07d`.
+US-1474 is deferred to Phase E per D11 — the pre-committed abort boundary, taken deliberately
+rather than discovered at dawn.
+
+**Verified live over MCP, not inferred from a green build.** The two headline criteria were
+observed:
+
+- a page opened on `mem://demo/final.txt` — a scheme and provider type declared **only** in a board
+  manifest — returned bytes generated inside the board's `utilityProcess`, **with no board page
+  open**, which is the entire purpose of Phase C;
+- `persephone.host.streamUrl()` returned `board://<host>/__pipe/<pageId>` and a
+  `Range: bytes=0-31` request answered **206** with `Content-Range: bytes 0-31/140` and the correct
+  bytes, while a sweep of `<userData>` found **nothing written under `cache/`** — neither the
+  `content-host` autosave nor the `ensureContentPath()` materialization.
+
+Also observed: the browser scheme fix (a `mneme://` click that previously did nothing now opens a
+page) with its regression guard (`mailto:` and an unregistered scheme raise zero alerts); a valid
+board declaration registering while an un-namespaced type and a reserved `https` claim are both
+refused with readable reasons; the placeholder round-tripping its original descriptor; and the
+service restart budget running to a terminal `failed` state with the reason captured to the board's
+`ui.log`, cleared by an explicit `startService`.
+
+**Nine defects were found that typecheck, lint and `build-prod` all passed.** Seven at plan review
+and two in live testing. The three worth remembering:
+
+1. **Phase B's renderer `MessagePort` lease was broken, not merely unimplemented.** The supervisor
+   put the `MessagePortMain` in the message body as well as the transfer list, so every attach threw
+   *"object could not be cloned"*. It was invisible because no service implemented the receiving
+   side. Phase C was its first consumer and therefore the first thing able to find it.
+2. **US-1471's release step was keyed on the trusted list**, which by definition no longer contains
+   an untrusted board — so untrust would never have freed a board's provider and scheme names. This
+   is the third revocation-shaped defect in three epics.
+3. **US-1476's first plan would have raised a warning alert on every `mailto:` link**, because an
+   unregistered scheme forwarded into `openRawLink` reaches Layer 1's file fallback.
+
+`/review` raised three findings at close. Two were fixed: a board losing a provider-type collision
+still registered that declaration's **schemes**, which would have pointed its scheme at the winning
+board's provider; and a non-null assertion inside the `__pipe` stream `start()` callback, where a
+throw surfaces as a broken response body. The third — that a live `ProxyProvider` object survives
+untrust — was judged **not a defect**: the supervisor rejects on the lease path
+(`module-service-supervisor.ts:467`) and settles requests as `untrusted` (`:339`), so the surviving
+object cannot read.
+
+The demo board was backed up before use and restored byte-identically; all test pages, windows and
+alerts were cleaned up. Task folders kept, per the standing preference.

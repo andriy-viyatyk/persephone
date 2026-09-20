@@ -25,29 +25,25 @@ below tracks which phases have shipped.
 |---|---|---|
 | A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
 | B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
-| C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **in progress** |
+| C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | — | not started |
 | E — Torrent board and audio player (proof 1) | — | not started |
 | F — Excalidraw extraction (proof 2) | — | not started |
 
 ## Active
 
-- **EPIC-107** — [Open providers, ranged streaming and the stream-host](epics/EPIC-107.md)
-  — Phase C of the platform roadmap. A trusted board becomes a **data source**: it declares a
-  content provider, the pipeline builds pipes on it with no board page open, a missing provider
-  degrades to a placeholder instead of throwing, and `editorKind: "stream-host"` serves a page's
-  pipe at `board://<host>/__pipe/<pageId>` with `Range` support and nothing written to disk.
-  - [ ] [US-1471: `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule](tasks/US-1471-board-provider-axes/README.md)
-  - [ ] [US-1472: *Provider missing* placeholder and `PendingProvider`](tasks/US-1472-provider-placeholder/README.md)
-  - [ ] [US-1473: `ProxyProvider` and `persephone.providers.register` over the service port](tasks/US-1473-proxy-provider/README.md)
-  - [ ] [US-1474: Credit-based ranged streaming through the bridge and the pipe](tasks/US-1474-ranged-streaming/README.md)
-  - [ ] [US-1475: `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving](tasks/US-1475-stream-host/README.md)
-  - [ ] [US-1476: Browser routing of `magnet:` and `.torrent` into `openRawLink`](tasks/US-1476-browser-scheme-routing/README.md)
-  - [ ] [US-1477: Demo-board provider and stream-host fixtures, and the authoring documentation](tasks/US-1477-provider-fixtures-docs/README.md)
+*(no active epic)*
 
 ## Planned
 
 - *(no epic)*
+  - [ ] US-1474: Credit-based ranged streaming into a board-implemented provider
+    — deferred out of [EPIC-107](epics/EPIC-107.md) by decision D11, its pre-committed abort
+    boundary. `ProxyProvider` serves whole-resource reads and `stream-host` serves ranged reads from
+    any platform-owned pipe, but a range is not yet pushed **down** into a board provider — which is
+    what lets a torrent client prioritise pieces (roadmap §3.8 step 7). **Belongs to Phase E**, its
+    only consumer; the seam is in place (`IProvider.createReadStream?(range)` left unimplemented,
+    `ContentPipe` falls back to a buffered read).
   - [ ] US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`
     — split out of [US-1476](tasks/US-1476-browser-scheme-routing/README.md) during review. A download
     takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`, so it

@@ -95,6 +95,10 @@ Guide indexing is shared across processes: `/src/shared/guides/` owns the corpus
 mounted-source composition, `/src/main/mcp/ai-vision/` resolves trusted-board guide mounts for MCP,
 and `/src/renderer/guides/` resolves the corresponding mounts for the About browser and `F1`.
 
+The shared board-pipe helpers are deliberately process-neutral: `/src/shared/range-utils.ts` parses
+inclusive ranges and builds Content-Range values; `/src/shared/board-pipe-constants.ts` holds the
+board-pipe IPC chunk and fallback-buffer limits.
+
 The renderer dev server ignores `snip-tool/target/`, `mneme/target/`, `launcher/target/`, and
 `release/` in its Vite watcher. These are build outputs rather than import sources; watching them
 can race a concurrent Cargo or packaging build, surface `EBUSY` from chokidar, and bring down the
@@ -265,6 +269,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
 │   ├── PipePair.ts         # Paired TextFile source/cache pipe ownership and disposal
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
+│   ├── board-provider-factory.ts # Trusted-board provider factory seam and availability signal
 │   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
@@ -284,6 +289,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
 │   │   ├── DataUrlProvider.ts  # IProvider for data: URLs (inline content, read-only)
 │   │   ├── MnemeProvider.ts    # IProvider over the shared Mneme connection — read/write/edit a document, live-refresh on resource updates
+│   │   ├── ProxyProvider.ts     # IProvider delegate to a trusted board module service over the renderer lease
 │   │   └── GuideProvider.ts     # IProvider for packaged Markdown guides (read-only)
 │   ├── transformers/
 │   │   ├── ArchiveTransformer.ts # ITransformer for archive entry extraction/replacement
@@ -642,6 +648,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
 │   │   ├── BoardToolbar.ts           # In-board toolbar — Reload / Show-log / board path + switcher popover / File Explorer button
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake + ui.log reset
+│   │   ├── board-pipe-handler.ts      # Renderer side of board://<host>/__pipe/<pageId> range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
@@ -949,6 +956,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── worker-host.ts          # Worker thread host for app.runAsync (IPC + worker_threads)
 ├── command-runner.ts       # Streaming command runner — spawns child processes, streams stdout/stderr/exit over IPC by jobId; shared by app.proc.execute and the board bridge's execute(); whole-tree kill via taskkill; jobs carry an optional caller-chosen name + a getJobsBySinkIds query (board job re-association)
 ├── board-protocol-service.ts # board:// scheme handler — host→board-root registry; serves board files + CSP; injects --p-* palette, boot context, and the bridge shim into served HTML
+├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, trust gating, handshake deadline, restart budget, request settlement, renderer lease, untrust and quit teardown
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
@@ -988,6 +996,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
 ├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshots, renderer lease and storage wire types
+├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
 │   ├── controller.ts       # Compact IPC composition root — initializes endpoint registrars and renderer events
@@ -995,6 +1004,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── core-handlers.ts    # Desktop, app, local-service, and utility Endpoint registrations
 │   ├── git-handlers.ts     # Lazy Git service Endpoint registrations
 │   ├── board-handlers.ts   # Lazy Board lifecycle, bridge, automation, and catalog Endpoint registrations
+│   ├── board-pipe-handlers.ts # Board-pipe page registration and renderer reply handlers
 │   ├── dialog-handlers.ts  # File dialog handlers — the single place all three native dialogs are opened (renderer app.fs and the board bridge both route here); wraps them in native-dialog tracking, resolves the starting folder, and records the pick
 │   ├── renderer-events.ts  # Events sent TO renderer
 │   └── window-handlers.ts  # Window management handlers

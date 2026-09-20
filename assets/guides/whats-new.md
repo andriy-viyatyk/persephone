@@ -34,7 +34,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders`
   type in the manifest and register its bounded whole-resource implementation from the service;
   `editorKind: "stream-host"` exposes `persephone.host.streamUrl()` for `Range` reads without a
-  materialized source file. Board-provider range pushdown is deferred to Phase E.
+  materialized source file. Saved pages retain their provider descriptor and show a recoverable
+  missing/unavailable state if the board is absent or its service cannot start. Board-provider range
+  pushdown is deferred to Phase E.
+- **Browser links can open registered board schemes:** clicking a trusted board's registered custom
+  scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
+  unregistered non-web schemes remain blocked.
 
 ### Improvements
 
