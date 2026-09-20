@@ -28,8 +28,13 @@ below tracks which phases have shipped.
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **active** |
-| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) |
+| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **blocked by EPIC-111** |
 | E — Torrent board and audio player (proof 1) | — | not started |
+
+**[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
+EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
+drawing library path has nowhere to live once `editors/draw` is deleted. EPIC-109 D11 makes it a
+prerequisite of EPIC-110.
 
 ## Active
 
@@ -43,8 +48,18 @@ below tracks which phases have shipped.
   - [ ] [US-1486: The board's prebuilt lib/, generated once and committed](tasks/US-1486-board-prebuilt-lib/README.md)
   - [ ] [US-1487: The Excalidraw board](tasks/US-1487-excalidraw-board/README.md)
   - [ ] [US-1488: Capability routing into the board, and the payload measurement](tasks/US-1488-excalidraw-capability-routing/README.md)
+  - [ ] [US-1489: Board navigation return URLs](tasks/US-1489-board-navigation-return/README.md)
+  - [ ] [US-1490: The Excalidraw board's library flow](tasks/US-1490-excalidraw-library/README.md)
 
 ## Planned
+
+- **[EPIC-111: Board settings](epics/EPIC-111.md)** — a board declares settings in its manifest and
+  Persephone renders them as a sub-page of its own Settings, storing values in the board's scoped
+  storage. Created from a user observation while planning EPIC-109's library flow: boards have
+  `persephone.storage` but nothing the user can see or edit, so `drawing.library-path` would be
+  orphaned when `editors/draw` is removed. **Prerequisite of EPIC-110** (EPIC-109 D11). Open
+  decisions — the trust gate, migrating the existing library path, and how narrow the type system
+  should start — are recorded in the epic and are resolved before any task document is written.
 
 - *(no epic)*
   - [ ] US-1474: Credit-based ranged streaming into a board-implemented provider

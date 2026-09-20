@@ -209,6 +209,88 @@ Xiaolai and the other 54 locales are excluded deliberately. A user wanting Chine
 that one font family; everything else renders identically. The exclusion is recorded here so a
 future version bump does not silently re-add 13 MB to the repository.
 
+**D10 — Browser-navigation return URLs are a general board platform feature, and Persephone mints
+them. A board never supplies a pattern.**
+
+*(User decision, 2026-09-20, rejecting an Excalidraw-specific implementation.)* Excalidraw's library
+browser hands a third-party site a return URL and expects the user to be sent back to it. The
+built-in editor solves this privately: `ExcalidrawIsland.tsx:21` invents the sentinel
+`https://jsnotepad.excalidraw-library/`, and `DrawBodyView.ts:256-284` subscribes to
+`browserUrlChanged` and claims any navigation starting with it. The board has no such mechanism, so
+Excalidraw falls back to `window.location` and the library site navigates the browser to
+`board://<host>/index.html#addLibrary=...`, which Windows offers to the shell — *"Get an app to open
+this 'board' link"*.
+
+A partial seam exists, but **it is weaker than it looks, and US-1489's investigation corrected an
+earlier draft of this decision that overstated it.** `BrowserUrlEvent` (`core/state/events.ts:39-46`)
+carries a `handled` flag, and `editors/draw` both sets it and honors it (`DrawBodyView.ts:258`). But
+`browserUrlChanged` is a plain `Subscription`, not an `EventChannel` — the `handled` short-circuit
+lives in `EventChannel.send` (`api/events/EventChannel.ts:71`) and has no equivalent here. Neither
+publish site reads the flag back: `BrowserWebviewModel.ts:222` fires *after* the navigation has
+committed and the tab's URL, history and URL bar are already updated, and `:286` fires *after*
+`addTab()` has created a whole new tab for a `new-window`.
+
+So `handled` is a convention between subscribers, not a way to cancel or rewind a navigation. A
+claim therefore cannot prevent the browser from going somewhere — it can only react once it has.
+Any design that assumes the navigation can be intercepted before it commits is wrong, and the
+service must instead deal with the tab that already exists. `editors/draw` today only calls
+`pagesModel.showPage(hostId)`, which refocuses the drawing and leaves the library tab stranded on
+the sentinel URL; the general service is expected to do better than that, and US-1489 owns deciding
+what "better" is.
+
+**Persephone mints the URL; the board asks for one and never describes what to match.** This is the
+load-bearing half of the decision. A board that could register its own pattern could claim
+`https://github.com/login` and silently swallow a real navigation — a phishing primitive, and one
+that would be very hard to withdraw once boards depended on it. Minting removes the possibility
+rather than policing it. The minted form is
+`https://<nonce>.board-return.persephone.invalid/`: `.invalid` is reserved by RFC 2606 and can never
+resolve to a real site, and the nonce scopes the claim to one board instance.
+
+`editors/draw` is migrated onto the same service and `LIBRARY_RETURN_URL` deleted. That is not
+tidying — it is the test of whether the feature is general. If the built-in cannot be expressed
+through it, it is still Excalidraw-shaped.
+
+**No new network capability is introduced.** An earlier sketch had the renderer fetch the library on
+the board's behalf, because the board CSP is `connect-src 'self'`. That was unnecessary: boards
+already have `persephone.executeNode()` — Persephone's bundled Node runtime, no install required —
+plus `readFile`/`writeFile` (`board-shim.ts:1184-1197,1314-1329`). The board fetches and stores the
+library itself. This matters beyond convenience: a general "fetch this URL for me" primitive would
+have been board-initiated network egress, which collides directly with the EPIC-106 D1 question that
+**D8 parks for the fourth time**. Using the capabilities boards already have keeps D1 parked
+honestly.
+
+**D11 — Parity before removal. EPIC-110 does not begin until the board matches the built-in.**
+
+*(User decision, 2026-09-20: "I want in-board excalidraw to be identical to in-persephone one before
+removing persephone code" — clarified the same day as **identical from the user's perspective**, so
+that anything the user can do with the built-in editor they can also do in the board.)*
+
+Parity is therefore **behavioural, not structural**. The two are different implementations by
+design — one a React island holding a direct API reference, the other a board page across a bridge —
+and nothing requires their internals, their facades or their file layouts to converge. What must
+match is the set of things a user can do. A difference the user cannot observe is not a gap; a
+menu entry that is present but does nothing is.
+
+This epic's original framing kept `editors/draw` as a fallback; D11
+makes the stronger commitment that the built-in is not removed until nothing is lost by removing it.
+Two gaps are already known and are tracked here as US-1489 and US-1490, and one — user-visible
+configuration of the library path — cannot be closed inside this epic at all, because Persephone has
+no concept of board settings. That becomes **EPIC-111**, and it is therefore a prerequisite of
+EPIC-110 rather than an improvement that can follow it.
+
+Parity runs in both directions, and the board currently offers **more** than the built-in in a way
+that is a defect rather than a bonus. `ExcalidrawIsland.tsx:22-30` deliberately disables four canvas
+actions — `loadScene`, `saveToActiveFile`, `export` and `toggleTheme` — because in Persephone the
+host owns the file and the app owns the theme. The board passes no `UIOptions`, so all four are
+live: "Open" would replace the scene behind the host's back, "Save to disk" would start a browser
+download, and `toggleTheme` now fights the Persephone theme the board follows as of US-1487. These
+are user-visible differences and belong to the audit.
+
+So D11 requires an explicit **parity audit** against the built-in's user-facing surface, not an
+impression that the board "works". US-1490 carries it, and the known entries are: library browse and
+add, the library path being configurable, the four suppressed canvas actions, and the scripting
+surface (`addImage`, `exportAsSvg`, `exportAsPng`, `elementCount`) already matched in US-1487.
+
 ## Linked Tasks
 
 | Task | Title | Status |
@@ -217,8 +299,10 @@ future version bump does not silently re-add 13 MB to the repository.
 | US-1484 | Stable identity for bundled boards across install paths | Planned |
 | US-1485 | Built-in tab presentation and the Disable action | Planned |
 | US-1486 | The board's prebuilt `lib/`, generated once and committed | Planned |
-| US-1487 | The Excalidraw board | Planned |
-| US-1488 | Capability routing into the board, and the payload measurement | Planned |
+| [US-1487](../tasks/US-1487-excalidraw-board/README.md) | The Excalidraw board | Planned |
+| [US-1488](../tasks/US-1488-excalidraw-capability-routing/README.md) | Capability routing into the board, and the payload measurement | Planned |
+| [US-1489](../tasks/US-1489-board-navigation-return/README.md) | Board navigation return URLs | Planned |
+| [US-1490](../tasks/US-1490-excalidraw-library/README.md) | The Excalidraw board's library flow | Planned |
 
 ### US-1483 — Bundled board registry and discovery
 
@@ -269,6 +353,30 @@ clone cost on the Phase D inline path against EPIC-108 D7's documented threshold
 result — crossing it is the trigger for the deferred data-handle protocol, as its own task, not
 here.
 
+**The manifest declaration belongs to this task, not to US-1487.** US-1487 shipped
+`image.edit`/`diagram.edit` at priority 60 in `board-manifest.json` before any handler existed;
+resolution honoured it at once and the board shadowed `draw-view`, so the image viewer's Edit
+button opened a board that ignored the intent (fixed by removing the declarations). Restore them
+here, in the same change as `persephone.intent.onRequest`.
+
+### US-1489 — Board navigation return URLs
+
+D10. A board-facing service that mints a unique return URL, claims any browser navigation matching
+it through the existing `BrowserUrlEvent.handled` flag, returns focus to the host page, and delivers
+the URL and its parsed parameters to the owning board frame. `editors/draw` migrates onto it and
+`LIBRARY_RETURN_URL` is deleted, which is what proves the feature is general rather than
+Excalidraw-shaped. Boards never supply a match pattern.
+
+### US-1490 — The Excalidraw board's library flow
+
+The board passes the minted URL as Excalidraw's `libraryReturnUrl`, receives the `addLibrary`
+callback, fetches the `.excalidrawlib` with `persephone.executeNode()` and stores it with
+`writeFile`, then feeds it to `updateLibrary()`. Library persistence must **adopt the existing
+library** rather than start empty: `drawing.library-path` already holds what the user has collected
+(`drawLibrary.ts:12-19` defaults it to `<userData>/data/excalidraw-lib`). Until EPIC-111 exists the
+path is not user-configurable from the board, which is acceptable only because the location is
+unchanged — the data does not move when the setting later appears.
+
 ## Exit criteria
 
 1. A fresh install with **no network** opens a `.excalidraw` file in the bundled board.
@@ -284,6 +392,9 @@ here.
    because the built-in handler deliberately remains registered throughout this epic.)*
 7. `editors/draw` is still present and still works if the board is disabled.
 8. The payload measurement from US-1488 is recorded against EPIC-108 D7's threshold.
+9. **Parity (D11).** Browsing and adding an Excalidraw library works in the board, using a minted
+   return URL that no board pattern-matched for, and the user's existing library is still there.
+   `editors/draw` uses the same navigation service, with `LIBRARY_RETURN_URL` gone.
 
 ## Notes
 

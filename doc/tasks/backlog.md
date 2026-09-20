@@ -246,6 +246,27 @@ written; the doc carries the research notes.
 
 ## Architecture Improvements
 
+### `settleHostContent()` fires `onContentChange` for the snapshot that settles `getContent()`
+
+Found while debugging US-1488 (EPIC-109), and **deliberately not fixed there** — the fix was written,
+proved unnecessary once the real cause was found, and reverted, because it changes shared behavior
+for every content-host board on the strength of code reading alone.
+
+`settleHostContent()` in `src/board-shim.ts` resolves the waiting `getContent()` calls and then falls
+through to fire every `onContentChange` callback, including for the **first** push. Both doc comments
+around it say the opposite: "`getContent()` awaits the first snapshot ...; `onContentChange` fires on
+each **subsequent** push" (`src/board-shim.ts:189-192`), and the same again on `onContentChange`
+itself. So a board that registers before the first push processes the opening content twice.
+
+Two installed boards register `onContentChange` *before* awaiting `getContent()` on purpose — `todo`
+(`app.js:1268-1276`, with a comment saying it subscribes first so an update arriving while
+`getContent()` is in flight is not missed) and `force-graph` (`app.js:924-933`). Both would still
+receive the opening content through `getContent()`, so the one-line fix (`return` after settling)
+looks safe — but "looks safe" is what this note exists to avoid. Whoever takes it should exercise
+those two boards plus `drawio-viewer`, and decide whether the code or the documented contract is the
+one that is wrong.
+
+
 ### A browser tab's CDP session keeps the old document after an `about:blank` navigation
 
 Navigate a browser page to `about:blank` and `pages[i].editor.evaluate("[location.href, document.title]")`
