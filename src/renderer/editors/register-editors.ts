@@ -235,10 +235,9 @@ for (const e of EDITORS) {
     });
 }
 
-// Warm the custom-editor registry (EPIC-042) so file-open resolution sees trusted
-// file-associated boards from the first open - `resolveEditorIdForFile` is sync but the
-// registry loads manifests async. Safe pre-init: an unresolved registry yields no matches
-// -> built-in fallback.
+// Warm the custom-editor registry (EPIC-042 / EPIC-109) while bootstrap joins this same
+// initialization before restoring pages. The fire-and-forget warm-up preserves the existing
+// preload path for callers that load the editor registry independently.
 void customEditorRegistry.ensureInitialized();
 
 // Warm the content-host editor modules so the synchronous construction path

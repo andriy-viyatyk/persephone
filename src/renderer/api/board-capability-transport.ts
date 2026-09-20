@@ -4,7 +4,7 @@ import type {
     CapabilityTransport,
     IntentRequest,
 } from "../../ipc/capability-bus-channels";
-import { boardTrust } from "./board-trust";
+import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/board-access";
 import { boards } from "./boards";
 import { pagesModel } from "./pages";
 import { boardPagesForRoot } from "./board-updates";
@@ -113,13 +113,13 @@ class BoardCapabilityTransport implements CapabilityTransport {
     private readonly unsubscribeFrames: () => void;
 
     constructor() {
-        this.unsubscribeTrust = boardTrust.subscribePaths(() => this.settleUntrusted());
+        this.unsubscribeTrust = subscribeBoardPermission(() => this.settleUntrusted());
         this.unsubscribeFrames = subscribeBoardCapabilityFrames((frame) => this.onFrame(frame));
     }
 
     dispatch(registration: CapabilityRegistration, request: IntentRequest): Promise<unknown> {
         const root = boardRootOf(registration);
-        if (!root || !boardTrust.isTrusted(root)) {
+        if (!root || !isBoardPermitted(root)) {
             return Promise.reject(new BoardCapabilityTransportError(
                 "untrusted",
                 "The capability handler board is not trusted.",
@@ -236,7 +236,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
 
     private dispatchToFrame(pending: PendingDispatch, frame: BoardCapabilityFrame): void {
         if (pending.settled || pending.frame) return;
-        if (!boardTrust.isTrusted(frame.boardRoot)) {
+        if (!isBoardPermitted(frame.boardRoot)) {
             this.settle(pending, new BoardCapabilityTransportError(
                 "untrusted",
                 "The capability handler board is not trusted.",
@@ -286,7 +286,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
     private settleUntrusted(): void {
         for (const pending of [...this.pending.values()]) {
             const root = pending.registration.boardRoot;
-            if (root && !boardTrust.isTrusted(root)) {
+            if (root && !isBoardPermitted(root)) {
                 this.settle(pending, new BoardCapabilityTransportError(
                     "untrusted",
                     "The capability handler board is no longer trusted.",

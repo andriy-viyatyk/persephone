@@ -34,7 +34,7 @@ import {
     waitFor,
 } from "../../automation/operations";
 import type { WaitMode } from "../../automation/operations";
-import { boardTrust } from "../../api/board-trust";
+import { getBoardPermissionOrigin } from "../../editors/board/board-access";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import type {
     BoardContentProviderDeclaration,
@@ -62,7 +62,7 @@ const BOARD_MEMBERS: readonly IAiMember[] = [
     { name: "boardRoot", kind: "property", summary: "The board root path, or undefined before a board root is attached." },
     { name: "folderPath", kind: "property", summary: "The absolute folder claimed by the board, or undefined for plain/file-only boards." },
     { name: "boardName", kind: "property", summary: "The resolved board folder name, or undefined when the board is not found." },
-    { name: "renderState", kind: "property", summary: "Model-backed trusted, untrusted, or not-found state." },
+    { name: "renderState", kind: "property", summary: "Model-backed trusted, bundled, untrusted, or not-found state. A bundled board ships with the app and is permitted without being user-trusted." },
     { name: "getManifest", kind: "method", signature: "getManifest(): Promise<IBoardManifest | undefined>", summary: "Read a copied board manifest snapshot, or undefined when it is absent or malformed." },
     { name: "secondaryViews", kind: "property", summary: "Copied declared board-secondary panel records, or undefined when the board is unresolved." },
     { name: "statusText", kind: "property", summary: "The model-backed board status text, or undefined when cleared or unresolved." },
@@ -277,7 +277,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     get renderState(): BoardRenderState {
         const state = this.editor.state.get();
         if (!state.boardRoot || !state.selectedBoard) return "not-found";
-        return boardTrust.isTrusted(state.boardRoot) ? "trusted" : "untrusted";
+        return getBoardPermissionOrigin(state.boardRoot) ?? "untrusted";
     }
 
     async getManifest(): Promise<IBoardManifest | undefined> {
@@ -318,7 +318,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     }
 
     get contentHostError(): string | undefined {
-        return this.renderState === "trusted"
+        return this.renderState === "trusted" || this.renderState === "bundled"
             ? this.editor.state.get().contentHostError
             : undefined;
     }
@@ -330,7 +330,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         if (!boardRoot) throw new Error("Board reload unavailable: no board root is attached.");
 
         const renderState = this.renderState;
-        if (renderState !== "trusted") {
+        if (renderState !== "trusted" && renderState !== "bundled") {
             return Promise.resolve({ refreshed: true, pageId, frameReady: false, renderState });
         }
         return this.editor.reloadAndWait().then((frameReady) => ({

@@ -27,12 +27,22 @@ below tracks which phases have shipped.
 | B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
+| F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **active** |
+| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) |
 | E — Torrent board and audio player (proof 1) | — | not started |
-| F — Excalidraw extraction (proof 2) | — | not started |
 
 ## Active
 
-*(no active epic)*
+- **[EPIC-109: Bundled boards and the Excalidraw board](epics/EPIC-109.md)** — Phase F part 1.
+  Boards that ship inside the installer, registered because they are part of the app and presented
+  as built-in editors with a Disable action. The built-in `draw-view` stays as a fallback for the
+  whole epic; its removal is EPIC-110.
+  - [ ] [US-1483: Bundled board registry and discovery](tasks/US-1483-bundled-board-registry/README.md)
+  - [ ] [US-1484: Stable identity for bundled boards across install paths](tasks/US-1484-bundled-board-identity/README.md)
+  - [ ] [US-1485: Built-in tab presentation and the Disable action](tasks/US-1485-bundled-board-disable/README.md)
+  - [ ] [US-1486: Board build pipeline — prebuilt lib/ for a bundled board](tasks/US-1486-board-build-pipeline/README.md)
+  - [ ] [US-1487: The Excalidraw board](tasks/US-1487-excalidraw-board/README.md)
+  - [ ] [US-1488: Capability routing into the board, and the payload measurement](tasks/US-1488-excalidraw-capability-routing/README.md)
 
 ## Planned
 

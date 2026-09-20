@@ -16,6 +16,7 @@ import {
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
 import { BoardWebview } from "./BoardWebview";
+import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../text/ScriptPanelView";
 import { ContentHostFooterView } from "../base/ContentHostFooterView";
@@ -167,7 +168,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
             reloadToken: state.reloadToken,
             contentHostError: state.contentHostError,
         }), this.syncBranch);
-        this.own(boardTrust.subscribePaths(this.syncBranch));
+        this.own(subscribeBoardPermission(this.syncBranch));
     }
 
     protected onUpdate(): void {
@@ -184,7 +185,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
         const selectedRoot = state.selectedBoard ? state.boardRoot : undefined;
         const key = !state.selectedBoard || !selectedRoot
             ? "not-found"
-            : !boardTrust.isTrusted(selectedRoot)
+            : !isBoardPermitted(selectedRoot)
                 ? "untrusted"
                 : state.contentHostError
                     ? "content-error"

@@ -438,6 +438,12 @@ was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 >    worth deciding before Phase F, which is the first phase whose board (Excalidraw) ships inside
 >    the installer and therefore interacts with the bundled-board trust decision of §6.
 >
+>    **Update, 2026-09-20 ([EPIC-109](epics/EPIC-109.md) D8):** the collision this item predicted does
+>    not arise. Because a bundled board is never subject to a trust dialog (D2), `permissions`-as-
+>    disclosure has nothing to disclose to, so Phase F is not in fact the deadline. The question
+>    stays open **for catalog-installed boards**, and EPIC-109 again neither extends nor entrenches
+>    the reversal. This is the fourth deliberate park.
+>
 > 9. **The trust dialog's capability rows, on screen.** As with EPIC-106's item 2: the dialog now
 >    carries declared capabilities, confirmed present through its AiVision facade, but clicking
 >    **Trust Board** is your decision and was never done. Registering any board that declares
@@ -719,6 +725,23 @@ the caller's window; a headless service-backed capability is not implied by this
 
 ### Phase F — Excalidraw extraction (proof 2)
 
+> **Superseded in part by [EPIC-109](epics/EPIC-109.md), 2026-09-20.** The user reprioritized Phase F
+> ahead of Phase E (legal — F needs A, B and D, all shipped, and not C) and **split it in two**:
+> EPIC-109 ships the bundled-board mechanism and the board with the built-in `draw-view` still
+> present as a fallback; EPIC-110 does the removal in step 4 below. Two details of this section are
+> corrected there:
+>
+> - **Step 2's "First run copies the board into the install dir" is dropped as unworkable** — the
+>   install directory is not writable at runtime without elevation. Bundled boards are read in place
+>   from `assets/boards/`, which `electron-builder.yml:15-18` already ships outside the asar. With no
+>   copy, §6's hash-recording scheme is unnecessary too: the bytes cannot drift from the installer.
+>   See EPIC-109 D1 and D2.
+> - **Step 3's `editorPriority: 50` would lose to the editor it replaces.** The built-in `draw-view`
+>   accepts `.excalidraw` at 50 (`editors/base/editor-matchers.ts:136`) and
+>   `custom-editor-registry.ts:495` uses a strict `>` so built-ins win exact ties. EPIC-109 declares
+>   60; 50 becomes correct again once EPIC-110 removes the built-in row. See EPIC-109 D7.
+
+
 Dependency relocation on top of a proven platform. Two things the earlier phases did not need
 appear here and are part of the epic, not assumed:
 
@@ -800,6 +823,11 @@ open settings namespace; storefront over the catalog.
   must not inherit the grant silently. Decide: bundled boards are trusted at install-time
   identity (hash recorded), and a catalog update re-prompts unless its hash is published by
   the same release channel.
+  **Resolved differently by [EPIC-109](epics/EPIC-109.md) D1/D2, 2026-09-20:** nothing is copied at
+  all. A bundled board is read in place from `assets/boards/`, is registered because it is part of
+  the app, and never touches `trustedBoards.txt` — so there is no copy that could drift and no hash
+  to record. A catalog-installed board of the same id lands in a user folder and prompts normally,
+  because trust attaches to the location, not the board id.
 - **Startup cost with many boards.** Discovery re-reads every trusted manifest on refresh
   (`custom-editor-registry.ts:104-120`). Capability and scheme indexes must come from that same
   read, cached in main, and **no board or service starts at launch** unless it declares

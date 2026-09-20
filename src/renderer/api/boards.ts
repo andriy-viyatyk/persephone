@@ -303,6 +303,9 @@ export const boards: IBoards = {
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
         }
+        const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
+        await bundledBoardRegistry.ensureInitialized();
+        if (bundledBoardRegistry.isBundled(boardRoot)) return true;
         const { boardTrust } = await import("./board-trust");
         await boardTrust.load();
         if (boardTrust.isTrusted(boardRoot)) return true; // already trusted (incl. via ancestor)
@@ -320,6 +323,9 @@ export const boards: IBoards = {
     },
 
     unregisterBoard: async (boardRoot: string): Promise<void> => {
+        const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
+        await bundledBoardRegistry.ensureInitialized();
+        if (bundledBoardRegistry.isBundled(boardRoot)) return;
         const { boardTrust } = await import("./board-trust");
         await boardTrust.untrust(boardRoot);
         const { removePin } = await import("../ui/sidebar/pinned-items");
@@ -331,6 +337,9 @@ export const boards: IBoards = {
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
         }
+        const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
+        await bundledBoardRegistry.ensureInitialized();
+        if (bundledBoardRegistry.isBundled(boardRoot)) return boardRoot;
         const { isBoardRootBusy } = await import("../editors/board/busy-boards");
         if (isBoardRootBusy(boardRoot)) {
             throw new Error("Cannot rename a board while it is running (busy). Stop it first.");

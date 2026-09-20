@@ -7,6 +7,7 @@ import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
+import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { createPipeFromDescriptor } from "../../content/registry";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
@@ -183,9 +184,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     constructor(modelState: IState<BoardEditorState>) {
         super(modelState);
-        this.own(boardTrust.subscribePaths(() => {
+        this.own(subscribeBoardPermission(() => {
             const boardRoot = this.state.get().boardRoot;
-            if (boardRoot && !boardTrust.isTrusted(boardRoot)) this.clearAiVisionRegistration();
+            if (boardRoot && !isBoardPermitted(boardRoot)) this.clearAiVisionRegistration();
         }));
     }
 
@@ -254,14 +255,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         request: BoardAiVisionRequestHandler,
     ): void {
         const boardRoot = this.state.get().boardRoot;
-        if (!boardRoot || !boardTrust.isTrusted(boardRoot) || this.frames.get(tab) !== iframe) return;
+        if (!boardRoot || !isBoardPermitted(boardRoot) || this.frames.get(tab) !== iframe) return;
         this.aiVisionTransports.set(tab, { iframe, generation, request });
     }
 
     isAiVisionTransportReady(tab: string): boolean {
         const boardRoot = this.state.get().boardRoot;
         const transport = this.aiVisionTransports.get(tab);
-        return !!boardRoot && boardTrust.isTrusted(boardRoot)
+        return !!boardRoot && isBoardPermitted(boardRoot)
             && this.frames.get(tab) === transport?.iframe
             && this.loadedTabs.has(tab);
     }
@@ -275,7 +276,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         reason: "register" | "refresh" = "register",
     ): boolean {
         const boardRoot = this.state.get().boardRoot;
-        if (this.aiVisionDisposed || !boardRoot || !boardTrust.isTrusted(boardRoot)
+        if (this.aiVisionDisposed || !boardRoot || !isBoardPermitted(boardRoot)
             || this.frames.get(BOARD_CDP_TAB) !== iframe) return false;
         const current = this.aiVisionRegistration;
         // A refresh only keeps its incarnation when it really is the same live remote: same
@@ -300,7 +301,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     getAiVisionRegistration(): BoardAiVisionRegistration | undefined {
         const boardRoot = this.state.get().boardRoot;
-        if (!this.aiVisionRegistration || !boardRoot || !boardTrust.isTrusted(boardRoot)) {
+        if (!this.aiVisionRegistration || !boardRoot || !isBoardPermitted(boardRoot)) {
             if (this.aiVisionRegistration) this.clearAiVisionRegistration();
             return undefined;
         }
@@ -330,7 +331,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             const transport = this.aiVisionTransports.get(tab);
             const boardRoot = this.state.get().boardRoot;
             if (!transport || this.frames.get(tab) !== transport.iframe || !boardRoot
-                || !boardTrust.isTrusted(boardRoot)) {
+                || !isBoardPermitted(boardRoot)) {
                 return Promise.reject(new Error(`The board view '${view}' is unavailable or untrusted.`));
             }
             return transport.request(request, timeoutMs, timeoutError);

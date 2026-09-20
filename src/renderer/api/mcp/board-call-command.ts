@@ -1,5 +1,5 @@
 import { pagesModel } from "../pages";
-import { boardTrust } from "../board-trust";
+import { isBoardPermitted } from "../../editors/board/board-access";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
 import { errMessage } from "../../../shared/utils";
@@ -49,9 +49,9 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
     try {
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,
-            restricted: () => boardTrust.isTrusted(boardRoot)
+            restricted: () => isBoardPermitted(boardRoot)
                 ? undefined
-                : "This Board is not trusted; trust it before using persephone.call().",
+                : "This Board is not permitted to use persephone.call().",
         });
         if (result.error) return { error: { code: -32603, message: result.error } };
         return { result: result.result };

@@ -1,16 +1,17 @@
 /**
- * Custom-editor registry (EPIC-042 / US-837). Enumerates the TRUSTED boards, reads each board's
+ * Custom-editor registry (EPIC-042 / US-837). Enumerates trusted and bundled boards, reads each board's
  * `board-manifest.json`, and maps files → the boards that claim them (via the manifest's
- * `fileMasks` / `editorPriority`, US-836). It answers, synchronously, "which trusted boards
+ * `fileMasks` / `editorPriority`, US-836). It answers, synchronously, "which trusted and bundled boards
  * claim this file, and at what priority" — the data source the resolution (US-838) and
  * switch-widget tasks consume.
  *
  * Mirrors `registeredTools` (EPIC-038): a `TModel` singleton over `TGlobalState`, an in-memory
- * subscription to trust changes (NOT a filesystem watcher — CE7), a full-rebuild `refresh()`,
- * and sync getters + reactive hooks. An untrust flips associations live (CE3).
+ * subscription to trust and bundled-source changes (NOT a filesystem watcher — CE7), a
+ * full-rebuild `refresh()`, and sync getters + reactive hooks. A source change flips associations
+ * live (CE3).
  *
  * Nested boards are unsupported by design: each board lives in its own folder, so `refresh()`
- * enumerates `boardTrust.listPaths()` directly and does NO subtree discovery (a board trusted
+ * enumerates trusted roots directly and consumes the separate app-owned bundled registry (a board
  * only via an ancestor folder is intentionally not enumerated).
  */
 import { TModel } from "../../core/state/model";
@@ -19,6 +20,7 @@ import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
+import { bundledBoardRegistry } from "./bundled-board-registry";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import {
@@ -66,9 +68,11 @@ export function parseBoardEditorId(editorId: string): string | null {
         : null;
 }
 
-/** A trusted board association resolved from its manifest. One per trusted board that declares
+/** A trusted or bundled board association resolved from its manifest. One per source board that declares
  *  usable file, content, or direct-folder claims; it may be file-only, folder-only, or both. */
 export interface CustomEditorMatch {
+    /** Source provenance used by built-in presentation and later bundled-board controls. */
+    origin: "trusted" | "bundled";
     /** Virtual editor id: `board-editor:<boardRoot>` (original-case root). */
     editorId: string;
     /** Absolute board root, original case — what BoardEditorModel loads. */
@@ -99,7 +103,7 @@ export interface CustomEditorMatch {
     editorSources: "local" | "any";
 }
 
-/** A trusted board omitted from the editor registry because its bridge requirement is too new. */
+/** A board source omitted from the editor registry because its bridge requirement is too new. */
 export interface CustomEditorIncompatibility {
     boardRoot: string;
     reason: string;
@@ -126,11 +130,11 @@ interface BoardCapabilityRegistrationIntent {
 }
 
 interface CustomEditorRegistryState {
-    /** Every trusted board association, in trusted-list (registration) order. */
+    /** Every trusted and bundled board association, in trusted-list then bundled order. */
     entries: CustomEditorMatch[];
     /** Compatibility diagnostics retained for Board Info and future board listings. */
     incompatibilities: CustomEditorIncompatibility[];
-    /** Provider and scheme declarations refused during the latest trusted-board rebuild. */
+    /** Provider and scheme declarations refused during the latest board-source rebuild. */
     registrationIssues: CustomEditorRegistrationIssue[];
 }
 
@@ -185,7 +189,9 @@ function addRegistrationIssue(
 
 class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     private initialized = false;
+    private initialization: Promise<void> | undefined;
     private pathsSub: (() => void) | undefined;
+    private bundledSub: (() => void) | undefined;
     /** Generation counter guarding refresh() against stale overwrites: overlapping refreshes
      *  (a rapid untrust+trust pair, e.g. renaming a board folder, fires one per mutation) can
      *  finish out of order, and an earlier refresh landing last would clobber the newer entry
@@ -199,23 +205,40 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         this.pathsSub = boardTrust.subscribePaths(() => {
             void this.refresh();
         });
+        this.bundledSub = bundledBoardRegistry.subscribe(() => {
+            void this.refresh();
+        });
     }
 
-    /** Idempotent: load the trusted list then enumerate. Call before reading state. */
+    /** Idempotent: load board sources then enumerate. Call before reading state. */
     async ensureInitialized(): Promise<void> {
         if (this.initialized) return;
-        this.initialized = true;
-        await boardTrust.load();
-        await boardInstallRegistry.load();
-        await this.refresh();
+        if (!this.initialization) {
+            this.initialization = (async () => {
+                await boardTrust.load();
+                await boardInstallRegistry.load();
+                await bundledBoardRegistry.ensureInitialized();
+                await this.refresh();
+                this.initialized = true;
+            })().finally(() => {
+                this.initialization = undefined;
+            });
+        }
+        await this.initialization;
     }
 
-    /** Re-read every trusted board's manifest and rebuild the reactive state. Full rebuild
-     *  (cheap at registry scale; a manifest edit can change masks/priority). Enumerates all
-     *  trusted roots directly — nested boards are unsupported by design, so no subtree walk. */
+    /** Re-read trusted manifests and rebuild the reactive state, then add cached bundled manifests.
+     *  Full rebuild (cheap at registry scale; a manifest edit can change masks/priority).
+     *  Enumerates trusted roots directly — nested boards are unsupported by design, so no subtree walk. */
     async refresh(): Promise<void> {
         const gen = ++this.refreshGen;
+        await bundledBoardRegistry.ensureInitialized();
         const roots = boardTrust.listPaths();
+        const sources: Array<{
+            root: string;
+            manifest: Awaited<ReturnType<typeof readBoardManifest>>;
+            origin: "trusted" | "bundled";
+        }> = [];
         const entries: CustomEditorMatch[] = [];
         const incompatibilities: CustomEditorIncompatibility[] = [];
         const registrationIntents: BoardRegistrationIntent[] = [];
@@ -223,7 +246,13 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const registrationIssues: CustomEditorRegistrationIssue[] = [];
         const providerDeclarations: ProviderDeclaration[] = [];
         for (const root of roots) {
-            const manifest = await readBoardManifest(root);
+            sources.push({ root, manifest: await readBoardManifest(root), origin: "trusted" });
+        }
+        for (const bundled of bundledBoardRegistry.list()) {
+            sources.push({ root: bundled.root, manifest: bundled.manifest, origin: bundled.origin });
+        }
+        for (const source of sources) {
+            const { root, manifest, origin } = source;
             const bridgeCompatibility = getBoardCompatibility(
                 { minBridgeVersion: manifest?.minBridgeVersion },
                 { bridgeVersion: BOARD_BRIDGE_VERSION },
@@ -265,6 +294,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 (manifest && typeof manifest.name === "string" && manifest.name.trim()) ||
                 fpBasename(root);
             entries.push({
+                origin,
                 editorId: boardEditorId(root),
                 boardRoot: root,
                 name,
@@ -302,11 +332,12 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         // Registry maps and reactive state are committed synchronously as one rebuild. In
         // particular, clear every board-origin registration, including boards no longer in the
         // trust list after an untrust, uninstall, or folder rename.
-        unregisterBoardProviders(roots);
-        unregisterBoardSchemes(roots);
+        const activeBoardRoots = sources.map((source) => source.root);
+        unregisterBoardProviders(activeBoardRoots);
+        unregisterBoardSchemes(activeBoardRoots);
         // `roots` is only the next rebuild snapshot. Release the complete board-origin set so an
         // already-untrusted board, absent from `roots`, cannot leave a stale capability behind.
-        unregisterBoardCapabilities(roots);
+        unregisterBoardCapabilities(activeBoardRoots);
         replaceProviderDeclarations(providerDeclarations);
         for (const { boardRoot, declaration } of capabilityRegistrationIntents) {
             const result = registerCapability(declaration, {
@@ -397,7 +428,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     }
 
     /**
-     * Boards claiming `fileName`, in trusted-list order (SYNC — safe for resolveId). Matching is
+     * Boards claiming `fileName`, in trusted-list then bundled order (SYNC — safe for resolveId). Matching is
      * `matchesBoardMasks`: the BASENAME against each board's file masks (a mask like "*.drawio"
      * must not match a directory segment), plus the parent FOLDER against its folder masks when
      * it declares any. Pass a full path whenever one is available — a bare name cannot satisfy
@@ -412,7 +443,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             .entries.filter((e) => matchesBoardMasks(fileName, e.fileMasks, e.folderMasks));
     }
 
-    /** Boards whose distinct direct folder claims match `folderPath`, in trusted-list order. */
+    /** Boards whose distinct direct folder claims match `folderPath`, in source order. */
     getBoardsForFolder(folderPath: string): CustomEditorMatch[] {
         if (!folderPath) return [];
         return this.state
@@ -439,6 +470,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     dispose(): void {
         this.pathsSub?.();
         this.pathsSub = undefined;
+        this.bundledSub?.();
+        this.bundledSub = undefined;
         // Drain the model's DisposableStore after existing teardown.
         super.dispose();
     }
@@ -448,9 +481,9 @@ export const customEditorRegistry = new CustomEditorRegistry();
 
 /**
  * Resolve the winning editor id for opening a file, merging the built-in registry with
- * trusted file-associated boards (EPIC-042). A board wins when it can handle the SOURCE (see the
+ * trusted or bundled file-associated boards (EPIC-042 / EPIC-109). A board wins when it can handle the SOURCE (see the
  * capability gate below) and its `editorPriority` is STRICTLY greater than the best built-in
- * claimant (built-ins win exact ties; among boards, trusted-list order — `getBoardsForFile`
+ * claimant (built-ins win exact ties; among boards, source order — `getBoardsForFile`
  * preserves it). Returns the built-in id otherwise.
  *
  * Consumed by the two file-open decision points — `PagesLifecycleModel.newEditorModel`
@@ -497,7 +530,7 @@ export function resolveEditorIdForFile(
 }
 
 /** Resolve the winning editor id for a folder, merging built-ins with trusted direct-folder
- * board claims. Built-ins win exact priority ties; trusted-list order wins board ties. */
+ * board claims. Built-ins win exact priority ties; source order wins board ties. */
 export function resolveEditorIdForFolder(folderPath: string): string {
     const builtinId = editorRegistry.resolveForFolder(folderPath);
     const builtinPriority =
@@ -510,8 +543,8 @@ export function resolveEditorIdForFolder(folderPath: string): string {
     return builtinId;
 }
 
-/** Return built-in folder candidates in registry order, followed by every matching trusted board
- * in trusted-list order. Priority affects only the default resolver, never this list. */
+/** Return built-in folder candidates in registry order, followed by every matching board source.
+ * Priority affects only the default resolver, never this list. */
 export function getFolderEditorsForFolder(folderPath: string): string[] {
     return [
         ...editorRegistry.getFolderEditors(folderPath),

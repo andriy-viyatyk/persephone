@@ -14,6 +14,8 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
         app.initSetup(),
     ]);
     await app.initServices();
+    const { customEditorRegistry } = await import("./renderer/editors/board/custom-editor-registry");
+    await customEditorRegistry.ensureInitialized();
     await app.initPages();
     await app.initEvents();
     setTimeout(() => api.windowReady(), 0);

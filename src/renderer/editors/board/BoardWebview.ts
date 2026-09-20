@@ -35,7 +35,7 @@ import { boardSecondaryPanelId } from "./board-secondary";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
-import { boardTrust } from "../../api/board-trust";
+import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { errMessage } from "../../../shared/utils";
 import { ui } from "../../api/ui";
 import { isProviderResolutionError } from "../../content/registry";
@@ -135,8 +135,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onMount(): void {
         this.live = true;
-        this.ownSubscription(boardTrust.subscribePaths(() => {
-            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+        this.ownSubscription(subscribeBoardPermission(() => {
+            if (!isBoardPermitted(this.props.boardRoot)) {
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
                 this.rejectPendingCapability("untrusted", "The board is no longer trusted.", true);
                 this.unregisterCapabilityFrame();
@@ -498,7 +498,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): void {
         if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
-            || !boardTrust.isTrusted(this.props.boardRoot)
+            || !isBoardPermitted(this.props.boardRoot)
             || !isAiVisionShape(message.shape)
             || !isSchemaMajorOne(message.schemaVersion)
             || !isSchemaMajorOne(message.shape.schemaVersion)) {
@@ -535,7 +535,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): void {
         if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
-            || !boardTrust.isTrusted(this.props.boardRoot)
+            || !isBoardPermitted(this.props.boardRoot)
             || typeof message.text !== "string") return;
         const pageId = model.page?.id;
         if (!pageId) return;
@@ -559,7 +559,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const contentWindow = frame?.contentWindow;
         if (!this.live || !host || !frame || !contentWindow
             || this.props.model.frames.get(this.tabId) !== frame
-            || !boardTrust.isTrusted(this.props.boardRoot)) {
+            || !isBoardPermitted(this.props.boardRoot)) {
             return Promise.reject(new Error("The board frame is unavailable or untrusted."));
         }
         const generation = this.generation;
@@ -604,7 +604,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const contentWindow = frame?.contentWindow;
         if (!this.live || !host || !frame || !contentWindow || !this.isMain
             || this.props.model.frames.get(BOARD_CDP_TAB) !== frame
-            || !boardTrust.isTrusted(this.props.boardRoot)) {
+            || !isBoardPermitted(this.props.boardRoot)) {
             return Promise.reject(new BoardCapabilityTransportError(
                 "handler-closed",
                 "The board frame is unavailable or untrusted.",
@@ -743,7 +743,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     ): Promise<void> {
         let reply: BoardCapabilityListResultMsg;
         try {
-            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+            if (!isBoardPermitted(this.props.boardRoot)) {
                 throw new BoardCapabilityTransportError(
                     "untrusted",
                     "The board is no longer trusted.",
@@ -769,7 +769,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     ): Promise<void> {
         let reply: BoardCapabilityInvokeResultMsg;
         try {
-            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+            if (!isBoardPermitted(this.props.boardRoot)) {
                 throw new BoardCapabilityTransportError(
                     "untrusted",
                     "The board is no longer trusted.",
@@ -842,7 +842,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): void {
         const generation = this.generation;
-        const reply = boardTrust.isTrusted(this.props.boardRoot)
+        const reply = isBoardPermitted(this.props.boardRoot)
             ? resolveBoardOpenContent(request)
             : { error: "This board is not trusted." };
         if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;

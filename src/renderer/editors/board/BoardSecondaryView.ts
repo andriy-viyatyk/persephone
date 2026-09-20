@@ -1,4 +1,4 @@
-import { boardTrust } from "../../api/board-trust";
+import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -52,8 +52,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         });
 
         this.bindBoardState(boardModel);
-        const unsubscribeTrust = boardTrust.subscribePaths(this.renderState);
-        this.own(unsubscribeTrust);
+        this.own(subscribeBoardPermission(this.renderState));
         this.own(() => this.header?.dispose());
         this.renderState();
     }
@@ -114,19 +113,19 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         const viewId = this.viewId;
         const declaration = state.secondaryViewDefs?.find((view) => view.id === viewId);
         const selectedRoot = state.selectedBoard ? state.boardRoot : undefined;
-        const trusted = boardTrust.isTrusted(selectedRoot ?? "");
+        const permitted = isBoardPermitted(selectedRoot ?? "");
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
             title: declaration?.title ?? viewId ?? "View",
         });
 
-        if (!selectedRoot || !declaration || !trusted) {
+        if (!selectedRoot || !declaration || !permitted) {
             this.disposeBoardWebview();
             host.replaceChildren(this.placeholder(
                 !selectedRoot
                     ? "Board not available"
-                    : !trusted
+                    : !permitted
                       ? "Trust the board to view this panel"
                       : "View not found",
             ));

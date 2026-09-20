@@ -5,7 +5,7 @@ import type {
     IBrowserTab,
 } from "./browser-editor";
 
-export type BoardRenderState = "trusted" | "untrusted" | "not-found";
+export type BoardRenderState = "trusted" | "bundled" | "untrusted" | "not-found";
 
 export interface IBoardSecondaryViewDeclaration {
     readonly id: string;

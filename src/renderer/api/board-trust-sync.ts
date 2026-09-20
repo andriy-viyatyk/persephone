@@ -5,8 +5,10 @@ import {
     normalizeBoardServicePath,
     normalizePermissions,
     readBoardManifest,
+    type BoardManifest,
 } from "../editors/board/board-manifest";
 import { canStartBoardService } from "../editors/board/board-service-permission";
+import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
 import { boardTrust } from "./board-trust";
 
 let refreshToken = 0;
@@ -24,9 +26,12 @@ let snapshotGeneration = Date.now();
 
 async function refreshTrustedBoardSnapshot(): Promise<void> {
     const token = ++refreshToken;
-    const roots = boardTrust.listPaths();
-    const boards = await Promise.all(roots.map(async (boardRoot): Promise<TrustedBoardSnapshotEntry> => {
-        const manifest = await readBoardManifest(boardRoot);
+    const sources: Array<{ root: string; manifest?: BoardManifest }> = [
+        ...boardTrust.listPaths().map((root) => ({ root })),
+        ...bundledBoardRegistry.list().map((board) => ({ root: board.root, manifest: board.manifest })),
+    ];
+    const boards = await Promise.all(sources.map(async ({ root: boardRoot, manifest: cachedManifest }): Promise<TrustedBoardSnapshotEntry> => {
+        const manifest = cachedManifest ?? await readBoardManifest(boardRoot);
         const service = normalizeBoardServicePath(manifest?.service);
         // Keep normalization here as the single renderer-side disclosure/contract
         // read; the predicate remains the one US-1466 trust-plus-permission gate.
@@ -52,6 +57,11 @@ export async function initBoardTrustSync(): Promise<void> {
             console.error(`Board service trust refresh failed: ${errMessage(error)}`);
         });
     });
+    bundledBoardRegistry.subscribe(() => {
+        void refreshTrustedBoardSnapshot().catch((error: unknown) => {
+            console.error(`Board service bundled refresh failed: ${errMessage(error)}`);
+        });
+    });
+    await bundledBoardRegistry.ensureInitialized();
     await refreshTrustedBoardSnapshot();
 }
-
