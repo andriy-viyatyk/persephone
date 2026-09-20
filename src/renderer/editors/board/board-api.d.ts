@@ -322,7 +322,9 @@ interface PersephoneCapabilityInfo {
 }
 
 interface PersephoneCapabilityResult {
-    readonly pageId: string;
+    /** The handler's page, when the capability opened or reused one. Absent for a handler
+     *  that resolves without a page, such as `diagram.edit` reporting a failed conversion. */
+    readonly pageId?: string;
     readonly result?: unknown;
 }
 

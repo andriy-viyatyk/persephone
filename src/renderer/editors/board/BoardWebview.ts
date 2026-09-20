@@ -770,7 +770,22 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 pageId: model.page?.id,
                 deadlineMs: message.deadlineMs,
             });
-            reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+            // `app.capabilities.invoke` resolves a `{ pageId, result? }` envelope for a board
+            // handler, and a handler-specific value for a built-in one (which may carry no page
+            // at all — `diagram.edit` resolves `{ status: "conversion-failed" }`). The board-facing
+            // contract carries `pageId` at the TOP level, so split the envelope here rather than
+            // nesting it; nesting it made every board-originated invoke fail as a malformed reply.
+            const envelope = result as { pageId?: unknown; result?: unknown } | null | undefined;
+            const hasPageEnvelope = !!envelope && typeof envelope === "object"
+                && typeof envelope.pageId === "string";
+            reply = hasPageEnvelope
+                ? {
+                    __persephone: "capabilities:invoke:result",
+                    reqId: message.reqId,
+                    pageId: envelope.pageId as string,
+                    result: envelope.result,
+                }
+                : { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
         } catch (error: unknown) {
             reply = {
                 __persephone: "capabilities:invoke:result",

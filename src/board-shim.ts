@@ -905,7 +905,10 @@ onHostMessage((event) => {
     } else if (typeof data.pageId === "string") {
         pending.resolve({ pageId: data.pageId, result: data.result });
     } else {
-        pending.reject(new BoardCapabilityError("rejected", "Malformed capability invoke response."));
+        // A capability need not open a page: a built-in handler can resolve a plain value
+        // (`diagram.edit` resolves `{ status: "conversion-failed" }` with no page). Resolve with
+        // an absent pageId rather than calling a legitimate reply malformed.
+        pending.resolve({ result: data.result });
     }
 });
 
