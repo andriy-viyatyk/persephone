@@ -10,7 +10,17 @@ import { canStartBoardService } from "../editors/board/board-service-permission"
 import { boardTrust } from "./board-trust";
 
 let refreshToken = 0;
-let snapshotGeneration = 0;
+/**
+ * Seeded from the clock, NOT from zero, because main keeps the highest generation it has seen
+ * and drops anything lower (`module-service-supervisor.ts`). This counter lives in renderer module
+ * scope, so it resets on every renderer reload while main's does not: starting at zero meant that
+ * after one reload every snapshot looked stale and was discarded, and trust changes — including
+ * UNTRUST, which must stop a running service — silently stopped reaching main until the whole app
+ * restarted. A clock seed keeps generations monotonic across reloads and windows while preserving
+ * the strictly-increasing ordering the guard relies on within a session. Found by live
+ * verification; it is invisible to typecheck, lint and build.
+ */
+let snapshotGeneration = Date.now();
 
 async function refreshTrustedBoardSnapshot(): Promise<void> {
     const token = ++refreshToken;

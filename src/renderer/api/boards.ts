@@ -20,12 +20,8 @@ import { publishedBoards } from "./published-boards";
 import { boardPagesForRoot, getBoardUpdate } from "./board-updates";
 import { api } from "../../ipc/renderer/api";
 import { errMessage } from "../../shared/utils";
-import {
-    SERVICE_REQUEST_DEADLINE_MS,
-    type BoardServiceStatus,
-} from "../../ipc/module-service-channels";
+import { type BoardServiceStatus } from "../../ipc/module-service-channels";
 import { moduleServiceStatus } from "./module-service-status";
-import { moduleService } from "./module-service";
 
 export const BOARDS_ASSETS_BASE_URL =
     "https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/";
@@ -401,8 +397,16 @@ export const boards: IBoards = {
     list: (): Promise<BoardListing[]> => enumerateBoardListings(),
 
     /** Request a reply from the board's declared service, starting it lazily if needed. */
+    /**
+     * Routed through MAIN, not over the renderer MessagePort lease. The lease is reserved for
+     * high-volume provider traffic (Phase C's `ProxyProvider`) and a service is not obliged to
+     * implement that port at all — the demo fixture, like any service that only answers requests,
+     * speaks the parent channel alone. Routing a script/agent request over the lease made every
+     * such call fail, since the lease could never attach. This is also the exact path the board
+     * frame's `persephone.service.request()` already takes, so both callers behave identically.
+     */
     requestService: (boardRoot: string, message: unknown): Promise<unknown> =>
-        moduleService.request(boardRoot, message, SERVICE_REQUEST_DEADLINE_MS),
+        api.requestModuleService(boardRoot, message),
 
     /** Explicitly start a declared service and reset its restart budget. */
     startService: (boardRoot: string): Promise<void> => api.startModuleService(boardRoot),

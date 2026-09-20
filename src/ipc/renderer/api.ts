@@ -522,6 +522,10 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.requestModuleServicePort, boardRoot);
     };
 
+    requestModuleService = async (boardRoot: string, message: unknown) => {
+        return executeOnce<unknown>(Endpoint.requestModuleService, boardRoot, message);
+    };
+
     startModuleService = async (boardRoot: string) => {
         return executeOnce<void>(Endpoint.startModuleService, boardRoot);
     };

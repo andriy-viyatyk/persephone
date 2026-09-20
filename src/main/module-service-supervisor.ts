@@ -469,8 +469,21 @@ class ModuleServiceSupervisor {
         }
     }
 
+    /**
+     * Storage is available while the service PROCESS is alive and its board is trusted — which
+     * includes `starting`, before the handshake has completed.
+     *
+     * Requiring `running` here deadlocks the normal startup shape: a service that loads persisted
+     * state before declaring itself ready can never become ready, because the read it is waiting
+     * on is refused until it is. Found by live verification against the demo fixture, which did
+     * exactly that and was killed by the restart budget after three identical failures.
+     *
+     * Widening this is safe because storage is gated on trust and board identity, both of which
+     * are known at fork time and neither of which the handshake establishes. `stopping`,
+     * `stopped` and `failed` remain unavailable, so untrust and quit still settle in-flight work.
+     */
     private isStorageAvailable(record: ServiceRecord): boolean {
-        return record.state === "running"
+        return (record.state === "running" || record.state === "starting")
             && record.process !== undefined
             && this.isEffectivelyTrusted(record.boardRoot);
     }
@@ -612,7 +625,11 @@ class ModuleServiceSupervisor {
                     }
                     return;
                 }
-                if (settled) return;
+                // Request responses are steady-state traffic and must be handled for the whole
+                // life of the process. `settled` marks only that the START ATTEMPT finished, so
+                // it must not gate this branch: with the guard above it, every reply after a
+                // successful handshake was dropped and every request died at its deadline, which
+                // made `requestService` impossible to use at all. Found by live verification.
                 if (message.kind === "response") {
                     const request = record.requests.get(message.requestId);
                     if (!request) return;
@@ -625,6 +642,8 @@ class ModuleServiceSupervisor {
                     }
                     return;
                 }
+                // Handshake frames below are attempt-scoped and stay gated.
+                if (settled) return;
                 if (message.kind === "ready" && message.nonce === generation) {
                     if (probeSent) return;
                     ready = true;

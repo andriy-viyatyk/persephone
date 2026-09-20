@@ -129,6 +129,7 @@ export enum Endpoint {
     syncTrustedBoardSnapshot = "syncTrustedBoardSnapshot",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
+    requestModuleService = "requestModuleService",
     startModuleService = "startModuleService",
     stopModuleService = "stopModuleService",
 }
@@ -295,6 +296,12 @@ export type Api = {
     [Endpoint.getModuleServiceStatuses]: () => Promise<BoardServiceStatus[]>;
     /** Request the renderer-only lease for a board module service. */
     [Endpoint.requestModuleServicePort]: (boardRoot: string) => Promise<void>;
+    /**
+     * Send one request to a board module service through MAIN, lazily starting it. This is the
+     * path a script or agent uses; the renderer MessagePort lease is reserved for high-volume
+     * provider traffic (Phase C), and a service is not required to implement that port at all.
+     */
+    [Endpoint.requestModuleService]: (boardRoot: string, message: unknown) => Promise<unknown>;
     /** Explicitly start a board module service and reset its restart budget. */
     [Endpoint.startModuleService]: (boardRoot: string) => Promise<void>;
     /** Explicitly stop a board module service. */

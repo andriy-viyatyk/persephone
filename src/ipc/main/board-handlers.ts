@@ -23,6 +23,7 @@ export type BoardEndpoint =
     | Endpoint.syncTrustedBoardSnapshot
     | Endpoint.getModuleServiceStatuses
     | Endpoint.requestModuleServicePort
+    | Endpoint.requestModuleService
     | Endpoint.startModuleService
     | Endpoint.stopModuleService;
 
@@ -93,6 +94,12 @@ export function initBoardHandlers(): void {
             boardRoot,
             event.sender,
         );
+    });
+    bindEndpoint(Endpoint.requestModuleService, async (_event, boardRoot: string, message: unknown): Promise<unknown> => {
+        const { moduleServiceSupervisor } = await import("../../main/module-service-supervisor");
+        const { SERVICE_REQUEST_DEADLINE_MS } = await import("../module-service-channels");
+        const requestId = `main-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        return moduleServiceSupervisor.request(boardRoot, requestId, message, SERVICE_REQUEST_DEADLINE_MS);
     });
     bindEndpoint(Endpoint.startModuleService, async (_event, boardRoot: string): Promise<void> => {
         await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.start(boardRoot, "explicit");
