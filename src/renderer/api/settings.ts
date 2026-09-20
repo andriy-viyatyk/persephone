@@ -41,6 +41,7 @@ export type AppSettingsKey =
     | "script-library.path"
     | "drawing.library-path"
     | "pinned-editors"
+    | "disabled-bundled-boards"
     | "tor.exe-path"
     | "tor.socks-port"
     | "tor.bookmarks-file"
@@ -114,6 +115,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "script-library.path": "Absolute path to the script library folder — saved scripts and reusable modules.\nEmpty means no library is linked; the Menu Bar's Script Library category then offers\nto pick one. Changing it here re-points the category immediately.",
     "drawing.library-path": "Absolute path to the Excalidraw library folder — reusable shapes for the Drawing editor.\nEmpty uses the default under the app's user-data folder.",
     "pinned-editors": "Editors listed in the '+' new-page menu, in this order.\nArray of creatable item ids, e.g. \"grid-json\", \"draw-view\", \"browser\", \"script-js\".\nThe full set is in the Tools & Editors page; unpinned editors remain available there.",
+    "disabled-bundled-boards": "Bundled boards disabled in Tools & Editors.\nArray of stable bundled board folder ids; changes apply live without restarting. Default: [].",
     "tor.exe-path": "Absolute path to tor.exe. Required for Browser (Tor) mode; empty disables it.\nGet it from the Tor Expert Bundle, or reuse the tor.exe inside a Tor Browser installation.",
     "tor.socks-port": "SOCKS proxy port for Tor.\nNumber. Default: 9050. Change only if 9050 is already in use on this machine.",
     "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
@@ -150,6 +152,7 @@ const defaultAppSettingsState = {
         "script-library.path": "",
         "drawing.library-path": "",
         "pinned-editors": ["script-js", "script-ts", "draw-view", "grid-json", "grid-csv", "browser"] as string[],
+        "disabled-bundled-boards": [] as string[],
         "tor.exe-path": "",
         "tor.socks-port": 9050,
         "tor.bookmarks-file": "",

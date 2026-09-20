@@ -1,4 +1,5 @@
 import { app } from "../../api/app";
+import { ContextMenuEvent } from "../../api/events/events";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
@@ -11,7 +12,11 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
-import { getCreatableItems, type CreatableItem } from "./tools-editors-registry";
+import {
+    getBundledBoardContextMenu,
+    getCreatableItems,
+    type CreatableItem,
+} from "./tools-editors-registry";
 import {
     PINNED_DRAG_SESSION_EVENT,
     endPinnedDragSession,
@@ -106,7 +111,11 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
             this.clearDragFlags();
         });
         const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "browser-profiles" || key === "pinned-editors") this.refresh();
+            if (
+                key === "browser-profiles"
+                || key === "pinned-editors"
+                || key === "disabled-bundled-boards"
+            ) this.refresh();
         });
         this.own(settingsSubscription);
 
@@ -172,6 +181,19 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
             releases.push(this.listen(row, type, listener));
         };
         registerListener("click", () => this.activate(record.rowData.ref));
+        registerListener("contextmenu", (event) => {
+            const current = this.rows.get(row)?.rowData;
+            const menu = current?.ref.kind === "editor" && current.item
+                ? getBundledBoardContextMenu(current.item)
+                : undefined;
+            if (!menu) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            const contextEvent = ContextMenuEvent.fromNativeEvent(event, "generic");
+            contextEvent.items.push(...menu);
+        });
         registerListener("dragstart", (event) => this.onDragStart(row, event));
         registerListener("dragend", () => this.onDragEnd());
         registerListener("dragenter", (event) => this.onDragEnter(row, event));

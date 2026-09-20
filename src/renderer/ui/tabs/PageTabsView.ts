@@ -96,7 +96,11 @@ export class PageTabsView extends VanillaView<object> {
             this.pageLayoutSubscriptions.clear();
         });
         const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "browser-profiles" || key === "pinned-editors") this.updateAddMenu();
+            if (
+                key === "browser-profiles"
+                || key === "pinned-editors"
+                || key === "disabled-bundled-boards"
+            ) this.updateAddMenu();
         });
         this.own(settingsSubscription);
         this.own(subscribeBoardIconChanges(() => this.updateAddMenu()));

@@ -132,7 +132,19 @@ Board storage has the same path dependence — keyed `sha256(normalized root)`
 (`main/board-storage.ts:15-18`) — and takes the same fix: bundled boards key on the stable folder
 id, domain-separated as `bundled:<id>`, while every non-bundled root keeps its existing hash.
 
-**D6 — Disabling with no replacement installed yields `no-handler`, and must say so.**
+**D6 — Disabling with no replacement installed falls back to the built-in. The `no-handler`
+message moves to EPIC-110.**
+
+> **Amended 2026-09-20, during US-1485.** As first written this decision was unreachable, and the
+> investigation caught it. `draw-view` registers `image.edit` and `diagram.edit`
+> (`register-editors.ts:173`) and **this epic deliberately keeps that handler registered** — the
+> built-in is the coexistence fallback, so gating or removing it would defeat the epic's purpose.
+> Disabling the bundled board therefore falls back to the built-in drawing editor, and *"no image
+> editor is registered"* is **not a state a user can reach in EPIC-109**.
+>
+> The message is deferred to **EPIC-110**, where removing the built-in makes it both reachable and
+> necessary. Shipping it here would be untested code for an unreachable state. The original
+> reasoning is kept below because it still applies in EPIC-110.
 
 `image.edit` and `diagram.edit` are registered from `editors/draw` today (`api/capabilities.ts:109`,
 `register-editors.ts:173`) and are consumed by the image viewer, SVG, Mermaid and the snip tool.
@@ -219,8 +231,9 @@ here.
 4. `image.edit` from the image viewer, SVG, Mermaid and the snip tool lands in the board.
 5. Disabling it removes the creatable item, the file-mask claim and both capability handlers;
    re-enabling restores all three without a restart.
-6. With it disabled and no replacement installed, an `image.edit` intent reports that no image
-   editor is registered.
+6. With it disabled, an `image.edit` intent falls back to the still-registered built-in drawing
+   editor. *(Amended — see D6. The "no image editor is registered" message belongs to EPIC-110,
+   because the built-in handler deliberately remains registered throughout this epic.)*
 7. `editors/draw` is still present and still works if the board is disabled.
 8. The payload measurement from US-1488 is recorded against EPIC-108 D7's threshold.
 

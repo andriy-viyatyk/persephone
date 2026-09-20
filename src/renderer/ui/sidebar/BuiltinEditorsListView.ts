@@ -7,7 +7,7 @@ import { LIST_ITEM_KEY } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { endPinnedDragSession, startPinnedDragSession } from "./pinned-drag-session";
 import { addPin, getPinnedStrings, type PinnedDragData } from "./pinned-items";
-import { getCreatableItems, type CreatableItem } from "./tools-editors-registry";
+import { getBundledBoardContextMenu, getCreatableItems, type CreatableItem } from "./tools-editors-registry";
 
 export interface BuiltinEditorsListProps {
     onClose?: () => void;
@@ -82,7 +82,11 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
         this.child(this.list).mount();
 
         const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "browser-profiles" || key === "pinned-editors") this.refresh();
+            if (
+                key === "browser-profiles"
+                || key === "pinned-editors"
+                || key === "disabled-bundled-boards"
+            ) this.refresh();
         });
         this.own(settingsSubscription);
         this.refresh();
@@ -136,6 +140,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
             rowHeight: 28,
             whiteSpaceY: 8,
             onChange: (source) => this.handleChange(source),
+            getContextMenu: (source) => isSection(source) ? undefined : getBundledBoardContextMenu(source),
         };
     }
 

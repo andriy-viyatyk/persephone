@@ -20,6 +20,7 @@ import {
     resolveEditorIdForFile,
     parseBoardEditorId,
     resolveBoardEditorId,
+    boardEditorId,
     customEditorRegistry,
 } from "../../editors/board/custom-editor-registry";
 import type { BoardEditorModel } from "../../editors/board";
@@ -244,6 +245,34 @@ export class PagesLifecycleModel {
         const editor = await this.buildEditorById(editorId, undefined, folderPath);
         await editor.restore();
         return editor;
+    };
+
+    /** Create a new untitled content-host page for an enabled bundled board. */
+    addBundledBoardPage = async (
+        boardRoot: string,
+        language: string,
+        title: string,
+    ): Promise<PageModel> => {
+        const editorId = boardEditorId(boardRoot);
+        const match = customEditorRegistry.entries.find(
+            (entry) => entry.editorId === editorId && entry.boardRoot === boardRoot,
+        );
+        if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
+            throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
+        }
+
+        const editor = await this.buildEditorById(editorId);
+        const host = (editor as EditorModel).contentHost as unknown as TextFileModel | null;
+        if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
+        host.state.update((state) => {
+            state.language = language;
+            state.title = title;
+        });
+        (editor as EditorModel).state.update((state) => {
+            state.title = title;
+        });
+        await editor.restore();
+        return this.addPage(editor as EditorModel);
     };
 
     /**

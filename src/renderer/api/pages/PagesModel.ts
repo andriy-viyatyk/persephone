@@ -230,6 +230,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
     addEditorPage = (editor: EditorView, language: string, title: string, content?: string) =>
         this.lifecycle.addEditorPage(editor, language, title, content);
+    addBundledBoardPage = (boardRoot: string, language: string, title: string) =>
+        this.lifecycle.addBundledBoardPage(boardRoot, language, title);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
     openLinks = (links: (ILink | string)[], title?: string) =>

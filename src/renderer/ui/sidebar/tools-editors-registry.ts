@@ -1,6 +1,13 @@
 import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
 import { fs } from "../../api/fs";
-import { BrowserProfile } from "../../api/settings";
+import { settings, type BrowserProfile } from "../../api/settings";
+import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
+import { createLinkData } from "../../../shared/link-data";
+import { guard } from "../../core/utils/guard";
+import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
+import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
 import {
     DrawIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
@@ -9,6 +16,7 @@ import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-co
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { IconRef } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/types";
 
 // =============================================================================
 // Types
@@ -25,6 +33,10 @@ export interface CreatableItem {
     create: () => void;
     /** Category for grouping in the sidebar list. */
     category: "editor" | "tool";
+    /** Stable identity of a bundled board, present only for bundled-board items. */
+    bundledBoardId?: string;
+    /** Disable this bundled board without removing its retained pins. */
+    disable?: () => void;
 }
 
 
@@ -198,5 +210,51 @@ export function getCreatableItems(
         category: "tool" as const,
     }));
 
-    return [...staticItems, ...profileItems];
+    const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
+    const bundledItems: CreatableItem[] = bundledBoardRegistry.list()
+        .filter((board) => !disabledBundledBoards.has(board.id))
+        .map((board) => {
+            const label = board.manifest.name?.trim() || board.id;
+            const association = getBoardEditorAssociation(board.manifest);
+            return {
+                id: `bundled-board:${board.id}`,
+                label,
+                icon: createBoardGlyphElement(board.root),
+                create: () => {
+                    void guard(`Failed to create ${label}`, async () => {
+                        if (association?.editorKind === "content-host") {
+                            await pagesModel.addBundledBoardPage(
+                                board.root,
+                                "json",
+                                "untitled.excalidraw",
+                            );
+                            return;
+                        }
+                        await app.events.openRawLink.sendAsync(
+                            createLinkData(encodePersephoneBoardLink(board.root)),
+                        );
+                    });
+                },
+                category: "editor",
+                bundledBoardId: board.id,
+                disable: () => disableBundledBoard(board.id),
+            } satisfies CreatableItem;
+        });
+
+    return [...staticItems, ...bundledItems, ...profileItems];
+}
+
+export function disableBundledBoard(id: string): void {
+    const disabled = settings.get("disabled-bundled-boards");
+    if (disabled.includes(id)) return;
+    settings.set("disabled-bundled-boards", [...disabled, id]);
+}
+
+export function getBundledBoardContextMenu(item: CreatableItem): MenuItem[] | undefined {
+    if (!item.bundledBoardId || !item.disable) return undefined;
+    return [{
+        label: "Disable",
+        icon: createIconElement("remove", { width: 14, height: 14 }),
+        onClick: item.disable,
+    }];
 }

@@ -20,6 +20,7 @@ import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
+import { settings } from "../../api/settings";
 import { bundledBoardRegistry } from "./bundled-board-registry";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
@@ -201,6 +202,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     private initialization: Promise<void> | undefined;
     private pathsSub: (() => void) | undefined;
     private bundledSub: (() => void) | undefined;
+    private settingsSub: (() => void) | undefined;
     /** Generation counter guarding refresh() against stale overwrites: overlapping refreshes
      *  (a rapid untrust+trust pair, e.g. renaming a board folder, fires one per mutation) can
      *  finish out of order, and an earlier refresh landing last would clobber the newer entry
@@ -216,6 +218,9 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         });
         this.bundledSub = bundledBoardRegistry.subscribe(() => {
             void this.refresh();
+        });
+        this.settingsSub = settings.onChanged.subscribe(({ key }) => {
+            if (key === "disabled-bundled-boards") void this.refresh();
         });
     }
 
@@ -243,6 +248,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const gen = ++this.refreshGen;
         await bundledBoardRegistry.ensureInitialized();
         const roots = boardTrust.listPaths();
+        const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
         const sources: Array<{
             root: string;
             manifest: Awaited<ReturnType<typeof readBoardManifest>>;
@@ -258,6 +264,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             sources.push({ root, manifest: await readBoardManifest(root), origin: "trusted" });
         }
         for (const bundled of bundledBoardRegistry.list()) {
+            if (disabledBundledBoards.has(bundled.id)) continue;
             sources.push({ root: bundled.root, manifest: bundled.manifest, origin: bundled.origin });
         }
         for (const source of sources) {
@@ -481,6 +488,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         this.pathsSub = undefined;
         this.bundledSub?.();
         this.bundledSub = undefined;
+        this.settingsSub?.();
+        this.settingsSub = undefined;
         // Drain the model's DisposableStore after existing teardown.
         super.dispose();
     }
