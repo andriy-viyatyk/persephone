@@ -5,10 +5,11 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.7.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.8.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.7.0` gates the `contentProviders` manifest axis, service-only `persephone.providers`,
-and `persephone.host.streamUrl()`; the change is additive and existing boards remain unaffected.
+Bridge `1.8.0` adds board capability declarations, in-memory intent delivery, and
+`persephone.capabilities.*` board-to-board calls to the `1.7.0` provider/service/stream surface;
+the change is additive and existing boards remain unaffected.
 
 > ## 📌 Agent: rewrite this file once the board is built
 >
@@ -46,7 +47,7 @@ fields that let the board act as a file editor:
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
-  "minBridgeVersion": "1.7.0",
+  "minBridgeVersion": "1.8.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs",
   "contentProviders": [
@@ -68,6 +69,110 @@ fields that let the board act as a file editor:
   a board run arbitrary renderer and Node code, so `"service"` is not a privilege grant or sandbox.
 - `service` (optional) — a board-relative ESM entry for a platform-owned module service. A board
   with only this field is still a valid service board even when it has no editor association.
+
+### Capability handlers
+
+A board that can answer named requests declares handlers in the `capabilities` array. The array is
+the functional registration axis; add `"capabilities"` to `permissions` to disclose the surface in
+trust and Board Info. As with the other board permissions, this is disclosure and lifecycle
+hygiene, not a security boundary or a grant.
+
+```json
+{
+  "minBridgeVersion": "1.8.0",
+  "permissions": ["capabilities"],
+  "capabilities": [
+    {
+      "id": "acme.convert",
+      "version": 1,
+      "priority": 60,
+      "title": "Convert a document",
+      "accepts": ["text/markdown"],
+      "payloadSchema": { "type": "object" }
+    }
+  ]
+}
+```
+
+`id` is non-empty, contains no whitespace or `@`, and should use a vendor prefix for board-owned
+names. `version` is an integer major version (default 1); `priority` is numeric (default 50), with
+platform handlers winning exact ties. Multiple trusted boards may declare the same id and compete
+by priority; losing registrations remain visible through discovery. `accepts` is an optional MIME
+filter, `payloadSchema` is descriptive (the handler validates its own payload), and `title` is
+display metadata. A capability is resolved in the caller's window: an already-open winning
+handler page is reused, otherwise Persephone opens that board there.
+
+### In-memory intents: `persephone.intent.*`
+
+The winning board receives a request as a structured value:
+
+```js
+function handleRequest(request) {
+    if (handled.has(request.requestId)) return;
+    handled.add(request.requestId);
+    const { name } = request.payload;
+    request.resolve({ greeting: `Hello, ${name}`, requestId: request.requestId });
+}
+
+const handled = new Set();
+persephone.intent.onRequest(handleRequest);
+const initial = persephone.intent.get();
+if (initial) handleRequest(initial); // page opened for this request
+```
+
+`persephone.intent.get()` returns the current request, if this page was opened or reused for one;
+`persephone.intent.onRequest(callback)` registers a callback and returns an unsubscribe function;
+`persephone.intent.resolve(value)` settles the current request successfully; and
+`persephone.intent.reject(reason)` settles it with the `rejected` failure code. A handler **must**
+call `resolve` or `reject` for every request. A handler that never
+settles hangs its caller until the deadline; Persephone then sends a best-effort cancel, but cannot
+stop work already running in the board.
+
+Intent payloads are structured-cloned, kept in broker memory, and delivered once. They never enter
+page state or disk, and a restored page does not receive the old payload again. This is a broker
+policy, not an OS guarantee: memory can be paged and Chromium may keep its own caches. Delivery is
+at-most-once; Persephone never re-delivers an intent. A timeout stops the platform waiting and sends
+cancel; it does not stop the handler. Agents may retry, so work that needs idempotency must key on
+`requestId`.
+
+### Discovering and invoking capabilities
+
+`persephone.capabilities.list()` returns the registrations visible in this renderer without opening
+a handler. Each entry includes `handlerKey`, which distinguishes handlers that share one id:
+
+```js
+const available = await persephone.capabilities.list();
+// [{ id: "acme.convert", version: 1, priority: 60,
+//    handlerKey: "board:/work/acme", origin: "board", title: "Convert a document" }]
+```
+
+Call `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
+than naming a handler. A board-originated result has `{ pageId, result }`; `pageId` is optional for
+handlers that resolve without opening a page. The ten typed rejection codes are:
+
+| Code | Meaning to the caller |
+|---|---|
+| `no-handler` | No declaration matches the id, pinned version, or filter; a headless winner is out of scope. |
+| `untrusted` | The handler board was untrusted before or during the request. |
+| `handler-closed` | The handler page/frame closed before settlement. |
+| `crashed` | The handler frame errored or reloaded during the request. |
+| `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
+| `timeout` | The deadline elapsed; the platform stopped waiting and sent best-effort cancel. |
+| `cycle` | Resolution would re-enter a handler already in the request chain or exceed the depth limit. |
+| `payload-too-large` | A board-bound structured payload exceeds the inline 8 MiB cap. |
+| `busy` | The selected handler has reached its outstanding-request limit. |
+| `rejected` | The handler rejected the request or the payload/transport failed without another typed code. |
+
+Handle these errors rather than assuming an invocation succeeded:
+
+```js
+try {
+    const reply = await persephone.capabilities.invoke("acme.convert", { source });
+    render(reply.result);
+} catch (error) {
+    showError(`${error.code}: ${error.message}`);
+}
+```
 
 ### Content providers
 

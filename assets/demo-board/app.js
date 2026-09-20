@@ -26,6 +26,29 @@
         return;
     }
 
+    // ── Capability handler: demo.greet ───────────────────────────────────────
+    // onRequest() delivers an already-active intent immediately. Keep the explicit get() path
+    // below as a self-documenting example for a page opened FOR a request, and guard by request id
+    // so the two paths cannot settle the same request twice.
+    const handledIntentIds = new Set();
+    function handleGreeting(request) {
+        if (!request || handledIntentIds.has(request.requestId)) return;
+        handledIntentIds.add(request.requestId);
+        const payload = request.payload && typeof request.payload === "object"
+            && !Array.isArray(request.payload) ? request.payload : {};
+        const name = typeof payload.name === "string" && payload.name.trim()
+            ? payload.name.trim()
+            : "board friend";
+        request.resolve({
+            greeting: `Hello, ${name}!`,
+            requestId: request.requestId,
+            received: { name },
+        });
+    }
+    P.intent.onRequest(handleGreeting);
+    const initialIntent = P.intent.get();
+    if (initialIntent) handleGreeting(initialIntent);
+
     // ── Tabs ────────────────────────────────────────────────────────────
     const tabs = document.querySelectorAll(".tab");
     const panels = document.querySelectorAll(".panel");
@@ -76,6 +99,14 @@
 
     // ── Demo actions (wired to [data-test] buttons) ─────────────────────
     const tests = {
+        // --- capabilities ---------------------------------------------------
+        async capabilityInvoke() {
+            header("persephone.capabilities.invoke → demo.greet");
+            const reply = await P.capabilities.invoke("demo.greet", { name: "Demo board" });
+            print(JSON.stringify(reply, null, 2));
+            print("The reply includes the handler pageId and its structured result.");
+        },
+
         // --- execute() ------------------------------------------------------
         async getText() {
             header("execute → getText");

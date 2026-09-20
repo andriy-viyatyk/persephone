@@ -390,6 +390,17 @@ main-owned store and one per-board mutation queue, so neither process writes a s
 Storage is available while the service process is alive, including during `starting` before `ready`;
 loading persisted state before declaring readiness is a normal service startup shape.
 
+### Capability bus
+
+The capability bus is the renderer-local request counterpart to the content pipeline. A derived
+index combines built-in editor declarations with trusted boards' manifest `capabilities` arrays;
+`list()`/`handlers()` discover candidates without opening pages, and `invoke()` resolves by version,
+filter, priority, and origin tie rules. Board requests are served in the caller's window through
+the transient `intent` host-frame protocol, with request ids, deadlines, best-effort cancel, typed
+failures, cycle limits, and an 8 MiB inline payload cap. See the [Capability Bus](./capability-bus.md)
+architecture page for registration, settlement, D1's renderer-local trade-off, and the complete
+failure taxonomy.
+
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload** toolbar action and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each load starts a fresh `ui.log` (reset to a single "board loaded" line, so the log only ever holds the current board lifetime — clicking Show-log never opens an empty page). Load failures funnel into that `ui.log` and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.
 
 **Board structure:** `board-manifest.json` (identity marker plus optional, trust-gated file and

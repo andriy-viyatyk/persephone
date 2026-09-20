@@ -314,6 +314,8 @@ interface PersephoneCapabilityInfo {
     readonly id: string;
     readonly version: number;
     readonly priority: number;
+    /** Stable handler identity; multiple platform or board handlers may share one capability id. */
+    readonly handlerKey: string;
     readonly origin: "platform" | "board" | "script";
     readonly boardRoot?: string;
     readonly accepts?: readonly string[];

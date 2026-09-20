@@ -156,6 +156,23 @@
 
         <!-- ════════════════════════ CAPABILITIES ════════════════════════ -->
         <section class="panel" data-panel="capabilities">
+            <h2><code>demo.greet</code> — a board capability</h2>
+            <p>
+                This board declares <code>demo.greet</code> in <code>board-manifest.json</code> at
+                version <code>1</code> and priority <code>60</code>. Its page is both the handler
+                and a caller: an incoming <code>persephone.intent</code> request receives a
+                structured greeting, and this button invokes the same capability through the
+                renderer-local bus.
+            </p>
+            <div class="row">
+                <button class="p-btn primary" data-test="capabilityInvoke">invoke demo.greet</button>
+            </div>
+            <p class="muted">
+                Intent payloads are delivered once in memory. A handler must settle every request
+                with <code>resolve</code> or <code>reject</code>; a timeout sends a best-effort
+                cancel but cannot stop work already running in the board.
+            </p>
+
             <h2><code>persephone.execute()</code> — run scripts &amp; tools</h2>
             <p class="muted">
                 The one method. Buffer the result (<code>getText</code>/<code>getJson</code>/<code>getBytes</code>) or
@@ -307,7 +324,7 @@
         <section class="panel" data-panel="build">
             <h2>Anatomy of a board</h2>
             <ul>
-                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence is what marks the folder as a board. Custom-editor behavior fields are optional and trust-gated; see the authoring guide for <code>fileMasks</code>, <code>folderMasks</code>, and direct-folder <code>folderEditorMasks</code>. This demo also declares <code>minBridgeVersion: "1.7.0"</code>, <code>permissions: ["service", "contentProviders"]</code>, the <code>demo/mem</code> provider, and a <code>stream-host</code> fixture.</li>
+                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence is what marks the folder as a board. Custom-editor behavior fields are optional and trust-gated; see the authoring guide for <code>fileMasks</code>, <code>folderMasks</code>, and direct-folder <code>folderEditorMasks</code>. This demo also declares <code>minBridgeVersion: "1.8.0"</code>, <code>permissions: ["service", "contentProviders", "capabilities"]</code>, the <code>demo.greet</code> capability, the <code>demo/mem</code> provider, and a <code>stream-host</code> fixture.</li>
                 <li><code>index.html</code> — your page. Edit it, then hit <strong>Reload</strong> in the board toolbar to apply.</li>
                 <li><code>app.js</code> / <code>style.css</code> — your logic and styling (reference relatively, e.g. <code>./app.js</code>). Boards don't auto-reload — use the <strong>Reload</strong> button in the board toolbar (or <code>call</code> at <code>pages[i].editor.reload()</code> when an agent is driving) to apply edits.</li>
                 <li><code>scripts/</code> — backend scripts in any language, invoked via <code>persephone.execute("scripts/thing.js")</code>. <code>cwd</code> defaults to the board folder, so relative paths just work. For a <strong>Node</strong> script that must run on any machine, use <code>persephone.executeNode("scripts/thing.mjs")</code> — it runs on Persephone's bundled Node (no install needed). The resident <code>node-server.mjs</code> is page-owned; the declared <code>service.mjs</code> is platform-owned, supervised, lazy, and usable with no page open.</li>

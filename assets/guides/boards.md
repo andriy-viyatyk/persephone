@@ -122,7 +122,7 @@ Boards may declare `minBridgeVersion`, `permissions`, and a board-relative `serv
 
 ```json
 {
-  "minBridgeVersion": "1.7.0",
+  "minBridgeVersion": "1.8.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
@@ -132,8 +132,8 @@ The minimum bridge is a compatibility requirement. `permissions` is shown as dis
 for lifecycle hygiene, not as a security boundary or a grant; trust already gives a board arbitrary
 renderer and Node execution. A declared service is shown in Board Info and in the live
 `app.boards.list()` status payload.
-Bridge `1.7.0` gates the additive provider and stream-host members documented below; boards that
-do not use them continue to work unchanged.
+Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
+service, and stream-host surface; boards that do not use them continue to work unchanged.
 
 Boards can also declare service-backed content providers:
 
@@ -171,6 +171,86 @@ the board is trusted but its service is still starting, the same page waits brie
 if the service cannot attach or register the type, it reports **Provider unavailable** instead of
 hanging. Reinstall or trust the declaring board to make the page recover with its original descriptor;
 if the service itself was fixed, reload the page to retry the read.
+
+### Capability handlers and in-memory intents
+
+A board can provide named work without making callers know which board handles it. Declare the
+capability in `board-manifest.json`; the declaration array is the functional trigger. Add
+`"capabilities"` to `permissions` to disclose the surface in trust and Board Info. Like the other
+permission values, this is lifecycle disclosure, not a security grant.
+
+```json
+{
+  "minBridgeVersion": "1.8.0",
+  "permissions": ["capabilities"],
+  "capabilities": [
+    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
+  ]
+}
+```
+
+Declarations support `id`, integer major `version` (default `1`), numeric `priority` (default
+`50`), optional MIME `accepts`, descriptive `payloadSchema`, and display `title`. IDs cannot contain
+whitespace or `@`; vendor prefixes are recommended. Multiple boards may declare the same id. The
+highest priority wins, platform handlers win exact ties, and trusted-board registration order
+breaks board-to-board ties. A caller may pin a major version with `invoke("demo.greet@1", payload)`.
+
+The winning board is served in the caller's window. Persephone reuses an already-open handler page
+there or opens one there and delivers the initial request in its handshake. Later requests to that
+page use the host-frame channel. The handler receives a structured request and must settle it:
+
+```js
+function handleGreeting(request) {
+    if (handled.has(request.requestId)) return;
+    handled.add(request.requestId);
+    const name = request.payload.name ?? "friend";
+    request.resolve({ greeting: `Hello, ${name}`, requestId: request.requestId });
+}
+
+const handled = new Set();
+persephone.intent.onRequest(handleGreeting);
+const initial = persephone.intent.get();
+if (initial) handleGreeting(initial); // the page was opened for this request
+```
+
+`persephone.intent.get()` returns the current request, if one is active.
+`persephone.intent.onRequest(callback)` returns an unsubscribe function and also delivers an
+already-active request. `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)`
+settle the current request. **Settlement is mandatory:** a handler that never
+calls either method leaves its caller waiting until the deadline. The platform then sends a
+best-effort cancel, but cannot stop the handler's work.
+
+`persephone.capabilities.list()` discovers registrations without opening a handler. The
+`handlerKey` field distinguishes multiple handlers for one id:
+
+```js
+const handlers = await persephone.capabilities.list();
+// [{ id: "demo.greet", version: 1, priority: 60,
+//    handlerKey: "board:/work/Demo", origin: "board", title: "Demo greeting" }]
+```
+
+`persephone.capabilities.invoke(id, payload, options?)` resolves by id; options may pin `version`
+or set `deadlineMs`. A board result is `{ pageId, result }` (the page id is optional for handlers
+that resolve without a page). Handle the ten typed rejection codes as follows:
+
+| Code | Meaning to the caller |
+|---|---|
+| `no-handler` | No registered declaration matches the id, version, or filter; headless winners are out of scope. |
+| `untrusted` | The handler board was untrusted at resolution or while the request was in flight. |
+| `handler-closed` | The handler page or frame closed before it settled. |
+| `crashed` | The handler frame errored or reloaded during the request. |
+| `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
+| `timeout` | The deadline elapsed; waiting stopped and a best-effort cancel was sent. |
+| `cycle` | The winning handler is already in the request chain or the depth limit was exceeded. |
+| `payload-too-large` | A board-bound inline payload exceeds 8 MiB. |
+| `busy` | The selected handler has reached its outstanding-request limit. |
+| `rejected` | The handler called `reject()` or the payload/transport failed without another code. |
+
+Timeout does not stop handler execution. An agent may retry, so a handler that needs idempotency
+must key its work on `requestId`. Intents are at-most-once: Persephone never re-delivers the same
+request. Payloads are structured-cloned, kept in broker memory, and delivered once; they never
+enter page state or disk, and a restored page does not receive them again. This is a broker policy,
+not an OS guarantee — memory can be paged and Chromium may retain its own caches.
 
 ---
 
@@ -325,7 +405,7 @@ board-relative ESM entry such as:
 
 ```json
 {
-  "minBridgeVersion": "1.7.0",
+  "minBridgeVersion": "1.8.0",
   "permissions": ["service"],
   "service": "scripts/service.mjs"
 }

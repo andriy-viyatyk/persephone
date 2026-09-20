@@ -11,10 +11,11 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.7.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.8.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.7.0` gates the additive `contentProviders` manifest axis, service-only
-`persephone.providers`, and `persephone.host.streamUrl()`; existing boards are unaffected.
+Bridge `1.8.0` adds the `capabilities` manifest axis, in-memory intents, and board-to-board
+`persephone.capabilities.*` calls to the additive `1.7.0` provider/service/stream surface; existing
+boards are unaffected.
 
 ## What a board is
 
@@ -250,7 +251,7 @@ A manifest may declare a board-relative ESM entry and its bridge requirement:
 
 ```json
 {
-  "minBridgeVersion": "1.7.0",
+  "minBridgeVersion": "1.8.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
@@ -300,6 +301,87 @@ observation. For the Demo board, create it with `app.boards.createDemoBoard(name
 use `boards.list()` to confirm the result. A full renderer reload is script-driven with
 `script.execute("setTimeout(() => location.reload(), 50); return 'reloading'")`; the editor's
 `reload()` only reloads the board iframe.
+
+### Capability handlers and in-memory intents
+
+Use the manifest's `capabilities` array to register named work. Put `"capabilities"` in
+`permissions` so the surface is disclosed in trust and Board Info; the array, not that string, is
+what registers handlers. This follows the existing rule that permissions are lifecycle disclosure,
+not a security boundary.
+
+```json
+{
+  "minBridgeVersion": "1.8.0",
+  "permissions": ["capabilities"],
+  "capabilities": [
+    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
+  ]
+}
+```
+
+Each declaration may provide `id`, integer major `version` (default `1`), `priority` (default
+`50`), `accepts`, `payloadSchema`, and `title`. IDs cannot contain whitespace or `@`; use a vendor
+prefix for board-owned ids. Multiple boards can compete for one id: strict priority wins, platform
+handlers win ties, and trusted-board registration order breaks board ties. Discovery never opens a
+handler page.
+
+The winning declaration is served in the caller's window. An existing handler page there is reused;
+otherwise the platform opens one there and sends the first request in the handshake. Later requests
+use the host-frame channel. The handler receives a structured value and must always settle it:
+
+```js
+function handleRequest(request) {
+    if (handled.has(request.requestId)) return;
+    handled.add(request.requestId);
+    const name = request.payload.name ?? "friend";
+    request.resolve({ greeting: `Hello, ${name}`, requestId: request.requestId });
+}
+
+const handled = new Set();
+persephone.intent.onRequest(handleRequest);
+const initial = persephone.intent.get();
+if (initial) handleRequest(initial); // consume a page-open initial request
+```
+
+`persephone.intent.get()` reads the active request;
+`persephone.intent.onRequest(callback)` returns an unsubscribe and also delivers an already-active
+request; `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)` settle the
+current request. **`resolve`/`reject` is mandatory.** If a handler never settles, its caller
+waits until the deadline. The platform sends cancel after that deadline, but cannot stop the
+handler's work.
+
+`persephone.capabilities.list()` discovers the registrations visible in this renderer without
+activation. Include `handlerKey` when identifying a candidate because several handlers may share an
+id:
+
+```js
+const entries = await persephone.capabilities.list();
+// [{ id: "demo.greet", version: 1, priority: 60,
+//    handlerKey: "board:/work/Demo", origin: "board", title: "Demo greeting" }]
+```
+
+Invoke by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
+result is `{ pageId, result }`; `pageId` is optional when a handler resolves without a page. The
+caller can receive these ten typed rejection codes:
+
+| Code | Meaning |
+|---|---|
+| `no-handler` | No declaration matches the id, version, or filter; headless winners are out of scope. |
+| `untrusted` | The handler board was untrusted at resolution or during the request. |
+| `handler-closed` | The handler page/frame closed before settlement. |
+| `crashed` | The handler frame errored or reloaded. |
+| `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
+| `timeout` | The deadline elapsed; platform waiting stopped and best-effort cancel was sent. |
+| `cycle` | The request would re-enter a handler in its chain or exceed the depth limit. |
+| `payload-too-large` | The board-bound inline payload is over 8 MiB. |
+| `busy` | The selected handler reached its outstanding-request limit. |
+| `rejected` | The handler called `reject()` or another unclassified payload/transport failure occurred. |
+
+Timeout does not stop the handler. An agent can retry, so idempotent work must key on
+`requestId`. Intents are at-most-once: Persephone never re-delivers a request. Payloads are
+structured-cloned, delivered once, and kept in broker memory; they never enter page state or disk,
+and a restored page does not receive them again. This is broker policy, not an OS guarantee: memory
+can be paged and Chromium may retain its own caches.
 
 ### Integration tier (in-app effects `execute()` can't express)
 
