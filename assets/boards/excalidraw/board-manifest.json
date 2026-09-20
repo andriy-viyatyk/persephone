@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "name": "Excalidraw Smoke Board",
+  "description": "A read-only smoke board for the bundled Excalidraw library.",
+  "author": "Persephone",
+  "standalone": true
+}

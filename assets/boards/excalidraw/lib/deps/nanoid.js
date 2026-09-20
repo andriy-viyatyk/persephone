@@ -1,0 +1,1 @@
+import"./shared-ASP2VY3Q.js";var l=(r=21)=>crypto.getRandomValues(new Uint8Array(r)).reduce((t,e)=>(e&=63,e<36?t+=e.toString(36):e<62?t+=(e-26).toString(36).toUpperCase():e>62?t+="-":t+="_",t),"");export{l as nanoid};

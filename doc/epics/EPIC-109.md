@@ -170,6 +170,45 @@ decision of roadmap §6. D2 dissolves that collision: a bundled board shows **no
 all**, so `permissions`-as-disclosure has nothing to disclose to. The question stays open for
 catalog-installed boards and is untouched here — no code in this epic extends or entrenches it.
 
+**D9 — The board's `lib/` is generated once by hand and committed. No Persephone build rebuilds
+it.**
+
+*(User decision, 2026-09-20, correcting this epic's original "build pipeline" framing.)* The board's
+`lib/` is a pure function of the pinned `@excalidraw/excalidraw` version, so regenerating it on every
+`npm run dist` buys nothing and makes each Persephone build depend on a bundler run that can fail.
+`scripts/build-board-lib.mjs` is therefore invoked manually — when the Excalidraw version is bumped
+and at no other time — and `assets/boards/excalidraw/lib/` is committed. The board stays what every
+other board is: a plain folder that is copied, not built.
+
+The same decision fixes what is committed. Shipping the package's assets wholesale would add 14 MB
+of fonts and 1.8 MB of locales, and **13 MB of that is the Xiaolai family alone** — Chinese
+handwriting, which the other eight families do not need:
+
+| Committed | Size |
+|---|---|
+| Excalidraw vendor graph, verbatim | ~2.9 MB |
+| Fonts — 8 families, Xiaolai excluded | ~500 KB |
+| English locale (`en-*.js`) | 4 KB |
+| Bundled externals, excluding mermaid | ~600 KB |
+| `@excalidraw/mermaid-to-excalidraw` | **3.4 MB** |
+| **Total** | **7.3 MB** |
+
+**Amended during US-1486, after measurement.** The estimate above was ~3.8 MB, which held for
+everything except one dependency. The board needs **33** bare specifiers, not the 15 visible in
+`index.js` — the rest live in the chunks and four more are reached only through lazy `import()`.
+One of those four, `@excalidraw/mermaid-to-excalidraw`, bundles mermaid and is 3.4 MB on its own.
+
+It is kept. Excalidraw's Mermaid-to-diagram conversion is a feature of the editor this epic
+replaces, `@excalidraw/mermaid-to-excalidraw` is already a dependency of the current `editors/draw`,
+and dropping it would ship a regression rather than a like-for-like replacement. It loads only when
+the user actually converts a diagram, so it costs repository and installer size, not startup.
+Excluding it would return the board to ~3.9 MB and is the one lever available if that size ever
+becomes a problem.
+
+Xiaolai and the other 54 locales are excluded deliberately. A user wanting Chinese handwriting loses
+that one font family; everything else renders identically. The exclusion is recorded here so a
+future version bump does not silently re-add 13 MB to the repository.
+
 ## Linked Tasks
 
 | Task | Title | Status |
@@ -177,7 +216,7 @@ catalog-installed boards and is untouched here — no code in this epic extends 
 | US-1483 | Bundled board registry and discovery | Planned |
 | US-1484 | Stable identity for bundled boards across install paths | Planned |
 | US-1485 | Built-in tab presentation and the Disable action | Planned |
-| US-1486 | Board build pipeline — prebuilt `lib/` for a bundled board | Planned |
+| US-1486 | The board's prebuilt `lib/`, generated once and committed | Planned |
 | US-1487 | The Excalidraw board | Planned |
 | US-1488 | Capability routing into the board, and the payload measurement | Planned |
 
@@ -200,11 +239,20 @@ Verified by moving a board root and confirming an existing page restores and kee
 D3, D4 and D6. A bundled board contributes a `CreatableItem`; the Disable action on that row; the
 settings flag read in both places; the `no-handler` message.
 
-### US-1486 — Board build pipeline — prebuilt `lib/`
+### US-1486 — The board's prebuilt `lib/`, generated once and committed
 
-Roadmap Phase F.1. A bundler step emitting Excalidraw, React and its fonts as a prebuilt `lib/`
-inside the board folder, so the board stays a plain folder. Fonts ship inside the board rather than
-through `app-asset://`.
+Roadmap Phase F.1. `@excalidraw/excalidraw@0.18.1` **already ships a prebuilt browser ESM bundle**
+(`dist/prod/index.js`, 2.7 MB) — nothing in this epic recompiles Excalidraw itself. What that bundle
+does not carry is its fifteen bare externals (`react`, `react-dom`, `react/jsx-runtime`, `jotai`,
+`jotai-scope`, `clsx`, `nanoid`, `roughjs/bin/rough`, `@radix-ui/react-popover`,
+`@radix-ui/react-tabs`, `fuzzy`, `lodash.debounce`, `lodash.throttle`, `open-color`, `tunnel-rat`),
+and React 19's npm package is **CJS only** — `node_modules/react/` holds `index.js` plus `cjs/`,
+with no ESM and no UMD build. So no import map can resolve them from a plain board page, and one
+bundler pass is unavoidable. esbuild is already a devDependency.
+
+Per **D9** that pass is a standalone script, run by hand, with its output committed; it is not
+referenced by `build-prod`, `dist`, or anything a Persephone build runs. Fonts ship inside the board
+rather than through `app-asset://`.
 
 ### US-1487 — The Excalidraw board
 

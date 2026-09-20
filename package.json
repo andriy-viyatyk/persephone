@@ -6,6 +6,7 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "node scripts/dev.mjs",
+    "build-board-lib": "node scripts/build-board-lib.mjs",
     "build-prod": "node scripts/build-prod.mjs",
     "dist": "node scripts/build-prod.mjs && electron-builder --win",
     "dist:zip": "node scripts/build-prod.mjs && electron-builder --win zip",

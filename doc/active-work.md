@@ -40,7 +40,7 @@ below tracks which phases have shipped.
   - [ ] [US-1483: Bundled board registry and discovery](tasks/US-1483-bundled-board-registry/README.md)
   - [ ] [US-1484: Stable identity for bundled boards across install paths](tasks/US-1484-bundled-board-identity/README.md)
   - [ ] [US-1485: Built-in tab presentation and the Disable action](tasks/US-1485-bundled-board-disable/README.md)
-  - [ ] [US-1486: Board build pipeline — prebuilt lib/ for a bundled board](tasks/US-1486-board-build-pipeline/README.md)
+  - [ ] [US-1486: The board's prebuilt lib/, generated once and committed](tasks/US-1486-board-prebuilt-lib/README.md)
   - [ ] [US-1487: The Excalidraw board](tasks/US-1487-excalidraw-board/README.md)
   - [ ] [US-1488: Capability routing into the board, and the payload measurement](tasks/US-1488-excalidraw-capability-routing/README.md)
 

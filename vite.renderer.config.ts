@@ -82,11 +82,18 @@ export default defineConfig({
       //     'snip-tool/target/release/build/serde-<hash>/build_script_build-<hash>.exe'
       // None of these trees is an import source, so watching them buys nothing.
       // `release/` is electron-builder's output and churns the same way.
+      //
+      // A bundled board's generated `lib/` is the same story: `npm run build-board-lib`
+      // deletes the tree and rewrites it, and chokidar hits the same EBUSY on a file it
+      // is mid-replace. Nothing under it is an import source either — the main process
+      // serves those files from disk over `board://`, so the renderer never imports
+      // them and watching them cannot trigger anything useful.
       ignored: [
         '**/snip-tool/target/**',
         '**/mneme/target/**',
         '**/launcher/target/**',
         '**/release/**',
+        '**/assets/boards/*/lib/**',
       ],
     },
   },

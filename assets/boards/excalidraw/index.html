@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Excalidraw Smoke Board</title>
+    <link rel="stylesheet" href="./lib/index.css" />
+    <style>
+        html, body, #root {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+    </style>
+    <!-- import-map:start -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@braintree/sanitize-url": "./lib/deps/braintree-sanitize-url.js",
+            "@excalidraw/laser-pointer": "./lib/deps/excalidraw-laser-pointer.js",
+            "@excalidraw/mermaid-to-excalidraw": "./lib/deps/excalidraw-mermaid-to-excalidraw.js",
+            "@radix-ui/react-popover": "./lib/deps/radix-ui-react-popover.js",
+            "@radix-ui/react-tabs": "./lib/deps/radix-ui-react-tabs.js",
+            "browser-fs-access": "./lib/deps/browser-fs-access.js",
+            "canvas-roundrect-polyfill": "./lib/deps/canvas-roundrect-polyfill.js",
+            "clsx": "./lib/deps/clsx.js",
+            "es6-promise-pool": "./lib/deps/es6-promise-pool.js",
+            "fractional-indexing": "./lib/deps/fractional-indexing.js",
+            "fuzzy": "./lib/deps/fuzzy.js",
+            "image-blob-reduce": "./lib/deps/image-blob-reduce.js",
+            "jotai": "./lib/deps/jotai.js",
+            "jotai-scope": "./lib/deps/jotai-scope.js",
+            "lodash.debounce": "./lib/deps/lodash-debounce.js",
+            "lodash.throttle": "./lib/deps/lodash-throttle.js",
+            "nanoid": "./lib/deps/nanoid.js",
+            "open-color": "./lib/deps/open-color.js",
+            "pako": "./lib/deps/pako.js",
+            "perfect-freehand": "./lib/deps/perfect-freehand.js",
+            "pica": "./lib/deps/pica.js",
+            "png-chunk-text": "./lib/deps/png-chunk-text.js",
+            "png-chunks-encode": "./lib/deps/png-chunks-encode.js",
+            "png-chunks-extract": "./lib/deps/png-chunks-extract.js",
+            "points-on-curve": "./lib/deps/points-on-curve.js",
+            "react": "./lib/deps/react.js",
+            "react-dom": "./lib/deps/react-dom.js",
+            "react-dom/client": "./lib/deps/react-dom-client.js",
+            "react/jsx-runtime": "./lib/deps/react-jsx-runtime.js",
+            "roughjs/bin/generator": "./lib/deps/roughjs-bin-generator.js",
+            "roughjs/bin/math": "./lib/deps/roughjs-bin-math.js",
+            "roughjs/bin/rough": "./lib/deps/roughjs-bin-rough.js",
+            "tunnel-rat": "./lib/deps/tunnel-rat.js"
+        }
+    }
+    </script>
+    <!-- import-map:end -->
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module">
+        window.EXCALIDRAW_ASSET_PATH = "./lib/";
+
+        const reactModule = await import("react");
+        const React = reactModule.default ?? reactModule;
+        const { createRoot } = await import("react-dom/client");
+        const { Excalidraw } = await import("./lib/index.js");
+
+        createRoot(document.getElementById("root")).render(
+            React.createElement(Excalidraw, {
+                initialData: {},
+                viewModeEnabled: true,
+            }),
+        );
+    </script>
+</body>
+</html>

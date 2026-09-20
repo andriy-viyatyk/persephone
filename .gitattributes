@@ -9,3 +9,10 @@ assets/editor-types/_imports.txt text eol=lf
 # patch-package writes patch files LF; pin them so autocrlf doesn't flag them
 # as perpetually modified (and so the patches apply byte-exact).
 patches/*.patch text eol=lf
+
+# A bundled board's generated lib/ is vendor output copied byte-for-byte out of
+# node_modules, and the generator verifies that byte-identity on every run. Letting
+# autocrlf rewrite line endings would break that property, make a fresh checkout differ
+# from the package it was copied from, and leave all ~186 files perpetually "modified".
+# -text disables every text transformation for that tree.
+assets/boards/*/lib/** -text
