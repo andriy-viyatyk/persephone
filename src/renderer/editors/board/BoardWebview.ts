@@ -74,6 +74,11 @@ function acceptBoardNotify(now: number): boolean {
     return true;
 }
 
+function isDataCloneError(error: unknown): boolean {
+    return error !== null && typeof error === "object"
+        && (error as { name?: unknown }).name === "DataCloneError";
+}
+
 /**
  * Locked-down host for one cross-origin board iframe. The board origin, CSP and
  * nodeIntegrationInSubFrames setting provide isolation; this view deliberately
@@ -640,8 +645,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 contentWindow.postMessage(message, `board://${host}`);
             } catch (error: unknown) {
                 this.settleCapability(request.requestId, new BoardCapabilityTransportError(
-                    "crashed",
-                    errMessage(error, "The board frame is unavailable."),
+                    isDataCloneError(error) ? "rejected" : "crashed",
+                    errMessage(
+                        error,
+                        isDataCloneError(error)
+                            ? "The capability payload could not be cloned."
+                            : "The board frame is unavailable.",
+                    ),
                 ), false);
             }
         });

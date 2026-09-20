@@ -26,21 +26,13 @@ below tracks which phases have shipped.
 | A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
 | B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
-| D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **in progress** |
+| D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
 | E — Torrent board and audio player (proof 1) | — | not started |
 | F — Excalidraw extraction (proof 2) | — | not started |
 
 ## Active
 
-- **EPIC-108** — [The capability bus and the in-memory intent channel](epics/EPIC-108.md)
-  — Phase D of the platform roadmap, the last infrastructure phase. Taken as a **slice**: the bus,
-  the manifest axis, the request lifecycle and the inline structured-clone payload channel ship;
-  the `DataHandle` store and credit-based `stream()` are deferred to Phase F by decision D7, its
-  pre-committed abort boundary.
-  - [ ] [US-1479: `capabilities` manifest axis, the widened registry, board-origin registration, and the `capabilities` AiVision namespace](tasks/US-1479-capability-registry/README.md)
-  - [ ] [US-1480: Request lifecycle — ids, deadlines, typed rejections, cycle detection, revocation settling](tasks/US-1480-capability-lifecycle/README.md)
-  - [ ] [US-1481: Bridge — `intent` on `BoardPortInitMsg`, `persephone.intent.*` and `persephone.capabilities.*`](tasks/US-1481-capability-bridge/README.md)
-  - [ ] [US-1482: Demo-board fixture, authoring guide and architecture documentation](tasks/US-1482-capability-fixture-docs/README.md)
+*(no active epic)*
 
 ## Planned
 

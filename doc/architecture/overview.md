@@ -398,7 +398,7 @@ index combines built-in editor declarations with trusted boards' manifest `capab
 filter, priority, and origin tie rules. Board requests are served in the caller's window through
 the transient `intent` host-frame protocol, with request ids, deadlines, best-effort cancel, typed
 failures, cycle limits, and an 8 MiB inline payload cap. See the [Capability Bus](./capability-bus.md)
-architecture page for registration, settlement, D1's renderer-local trade-off, and the complete
+architecture page for registration, settlement, the renderer-local trade-off, and the complete
 failure taxonomy.
 
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload** toolbar action and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each load starts a fresh `ui.log` (reset to a single "board loaded" line, so the log only ever holds the current board lifetime — clicking Show-log never opens an empty page). Load failures funnel into that `ui.log` and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.

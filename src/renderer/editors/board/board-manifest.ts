@@ -52,6 +52,7 @@ export interface BoardCapabilityDeclaration {
     accepts?: string[];
     payloadSchema?: unknown;
     title?: string;
+    headless?: boolean;
 }
 
 export interface BoardManifest {
@@ -296,6 +297,7 @@ export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[
             accepts?: unknown;
             payloadSchema?: unknown;
             title?: unknown;
+            headless?: unknown;
         };
         const accepts: string[] = [];
         if (Array.isArray(candidate.accepts)) {
@@ -312,6 +314,7 @@ export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[
             ...(accepts.length > 0 ? { accepts } : {}),
             ...("payloadSchema" in candidate ? { payloadSchema: candidate.payloadSchema } : {}),
             ...(typeof candidate.title === "string" ? { title: candidate.title.trim() } : {}),
+            ...(typeof candidate.headless === "boolean" ? { headless: candidate.headless } : {}),
         };
         out.push(declaration);
     }

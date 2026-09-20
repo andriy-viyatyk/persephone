@@ -105,7 +105,10 @@ function normalizeTransportError(error: unknown): BoardCapabilityTransportError 
 
 class BoardCapabilityTransport implements CapabilityTransport {
     private readonly pending = new Map<string, PendingDispatch>();
-    private readonly pageChains = new Map<string, { requestId: string; chain: string[]; depth: number }>();
+    private readonly pageChains = new Map<
+        string,
+        Map<string, { chain: string[]; depth: number }>
+    >();
     private readonly unsubscribeTrust: () => void;
     private readonly unsubscribeFrames: () => void;
 
@@ -152,10 +155,12 @@ class BoardCapabilityTransport implements CapabilityTransport {
     }
 
     chainForPage(pageId: string | undefined): { chain: readonly string[]; depth: number } {
-        const current = pageId === undefined ? undefined : this.pageChains.get(pageId);
-        return current
-            ? { chain: [...current.chain], depth: current.depth }
-            : { chain: [], depth: 0 };
+        const requests = pageId === undefined ? undefined : this.pageChains.get(pageId);
+        let current: { chain: string[]; depth: number } | undefined;
+        if (requests) {
+            for (const value of requests.values()) current = value;
+        }
+        return current ? { chain: [...current.chain], depth: current.depth } : { chain: [], depth: 0 };
     }
 
     private async resolveHandler(pending: PendingDispatch, root: string): Promise<void> {
@@ -206,6 +211,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
     }
 
     private attachPage(pending: PendingDispatch, page: PageModel): void {
+        if (pending.settled) return;
         if (pending.page === page) return;
         pending.pageUnsubscribe?.();
         pending.page = page;
@@ -238,11 +244,12 @@ class BoardCapabilityTransport implements CapabilityTransport {
             return;
         }
         pending.frame = frame;
-        this.pageChains.set(frame.pageId, {
-            requestId: pending.request.requestId,
+        const requests = this.pageChains.get(frame.pageId) ?? new Map();
+        requests.set(pending.request.requestId, {
             chain: [...pending.request.chain, pending.registration.handlerKey],
             depth: pending.request.depth + 1,
         });
+        this.pageChains.set(frame.pageId, requests);
         void frame.dispatch(pending.request).then(
             (result) => this.settle(pending, undefined, false, { pageId: frame.pageId, result }),
             (error: unknown) => this.settle(pending, normalizeTransportError(error), false),
@@ -264,8 +271,9 @@ class BoardCapabilityTransport implements CapabilityTransport {
             try { pending.frame?.cancel(pending.request.requestId); } catch { /* best effort */ }
         }
         if (pending.frame) {
-            const chain = this.pageChains.get(pending.frame.pageId);
-            if (chain?.requestId === pending.request.requestId) this.pageChains.delete(pending.frame.pageId);
+            const requests = this.pageChains.get(pending.frame.pageId);
+            requests?.delete(pending.request.requestId);
+            if (requests?.size === 0) this.pageChains.delete(pending.frame.pageId);
         }
         clearInitialIntent(pending.page, pending.request.requestId);
         if (pending.registration.boardRoot) {

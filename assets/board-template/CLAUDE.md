@@ -88,7 +88,8 @@ hygiene, not a security boundary or a grant.
       "priority": 60,
       "title": "Convert a document",
       "accepts": ["text/markdown"],
-      "payloadSchema": { "type": "object" }
+      "payloadSchema": { "type": "object" },
+      "headless": false
     }
   ]
 }
@@ -99,8 +100,10 @@ names. `version` is an integer major version (default 1); `priority` is numeric 
 platform handlers winning exact ties. Multiple trusted boards may declare the same id and compete
 by priority; losing registrations remain visible through discovery. `accepts` is an optional MIME
 filter, `payloadSchema` is descriptive (the handler validates its own payload), and `title` is
-display metadata. A capability is resolved in the caller's window: an already-open winning
-handler page is reused, otherwise Persephone opens that board there.
+display metadata. `headless` is preserved for discovery, but a winning headless declaration is
+outside the page-backed intent channel and settles as `no-handler`. A capability is resolved in
+the caller's window: an already-open winning handler page is reused, otherwise Persephone opens
+that board there.
 
 ### In-memory intents: `persephone.intent.*`
 
@@ -123,8 +126,9 @@ if (initial) handleRequest(initial); // page opened for this request
 `persephone.intent.get()` returns the current request, if this page was opened or reused for one;
 `persephone.intent.onRequest(callback)` registers a callback and returns an unsubscribe function;
 `persephone.intent.resolve(value)` settles the current request successfully; and
-`persephone.intent.reject(reason)` settles it with the `rejected` failure code. A handler **must**
-call `resolve` or `reject` for every request. A handler that never
+`persephone.intent.reject(reason)` settles it with the `rejected` failure code. Prefer the
+request-bound `request.resolve` and `request.reject` methods in callbacks. A handler **must**
+settle every request. A handler that never
 settles hangs its caller until the deadline; Persephone then sends a best-effort cancel, but cannot
 stop work already running in the board.
 
@@ -161,7 +165,7 @@ handlers that resolve without opening a page. The ten typed rejection codes are:
 | `cycle` | Resolution would re-enter a handler already in the request chain or exceed the depth limit. |
 | `payload-too-large` | A board-bound structured payload exceeds the inline 8 MiB cap. |
 | `busy` | The selected handler has reached its outstanding-request limit. |
-| `rejected` | The handler rejected the request or the payload/transport failed without another typed code. |
+| `rejected` | The handler rejected the request, the payload could not be structured-cloned, or the transport failed without another typed code. |
 
 Handle these errors rather than assuming an invocation succeeded:
 

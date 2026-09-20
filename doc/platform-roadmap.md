@@ -607,28 +607,91 @@ confirms no cache file was written.
 
 ### Phase D — Capability bus and the in-memory data channel
 
+> **Shipped 2026-09-20 as [EPIC-108](epics/EPIC-108.md), as a slice.** **This closes the
+> infrastructure half of the roadmap**: phases A–D are all in, and both remaining phases are
+> proofs that consume them rather than build new platform. Five decisions bind E and F.
+>
+> **The capability index is derived, not authoritative, so it stays renderer-local and main owns
+> nothing** (D1) — it is a pure function of the built-in `EditorRow` table and the trusted boards'
+> manifests, and every renderer already re-reads both on every trust change, so two windows compute
+> the same index with no broadcast. This **reverses §3.6 for capabilities** and means
+> `registryChanged(kind)` is still entirely unbuilt. What it gives up is stated so it can be
+> reclaimed: **there is no cross-window routing.** A request resolves in the *caller's* window (D3,
+> resolving a conflict inside §3.1 — a UI intent should open where the user is looking, and boards
+> already support multiple pages). If a later phase needs window 1's request served by a live
+> handler page in window 2, that is a main-side routing table keyed by `(boardRoot, windowIndex)`
+> plus a forwarding envelope; the registry itself needs no migration either way.
+>
+> **A link may not name a capability** (D2) — the question Phase A left open. `ILinkData.target`
+> stays the pipeline's seam. A link resolves to *content*; a capability is a *request* with a typed
+> payload, a result, a deadline, a cancellation path and a re-entrancy depth, and a link has nowhere
+> to put or receive any of those. Letting `target` carry a capability id would give one open two
+> resolution orders with no rule for which wins. The two compose instead: a handler that wants to
+> open content calls the pipeline, and the pipeline that wants a result calls a capability.
+>
+> **The `DataHandle` store is deferred to Phase F with a measured trigger** (D7) — this epic's
+> pre-committed abort boundary, argued before any code was written. §3.1a's *inline* half ships and
+> is better than described: because the bus is renderer-local, a board-to-board payload is one
+> structured clone each way **inside a single renderer** and never enters main. The large-payload
+> half — `persephone.data.{read,stream,forward}`, reference-counted forwarding, credit-based
+> chunking, per-request/per-board/global caps — is unbuilt and had no consumer here. Instead of a
+> silent gap the inline path is **capped and typed**: `MAX_INTENT_PAYLOAD_BYTES` (8 MiB) with a
+> `payload-too-large` rejection, so a future store *raises a documented ceiling* rather than fixing
+> a silent truncation. **The cap applies to board-bound invocations only** — a `platform` handler is
+> an in-process call with no clone boundary, and capping it would break Monaco opening a large file
+> or a full-size `image.edit` data URL. **Phase F is the trigger**: Excalidraw's `image.edit` carries
+> a canvas-sized data URL, so if a single payload exceeds the cap in ordinary use, or a clone costs
+> more than ~50 ms at p95, the handle store becomes a task in that epic.
+>
+> **`capabilities` is disclosed in `permissions` but the functional trigger is the manifest array**
+> (D8) — holding EPIC-107 D3's line exactly. This is the **third** epic to route around EPIC-106's
+> still-unreviewed D1 reversal rather than compound it, and each has left the change at one
+> conditional. See *Needs user verification* item 8: the infrastructure is now complete with this
+> question open, and Phase F is the first phase whose board ships inside the installer, so it meets
+> the bundled-board trust decision of §6.
+>
+> **Phase E inherits a working `media.play` path but no built-in registration.** No
+> `media.play → video-view` row was added: the audio-player board declares the id itself through
+> this epic's manifest axis, and a built-in registration would have guessed at a payload contract
+> with no caller. Phase E's steps 4–5 still need nothing from the bus, exactly as §3.8 says.
+>
+> **Three defects were found by live testing that typecheck, lint and `build-prod` all passed**, two
+> of which made the feature useless in ordinary use: an intent dispatched to an **already-open**
+> handler page was never delivered (so the bus worked exactly once per board page, then hung every
+> later call to its deadline), and **every** board-originated `capabilities.invoke` failed as a
+> malformed reply (so board-to-board calls, the point of the bus, did not work at all). Both were
+> the same shape — a message contract split across two parallel tasks where one side posts and the
+> other never receives, with neither side wrong in isolation and the happy path working because a
+> board's *first* request arrives by an entirely different route. **Invoking any such feature twice
+> is what finds it.** That is four consecutive epics in which a green build proved nothing about
+> behaviour.
+
 The editor side of the platform, needed by Excalidraw and by any board that wants to ask another
-board for work rather than hand it a link.
+board for work rather than hand it a link, is now a renderer-local bus. Its shipped slice includes
+the open manifest axis, derived index, priority/version resolution, discovery without activation,
+request ids and deadlines, typed settlement, page-scoped cycle checks, at-most-once delivery,
+caller-window routing, and board-to-board intent delivery.
 
-1. Manifest axis `capabilities` (any id, `version`, optional `payloadSchema`); registration
-   rules and request lifecycle from 3.1: request ids, deadlines with cancel delivered, typed
-   rejections, depth-limited re-entrancy, at-most-once, discovery without activation, routing by
-   main across windows.
-2. `intent` on `BoardPortInitMsg`; `persephone.intent.{get, onRequest, resolve, reject}` and
-   `persephone.capabilities.{list, invoke}` in the shim.
-3. In-memory payloads: structured clone inline, `DataHandle` store in main with caps,
-   reference-counted forwarding, credit-based `stream()` (3.1a).
-4. `boards.openBoard(root, { intent })`; capabilities in Board Info, the trust dialog and the
-   catalog index; the "+" install entry for a missing handler.
-5. Two shipped fixture boards (`demo.greet` caller and handler) for the QA surface set.
+The inline payload path uses structured clone with an 8 MiB cap for board-bound requests. The
+`DataHandle` store, reference-counted forwarding, credit-based streaming, main-owned routing,
+cross-window forwarding, capability catalog, headless service handlers, and catalog install entry
+remain future work. Phase F is the measured trigger for the data store: if ordinary Excalidraw
+`image.edit` payloads exceed the cap or clone cost exceeds roughly 50 ms at p95, add that protocol
+there rather than silently widening the inline path.
 
-Exit is **the smallest slice that proves the bus**: board X in window 1 declares a brand-new
-`demo.greet`; board Y in window 2 discovers it without X being open, invokes it with a
-structured payload, X is activated and returns a result; the `userData` watcher is clean. Then
-each failure case with an observable outcome: timeout with cancel delivered to X, Y cancelling,
-X's page closed mid-request, X untrusted mid-request, X → Y → X hitting the depth limit.
-Afterwards: a demo board registering `image.edit` is chosen by the image viewer's *Edit* when its
-priority beats the built-in.
+The board surface is `intent` on `BoardPortInitMsg`, the reused-page host-frame intent channel,
+`persephone.intent.{get, onRequest, resolve, reject}`, and
+`persephone.capabilities.{list, invoke}`. The shipped Demo board declares `demo.greet`; live
+verification scaffolds a disposable second board when a board-to-board caller is needed. Board
+Info registration diagnostics and trust disclosure are present, while catalog indexing and the
+missing-handler install affordance remain deferred.
+
+Exit is the smallest slice that proves the bus: a trusted board declares a new id, discovery works
+without a page open, the first request opens the handler in the caller's window, later requests
+reuse that page, a second board can invoke it, and the payload remains in memory. Live checks also
+cover typed no-handler/timeout/rejected/cycle outcomes, priority and loser discovery, repeated
+message delivery, and untrust settlement. The remaining unverified lifecycle cases are tracked in
+the epic record and do not change the Phase E/F dependency boundary.
 
 ### Phase E — Torrent board and audio player (proof 1)
 
@@ -651,7 +714,8 @@ UI is plain HTML with `webtorrent` vendored under its own `node_modules` for the
 Exit: every row of the 3.8 table observed on a real magnet link, including the failure rows,
 with the `userData` watcher clean. This is the first time a module outside the core contributes
 below the UI, and it is what the roadmap is for. Because Phase D is already in place, the audio
-player's `media.play` registration is honored here too.
+player's `media.play` registration is honored here too. The board handler remains page-backed in
+the caller's window; a headless service-backed capability is not implied by this phase.
 
 ### Phase F — Excalidraw extraction (proof 2)
 
@@ -670,6 +734,9 @@ appear here and are part of the epic, not assumed:
    `DrawEditorFacade` method; toolbar export and the screen-snip integration become
    `image.edit` intents into the board; fonts ship inside the board instead of `app-asset://`.
    Undo stays inside Excalidraw.
+   The board uses the Phase D inline intent path first; measure structured-clone size and p95
+   clone cost during this proof. Crossing the documented threshold is the trigger to add the
+   deferred data-handle protocol here.
 4. **Removal** — delete `editors/draw`, its facade, matcher row, `EditorType` member and the
    `app-asset://excalidraw` serving; `react`, `react-dom` and `@excalidraw/*` leave
    `package.json`; the De-React programme's last exception closes.

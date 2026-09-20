@@ -170,7 +170,9 @@
             <p class="muted">
                 Intent payloads are delivered once in memory. A handler must settle every request
                 with <code>resolve</code> or <code>reject</code>; a timeout sends a best-effort
-                cancel but cannot stop work already running in the board.
+                cancel but cannot stop work already running in the board. Click the button again
+                to exercise delivery to the already-open page; the reply keeps <code>pageId</code>
+                beside its structured <code>result</code>.
             </p>
 
             <h2><code>persephone.execute()</code> — run scripts &amp; tools</h2>

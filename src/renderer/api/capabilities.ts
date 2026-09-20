@@ -181,6 +181,7 @@ function registrationFromDeclaration(
                 ? { payloadSchema: declaration.payloadSchema }
                 : {}),
             ...(declaration.title !== undefined ? { title: declaration.title } : {}),
+            ...(declaration.headless === true ? { headless: true } : {}),
             handlerKey: options.handlerKey,
             origin: options.origin,
             ...(options.boardRoot !== undefined ? { boardRoot: options.boardRoot } : {}),
@@ -223,6 +224,7 @@ function copyInfo(candidate: IndexedCapability): CapabilityInfo {
             ? { payloadSchema: registration.payloadSchema }
             : {}),
         ...(registration.title !== undefined ? { title: registration.title } : {}),
+        ...(registration.headless === true ? { headless: true } : {}),
     };
 }
 

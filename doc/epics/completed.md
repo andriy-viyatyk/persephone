@@ -1,3 +1,27 @@
+## EPIC-108 — The capability bus and the in-memory intent channel
+
+Completed 2026-09-20. Platform roadmap **Phase D**, taken as a slice — **this closes the
+infrastructure half of the roadmap**. [Epic document](EPIC-108.md).
+
+- [x] US-1479: `capabilities` manifest axis, the widened registry, board-origin registration, and the `capabilities` AiVision namespace
+- [x] US-1480: Request lifecycle — ids, deadlines, typed rejections, cycle detection, revocation settling
+- [x] US-1481: Bridge — `intent` on `BoardPortInitMsg`, `persephone.intent.*` and `persephone.capabilities.*`
+- [x] US-1482: Demo-board fixture, authoring guide and architecture documentation
+
+Deferred by decision D7, the epic's pre-committed abort boundary: the `DataHandle` store,
+`persephone.data.{read,stream,forward}`, reference-counted forwarding and credit-based `stream()`
+go to **Phase F** on a stated measurement trigger. The inline structured-clone payload path ships
+capped and typed (`MAX_INTENT_PAYLOAD_BYTES`, `payload-too-large`) so the gap is a documented
+ceiling rather than a silent truncation. Also deferred: cross-window routing by main (D1 — the
+index is derived, so both windows already agree) and the catalog capability index.
+
+Seven defects were found that `typecheck`, `lint` and `build-prod` all passed — three in live
+testing before review, four by `/review`. Two of the live three made the feature useless in
+ordinary use: an intent dispatched to an **already-open** handler page was never delivered, so the
+bus worked exactly once per board page; and **every** board-originated `capabilities.invoke` failed
+as a malformed reply, so board-to-board calls did not work at all. Both were one shape — a message
+contract split across parallel tasks where one side posts and the other never receives.
+
 ## EPIC-107 — Open providers, ranged streaming and the stream-host
 
 Completed 2026-09-20. Platform roadmap **Phase C**. [Epic document](EPIC-107.md).

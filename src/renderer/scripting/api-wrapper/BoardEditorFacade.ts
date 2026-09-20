@@ -586,6 +586,7 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
                     ? { payloadSchema: capability.payloadSchema }
                     : {}),
                 ...(capability.title !== undefined ? { title: capability.title } : {}),
+                ...(capability.headless !== undefined ? { headless: capability.headless } : {}),
             }));
     }
     if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);

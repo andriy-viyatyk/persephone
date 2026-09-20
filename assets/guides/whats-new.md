@@ -40,6 +40,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
   scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
   unregistered non-web schemes remain blocked.
+- **Boards can provide named capability handlers:** declare a capability in a trusted board's
+  manifest, receive structured requests through `persephone.intent`, and let scripts or other
+  boards discover and invoke it without knowing which board owns the implementation. The same
+  registry also provides built-in handoffs for opening and editing content. See [Boards — capability
+  handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
+  [`app.capabilities` API](./scripting/api/app.md#capabilities).
 
 ### Improvements
 

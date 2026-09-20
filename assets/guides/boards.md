@@ -190,7 +190,7 @@ permission values, this is lifecycle disclosure, not a security grant.
 ```
 
 Declarations support `id`, integer major `version` (default `1`), numeric `priority` (default
-`50`), optional MIME `accepts`, descriptive `payloadSchema`, and display `title`. IDs cannot contain
+`50`), optional MIME `accepts`, descriptive `payloadSchema`, display `title`, and `headless`. IDs cannot contain
 whitespace or `@`; vendor prefixes are recommended. Multiple boards may declare the same id. The
 highest priority wins, platform handlers win exact ties, and trusted-board registration order
 breaks board-to-board ties. A caller may pin a major version with `invoke("demo.greet@1", payload)`.
@@ -216,7 +216,8 @@ if (initial) handleGreeting(initial); // the page was opened for this request
 `persephone.intent.get()` returns the current request, if one is active.
 `persephone.intent.onRequest(callback)` returns an unsubscribe function and also delivers an
 already-active request. `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)`
-settle the current request. **Settlement is mandatory:** a handler that never
+settle the current request. Prefer the request-bound `request.resolve` and `request.reject`
+methods in callbacks. **Settlement is mandatory:** a handler that never
 calls either method leaves its caller waiting until the deadline. The platform then sends a
 best-effort cancel, but cannot stop the handler's work.
 
@@ -244,13 +245,17 @@ that resolve without a page). Handle the ten typed rejection codes as follows:
 | `cycle` | The winning handler is already in the request chain or the depth limit was exceeded. |
 | `payload-too-large` | A board-bound inline payload exceeds 8 MiB. |
 | `busy` | The selected handler has reached its outstanding-request limit. |
-| `rejected` | The handler called `reject()` or the payload/transport failed without another code. |
+| `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or the transport failed without another code. |
 
 Timeout does not stop handler execution. An agent may retry, so a handler that needs idempotency
 must key its work on `requestId`. Intents are at-most-once: Persephone never re-delivers the same
 request. Payloads are structured-cloned, kept in broker memory, and delivered once; they never
 enter page state or disk, and a restored page does not receive them again. This is a broker policy,
 not an OS guarantee — memory can be paged and Chromium may retain its own caches.
+
+Scripts running in Persephone can discover or invoke the same indexed handlers through
+[`app.capabilities`](./scripting/api/app.md#capabilities). Board pages use the asynchronous
+`persephone.capabilities` bridge documented above.
 
 ---
 

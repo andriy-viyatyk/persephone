@@ -32,6 +32,7 @@ app.pages.activePage.content;
 | [downloads](./downloads.md) | `IDownloads` | Global download tracking. |
 | [proc](#proc) | `IProc` | Spawn external programs and stream their output. |
 | [boards](#boards) | `IBoards` | Create and open [Boards](../../boards.md) from scripts or agents. |
+| [capabilities](#capabilities) | `ICapabilities` | Discover and invoke built-in and trusted-board capability handlers. |
 | [boardVars](#boardvars) | `IBoardVars` | Admin access to the [board environment-variables store](../../boards.md#environment-variables--secrets-outside-the-board-folder) — any namespace, not just the calling board's own. |
 | `menuFolders` | `IMenuFolders` | User-configured sidebar folders. |
 
@@ -336,6 +337,47 @@ optional `service` object with `state` (`stopped`, `starting`, `running`, `stopp
 `failed`), an optional `reason`, `restartCount`, and optional process fields `pid` and
 `startedAt` (epoch milliseconds). Boards without a registered service status omit the key. It does
 not discover boards from the remote catalog.
+
+---
+
+## capabilities
+
+Discover and invoke named handlers supplied by Persephone or trusted Boards. Discovery is
+read-only and does not open a handler page. The same handler-selection rules used by Board pages
+apply to script calls; see [Boards — capability handlers and in-memory intents](../../boards.md#capability-handlers-and-in-memory-intents)
+for the manifest and handler-side contract.
+
+```javascript
+const handlers = app.capabilities.handlers("content.view", { mime: "text/markdown" });
+const available = app.capabilities.list();
+
+const opened = await app.capabilities.invoke("text.open", {
+    content: "# Report",
+    language: "markdown",
+    title: "Report",
+});
+console.log(opened.pageId);
+```
+
+### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `list()` | `readonly CapabilityInfo[]` | List all indexed platform and trusted-Board capability candidates. |
+| `handlers(id, filter?)` | `readonly CapabilityInfo[]` | List candidates for one id; `filter` may specify a MIME type with `{ mime }`. |
+| `invoke(id, payload, options?)` | `Promise<unknown>` | Select and invoke a handler. Use `id@major` or `options.version` to pin a major version. |
+
+`invoke()` options are `version`, `filter: { mime }`, `pageId`, `signal`, and `deadlineMs`.
+`pageId` preserves the originating page when an invocation is part of a page workflow;
+`signal` cancels it and `deadlineMs` bounds how long the caller waits. Built-in open/edit
+capabilities normally return a page result; `diagram.edit` can instead return
+`{ status: "conversion-failed", message }`. Board handlers commonly return
+`{ pageId?, result? }`.
+
+Failures reject with a typed capability error. Its `code` is one of `no-handler`, `untrusted`,
+`handler-closed`, `crashed`, `cancelled`, `timeout`, `cycle`, `payload-too-large`, `busy`, or
+`rejected`. A timeout or cancellation stops waiting and sends a best-effort cancellation to the
+handler; it cannot stop work that the handler has already started.
 
 ---
 

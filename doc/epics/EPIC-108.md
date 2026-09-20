@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-20
+**Completed:** 2026-09-20
 **Roadmap phase:** [Platform roadmap](../platform-roadmap.md) — **Phase D, Capability bus and the
 in-memory data channel**
 
@@ -396,10 +397,10 @@ proves nothing an agent can observe.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1479 | `capabilities` manifest axis, the widened registry, board-origin registration, and the `capabilities` AiVision namespace | Planned |
-| US-1480 | Request lifecycle: ids, deadlines, typed rejections, cycle detection, revocation settling | Planned |
-| US-1481 | Bridge: `intent` on `BoardPortInitMsg`, `persephone.intent.*` and `persephone.capabilities.*` | Planned |
-| US-1482 | Demo-board fixture, authoring guide and architecture documentation | Planned |
+| US-1479 | `capabilities` manifest axis, the widened registry, board-origin registration, and the `capabilities` AiVision namespace | Done |
+| US-1480 | Request lifecycle: ids, deadlines, typed rejections, cycle detection, revocation settling | Done |
+| US-1481 | Bridge: `intent` on `BoardPortInitMsg`, `persephone.intent.*` and `persephone.capabilities.*` | Done |
+| US-1482 | Demo-board fixture, authoring guide and architecture documentation | Done |
 
 Order, chosen so parallel sessions never touch one file:
 
@@ -610,3 +611,31 @@ Board Info capability rows could not be reached, because switching a board page 
 lands in install mode with no properties — the same limitation EPIC-107 recorded as its *Needs user
 verification* item 6; and the trust dialog's capability rows need **Trust Board** clicked, which is
 the user's decision and not an agent's.
+
+### 2026-09-20 — close-out
+
+All four tasks implemented, reviewed and landed in `80355cdc`, `e48d1236`, `c25990b7` and
+`6824a4f7`. D7's deferral was taken as written rather than discovered at dawn.
+
+`/review` found **four further defects**, all fixed, and the most interesting confirms that the
+epic's own concern about D6 was pointed at the right joint. The page-scoped chain was keyed by
+`pageId` **alone**, so two concurrent requests to one handler page overwrote each other's chain
+entry and the first to settle deleted the map row the second was still using — the chain is now a
+per-page map keyed by request id. Also fixed: `attachPage` could act on an already-settled request,
+a `headless` declaration's handling, and an unguarded structured-clone failure. One finding was
+recorded and not acted on: a late `intent.resolve`/`reject` arriving after settlement is ignored
+rather than reported, which is correct behaviour but silent, and is left as a follow-up.
+
+**Re-verified live after those changes rather than trusting the green build** — including the two
+cases that were broken earlier: two sequential invokes to the same reused page both resolve
+(`samePage: true`), and three *concurrent* invokes to one page all resolve, which is the race
+`/review` had just fixed.
+
+The user's installed demo board at `.persephone/boards/Demo` was never modified and matches its
+recorded checksums exactly. Every board used in verification was scaffolded, used, untrusted and
+deleted; all test pages and the second window are closed; the three pinned pages are untouched;
+`app.ui.alerts.list()` is empty. Task folders kept, per the standing preference.
+
+**Seven defects across this epic passed `typecheck`, `lint` and `build-prod`.** That is the fourth
+consecutive epic for which a green build proved nothing about behaviour, and the count is now
+roughly twenty-six across A–D.

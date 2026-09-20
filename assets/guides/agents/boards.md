@@ -320,7 +320,7 @@ not a security boundary.
 ```
 
 Each declaration may provide `id`, integer major `version` (default `1`), `priority` (default
-`50`), `accepts`, `payloadSchema`, and `title`. IDs cannot contain whitespace or `@`; use a vendor
+`50`), `accepts`, `payloadSchema`, `title`, and `headless`. IDs cannot contain whitespace or `@`; use a vendor
 prefix for board-owned ids. Multiple boards can compete for one id: strict priority wins, platform
 handlers win ties, and trusted-board registration order breaks board ties. Discovery never opens a
 handler page.
@@ -346,7 +346,8 @@ if (initial) handleRequest(initial); // consume a page-open initial request
 `persephone.intent.get()` reads the active request;
 `persephone.intent.onRequest(callback)` returns an unsubscribe and also delivers an already-active
 request; `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)` settle the
-current request. **`resolve`/`reject` is mandatory.** If a handler never settles, its caller
+current request. Prefer the request-bound `request.resolve` and `request.reject` methods in
+callbacks. **`resolve`/`reject` is mandatory.** If a handler never settles, its caller
 waits until the deadline. The platform sends cancel after that deadline, but cannot stop the
 handler's work.
 
@@ -375,7 +376,7 @@ caller can receive these ten typed rejection codes:
 | `cycle` | The request would re-enter a handler in its chain or exceed the depth limit. |
 | `payload-too-large` | The board-bound inline payload is over 8 MiB. |
 | `busy` | The selected handler reached its outstanding-request limit. |
-| `rejected` | The handler called `reject()` or another unclassified payload/transport failure occurred. |
+| `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or another unclassified transport failure occurred. |
 
 Timeout does not stop the handler. An agent can retry, so idempotent work must key on
 `requestId`. Intents are at-most-once: Persephone never re-delivers a request. Payloads are

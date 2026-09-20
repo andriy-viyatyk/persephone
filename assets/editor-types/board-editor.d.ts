@@ -25,6 +25,7 @@ export interface IBoardCapabilityDeclaration {
     readonly accepts?: readonly string[];
     readonly payloadSchema?: unknown;
     readonly title?: string;
+    readonly headless?: boolean;
 }
 
 export interface IBoardManifest {

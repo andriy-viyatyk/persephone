@@ -194,6 +194,12 @@ that set during page teardown; the dispatch boundary provides ordering, not comp
 cleanup. On a close path, the empty-page replacement check likewise runs from the caller after
 page disposal has settled.
 
+`PageModel.disposed` is a one-shot subscription that fires at the start of true page disposal,
+before editors and secondary views are torn down. Subscribers use it to release page-scoped
+requests and other transient ownership; every subscriber must retain and invoke its unsubscribe
+function when the request settles. It is distinct from the close event, which can precede a page
+that survives navigation.
+
 ---
 
 ## 3. Page Actions Taxonomy

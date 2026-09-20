@@ -261,12 +261,19 @@ explicit because it removes a notification the user may not have read. The imple
 
 ### `app.capabilities` — Built-in content handoffs
 
-`app.capabilities` is the stable script-facing handoff surface for opening content in a built-in
-editor. It is populated from capability declarations on the editor registry rather than from
-editor-specific imports. `text.open` opens a text editor; `content.view` selects a built-in
-representation (`svg`, `html`, `markdown`, `mermaid`, `grid`, or `log`); `image.edit` opens the
-Drawing editor for an image payload; and `diagram.edit` converts diagram source for the Drawing
-editor. Page-producing calls return a `pageId`; diagram conversion can return a failure result.
+`app.capabilities` is the script-facing capability registry and request surface. Its built-in
+handlers are seeded from editor declarations rather than editor-specific imports: `text.open`
+opens a text editor; `content.view` selects a built-in representation (`svg`, `html`, `markdown`,
+`mermaid`, `grid`, or `log`); `image.edit` opens the Drawing editor for an image payload; and
+`diagram.edit` converts diagram source for the Drawing editor. Trusted board declarations are
+indexed beside those platform handlers, so `list()` and `handlers(id)` discover both origins
+without activation and `invoke(id, payload, options?)` can resolve a board handler by id.
+
+Platform handlers remain direct in-process calls. Board requests use the renderer-local capability
+bus, caller-window page routing, transient structured-clone intents, deadlines, typed failures,
+cycle checks, and teardown settlement. See [Capability Bus](./capability-bus.md) for the wire and
+lifecycle contract. Page-producing calls return a `pageId`; diagram conversion and board handlers
+may return a result without one.
 
 The service is loaded through the same app-service descriptor table as the other `app.*` members.
 Its type contract is [`api/types/capabilities.d.ts`](../../src/renderer/api/types/capabilities.d.ts),

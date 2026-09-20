@@ -171,6 +171,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
                             ? { payloadSchema: capability.payloadSchema }
                             : {}),
                         ...(capability.title !== undefined ? { title: capability.title } : {}),
+                        ...(capability.headless !== undefined ? { headless: capability.headless } : {}),
                     })),
                 }
                 : {}),

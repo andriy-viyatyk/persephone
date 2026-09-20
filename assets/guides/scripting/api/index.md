@@ -177,6 +177,9 @@ ui.log("Hello");
     - `.list()` — Local trusted, installed, and open board inventory
     - `.requestService(boardRoot, message)` — Request a declared service, starting it lazily → `Promise<unknown>`
     - `.startService(boardRoot)` / `.stopService(boardRoot)` — Explicit service lifecycle control
+  - **[.capabilities](./app.md#capabilities)** — Discover and invoke capability handlers
+    - `.list()` / `.handlers(id, filter?)` — Read-only candidate discovery
+    - `.invoke(id, payload, options?)` — Invoke a built-in or trusted-Board handler
   - **[.boardVars](./app.md#boardvars)** — Admin access to the [board environment-variables store](../../boards.md#environment-variables--secrets-outside-the-board-folder) (any namespace)
     - `.namespaceFor(boardRoot)` — Resolve a board's vars namespace → `Promise<string>`
     - `.get(namespace, name, env?)` / `.set(namespace, name, value, env?)` / `.list(namespace, env?)`

@@ -1,144 +1,199 @@
-# Capability Bus
+# Capability bus
 
 The capability bus is Persephone's renderer-local request surface for asking another module to do
-work by id. It is distinct from the content pipeline: links resolve to content and an editor,
-while capabilities resolve a handler, carry a structured payload, await a result, and report a
-typed failure. A capability handler may use the content pipeline, but `ILinkData.target` never
-names a capability.
+work by id. It is distinct from the content pipeline: a link resolves to content and an editor,
+while a capability resolves a handler, carries a structured payload, awaits a result, and reports a
+typed failure. A handler may use the content pipeline, but `ILinkData.target` never names a
+capability.
 
-## Ownership and inputs
+## Ownership and public surface
 
-The index is derived from two renderer-local inputs:
+The index is a derived view of two inputs in each renderer:
 
 - platform registrations seeded from the `capabilities` declarations on the built-in editor table;
-- declarations in the `capabilities` array of every trusted board manifest, registered during the
-  generation-guarded `customEditorRegistry.refresh()` rebuild.
+- declarations in the `capabilities` array of every trusted board manifest, installed during the
+  generation-guarded custom-editor-registry rebuild.
 
-`permissions: ["capabilities"]` is disclosure and lifecycle hygiene. The manifest's
-`capabilities` array is the functional trigger, matching the EPIC-108 D8 rule for the other board
-axes. Board declarations carry `id`, optional major `version`, `priority`, `accepts`,
-`payloadSchema`, and `title`; the registry preserves declaration-level refusal diagnostics.
+The built-in direct-call handlers remain in `src/renderer/api/capabilities.ts`. The request
+lifecycle is in `src/renderer/api/capability-bus.ts`; board dispatch is in
+`src/renderer/api/board-capability-transport.ts`. The wire-only types and limits are in
+`src/ipc/capability-bus-channels.ts`. That module has no renderer or main imports because the
+board shim consumes the shared shapes.
 
-The wire-only types and limits live in
-[`src/ipc/capability-bus-channels.ts`](../../src/ipc/capability-bus-channels.ts). The module has
-no renderer or main imports because the board shim consumes the shared shapes. The public index and
-built-in direct-call handlers live in
-[`src/renderer/api/capabilities.ts`](../../src/renderer/api/capabilities.ts). Lifecycle state is
-owned by [`src/renderer/api/capability-bus.ts`](../../src/renderer/api/capability-bus.ts), and
-board dispatch is supplied by
-[`src/renderer/api/board-capability-transport.ts`](../../src/renderer/api/board-capability-transport.ts).
+`app.capabilities` and the board `persephone.capabilities` surface provide:
+
+- `list()` — discover all registrations in the current renderer without opening a handler;
+- `handlers(id)` — inspect the candidates for one id, including losing candidates;
+- `invoke(id, payload, options?)` — resolve by id, optionally pin a major version, and await the
+  result. Board calls may return `{ pageId, result }`; `pageId` is absent when a handler returns a
+  value without opening a page.
+
+`handlerKey` is part of discovery because several registrations can share an id. The public index
+also preserves `version`, `priority`, `origin`, `accepts`, `payloadSchema`, `title`, and
+`headless` where present.
 
 ## Registration and resolution
 
-Registration is a full rebuild, not a second mutable trust registry. Before each trusted-board
-rebuild, every board-origin candidate is removed over the board-origin set; platform candidates are
-seeded independently and cannot be removed by a board. A malformed declaration is refused without
-discarding the board's other declarations, and the refusal is exposed as a capability registration
-issue in Board Info.
+The board manifest's `capabilities` array is the functional registration axis. The matching
+`"capabilities"` value in `permissions` discloses the surface in trust and Board Info; it is not a
+second gate or a security boundary. A malformed declaration is refused independently and reported
+as a capability registration issue, without discarding the board's valid declarations.
 
-Resolution follows EPIC-108 D4:
+Declarations have a non-empty id with no whitespace or `@`, an integer major `version` (default
+1), numeric `priority` (default 50), and optional `accepts`, `payloadSchema`, `title`, and
+`headless`. Vendor prefixes are recommended for board-owned ids. `payloadSchema` is descriptive;
+the handler validates its own payload. A headless declaration is preserved in the index, but a
+winning headless handler is outside this channel and settles as `no-handler`.
 
-1. Parse an optional `@<major>` suffix at the bus boundary. The suffix is not part of the stored
-   id; `list()` exposes separate `id` and `version` fields.
-2. Filter by the requested version and optional `accepts` MIME filter.
-3. Sort by descending numeric priority. A board declaration defaults to priority 50.
-4. On an exact priority tie, a `platform` origin wins over a board origin. Board ties retain
-   trusted-list/registration order. All candidates remain discoverable through `list()` and
-   `handlers(id)`.
-5. A headless winner is out of scope for this bus and settles as `no-handler`.
+Resolution is deterministic:
 
-Discovery is inert: `list()` and `handlers()` read the derived index and never open a handler page.
-`CapabilityInfo.handlerKey` is part of the public result because one id can have several handlers;
-for example, the built-in `content.view` registrations differ by handler key even when their id is
-the same.
+1. Parse an optional `@<major>` suffix at the bus boundary. The suffix is not stored in the id.
+2. Filter by requested version and optional `accepts` MIME filter.
+3. Sort by descending numeric priority.
+4. On an exact priority tie, a platform registration wins. Trusted-board registration order breaks
+   board-to-board ties.
 
-## Request lifecycle
+Built-in registrations cannot be removed by a board; a board can only outrank one. Multiple boards
+may declare the same id and all candidates remain discoverable. A refresh removes board-origin
+entries over the complete board-origin set before rebuilding from the current trusted manifests,
+so untrust cannot leave a stale registration behind.
 
-The public `invoke()` overloads preserve the typed built-in calls and add a general string-id path.
-Built-in `platform` handlers remain direct in-process calls. Board-origin calls enter the lifecycle
-bus, which creates a request id, records the caller page (when supplied), inherits its page-scoped
-chain/depth, estimates the structured-clone payload, applies the outstanding-request limit, and
-sets a deadline.
+## Request routing
 
-The board transport resolves the winning declaration in the caller's renderer window. It first
-reuses an open handler page for that board in that window; otherwise it opens the board there with
-the request as transient `BoardPortInitMsg.intent`. The initial handshake carries
-`{ id, version?, requestId, payload }`. Once a page is already open, the renderer sends the same
-request shape as a `capabilities:intent` host-frame message. In both cases the board settles with
-`capabilities:intent:result`, and a board-originated result is normalized to `{ pageId, result }`.
+Resolution and service happen in the caller's renderer window. For a board handler, the transport
+first reuses an open page for that board in that window and activates it. If none exists, it opens
+the board there and carries the first request as transient `BoardPortInitMsg.intent`. A request is
+never routed to a live handler page in another window.
+
+The page-open and reused-page paths converge on the same intent request:
 
 ```text
 caller page
     │ app.capabilities.invoke(id, payload)
     ▼
-capability index → winner/filters/version/priority → capability bus state
-    │                                                   │ deadline/cancel/teardown
-    ▼                                                   ▼
-board transport → existing frame or open board → intent handler
+derived index → winner/version/filter/priority → capability bus state
+    │                                                │ deadline/cancel/teardown
+    ▼                                                ▼
+board transport → existing frame or opened board → intent handler
                                                    │ resolve(value) / reject(reason)
                                                    ▼
                                       { pageId, result } or typed error
 ```
 
-`CapabilityTransport` is deliberately narrow: `dispatch(registration, request)`, best-effort
-`cancel(registration, requestId)`, and `chainForPage(pageId)`. `BoardWebview` validates origin,
-source, iframe identity, and generation before accepting a settlement. Pending records are removed
-on every terminal path, and a second settlement is ignored.
+Platform handlers are direct in-process calls and do not cross the board transport. Their payloads
+are not subject to the board structured-clone ceiling. The bus does not implement headless,
+service-backed capability routing, cross-window forwarding, a capability catalog, or a large-data
+handle store.
 
-## Intent contract for board authors
+## Wire contracts
+
+There are two distinct board channels. The board-to-main `MessagePort` carries `BoardToMain` and
+`MainToBoard` RPC, runner, storage, service, theme, and AiVision traffic. Capability intent
+delivery is on the board-to-host-renderer `window.postMessage` channel, not on that port.
+
+`src/ipc/capability-bus-channels.ts` is the dependency-free lifecycle contract. It defines the
+ten error codes, declaration and registration records, `IntentRequest` (`requestId`, `id`, optional
+version, payload, chain, depth, and deadline), `IntentSettlement`, the four limits, and the narrow
+`CapabilityTransport` seam (`dispatch`, best-effort `cancel`, and `chainForPage`).
+
+`src/ipc/board-bridge-channels.ts` defines the host-frame messages. Every declared capability
+message has a sender and receiver with the same shape:
+
+| Direction | Message | Purpose |
+|---|---|---|
+| renderer → board | `capabilities:intent` | Deliver a request to an already-open handler frame. |
+| board → renderer | `capabilities:intent:result` | Settle that request with a result or typed error. |
+| renderer → board | `capabilities:intent:cancel` | Best-effort cancellation after caller cancel, timeout, or teardown. |
+| board → renderer | `board:capabilities:list` | Ask for registrations visible in this renderer. |
+| renderer → board | `capabilities:list:result` | Return the discovery result or an error. |
+| board → renderer | `board:capabilities:invoke` | Request an id, payload, optional version, and deadline. |
+| renderer → board | `capabilities:invoke:result` | Return top-level `pageId`/`result` or an error. |
+
+The initial request is instead the `intent` member of `BoardPortInitMsg`; it contains `id`,
+optional `version`, `requestId`, and `payload`. The renderer sends no initial host-frame intent
+for a page opened specifically for that request. The board shim accepts only messages from the
+host parent and the expected origin. `BoardWebview` checks the sender, origin, frame identity, and
+generation before accepting a result. A board-originated result keeps `pageId` at the top level of
+the invoke reply contract; it is not nested inside `result`.
 
 The shim exposes `persephone.intent.get()`, `onRequest(callback)`, `resolve(value)`, and
-`reject(reason)`. A handler must settle every delivered request. If it never calls `resolve()` or
-`reject()`, the caller waits until its deadline; the platform then sends a best-effort cancel, but
-cannot stop work already running in the board.
+`reject(reason)`. `onRequest` returns an unsubscribe and immediately delivers an already-active
+request. A handler should key idempotency on `requestId`, settle every request, and treat
+`resolve`/`reject` as referring to the currently active request. The shim tracks delivered request
+ids, so a reused page receives each request at most once. A late settlement is ignored once that
+request is cancelled or settled; it cannot settle a newer request.
 
-The initial request is transient handshake metadata, not page state. A reused handler page receives
-later requests over the host-frame channel. The board shim tracks request ids so an intent is
-delivered at most once, and the platform never re-delivers it. A handler that may be retried by an
-agent must use `requestId` as its idempotency key.
+## Lifecycle, revocation, and teardown
 
-Payloads use structured clone at board boundaries and are capped at
-`MAX_INTENT_PAYLOAD_BYTES` (8 MiB) for board-bound requests. The broker does not write the payload
-to page state, restore data, persisted link data, or disk, and a restored page does not receive it
-again. This is an in-memory broker policy, not an OS guarantee: memory can be paged and Chromium
-can keep its own caches.
+The bus creates a request id, records the caller page when supplied, inherits that page's chain and
+depth, estimates board-bound clone size, checks the per-handler outstanding limit, and starts a
+deadline timer. Each pending record owns its timer, abort listener, and optional
+`PageModel.disposed` subscription. All are released on every terminal path. The bus also releases
+the per-handler concurrency slot when it settles.
 
-## Failure taxonomy
+The board transport owns a separate pending map for dispatched requests. It subscribes to trust
+changes and frame registration, attaches a page-disposal subscriber only while the request is
+live, and removes it during settlement. Its page-scoped chain map is keyed by page id and then by
+request id, so concurrent requests cannot overwrite or delete one another's chain state. A chain
+entry is removed with its request; an empty page map is removed as well.
 
-`CapabilityError.code` is the closed ten-value contract exposed to script and board callers:
+`PageModel.disposed` fires exactly once at the start of true page disposal, before editor teardown.
+The bus and board transport unsubscribe there, while the transport also clears initial transient
+intent metadata. Trust revocation settles affected requests as `untrusted`, page/frame disposal
+settles handler requests as `handler-closed`, caller-page disposal settles them as `cancelled`,
+and renderer shutdown cancels remaining requests. Timeout and cancellation settle the caller first
+and send a best-effort cancel to the board. Every settlement path is idempotent; a late frame reply
+is ignored. The platform never re-delivers an intent.
+
+## Payload and failure contract
+
+Board-bound payloads use structured clone at the frame boundary and are capped at
+`MAX_INTENT_PAYLOAD_BYTES` (8 MiB). The bus estimates clone size before dispatch; an unsupported
+clone value or a `DataCloneError` is `rejected`, while a frame failure is `crashed`. Payloads are
+transient broker data: they are not page state, persisted link data, or an application-written
+file. This is a broker policy, not an operating-system guarantee about memory paging or browser
+caches.
+
+The closed `CapabilityErrorCode` contract is:
 
 | Code | Raised when |
 |---|---|
-| `no-handler` | No declaration matches the id, version, or filter; a headless winner is also out of scope. |
-| `untrusted` | The handler board is untrusted at resolution or becomes untrusted in flight. |
+| `no-handler` | No declaration matches the id, version, or filter; a winning headless declaration is out of scope. |
+| `untrusted` | The handler board is untrusted at resolution or in flight. |
 | `handler-closed` | The handler page or frame closes before settlement. |
 | `crashed` | The handler frame errors or reloads during the request. |
 | `cancelled` | The caller cancels, its page closes, or the renderer is closing. |
 | `timeout` | The deadline elapses; the platform stops waiting and sends best-effort cancel. |
-| `cycle` | The winning `handlerKey` is already in the inherited chain or maximum depth is exceeded. |
-| `payload-too-large` | The estimated board-bound structured payload exceeds 8 MiB. |
-| `busy` | The selected handler has `MAX_OUTSTANDING_INTENTS_PER_HANDLER` requests in flight. |
-| `rejected` | The handler calls `reject()` or an unclassified payload/transport failure occurs. |
+| `cycle` | The handler is already in the inherited chain or the depth limit is exceeded. |
+| `payload-too-large` | The board-bound estimate exceeds 8 MiB. |
+| `busy` | The selected handler reaches its outstanding-request limit, or a frame is already serving another request. |
+| `rejected` | The handler calls `reject`, the payload cannot be cloned, or no more specific transport error applies. |
 
-Timeout and cancellation are signals, not process termination. The platform never re-delivers a
-timed-out request, and a late handler settlement is ignored after the caller has been rejected.
-Untrust and page/frame teardown settle their own pending records and release page-chain and
-outstanding-handler state; they do not merely stop future dispatch.
+## Design consequences
 
-## D1: renderer-local by design
+These are the ten binding consequences of the current design, stated without tying the
+architecture to a task history:
 
-EPIC-108 D1 intentionally diverges from the roadmap's proposed main-owned capability registry. The
-index is a pure function of built-in editor bytes and trusted manifests. Every renderer already
-re-reads those manifests through `boardTrust.subscribePaths()` and rebuilds its board registrations,
-so separate renderer-local derived indexes agree without duplicating the 636-line renderer
-manifest normalizer in main or adding a registry broadcast protocol.
-
-The trade-off is explicit: there is no cross-window routing. A request is resolved and served in
-the caller's window, so a live handler page in another window is not a route target. A future phase
-that needs that behavior must add a main-side routing table keyed by `(boardRoot, windowIndex)` and
-a forwarding envelope; the derived index itself does not need to move. `registryChanged(kind)` is
-therefore not part of this subsystem.
-
-The bus also deliberately does not implement the deferred `DataHandle` store, headless
-service-backed handlers, or capability catalog installation. Those are later-phase consumers with
-their own protocol and measurement triggers.
+1. The capability index remains renderer-local and derived. Trust changes rebuild it in each
+   renderer; there is no main-owned registry or `registryChanged` broadcast.
+2. Links remain content-only. A capability request and a content link have different lifecycles and
+   result channels, so `ILinkData.target` does not carry capability ids.
+3. Caller-window routing is the rule. Reuse or open the winning handler page in the caller's
+   window; cross-window handler routing requires a future main-side forwarding protocol.
+4. Registrations coexist and resolve by priority, platform tie-break, and trusted-board order;
+   versions are major, pin-able, and separate from the stored id.
+5. The failure taxonomy is closed and each code has an observable trigger, including clone refusal
+   as `rejected` and headless dispatch as `no-handler`.
+6. Re-entrancy is bounded by a page-scoped handler chain plus `MAX_INTENT_DEPTH` (8), not by depth
+   alone. Concurrent live requests have independent chain entries.
+7. Inline structured clone is the deliberately bounded first data path. A future handle/stream
+   store is justified when the Excalidraw-sized `image.edit` payload exceeds 8 MiB in ordinary use
+   or clone cost exceeds roughly 50 ms at p95.
+8. The manifest array activates registration; `permissions` discloses the surface and supports
+   lifecycle presentation but is not a second functional or security gate.
+9. Revocation and teardown are first-class: pending records, timers, abort/page subscriptions,
+   handler slots, transient intent metadata, and page-chain entries cannot outlive their owner.
+10. Verification is live and non-destructive: discovery, repeated reused-page calls, board-to-board
+    calls, window routing, typed failures, and untrust settlement are observable through the
+    script/MCP surfaces; verification boards are disposable and need no trust mutation on an
+    existing user board.
