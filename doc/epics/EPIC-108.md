@@ -251,6 +251,7 @@ work at the earliest.
 | `timeout` | The deadline elapsed; a `cancel` is delivered to the handler regardless |
 | `cycle` | The resolved handler already appears in the request chain, or depth exceeded |
 | `payload-too-large` | The payload exceeds `MAX_INTENT_PAYLOAD_BYTES` (see D7) |
+| `busy` | The winning handler already has `MAX_OUTSTANDING_INTENTS_PER_HANDLER` requests outstanding |
 | `rejected` | The handler itself called `intent.reject(…)`; carries the handler's message |
 
 A code with no observable trigger is a code nobody can test, so each one is an exit criterion
