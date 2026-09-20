@@ -3,9 +3,16 @@
   "description": "Self-documenting demo board showcasing the persephone bridge, theming, and capabilities.",
   "author": "Persephone",
   "repository": "https://github.com/andriy-viyatyk/persephone",
-  "minBridgeVersion": "1.6.0",
-  "permissions": ["service"],
+  "minBridgeVersion": "1.7.0",
+  "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs",
+  "contentProviders": [
+    { "type": "demo/mem", "schemes": ["mem"] }
+  ],
+  "fileMasks": ["*.stream-demo"],
+  "editorName": "Demo Stream Host",
+  "editorKind": "stream-host",
+  "editorPriority": 300,
   "secondaryViews": [
     { "id": "shared-state", "title": "Shared State" },
     { "id": "detail", "html": "detail.html", "title": "Notes" }

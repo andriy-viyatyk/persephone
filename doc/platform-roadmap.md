@@ -418,6 +418,14 @@ was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 >    it. The refusal *reasons* were confirmed readable through the alerts surface
 >    (`Rejected scheme registration: "https". Scheme "https" is reserved for the platform.`); only
 >    their Board Info presentation is unconfirmed.
+> 7. **A page opened while a board provider's service was down does not recover when the service
+>    later starts.** Observed live: with the demo board's service in a terminal `failed` state, a
+>    `mem://` page opened blank; after `startService` brought the service up, a **newly** opened page
+>    got its content but the already-open page stayed blank. EPIC-107 criterion 4 covers the
+>    *untrust → re-trust* cycle with a `MissingProvider`; this is the adjacent case of a
+>    **registered** type whose `ProxyProvider` was unavailable at read time, and it has no recovery
+>    trigger today. Needs a decision: re-read pages whose `ProxyProvider` failed when the provider
+>    becomes available, or give the page an explicit retry. Not fixed in EPIC-107.
 
 
 **Scope decision (2026-09-19):** this roadmap ends when the architecture can host an extracted
@@ -507,6 +515,33 @@ killed on untrust, and is restarted after a forced crash until the budget stops 
 state visible in `boards.list()`.
 
 ### Phase C — Open providers with ranged streaming
+
+> **Shipped 2026-09-20 as [EPIC-107](epics/EPIC-107.md), with one item deferred.** Decisions later
+> phases inherit. **Board provider types are namespaced by the author, not derived by the platform**
+> (D1): a board type must contain `/` and is registered verbatim, because deriving it from the
+> manifest `name` would orphan persisted pages on a rename and deriving it from the board root would
+> break on reinstall. Un-namespaced types are reserved for the platform, so the rule needs no list.
+> **`contentProviders` is disclosed in `permissions` but the functional trigger is the manifest
+> array** (D3), deliberately unlike `service`'s hygiene gate, so that EPIC-106's still-unreviewed D1
+> reversal is not compounded — see *Needs user verification*. **`__pipe` ranges are served through
+> the owning renderer, not pulled from the service port** (D4); the direct pull is deferred with a
+> stated measurement trigger in Phase E. **`stream-host` is the no-copy alternative to the existing
+> `editorSources: "any"`**, which solves the same problem by materializing the pipe to a cache file.
+> **`persephone.host.streamUrl()` is available to `content-host` pages too** (D6).
+>
+> **Deferred to Phase E (D11): US-1474, credit-based ranged streaming into a board-implemented
+> provider.** This was the epic's pre-committed abort boundary. A board provider serves
+> whole-resource reads, and `stream-host` serves ranged reads from any platform-owned pipe — but a
+> range is not yet pushed down into a board provider, which is what step 7 of §3.8 needs for a
+> torrent client to prioritise pieces. `ProxyProvider` leaves `createReadStream` unimplemented and
+> `ContentPipe` falls back to a buffered read, so nothing is broken by its absence.
+>
+> **Two defects in earlier phases were found by building on them.** EPIC-105 D2's throw on an
+> unknown provider type is replaced by the placeholder, as planned. More seriously, **Phase B's
+> renderer `MessagePort` lease was broken, not merely unimplemented**: the supervisor put the
+> `MessagePortMain` in the message body as well as the transfer list, so every attach threw
+> "object could not be cloned". It was never noticed because no service implemented the receiving
+> side. Fixed in EPIC-107.
 
 The pipeline side of the platform. Nothing here needs a visible board page.
 

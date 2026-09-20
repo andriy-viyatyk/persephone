@@ -5,8 +5,10 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.6.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.7.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
+Bridge `1.7.0` gates the `contentProviders` manifest axis, service-only `persephone.providers`,
+and `persephone.host.streamUrl()`; the change is additive and existing boards remain unaffected.
 
 > ## 📌 Agent: rewrite this file once the board is built
 >
@@ -44,9 +46,12 @@ fields that let the board act as a file editor:
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
-  "minBridgeVersion": "1.6.0",
-  "permissions": ["service"],
+  "minBridgeVersion": "1.7.0",
+  "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs",
+  "contentProviders": [
+    { "type": "acme/mem", "schemes": ["mem"] }
+  ],
 
   "fileMasks": ["*.drawio"],
   "editorPriority": 100,
@@ -63,6 +68,28 @@ fields that let the board act as a file editor:
   a board run arbitrary renderer and Node code, so `"service"` is not a privilege grant or sandbox.
 - `service` (optional) — a board-relative ESM entry for a platform-owned module service. A board
   with only this field is still a valid service board even when it has no editor association.
+
+### Content providers
+
+Declare a provider in `contentProviders` and give it one or more URL schemes:
+
+```json
+{
+  "permissions": ["service", "contentProviders"],
+  "service": "scripts/service.mjs",
+  "contentProviders": [{ "type": "acme/mem", "schemes": ["mem"] }]
+}
+```
+
+The provider `type` **must contain `/`**. Un-namespaced types are reserved for the platform
+(`file`, `cache`, `http`, `data`, `mneme`, and `guide`). A type is a persisted contract in page
+state: renaming it does not migrate old descriptors and orphans pages that still name the old
+type. Provider types and schemes have one owner. Among trusted boards, the first registration
+wins; a later board loses and the refusal, including the current owner where applicable, is kept
+in Board Info. A board cannot claim the reserved schemes `http`, `https`, `file`, `data`, `blob`,
+`mneme`, or any scheme beginning with `persephone-`. `contentProviders` in `permissions` is
+disclosure and lifecycle hygiene; the provider declaration itself is the functional registration
+axis, unlike the service declaration's service-permission gate.
 
 **Custom Editor fields (optional)** — only honored when the board is **trusted**:
 
@@ -112,8 +139,12 @@ fields that let the board act as a file editor:
   board gets the file path via `persephone.getFilePath()` and reads/writes it directly with
   `persephone.readFile()` / `writeFile()`. `"content-host"` → Persephone owns the file (pipe,
   encoding, encryption, auto-save, dirty tracking) and the board works through
-  `persephone.host.getContent()` / `setContent()` instead. Content-host boards also edit non-local
-  files (`https://`, inside archives, encrypted).
+  `persephone.host.getContent()` / `setContent()` instead. `"stream-host"` also lets Persephone
+  own the pipe, but hands the board a URL through `persephone.host.streamUrl()` for ranged media
+  or binary reads instead of text. It does not materialize a file or write a cache for this page.
+  That is a broker policy, not an OS guarantee: memory can be paged and Chromium keeps its own
+  caches, as roadmap §3.1a explains. Content-host and stream-host boards also edit non-local files
+  (`https://`, inside archives, encrypted).
 - `editorSources` (optional) — `"local"` (default) or `"any"`. Persephone opens more than plain
   local files: a file inside an archive (`archive.zip!doc.pdf`), an `http(s)` URL, an encrypted
   file. By default a **simple** board is offered only for a real local file, because the common
@@ -121,7 +152,7 @@ fields that let the board act as a file editor:
   `"any"` when your board can handle every source; `getFilePath()` then still hands you a readable
   **local** path (Persephone materializes the source into a cache file first), so you need **no
   source-specific code** — see *Opened as a custom editor* below for the two consequences you must
-  handle. Ignored for `"content-host"` boards, which always get every source.
+  handle. Ignored for `"content-host"` and `"stream-host"` boards, which always get every source.
 
 **Direct-folder editor example:**
 
@@ -279,6 +310,31 @@ and stderr are captured in `<boardRoot>/ui.log`, which is the first place to ins
 import, handshake, request, or dependency fails. Service status is visible in `app.boards.list()`
 as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The host starts, supervises,
 restart-budgets, and stops the process on untrust; the service must not restart itself.
+
+### Service-only provider registration
+
+`persephone.providers.register(type, implementation)` is available only inside the declared
+module service. Provider implementations contain functions; those functions cannot cross the
+board frame's structured-clone RPC, so registering them from page JavaScript is rejected. The
+service implementation has this shape:
+
+```js
+persephone.providers.register("acme/mem", {
+  writable: false,
+  readBinary: async (config) => new Uint8Array(/* bounded bytes */),
+  writeBinary: async (config, data) => {},       // only when writable is true
+  stat: async (config) => ({ exists: true, size: 0, mtime: "..." }),
+  watch: (config, onChange) => () => {},
+});
+```
+
+`readBinary(config)` returns `Uint8Array`; `writeBinary(config, data)` receives bytes;
+`stat(config)` returns `{ exists, size?, mtime? }`; and `watch(config, onChange)` returns a
+disposer. Omit unsupported optional methods. Read and write payloads are bounded by the platform
+(currently 256 MiB); this API is whole-resource buffered I/O. In particular, `ProxyProvider`
+does not implement `createReadStream`, so a `Range` request for a board provider falls back to a
+buffered read. Do not write a seeking provider expecting ranges to reach it yet: that is EPIC-107
+D11 and is deferred to Phase E.
 
 ### Resident backend server (the key pattern)
 
@@ -528,6 +584,28 @@ feature-detect with a `try`/`catch` around `getContent()` if a board can open ei
 clipboard permission, so standard web APIs like `navigator.clipboard.write([...])` work directly —
 no bridge method needed (they still require a user gesture + a focused window, per the browser).
 Only remote *network* is blocked (by the CSP — see *Libraries & assets* below).
+
+### Stream-host boards — `persephone.host.streamUrl()`
+
+With `"editorKind": "stream-host"`, Persephone owns the pipe and gives the board an
+origin-local URL rather than text or a materialized file:
+
+```js
+const url = await persephone.host.streamUrl();
+const response = await fetch(url, { headers: { Range: "bytes=0-1048575" } });
+console.log(response.status, response.headers.get("Content-Range"));
+```
+
+`streamUrl()` is available to both `stream-host` and `content-host` pages and returns a
+`board://<host>/__pipe/<pageId>` URL with `Range` support. A stream-host page does not write its
+source to disk. This is a broker policy, not an OS guarantee: memory may be paged and Chromium
+may keep its own caches. That differs from `editorSources: "any"`, which solves non-local input by
+copying the source into a cache file and returning that local path through `getFilePath()`.
+
+The pipe can range-read platform providers and falls back to buffering when needed. A board
+provider's `readBinary()` is still whole-resource: `ProxyProvider` has no `createReadStream`, so
+the range is not pushed down into the board service. Ranged provider reads are deferred to Phase E
+(EPIC-107 D11).
 
 ## Secondary views & shared state
 

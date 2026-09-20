@@ -31,6 +31,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   identity are visible through `boards.list()`; `permissions` is disclosure and lifecycle hygiene,
   not a privilege grant or sandbox. See [Boards — declared services](./boards.md#declared-services-storage-and-lifecycle)
   and the [canonical service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
+- **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders`
+  type in the manifest and register its bounded whole-resource implementation from the service;
+  `editorKind: "stream-host"` exposes `persephone.host.streamUrl()` for `Range` reads without a
+  materialized source file. Board-provider range pushdown is deferred to Phase E.
 
 ### Improvements
 

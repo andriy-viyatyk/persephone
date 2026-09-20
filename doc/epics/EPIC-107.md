@@ -297,8 +297,32 @@ under *Needs user verification* rather than granted.
 | `persephone.fetch` / `network` permission / CSP relaxation | After the roadmap | Roadmap §4; nothing here needs it |
 | `media.play` as a capability invocation | Phase D | The torrent flow's steps 4-5 are ordinary link resolution (roadmap §3.8) |
 | Granted-permission record, *changed grant* re-prompt | The trust-model merge (roadmap §5) | Inherited from EPIC-106 D1; D3 above deliberately does not extend it |
+| Credit-based ranged streaming to a board provider (US-1474) | Phase E | D11 — the pre-committed abort boundary, taken; Phase E is its only consumer |
 | A real torrent board or audio player | Phase E | This epic ships the platform and a fixture, not a product |
 | Enforcing `minAppVersion` on local registration | Its own task | EPIC-106 recorded it as an untouched scope cut; unchanged here |
+
+**D11 — US-1474 (credit-based ranged streaming to a board provider) is deferred to Phase E. This
+was the pre-committed abort boundary, and it is being taken as written.**
+
+The Concerns section below said, before any code existed: *"It is sequenced last deliberately:
+criteria 1-9 and 12 are all reachable without it, so if the epic has to stop early it stops after
+wave 3 with a coherent, shippable slice and US-1474 moves to Phase E, which is its only consumer."*
+That is what happened, and the reason to record it as a decision rather than a slip is that the
+boundary was argued in advance so the call would not be made under time pressure.
+
+What ships without it: a board provider serves whole-resource reads (`readBinary`, `writeBinary`,
+`stat`, `watch`) over the service lease, bounded by `MAX_BUFFERED_PIPE_BYTES`; and `stream-host`
+serves **ranged** reads over `board://<host>/__pipe/<pageId>` from any pipe the platform owns,
+including a plain `FileProvider`. What does not ship: a *range* pushed down into a
+**board-implemented** provider, which is what lets a torrent client prioritise pieces. So a board
+provider can back a page, and a page's pipe can be seeked — but a board provider cannot yet be
+seeked.
+
+Phase E is the only consumer: roadmap §3.8 step 7 is the first place a ranged read must reach a
+board's service. The seam is in place and documented in
+[US-1473](../tasks/US-1473-proxy-provider/README.md) — `IProvider.createReadStream?(range)` stays
+unimplemented on `ProxyProvider`, and `ContentPipe` already falls back to a buffered read when a
+provider omits it, so nothing is broken by its absence.
 
 ## Linked Tasks
 
@@ -307,7 +331,7 @@ under *Needs user verification* rather than granted.
 | US-1471 | `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule | Planned |
 | US-1472 | *Provider missing* placeholder and `PendingProvider` | Planned |
 | US-1473 | `ProxyProvider` and `persephone.providers.register` over the service port | Planned |
-| US-1474 | Credit-based ranged streaming: `createReadStream(range)` through the bridge and the pipe | Planned |
+| US-1474 | Credit-based ranged streaming: `createReadStream(range)` through the bridge and the pipe | **Deferred to Phase E** (D11) |
 | US-1475 | `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving | Planned |
 | US-1476 | Browser routing of `magnet:` and `.torrent` into `openRawLink` | Planned |
 | US-1477 | Demo-board provider and stream-host fixtures, and the authoring documentation | Planned |

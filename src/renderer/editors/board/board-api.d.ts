@@ -265,8 +265,23 @@ interface PersephoneProviderRegistrationServiceOnlyError extends Error {
 
 /** Provider implementations retain functions and therefore belong to the module service. */
 interface PersephoneProviderApi {
-    /** Always throws `PersephoneProviderRegistrationServiceOnlyError` in a board frame. */
-    register(type: string, implementation: unknown): never;
+    /** Always throws in a board frame. Function-valued provider implementations must remain in
+     * the module service; structured-clone bridge RPC cannot carry their methods. */
+    register(type: string, implementation: {
+        readBinary(config: Record<string, unknown>): Promise<Uint8Array> | Uint8Array;
+        writeBinary?(config: Record<string, unknown>, data: Uint8Array): Promise<void> | void;
+        stat?(config: Record<string, unknown>): Promise<{
+            exists: boolean;
+            size?: number;
+            mtime?: string;
+        }> | {
+            exists: boolean;
+            size?: number;
+            mtime?: string;
+        };
+        watch?(config: Record<string, unknown>, callback: (event: string) => void): (() => void) | void;
+        writable?: boolean;
+    }): never;
 }
 
 interface PersephoneHostApi {
@@ -275,8 +290,8 @@ interface PersephoneHostApi {
 }
 
 interface PersephoneBoardApi {
-    /** Bridge version, e.g. "1.6.0" — the release that added `openContent()`, the `--p-graph-*`
-     *  family, manifest `contentMasks`, and the bridge contract declarations. Compare
+    /** Bridge version, e.g. "1.7.0" — the release that added board provider registration and
+     *  `host.streamUrl()` to the existing bridge contract. Compare
      *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */

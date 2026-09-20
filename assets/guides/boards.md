@@ -122,8 +122,8 @@ Boards may declare `minBridgeVersion`, `permissions`, and a board-relative `serv
 
 ```json
 {
-  "minBridgeVersion": "1.6.0",
-  "permissions": ["service"],
+  "minBridgeVersion": "1.7.0",
+  "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
 ```
@@ -132,6 +132,24 @@ The minimum bridge is a compatibility requirement. `permissions` is shown as dis
 for lifecycle hygiene, not as a security boundary or a grant; trust already gives a board arbitrary
 renderer and Node execution. A declared service is shown in Board Info and in the live
 `app.boards.list()` status payload.
+Bridge `1.7.0` gates the additive provider and stream-host members documented below; boards that
+do not use them continue to work unchanged.
+
+Boards can also declare service-backed content providers:
+
+```json
+{
+  "contentProviders": [{ "type": "acme/mem", "schemes": ["mem"] }]
+}
+```
+
+The provider `type` must contain `/`; un-namespaced types are reserved for the platform. The type
+is persisted in page pipe state, so renaming it orphans pages carrying the old descriptor. Provider
+types and schemes use one-owner registration: the first trusted board wins, and a losing board is
+reported with its owner in Board Info. Boards may not claim `http`, `https`, `file`, `data`, `blob`,
+`mneme`, or any `persephone-*` scheme. Add `"contentProviders"` to `permissions` to disclose the
+surface; that list is not the functional gate, because the `contentProviders` declaration itself
+drives registration.
 
 ---
 
@@ -286,7 +304,7 @@ board-relative ESM entry such as:
 
 ```json
 {
-  "minBridgeVersion": "1.6.0",
+  "minBridgeVersion": "1.7.0",
   "permissions": ["service"],
   "service": "scripts/service.mjs"
 }
@@ -618,8 +636,8 @@ Declare the association with fields in `board-manifest.json`:
 | `folderMasks` | Optional — one or more glob masks matched against the file's *parent folder*, narrowing where `fileMasks` applies. See [Scoping to a folder](#scoping-to-a-folder--foldermasks) below. |
 | `editorPriority` | A number that decides whether the board also becomes the **default** editor for matching files (not just a switch option). Persephone's built-in editors each sit at their own priority level; set a value higher than the built-in editor for that file type to make the board the one that opens automatically. Ties go to the built-in editor. Omit it (or leave it `0`) and the board is offered only as a switch option — the built-in editor keeps opening by default. Built-in priority levels: Text Editor `0`, Markdown Preview `10`, compound-name editors such as `*.grid.json`/`*.note.json` `20`, Drawing `50`, PDF/image/archive/video viewers `100`. For example, a board claiming `.md` files (like the `folderMasks` example below, which uses `fileMasks: ["DASHBOARD.md"]`) needs `editorPriority` **above 10** to open by default — Markdown Preview now claims that slot, not the Text Editor's floor of `0`. |
 | `editorName` | The label shown for the board in the editor-switch control. Falls back to the board's folder name if omitted. |
-| `editorKind` | Optional — `"simple"` (default, if omitted) or `"content-host"`. Decides *how* the board gets the file's content. See [Simple editors](#simple-editors--reading-the-file-directly) and [Content-host editors](#content-host-editors--sharing-persephones-file-with-the-board) below. |
-| `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive (e.g. `archive.zip!doc.pdf`) or at an `http(s)` URL. Persephone materializes those non-local sources to a local cache file first, so the board's own code is unchanged — it still just calls `persephone.getFilePath()` and reads the returned path. Ignored by content-host boards, which already support non-local sources through `persephone.host.*`. The published **PDF Viewer** board uses this to open archive-embedded and remote PDFs the same way it opens local ones. |
+| `editorKind` | Optional — `"simple"` (default), `"content-host"`, or `"stream-host"`. A simple board reads/writes a path; a content-host board receives text through `persephone.host.*`; a stream-host board receives an origin-local pipe URL through `persephone.host.streamUrl()` without materialization. |
+| `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive or at an `http(s)` URL. Persephone copies those non-local sources into a local cache file first, so the board's own code can use `persephone.getFilePath()`. It is the copy-based alternative to `stream-host` and is ignored by content-host and stream-host boards. |
 
 ### Direct-folder boards
 
@@ -635,7 +653,7 @@ Use a manifest such as:
 This claims the matching folder itself. In folder mode, `boardRoot` is the folder where the board
 app is installed and `folderPath` is the absolute directory the board claims and operates on. Use
 `await persephone.getFolderPath()` to read the latter. `getFilePath()` remains `undefined` in folder
-mode, and `editorKind: "content-host"` still applies only to a board's file association.
+mode, and `editorKind: "content-host"` / `"stream-host"` still applies only to a board's file association.
 
 When a trusted board claims a folder, its board icon appears on that folder's File Explorer row and
 clicking the row opens the board for the folder. The page toolbar's editor switch offers **Folder
@@ -732,6 +750,28 @@ Three things a content-host board can do that a simple board cannot:
 **Saving:** press **Ctrl+S** (or **Cmd+S**) anywhere in the board and Persephone saves the file through the pipe automatically — no board code required. A board that wants to handle the keystroke itself can call `event.preventDefault()` in its own key handler to opt out, in which case the automatic save stands down. `persephone.host.save()` is also available if you want to trigger a save from your own UI (e.g. a Save button).
 
 **Example:** the DrawIO diagram viewer board renders a `.drawio` file's XML read via `persephone.host.getContent()`, and re-renders whenever `onContentChange()` fires. Switch to the Text Editor to hand-edit the raw XML — switching back to the board re-renders the diagram from your edits immediately — and Ctrl+S saves through the pipe with no board code at all.
+
+### Stream-host editors — ranged pipe URLs without a materialized file
+
+Set `"editorKind": "stream-host"` when the board needs binary or media access without receiving
+text or a local cache path. Persephone owns the pipe and gives the board an origin-local URL:
+
+```js
+const url = await persephone.host.streamUrl();
+const response = await fetch(url, { headers: { Range: "bytes=0-1048575" } });
+console.log(response.status, response.headers.get("Content-Range"));
+```
+
+`streamUrl()` is available to both `stream-host` and `content-host` pages and returns
+`board://<host>/__pipe/<pageId>`, which supports `Range`. A stream-host page does not write its
+source to disk. This is a broker policy, not an OS guarantee: memory may be paged and Chromium may
+keep its own caches. `editorSources: "any"` solves the same non-local problem by copying the source
+into a cache file and returning that local path from `getFilePath()`.
+
+The pipe can range-read platform providers, but a board provider currently serves whole-resource
+reads. `ProxyProvider` does not implement `createReadStream`, so a range request falls back to a
+buffered `readBinary()` and is not pushed into the board service. Seeking-provider support is
+deferred to Phase E by EPIC-107 D11.
 
 ---
 

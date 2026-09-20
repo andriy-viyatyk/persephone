@@ -1,10 +1,21 @@
 const parentPort = process.parentPort;
 const handshakeHangKey = "demo-service-handshake-hang";
+const providerBytes = new TextEncoder().encode("hello from the demo board service\n");
 
 if (!parentPort) {
     console.error("Demo service requires Persephone's module-service host.");
     process.exit(1);
 }
+
+globalThis.persephone.providers.register("demo/mem", {
+    writable: false,
+    readBinary() {
+        return providerBytes;
+    },
+    stat() {
+        return { exists: true, size: providerBytes.byteLength };
+    },
+});
 
 const queuedMessages = [];
 let acceptingMessages = false;

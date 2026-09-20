@@ -11,8 +11,10 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.6.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.7.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
+Bridge `1.7.0` gates the additive `contentProviders` manifest axis, service-only
+`persephone.providers`, and `persephone.host.streamUrl()`; existing boards are unaffected.
 
 ## What a board is
 
@@ -248,8 +250,8 @@ A manifest may declare a board-relative ESM entry and its bridge requirement:
 
 ```json
 {
-  "minBridgeVersion": "1.6.0",
-  "permissions": ["service"],
+  "minBridgeVersion": "1.7.0",
+  "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
 ```
@@ -261,6 +263,24 @@ from the board root, including its `node_modules`. The environment is sanitized 
 allowlist plus `PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`. The host injects
 `persephone.storage`, shared with the frame and routed through main; a service must not open
 `store.json` itself. Service stdout/stderr goes to `<boardRoot>/ui.log`.
+
+### Service-backed content providers
+
+Declare `contentProviders: [{ "type": "acme/mem", "schemes": ["mem"] }]` in the manifest and
+implement the matching type inside the module service with
+`persephone.providers.register(type, implementation)`. This registration is service-only because
+the implementation contains functions that cannot cross the board frame's structured-clone RPC.
+The implementation supplies `readBinary(config)` and may supply `writeBinary(config, data)`,
+`stat(config)`, and `watch(config, onChange)`; `watch` returns a disposer. Payloads are bounded
+(currently 256 MiB) and reads are whole-resource buffered. `ProxyProvider` has no
+`createReadStream`, so a board provider does not receive a pushed-down Range; that is deferred to
+Phase E under EPIC-107 D11.
+
+Provider types must contain `/` because un-namespaced types are reserved for the platform. The
+type is persisted in page state, so renaming it orphans old pages. Types and schemes are
+one-owner, first-trusted-board-wins registrations; a loser and its owner are reported in Board
+Info. Reserved schemes are `http`, `https`, `file`, `data`, `blob`, `mneme`, and every
+`persephone-*` name. The `contentProviders` permission is disclosure, not the functional gate.
 
 From the frame, send structured-clone messages and handle lifecycle rejection:
 
@@ -346,7 +366,7 @@ use `boards.list()` to confirm the result. A full renderer reload is script-driv
   absolute directory claimed by the board; `undefined` for plain boards and file-only openings. It
   waits for the same handshake as `getFilePath()`. `boardRoot` is where the board app is installed,
   while `folderPath` is the claimed directory it operates on. Folder mode never supplies a file path,
-  and `editorKind: "content-host"` applies only to the file association.
+  and `editorKind: "content-host"` / `"stream-host"` applies only to the file association.
 - `persephone.call(path, options?)` — resolve the same bounded AiVision descriptor tree as the MCP
   `call` tool, rooted at the page hosting this Board. The Board must be trusted; trust is checked
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call
@@ -440,7 +460,8 @@ When you are the one **building** the board, [AI Vision](./ai-vision.md)
 contract, `createElements`, the `refresh()` shape rule, and the constraints an agent-facing method
 must respect.
 
-- `persephone.host.*` — for a **content-host** editor board (`"editorKind": "content-host"` in the
+- `persephone.host.*` — for a **content-host** or **stream-host** editor board (`"editorKind":
+  "content-host"` or `"stream-host"` in the
   manifest) Persephone owns the file (pipe, encoding, encryption, auto-save, dirty tracking) and the
   board works with the content instead of a path: `host.getContent()` → `Promise<string>`,
   `host.setContent(content)` (marks modified; a `getContent()` right after returns the written value),
@@ -455,6 +476,14 @@ must respect.
   Call it from the board's **main** view; `""` clears it. It's a visual no-op for plain
   (non-content-host) boards, which have no footer — so guard with `persephone.setStatusText?.(…)`
   if the board must also run on older app builds.
+
+  `persephone.host.streamUrl()` is available to both kinds and returns the origin-local
+  `board://<host>/__pipe/<pageId>` URL. Fetch it with a `Range` header to read the pipe without
+  text or a materialized file. That no-write behavior is a broker policy, not an OS guarantee:
+  memory may be paged and Chromium may keep caches. By contrast, `editorSources: "any"` copies
+  non-local input into a cache file and returns its local path. Board-provider ranges still fall
+  back to buffered `readBinary()` because `ProxyProvider` lacks `createReadStream`; do not author a
+  seeking provider expecting range pushdown yet.
 
 **Browser APIs (clipboard, etc.):** the board frame is a secure context with clipboard permission
 granted, so standard web APIs like `navigator.clipboard.write([...])` work directly (no bridge method;
@@ -682,10 +711,12 @@ the manifest's `loadOrder`.
   (switch-widget label). Honored only when the board is trusted. Optional `editorKind`: `"simple"` (default) → the
   file arrives via `persephone.getFilePath()` (read/write it yourself); `"content-host"` → Persephone
   owns the file and the board works through `persephone.host.*` (shares the host with Monaco, edits
-  non-local files, auto-saves). Optional `editorSources`: `"local"` (default) → a simple board is
+  non-local files, auto-saves); `"stream-host"` → Persephone owns the pipe and exposes
+  `persephone.host.streamUrl()` instead of text or a materialized file. Optional `editorSources`:
+  `"local"` (default) → a simple board is
   offered only for real local files; `"any"` → also for an archive entry or an `http(s)` URL, where
   `getFilePath()` still returns a readable local path (see the bridge section). Ignored for
-  content-host boards, which always get every source.
+  content-host and stream-host boards, which always get every source.
 - For a direct-folder editor, use `folderEditorMasks` and `folderEditorPriority`, for example
   `{ "folderEditorMasks": ["*/projects/*"], "folderEditorPriority": 200 }`. These match the
   folder itself, not a file's parent gate. The board receives that absolute claim through

@@ -42,8 +42,9 @@ can it change after the user clicks Trust?**
 ## What to read
 
 1. **`board-manifest.json` first.** It declares the board's identity, `permissions`,
-   `minBridgeVersion`, and any `service` entry, plus (for an editor board) `fileMasks` /
-   `contentMasks` / `folderMasks` and `editorKind`. These say which of the user's files this board
+   `minBridgeVersion`, any `service` entry, and any `contentProviders` declarations, plus (for an
+   editor board) `fileMasks` / `contentMasks` / `folderMasks` and `editorKind`. These say which of
+   the user's files this board
    will be handed automatically. Broad masks on a board whose stated purpose is narrow is a finding
    on its own.
 2. **Every file in the folder.** `index.html`, the app scripts, **all of `scripts/`**, and anything
@@ -58,6 +59,7 @@ board may legitimately spawn a process — but every one of them needs a reason 
 | Search for | Why it matters |
 |---|---|
 | `execute(`, `executeNode(`, `service`, `scripts/service.mjs` | Every process the board can start. Read the command string or service entry. For a service, inspect the handshake, request routing, `persephone.storage` calls, crash and handshake-hang behavior, imports, network use, and `ui.log`. |
+| `contentProviders`, `persephone.providers.register`, `streamUrl` | Check that provider types are namespaced, the service owns the function-valued implementation, payloads stay bounded, and a stream-host page uses the broker URL rather than a copied path. Board-provider seeking is not available yet. |
 | `persephone.call(` | Check the path. `fs`, `proc`, `shell`, `script.execute`, `tools.execute`, `boardVars`, `settings` each need a purpose; `script.execute` is arbitrary code and is rarely justified. |
 | `fetch(`, `http`, `https`, `axios`, `curl`, `Invoke-WebRequest`, `wget` | Where the board talks to the network — in backend scripts, where nothing blocks it. |
 | `readFile(`/`writeFile(` with an absolute path, `..`, `~`, `%APPDATA%`, `$HOME` | Reaching outside the board folder. |

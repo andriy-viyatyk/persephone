@@ -30,7 +30,7 @@
     const tabs = document.querySelectorAll(".tab");
     const panels = document.querySelectorAll(".panel");
     // The shared console is only meaningful on the interactive tabs.
-    const consoleTabs = new Set(["theming", "capabilities", "service"]);
+    const consoleTabs = new Set(["theming", "capabilities", "service", "streams"]);
 
     function activate(name) {
         tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
@@ -247,6 +247,34 @@
                 printServiceError("expected handshake-arm lifecycle error", error);
             }
             await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
+        },
+
+        async openStreamHost() {
+            header("open stream-host fixture");
+            const boardRoot = await P.call("page.editor.boardRoot");
+            if (typeof boardRoot !== "string" || !boardRoot) {
+                throw new Error("The demo board root is unavailable.");
+            }
+            P.openRawLink(`${boardRoot}/stream-fixture.stream-demo`);
+            print("opened stream-fixture.stream-demo; run the Range probe on the new page.");
+        },
+        async probeStream() {
+            header("persephone.host.streamUrl → Range");
+            const url = await P.host.streamUrl();
+            const response = await fetch(url, { headers: { Range: "bytes=0-31" } });
+            const bytes = new Uint8Array(await response.arrayBuffer());
+            const contentRange = response.headers.get("Content-Range") ?? "(missing)";
+            const result = {
+                url,
+                status: response.status,
+                contentRange,
+                bytes: bytes.byteLength,
+                text: dec.decode(bytes),
+            };
+            document.getElementById("stream-status").textContent =
+                `${response.status} · ${contentRange} · ${bytes.byteLength} bytes`;
+            document.getElementById("stream-readout").textContent = JSON.stringify(result, null, 2);
+            print(JSON.stringify(result, null, 2));
         },
 
         // --- integration tier ----------------------------------------------
