@@ -139,6 +139,162 @@
             });
         }
 
+        const LIBRARY_FILENAME = "library.excalidrawlib";
+        const LIBRARY_MIME_TYPE = "application/vnd.excalidrawlib+json";
+
+        function errorMessage(error) {
+            return error instanceof Error ? error.message : String(error);
+        }
+
+        function libraryFilePath(directory) {
+            return `${directory.replace(/[\\/]+$/, "")}/${LIBRARY_FILENAME}`;
+        }
+
+        async function resolveLibraryPath() {
+            const configuredDir = await persephone.call("settings.get", {
+                args: ["drawing.library-path"],
+            });
+            if (typeof configuredDir === "string" && configuredDir.trim() !== "") {
+                return libraryFilePath(configuredDir);
+            }
+            const userData = await persephone.call("fs.commonFolder", { args: ["userData"] });
+            if (typeof userData !== "string" || userData.trim() === "") {
+                throw new Error("Persephone user data folder is unavailable.");
+            }
+            return libraryFilePath(`${userData}/data/excalidraw-lib`);
+        }
+
+        async function loadLibrary(_metadata) {
+            try {
+                const libraryFile = await resolveLibraryPath();
+                const text = await persephone.readFile(libraryFile, { encoding: "utf8" });
+                if (typeof text !== "string") return null;
+                const data = JSON.parse(text);
+                return { libraryItems: data.libraryItems || [] };
+            } catch {
+                return null;
+            }
+        }
+
+        async function saveLibrary({ libraryItems }) {
+            const libraryFile = await resolveLibraryPath();
+            await persephone.writeFile(
+                libraryFile,
+                JSON.stringify({ libraryItems }, null, 2),
+            );
+        }
+
+        let librarySaveQueue = Promise.resolve();
+        let latestLibrarySave = Promise.resolve();
+        let hasSeenNonEmptyLibrary = false;
+        let libraryInstallInProgress = false;
+
+        function queueLibrarySave(libraryItems) {
+            if (libraryItems.length === 0
+                && !hasSeenNonEmptyLibrary
+                && !libraryInstallInProgress) {
+                return Promise.resolve();
+            }
+            if (libraryItems.length > 0) hasSeenNonEmptyLibrary = true;
+            const snapshot = JSON.parse(JSON.stringify(libraryItems));
+            const save = librarySaveQueue.then(() => saveLibrary({ libraryItems: snapshot }));
+            librarySaveQueue = save.catch(() => {});
+            latestLibrarySave = save.catch((error) => {
+                persephone.notify(`Failed to save Excalidraw library: ${errorMessage(error)}`, "error");
+                throw error;
+            });
+            void latestLibrarySave.catch(() => {});
+            return latestLibrarySave;
+        }
+
+        function waitForLatestLibrarySave() {
+            return latestLibrarySave;
+        }
+
+        function handleLibraryChange(libraryItems) {
+            return queueLibrarySave(libraryItems);
+        }
+
+        async function loadExistingLibrary(api) {
+            try {
+                const data = await loadLibrary({ source: "load" });
+                await api.updateLibrary({
+                    libraryItems: data?.libraryItems || [],
+                    merge: true,
+                });
+                await waitForLatestLibrarySave();
+            } catch (error) {
+                persephone.notify(`Failed to load Excalidraw library: ${errorMessage(error)}`, "error");
+            }
+        }
+
+        function countLibraryItems(data) {
+            const items = Array.isArray(data?.libraryItems)
+                ? data.libraryItems
+                : Array.isArray(data?.library)
+                    ? data.library
+                    : undefined;
+            return items?.length;
+        }
+
+        function decodedLibraryUrl(encodedUrl) {
+            let decoded;
+            try {
+                decoded = decodeURIComponent(encodedUrl);
+            } catch {
+                throw new Error("The returned library URL is not valid.");
+            }
+            const url = new URL(decoded);
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+                throw new Error("The returned library URL must use HTTP or HTTPS.");
+            }
+            return url.toString();
+        }
+
+        async function downloadLibrary(libraryUrl) {
+            return persephone.executeNode("library-fetch.cjs", [libraryUrl]).getJson();
+        }
+
+        async function installReturnedLibrary(event) {
+            const api = excalidrawApi;
+            if (!api) return;
+            const encodedUrl = event.hash.addLibrary?.[0];
+            if (!encodedUrl) return;
+
+            await libraryLoadPromise;
+            const libraryUrl = decodedLibraryUrl(encodedUrl);
+            const libraryData = await downloadLibrary(libraryUrl);
+            const count = countLibraryItems(libraryData);
+            const message = count === undefined
+                ? "Add the downloaded library to your drawing library?"
+                : `This will add ${count} item${count === 1 ? "" : "s"} to your library.`;
+            const answer = await persephone.call("ui.confirm", {
+                args: [message, { title: "Add library", buttons: ["Add", "Cancel"] }],
+            });
+            if (answer !== "Add") return;
+
+            libraryInstallInProgress = true;
+            try {
+                const libraryBlob = new Blob([JSON.stringify(libraryData)], { type: LIBRARY_MIME_TYPE });
+                await api.updateLibrary({
+                    libraryItems: libraryBlob,
+                    merge: true,
+                    prompt: false,
+                    defaultStatus: "published",
+                    openLibraryMenu: true,
+                });
+            } finally {
+                libraryInstallInProgress = false;
+            }
+            await waitForLatestLibrarySave();
+        }
+
+        function handleLibraryReturn(event) {
+            void installReturnedLibrary(event).catch((error) => {
+                persephone.notify(`Failed to install Excalidraw library: ${errorMessage(error)}`, "error");
+            });
+        }
+
         // A board page can exist without a content host: the "New Excalidraw" creatable row
         // opens one standalone, and a capability intent will too. `persephone.host.getContent`
         // rejects in that case, and letting it reject here kills the module before anything
@@ -151,8 +307,15 @@
             hostAttached = false;
         }
         const initialScene = parseExcalidrawContent(initialContent);
+        let libraryReturnUrl;
+        try {
+            libraryReturnUrl = await persephone.navigation.createReturnUrl();
+        } catch (error) {
+            console.error("Failed to create Excalidraw library return URL:", error);
+        }
         let scene = initialScene;
         let excalidrawApi = null;
+        let libraryLoadPromise = Promise.resolve();
         let saveTimer;
         let lastFingerprint = sceneFingerprint(scene.elements, scene.files);
         // Do not let Excalidraw's initial empty onChange callbacks write a serialized empty
@@ -353,6 +516,7 @@
             excalidrawApi = api;
             api.addFiles(Object.values(scene.files));
             api.updateScene({ elements: scene.elements, appState: scene.appState });
+            libraryLoadPromise = loadExistingLibrary(api);
             setTimeout(markEditorReady, 1000);
         }
 
@@ -454,11 +618,22 @@
                     theme: persephone.theme.isDark ? "dark" : "light",
                     onChange: scheduleHostWrite,
                     excalidrawAPI: adoptExcalidrawApi,
+                    ...(libraryReturnUrl ? { libraryReturnUrl } : {}),
+                    onLibraryChange: handleLibraryChange,
+                    UIOptions: {
+                        canvasActions: {
+                            loadScene: false,
+                            saveToActiveFile: false,
+                            export: false,
+                            toggleTheme: false,
+                        },
+                    },
                 }),
             );
         }
 
         // `onThemeChange` invokes its callback immediately, which performs the first render.
+        const unsubscribeReturn = persephone.navigation.onReturn(handleLibraryReturn);
         const unsubscribeTheme = persephone.onThemeChange(renderBoard);
         const unsubscribeIntent = persephone.intent.onRequest((intent) => {
             void handleCapabilityIntent(intent).catch((error) => intent.reject(error));
@@ -467,6 +642,7 @@
         window.addEventListener("beforeunload", () => {
             cancelScheduledSave();
             unsubscribe();
+            unsubscribeReturn();
             unsubscribeTheme();
             unsubscribeIntent();
         }, { once: true });

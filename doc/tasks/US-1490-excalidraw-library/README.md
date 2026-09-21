@@ -1,6 +1,6 @@
 # US-1490 — The Excalidraw board's library flow
 
-**Status:** Planned · **Epic:** [EPIC-109: Bundled boards and the Excalidraw board](../../epics/EPIC-109.md) · **Depends on:** [US-1487: The Excalidraw board](../US-1487-excalidraw-board/README.md), [US-1489: Board navigation return URLs](../US-1489-board-navigation-return/README.md)
+**Status:** In progress · **Epic:** [EPIC-109: Bundled boards and the Excalidraw board](../../epics/EPIC-109.md) · **Depends on:** [US-1487: The Excalidraw board](../US-1487-excalidraw-board/README.md), [US-1489: Board navigation return URLs](../US-1489-board-navigation-return/README.md)
 
 ## Goal
 
@@ -24,12 +24,51 @@ that URL and must not register its own matching pattern. The existing built-in s
 renderer-side network fetch: the board CSP permits only `connect-src 'self'`, so cross-origin fetch
 from the board frame is refused by design. [`EPIC-109.md:212-247`](../../epics/EPIC-109.md#L212-L247)
 
-US-1489 is not present in the repository at the time of this investigation. This task therefore
-consumes its API without designing it. US-1490 needs the service to provide the minted return URL for
-the current board instance and to deliver a matching return navigation, including its URL/hash
-parameters, to that board; it also needs the service's normal focus/return-to-owner behavior. The
-board supplies no URL pattern. When US-1489 is written, use its actual method and callback names in
-the board bootstrap.
+**US-1489 shipped on 2026-09-21 (commit `3503bf03`), so its API is no longer hypothetical.** The
+paragraphs below replace this document's original placeholder wording; they were verified against
+the merged implementation, not against the plan that produced it.
+
+The board-facing surface is two members added to the bridge at version 1.9.0:
+
+```js
+const returnUrl = await persephone.navigation.createReturnUrl();      // Promise<string>
+const unsubscribe = persephone.navigation.onReturn((event) => { ... }); // returns () => void
+```
+
+[`src/board-shim.ts:1219-1225`](../../../src/board-shim.ts#L1219-L1225)
+[`src/board-shim.ts:424-444`](../../../src/board-shim.ts#L424-L444)
+
+Four properties of that service decide how the board uses it:
+
+- **The minted URL is not one-shot.** An active claim stays live until its owner goes away, because
+  the owner mints one URL for its whole lifetime and returns through it repeatedly — reopening the
+  library browser is ordinary use. The board therefore mints **once during bootstrap** and reuses the
+  same URL; it must not re-mint per browse.
+  [`board-navigation-return.ts:200-215`](../../../src/renderer/api/board-navigation-return.ts#L200-L215)
+- **Retirement is the host's job, not the board's.** `BoardWebview` retires the claim on frame
+  disposal and again at the start of each `handleLoad()`, so a reload cannot let a stale frame
+  receive a return. The board adds no ownership check of its own.
+  [`board-navigation-return.ts:142-148`](../../../src/renderer/api/board-navigation-return.ts#L142-L148)
+- **The event is `{ url, query, hash }` with frozen `Record<string, readonly string[]>` maps**, not
+  `URLSearchParams`. Excalidraw sends `useHash=true`, so the library URL arrives as
+  `event.hash.addLibrary?.[0]` and is `decodeURIComponent()`-ed exactly once, matching the built-in.
+  [`src/board-shim.ts:409-414`](../../../src/board-shim.ts#L409-L414)
+  [`DrawBodyView.ts:297-303`](../../../src/renderer/editors/draw/DrawBodyView.ts#L297-L303)
+- **Focus is already handled.** The service shows the owning page before delivering and refuses to
+  deliver to a frame that was replaced, reloaded, or is no longer current. The board supplies no URL
+  pattern and performs no focus work.
+  [`board-navigation-return.ts:213-221`](../../../src/renderer/api/board-navigation-return.ts#L213-L221)
+
+**The return must arrive in a new tab — and for Excalidraw it does.** The minted host sits under the
+reserved `.invalid` suffix, which can never resolve, so a *same-tab* navigation to it dies at DNS
+with `ERR_NAME_NOT_RESOLVED` before `did-navigate` fires; Persephone never hears it. Only the
+`new-window` path publishes the event. Excalidraw's Browse anchor passes
+`target=${window.name || "_blank"}` to the library site, and the board iframe carries a `title` but
+no `name`, so `window.name` is empty and the site returns through `window.open` — the working path.
+[`node_modules/@excalidraw/excalidraw/dist/dev/index.js:10017-10021`](../../../node_modules/@excalidraw/excalidraw/dist/dev/index.js#L10017-L10021)
+[`BoardWebview.ts:218-221`](../../../src/renderer/editors/board/BoardWebview.ts#L218-L221)
+This is a constraint to preserve rather than a detail to work around: do not give the board frame a
+`name`, and do not substitute a board-local navigation for the minted URL.
 
 `BrowserUrlEvent` already has the cooperative `handled` flag, and browser navigation currently emits
 the event with the changed URL. [`src/renderer/core/state/events.ts:39-46`](../../../src/renderer/core/state/events.ts#L39-L46)
@@ -177,20 +216,26 @@ as an exit criterion. [`EPIC-111.md:20-34`](../../epics/EPIC-111.md#L20-L34)
 
 ### 1. Connect the board to US-1489's return service
 
-- In `assets/boards/excalidraw/index.html`, request the US-1489 minted return URL during bootstrap
-  and pass it as Excalidraw's `libraryReturnUrl` prop.
+- In `assets/boards/excalidraw/index.html`, call `await persephone.navigation.createReturnUrl()`
+  once during bootstrap and pass the result as Excalidraw's `libraryReturnUrl` prop. `renderBoard()`
+  re-renders on every theme change, so hold the URL in a module-scope variable rather than minting
+  inside the render function. Bootstrap already awaits several things before the first render, so an
+  extra await here costs nothing; if the mint rejects, log and render without the prop rather than
+  killing the module — a board that cannot browse libraries still draws.
 - Rely on the existing board shim's generic external-anchor router for Browse libraries. It already
   prevents the `board://` document navigation and sends the ordinary HTTPS URL through
   `openRawLink`; the HTTP resolver confirms that an ordinary web URL with no content intent becomes
   a Browser tab.
   Do not add a board-local anchor listener or call `pages.openUrlInBrowserTab` from this task.
-- Register the return callback through US-1489. Claim only a callback delivered for this board's
-  minted URL; read `addLibrary` from the supplied hash parameters and retain the `token` only for
-  Excalidraw's prompt/identity semantics if the dependency API exposes it. Do not parse arbitrary
-  browser URLs and do not claim a callback with no `addLibrary` value.
+- Register the callback with `persephone.navigation.onReturn(...)`. Only this board's minted URL is
+  ever delivered there, so no URL matching is needed on the board side; read
+  `event.hash.addLibrary?.[0]` and return early when it is absent. The service does not expose the
+  `token` separately — it is in `event.hash` like any other parameter — and nothing in the install
+  path needs it, so ignore it.
 - Let the navigation service perform its owner-page focus/return behavior. The board should only
   install the callback and complete the library operation.
-- Unsubscribe the return callback on `beforeunload`/board teardown.
+- `onReturn` returns an unsubscribe function; call it from the existing `beforeunload` handler
+  alongside `unsubscribe`, `unsubscribeTheme`, and `unsubscribeIntent`.
 
 ### 2. Fetch the returned `.excalidrawlib` through bundled Node
 
@@ -253,6 +298,24 @@ as an exit criterion. [`EPIC-111.md:20-34`](../../epics/EPIC-111.md#L20-L34)
   `DrawBodyView.ts` does: **both** formats occur in the wild, v2 under `libraryItems` and v1 under
   `library`, and several libraries published on libraries.excalidraw.com are still v1 (Software
   Architecture is one). Fall back to a countless wording rather than refusing to install.
+
+  The board's `persephone.call()` is rooted at the same renderer AiVision tree that serves
+  `settings.get`, so `ui.confirm` is reachable from a permitted bundled board and returns the chosen
+  button label (or `null` when the dialog is dismissed):
+
+  ```js
+  const answer = await persephone.call("ui.confirm", {
+      args: [message, { title: "Add library", buttons: ["Add", "Cancel"] }],
+  });
+  if (answer !== "Add") return;
+  ```
+
+  [`src/renderer/scripting/ai-vision/namespaces/ui.ts:9`](../../../src/renderer/scripting/ai-vision/namespaces/ui.ts#L9)
+  [`src/renderer/api/mcp/board-call-command.ts:48-57`](../../../src/renderer/api/mcp/board-call-command.ts#L48-L57)
+  Keep the wording identical to the built-in's so the two editors ask the same question:
+  `"This will add N item(s) to your library."`, or
+  `"Add the downloaded library to your drawing library?"` when the count is unavailable.
+  [`DrawBodyView.ts:305-327`](../../../src/renderer/editors/draw/DrawBodyView.ts#L305-L327)
 
 - Await the update so `onLibraryChange` completes persistence before reporting success. Keep the
   existing library items, mark the remote items as published through Excalidraw's normal import
