@@ -1,3 +1,35 @@
+## EPIC-112 — Board toolbar controls
+
+Completed 2026-09-21. Not a roadmap phase — created from a user proposal and made a prerequisite of
+EPIC-110 under EPIC-109 D11. [Epic document](EPIC-112.md).
+
+- [x] US-1492: Remove the board toolbar's click-to-switch popover
+- [x] US-1493: Board toolbar control descriptors and the control catalog
+- [x] US-1494: Board-settable toolbar text, with the board path as fallback
+- [x] US-1495: Migrate the Draw toolbar's five controls onto the Excalidraw board
+
+A board declares toolbar controls from a fixed catalog of five types and Persephone renders them in
+its own page toolbar, themed, capped at eight, addressable by an agent as
+`board-toolbar-control-<id>`, and delivered back as an action event. `set` replaces the array and
+`update` patch-merges by id; both reconcile keyed by id so a `set` cannot steal focus or the caret
+from a text field the user is typing in. The toolbar's text slot became board-settable with the
+board path as its fallback, and its click-to-switch popover was removed first — the sidebar Boards
+list is a strict superset of what it offered, and leaving it would have meant a board's own label
+silently carrying a board switcher.
+
+The five built-in Drawing controls now ship on the bundled Excalidraw board, which is what closes
+the EPIC-109 D11 toolbar gap US-1490 recorded rather than papered over.
+
+Two findings are worth carrying forward. The epic's own Q2 table described "Open SVG / image" as a
+file-open flow; the control actually exports the current scene *out* to a new tab and never reads a
+file, so building to the epic as written would have shipped an importer the built-in never had. It
+was caught only because the task brief required verifying Q2 against source rather than restating
+it. And the SVG icon sanitizer originally forced `fill` and `stroke` to `currentColor`
+unconditionally, which silently destroyed `fill="none"` — the dominant outline-icon pattern in this
+codebase, including Persephone's own icons. Recolouring now rewrites only concrete colour values.
+D7's allowlist was narrowed at close to match what shipped: gradients need id namespacing to survive
+being inlined into the app's document, and a board that wants multicolour art ships a raster file.
+
 ## EPIC-108 — The capability bus and the in-memory intent channel
 
 Completed 2026-09-20. Platform roadmap **Phase D**, taken as a slice — **this closes the

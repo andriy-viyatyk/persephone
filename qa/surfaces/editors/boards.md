@@ -91,8 +91,8 @@ while the page is inactive, and the four toolbar controls read `true` once it is
 `board-trust` stays `false` on a trusted board — it lives in the untrusted placeholder. Then
 `highlight("board-toolbar-properties")` rings exactly one control and reports `found: true`.
 
-The board switcher is deliberately **not** an element: it is portalled into the overlay layer and a
-page-scoped selector could not honestly resolve it.
+The board path is a non-interactive label; switch boards from the **Boards** panel or the Explorer
+**Boards** panel.
 
 ## Test B.6: Board Info shows only what the board's situation offers
 

@@ -263,6 +263,89 @@ export interface BoardPortInitMsg {
     materialize?: boolean;
 }
 
+export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "input";
+
+export type BoardToolbarIcon =
+    | { name: string }
+    | { svg: string; preserveColors?: boolean }
+    | { file: string; preserveColors?: boolean };
+
+export type BoardToolbarControlDescriptor =
+    | {
+        id: string;
+        type: "button";
+        label?: string;
+        title?: string;
+        icon?: BoardToolbarIcon;
+        disabled?: boolean;
+    }
+    | {
+        id: string;
+        type: "toggle";
+        label?: string;
+        title?: string;
+        icon?: BoardToolbarIcon;
+        value: boolean;
+        disabled?: boolean;
+    }
+    | {
+        id: string;
+        type: "menu";
+        label?: string;
+        title?: string;
+        icon?: BoardToolbarIcon;
+        items: readonly { id: string; label: string; disabled?: boolean }[];
+        disabled?: boolean;
+    }
+    | {
+        id: string;
+        type: "select";
+        label?: string;
+        title?: string;
+        options: readonly { value: string; label: string }[];
+        value: string;
+        disabled?: boolean;
+    }
+    | {
+        id: string;
+        type: "input";
+        label?: string;
+        title?: string;
+        value: string;
+        placeholder?: string;
+        disabled?: boolean;
+    };
+
+export type BoardToolbarControlPatch = {
+    id: string;
+    type?: BoardToolbarControlType;
+    label?: string;
+    title?: string;
+    icon?: BoardToolbarIcon;
+    disabled?: boolean;
+    value?: boolean | string;
+    items?: readonly { id: string; label: string; disabled?: boolean }[];
+    options?: readonly { value: string; label: string }[];
+    placeholder?: string;
+};
+
+export interface BoardToolbarSetMsg {
+    __persephone: "board:setToolbarControls";
+    controls: readonly BoardToolbarControlDescriptor[];
+}
+
+export interface BoardToolbarUpdateMsg {
+    __persephone: "board:updateToolbarControls";
+    controls: readonly BoardToolbarControlPatch[];
+}
+
+export interface BoardToolbarControlEventMsg {
+    __persephone: "toolbar:control";
+    id: string;
+    type: BoardToolbarControlType;
+    value?: boolean | string;
+}
+
 /** Messages the shim posts to the HOST FRAME via `window.parent.postMessage` (the
  *  board→host channel — NOT the board↔main port): overlay-dismiss pings, error
  *  breadcrumbs, and the busy flag (US-799). Handled in `BoardWebview.onMessage`. */
@@ -279,6 +362,7 @@ export interface BoardToHostMsg {
         | "board:stateInit"  // persephone.state.init — seed defaults + declare restorable keys
         | "board:setSecondaryViews" // persephone.setSecondaryViews — replace the board's views (EPIC-044)
         | "board:setStatusText" // persephone.setStatusText — content-host footer status (US-892)
+        | "board:setToolbarText" // persephone.toolbar.setText — transient page-toolbar text (US-1494)
         | "board:cycleTheme" // Ctrl+Alt+[ / ] pressed inside the frame — cycle the app theme
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
@@ -308,6 +392,8 @@ export interface BoardToHostMsg {
     views?: Array<{ id: string; html?: string; title?: string }>;
     /** `board:setStatusText` payload — the footer status text (content-host boards). `""` clears. */
     statusText?: string;
+    /** `board:setToolbarText` payload — transient page-toolbar text. `""` explicitly falls back to the board path. */
+    toolbarText?: string;
     /** `board:cycleTheme` direction: `1` = next theme (Ctrl+Alt+]), `-1` = previous (Ctrl+Alt+[). */
     direction?: 1 | -1;
     /** `board:var` request id — echoed back in the `var:result` push. */
@@ -490,6 +576,8 @@ export interface BoardCapabilityInvokeResultMsg {
 /** All `__persephone:` envelopes exchanged between a board frame and its host renderer. */
 export type BoardHostFrameMsg =
     | BoardToHostMsg
+    | BoardToolbarSetMsg
+    | BoardToolbarUpdateMsg
     | BoardHostContentMsg
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
@@ -507,7 +595,8 @@ export type BoardHostFrameMsg =
     | BoardCapabilityInvokeResultMsg
     | BoardNavigationCreateReturnUrlMsg
     | BoardNavigationReturnUrlResultMsg
-    | BoardNavigationReturnMsg;
+    | BoardNavigationReturnMsg
+    | BoardToolbarControlEventMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

@@ -49,6 +49,16 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Boards can put their own controls in the page toolbar:** a trusted or bundled board declares
+  buttons, toggles, menus, selects and text inputs from a fixed catalog and Persephone renders them
+  in its own toolbar, themed and addressable by an agent, delivering an event to the board on each
+  interaction. A board can also replace the toolbar's text label, which falls back to the board path
+  when it sets nothing. See [Boards](./boards.md).
+- **The Drawing board has the Drawing editor's toolbar:** the bundled Excalidraw board now carries
+  the same five controls as the built-in Drawing editor — theme, copy image, save as SVG/PNG, open
+  in a new tab, and screen snip.
+- **Board path switching now uses the Boards panels:** clicking the board path no longer opens a
+  switcher; use the **Boards** panel or the Explorer **Boards** panel to switch boards.
 - **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now
   stay together, followed by the shared **Rename**, **Delete**, **New File**, **New Folder** edit
   group. Pasting or creating from a file row targets its parent folder.

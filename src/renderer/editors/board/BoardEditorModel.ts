@@ -26,6 +26,13 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IBoardIntent } from "../../api/types/io.link-data";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
+export interface BoardToolbarElementDeclaration {
+    readonly name: string;
+    readonly purpose: string;
+    readonly where: string;
+    readonly selector: string;
+}
+
 export type BoardAiVisionRequestHandler = (
     request: IAiRemoteRequest,
     timeoutMs: number,
@@ -122,6 +129,11 @@ export interface BoardEditorState extends EditorStateBase {
      *  (like `busy`), so a persisted blob never resurrects a stale count; the board re-sets it on
      *  load. Rendered by `BoardEditorView` in the `ContentHostFooter` slot (main-view footer only). */
     statusText?: string;
+    /** Text shown in the main page toolbar. TRANSIENT — cleared on frame teardown, restore, and
+     *  model disposal; never included in durable restore data. */
+    toolbarText?: string;
+    /** Frame generation that owns `toolbarText`. TRANSIENT — independent from toolbar controls. */
+    toolbarTextFrameGeneration?: number;
 }
 
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
@@ -175,6 +187,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private initialIntent: IBoardIntent | undefined;
+    private toolbarFrameGeneration: number | undefined;
+    private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
      *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
@@ -520,6 +534,31 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return s.filePath ?? s.sourceLink?.filePath;
     }
 
+    /** Publish host toolbar declarations only after the catalog DOM is consistent. */
+    setLiveToolbarElementDeclarations(
+        frameGeneration: number,
+        declarations: readonly BoardToolbarElementDeclaration[],
+    ): void {
+        if (!this.isMain || !this.state.get().boardRoot || !isBoardPermitted(this.state.get().boardRoot!)) return;
+        this.toolbarFrameGeneration = frameGeneration;
+        this.liveToolbarElements = [...declarations];
+    }
+
+    /** Retire declarations belonging to one iframe generation. */
+    clearToolbarControlsForFrame(frameGeneration: number): void {
+        if (this.toolbarFrameGeneration !== frameGeneration) return;
+        this.toolbarFrameGeneration = undefined;
+        this.liveToolbarElements = [];
+    }
+
+    getLiveToolbarElementDeclarations(): readonly BoardToolbarElementDeclaration[] {
+        const boardRoot = this.state.get().boardRoot;
+        if (!this.page || this.page.mainEditorInstance !== this || !boardRoot
+            || !isBoardPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)
+            || this.toolbarFrameGeneration === undefined) return [];
+        return this.liveToolbarElements;
+    }
+
     /** Manifest editor kind for this board's trusted association. */
     get editorKind(): "simple" | "content-host" | "stream-host" {
         const boardRoot = this.state.get().boardRoot;
@@ -674,6 +713,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             folderPath: s.folderPath,
             sharedState,
             statusText: undefined,
+            toolbarText: undefined,
+            toolbarTextFrameGeneration: undefined,
             contentPath: undefined,
         };
         return data;
@@ -716,6 +757,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         // Footer status text (US-892) is transient too — clear any value carried in from a
         // pre-fix persisted blob, so a stale count never flashes before the board re-sets it.
         if (s.statusText) this.state.update((st) => { st.statusText = undefined; });
+        // Toolbar text is transient page chrome too. Clear even a persisted empty string, and
+        // discard its frame owner because restore has no live frame generation to preserve.
+        if (s.toolbarText !== undefined || s.toolbarTextFrameGeneration !== undefined) {
+            this.state.update((st) => {
+                st.toolbarText = undefined;
+                st.toolbarTextFrameGeneration = undefined;
+            });
+        }
         // Same for a materialized content path carried in from a pre-fix persisted blob: the cache
         // file is gone (or stale), so force a re-resolve on the next `ensureContentPath()`.
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
@@ -787,6 +836,25 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.state.update((s) => { s.statusText = typeof text === "string" ? text : ""; });
     }
 
+    /** Set transient main-frame page-toolbar text for one live board-frame generation (US-1494).
+     *  The empty string is retained as an explicit board clear; the toolbar view resolves both
+     *  it and an unset value to the board path fallback. */
+    setToolbarTextForFrame(frameGeneration: number, text: string): void {
+        this.state.update((s) => {
+            s.toolbarTextFrameGeneration = frameGeneration;
+            s.toolbarText = typeof text === "string" ? text : "";
+        });
+    }
+
+    /** Clear page-toolbar text only when the retiring frame still owns it. */
+    clearToolbarTextForFrame(frameGeneration: number): void {
+        if (this.state.get().toolbarTextFrameGeneration !== frameGeneration) return;
+        this.state.update((s) => {
+            s.toolbarTextFrameGeneration = undefined;
+            s.toolbarText = undefined;
+        });
+    }
+
     /** A busy board that survived navigate-away (US-799) had its derived `secondaryView`
      *  cleared by the base `beforeNavigateAway` while demoted — which is all the Pattern-A
      *  disposal of a NON-busy board needs (with no derived panels `contributesPanels()` is
@@ -853,6 +921,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
         this.initialIntent = undefined;
+        this.toolbarFrameGeneration = undefined;
+        this.liveToolbarElements = [];
+        this.state.update((s) => {
+            s.toolbarTextFrameGeneration = undefined;
+            s.toolbarText = undefined;
+        });
         this.aiVisionDisposed = true;
         this.reloadAwaitingRegistration = false;
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the

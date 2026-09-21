@@ -45,6 +45,10 @@ import type {
     BoardFireMethod,
     BoardHostContentMsg,
     BoardJobInfo,
+    BoardToolbarControlEventMsg,
+    BoardToolbarControlType,
+    BoardToolbarSetMsg,
+    BoardToolbarUpdateMsg,
     BoardNavigationReturnMsg,
     BoardNavigationReturnUrlResultMsg,
     BoardOpenContentRequest,
@@ -420,6 +424,12 @@ const pendingNavigationReturnUrls = new Map<number, {
 }>();
 let navigationReturnReqId = 0;
 const navigationReturnCbs: Array<(event: PersephoneNavigationReturnEvent) => void> = [];
+interface PersephoneToolbarActionEvent {
+    readonly id: string;
+    readonly type: BoardToolbarControlType;
+    readonly value?: boolean | string;
+}
+const toolbarActionCbs = new Set<(event: PersephoneToolbarActionEvent) => void>();
 
 function navigationReturnUrlRpc(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
@@ -443,6 +453,19 @@ function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) =
         const index = navigationReturnCbs.indexOf(callback);
         if (index >= 0) navigationReturnCbs.splice(index, 1);
     };
+}
+
+function postToolbarMessage(message: BoardToolbarSetMsg | BoardToolbarUpdateMsg): void {
+    try {
+        window.parent.postMessage(message, hostPostTarget);
+    } catch {
+        // parent gone
+    }
+}
+
+function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void): () => void {
+    toolbarActionCbs.add(callback);
+    return () => toolbarActionCbs.delete(callback);
 }
 
 interface BoardIntentInit {
@@ -880,6 +903,28 @@ onHostMessage((event) => {
     if (p) attachPort(p);
 });
 
+onHostMessage((event) => {
+    const data = event.data as BoardToolbarControlEventMsg | undefined;
+    if (!data || data.__persephone !== "toolbar:control"
+        || typeof data.id !== "string" || !data.id
+        || (data.type !== "button" && data.type !== "toggle" && data.type !== "menu"
+            && data.type !== "select" && data.type !== "input")
+        || (data.value !== undefined && typeof data.value !== "boolean" && typeof data.value !== "string")) return;
+    const value = data.type === "button" ? undefined : data.value;
+    const publicEvent: PersephoneToolbarActionEvent = {
+        id: data.id,
+        type: data.type,
+        ...(value !== undefined ? { value } : {}),
+    };
+    for (const callback of toolbarActionCbs) {
+        try {
+            callback(publicEvent);
+        } catch (error: unknown) {
+            console.error("persephone.toolbar.onAction callback error:", error);
+        }
+    }
+});
+
 // Capability request delivered to an ALREADY-OPEN board page — renderer → board.
 // The initial request of a page arrives on `BoardPortInitMsg` instead, because the page is
 // created for it; every later request reuses this frame and arrives here. Without this
@@ -1214,6 +1259,8 @@ function createHandle(
     // 1.7.0 adds board capability declarations and the renderer-local capability bus (EPIC-108);
     // 1.8.0 adds intent delivery and board-to-board capability invocation (US-1481);
     // 1.9.0 adds renderer-owned navigation return URLs (US-1489).
+    // 1.10.0 adds the host-rendered board toolbar catalog (US-1493).
+    // 1.11.0 adds transient board-settable page-toolbar text (US-1494).
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1247,6 +1294,36 @@ function createHandle(
         } catch {
             // parent gone
         }
+    },
+
+    toolbar: {
+        set(controls: BoardToolbarSetMsg["controls"]): void {
+            postToolbarMessage({
+                __persephone: "board:setToolbarControls",
+                controls: Array.isArray(controls) ? controls as BoardToolbarSetMsg["controls"] : [],
+            });
+        },
+        update(partial: BoardToolbarUpdateMsg["controls"]): void {
+            postToolbarMessage({
+                __persephone: "board:updateToolbarControls",
+                controls: Array.isArray(partial) ? partial as BoardToolbarUpdateMsg["controls"] : [],
+            });
+        },
+        /** Set transient text in the main page toolbar; `""` restores the board path fallback. */
+        setText(text: string): void {
+            try {
+                window.parent.postMessage(
+                    {
+                        __persephone: "board:setToolbarText",
+                        toolbarText: typeof text === "string" ? text : String(text ?? ""),
+                    },
+                    hostPostTarget,
+                );
+            } catch {
+                // parent gone
+            }
+        },
+        onAction: onToolbarAction,
     },
 
     /** Set the text shown in the board's footer status area — the same footer that shows the

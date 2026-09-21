@@ -28,13 +28,18 @@ below tracks which phases have shipped.
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **active** |
-| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **blocked by EPIC-111** |
+| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **blocked by EPIC-111** (EPIC-112 shipped 2026-09-21) |
 | E — Torrent board and audio player (proof 1) | — | not started |
 
 **[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
 EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
 drawing library path has nowhere to live once `editors/draw` is deleted. EPIC-109 D11 makes it a
 prerequisite of EPIC-110.
+
+**EPIC-112: Board toolbar controls** shipped 2026-09-21 and is no longer a blocker; it moved to
+[`epics/completed.md`](epics/completed.md). It cleared the second of EPIC-110's two prerequisites:
+the built-in Draw editor's five toolbar controls now exist on the bundled Excalidraw board, so
+deleting `editors/draw` no longer takes them with it.
 
 ## Active
 

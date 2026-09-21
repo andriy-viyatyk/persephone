@@ -130,7 +130,11 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     get aiVision(): IAiVisionDescriptor {
         const pageId = this.editor.page?.id;
-        const elements = createElements(BOARD_ELEMENTS, ui.highlightElement.bind(ui), {
+        const declarations = [
+            ...BOARD_ELEMENTS,
+            ...this.editor.getLiveToolbarElementDeclarations(),
+        ];
+        const elements = createElements(declarations, ui.highlightElement.bind(ui), {
             scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
             beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
             highlightOptions: { all: true },
@@ -148,7 +152,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 ...elements.members,
             ],
             help: withEditorGuideHelp(this.id, BOARD_HELP),
-            elements: BOARD_ELEMENTS,
+            elements: declarations,
             provide: (name) => name === "app" && app ? { value: app } : elements.provide(name),
             restricted: () => this.restricted(),
             summarize: () => ({

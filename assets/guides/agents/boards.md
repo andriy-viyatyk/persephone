@@ -11,10 +11,56 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.9.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.11.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.9.0` adds renderer-owned navigation return URLs to the additive `1.8.0` capability,
-intent, provider, service, and stream surface; existing boards are unaffected.
+Bridge `1.11.0` adds transient page-toolbar text to the additive navigation,
+capability, intent, provider, service, and stream surface; existing boards are unaffected.
+
+## Host-rendered board toolbar
+
+Trusted and bundled boards can declare up to eight controls in the page toolbar. The board owns
+the catalog and calls `set()` with the complete ordered list; `update()` patches known controls by
+`id` without adding, removing, or reordering them. Invalid entries, duplicate ids, updates for
+unknown ids, and controls beyond the cap are ignored and written to the board's `ui.log` as
+warnings. Values are host-owned, so a board does not need to echo an action before calling
+`update()`.
+
+```js
+persephone.toolbar.set([
+  { id: "refresh", type: "button", title: "Refresh", icon: { name: "refresh" } },
+  { id: "enabled", type: "toggle", label: "Enabled", value: true },
+  { id: "view", type: "select", options: [
+    { value: "all", label: "All" }, { value: "open", label: "Open" },
+  ], value: "all" },
+  { id: "query", type: "input", placeholder: "Filter", value: "" },
+]);
+persephone.toolbar.update([{ id: "enabled", value: false }]);
+const off = persephone.toolbar.onAction(({ id, type, value }) => {
+  // button: no value; toggle: boolean; menu/select/input: string
+});
+```
+
+The fixed types are `button`, `toggle`, `menu`, `select`, and `input`. A button action has
+`{ id, type: "button" }`; toggles send a boolean, menus send the selected item id, selects send
+the selected option value, and inputs send the current string after 500 ms of quiet time. Menu
+items are `{ id, label, disabled? }`; select options are `{ value, label }`. A control's stable
+agent-facing address is `data-name="board-toolbar-control-${id}"` and it appears in
+`BoardEditor.elements` while the main trusted frame and toolbar are mounted. These are host
+controls, not iframe content, so use the generic host/window automation surface for them.
+
+Icons use exactly one of `{ name }`, `{ svg, preserveColors? }`, or `{ file, preserveColors? }`.
+Names come from Persephone's registered icon set. File paths are relative to the board root and
+cannot be absolute, contain `..`, or escape that root. SVG sources are size-capped and rebuilt
+with an explicit element/attribute allowlist through `DOMParser`; scripts, styles, foreign objects,
+images, uses, event attributes, and external links are rejected, and ordinary inline SVG fills and
+strokes are normalized to `currentColor`. `preserveColors: true` renders SVG through an image;
+raster files also render through an image. This handling is rendering hygiene for trusted board
+content, not a replacement for the existing trust gate.
+
+The catalog exists only for the live trusted main frame. Reload, navigation away, frame disposal,
+or loss of trust clears controls, dynamic element declarations, menus, and pending input timers;
+the next frame must call `set()` again. The toolbar group is visually separated from Persephone's
+own reload/log/properties controls, but it does not add a permission or trust surface.
 
 ## What a board is
 
@@ -250,7 +296,7 @@ A manifest may declare a board-relative ESM entry and its bridge requirement:
 
 ```json
 {
-  "minBridgeVersion": "1.9.0",
+  "minBridgeVersion": "1.11.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs"
 }
@@ -310,7 +356,7 @@ not a security boundary.
 
 ```json
 {
-  "minBridgeVersion": "1.9.0",
+  "minBridgeVersion": "1.11.0",
   "permissions": ["capabilities"],
   "capabilities": [
     { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
@@ -405,7 +451,7 @@ thirdParty.start({ returnUrl });
 `url` is the complete returned URL. `query` and `hash` are plain records whose values are arrays;
 duplicate keys stay in order, a key without a value is `""`, and `URLSearchParams` percent-decodes
 each component once. The API is available to trusted and bundled boards, and requires bridge
-version `1.9.0` or newer (`minBridgeVersion: "1.9.0"`). A claim belongs to the current board frame:
+version `1.11.0` or newer (`minBridgeVersion: "1.11.0"`). A claim belongs to the current board frame:
 disposing the frame or reloading it invalidates the claim, so the reloaded document must mint a new
 URL. A late return for an invalidated claim is consumed and the browser navigation is restored when
 possible, but it is never delivered to a replacement board or frame.
@@ -589,6 +635,12 @@ must respect.
   Call it from the board's **main** view; `""` clears it. It's a visual no-op for plain
   (non-content-host) boards, which have no footer — so guard with `persephone.setStatusText?.(…)`
   if the board must also run on older app builds.
+- `persephone.toolbar.setText(text)` — set transient text in the wide middle slot of the page
+  toolbar from the board's **main** view. A non-empty string replaces the visible board path;
+  `""` and an unset value show the path again, never a blank slot. The slot's native tooltip
+  always retains the complete path, even while an override is visible. The value is not persisted
+  and is cleared when the main frame reloads, errors, is disposed, loses trust, or the board is
+  navigated away from; a newly mounted frame must set it again.
 
   `persephone.host.streamUrl()` is available to both kinds and returns the origin-local
   `board://<host>/__pipe/<pageId>` URL. Fetch it with a `Range` header to read the pipe without

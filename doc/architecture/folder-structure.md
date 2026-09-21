@@ -646,7 +646,10 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── board/              # Board editor (non-text, Pattern B survive-navigation)
 │   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; file/folder sources keep boardRoot separate from filePath/folderPath; busy keep-alive
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
-│   │   ├── BoardToolbar.ts           # In-board toolbar — Reload / Show-log / board path + switcher popover / File Explorer button
+│   │   ├── BoardToolbar.ts           # In-board toolbar — Reload / Show-log / board text slot / File Explorer button; hosts the board-declared control group
+│   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
+│   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
+│   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake + ui.log reset
 │   │   ├── board-pipe-handler.ts      # Renderer side of board://<host>/__pipe/<pageId> range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)

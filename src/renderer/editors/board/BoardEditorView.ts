@@ -89,10 +89,16 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         }));
         this.model = props.model;
         this.host = props.model.contentHost as unknown as TextFileModel | null;
-        this.toolbar = new BoardToolbarView({ model: props.model });
         this.webview = new BoardWebview({
             model: props.model,
             boardRoot: props.boardRoot,
+            onToolbarSet: (controls, frameGeneration, warning) => this.toolbar.setToolbarControls(controls, frameGeneration, warning),
+            onToolbarUpdate: (patches, warning) => this.toolbar.updateToolbarControls(patches, warning),
+            onToolbarClear: (frameGeneration) => this.toolbar.clearToolbarControls(frameGeneration),
+        });
+        this.toolbar = new BoardToolbarView({
+            model: props.model,
+            onAction: (event) => this.webview.sendToolbarControl(event),
         });
     }
 

@@ -24,6 +24,10 @@ import type {
     BoardNavigationReturnUrlResultMsg,
     BoardPortInitMsg,
     BoardStateSyncMsg,
+    BoardToolbarControlEventMsg,
+    BoardToolbarControlPatch,
+    BoardToolbarSetMsg,
+    BoardToolbarUpdateMsg,
     BoardToHostMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
@@ -54,6 +58,11 @@ import {
 } from "../../api/board-capability-transport";
 import { app } from "../../api/app";
 import { boardNavigationReturnService } from "../../api/board-navigation-return";
+import {
+    normalizeToolbarControlPatches,
+    normalizeToolbarControlSet,
+    type ToolbarAction,
+} from "./BoardToolbarControls";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -61,6 +70,9 @@ export interface BoardWebviewProps {
     entry?: string;
     view?: string;
     isMain?: boolean;
+    onToolbarSet?: (controls: readonly import("../../../ipc/board-bridge-channels").BoardToolbarControlDescriptor[], frameGeneration: number, warning: (message: string) => void) => void;
+    onToolbarUpdate?: (patches: readonly BoardToolbarControlPatch[], warning: (message: string) => void) => void;
+    onToolbarClear?: (frameGeneration: number) => void;
 }
 
 const BOARD_NOTIFY_LIMIT = 5;
@@ -156,6 +168,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onDispose(): void {
         this.live = false;
+        const retiredGeneration = this.generation;
+        this.props.model.clearToolbarControlsForFrame(retiredGeneration);
+        if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
+        this.props.onToolbarClear?.(retiredGeneration);
         this.generation++;
         this.rejectPendingAiVision(new Error("Board frame was replaced."));
         this.rejectPendingCapability("handler-closed", "The board frame was replaced.", false);
@@ -339,6 +355,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
+        const retiredGeneration = this.generation;
+        this.props.model.clearToolbarControlsForFrame(retiredGeneration);
+        if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
+        this.props.onToolbarClear?.(retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
         this.generation++;
         this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
@@ -400,7 +420,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !host || !frame) return;
         const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg
             | BoardAiVisionResultMsg | BoardCapabilityIntentResultMsg | BoardCapabilityListRequestMsg
-            | BoardCapabilityInvokeRequestMsg | BoardNavigationCreateReturnUrlMsg | undefined;
+            | BoardCapabilityInvokeRequestMsg | BoardNavigationCreateReturnUrlMsg
+            | BoardToolbarSetMsg | BoardToolbarUpdateMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
@@ -409,9 +430,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             message?: string; level?: string; busy?: boolean; content?: string;
             state?: Record<string, unknown>; partial?: Record<string, unknown>;
             defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
-            statusText?: string; direction?: 1 | -1; reqId?: number;
+            statusText?: string; toolbarText?: string; direction?: 1 | -1; reqId?: number;
             varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
             openContent?: BoardOpenContentRequest;
+            controls?: unknown;
         };
         switch (data.__persephone) {
             case "board:interact":
@@ -452,8 +474,36 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             case "board:setSecondaryViews":
                 model.setSecondaryViews(legacy.views);
                 break;
+            case "board:setToolbarControls": {
+                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
+                    this.appendLog("warn", "Ignored board toolbar controls from a non-main or unavailable frame.");
+                    break;
+                }
+                const controls = normalizeToolbarControlSet(legacy.controls, (message) => this.appendLog("warn", message));
+                this.props.onToolbarSet?.(controls, this.generation, (message) => this.appendLog("warn", message));
+                break;
+            }
+            case "board:updateToolbarControls": {
+                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
+                    this.appendLog("warn", "Ignored board toolbar update from a non-main or unavailable frame.");
+                    break;
+                }
+                const patches = normalizeToolbarControlPatches(legacy.controls, (message) => this.appendLog("warn", message));
+                this.props.onToolbarUpdate?.(patches, (message) => this.appendLog("warn", message));
+                break;
+            }
             case "board:setStatusText":
                 if (this.isMain) model.setStatusText(typeof legacy.statusText === "string" ? legacy.statusText : "");
+                break;
+            case "board:setToolbarText":
+                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
+                    this.appendLog("warn", "Ignored board toolbar text from a non-main or unavailable frame.");
+                    break;
+                }
+                model.setToolbarTextForFrame(
+                    this.generation,
+                    typeof legacy.toolbarText === "string" ? legacy.toolbarText : "",
+                );
                 break;
             case "board:cycleTheme":
                 cycleAppTheme(legacy.direction === 1 ? 1 : -1);
@@ -503,6 +553,28 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
         }
     };
+
+    /** Deliver one catalog interaction to the current main board frame. */
+    public sendToolbarControl(event: ToolbarAction): void {
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        const model = this.props.model;
+        if (!this.live || !this.isMain || !host || !frame || !contentWindow
+            || model.frames.get(BOARD_CDP_TAB) !== frame
+            || !isBoardPermitted(this.props.boardRoot)) return;
+        const message: BoardToolbarControlEventMsg = {
+            __persephone: "toolbar:control",
+            id: event.id,
+            type: event.type,
+            ...(event.type !== "button" && event.value !== undefined ? { value: event.value } : {}),
+        };
+        try {
+            contentWindow.postMessage(message, `board://${host}`);
+        } catch {
+            // The frame may be replaced while the control event is posted.
+        }
+    }
 
     private handleAiVisionRegistration(
         message: BoardAiVisionRegistrationMsg,
@@ -744,6 +816,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private readonly handleFrameError = (): void => {
+        if (this.isMain) this.props.model.clearToolbarTextForFrame(this.generation);
         this.rejectPendingCapability("crashed", "The board frame failed to load.", false);
         this.unregisterCapabilityFrame();
     };

@@ -318,6 +318,7 @@
         let libraryLoadPromise = Promise.resolve();
         let saveTimer;
         let lastFingerprint = sceneFingerprint(scene.elements, scene.files);
+        let drawDarkMode = !!persephone.theme.isDark;
         // Do not let Excalidraw's initial empty onChange callbacks write a serialized empty
         // scene over a host that this instance has not populated. Once the user or an intent
         // creates an element/file, an intentional later delete-to-empty is allowed.
@@ -433,6 +434,45 @@
             });
         }
 
+        function hasExportableElements() {
+            if (!excalidrawApi || excalidrawApi.getSceneElements().length === 0) {
+                if (excalidrawApi) {
+                    persephone.notify("Nothing to export — the drawing is empty", "warning");
+                }
+                return false;
+            }
+            return true;
+        }
+
+        async function exportCurrentSvgText() {
+            const currentScene = getCurrentScene();
+            const svg = await exportToSvg({
+                elements: currentScene.elements,
+                appState: {
+                    ...currentScene.appState,
+                    exportBackground: true,
+                    exportWithDarkMode: drawDarkMode,
+                },
+                files: currentScene.files,
+            });
+            return svg.outerHTML;
+        }
+
+        async function exportCurrentPngBlob(scale = 2) {
+            const currentScene = getCurrentScene();
+            return exportToBlob({
+                elements: currentScene.elements,
+                appState: {
+                    ...currentScene.appState,
+                    exportBackground: true,
+                    exportWithDarkMode: drawDarkMode,
+                    exportScale: scale,
+                },
+                files: currentScene.files,
+                mimeType: "image/png",
+            });
+        }
+
         const unsubscribe = hostAttached
             ? persephone.host.onContentChange((nextContent) => {
                 applyExternalScene(parseExcalidrawContent(nextContent));
@@ -473,36 +513,199 @@
                 insertImage(dataUrl, mimeFromDataUrl(dataUrl), dimensions, options);
             },
             async exportAsSvg() {
-                const currentScene = getCurrentScene();
-                const svg = await exportToSvg({
-                    elements: currentScene.elements,
-                    appState: {
-                        ...currentScene.appState,
-                        exportBackground: true,
-                        exportWithDarkMode: currentScene.appState.theme === "dark",
-                    },
-                    files: currentScene.files,
-                });
-                return svg.outerHTML;
+                return exportCurrentSvgText();
             },
             async exportAsPng(options) {
-                const currentScene = getCurrentScene();
-                const blob = await exportToBlob({
-                    elements: currentScene.elements,
-                    appState: {
-                        ...currentScene.appState,
-                        exportBackground: true,
-                        exportWithDarkMode: currentScene.appState.theme === "dark",
-                        exportScale: options?.scale ?? 2,
-                    },
-                    files: currentScene.files,
-                    mimeType: "image/png",
-                });
+                const blob = await exportCurrentPngBlob(options?.scale ?? 2);
                 return blobToDataUrl(blob);
             },
         };
 
         persephone.aiVision.expose(model);
+
+        function drawToolbarControls() {
+            return [
+                {
+                    id: "draw-theme",
+                    type: "button",
+                    title: drawDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme",
+                    icon: { name: drawDarkMode ? "sun" : "moon" },
+                },
+                {
+                    id: "draw-copy-image",
+                    type: "button",
+                    title: "Copy Image to Clipboard",
+                    icon: { name: "copy" },
+                },
+                {
+                    id: "draw-save",
+                    type: "menu",
+                    title: "Save as file",
+                    icon: { name: "download" },
+                    items: [
+                        { id: "save-svg", label: "Save as SVG" },
+                        { id: "save-png", label: "Save as PNG" },
+                    ],
+                },
+                {
+                    id: "draw-open-new-tab",
+                    type: "menu",
+                    title: "Open in new tab",
+                    icon: { name: "new-window" },
+                    items: [
+                        { id: "open-svg", label: "Open as SVG" },
+                        { id: "open-image", label: "Open as Image" },
+                    ],
+                },
+                {
+                    id: "draw-snip",
+                    type: "button",
+                    title: "Screen Snip",
+                    icon: { name: "snip" },
+                },
+            ];
+        }
+
+        async function getDefaultName(extension) {
+            try {
+                const filePath = await persephone.getFilePath();
+                if (typeof filePath === "string" && filePath.trim() !== "") {
+                    const fileName = filePath.replace(/^.*[\\/]/, "").replace(/\.excalidraw$/i, "");
+                    if (fileName) return `${fileName}.${extension}`;
+                }
+            } catch (error) {
+                persephone.notify(
+                    `Failed to determine the drawing file path: ${errorMessage(error)}. Using a default name.`,
+                    "warning",
+                );
+            }
+            return `drawing.${extension}`;
+        }
+
+        function notifyToolbarFailure(label, error) {
+            const code = error && typeof error === "object" && typeof error.code === "string"
+                ? `${error.code}: `
+                : "";
+            persephone.notify(`${label}: ${code}${errorMessage(error)}`, "error");
+        }
+
+        async function handleCopyImage() {
+            if (!excalidrawApi || !hasExportableElements()) return;
+            try {
+                const blob = await exportCurrentPngBlob();
+                await navigator.clipboard.write([
+                    new ClipboardItem({ "image/png": blob }),
+                ]);
+            } catch (error) {
+                notifyToolbarFailure("Failed to copy image", error);
+            }
+        }
+
+        async function handleSave(value) {
+            if (!excalidrawApi || !hasExportableElements()) return;
+            if (value === "save-svg") {
+                try {
+                    const svgText = await exportCurrentSvgText();
+                    const savePath = await persephone.saveFileDialog({
+                        title: "Save as SVG",
+                        defaultPath: await getDefaultName("svg"),
+                        filters: [{ name: "SVG", extensions: ["svg"] }],
+                    });
+                    if (savePath) await persephone.writeFile(savePath, svgText);
+                } catch (error) {
+                    notifyToolbarFailure("Export failed", error);
+                }
+                return;
+            }
+            if (value === "save-png") {
+                try {
+                    const blob = await exportCurrentPngBlob();
+                    const savePath = await persephone.saveFileDialog({
+                        title: "Save as PNG",
+                        defaultPath: await getDefaultName("png"),
+                        filters: [{ name: "PNG", extensions: ["png"] }],
+                    });
+                    if (savePath) {
+                        const bytes = new Uint8Array(await blob.arrayBuffer());
+                        await persephone.writeFile(savePath, bytes, { encoding: "binary" });
+                    }
+                } catch (error) {
+                    notifyToolbarFailure("Export failed", error);
+                }
+            }
+        }
+
+        async function handleOpenNewTab(value) {
+            if (!excalidrawApi || !hasExportableElements()) return;
+            if (value === "open-svg") {
+                try {
+                    const svgText = await exportCurrentSvgText();
+                    await persephone.capabilities.invoke("content.view", {
+                        representation: "svg",
+                        content: svgText,
+                        language: "xml",
+                        title: await getDefaultName("svg"),
+                    });
+                } catch (error) {
+                    notifyToolbarFailure("Export failed", error);
+                }
+                return;
+            }
+            if (value === "open-image") {
+                try {
+                    const blob = await exportCurrentPngBlob();
+                    const dataUrl = await blobToDataUrl(blob);
+                    persephone.openRawLink(dataUrl, { editor: "image-view" });
+                } catch (error) {
+                    notifyToolbarFailure("Export failed", error);
+                }
+            }
+        }
+
+        async function handleScreenSnip() {
+            if (!excalidrawApi) return;
+            try {
+                const dataUrl = await persephone.call("shell.startScreenSnip", { args: [true] });
+                if (typeof dataUrl !== "string" || !dataUrl) return;
+                const dimensions = await getImageDimensions(dataUrl);
+                insertImage(dataUrl, mimeFromDataUrl(dataUrl), dimensions);
+                writeCurrentSceneToHost();
+            } catch (error) {
+                notifyToolbarFailure("Screen snip failed", error);
+            }
+        }
+
+        function handleDrawToolbarAction(event) {
+            if (!event || typeof event !== "object") return;
+            if (event.id === "draw-theme" && event.type === "button") {
+                drawDarkMode = !drawDarkMode;
+                renderBoard();
+                persephone.toolbar.update([{
+                    id: "draw-theme",
+                    title: drawDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme",
+                    icon: { name: drawDarkMode ? "sun" : "moon" },
+                }]);
+                return;
+            }
+            if (event.id === "draw-copy-image" && event.type === "button") {
+                void handleCopyImage();
+                return;
+            }
+            if (event.id === "draw-save" && event.type === "menu" && typeof event.value === "string") {
+                void handleSave(event.value);
+                return;
+            }
+            if (event.id === "draw-open-new-tab" && event.type === "menu" && typeof event.value === "string") {
+                void handleOpenNewTab(event.value);
+                return;
+            }
+            if (event.id === "draw-snip" && event.type === "button") {
+                void handleScreenSnip();
+            }
+        }
+
+        persephone.toolbar.set(drawToolbarControls());
+        const unsubscribeToolbar = persephone.toolbar.onAction(handleDrawToolbarAction);
 
         // Excalidraw carries its own light/dark palette and defaults to light, so without
         // this it stays bright inside a dark Persephone. `initialData` is read once at
@@ -615,7 +818,7 @@
             root.render(
                 React.createElement(Excalidraw, {
                     initialData: scene,
-                    theme: persephone.theme.isDark ? "dark" : "light",
+                    theme: drawDarkMode ? "dark" : "light",
                     onChange: scheduleHostWrite,
                     excalidrawAPI: adoptExcalidrawApi,
                     ...(libraryReturnUrl ? { libraryReturnUrl } : {}),
@@ -645,6 +848,7 @@
             unsubscribeReturn();
             unsubscribeTheme();
             unsubscribeIntent();
+            unsubscribeToolbar();
         }, { once: true });
     </script>
 </body>

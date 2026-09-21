@@ -5,11 +5,55 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.9.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.11.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
-Bridge `1.9.0` adds renderer-owned navigation return URLs to the additive `1.8.0` capability,
-intent, provider, service, and stream surface; the change is additive and existing boards remain
-unaffected.
+Bridge `1.11.0` adds transient page-toolbar text to the additive navigation,
+capability, intent, provider, service, and stream surface; the change is additive and existing
+boards remain unaffected.
+
+## Host-rendered board toolbar
+
+Trusted and bundled boards may call `persephone.toolbar.set(controls)` with the complete ordered
+catalog and `persephone.toolbar.update(partial)` to patch existing ids. The catalog is capped at
+eight rendered controls; malformed, duplicate, unknown-update, and over-cap entries are ignored
+with a warning in `ui.log`. The fixed types are `button`, `toggle`, `menu`, `select`, and `input`.
+Values are host-owned and uncontrolled.
+
+```js
+persephone.toolbar.set([
+  { id: "refresh", type: "button", title: "Refresh", icon: { name: "refresh" } },
+  { id: "enabled", type: "toggle", label: "Enabled", value: true },
+  { id: "mode", type: "select", options: [{ value: "all", label: "All" }], value: "all" },
+  { id: "query", type: "input", placeholder: "Filter", value: "" },
+]);
+const off = persephone.toolbar.onAction(({ id, type, value }) => {
+  // button has no value; toggle is boolean; menu/select/input are strings
+});
+```
+
+Inputs send one string event after 500 ms of quiet time; menus send their item id, selects their
+option value, and toggles their new boolean. Every live control is addressed by
+`data-name="board-toolbar-control-${id}"` in `BoardEditor.elements`, while host/window automation
+is the correct way to operate it (the board iframe methods target iframe content).
+
+Icons accept exactly `{ name }`, `{ svg, preserveColors? }`, or board-root-relative
+`{ file, preserveColors? }`. Names use the registered icon set. Relative files reject absolute,
+`..`, and escaping paths. SVG is size-capped, parsed with `DOMParser`, rebuilt against an explicit
+allowlist, and rejects scripts, styles, foreign objects, images, uses, event attributes, and
+external links; normal SVG fill/stroke is forced to `currentColor`. `preserveColors: true` and
+raster files render through `<img>`. This is rendering hygiene for trusted content and does not
+replace the existing trust gate.
+
+The catalog is transient main-frame state: reload, navigation, disposal, or loss of trust clears
+the controls and their dynamic element declarations, and a new frame must call `set()` again.
+
+## Board page-toolbar text
+
+The main view may call `persephone.toolbar.setText(text)` to replace the wide middle toolbar label
+temporarily. A non-empty string is shown; `persephone.toolbar.setText("")` restores the board root
+path, which is also always available in the label's native tooltip. The value is not persisted and
+is cleared when the frame reloads, errors, is disposed, loses trust, or is navigated away from, so
+the replacement frame must set it again.
 
 > ## 📌 Agent: rewrite this file once the board is built
 >
@@ -47,7 +91,7 @@ fields that let the board act as a file editor:
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
-  "minBridgeVersion": "1.9.0",
+  "minBridgeVersion": "1.11.0",
   "permissions": ["service", "contentProviders"],
   "service": "scripts/service.mjs",
   "contentProviders": [
@@ -79,7 +123,7 @@ hygiene, not a security boundary or a grant.
 
 ```json
 {
-  "minBridgeVersion": "1.9.0",
+  "minBridgeVersion": "1.11.0",
   "permissions": ["capabilities"],
   "capabilities": [
     {
@@ -481,7 +525,7 @@ thirdParty.start({ returnUrl });
 
 `url` is the complete returned URL. `query` and `hash` are plain records with array values;
 duplicate keys are preserved in order, a key without a value is `""`, and percent-encoding is
-decoded once. This API requires bridge `1.9.0` or newer (`minBridgeVersion: "1.9.0"`) and is
+decoded once. This API requires bridge `1.11.0` or newer (`minBridgeVersion: "1.11.0"`) and is
 available to trusted or bundled boards. Claims belong to the current board frame: disposing or
 reloading the frame invalidates them, so a reloaded document must mint a new URL. A late return is
 consumed and the browser navigation is restored when possible, but it is never delivered to a

@@ -22,7 +22,7 @@ the file and folder association details.
 
 ```
 +---------------------------------------------------------------------+
-| [Explorer] [Path] [Reload] [Log] [Properties] [Switch]              |  Board toolbar: navigation and actions left, switch at right
+| [Explorer] [Text]   [Board controls] [Reload] [Log] [Properties] [Switch] |  Board toolbar: Explorer and text left, board controls then Persephone's actions and the switch at right
 +---------------------------------------------------------------------+
 | [Board]                                  [Script panel]             |  board content and optional script panel
 +---------------------------------------------------------------------+
@@ -33,6 +33,8 @@ the file and folder association details.
 ### User-facing label → `elements` name
 
 - File Explorer → `board-toolbar-explorer`
+- Board controls → `board-toolbar-control-<id>`, one per control the open board declares, in the order it declared them; absent when the board declares none
+- Toolbar text → no entry: a label, not a control
 - Reload → `board-toolbar-reload`
 - Show log → `board-toolbar-log`
 - Properties → `board-toolbar-properties`
@@ -56,17 +58,8 @@ the file and folder association details.
 +---------------------------------------------------------------------+
 ```
 
-### When the board toolbar switch menu is open
-
-```
-+---------------------------------------------------------------------+
-| [Board switch choices]                                              |  transient board toolbar switch menu
-+---------------------------------------------------------------------+
-```
-
 ### Drawn controls without `elements`
 
-- Board toolbar switch menu — no entry: transient switch choices are not a static facade control.
 - Board webview controls — no entry: embedded board content is addressed through the board frame automation surface.
 - Generic Page navigation and Editor switch — no entry: Board uses its own toolbar and switcher.
 

@@ -285,7 +285,6 @@ The board opens immediately after creation.
 - **Boards panel** — click the **Boards** button in the Explorer header. All trusted boards under the current root are listed as a tree. Click any board name to open it in the current tab. Right-click a board for **Open in New Tab** — opens it in its own dedicated tab instead of replacing the current tab's content, so its iframe (and any dev-server process it spawned) keeps running while you work in other tabs. A board whose spawned processes are still running (via `persephone.setBoardBusy(true)` — see [Long-running processes](#long-running-processes-setboardbusy--getboardbusy--getjobs)) shows a green **running** dot next to its name, even after its tab has moved on to something else.
 - **File Explorer panel** — rows for `board-manifest.json` files show an **Open Board** button (board icon) directly in the row. Click it to open that board. (Clicking the row itself opens the JSON in Monaco.)
 - **Tools & Editors panel → Boards tab** — lists all trusted boards, grouped by folder, across all locations. Click a board to open it in a new tab. Pin a board to make it appear in the top pinned section and in the **+** (add page) dropdown. Click **Open in new tab** in the panel header for a full-page version of the same hub, with an additional **Search boards** tab for discovering and installing boards published by the project — see [Published boards catalog](#published-boards-catalog--discover-install-update) below.
-- **In-board toolbar** — when a board is open, click the board path label in the toolbar to open the boards-switcher popover and jump to another board under the same Explorer root.
 - **Scripting / agent** — call `app.boards.openBoard(boardRoot)` with the absolute path to the board's root folder.
 
 ### 3. Edit and reload
@@ -301,11 +300,10 @@ Every open board displays a thin toolbar above the board's content area. The too
 | Control | Description |
 |---------|-------------|
 | **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. |
-| **Board path label** | Shows the full path to the board's folder. When the board was opened from a Boards panel, clicking the path opens a **boards-switcher popover** listing all trusted boards under the same Explorer root — click any board to switch to it in the current tab without spawning a new one. When the board was opened standalone (e.g. from the Tools & Editors tab or via a script), the path label is non-interactive. |
+| **Board path label** | Shows the full path to the board's folder as a non-interactive label. |
 | **Reload** (refresh icon) | Remount the board to pick up edited files (`index.html`, `app.js`, CSS, etc.). |
 | **Show log** (log icon) | Open the board's `ui.log` file in a new tab so you can inspect errors and the board load line. |
-
-The boards-switcher popover shows the same tree as the **Boards** Explorer-sibling panel — trusted boards under the current Explorer root, organized as a folder tree with VSCode-style single-child folder compaction.
+| **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
 
 ---
 
@@ -853,6 +851,14 @@ Three things a content-host board can do that a simple board cannot:
 
 **Footer status text:** a content-host board can put its own text in that same footer bar — call `persephone.setStatusText(text)` with any string, e.g. a **Todo board** (a published board that replaces Persephone's former built-in Todo editor — see [What's New](./whats-new.md)) showing its `"12 items"` count. Call it from the board's main view; pass `""` to clear it. It's a no-op on a **simple** board, which has no footer at all, so guard the call with `persephone.setStatusText?.(…)` if the same board also targets older Persephone builds.
 
+**Page-toolbar text:** a trusted or bundled board's main view can call
+`persephone.toolbar.setText(text)` to replace the wide middle label in the page toolbar. This is
+separate from the content-host footer status: it works for plain and content-host boards, is
+transient and non-persistent, and `persephone.toolbar.setText("")` returns the label to the board
+root path. The label remains non-interactive, and its native tooltip keeps the full path visible
+while an override is shown. Reloading, navigating away, a frame error, or losing trust clears the
+override; the newly mounted frame must set it again.
+
 **Saving:** press **Ctrl+S** (or **Cmd+S**) anywhere in the board and Persephone saves the file through the pipe automatically — no board code required. A board that wants to handle the keystroke itself can call `event.preventDefault()` in its own key handler to opt out, in which case the automatic save stands down. `persephone.host.save()` is also available if you want to trigger a save from your own UI (e.g. a Save button).
 
 **Example:** the DrawIO diagram viewer board renders a `.drawio` file's XML read via `persephone.host.getContent()`, and re-renders whenever `onContentChange()` fires. Switch to the Text Editor to hand-edit the raw XML — switching back to the board re-renders the diagram from your edits immediately — and Ctrl+S saves through the pipe with no board code at all.
@@ -1161,7 +1167,6 @@ side without modifying source files.
 | See which boards have processes still running in the background | Look for the green **running** dot next to the board name in the **Boards** panel |
 | Open a board from the sidebar | **Tools & Editors** panel → **Boards** tab → click the board |
 | Open a board (script) | `await app.boards.openBoard("C:/path/to/board/root")` |
-| Switch boards from inside a board | Click the board path label in the in-board toolbar → pick a board from the popover |
 | Open File Explorer from inside a board | Click the **File Explorer** button (folder icon) in the in-board toolbar |
 | Reload the board | Click the **Reload** button in the in-board toolbar |
 | View the error log | Click **Show log** (log icon) in the in-board toolbar |
