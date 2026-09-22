@@ -4,198 +4,23 @@ import type { BrowserProfile } from "../../../api/settings";
 import type { ISettings } from "../../../api/types/settings";
 import { createElements } from "ai-vision/dom";
 import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
+import { SETTINGS_CATALOG, type SettingsCatalogRow, type SettingsCatalogSection } from "../../../editors/settings/settings-catalog";
 
-interface SettingsCatalogRow {
-    readonly key: string;
-    readonly label: string;
-    readonly purpose: string;
-    readonly where?: string;
-}
-
-interface SettingsCatalogSection {
-    readonly id: string;
-    readonly title: string;
-    readonly description: string;
-    readonly elementName: string;
-    readonly where: string;
-    readonly rows: readonly SettingsCatalogRow[];
-}
-
-const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
-    {
-        id: "theme",
-        title: "Theme",
-        description: "Application appearance and color theme.",
-        elementName: "settings-section-theme",
-        where: "Settings content, Theme section",
-        rows: [
-            { key: "theme", label: "Theme", purpose: "Application color theme; the available dark and light themes are selected here." },
-        ],
-    },
-    {
-        id: "window-behavior",
-        title: "Window Behavior",
-        description: "Controls what happens when the last Persephone window closes.",
-        elementName: "settings-section-window-behavior",
-        where: "Settings content, Window Behavior section",
-        rows: [
-            { key: "window.close-to-tray", label: "Close to tray", purpose: "Whether closing the last window hides Persephone in the tray or quits it." },
-        ],
-    },
-    {
-        id: "editor-behavior",
-        title: "Editor Behavior",
-        description: "Choose the default word-wrapping behavior for newly shown Text Editor pages.",
-        elementName: "settings-section-editor",
-        where: "Settings content, Editor Behavior section",
-        rows: [
-            { key: "editor.word-wrap", label: "Text Editor word wrap", purpose: "Whether newly shown Text Editor pages start with word wrapping; existing pages keep their own persisted choice." },
-        ],
-    },
-    {
-        id: "browser-profiles",
-        title: "Browser Profiles",
-        description: "Manage isolated browser sessions, defaults, bookmarks, and Tor.",
-        elementName: "settings-section-browser-profiles",
-        where: "Settings content, Browser Profiles section",
-        rows: [
-            { key: "browser-profiles", label: "Browser profiles", purpose: "Isolated browser profiles with their own cookies, storage, and cache." },
-            { key: "browser-default-profile", label: "Default browser profile", purpose: "The profile used when opening a new browser tab; empty selects the built-in default." },
-            { key: "browser-default-bookmarks-file", label: "Default profile bookmarks", purpose: "The .link.json file holding bookmarks for the default browser profile." },
-            { key: "browser-incognito-bookmarks-file", label: "Incognito bookmarks", purpose: "The separate .link.json bookmarks file used in incognito mode." },
-            { key: "tor.exe-path", label: "Tor executable", purpose: "The tor.exe path required for Browser (Tor) mode; empty disables it." },
-            { key: "tor.socks-port", label: "Tor SOCKS port", purpose: "The SOCKS proxy port used by Tor." },
-            { key: "tor.bookmarks-file", label: "Tor bookmarks", purpose: "The .link.json bookmarks file used for Browser (Tor) mode." },
-        ],
-    },
-    {
-        id: "link-behavior",
-        title: "Links",
-        description: "Choose where links opened from editors go.",
-        elementName: "settings-section-link-behavior",
-        where: "Settings content, Links section",
-        rows: [
-            { key: "link-open-behavior", label: "Link opening behavior", purpose: "Whether external links open in the default OS browser or the nearest internal Browser tab." },
-        ],
-    },
-    {
-        id: "default-browser",
-        title: "Default Browser",
-        description: "Register Persephone as a Windows default browser and inspect registration status.",
-        elementName: "settings-section-default-browser",
-        where: "Settings content, Default Browser section",
-        rows: [],
-    },
-    {
-        id: "file-search",
-        title: "File Search",
-        description: "Choose which files content search includes and skips.",
-        elementName: "settings-section-file-search",
-        where: "Settings content, File Search section",
-        rows: [
-            { key: "search-extensions", label: "Search extensions", purpose: "Comma-separated file extensions included in content search." },
-            { key: "search-exclude", label: "Search exclusions", purpose: "Folders and globs skipped by content search." },
-        ],
-    },
-    {
-        id: "clipboard",
-        title: "Clipboard",
-        description: "Configure the opt-in clipboard history tracker and its item limit.",
-        elementName: "settings-section-clipboard",
-        where: "Settings content, Clipboard section",
-        rows: [
-            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default." },
-            { key: "clipboard.max-items", label: "Maximum clipboard items", purpose: "The number of clipboard history items to retain, from 1 through 1000; invalid stored values fall back to 100." },
-        ],
-    },
-    {
-        id: "mcp",
-        title: "MCP Server / Mneme",
-        description: "Configure MCP, main-process scripting, and Mneme services.",
-        elementName: "settings-section-mcp",
-        where: "Settings content, MCP Server / Mneme section",
-        rows: [
-            { key: "mcp.enabled", label: "MCP server", purpose: "Whether the MCP HTTP server is enabled for AI agents to drive Persephone." },
-            { key: "mcp.port", label: "MCP port", purpose: "The loopback port used by the MCP HTTP server." },
-            { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call → main.script.execute may run code in Persephone's main process." },
-            { key: "mneme.enabled", label: "Mneme", purpose: "Whether the local Mneme markdown knowledge base is enabled." },
-            { key: "mneme.port", label: "Mneme port", purpose: "The loopback port used by Mneme's HTTP/MCP server." },
-        ],
-    },
-    {
-        id: "git-integration",
-        title: "Git Integration",
-        description: "Enable the Git Tree and Git Diff editors.",
-        elementName: "settings-section-git-integration",
-        where: "Settings content, Git Integration section",
-        rows: [
-            { key: "git.enabled", label: "Git integration", purpose: "Whether Git Tree and Git Diff editors are enabled; Git must be on PATH." },
-        ],
-    },
-    {
-        id: "board-vars",
-        title: "Board Environment Variables",
-        description: "Choose the external file holding per-board variables and secrets.",
-        elementName: "settings-section-board-vars",
-        where: "Settings content, Board Environment Variables section",
-        rows: [
-            { key: "board-vars.file", label: "Board environment variables file", purpose: "The external .env.json file holding per-board variables and secrets." },
-        ],
-    },
-    {
-        id: "script-library",
-        title: "Script Library",
-        description: "Choose the folder for saved scripts and reusable modules.",
-        elementName: "settings-section-script-library",
-        where: "Settings content, Script Library section",
-        rows: [
-            { key: "script-library.path", label: "Script library path", purpose: "The folder for saved scripts and reusable modules; empty means no library is linked." },
-        ],
-    },
-    {
-        id: "drawing-library",
-        title: "Drawing Library",
-        description: "Choose the folder for reusable Excalidraw shapes.",
-        elementName: "settings-section-drawing-library",
-        where: "Settings content, Drawing Library section",
-        rows: [
-            { key: "drawing.library-path", label: "Drawing library path", purpose: "The Excalidraw reusable-shapes folder; empty uses the automatic default." },
-        ],
-    },
-    {
-        id: "video-player",
-        title: "Video Player",
-        description: "Configure external video decoding and the local video stream.",
-        elementName: "settings-section-video-player",
-        where: "Settings content, Video Player section",
-        rows: [
-            { key: "vlc-path", label: "VLC path", purpose: "The vlc.exe path used for formats Chromium cannot decode; empty enables auto-detection." },
-            { key: "video-stream.port", label: "Video stream port", purpose: "The local port used by the video streaming server." },
-        ],
-    },
-    {
-        id: "terminal",
-        title: "Terminal",
-        description: "Choose the command used by Open Terminal here.",
-        elementName: "settings-section-terminal",
-        where: "Settings content, Terminal section",
-        rows: [
-            { key: "terminal.command", label: "Terminal command", purpose: "The command used by Open Terminal here; empty auto-detects pwsh, powershell, or cmd." },
-        ],
-    },
-];
-
-const SETTINGS_ELEMENTS: readonly IAiElementDeclaration[] = [
-    ...SETTINGS_CATALOG.flatMap((section) =>
-        section.rows.map((row) => ({
+function createSettingsElements(catalog: readonly SettingsCatalogSection[]): readonly IAiElementDeclaration[] {
+    return [
+        ...catalog.flatMap((section) =>
+            section.rows.map((row: SettingsCatalogRow) => ({
             name: row.key,
             purpose: `${row.label}: ${row.purpose}`,
             selector: `[data-name="${section.elementName}"]`,
             where: row.where ?? section.where,
-        })),
-    ),
-    { name: "settings-view-file", purpose: "Open the Settings file in an editor.", where: "bottom of Settings content" },
-];
+            })),
+        ),
+        { name: "settings-view-file", purpose: "Open the Settings file in an editor.", where: "bottom of Settings content" },
+    ];
+}
+
+const SETTINGS_ELEMENTS = createSettingsElements(SETTINGS_CATALOG);
 
 const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
     "tab-recent-languages": "Setting \"tab-recent-languages\" is a real setting, but it has no row on the Settings page. Use settings.get(\"tab-recent-languages\") or settings.set(\"tab-recent-languages\", value); it is owned by each page tab's language menu.",
@@ -284,7 +109,7 @@ const SETTINGS_MEMBERS: readonly IAiMember[] = [
     { name: "onChanged", kind: "property", summary: "Change notification event; the event object is not an AiVision node." },
     { name: "browserProfiles", kind: "property", summary: "Configured browser profile names; readonly projection of the browser-profiles setting." },
     { name: "defaultBrowserProfile", kind: "property", summary: "Configured default browser profile name; an empty string selects the built-in default." },
-    { name: "sections", kind: "property", summary: "The Settings page's fixed-order sections and hand-written setting-key rows." },
+    { name: "sections", kind: "property", summary: "The Settings page's grouped sections and hand-written setting-key rows." },
     ...settingsElements.members,
 ];
 
@@ -321,7 +146,7 @@ export function describeSettings(instance: unknown): IAiVisionDescriptor {
             }
             return settingsElements.provide(name);
         },
-        help: `The Settings page has 15 fixed-order sections and 27 catalogued setting rows. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. highlight points and returns; to point and wait for the user, pass the selector from settings.elements to ui.guide.step. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
+        help: `The Settings page exposes a grouped section catalog and generated setting-row elements. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. highlight points and returns; to point and wait for the user, pass the selector from settings.elements to ui.guide.step. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
         summarize: () => ({ kind: "Settings", theme: settings.theme }),
     };
 }

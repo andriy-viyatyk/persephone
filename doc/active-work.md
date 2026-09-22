@@ -43,21 +43,24 @@ deleting `editors/draw` no longer takes them with it.
 
 ## Active
 
-*(nothing active — pick the next item from Planned.)*
+- **[EPIC-111: Board settings and the Settings page redesign](epics/EPIC-111.md)** — a board
+  declares settings in its manifest; Persephone owns every value, renders them on its Settings page,
+  and lets the board read them. Carries a **Settings page redesign** (user vision, 2026-09-23):
+  per-group panels replacing the single 560px column, a fixed two-level Content tree beside them,
+  and two-way linkage between the tree and the scroll position — board settings need somewhere to
+  render. Fourteen decisions (S1–S14) are recorded in the epic; all its open questions are closed.
+  The motivation is that **Persephone should know nothing about an Excalidraw library path**:
+  `drawing.library-path` is removed and the board declares it instead. A prerequisite of EPIC-110
+  **by choice of scope, not technical necessity** — pre-investigation disproved the orphaning
+  argument the epic was originally founded on.
+  - [ ] US-1497: Settings page — per-group panels and the Content tree
+  - [ ] US-1498: Scroll linkage — click-to-scroll and the scroll-spy
+  - [ ] US-1499: Board identity — shared namespace, `author` + `name`, scaffolding
+  - [ ] US-1500: The board settings store and its board-facing API
+  - [ ] US-1501: Manifest `settings` declaration and Settings-page rendering
+  - [ ] US-1502: Excalidraw's library path becomes a board setting
 
 ## Planned
-
-- **[EPIC-111: Board settings](epics/EPIC-111.md)** — a board declares settings in its manifest and
-  Persephone renders them as a sub-page of its own Settings, storing values in the board's scoped
-  storage. Created from a user observation while planning EPIC-109's library flow: boards have
-  `persephone.storage` but nothing the user can see or edit, so `drawing.library-path` would be
-  orphaned when `editors/draw` is removed. **Prerequisite of EPIC-110** (EPIC-109 D11). Now also
-  carries a **Settings page redesign** (user vision, 2026-09-23): per-group panels replacing the
-  single 560px column, a fixed two-level Content tree beside them, and two-way linkage between the
-  tree and the scroll position — board settings need it to have somewhere to render. Open
-  decisions — the trust gate, migrating the existing library path, how narrow the type system
-  should start, and the redesign's own grouping and navigation questions — are recorded in the epic
-  and are resolved before any task document is written.
 
 - *(no epic)*
   - [ ] US-1474: Credit-based ranged streaming into a board-implemented provider

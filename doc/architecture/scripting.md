@@ -733,10 +733,12 @@ selection: `folders` contains the four built-in folders and configured user fold
 `open(folderId?)` accepts a folder ID and rejects unknown IDs. The older `openMenuBar(panelId?)`
 remains a lenient compatibility operation; it does not replace the strict model surface.
 
-The Settings descriptor adds a computed `sections` catalog with 15 fixed-order sections and 27
-rows, plus key-named `elements` and `highlight(key)`. Highlighting opens or activates the Settings
-page, waits for its named box-bearing section wrapper, and then delegates to the shared overlay;
-the section roots themselves retain `display: contents`. The Clipboard section owns
+The Settings descriptor adds a computed grouped `sections` catalog with explicit group metadata
+and generated setting-row elements, plus key-named `elements` and `highlight(key)`. Highlighting
+opens or activates the Settings page, waits for its named box-bearing section wrapper, and then
+delegates to the shared overlay; the section roots themselves retain `display: contents`. The
+inner Settings panel stack is the future scroll boundary, while click-to-scroll and scroll-spy
+behavior are deferred to US-1498. The Clipboard section owns
 `clipboard.enabled` and `clipboard.max-items`; the clipboard root is exposed to AiVision only while
 history is enabled. Five real settings have no Settings-page row (`tab-recent-languages`,
 `search-max-file-size`, `pinned-editors`, `visualizer-effect`, and `audio-shuffle`) and remain

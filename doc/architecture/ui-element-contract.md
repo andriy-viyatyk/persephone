@@ -139,15 +139,56 @@ Two tab shapes do not match the common case, and both occur in ordinary use:
 
 ### Settings page
 
-The Settings page is a fixed-order editor with stable named containers for each section. The
-section names are containers for highlighting, not individual controls; the catalog rows and their
-setting-key purposes are supplied by `settings.sections`. The existing `data-type` values remain
-unchanged, including `data-type="settings-section"` on each section root.
+The Settings page is a height-constrained two-pane editor: a fixed two-level Content tree sits
+beside the vertically scrollable inner panel stack. The tree and outer panels are stable
+addressing handles; the section names are box-bearing containers for highlighting, not individual
+controls. The grouped catalog rows and their setting-key purposes are supplied by
+`settings.sections`. The existing `data-type` values remain unchanged, including
+`data-type="settings-section"` on each section root. Section selectors target the
+`.settings-section-wrapper` box, not the `display: contents` section root. The panel stack is the
+future scroll boundary; click-to-scroll and scroll-spy behavior belong to US-1498.
 
 | Element | Selector |
 |---|---|
 | Settings root | `[data-name="settings-root"]` |
 | Settings content | `[data-name="settings-content"]` |
+| Content pane | `[data-name="settings-content-pane"]` |
+| Content tree | `[data-name="settings-content-tree"]` |
+| Panel stack | `[data-name="settings-panels"]` |
+| General group row | `[data-name="settings-content-group-general"]` |
+| Editors group row | `[data-name="settings-content-group-editors"]` |
+| Browser group row | `[data-name="settings-content-group-browser"]` |
+| Integrations group row | `[data-name="settings-content-group-integrations"]` |
+| Theme section row | `[data-name="settings-content-section-theme"]` |
+| Window Behavior section row | `[data-name="settings-content-section-window-behavior"]` |
+| Clipboard section row | `[data-name="settings-content-section-clipboard"]` |
+| Terminal section row | `[data-name="settings-content-section-terminal"]` |
+| File Search section row | `[data-name="settings-content-section-file-search"]` |
+| Editor Behavior section row | `[data-name="settings-content-section-editor-behavior"]` |
+| Script Library section row | `[data-name="settings-content-section-script-library"]` |
+| Video Player section row | `[data-name="settings-content-section-video-player"]` |
+| Drawing Library section row | `[data-name="settings-content-section-drawing-library"]` |
+| Browser Profiles section row | `[data-name="settings-content-section-browser-profiles"]` |
+| Default Browser section row | `[data-name="settings-content-section-default-browser"]` |
+| Links section row | `[data-name="settings-content-section-link-behavior"]` |
+| MCP Server / Mneme section row | `[data-name="settings-content-section-mcp"]` |
+| Git Integration section row | `[data-name="settings-content-section-git-integration"]` |
+| Board Environment Variables section row | `[data-name="settings-content-section-board-vars"]` |
+| Theme outer panel | `[data-name="settings-panel-theme"]` |
+| Window Behavior outer panel | `[data-name="settings-panel-window-behavior"]` |
+| Clipboard outer panel | `[data-name="settings-panel-clipboard"]` |
+| Terminal outer panel | `[data-name="settings-panel-terminal"]` |
+| File Search outer panel | `[data-name="settings-panel-file-search"]` |
+| Editor Behavior outer panel | `[data-name="settings-panel-editor-behavior"]` |
+| Script Library outer panel | `[data-name="settings-panel-script-library"]` |
+| Video Player outer panel | `[data-name="settings-panel-video-player"]` |
+| Drawing Library outer panel | `[data-name="settings-panel-drawing-library"]` |
+| Browser Profiles outer panel | `[data-name="settings-panel-browser-profiles"]` |
+| Default Browser outer panel | `[data-name="settings-panel-default-browser"]` |
+| Links outer panel | `[data-name="settings-panel-link-behavior"]` |
+| MCP Server / Mneme outer panel | `[data-name="settings-panel-mcp"]` |
+| Git Integration outer panel | `[data-name="settings-panel-git-integration"]` |
+| Board Environment Variables outer panel | `[data-name="settings-panel-board-vars"]` |
 | View Settings File button | `[data-name="settings-view-file"]` |
 | Theme section | `[data-name="settings-section-theme"]` |
 | Window Behavior section | `[data-name="settings-section-window-behavior"]` |
@@ -164,6 +205,11 @@ unchanged, including `data-type="settings-section"` on each section root.
 | Drawing Library section | `[data-name="settings-section-drawing-library"]` |
 | Video Player section | `[data-name="settings-section-video-player"]` |
 | Terminal section | `[data-name="settings-section-terminal"]` |
+
+Future board-contributed rows use the same `group:<group-id>` / `section:<section-id>` value
+scheme and corresponding `settings-content-group-<group-id>`,
+`settings-content-section-<section-id>`, and `settings-panel-<section-id>` names. An empty
+Boards group is not rendered.
 
 ### Page area
 

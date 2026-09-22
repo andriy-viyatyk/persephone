@@ -1,4 +1,42 @@
 @layer app {
+    [data-type="settings-view"] {
+        width: 100%;
+        min-height: 0;
+    }
+
+    [data-type="settings-view"] > h1 {
+        flex: 0 0 auto;
+    }
+
+    [data-type="settings-view"] [data-part="content"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        width: 100%;
+    }
+
+    [data-type="settings-view"] [data-part="content-pane"] {
+        flex-shrink: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    [data-type="settings-view"] [data-part="panels"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    [data-type="settings-view"] [data-part="section-panel"],
+    [data-type="settings-view"] [data-part="footer"] {
+        flex: 0 0 auto;
+    }
+
+    [data-type="settings-view"] [data-part="section-wrapper"] {
+        width: 100%;
+    }
+
     [data-type="settings-view"] h1 {
         margin: 0;
         margin-bottom: var(--space-xl, 24px);

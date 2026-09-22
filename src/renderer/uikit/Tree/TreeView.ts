@@ -440,6 +440,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             id,
             level: row.level,
             label: row.item.label,
+            name: this.props.getName?.(row.source, row.level),
             indentSize: this.props.indentSize ?? defaultIndentSize,
         };
     }
@@ -463,6 +464,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             loading: this.model.isLoadingAt(index),
             disabled: row.item.disabled,
             tooltip: this.props.getTooltip?.(row.source, row.level),
+            name: this.props.getName?.(row.source, row.level),
             secondaryLabel: this.props.getSecondaryLabel?.(row.source, row.level),
             indentSize: this.props.indentSize ?? defaultIndentSize,
             hideChevron: this.props.getHideChevron?.(row.source, row.level),
@@ -611,7 +613,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             keyboardNav: _keyboardNav, focusSelection: _focusSelection,
             multiSelect: _multiSelect, rowHeight: _rowHeight, indentSize: _indentSize,
             growToHeight: _growToHeight, whiteSpaceY: _whiteSpaceY, activeIndex: _activeIndex,
-            getTooltip: _getTooltip, loading: _loading, emptyMessage: _emptyMessage,
+            getTooltip: _getTooltip, getName: _getName, loading: _loading, emptyMessage: _emptyMessage,
             getIconElement: _getIconElement, getHideChevron: _getHideChevron,
             getSecondaryLabel: _getSecondaryLabel,
             getTrailingVisibility: _getTrailingVisibility,

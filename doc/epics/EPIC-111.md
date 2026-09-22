@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Active
 **Created:** 2026-09-20
 **Completed:** —
 
@@ -171,13 +171,15 @@ never set a path is unaffected.
 behaviour subtype, starting with `string`/`boolean`/`number`/`enum` and the single format
 `folderPath`, with unknown formats degrading to the base control rather than failing to render.
 
-**Does a group node scroll, or only expand?** The user specified two levels and said clicking "an
-item" scrolls its panel. Level-1 groups ("General", "Editors") have no panel of their own.
+**Does a group node scroll, or only expand?** **Decided — see S12** (expand and scroll to the first
+child). Original framing: the user specified two levels and said clicking "an item" scrolls its
+panel. Level-1 groups ("General", "Editors") have no panel of their own.
 Recommended: a group click scrolls to its first child's panel and expands, so every node in the
 tree does something and the user never clicks a dead row. Confirm — the alternative (groups are
 expand-only, level-2 rows navigate) is also defensible and is what a file tree would do.
 
-**Where do non-editor boards go?** The user placed boards under "Editors", which is right for
+**Where do non-editor boards go?** **Decided — see S13** (`getBoardEditorAssociation()` decides;
+an empty "Boards" group is omitted). Original framing: the user placed boards under "Editors", which is right for
 Excalidraw and for any board that claims file masks. But the trust list holds boards that are not
 editors at all — Dev Dashboard, todo, Local Env. Putting those under "Editors" would be a lie, and
 a fifth "Boards" group re-creates exactly the segregation the user's structure avoids.
@@ -466,6 +468,49 @@ the majority of boards.
 The retained data is small, plain JSON, and per board. Unbounded growth is not a practical concern
 at this scale, and if it ever becomes one, pruning is a later, additive change that breaks nothing
 recorded here.
+
+**S12 — A group node expands and scrolls to its first child.**
+
+*(Decided by Claude under the user's autonomous-work authorisation, 2026-09-23. Overturnable — the
+alternative is stated.)* Level-1 groups ("General", "Editors") own no panel, so a click has nothing
+of its own to scroll to. Every row in the Content tree should do something: clicking a group expands
+it and scrolls to the first panel it contains, which is also the top of that group's region, so the
+result reads as "go to General" rather than as a no-op.
+
+The alternative — groups are expand-only, level-2 rows navigate — is what a file tree does, and is
+defensible. It is rejected because this tree is a table of contents, not a file system: its rows
+name places in a document, and a place a user can click but not go to is a dead row.
+
+**S13 — A board is filed under "Editors" when it declares an editor association, and under "Boards"
+otherwise. The "Boards" group appears only when it has members.**
+
+*(Decided by Claude under the user's autonomous-work authorisation, 2026-09-23.)* The user placed
+boards under "Editors", which is right for Excalidraw and any board claiming files, but the trust
+list also holds boards that are not editors at all — dashboards, task boards, viewers of their own
+data. Filing those under "Editors" would be untrue.
+
+The predicate already exists and needs no new manifest field:
+`getBoardEditorAssociation(manifest)` (`board-manifest.ts:566-582`) returns `null` precisely when a
+board declares no `fileMasks`, `contentMasks` or `folderEditorMasks` — that is, when it is not an
+editor. Non-null goes under **Editors**, null goes under **Boards**.
+
+The "Boards" group is **omitted entirely when empty**, so a user with no such boards sees exactly
+the structure the user described, and one with them sees an honest extra group rather than
+mislabelled rows.
+
+**S14 — The scaffold takes its default author from an app setting, and a board with no author still
+scaffolds.**
+
+*(Decided by Claude under the user's autonomous-work authorisation, 2026-09-23.)* S8 left this open.
+Prompting for an author during board creation adds friction to a flow that is usually driven by an
+agent rather than by a person at a dialog, so instead: a `boards.default-author` app setting, read
+by `createBoardFromTemplate()` and written into the new manifest alongside the board name it already
+receives.
+
+When the setting is unset the field is written empty and **the board is still created**. It simply
+gets no settings until someone fills it in — which S7 makes a visible, recoverable state with a
+registration issue and a clear error on read, not silent breakage. Board creation must never fail
+over a field that only matters to a feature the board may not use.
 
 ## Concerns (revised 2026-09-23, post-S1–S6)
 
@@ -779,6 +824,113 @@ behind the same gate, so it forces nothing.
   which decides how first-run `board-settings.json` creation is written.
 - Whether a bundled board listed in `disabled-bundled-boards` can still be opened as a board page at
   all, which decides whether the bridge-side gate needs its own disabled check.
+
+## Linked Tasks
+
+Sequenced so each task leaves the app in a shippable state. The redesign depends on none of the
+board-settings decisions, and board settings depend on the redesign only for somewhere to render —
+so an interruption after any task is a coherent stopping point rather than a half-migrated page.
+
+| Task | Title | Status |
+|------|-------|--------|
+| US-1497 | Settings page: per-group panels and the Content tree | Planned |
+| US-1498 | Scroll linkage: click-to-scroll and the scroll-spy | Planned |
+| US-1499 | Board identity: shared namespace, `author` + `name` requirement, scaffolding | Planned |
+| US-1500 | The board settings store and its board-facing API | Planned |
+| US-1501 | Manifest `settings` declaration and Settings-page rendering | Planned |
+| US-1502 | Excalidraw's library path becomes a board setting | Planned |
+
+### US-1497 — Settings page: per-group panels and the Content tree
+
+The structural half of the redesign, with no scroll behaviour. Replace the single 560px column
+(`SettingsView.ts:52-112`) with one panel per settings group separated by vertical margin rather
+than `DividerView`, and add the fixed two-level Content tree beside them using `uikit/Tree`. Group
+the fifteen existing sections per the table in "The Settings page redesign"; every existing section
+must remain reachable and keep its `data-name="settings-section-<id>"` wrapper, which is what agents
+already address.
+
+Carries the scroll-container problem: Settings owns no scroll region today — the container is the
+shared `.page-editor-container`, nested in an `overflow:hidden` area — so the view must become
+height-constrained and own an inner scroller before US-1498 can work at all. Also updates the three
+hand-written models of the page that the regrouping invalidates: `SETTINGS_CATALOG` and its help
+string hardcoding "15 fixed-order sections and 27 catalogued setting rows"
+(`ai-vision/namespaces/settings.ts`), and the ui-element-contract table.
+
+### US-1498 — Scroll linkage: click-to-scroll and the scroll-spy
+
+Clicking a Content node scrolls its panel into view (S12 for group nodes); scrolling the stack
+selects the node owning the topmost visible panel. The programmatic scroll must suppress the spy
+until it settles, or the selection flickers through intermediate groups and can land on the wrong
+node.
+
+Two constraints already established: spy and scroll targets are `.settings-section-wrapper`
+elements, because section roots are `display:contents` (`settings.css:117-124`) and have no box; and
+the spy must update **selection only**, never the active row, because `TreeView.syncActiveScroll()`
+scrolls the *active* row — which is exactly what would make the Content pane scroll itself, against
+the stated requirement.
+
+### US-1499 — Board identity: shared namespace, `author` + `name` requirement, scaffolding
+
+S4, S7 and S8, with no settings yet — this is the seam every later task stands on, and it touches
+board vars, so it ships and is verified on its own. Move `resolveBoardNamespace()` out of
+`api/board-vars/` to shared ground and update its callers. Add the `author` + `name` requirement as
+a reusable identity check. Fix the scaffolding: `name` written through by
+`createBoardFromTemplate()` (which already receives it), `author` from the `boards.default-author`
+setting per S14, the same treatment for `defaultBoardManifest()`, and both fields added to
+`assets/demo-board/board-manifest.json` and `assets/board-template/board-manifest.json`.
+
+Must document, in the board guides, that changing `author` or `name` on a board that already holds
+variables orphans them (S8) — no migration is written.
+
+### US-1500 — The board settings store and its board-facing API
+
+S1, S2, S3: a renderer-owned `board-settings.json` shaped `{ "<namespace>": { "<id>": value } }`,
+modelled on `BoardEnvStore` but plaintext, unconfigured and always available. Per Concern 2 the
+shape does not transfer directly — vars are namespace → profile → key → string and settings are one
+level shallower with typed values — so expect a sibling built on the same pattern rather than a
+literal extraction, and factor out only what genuinely matches.
+
+Needs what vars lack: **a delete/unset**, for "reset to default" and nothing else; missing file
+means an empty store created on first write, not `not-configured`; and defaults computed at read
+time rather than materialised, so a board's new version can change a default.
+
+Board-facing: `persephone.settings.get(id)` and an `onChange`, namespace bound renderer-side from
+the calling frame's root, riding the host-frame postMessage channel that already carries unsolicited
+pushes. **No `set`** — S1. A read from a board failing S7 rejects with an error naming the missing
+field. No trust gate (S10). Deliberately not copied from vars: profiles, `show()`, dialog-on-demand,
+and `list()` of stored keys.
+
+Change notification must reach **every** frame of a board, not just its main one — a board's
+secondary views are separate frames.
+
+### US-1501 — Manifest `settings` declaration and Settings-page rendering
+
+`normalizeBoardSettings` per S5, validating identity **before** the settings array so an
+identity failure reports once rather than as a list of per-field complaints. Types `string`,
+`boolean`, `number`, `enum` with `options`; the single format `folderPath`; an unknown `format`
+degrades to the base control rather than refusing to render. `LibraryPathSectionView`
+(`SettingsSections.ts:343-396`) is the renderer for `folderPath`, not a model for a new one.
+
+Tree placement per S13. The Settings view must rebuild when board registration changes — it builds
+once today with no reactive wiring — so installing, untrusting, disabling or re-enabling a board
+adds or removes its panel and node live. Manifest edits do not reach the renderer (manifests are
+cached, and the registry is deliberately not a watcher), so exit criterion 1 means "once
+trusted/installed", and the guides must say so.
+
+### US-1502 — Excalidraw's library path becomes a board setting
+
+S6, last because it is the migration and wants everything else proven. The board declares
+`library-path` as `string` + `folderPath` and reads it with `persephone.settings.get("library-path")`
+in place of `persephone.call("settings.get", ["drawing.library-path"])`
+(`assets/boards/excalidraw/index.html:153-156`). Remove the key, default and description from
+`api/settings.ts:42,116,153`, `DrawingLibrarySectionView` from `SettingsSections.ts:392-396`, and
+the catalog row from `ai-vision/namespaces/settings.ts:162`.
+
+Migration is a one-time read of the old app key as the new setting's initial value. The board's
+`<userData>/data/excalidraw-lib` fallback stays the default, so a user who never set a path is
+untouched. `drawLibrary.ts` is left alone — it dies with `editors/draw` in EPIC-110.
+
+Verify against a real library before and after, since this is the one task that can lose user data.
 
 ## Exit criteria
 

@@ -907,6 +907,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             this.props.indentSize,
             this.props.isSelected,
             this.props.getTooltip,
+            this.props.getName,
             this.props.getSecondaryLabel,
             this.props.id,
             this.props.traitTypeId,
