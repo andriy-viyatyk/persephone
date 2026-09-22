@@ -152,7 +152,9 @@ export type BoardRpcMethod =
     | "storageGet"
     | "storageSet"
     | "storageDelete"
-    | "storageKeys";
+    | "storageKeys"
+    | "clipboardWriteImage"
+    | "clipboardWriteText";
 
 /** JSON values accepted by the board-owned storage API. Runtime validation also rejects
  * non-finite numbers, cyclic values, class instances, oversized documents, and deep values. */

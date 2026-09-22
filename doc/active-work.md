@@ -56,13 +56,6 @@ deleting `editors/draw` no longer takes them with it.
   - [ ] [US-1489: Board navigation return URLs](tasks/US-1489-board-navigation-return/README.md)
   - [ ] [US-1490: The Excalidraw board's library flow](tasks/US-1490-excalidraw-library/README.md)
 
-- [ ] **US-1491: Error and warning toasts reach the agent event feed** — `ui.alerts` (US-1464) made
-  toasts readable but only on request, so an error an agent's own call raised stayed invisible until
-  it thought to ask. A watcher on `alertsBarModel` now pushes `error`/`warning` toasts through the
-  same `--- events ---` feed every MCP reply already carries; `info`/`success` stay out as noise.
-  Found by the user while watching a US-1489 debugging session miss three error toasts.
-  Files: `src/renderer/scripting/ai-vision/alert-watch.ts` (new), `event-log.ts`, `api/app.ts`.
-
 ## Planned
 
 - **[EPIC-111: Board settings](epics/EPIC-111.md)** — a board declares settings in its manifest and

@@ -475,6 +475,8 @@ These handle in-app effects that `execute()` cannot express:
 | Method | Description |
 |--------|-------------|
 | `persephone.notify(message, type)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Errors are also appended to `ui.log`. |
+| `persephone.clipboard.writeText(text)` | Write text to the OS clipboard. Useful for board actions triggered from Persephone's own toolbar, where the board page may not be focused. |
+| `persephone.clipboard.writeImage(data)` | Write encoded image bytes (`Uint8Array` or `ArrayBuffer`) to the OS clipboard. |
 | `persephone.openRawLink(href, options?)` | Open a file or URL in a new Persephone tab. Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — for example, render a Markdown doc instead of opening its source; falls back to the default editor when omitted. |
 | `persephone.openContent(options)` | Create a new in-memory page in another content-host editor and return its page id. Use this for content held by the board rather than a file or URL. |
 | `persephone.openFileDialog(params?)` | Show a native Open File dialog; returns the selected path. |

@@ -340,6 +340,15 @@ interface PersephoneCapabilitiesApi {
     ): Promise<PersephoneCapabilityResult>;
 }
 
+interface PersephoneClipboardApi {
+    /** Write encoded image bytes to the OS clipboard through Electron's native clipboard.
+     *  Use this when the click may have landed on Persephone's own toolbar: the board document
+     *  is then not focused and `navigator.clipboard.write*` rejects with "Document is not focused". */
+    writeImage(data: Uint8Array | ArrayBuffer): Promise<void>;
+    /** Write text to the OS clipboard through Electron's native clipboard. */
+    writeText(text: string): Promise<void>;
+}
+
 interface PersephoneBoardApi {
     /** Bridge version, e.g. "1.8.0" — the release that added board intent delivery and
      *  board-to-board capability invocation to the existing bridge contract. Compare
@@ -382,6 +391,8 @@ interface PersephoneBoardApi {
     }): Promise<string>;
     /** Show a Persephone toast. */
     notify(message: string, type?: PersephoneNotifyType): void;
+    /** Native OS clipboard writes (bridge API 1.12.0); see {@link PersephoneClipboardApi}. */
+    readonly clipboard: PersephoneClipboardApi;
     /** Set the footer status text for a **content-host** board (e.g. a Todo board's "N items"
      *  count) — shown in the same footer bar as the provider/encoding. Call from the board's
      *  MAIN view; `""` clears it. A visual no-op for plain (non-content-host) boards, which have

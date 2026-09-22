@@ -28,6 +28,8 @@ import {
     MessageChannelMain,
     MessagePortMain,
     WebContents,
+    clipboard,
+    nativeImage,
 } from "electron";
 import {
     BoardFileEncoding,
@@ -217,13 +219,13 @@ function fileEncoding(value: unknown): BoardFileEncoding {
 
 /** The bytes a board sent for a "binary" write. Structured clone delivers a Uint8Array;
  *  accept a bare ArrayBuffer too, since that is the easy thing for a board to pass. */
-function toBytes(data: unknown): Uint8Array {
+function toBytes(data: unknown, requirement = 'writeFile with encoding "binary"'): Uint8Array {
     if (data instanceof Uint8Array) return data;
     if (data instanceof ArrayBuffer) return new Uint8Array(data);
     if (ArrayBuffer.isView(data)) {
         return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
     }
-    throw new Error('writeFile with encoding "binary" needs a Uint8Array or ArrayBuffer.');
+    throw new Error(`${requirement} needs a Uint8Array or ArrayBuffer.`);
 }
 
 type BoardRpcHandler = (entry: BoardPortEntry, args: unknown[]) => Promise<unknown> | unknown;
@@ -270,6 +272,21 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
     ),
     storageDelete: (entry, args) => deleteBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
     storageKeys: (entry) => getBoardStorageKeys(entry.root),
+    // A board frame cannot use `navigator.clipboard`: the toolbar button it is usually
+    // reacting to lives in Persephone's own chrome, so the board document is not the
+    // focused one and the write throws "Document is not focused". Electron's clipboard
+    // has no focus requirement, and it is what every built-in editor already copies
+    // through (`editors/shared/image-export.ts`).
+    clipboardWriteImage(_entry, args) {
+        const bytes = toBytes(args[0], "clipboard.writeImage");
+        const image = nativeImage.createFromBuffer(Buffer.from(bytes));
+        if (image.isEmpty()) throw new Error("clipboard.writeImage got bytes that are not a readable image.");
+        clipboard.writeImage(image);
+    },
+    clipboardWriteText(_entry, args) {
+        if (typeof args[0] !== "string") throw new Error("clipboard.writeText needs a string.");
+        clipboard.writeText(args[0]);
+    },
 };
 
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */

@@ -748,7 +748,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       │   ├── ui-elements.ts # Curated shell-control declarations
 │       │   ├── ui-guide.ts  # Blocking one-control-at-a-time walkthroughs
 │       │   └── index.ts     # Namespace registration and descriptor wiring
-│       ├── event-log.ts     # Per-window event ring and producer helpers
+│       ├── event-log.ts     # Per-window event ring and producer helpers, including alert-raised events
+│       ├── alert-watch.ts   # Forwards new error/warning toasts into the renderer event log
 │       ├── page-attention.ts # Agent-addressed page tracking and activation suppression
 │       ├── page-activation.ts # Mount-scoped active-page observer and event producer
 │       ├── root.ts          # Renderer object-model root

@@ -1261,6 +1261,7 @@ function createHandle(
     // 1.9.0 adds renderer-owned navigation return URLs (US-1489).
     // 1.10.0 adds the host-rendered board toolbar catalog (US-1493).
     // 1.11.0 adds transient board-settable page-toolbar text (US-1494).
+    // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText` (US-1496).
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1451,6 +1452,20 @@ function createHandle(
         },
         keys(): Promise<string[]> {
             return rpc("storageKeys", []) as Promise<string[]>;
+        },
+    },
+
+    /** Write to the OS clipboard through the privileged side (bridge API 1.12.0).
+     *  Use this rather than `navigator.clipboard`: a board frame is not the focused
+     *  document when the click that triggered the copy landed on Persephone's own
+     *  toolbar, and `navigator.clipboard` rejects with "Document is not focused". */
+    clipboard: {
+        /** Put an image on the clipboard from its encoded bytes (PNG, JPEG, …). */
+        writeImage(data: Uint8Array | ArrayBuffer): Promise<void> {
+            return rpc("clipboardWriteImage", [data]) as Promise<void>;
+        },
+        writeText(text: string): Promise<void> {
+            return rpc("clipboardWriteText", [text]) as Promise<void>;
         },
     },
 

@@ -11,10 +11,11 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.11.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app.
-Bridge `1.11.0` adds transient page-toolbar text to the additive navigation,
-capability, intent, provider, service, and stream surface; existing boards are unaffected.
+The board bridge is version **1.12.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.12.0` adds
+`persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS
+clipboard writes; the preceding `1.11.0` release added transient page-toolbar text. These additions
+are backward-compatible with existing boards.
 
 ## Host-rendered board toolbar
 
@@ -650,9 +651,13 @@ must respect.
   back to buffered `readBinary()` because `ProxyProvider` lacks `createReadStream`; do not author a
   seeking provider expecting range pushdown yet.
 
-**Browser APIs (clipboard, etc.):** the board frame is a secure context with clipboard permission
-granted, so standard web APIs like `navigator.clipboard.write([...])` work directly (no bridge method;
-still need a user gesture + focused window). Only remote *network* is blocked by the CSP.
+**Clipboard:** use `persephone.clipboard.writeImage(data)` for encoded image bytes (`Uint8Array` or
+`ArrayBuffer`) or `persephone.clipboard.writeText(text)` for text. These methods write through
+Electron's native clipboard and do not require the board document to be focused. A click on
+Persephone's own toolbar can leave the board frame unfocused, in which case
+`navigator.clipboard.write*` rejects with `"Document is not focused"`; the Web Clipboard API is
+still suitable when the board document is focused and the browser gesture requirements are met.
+Only remote *network* is blocked by the CSP.
 
 ### Secondary views & shared state
 

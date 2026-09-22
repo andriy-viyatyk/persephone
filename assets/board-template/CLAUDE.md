@@ -5,11 +5,11 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.11.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app.
-Bridge `1.11.0` adds transient page-toolbar text to the additive navigation,
-capability, intent, provider, service, and stream surface; the change is additive and existing
-boards remain unaffected.
+The board bridge is version **1.12.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.12.0` adds
+`persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS
+clipboard writes; the preceding `1.11.0` release added transient page-toolbar text. These additions
+are backward-compatible with existing boards.
 
 ## Host-rendered board toolbar
 
@@ -763,9 +763,12 @@ plain (non-content-host) board `persephone.host.getContent()` / `getLanguage()` 
 handshake answers the question) and a registered `onContentChange` callback never fires, so
 feature-detect with a `try`/`catch` around `getContent()` if a board can open either way.
 
-**Browser APIs (clipboard, etc.):** the board frame is a secure context and Persephone grants it
-clipboard permission, so standard web APIs like `navigator.clipboard.write([...])` work directly —
-no bridge method needed (they still require a user gesture + a focused window, per the browser).
+**Clipboard:** use `persephone.clipboard.writeImage(data)` for encoded image bytes (`Uint8Array` or
+`ArrayBuffer`) or `persephone.clipboard.writeText(text)` for text. These methods write through
+Electron's native clipboard and do not require the board document to be focused. A click on
+Persephone's own toolbar can leave the board frame unfocused, in which case
+`navigator.clipboard.write*` rejects with `"Document is not focused"`; the Web Clipboard API is
+still suitable when the board document is focused and the browser gesture requirements are met.
 Only remote *network* is blocked (by the CSP — see *Libraries & assets* below).
 
 ### Stream-host boards — `persephone.host.streamUrl()`

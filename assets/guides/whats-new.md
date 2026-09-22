@@ -46,6 +46,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   registry also provides built-in handoffs for opening and editing content. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
+- **Boards can write to the OS clipboard:** board authors can use `persephone.clipboard.writeText()`
+  or `persephone.clipboard.writeImage()` for copy actions triggered from Persephone's own toolbar,
+  even when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).
+- **Error and warning toasts reach the agent event feed:** agents can notice failures and warnings
+  raised while Persephone is running without separately checking the alert list.
 
 ### Improvements
 

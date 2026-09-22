@@ -78,6 +78,13 @@ renderer event for the agent. A trusted board can call `remote.notify(text)` to 
 rate-limited board-authored event; this is distinct from `persephone.notify`, which displays a
 toast.
 
+### Board bridge clipboard
+
+Trusted and bundled board frames expose `persephone.clipboard.writeImage(data)` and
+`persephone.clipboard.writeText(text)`, routed through Electron's main-process clipboard. The
+native path does not require the board document to be focused, which covers actions triggered from
+Persephone's own toolbar where `navigator.clipboard` would reject.
+
 ### Grid column identity
 
 Grid uses each column's `key` as its identity. Generated blank columns use the next available

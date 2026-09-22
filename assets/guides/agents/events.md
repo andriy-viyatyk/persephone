@@ -50,7 +50,9 @@ box. Switches you asked for yourself are not reported, and neither is moving bet
 grouped side by side, since both stay on screen. It
 also records `notify(text)` from a trusted board or a participating page. Remote text is marked as
 board-written or page-written and shown with an attribution suffix. Text written by Persephone has
-no remote attribution.
+no remote attribution. Error and warning toast notifications are also added to the feed, so an
+agent can notice failures without first asking for the alert list; informational and success toasts
+are not added.
 
 When an event says that a shape changed, read the named `pages["<id>"].editor.app` path again
 before using that model. A guide-button event tells you which control the user skipped or advanced.

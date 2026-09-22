@@ -797,7 +797,10 @@ timeout, preserving the invariant renderer bound < bridge timeout < client timeo
 renderer clamps an old cursor back to the new log's sequence space.
 
 The renderer producers currently record `shape-changed`, `board-reloaded`, `navigated`,
-`page-activated`, `dialog-answered`, `remote-notify`, and `guide-button`. Page activation is
+`page-activated`, `dialog-answered`, `remote-notify`, `alert-raised`, and `guide-button`.
+The alert watcher subscribes to the renderer alert model during app bootstrap and forwards only
+new `error` and `warning` toasts; routine `info` and `success` notifications stay out of the event
+feed. Page activation is
 installed with the native renderer mount lifecycle by
 `/src/renderer/scripting/ai-vision/page-activation.ts`; it observes the page model's `onShow`
 channel, prunes closed page ids, and reports a switch only when the old or new page was addressed

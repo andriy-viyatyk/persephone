@@ -593,9 +593,10 @@
             if (!excalidrawApi || !hasExportableElements()) return;
             try {
                 const blob = await exportCurrentPngBlob();
-                await navigator.clipboard.write([
-                    new ClipboardItem({ "image/png": blob }),
-                ]);
+                // Not `navigator.clipboard`: the click that got us here landed on
+                // Persephone's toolbar, so this frame's document is not focused and the
+                // write would reject with "Document is not focused".
+                await persephone.clipboard.writeImage(await blob.arrayBuffer());
             } catch (error) {
                 notifyToolbarFailure("Failed to copy image", error);
             }
