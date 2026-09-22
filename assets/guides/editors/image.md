@@ -50,7 +50,8 @@ Viewer is a specialized route rather than a general `pages.addEditorPage` target
 
 Zoom with the mouse wheel or zoom actions, pan while zoomed, and reset to fit-to-window. Copy uses
 PNG data. **Save as .png** re-encodes; **Save original** preserves source bytes. **Open in Drawing
-Editor** sends the image to Excalidraw for annotation.
+Editor** sends the image to Excalidraw for annotation. With the bundled Excalidraw board enabled,
+that handoff opens the board; disabling it sends the image to the built-in Drawing editor instead.
 
 `Ctrl+V` can open a bitmap clipboard image in a new Image Viewer tab, unless a focused text field or
 grid owns the paste. HTML-only clipboard content can open in HTML Preview; plain text is not

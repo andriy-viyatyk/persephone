@@ -8,12 +8,14 @@ editorId: "draw-view"
 # Drawing Editor
 
 Drawing Editor hosts an Excalidraw canvas for shapes, arrows, freehand marks, text, self-hosted fonts,
-and annotations. Its canvas theme is independent of the app theme.
+and annotations. Its canvas theme can be changed independently of the app theme.
 
 ## How to Open
 
-Open a `.excalidraw` file or send an image, SVG, Mermaid diagram, HTML capture, or screen snip to the
-Drawing Editor. Agents can create a drawing content page with
+Open a `.excalidraw` file or send an image, SVG, Mermaid diagram, HTML capture, or screen snip to
+Excalidraw. When the bundled Excalidraw board is enabled, `.excalidraw` files and these handoffs use
+that board; the built-in Drawing editor remains available from **Tools & Editors → Built-in** and
+becomes the fallback when the board is disabled. Agents can create a drawing content page with
 `pages.addEditorPage("draw-view", "json", title, content)`.
 
 ## Layout
@@ -53,6 +55,14 @@ The canvas supports the normal Excalidraw drawing workflow, custom shape librari
 action that inserts a captured region directly into the drawing. Export drawings as 2x PNG or SVG to
 the clipboard, a file, or a new tab. Other viewers use this editor for annotation: an SVG, Mermaid
 diagram, image, or rendered HTML capture can arrive as drawing content.
+
+### Libraries
+
+Use Excalidraw's **Library** controls to browse for a `.excalidrawlib` library. When you return to
+Persephone, it asks for confirmation before adding the library; accepted items are merged into your
+existing library rather than replacing it. The built-in Drawing editor and the bundled Excalidraw
+board use the same library folder, configured in **Settings → Drawing Library**, so your collected
+shapes remain available whichever implementation is active.
 
 ## Agent API
 

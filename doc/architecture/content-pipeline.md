@@ -17,7 +17,7 @@ The content registry is split by the kind of extension point it owns:
 - `scheme-registry.ts` maps URL schemes to paired parse and resolve hooks. It normalizes scheme
   names, dispatches both the normal open pipeline and the `source-path` reconstruction path, and
   supplies hooks with `delegate()` and descriptor-based pipe creation. Platform and script
-  registrations have separate duplicate/replacement rules; trusted-board registrations use the
+  registrations have separate duplicate/replacement rules; trusted and bundled-board registrations use the
   same hook contract and an existing live pipe is never changed by a later registration.
 - `builtin-schemes.ts` owns the platform scheme hooks and their scheme-specific parsing and
   resolution behavior. It registers HTTP(S), data URLs, folder/editor links, Mneme links, board,
@@ -33,7 +33,7 @@ evaluates archive paths ahead of plain files.
 
 ### Board provider and scheme registrations
 
-A trusted board contributes providers through the manifest's `contentProviders` array. Each
+A trusted or bundled board contributes providers through the manifest's `contentProviders` array. Each
 declaration pairs a persisted provider `type` with one or more URL `schemes`; the type is registered
 verbatim and the scheme registry resolves those schemes through the normal Layer 1/Layer 2 hooks.
 Board provider types must contain `/`, because un-namespaced provider types are reserved for the
@@ -42,9 +42,9 @@ not derived from the mutable board display name or install path.
 
 Provider types and schemes have one owner. Platform registrations and the hard-reserved names
 (`http`, `https`, `file`, `data`, `blob`, `mneme`, and every `persephone-*` scheme) cannot be
-claimed by a board. Among trusted boards, the first registration wins; a later collision is
+claimed by a board. Among board registrations, the first registration wins; a later collision is
 rejected and retained as a Board Info registration issue with the existing owner. A trust refresh
-rebuilds board-owned registrations, so untrusted or removed boards no longer own their names.
+rebuilds board-owned registrations, so untrusted, disabled, or removed boards no longer own their names.
 `permissions: ["contentProviders"]` discloses the requested surface and participates in service
 lifecycle metadata; the `contentProviders` array is the functional provider-registration axis.
 
@@ -163,7 +163,7 @@ returns the original descriptor unchanged; the first read rejects with a typed e
 provider and, when available, its declaring board. A malformed descriptor (not an object or
 without a string `type`) still throws immediately.
 
-When the descriptor belongs to a trusted board whose provider has not become available yet, the
+When the descriptor belongs to a trusted or bundled board whose provider has not become available yet, the
 same placeholder enters its pending state on the first read. It acquires the board's module-service
 renderer lease, waits for the service registration, then delegates the read to `ProxyProvider`.
 Service startup is lazy and bounded; a service that never attaches the lease produces a typed

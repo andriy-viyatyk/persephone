@@ -37,6 +37,12 @@ export interface CreatableItem {
     bundledBoardId?: string;
     /** Disable this bundled board without removing its retained pins. */
     disable?: () => void;
+    /** Re-enable this bundled board. Present only on the rows `getDisabledBundledBoardItems()`
+     *  returns — a disabled board keeps a row so Disable is not a one-way door. */
+    enable?: () => void;
+    /** True for a row that stands in for a disabled bundled board: it is shown so the user can
+     *  re-enable it, and creating from it is deliberately a no-op. */
+    disabled?: boolean;
 }
 
 
@@ -250,8 +256,48 @@ export function disableBundledBoard(id: string): void {
     settings.set("disabled-bundled-boards", [...disabled, id]);
 }
 
+export function enableBundledBoard(id: string): void {
+    const disabled = settings.get("disabled-bundled-boards");
+    if (!disabled.includes(id)) return;
+    settings.set("disabled-bundled-boards", disabled.filter((entry) => entry !== id));
+}
+
+/**
+ * Rows standing in for bundled boards the user has disabled.
+ *
+ * `getCreatableItems()` excludes them by contract (EPIC-109 D4 — the flag gates the creatable
+ * item), which on its own left Disable as a one-way door: the row vanished, and with it the only
+ * place the action lived, so the board could be brought back solely by hand-editing the settings
+ * file. These rows restore the way back without weakening D4 — they are not creatable, they only
+ * carry Enable.
+ */
+export function getDisabledBundledBoardItems(): CreatableItem[] {
+    const disabled = new Set(settings.get("disabled-bundled-boards"));
+    if (disabled.size === 0) return [];
+    return bundledBoardRegistry.list()
+        .filter((board) => disabled.has(board.id))
+        .map((board) => ({
+            id: `bundled-board:${board.id}`,
+            label: board.manifest.name?.trim() || board.id,
+            icon: createBoardGlyphElement(board.root),
+            create: () => {},
+            category: "editor" as const,
+            bundledBoardId: board.id,
+            enable: () => enableBundledBoard(board.id),
+            disabled: true,
+        }));
+}
+
 export function getBundledBoardContextMenu(item: CreatableItem): MenuItem[] | undefined {
-    if (!item.bundledBoardId || !item.disable) return undefined;
+    if (!item.bundledBoardId) return undefined;
+    if (item.enable) {
+        return [{
+            label: "Enable",
+            icon: createIconElement("check", { width: 14, height: 14 }),
+            onClick: item.enable,
+        }];
+    }
+    if (!item.disable) return undefined;
     return [{
         label: "Disable",
         icon: createIconElement("remove", { width: 14, height: 14 }),

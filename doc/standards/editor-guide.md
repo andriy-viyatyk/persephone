@@ -345,7 +345,7 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 
 Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget and `detectContentEditor`, not which editor opens a file.
 
-A trusted board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
+A trusted or bundled board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. The bundled Excalidraw board uses `60` to outrank the built-in `.excalidraw` matcher at `50` while the built-in remains available. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
 
 Folder resolution uses a separate ladder: `0` is the `category-view` floor for every directory;
 specialized folder editors such as Git Tree and Mneme use `20` only for their enabled, verified

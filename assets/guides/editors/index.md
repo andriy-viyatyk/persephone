@@ -32,9 +32,9 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 | Video Player | `video-view` | Video, audio, and streams | [Video Player](./video.md) |
 | Archive Editor | `archive-view` | Compressed archives and entries | [Archive Editor](./archive.md) |
 | Folder View | `category-view` | Folders and archive directories | [Folder View](./folder.md) |
-| Drawing Editor | `draw-view` | `.excalidraw` drawings | [Drawing Editor](./draw.md) |
+| Drawing Editor | `draw-view` | Built-in Excalidraw canvas and fallback for `.excalidraw` drawings | [Drawing Editor](./draw.md) |
 | Browser | `browser-view` | Web pages and web resources | [Browser](./browser.md) |
-| Board | `board-view` | Trusted custom HTML applications | [Board](./board.md) |
+| Board | `board-view` | Trusted or bundled custom HTML applications | [Board](./board.md) |
 | Git Tree | `git-tree` | Repository history and Git status | [Git Tree](./git-tree.md) |
 | Git Diff | `file-diff` | Revisions of a Git-tracked file | [Git Diff](./file-diff.md) |
 
@@ -55,7 +55,8 @@ documented with the header; the Drawing guide covers the handoff from a snip int
 
 The default and switchable combinations include JSON with Grid, Markdown with Preview, `.note.json`
 with Notebook, `.link.json` with Links, `.rest.json` with REST Client,
-`.excalidraw` with Drawing, `.svg` and `.html` with Preview, and `.mmd`/`.mermaid` with Mermaid.
+`.excalidraw` with Drawing and the bundled Excalidraw board, `.svg` and `.html` with Preview, and
+`.mmd`/`.mermaid` with Mermaid.
 CSV, JSONL, and NDJSON can use Grid; Git Diff is offered for text files in a repository when Git
 integration is enabled. Archives, images, and audio/video normally have one specialized editor.
 

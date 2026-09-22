@@ -87,6 +87,15 @@ Evidence: `BoardInfoEditorView.ts:83-90,188-309,316-429,455-470` and `BoardInfoE
 
 A board is a small web app stored in any folder on your machine — it is identified by a `board-manifest.json` file in the board's root folder. When you open a board in Persephone, the page renders in a sandboxed context — isolated from the host application — and receives a single injected `persephone` bridge object.
 
+Some editors are shipped as **bundled boards**. They appear in **Tools & Editors → Built-in** rather
+than **Boards** / **Registered boards**, and they need no trust confirmation because they are part of
+the Persephone installation. The bundled **Excalidraw** board handles `.excalidraw` files and is
+included in the offline installation. Right-click it in the Built-in list and choose **Disable** to
+remove its file association and return image and diagram handoffs to the built-in Drawing editor;
+the Drawing editor itself remains available. A disabled bundled board stays in the Built-in list,
+greyed out and no longer creatable — right-click it and choose **Enable** to bring it back. The
+change takes effect immediately, with no restart.
+
 The three parts:
 
 | Part | What it is |
@@ -286,6 +295,10 @@ The board opens immediately after creation.
 - **File Explorer panel** — rows for `board-manifest.json` files show an **Open Board** button (board icon) directly in the row. Click it to open that board. (Clicking the row itself opens the JSON in Monaco.)
 - **Tools & Editors panel → Boards tab** — lists all trusted boards, grouped by folder, across all locations. Click a board to open it in a new tab. Pin a board to make it appear in the top pinned section and in the **+** (add page) dropdown. Click **Open in new tab** in the panel header for a full-page version of the same hub, with an additional **Search boards** tab for discovering and installing boards published by the project — see [Published boards catalog](#published-boards-catalog--discover-install-update) below.
 - **Scripting / agent** — call `app.boards.openBoard(boardRoot)` with the absolute path to the board's root folder.
+
+Bundled boards are opened from the **Built-in** list rather than from the Boards panel. They do not
+write to the board trust list. Their stable bundled identity also means an open page and its saved
+state continue to refer to the same board when the application is installed in a different folder.
 
 ### 3. Edit and reload
 
@@ -505,6 +518,10 @@ const pageId = await persephone.openContent({
 board to read, navigate, close, or modify other pages. It rejects for an unknown editor or
 language, a standalone editor, another board, or content over 16 million characters, so handle
 the returned Promise.
+
+The bundled Excalidraw board is a content-host board. Opening an image, SVG, or Mermaid result in
+Drawing routes it to the enabled Excalidraw editor; if the bundled board is disabled, the built-in
+Drawing editor handles the same handoff.
 
 ### `persephone.call(path, options?)`
 

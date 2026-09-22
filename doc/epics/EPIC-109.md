@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-20
-**Completed:** —
+**Completed:** 2026-09-23
 
 ## Overview
 
@@ -397,6 +397,96 @@ unchanged — the data does not move when the setting later appears.
    `editors/draw` uses the same navigation service, with `LIBRARY_RETURN_URL` gone.
 
 ## Notes
+
+### 2026-09-23 — epic close
+
+**Exit criteria verified.** All nine were checked against the running app or against source before
+close. Criterion 2 was confirmed by reading `trustedBoards.txt` directly: 27 entries, none under
+`assetsoards`, so the bundled board is registered by provenance and the trust file is untouched
+exactly as D2 requires. Criterion 5 was exercised in both directions — disabling dropped both
+capability handlers and released the file-mask claim, and a reopened `.excalidraw` went to
+`draw-view`; re-enabling restored all three with no restart. D4's "one flag read in two places"
+holds literally: `custom-editor-registry.ts:251` and `tools-editors-registry.ts:213`, and nowhere
+else.
+
+**D3 did not survive implementation, and the epic closes with it corrected rather than met.**
+D3 says the bundled board "takes over that row and the user sees the same 'Drawing' entry, with the
+same icon, in the same place, still pinnable." It does not. The board contributes its own row
+labelled from its manifest `name` — "Excalidraw" — while the built-in keeps its own "Drawing" row,
+which is additionally pinned by default (`DEFAULT_PINNED_EDITORS` includes `draw-view`). The user
+therefore sees **two** entries in Tools & Editors → Built-in, not one.
+
+That is not a defect *in this epic*, because EPIC-109 deliberately keeps `draw-view` registered and
+working as the coexistence fallback (D6 as amended) — two entries is the honest presentation of two
+live editors. But D3's prediction was about the user-visible result, and it was wrong. The
+single-entry outcome D3 describes becomes available only in **EPIC-110**, when the built-in row is
+deleted and the board can take the pinned slot. EPIC-110 should treat "the board inherits
+`draw-view`'s pin and label position" as explicit work rather than assuming D3 already delivered it.
+
+**A defect found by `/review` at close, and fixed here: Disable was a one-way door.**
+`disableBundledBoard()` and a "Disable" context menu shipped, but there was no `enableBundledBoard`
+and no Enable affordance anywhere — and because `getCreatableItems()` filters disabled boards out by
+contract (D4), the row vanished along with the only place the action lived. A user who disabled the
+bundled board could only restore it by hand-editing `settings.json`, which makes exit criterion 5's
+"re-enabling restores all three" untrue through the UI even though it was true of the mechanism.
+
+Fixed without weakening D4: `getCreatableItems()` still excludes disabled boards, and a separate
+`getDisabledBundledBoardItems()` contributes inert rows that carry only Enable. Those rows are
+dimmed, not creatable, not pinnable, not draggable, and a click on one does nothing and does not
+close the popover — closing on a click that did nothing reads as the action having been taken.
+Verified through the real UI path: right-click on the dimmed row, click Enable, both capability
+handlers and the file-mask claim return.
+
+**A second defect, found by the cold-start test and fixed here: the board's `lib/` silently
+disabled dependency pre-bundling for the whole app.**
+
+US-1486 committed `assets/boards/excalidraw/lib/`, whose files carry 33 bare specifiers resolved at
+runtime by the board page's own `<script type="importmap">`. Vite's **dependency scanner** crawls
+the project root rather than the renderer's module graph, so it reached those files, found
+`clsx` and `@radix-ui/react-tabs` unresolvable — it has no import map — and aborted:
+
+```
+(!) Failed to run dependency scan. Skipping dependency pre-bundling.
+```
+
+The damage is wider than the message suggests: pre-bundling is skipped for **every** dependency in
+the application, not only the board's. It reproduces only on a cold start, because a populated
+`node_modules/.vite/deps` hides it — which is why it survived US-1486's review and this epic's
+per-task verification, and why it was found only by deleting the cache and running `npm start` for
+real. The existing `**/assets/boards/*/lib/**` watch-ignore does not help: that governs chokidar,
+not the scanner.
+
+Fixed in `vite.renderer.config.ts` by scoping the scan to the real entry —
+`optimizeDeps.entries: ["index.html"]` — which is what the renderer actually loads. Verified by
+clearing `node_modules/.vite` and cold-starting twice: before, zero dependencies pre-bundled and
+the scan error present; after, **627** pre-bundled, no error, and the board still opens a
+`.excalidraw` file and reports 25 elements through its frame.
+
+**Material lifted out of the task folders, so it survives their deletion.**
+
+*US-1488's payload measurement, against EPIC-108 D7.* The trigger for the deferred `DataHandle`
+store is a single `image.edit` payload above the 8 MiB inline cap in ordinary use, or a clone cost
+above ~50 ms at p95. Measured in the live renderer over 100 `structuredClone` calls per case after
+10 warm-ups, on Chromium 150 / Windows: the largest p95 was **6.1 ms**, an order of magnitude below
+the trigger. A 1920×1080 PNG came to 7,801,462 bytes, under the cap; JPEG cases stayed under it
+through 2560×1440. The only case above the cap was a deliberately maximum-entropy 3840×2160
+synthetic JPEG at 9,077,514 bytes, which is a worst case rather than ordinary-use evidence. **No
+threshold was crossed, so the handle store remains deferred** — and the numbers suggest the cap is
+sized about right rather than that the store should be built now.
+
+*US-1489's same-tab return gap, recorded and deliberately not fixed.* A minted return URL is
+`https://<nonce>.board-return.persephone.invalid/`, and `.invalid` is unresolvable by construction.
+So a **same-tab** navigation to it dies at `ERR_NAME_NOT_RESOLVED (-105)` before `did-navigate`
+fires; `browser-service.ts` relays nothing and `browserUrlChanged` is never published. The path that
+works is `window.open` — Excalidraw asks for `?target=_blank`, and the `new-window` publish site does
+not wait for a navigation to complete, which is also why the pre-US-1489 built-in flow worked with
+its equally unresolvable sentinel. **Consequence: a board whose third-party site returns in the same
+tab is not heard and strands that tab on a Chromium error page.** Fixing it needs `did-fail-load`
+relayed from `src/main/browser-service.ts`, which is a D10 design question rather than an
+implementation detail. Both board guides tell authors to open the return URL in a new tab.
+`restoreClaimedNavigation()` is kept and is currently unreachable for minted URLs — it is correct
+for the event it handles and is the only thing that would prevent a stranded tab if a same-tab
+return ever became observable.
 
 ### 2026-09-20
 

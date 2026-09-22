@@ -7,7 +7,12 @@ import { LIST_ITEM_KEY } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { endPinnedDragSession, startPinnedDragSession } from "./pinned-drag-session";
 import { addPin, getPinnedStrings, type PinnedDragData } from "./pinned-items";
-import { getBundledBoardContextMenu, getCreatableItems, type CreatableItem } from "./tools-editors-registry";
+import {
+    getBundledBoardContextMenu,
+    getCreatableItems,
+    getDisabledBundledBoardItems,
+    type CreatableItem,
+} from "./tools-editors-registry";
 
 export interface BuiltinEditorsListProps {
     onClose?: () => void;
@@ -30,7 +35,12 @@ function createRowTraits(getTrailing: (source: RowSource) => Node | undefined): 
         const item = source as RowSource;
         return isSection(item) ? undefined : item.icon;
     },
-    rowClass: () => "tools-editor-row",
+    rowClass: (source: unknown) => {
+        const item = source as RowSource;
+        return !isSection(item) && item.disabled
+            ? "tools-editor-row tools-editor-row-disabled"
+            : "tools-editor-row";
+    },
     trailingElement: (source: unknown) => getTrailing(source as RowSource),
     // The pin button is a per-row action, not row information: showing it on every row at rest
     // made the whole list look like a column of buttons.
@@ -38,7 +48,7 @@ function createRowTraits(getTrailing: (source: RowSource) => Node | undefined): 
     section: (source: unknown) => isSection(source as RowSource),
     drag: (source: unknown) => {
         const item = source as RowSource;
-        if (isSection(item)) return { draggable: false };
+        if (isSection(item) || item.disabled) return { draggable: false };
 
         return {
             draggable: true,
@@ -94,12 +104,14 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
 
     private refresh(): void {
         const browserProfiles = settings.get("browser-profiles");
-        const allItems = getCreatableItems(browserProfiles);
+        // Disabled bundled boards keep a row here so Disable is reversible — see
+        // `getDisabledBundledBoardItems()`. They are never pinnable, so they bypass the pin filter.
+        const allItems = [...getCreatableItems(browserProfiles), ...getDisabledBundledBoardItems()];
         const pinnedIds = new Set(
             getPinnedStrings().filter((stored) => !stored.startsWith("board:")),
         );
         const rows = allItems
-            .filter((item) => !pinnedIds.has(item.id))
+            .filter((item) => item.disabled || !pinnedIds.has(item.id))
             .sort((a, b) => a.label.localeCompare(b.label));
 
         this.ensurePinButtons(rows);
@@ -107,7 +119,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
     }
 
     private ensurePinButtons(items: CreatableItem[]): void {
-        const ids = new Set(items.map((item) => item.id));
+        const ids = new Set(items.filter((item) => !item.disabled).map((item) => item.id));
         for (const [id, button] of this.pinButtons) {
             if (ids.has(id)) continue;
             button.dispose();
@@ -115,6 +127,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
             this.pinButtons.delete(id);
         }
         for (const item of items) {
+            if (item.disabled) continue;
             if (this.pinButtons.has(item.id)) continue;
             const button = new IconButtonView({
                 size: "sm",
@@ -146,6 +159,10 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
 
     private handleChange(source: RowSource): void {
         if (isSection(source)) return;
+        // A disabled bundled board's row exists only to carry Enable in its context menu. Activating
+        // it creates nothing, and must not close the popover either — closing on a click that did
+        // nothing reads as the action having been taken.
+        if (source.disabled) return;
         source.create();
         this.props.onClose?.();
     }

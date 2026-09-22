@@ -91,7 +91,9 @@ editor module or duplicating page construction. The supported ids are `text.open
 `content.view` (with `svg`, `html`, `markdown`, `mermaid`, `grid`, or `log` representations),
 `image.edit`, and `diagram.edit`. Page-producing calls return a `pageId`; diagram editing may
 also return a conversion-failed result. The draw editor owns the image/diagram handlers, while
-the other handlers create the declared built-in editor page.
+the other handlers create the declared built-in editor page. Enabled board declarations may own
+editing handlers too; bundled declarations are loaded from shipped manifests without trust-file
+entries.
 
 Type definitions live in `/src/renderer/api/types/*.d.ts` and serve triple duty:
 1. TypeScript compilation contracts
@@ -350,7 +352,7 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 - The `board://` handler adds `charset=utf-8` to every text MIME response (HTML, JavaScript, CSS, JSON, SVG, and plain text). This is explicit because the injected head fragment can precede an author's `<meta charset>` by more than the encoding-sniffing window.
 - The board loads in a plain `<iframe src="board://<host>/index.html">` rendered in the host renderer's DOM — no `sandbox` attribute (a bare `sandbox` forces an opaque origin with no stable per-board storage). Each board gets a **distinct cross-origin** `board://<host>` origin, where `host` is a stable hash of the normalized board root minted by `registerBoard` in the main process. Isolation from the Node-privileged host comes from the Same-Origin Policy (a cross-origin child cannot reach `window.parent`), `nodeIntegrationInSubFrames: false`, and the served CSP — adequate for trusted, user-authorized local code. Because the iframe lives in the DOM, all host overlays (page-tab context menu, dropdowns, dialogs, command palette, tooltips) compose over it naturally. This mirrors VS Code's editor-webview model.
 - The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks all remote network access — CDNs, fetch, XHR to external hosts are all forbidden. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the trade-off is accepted because a board is the user's own trusted code (it can already run arbitrary processes via `execute()`).
-- Trust is **per board**: only boards the user has explicitly trusted render. The decision is persisted by `board-trust.ts` (a path-keyed registry, `trustedBoards.txt` under `<userData>/persephone/data/`) and never read from the manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar.
+- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. The external decision is persisted by `board-trust.ts` (a path-keyed registry, `trustedBoards.txt` under `<userData>/persephone/data/`) and never read from the manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
 
 **Module services and trust synchronization:** A board manifest may declare `service` as a Node ESM
 entry resolved from the board root. The related manifest axes are `permissions` and
@@ -394,7 +396,7 @@ loading persisted state before declaring readiness is a normal service startup s
 ### Capability bus
 
 The capability bus is the renderer-local request counterpart to the content pipeline. A derived
-index combines built-in editor declarations with trusted boards' manifest `capabilities` arrays;
+index combines built-in editor declarations with trusted and bundled boards' manifest `capabilities` arrays;
 `list()`/`handlers()` discover candidates without opening pages, and `invoke()` resolves by version,
 filter, priority, and origin tie rules. Board requests are served in the caller's window through
 the transient `intent` host-frame protocol, with request ids, deadlines, best-effort cancel, typed
@@ -404,17 +406,18 @@ failure taxonomy.
 
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload** toolbar action and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each load starts a fresh `ui.log` (reset to a single "board loaded" line, so the log only ever holds the current board lifetime — clicking Show-log never opens an empty page). Load failures funnel into that `ui.log` and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.
 
-**Board structure:** `board-manifest.json` (identity marker plus optional, trust-gated file and
-folder editor association fields — never trust flags), `index.html`, `app.js`, `style.css`,
+**Board structure:** `board-manifest.json` (identity marker plus optional file and folder editor
+association fields, user-trust-gated for external boards — never trust flags), `index.html`, `app.js`, `style.css`,
 `board-base.css` (shared base: page defaults + themed scrollbars, plus an opt-in `.p-*` chrome
 layer carrying the app's control metrics), optional `scripts/` folder, optional
-`icon.svg`/`png`/`ico` (shown in tab, boards tree, sidebar).
+`icon.svg`/`png`/`ico` (shown in tab, boards tree, sidebar). App-owned bundled boards live under
+`assets/boards/<id>/`; their manifests and files are part of the installed resources.
 
 **Chrome parity:** `board-base.css` carries an opt-in class layer — `.p-toolbar`, `.p-btn` (+ variant modifiers), `.p-input` / `.p-select`, `.p-sep`, `.p-spacer`, `.p-toolbar-title` — whose metrics are ported from the app's own `uikit/Toolbar.tsx`, `Button.tsx`, `Input.tsx` and `tokens.ts` and expressed through the `--p-*` contract. It exists because boards are agent-authored: an agent left to invent its own chrome reliably produces a bar half again too tall (comfortable-looking vertical padding on a control) painted on `--p-panel`, a *content* surface, rather than the darker `--p-bg-dark` the app's chrome uses. The layer also encodes the app's control-size split, which is the failure that survives an author getting the bar height right: a toolbar control is the **small** tier (24px, 12px text — every editor toolbar in the app passes `size="sm"`), while the 26px medium size belongs on a page or in a dialog. `.p-btn` therefore defaults to 26px but takes the small metrics automatically inside a `.p-toolbar`, with `.md` as the escape hatch — a bar of medium buttons looks plausible in isolation and only reads as oversized next to the app's own chrome, so it is not a mistake an author catches by looking at the board alone. Opt-in by class rather than by element, so a vendored library's own controls — av-grid, flatpickr, tom-select, all loaded *after* `board-base.css` — keep their styling. The stylesheet is **copied at creation, not linked**, so it is a snapshot: changing it affects new boards only, and an existing board keeps the copy it was created with until someone overwrites it.
 
 **Lifecycle & open-by-link:** `app.boards` is the renderer Object Model API for board lifecycle — `createBoard` / `createDemoBoard` / `openBoard`, plus registration, rename, and published-catalog operations. Its invariant is *the API requests, the user's dialog click grants*: scripts can drive the discover→download→review→register→update lifecycle but cannot self-trust. The `boards.*` call paths expose this lifecycle to agents. A board is opened through the canonical `openRawLink` pipeline; a resolved direct-folder board uses a validated `folder-editor://` link and is constructed with the claimed folder separately from its installed root.
 
-Trusted boards may extend editor switching with manifest `fileMasks`, narrowing `folderMasks`,
+Trusted boards and enabled bundled boards may extend editor switching with manifest `fileMasks`, narrowing `folderMasks`,
 switch-only `contentMasks`, or direct-folder `folderEditorMasks`/`folderEditorPriority`. Direct
 folder claims match the folder itself, compete with built-in folder priorities, and pass the
 claimed absolute path to the board as `getFolderPath()`; `boardRoot` remains the installed board
@@ -422,6 +425,11 @@ root. Content masks can identify an untitled or otherwise unmatched page without
 editor wins file-open resolution. A trusted board that declares a safe `guides` folder contributes
 an isolated guide mount under `installed-boards/<board-id>/`, shared by the About browser, `F1`,
 MCP guide tree, and guide search.
+
+Bundled boards are app-owned rather than user-trusted: they are discovered from the installed
+resources, never copied or written to `trustedBoards.txt`, and do not show a trust dialog. The
+Built-in tab presents their creatable item and its Disable action; disabling a board removes its
+file masks and capability/provider/scheme registrations through the same reactive rebuild.
 
 **Published catalog:** boards published to a GitHub repo (`andriy-viyatyk/persephone-boards`) can be discovered and installed in-app. The main-process `published-boards-service.ts` fetches the raw `boards-manifest.json` (24h-gated, cached for offline use, and `isSafeBoardId`-guarded so a traversal/separator `id` never becomes an install path); a `board-download-service.ts` streams the per-board release ZIP with an incremental sha256 verify. On the renderer, `published-boards.ts` holds the catalog reactively, and `board-install.ts` / `board-install-registry.ts` / `board-updates.ts` handle the sha256-verified download → extract → registry-record install (which trusts *nothing* — the code lands on disk inert for review), in-place folder-swap updates and rollbacks that never destroy a working board, and silent update detection. Installation and properties both flow through the **Board Info editor** (`editors/board-info/`); registration is always the separate `showTrustBoardDialog` consent step, so an installed catalog board is indistinguishable from a locally-authored trusted board once registered. A catalog entry may declare a **screenshot** — a bare file name, guarded like the `id` because it is interpolated into a raw URL, and resolved to a URL as the catalog leaves the service rather than stored with it. It is shown on the catalog surfaces, loaded directly from the repo, and excluded from the release ZIP; see [editors.md](editors.md) for the full contract.
 

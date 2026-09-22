@@ -75,6 +75,18 @@
         font-size: 13px;
     }
 
+    /* A bundled board the user disabled. The row stays so Enable has somewhere to live
+       (EPIC-109 exit criterion 5), but it reads as inert: dimmed, default cursor, no create. */
+    .tools-editor-row-disabled {
+        cursor: default;
+        color: var(--color-text-light);
+    }
+
+    .tools-editor-row-disabled > .item-icon svg,
+    .tools-editor-row-disabled > [data-part="icon"] svg {
+        opacity: 0.5;
+    }
+
     .tools-editor-row:hover,
     .tools-board-row:hover {
         background: var(--color-bg-light);

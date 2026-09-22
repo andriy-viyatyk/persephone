@@ -97,6 +97,19 @@ export default defineConfig({
       ],
     },
   },
+  optimizeDeps: {
+    // Scope the dependency scanner to the real renderer entry.
+    //
+    // Left to itself the scanner crawls the whole project root, which now includes a bundled
+    // board's committed `lib/` — files that are never imported by the renderer and are served to
+    // the board frame over `board://`. They carry bare specifiers (`clsx`, `@radix-ui/react-tabs`,
+    // …) that the board page resolves through its own <script type="importmap">, but the scanner
+    // has no import map, cannot resolve them, and then gives up on the WHOLE scan:
+    //   (!) Failed to run dependency scan. Skipping dependency pre-bundling.
+    // That disables pre-bundling for every dependency in the app, not just the board's — and it
+    // only reproduces on a cold start, because a warm `node_modules/.vite/deps` hides it.
+    entries: ["index.html"],
+  },
   plugins: [
     editorTypesPlugin(),
     monacoEditorPlugin({

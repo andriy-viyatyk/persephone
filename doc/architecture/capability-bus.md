@@ -11,8 +11,8 @@ capability.
 The index is a derived view of two inputs in each renderer:
 
 - platform registrations seeded from the `capabilities` declarations on the built-in editor table;
-- declarations in the `capabilities` array of every trusted board manifest, installed during the
-  generation-guarded custom-editor-registry rebuild.
+- declarations in the `capabilities` array of every trusted or bundled board manifest, installed
+  during the generation-guarded custom-editor-registry rebuild.
 
 The built-in direct-call handlers remain in `src/renderer/api/capabilities.ts`. The request
 lifecycle is in `src/renderer/api/capability-bus.ts`; board dispatch is in
@@ -50,13 +50,13 @@ Resolution is deterministic:
 1. Parse an optional `@<major>` suffix at the bus boundary. The suffix is not stored in the id.
 2. Filter by requested version and optional `accepts` MIME filter.
 3. Sort by descending numeric priority.
-4. On an exact priority tie, a platform registration wins. Trusted-board registration order breaks
+4. On an exact priority tie, a platform registration wins. Board registration order breaks
    board-to-board ties.
 
 Built-in registrations cannot be removed by a board; a board can only outrank one. Multiple boards
 may declare the same id and all candidates remain discoverable. A refresh removes board-origin
-entries over the complete board-origin set before rebuilding from the current trusted manifests,
-so untrust cannot leave a stale registration behind.
+entries over the complete board-origin set before rebuilding from the current trusted and enabled
+bundled manifests, so untrust or disabling a bundled board cannot leave a stale registration behind.
 
 ## Request routing
 
@@ -180,7 +180,7 @@ architecture to a task history:
    result channels, so `ILinkData.target` does not carry capability ids.
 3. Caller-window routing is the rule. Reuse or open the winning handler page in the caller's
    window; cross-window handler routing requires a future main-side forwarding protocol.
-4. Registrations coexist and resolve by priority, platform tie-break, and trusted-board order;
+4. Registrations coexist and resolve by priority, platform tie-break, and board registration order;
    versions are major, pin-able, and separate from the stored id.
 5. The failure taxonomy is closed and each code has an observable trigger, including clone refusal
    as `rejected` and headless dispatch as `no-handler`.

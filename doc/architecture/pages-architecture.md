@@ -309,6 +309,11 @@ claim is rejected in favor of a usable Folder View path rather than deriving a f
 board installation root. The same folder identity is carried by a host-less Board Info install
 page so Download → Register can return to the folder context.
 
+Bundled-board descriptors use the same durable `boardRoot` field, and restore aliases a stale
+installed-resource path to the current bundled root by stable board id only when the old path no
+longer has a readable manifest. A readable manifest always wins, preventing a similarly named user
+board from being adopted.
+
 Two lifecycle concerns live in their own modules rather than in `PagesLifecycleModel`:
 [`PageNavigator.ts`](../../src/renderer/api/pages/PageNavigator.ts) implements `navigatePageTo`
 as named steps (the lifecycle keeps a one-line delegate), and

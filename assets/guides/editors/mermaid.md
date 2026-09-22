@@ -67,6 +67,8 @@ PNG** rasterizes it with Persephone's renderer.
 **Convert to Excalidraw** turns flowchart, sequence, and class diagrams into individually editable
 shapes. **Open in Drawing Editor** embeds any diagram type as one flat image for annotation; state,
 ER, Gantt, pie, and git-graph diagrams use this image route when native conversion is unavailable.
+When the bundled Excalidraw board is enabled, both handoffs open that board; disabling it uses the
+built-in Drawing editor.
 
 ## Agent API
 

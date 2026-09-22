@@ -175,6 +175,16 @@
                 beside its structured <code>result</code>.
             </p>
 
+            <h2><code>persephone.navigation</code> — browser return claims</h2>
+            <p class="muted">
+                Mint an opaque return URL for a third-party site and subscribe to its returned
+                query/hash values. Claims belong to this frame and should be minted again after
+                a reload; a site must open the URL in a new tab or window.
+            </p>
+            <div class="row">
+                <button class="p-btn primary" data-test="navigationReturn">mint return URL</button>
+            </div>
+
             <h2><code>persephone.execute()</code> — run scripts &amp; tools</h2>
             <p class="muted">
                 The one method. Buffer the result (<code>getText</code>/<code>getJson</code>/<code>getBytes</code>) or

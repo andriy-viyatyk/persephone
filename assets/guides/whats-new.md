@@ -46,6 +46,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   registry also provides built-in handoffs for opening and editing content. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
+- **Excalidraw ships as a bundled board:** `.excalidraw` files and image/diagram handoffs use the
+  offline-capable bundled board by default. It appears under **Built-in** with a **Disable** action;
+  disabling it keeps the built-in Drawing editor as the fallback, and the disabled entry stays in
+  the list greyed out so you can right-click it and choose **Enable** again. Excalidraw library browsing now
+  returns to the drawing, asks before adding a library, and merges accepted items with the existing
+  library. See [Drawing Editor](./editors/draw.md#libraries).
 - **Boards can write to the OS clipboard:** board authors can use `persephone.clipboard.writeText()`
   or `persephone.clipboard.writeImage()` for copy actions triggered from Persephone's own toolbar,
   even when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).

@@ -23,6 +23,7 @@ persephone/
 ├── scripts/                # Build scripts
 │   ├── dev.mjs             # Dev orchestrator (npm start) — Vite renderer dev server + HMR, Node-targeted main build, watch-builds main/preload/preload-webview/board-shim/search-worker, launches Electron with restart-on-change
 │   ├── build-prod.mjs      # Vite production build — Node-targeted main plus preload, preload-webview, renderer, board-shim, search-worker
+│   ├── build-board-lib.mjs # Manual Excalidraw vendor-graph snapshot generator (run only when its pinned version changes)
 │   └── vmp-sign.mjs        # electron-builder afterPack hook for Widevine VMP signing
 ├── assets/                 # Static assets
 │   ├── editor-types/       # GENERATED — Vite plugin auto-copies .d.ts files from src/renderer/api/types/ (never hand-edit)
@@ -39,6 +40,8 @@ persephone/
 │   ├── module-service-host.mjs # Static utility-process host that injects persephone.storage and imports a board's ESM service entry
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
+│   ├── boards/             # Boards shipped inside the installer resources
+│   │   └── excalidraw/     # Bundled Excalidraw board, manifest, library fetcher, and committed prebuilt lib/
 │   ├── tool-template/      # Scaffold copied into every new toolset
 │   │   ├── tools-manifest.json # Example manifest (one echo tool)
 │   │   ├── echo.js         # Example stdin-JSON tool with the ##PERSEPHONE_RESULT## contract
@@ -148,7 +151,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
-│   ├── board-trust.ts      # Per-board trust registry — persists trusted board roots (trustedBoards.txt); untrusted boards block rendering. This list IS the known-boards registry
+│   ├── board-trust.ts      # Per-board trust registry — persists user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
 │   ├── board-trust-sync.ts # Complete generation-numbered trust/service snapshot mirror from renderer to main
 │   ├── module-service.ts   # Renderer client for main-routed service requests and the optional host-renderer lease
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
@@ -657,7 +660,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
 │   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields plus permissions/minBridgeVersion/service axes and matcher/accessor helpers
 │   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
-│   │   ├── custom-editor-registry.ts # Reactive mask → trusted-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + trusted board); isBoardEditorId
+│   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache; gates pin affordances)
 │   │   ├── busy-boards.ts            # Reactive registry of busy board roots (drives the Boards panel "running" dot)

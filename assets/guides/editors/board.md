@@ -13,7 +13,8 @@ Boards can be dashboards, viewers, tools, or custom editors associated with file
 ## How to Open
 
 Open a trusted board from the Explorer **Boards** panel, a `board-manifest.json` row, or the Boards
-tab in **Tools & Editors**. Published boards can be installed from the catalog. A trusted board
+tab in **Tools & Editors**. Bundled boards are opened from the **Built-in** tab instead and do not
+ask for trust. Published boards can be installed from the catalog. A trusted or bundled board
 declaring `fileMasks` can appear in the editor switch for matching files; a board declaring
 `folderEditorMasks` can open as the editor for matching folders. See [Boards](../boards.md) for
 the file and folder association details.
@@ -75,9 +76,10 @@ unsaved changes.
 ## Trust and safety
 
 Installed or otherwise untrusted boards show the **Trust this board?** gate before rendering because
-their scripts run with the user's privileges. Trust is remembered per folder and inherited by boards
-inside a trusted folder. API-created boards from `app.boards.createBoard` and `createDemoBoard`
-scaffold and auto-trust their board; the installed/published-board path still uses the user trust gate.
+their scripts run with the user's privileges. Bundled boards supplied by Persephone skip that gate.
+Trust is remembered per folder and inherited by boards inside a trusted folder. API-created boards
+from `app.boards.createBoard` and `createDemoBoard` scaffold and auto-trust their board; the
+installed/published-board path still uses the user trust gate.
 
 ## Agent API
 

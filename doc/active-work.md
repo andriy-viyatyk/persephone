@@ -27,7 +27,7 @@ below tracks which phases have shipped.
 | B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
-| F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **active** |
+| F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
 | F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **blocked by EPIC-111** (EPIC-112 shipped 2026-09-21) |
 | E — Torrent board and audio player (proof 1) | — | not started |
 
@@ -43,18 +43,7 @@ deleting `editors/draw` no longer takes them with it.
 
 ## Active
 
-- **[EPIC-109: Bundled boards and the Excalidraw board](epics/EPIC-109.md)** — Phase F part 1.
-  Boards that ship inside the installer, registered because they are part of the app and presented
-  as built-in editors with a Disable action. The built-in `draw-view` stays as a fallback for the
-  whole epic; its removal is EPIC-110.
-  - [ ] [US-1483: Bundled board registry and discovery](tasks/US-1483-bundled-board-registry/README.md)
-  - [ ] [US-1484: Stable identity for bundled boards across install paths](tasks/US-1484-bundled-board-identity/README.md)
-  - [ ] [US-1485: Built-in tab presentation and the Disable action](tasks/US-1485-bundled-board-disable/README.md)
-  - [ ] [US-1486: The board's prebuilt lib/, generated once and committed](tasks/US-1486-board-prebuilt-lib/README.md)
-  - [ ] [US-1487: The Excalidraw board](tasks/US-1487-excalidraw-board/README.md)
-  - [ ] [US-1488: Capability routing into the board, and the payload measurement](tasks/US-1488-excalidraw-capability-routing/README.md)
-  - [ ] [US-1489: Board navigation return URLs](tasks/US-1489-board-navigation-return/README.md)
-  - [ ] [US-1490: The Excalidraw board's library flow](tasks/US-1490-excalidraw-library/README.md)
+*(nothing active — pick the next item from Planned.)*
 
 ## Planned
 
@@ -62,9 +51,13 @@ deleting `editors/draw` no longer takes them with it.
   Persephone renders them as a sub-page of its own Settings, storing values in the board's scoped
   storage. Created from a user observation while planning EPIC-109's library flow: boards have
   `persephone.storage` but nothing the user can see or edit, so `drawing.library-path` would be
-  orphaned when `editors/draw` is removed. **Prerequisite of EPIC-110** (EPIC-109 D11). Open
-  decisions — the trust gate, migrating the existing library path, and how narrow the type system
-  should start — are recorded in the epic and are resolved before any task document is written.
+  orphaned when `editors/draw` is removed. **Prerequisite of EPIC-110** (EPIC-109 D11). Now also
+  carries a **Settings page redesign** (user vision, 2026-09-23): per-group panels replacing the
+  single 560px column, a fixed two-level Content tree beside them, and two-way linkage between the
+  tree and the scroll position — board settings need it to have somewhere to render. Open
+  decisions — the trust gate, migrating the existing library path, how narrow the type system
+  should start, and the redesign's own grouping and navigation questions — are recorded in the epic
+  and are resolved before any task document is written.
 
 - *(no epic)*
   - [ ] US-1474: Credit-based ranged streaming into a board-implemented provider

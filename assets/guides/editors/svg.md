@@ -53,7 +53,8 @@ file remains in Text Editor.
 ## Preview actions
 
 The preview reflects unsaved SVG edits. Use zoom and pan, **Save as PNG**, **Copy**, or **Open in
-Drawing Editor** to place the rendered SVG in an Excalidraw canvas.
+Drawing Editor** to place the rendered SVG in an Excalidraw canvas. With the bundled Excalidraw
+board enabled, the handoff opens that board; disabling it uses the built-in Drawing editor.
 
 ## Agent API
 

@@ -107,6 +107,20 @@
             print("The reply includes the handler pageId and its structured result.");
         },
 
+        // --- navigation returns -------------------------------------------
+        async navigationReturn() {
+            header("persephone.navigation.createReturnUrl");
+            const returnUrl = await P.navigation.createReturnUrl();
+            let stop;
+            stop = P.navigation.onReturn((event) => {
+                print(JSON.stringify(event, null, 2));
+                stop();
+            });
+            print("Minted: " + returnUrl);
+            print("A third-party site must open this URL in a new tab/window to return here.");
+            print("The listener is active; query/hash values will appear when the site returns.");
+        },
+
         // --- execute() ------------------------------------------------------
         async getText() {
             header("execute → getText");

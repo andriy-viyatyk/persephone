@@ -237,6 +237,11 @@ The **Tools & Editors** entry appears between Recent Files and Script Library. I
 
 Click any item to create a new page (or open the board/toolset) with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set (for new installations) is: **Open Folder**, **Open File**, Script (JS), Drawing, Grid (CSV), Browser.
 
+Bundled boards such as **Excalidraw** are listed in **Built-in Editors**, not in the **Boards** /
+**Registered boards** list. Right-click a bundled board and choose **Disable** to remove its file
+association while keeping the built-in Drawing editor available. It stays listed, greyed out, so
+you can right-click it again and choose **Enable**.
+
 **Open in new tab** — A button in the panel header opens the same content as a full page instead of a slide-out panel — handy when you want more room, or want to keep browsing while doing something else in the app. The full-page **Tools & Editors hub** has the same **Pinned** rail plus four tabs: **Built-in**, **Registered boards**, **Search boards**, and **Tools**. **Search boards** is hub-only — it browses the catalog of boards published by the project and lets you install one directly, without needing a matching file open. See [Boards — Published boards catalog](./boards.md#published-boards-catalog--discover-install-update).
 
 The pin and unpin drag actions work in both the slide-out panel and the full-page hub. Dropping on a pinned row inserts before it; dropping on the rail background appends. Dropping a pinned item anywhere other than the **Built-in** or **Registered boards** tab body leaves it pinned.
