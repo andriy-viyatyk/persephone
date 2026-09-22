@@ -1,35 +1,44 @@
-import { readBoardManifest } from "../../editors/board/board-manifest";
-import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { readBoardManifest, hasStableBoardIdentity } from "../editors/board/board-manifest";
+import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
+import { boardTrust } from "./board-trust";
+import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 // =============================================================================
-// Board vars namespace resolution (EPIC-046 / US-887).
+// Shared board identity and vars namespace resolution (EPIC-111 / US-1499).
 // =============================================================================
+
+// Deliberately NOT cached. `readBoardManifest()` reads from disk on every call, so resolution is
+// always current — and the namespace depends on the manifest's own `author`/`name`, which change
+// through neither the trust list nor bundled registration. A cache keyed on those two signals
+// would go stale exactly when it matters most: someone adds a missing `name` to make their board
+// eligible for settings (EPIC-111 S7) and nothing happens until a restart, with nothing on screen
+// explaining why. The cost is one small read and parse per call; if a consumer ever makes this a
+// hot path, cache it then, against a measurement and with manifest-level invalidation.
 
 /**
  * The per-board vars namespace: the manifest's `author/name` when BOTH are explicitly set
  * (trimmed, non-empty), otherwise `bundled:<folder-id>` for a bundled board or the board root path
  * for an ordinary board (unique — collision-free but not portable across locations). The namespace
- * is a plain JSON object key, so spaces / "/" inside the display
- * strings are fine ("Persephone/Excel Viewer"); it is deliberately NOT slugged or charset-restricted.
- *
- * A stable `author/name` lets a board keep one namespace across its dev-repo copy and its installed
- * copy (both carry the same manifest). Renaming either field re-namespaces the board (orphaning its
- * old vars) — that is the documented cost of using display fields as identity.
+ * is a plain JSON object key, so spaces / "/" inside the display strings are fine
+ * ("Persephone/Excel Viewer"); it is deliberately NOT slugged or charset-restricted.
  */
 export async function resolveBoardNamespace(boardRoot: string): Promise<string> {
-    const manifest = await readBoardManifest(boardRoot);
-    const author = typeof manifest?.author === "string" ? manifest.author.trim() : "";
-    const name = typeof manifest?.name === "string" ? manifest.name.trim() : "";
-    if (author && name) return `${author}/${name}`;
-
-    await bundledBoardRegistry.ensureInitialized();
     const rootKey = fpNormalizeForCompare(boardRoot);
-    const bundled = bundledBoardRegistry.list().find(
-        (record) => fpNormalizeForCompare(record.root) === rootKey,
-    );
-    if (bundled) return `bundled:${bundled.id}`;
-    return boardRoot;
+    const manifest = await readBoardManifest(boardRoot);
+    let namespace: string;
+    if (hasStableBoardIdentity(manifest)) {
+        const author = typeof manifest?.author === "string" ? manifest.author.trim() : "";
+        const name = typeof manifest?.name === "string" ? manifest.name.trim() : "";
+        namespace = `${author}/${name}`;
+    } else {
+        await bundledBoardRegistry.ensureInitialized();
+        const bundled = bundledBoardRegistry.list().find(
+            (record) => fpNormalizeForCompare(record.root) === rootKey,
+        );
+        namespace = bundled ? `bundled:${bundled.id}` : boardRoot;
+    }
+
+    return namespace;
 }
 
 /**
@@ -44,8 +53,6 @@ export async function findNamespaceCollision(
     const namespace = await resolveBoardNamespace(boardRoot);
     if (namespace === boardRoot) return undefined;
 
-    const { boardTrust } = await import("../board-trust");
-    const { fpNormalizeForCompare } = await import("../../core/utils/file-path");
     await boardTrust.load();
     const key = fpNormalizeForCompare(boardRoot);
     for (const other of boardTrust.listPaths()) {
@@ -67,7 +74,7 @@ export async function confirmNamespaceNotColliding(boardRoot: string): Promise<b
     const collision = await findNamespaceCollision(boardRoot);
     if (!collision) return true;
     const { showNamespaceCollisionDialog } = await import(
-        "../../ui/dialogs/NamespaceCollisionDialog"
+        "../ui/dialogs/NamespaceCollisionDialog"
     );
     return showNamespaceCollisionDialog(collision.namespace, collision.collidingRoot);
 }

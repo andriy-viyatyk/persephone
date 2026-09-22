@@ -653,7 +653,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
         });
         if (!ok) return;
-        const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
+        const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
         if (!(await confirmNamespaceNotColliding(root))) return;
         await boardTrust.trust(root);
         await customEditorRegistry.refresh();

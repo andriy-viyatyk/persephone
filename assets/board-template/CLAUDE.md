@@ -84,6 +84,14 @@ that file's presence is what makes Persephone treat the folder as a board. It ho
 schema version plus optional **descriptive metadata** and, optionally, the **Custom Editor**
 fields that let the board act as a file editor:
 
+The non-empty trimmed pair `author` + `name` is also the board's stable identity for portable
+board-variable namespaces. This generic template keeps those fields empty; Persephone's board
+scaffold fills `name` from the requested board name and `author` from `boards.default-author`
+(or `""` when unset). A missing or empty author therefore leaves the board on its root-path
+fallback and is a valid creation state. If either identity field changes after variables exist,
+the namespace changes and the old values are orphaned. Persephone performs no automatic
+migration, copying, merging, or pruning; any deliberate migration is the user's responsibility.
+
 ```json
 {
   "schemaVersion": 1,
@@ -104,8 +112,10 @@ fields that let the board act as a file editor:
 }
 ```
 
-- `name` (optional) — display name; defaults to the **folder name** when omitted or empty.
-- `description` / `author` / `repository` (optional) — metadata only, for humans/agents.
+- `name` (optional) — display name; defaults to the **folder name** when omitted or empty. The
+  generic template's empty value is filled by Persephone's scaffold.
+- `description` / `author` / `repository` (optional) — metadata for humans/agents. `author` and
+  `name` together are the stable identity described above.
 - `minBridgeVersion` (optional) — the bridge version required by the board. A board above the
   shipped bridge is listed as incompatible and does not register its editors.
 - `permissions` (optional) — an ordered list of requested surfaces shown during trust and in Board

@@ -1,4 +1,5 @@
 import { fs } from "../../api/fs";
+import { settings } from "../../api/settings";
 import { fpBasename, fpDirname, fpJoin } from "../../core/utils/file-path";
 import {
     normalizeBoardGuidesFolder,
@@ -58,11 +59,13 @@ export interface BoardCapabilityDeclaration {
 export interface BoardManifest {
     /** Schema version of this manifest. */
     schemaVersion: number;
-    /** Optional display-name override. Falls back to the board folder name. */
+    /** Optional display-name override. Falls back to the board folder name. Together with
+     * `author`, this is the stable identity required by later board settings. */
     name?: string;
     /** Optional free-text description. Metadata only — does not drive behavior. */
     description?: string;
-    /** Optional author / owner. Metadata only. */
+    /** Optional author / owner. Metadata generally, but together with `name` this is the stable
+     * identity required by later board settings. */
     author?: string;
     /** Optional source-repository URL. Metadata only. */
     repository?: string;
@@ -216,9 +219,24 @@ export function boardManifestPath(boardRoot: string): string {
     return fpJoin(boardRoot, BOARD_MANIFEST_FILE);
 }
 
-/** A fresh, minimal manifest. */
-export function defaultBoardManifest(): BoardManifest {
-    return { schemaVersion: BOARD_MANIFEST_SCHEMA_VERSION };
+/** True when both identity fields are strings with non-empty trimmed values. */
+export function hasStableBoardIdentity(
+    manifest: BoardManifest | null | undefined,
+): boolean {
+    return typeof manifest?.author === "string"
+        && manifest.author.trim().length > 0
+        && typeof manifest.name === "string"
+        && manifest.name.trim().length > 0;
+}
+
+/** A fresh manifest with the identity fields used by Persephone-created boards. */
+export function defaultBoardManifest(name = ""): BoardManifest {
+    const configuredAuthor = settings.get("boards.default-author");
+    return {
+        schemaVersion: BOARD_MANIFEST_SCHEMA_VERSION,
+        name,
+        author: typeof configuredAuthor === "string" ? configuredAuthor : "",
+    };
 }
 
 /** True iff the folder carries a `board-manifest.json`. Cheap existence check —
@@ -681,5 +699,5 @@ export async function writeBoardManifest(boardRoot: string, manifest: BoardManif
  *  is a valid, identifiable board. No-op when the template already supplied one. */
 export async function ensureBoardManifest(boardRoot: string): Promise<void> {
     if (await isBoardFolder(boardRoot)) return;
-    await writeBoardManifest(boardRoot, defaultBoardManifest());
+    await writeBoardManifest(boardRoot, defaultBoardManifest(fpBasename(boardRoot)));
 }

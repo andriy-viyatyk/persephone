@@ -2,7 +2,6 @@
 // Consumed by the board bridge (US-888) and the `.env.json` editor (US-889).
 
 export { boardVars } from "./BoardEnvStore";
-export { resolveBoardNamespace } from "./namespace";
 export { resolveBoardVarRequest, type BoardVarReply } from "./board-vars-bridge";
 export {
     DEFAULT_PROFILE,

@@ -316,7 +316,7 @@ export const boards: IBoards = {
             serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
         });
         if (!ok) return false;
-        const { confirmNamespaceNotColliding } = await import("./board-vars/namespace");
+        const { confirmNamespaceNotColliding } = await import("./board-namespace");
         if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
         await boardTrust.trust(boardRoot);
         return true;

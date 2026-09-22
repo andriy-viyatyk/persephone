@@ -32,7 +32,8 @@ import type {
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import type { CapabilityErrorCode, IntentRequest } from "../../../ipc/capability-bus-channels";
-import { resolveBoardNamespace, resolveBoardVarRequest } from "../../api/board-vars";
+import { resolveBoardNamespace } from "../../api/board-namespace";
+import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
 import { resolveBoardOpenContent } from "./board-open-content";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";

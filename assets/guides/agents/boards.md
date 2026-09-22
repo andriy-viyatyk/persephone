@@ -215,6 +215,14 @@ await app.boardVars.listNamespaces();       // every namespace in the file
 await app.boardVars.show(namespace);        // open the built-in editor, focused there
 ```
 
+The namespace uses the trimmed, non-empty `author` + `name` identity pair when both fields are
+present. Otherwise it uses the board root (or `bundled:<folder-id>` for a bundled board), so a
+blank author is valid and does not prevent board creation. Persephone-created boards use the
+optional `boards.default-author` app preference; when it is empty, their manifest author is empty
+and the root fallback remains intentional. If either identity field is later changed on a board
+that already has variables, the old values stay under the old namespace and are orphaned. There is
+no automatic migration; do not assume a trust toggle or restart copies them.
+
 **This call can block on a dialog.** The first-ever `app.boardVars.*` call on a machine with no
 `.env.json` configured shows the user a "Create environment variables storage" dialog (default
 path, editable) — your `script.execute` call does not resolve until the user responds; declining
@@ -859,7 +867,12 @@ the manifest's `loadOrder`.
 ### Manifest, icon, reload
 
 - `board-manifest.json` — keep `schemaVersion: 1`; add optional `name`/`description`/`author`/
-  `repository` (metadata only). `minBridgeVersion` rejects a board on an older bridge;
+  `repository`. The non-empty trimmed pair `author` + `name` is the board's stable identity
+  for portable namespaces used by board environment variables; a missing or empty author keeps
+  the ordinary board-root fallback. Changing either identity field after variables exist moves
+  the namespace and orphans the old values. Persephone does not migrate, copy, merge, or prune
+  those values, so any deliberate migration is the user's responsibility. `minBridgeVersion`
+  rejects a board on an older bridge;
   `permissions` discloses requested surfaces and drives lifecycle hygiene, not security or a grant;
   `service` names a board-relative ESM module-service entry. No secrets, no trust flags. To make the board a **custom editor**
   for a file type, add `fileMasks` (glob masks matched against the file name, e.g. `["*.drawio"]`;

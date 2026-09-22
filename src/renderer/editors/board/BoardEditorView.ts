@@ -280,7 +280,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
             serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
             capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
         })) {
-            const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
+            const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
             if (await confirmNamespaceNotColliding(boardRoot)) await boardTrust.trust(boardRoot);
         }
     }

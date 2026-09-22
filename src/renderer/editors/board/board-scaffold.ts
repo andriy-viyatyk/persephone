@@ -2,8 +2,14 @@ import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { boardTrust } from "../../api/board-trust";
+import { settings } from "../../api/settings";
 import { fpJoin } from "../../core/utils/file-path";
-import { ensureBoardManifest } from "./board-manifest";
+import {
+    defaultBoardManifest,
+    ensureBoardManifest,
+    readBoardManifest,
+    writeBoardManifest,
+} from "./board-manifest";
 import { errMessage } from "../../../shared/utils";
 
 /**
@@ -66,6 +72,11 @@ export async function createBoardFromTemplate(name: string, dir: string, templat
     // Guarantee the board-identity manifest exists regardless of which path ran
     // above (template copy or empty fallback) — a board is identified by it.
     await ensureBoardManifest(boardRoot);
+    const manifest = await readBoardManifest(boardRoot) ?? defaultBoardManifest(name);
+    const configuredAuthor = settings.get("boards.default-author");
+    manifest.name = name;
+    manifest.author = typeof configuredAuthor === "string" ? configuredAuthor : "";
+    await writeBoardManifest(boardRoot, manifest);
     // Auto-trust a Persephone-created board (C5): provenance-based registry write,
     // never a manifest self-declaration. Covers the list editor + the MCP create.
     await boardTrust.trust(boardRoot);

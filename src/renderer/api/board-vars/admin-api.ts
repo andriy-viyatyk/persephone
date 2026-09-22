@@ -1,5 +1,5 @@
 import { boardVars } from "./BoardEnvStore";
-import { resolveBoardNamespace } from "./namespace";
+import { resolveBoardNamespace } from "../board-namespace";
 
 // =============================================================================
 // Agent-facing admin API over the board environment-variables store (EPIC-046 / US-891).
