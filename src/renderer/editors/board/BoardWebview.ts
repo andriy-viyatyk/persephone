@@ -24,6 +24,8 @@ import type {
     BoardNavigationReturnUrlResultMsg,
     BoardPortInitMsg,
     BoardStateSyncMsg,
+    BoardSettingsChangedMsg,
+    BoardSettingsResultMsg,
     BoardToolbarControlEventMsg,
     BoardToolbarControlPatch,
     BoardToolbarSetMsg,
@@ -34,6 +36,10 @@ import type {
 import type { CapabilityErrorCode, IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace } from "../../api/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
+import {
+    resolveBoardSettingsRequest,
+    subscribeBoardSettings,
+} from "../../api/board-settings/board-settings-bridge";
 import { resolveBoardOpenContent } from "./board-open-content";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
@@ -115,6 +121,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private portDeliveryUnsubscribe: (() => void) | undefined;
     private contentHostUnsubscribe: (() => void) | undefined;
     private sharedStateUnsubscribe: (() => void) | undefined;
+    private settingsUnsubscribe: (() => void) | undefined;
     private focusUnsubscribe: (() => void) | undefined;
     private focusTimer: ReturnType<typeof setTimeout> | undefined;
     private readonly pendingAiVision = new Map<number, {
@@ -188,6 +195,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.contentHostUnsubscribe = undefined;
         this.sharedStateUnsubscribe?.();
         this.sharedStateUnsubscribe = undefined;
+        this.settingsUnsubscribe?.();
+        this.settingsUnsubscribe = undefined;
         this.portDeliveryUnsubscribe?.();
         this.portDeliveryUnsubscribe = undefined;
         this.closePendingPort();
@@ -316,6 +325,35 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             },
             (state) => state.sharedState,
         ));
+        this.ownSubscription(() => {
+            this.settingsUnsubscribe?.();
+            this.settingsUnsubscribe = undefined;
+        });
+        this.installSettingsSubscription();
+    }
+
+    private installSettingsSubscription(): void {
+        this.settingsUnsubscribe?.();
+        const frame = this.iframe;
+        const host = this.host;
+        const generation = this.generation;
+        const model = this.props.model;
+        if (!frame || !host) return;
+        this.settingsUnsubscribe = subscribeBoardSettings(this.props.boardRoot, (change) => {
+            if (!this.live || !this.host || this.generation !== generation
+                || this.iframe !== frame || model.frames.get(this.tabId) !== frame
+                || !frame.contentWindow) return;
+            const message: BoardSettingsChangedMsg = {
+                __persephone: "settings:changed",
+                id: change.id,
+                value: change.value,
+            };
+            try {
+                frame.contentWindow.postMessage(message, `board://${host}`);
+            } catch {
+                // The frame may be replaced while the change is posted.
+            }
+        });
     }
 
     private transferPort(): void {
@@ -362,6 +400,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.onToolbarClear?.(retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
         this.generation++;
+        this.installSettingsSubscription();
         this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
         if (this.capabilityFrame?.iframe === frame) {
             this.rejectPendingCapability("crashed", "The board frame was reloaded.", false);
@@ -433,6 +472,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
             statusText?: string; toolbarText?: string; direction?: 1 | -1; reqId?: number;
             varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
+            settingsMethod?: "get"; settingsArgs?: unknown[];
             openContent?: BoardOpenContentRequest;
             controls?: unknown;
         };
@@ -546,6 +586,18 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                         legacy.reqId,
                         legacy.varMethod as "get" | "set" | "list" | "show",
                         Array.isArray(legacy.varArgs) ? legacy.varArgs : [],
+                        model,
+                        host,
+                        frame,
+                    );
+                }
+                break;
+            case "board:settings":
+                if (typeof legacy.reqId === "number") {
+                    void this.resolveSettings(
+                        legacy.reqId,
+                        legacy.settingsMethod ?? "get",
+                        Array.isArray(legacy.settingsArgs) ? legacy.settingsArgs : [],
                         model,
                         host,
                         frame,
@@ -1002,6 +1054,36 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             __persephone: "var:result", reqId, result: reply.result, error: reply.error,
         };
         frame.contentWindow.postMessage(message, `board://${host}`);
+    }
+
+    private async resolveSettings(
+        reqId: number,
+        method: "get",
+        args: unknown[],
+        model: BoardEditorModel,
+        host: string,
+        frame: HTMLIFrameElement,
+    ): Promise<void> {
+        const generation = this.generation;
+        let reply: { result?: string | number | boolean; error?: string };
+        try {
+            reply = await resolveBoardSettingsRequest(this.props.boardRoot, method, args);
+        } catch (error: unknown) {
+            reply = { error: errMessage(error, "Failed to read board setting.") };
+        }
+        if (!this.live || generation !== this.generation || this.iframe !== frame
+            || model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
+        const message: BoardSettingsResultMsg = {
+            __persephone: "settings:result",
+            reqId,
+            result: reply.result,
+            error: reply.error,
+        };
+        try {
+            frame.contentWindow.postMessage(message, `board://${host}`);
+        } catch {
+            // The frame may be replaced while the reply is posted.
+        }
     }
 
     private focusFrame(): void {

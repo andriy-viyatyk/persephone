@@ -367,6 +367,7 @@ export interface BoardToHostMsg {
         | "board:setToolbarText" // persephone.toolbar.setText — transient page-toolbar text (US-1494)
         | "board:cycleTheme" // Ctrl+Alt+[ / ] pressed inside the frame — cycle the app theme
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
+        | "board:settings" // board requested a settings.get — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
         | "board:openContent" // persephone.openContent — create a page in another editor; request/reply, needs a reqId
         | "board:aiVision"
@@ -405,6 +406,10 @@ export interface BoardToHostMsg {
     /** `board:var` positional args (get: [name, env?]; set: [name, value, env?]; list: [env?];
      *  show: []). */
     varArgs?: unknown[];
+    /** `board:settings` request id — echoed back in the `settings:result` push. */
+    settingsMethod?: "get";
+    /** `board:settings` positional args (`get: [id]`). */
+    settingsArgs?: unknown[];
     /** `board:aiNotify` remote-authored notification text. */
     text?: string;
     /** `board:openContent` payload — the requested editor/language/title/content. */
@@ -451,6 +456,21 @@ export interface BoardVarResultMsg {
     reqId: number;
     result?: unknown;
     error?: string;
+}
+
+/** Reply to a board `board:settings` request. Settings are effective typed scalar values. */
+export interface BoardSettingsResultMsg {
+    __persephone: "settings:result";
+    reqId: number;
+    result?: string | number | boolean;
+    error?: string;
+}
+
+/** Renderer-to-board push for one effective board setting value. */
+export interface BoardSettingsChangedMsg {
+    __persephone: "settings:changed";
+    id: string;
+    value: string | number | boolean;
 }
 
 export interface BoardAiVisionRegistrationMsg {
@@ -584,6 +604,8 @@ export type BoardHostFrameMsg =
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
     | BoardVarResultMsg
+    | BoardSettingsResultMsg
+    | BoardSettingsChangedMsg
     | BoardAiVisionRegistrationMsg
     | BoardAiVisionNotifyMsg
     | BoardAiVisionRequestMsg

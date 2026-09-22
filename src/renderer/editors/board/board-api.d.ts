@@ -196,6 +196,25 @@ interface PersephoneVarApi {
     show(): Promise<void>;
 }
 
+type PersephoneSettingValue = string | number | boolean;
+
+interface PersephoneSettingsChange {
+    readonly id: string;
+    readonly value: PersephoneSettingValue;
+}
+
+/** Renderer-owned user settings declared by this board. Values are scoped to the calling board;
+ *  defaults are read from the current manifest at read time and are never written into storage.
+ *  The board can read and observe changes, but cannot set or unset a value. A board without a
+ *  stable non-empty `author` and `name` identity receives a rejected Promise naming `author`,
+ *  `name`, or both missing fields. */
+interface PersephoneSettingsApi {
+    /** Read a declared setting or its current manifest default when the user has not set it. */
+    get(id: string): Promise<PersephoneSettingValue>;
+    /** Observe effective user values, including the current default after a reset. */
+    onChange(callback: (change: PersephoneSettingsChange) => void): () => void;
+}
+
 interface PersephoneAiVisionElementDeclaration {
     name: string;
     purpose: string;
@@ -350,9 +369,9 @@ interface PersephoneClipboardApi {
 }
 
 interface PersephoneBoardApi {
-    /** Bridge version, e.g. "1.8.0" — the release that added board intent delivery and
-     *  board-to-board capability invocation to the existing bridge contract. Compare
-     *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
+    /** Bridge version, e.g. "1.13.0" — 1.13.0 adds renderer-owned `settings.get()` and
+     *  `settings.onChange()`. Compare it before using a newer member; do not narrow it to a
+     *  literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
     readonly aiVision: PersephoneAiVisionApi;
@@ -433,6 +452,8 @@ interface PersephoneBoardApi {
     onThemeChange(cb: (theme: PersephoneThemePalette) => void): () => void;
     /** Board environment variables (EPIC-046) — get/set/list this board's own namespace. */
     readonly var: PersephoneVarApi;
+    /** Renderer-owned, read-only board settings (bridge API 1.13.0). */
+    readonly settings: PersephoneSettingsApi;
     /** Main-owned per-board storage; see {@link PersephoneStorageApi}. */
     readonly storage: PersephoneStorageApi;
     /** Lazily-started request/reply access to this board's trusted module service. */

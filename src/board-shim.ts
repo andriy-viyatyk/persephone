@@ -54,6 +54,8 @@ import type {
     BoardOpenContentRequest,
     BoardRpcMethod,
     BoardStateSyncMsg,
+    BoardSettingsChangedMsg,
+    BoardSettingsResultMsg,
     BoardThemePalette,
     BoardToMain,
     MainToBoard,
@@ -361,6 +363,11 @@ const runnerHandlers = new Map<
 const pendingVar = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 let varReqId = 0;
 
+/** Pending settings request/reply promises keyed by reqId (host-frame channel, EPIC-111). */
+const pendingSettings = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+let settingsReqId = 0;
+const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
+
 /** Pending content-path request/reply promises keyed by reqId (host-frame channel). */
 const pendingFilePath = new Map<
     number,
@@ -401,6 +408,28 @@ function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promi
             reject(new Error("Persephone host is unavailable."));
         }
     });
+}
+
+function settingsRpc(id: string): Promise<string | number | boolean> {
+    return new Promise<string | number | boolean>((resolve, reject) => {
+        const reqId = ++settingsReqId;
+        pendingSettings.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage(
+                { __persephone: "board:settings", reqId, settingsMethod: "get", settingsArgs: [id] },
+                hostPostTarget,
+            );
+        } catch {
+            pendingSettings.delete(reqId);
+            reject(new Error("Persephone host is unavailable."));
+        }
+    });
+}
+
+function isBoardSettingValue(value: unknown): value is string | number | boolean {
+    return typeof value === "string"
+        || typeof value === "boolean"
+        || (typeof value === "number" && Number.isFinite(value));
 }
 
 /** Pending openContent request/reply promises keyed by reqId (host-frame channel, US-1404). */
@@ -903,6 +932,34 @@ onHostMessage((event) => {
     if (p) attachPort(p);
 });
 
+// Board settings request reply (EPIC-111) — renderer → board over the host-frame channel.
+onHostMessage((event) => {
+    const data = event.data as BoardSettingsResultMsg | undefined;
+    if (!data || data.__persephone !== "settings:result" || typeof data.reqId !== "number") return;
+    const pending = pendingSettings.get(data.reqId);
+    if (!pending) return;
+    pendingSettings.delete(data.reqId);
+    if (data.error != null) pending.reject(new Error(data.error));
+    else if (isBoardSettingValue(data.result)) pending.resolve(data.result);
+    else pending.reject(new Error("Malformed persephone.settings.get() response."));
+});
+
+// Board settings change push (EPIC-111) — effective values include the declaration default.
+onHostMessage((event) => {
+    const data = event.data as BoardSettingsChangedMsg | undefined;
+    if (!data || data.__persephone !== "settings:changed"
+        || typeof data.id !== "string" || data.id.trim().length === 0
+        || !isBoardSettingValue(data.value)) return;
+    const change = { id: data.id, value: data.value };
+    for (const callback of settingsChangeCbs) {
+        try {
+            callback(change);
+        } catch (error: unknown) {
+            console.error("persephone.settings.onChange callback error:", errMessage(error));
+        }
+    }
+});
+
 onHostMessage((event) => {
     const data = event.data as BoardToolbarControlEventMsg | undefined;
     if (!data || data.__persephone !== "toolbar:control"
@@ -1262,6 +1319,7 @@ function createHandle(
     // 1.10.0 adds the host-rendered board toolbar catalog (US-1493).
     // 1.11.0 adds transient board-settable page-toolbar text (US-1494).
     // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText` (US-1496).
+    // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()` (EPIC-111).
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1718,6 +1776,20 @@ function createHandle(
         /** Open the Environment Variables editor, scoped to this board's namespace. */
         show(): Promise<void> {
             return varRpc("show", []) as Promise<void>;
+        },
+    },
+
+    /** Renderer-owned user settings. Reads and change notifications are scoped to this board;
+     *  defaults are resolved at read time, and the board cannot write the stored value. */
+    settings: {
+        /** Read this board's declared setting, or its current manifest default when unset. */
+        get(id: string): Promise<string | number | boolean> {
+            return settingsRpc(id);
+        },
+        /** Receive effective values after a user changes or resets this board's setting. */
+        onChange(callback: (change: { id: string; value: string | number | boolean }) => void): () => void {
+            settingsChangeCbs.add(callback);
+            return () => settingsChangeCbs.delete(callback);
         },
     },
 
