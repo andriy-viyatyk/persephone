@@ -5,11 +5,20 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.12.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.12.0` adds
-`persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS
-clipboard writes; the preceding `1.11.0` release added transient page-toolbar text. These additions
-are backward-compatible with existing boards.
+The board bridge is version **1.13.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.13.0` adds
+`persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
+board declares in its manifest; `1.12.0` added `persephone.clipboard.writeImage(data)` and
+`persephone.clipboard.writeText(text)` for native OS clipboard writes; the preceding `1.11.0`
+release added transient page-toolbar text. These additions are backward-compatible with existing
+boards.
+
+**Board settings need a stable identity.** Persephone honours a manifest's `settings` block only
+when the manifest carries **both** `author` and `name` — they form the `author/name` key the values
+are stored under, which is what lets them survive the board folder moving. Without both, the block
+is dropped with a registration issue and `persephone.settings.get()` rejects with an error naming
+the missing field. Changing `author` or `name` later moves the key and orphans anything already
+stored under the old one, including board variables.
 
 ## Host-rendered board toolbar
 

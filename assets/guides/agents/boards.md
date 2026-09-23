@@ -11,11 +11,55 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.12.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.12.0` adds
+The board bridge is version **1.13.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.13.0` adds
+`persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access
+to settings declared by the board; bridge `1.12.0` added
 `persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS
 clipboard writes; the preceding `1.11.0` release added transient page-toolbar text. These additions
 are backward-compatible with existing boards.
+
+## Board settings
+
+Declare user-editable settings as an array in `board-manifest.json`. Settings require stable,
+non-empty `name` and `author` manifest fields, and each declaration has a unique `id`, a `type`,
+and a scalar `default`. Supported types are `string`, `number`, `boolean`, and `enum`; enum
+declarations also require non-empty string `options`. A string may use `format: "folderPath"` to
+get a folder picker in Persephone's Settings page.
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "Weather Board",
+  "author": "Example",
+  "settings": [
+    {
+      "id": "units",
+      "type": "enum",
+      "options": ["celsius", "fahrenheit"],
+      "default": "celsius",
+      "label": "Temperature units"
+    }
+  ]
+}
+```
+
+The declaration creates a panel named after the board under **Editors** when it is a custom
+editor, or under **Boards** otherwise. Persephone owns the explicit values in
+`%APPDATA%\persephone\data\board-settings.json`, namespaced by `author/name`; a reset removes
+the stored value and returns the manifest default. The board itself is read-only:
+
+```js
+const units = await persephone.settings.get("units");
+const stopListening = persephone.settings.onChange(({ id, value }) => {
+  if (id === "units") renderUnits(value);
+});
+```
+
+`get()` returns the stored value or the current manifest default. `onChange()` reports effective
+values after the user changes or resets a setting in Persephone. Call the returned function to
+unsubscribe. Direct manifest edits require a trust refresh or app restart before the Settings
+panel changes.
 
 ## Host-rendered board toolbar
 
@@ -928,8 +972,8 @@ the manifest's `loadOrder`.
   `editorPriority`, `folderEditorPriority`, `editorSources`)
   applies only after toggling the board's trust off and on, or restarting the app — not after
   `pages[pageId].editor.reload()`.
-- A `settings` declaration follows the same cache boundary: its Settings sub-page appears once
-  the board is trusted or installed, and direct edits to the cached manifest do not update that
+- A `settings` declaration follows the same cache boundary: its Settings panel appears once
+  the board is trusted or bundled, and direct edits to the cached manifest do not update that
   page live. Toggle trust off and on or restart Persephone to refresh it.
 
 ## Test it

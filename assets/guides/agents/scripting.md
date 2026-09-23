@@ -106,7 +106,7 @@ the current sidebar panels; `page.panels.expand(id)` takes a bare panel ID and
 are no panels or a non-Explorer panel keeps it open. There is no uniform `page.panels.close(id)`
 because individual panel owners have different hide/dispose lifecycles.
 
-Use `settings.sections` to find the fixed-order Settings catalog (15 sections, 27 rows), then
+Use `settings.sections` to find the built-in grouped Settings catalog (14 sections, 26 rows), then
 `settings.highlight(key)` to open or activate Settings and point at the containing section.
 `settings.set` remains the mutation operation. Through the AiVision `call` seam only,
 `mcp.enabled` and `mcp.port` are refused because changing them disconnects the caller;

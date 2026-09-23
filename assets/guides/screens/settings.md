@@ -9,41 +9,50 @@ editorId: "settings-view"
 # Settings
 
 Settings opens as an ordinary page from the Menu Bar gear icon, `[data-name="menubar-settings"]`.
-It is a fixed-order editor. The page shows the settings that have UI controls, while the settings
-object and its file also contain a few values that are intentionally get/set-only.
+The page has a fixed two-level **Content** tree on the left and a scrollable stack of outlined
+panels on the right. Built-in sections appear in the General, Editors, Browser, and Integrations
+groups. Trusted or bundled boards can add their own panel under Editors (when they are a custom
+editor) or Boards.
 
-When connected over MCP, read `settings.sections` for the fixed-order catalogue of 15 sections and
-27 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
-containing section; `key` is a settings key, not a DOM selector.
+When connected over MCP, read `settings.sections` for the built-in settings catalogue. Use
+`settings.highlight(key)` to open or activate Settings and point at the containing section; `key`
+is a settings key, not a DOM selector. Board-owned settings are read through the board bridge,
+not through `app.settings`.
 
 ## Layout
 
 ```
 +---------------------------------------------------------------------+
-| [Settings content]                                                  |  centered Settings content below the page toolbar
-| [Theme]                                                             |  Settings content, Theme section
-| [Window Behavior]                                                   |  Settings content, Window Behavior section
-| [Editor Behavior]                                                   |  Settings content, Editor Behavior section
-| [Browser Profiles]                                                  |  Settings content, Browser Profiles section
-| [Links]                                                             |  Settings content, Links section
-| [Default Browser]                                                   |  Settings content, Default Browser section
-| [File Search]                                                       |  Settings content, File Search section
-| [Clipboard]                                                         |  Settings content, Clipboard section
-| [MCP Server / Mneme]                                                |  Settings content, MCP Server / Mneme section
-| [Git Integration]                                                   |  Settings content, Git Integration section
-| [Board Environment Variables]                                       |  Settings content, Board Environment Variables section
-| [Script Library]                                                    |  Settings content, Script Library section
-| [Drawing Library]                                                   |  Settings content, Drawing Library section
-| [Video Player]                                                      |  Settings content, Video Player section
-| [Terminal]                                                          |  Settings content, Terminal section
-| [View Settings File]                                                |  bottom of Settings content
+| [Content]                  | [Theme panel]                         |  fixed tree at left; panels scroll at right
+|   General                   | [Window Behavior panel]               |  one outlined panel per section
+|     Theme                   | [Editor Behavior panel]               |
+|     Window Behavior         | [Browser Profiles panel]               |
+|     Clipboard               | [Links panel]                          |
+|     Terminal                | [MCP Server / Mneme panel]             |
+|   Editors                   | ...                                     |
+|     Editor Behavior         |                                         |
+|     Script Library          |                                         |
+|     Video Player            |                                         |
+|     Excalidraw (when enabled)|                                        |
+|   Browser                   |                                         |
+|     Browser Profiles        |                                         |
+|     Default Browser         |                                         |
+|     Links                   |                                         |
+|   Integrations              |                                         |
+|     MCP Server / Mneme      | [View Settings File] in the left footer
+|   Boards                    | board panels for standalone boards      |
 +---------------------------------------------------------------------+
 ```
+
+The Content tree always has exactly two levels: a group and its sections. Groups start expanded.
+Click a group or section to scroll the panels to the corresponding content. Scrolling the panels
+updates the selected section automatically, so the tree acts as a scroll-spy while you browse.
 
 ### User-facing label → `elements` name
 
 - Settings root → no entry: region root; the content anchor is addressable
-- Settings content → no entry: region container; section anchors are addressable
+- Content tree → `settings-content-tree`
+- Settings content → no entry: two-pane region containing the tree and panel scroll surface
 - Theme → `theme`
 - Window Behavior → `window.close-to-tray`
 - Editor Behavior → `editor.word-wrap`
@@ -56,17 +65,17 @@ containing section; `key` is a settings key, not a DOM selector.
 - Git Integration → `git.enabled`
 - Board Environment Variables → `board-vars.file`
 - Script Library → `script-library.path`
-- Drawing Library → `drawing.library-path`
 - Video Player → `vlc-path`, `video-stream.port`
 - Terminal → `terminal.command`
 - View Settings File → `settings-view-file`
 
-### When Settings sections are expanded and visible
+### When Settings panels are expanded and visible
 
 ```
 +---------------------------------------------------------------------+
-| [fixed-order section scroll surface]                                |  Settings content scroll surface
-| [View Settings File]                                                |  bottom of Settings content
+| [Content tree]             | [section panel]                         |  tree remains fixed while panels scroll
+|                            | [section panel]                         |
+| [View Settings File]       | [section panel]                         |  action stays in the tree pane footer
 +---------------------------------------------------------------------+
 ```
 
@@ -89,20 +98,22 @@ remain on disk in readable form; disable the feature or clear its history when t
 
 ### Drawn controls without `elements`
 
-- Settings root and content containers — no entry: structural regions; the Settings elements list exposes catalog keys and the page action.
-- Section roots — no entry as separate Settings elements: the 27 generated key entries use each section root's selector and inherit its section phrase.
-
-Evidence: `SettingsView.ts:48-109`, `settings.ts:22-188`, and `ui-element-contract.md:139-164`.
+- Settings root, Content container, and section panels — no entry: structural regions; the Settings
+  elements list exposes catalog keys and the page action.
+- Section roots — no entry as separate Settings elements: generated key entries use each section
+  root's selector and inherit its section phrase.
 
 ## Settings sections and stable targets
 
-The page has a stable root, content container, and button for viewing the settings file. Section
-names are containers for highlighting rather than individual setting controls.
+The page has a stable root, Content tree, panel scroll surface, and button for viewing the settings
+file. Section names are containers for highlighting rather than individual setting controls.
 
 | Section or control | Selector |
 |---|---|
 | Settings root | `[data-name="settings-root"]` |
 | Settings content | `[data-name="settings-content"]` |
+| Content tree | `[data-name="settings-content-tree"]` |
+| Settings panels | `[data-name="settings-panels"]` |
 | View Settings File | `[data-name="settings-view-file"]` |
 | Theme | `[data-name="settings-section-theme"]` |
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
@@ -116,12 +127,25 @@ names are containers for highlighting rather than individual setting controls.
 | Git Integration | `[data-name="settings-section-git-integration"]` |
 | Board Environment Variables | `[data-name="settings-section-board-vars"]` |
 | Script Library | `[data-name="settings-section-script-library"]` |
-| Drawing Library | `[data-name="settings-section-drawing-library"]` |
 | Video Player | `[data-name="settings-section-video-player"]` |
 | Terminal | `[data-name="settings-section-terminal"]` |
 
-The section selectors identify the containing sections. Read the live settings catalogue for the
-rows and their labels instead of relying on a visual position that may change.
+Board panels use a generated selector based on the board's stable `author`/`name` identity. The
+section selectors identify containing panels; read the live catalogue and board manifest for the
+rows and labels instead of relying on a visual position that may change.
+
+## Board settings
+
+A trusted or bundled board can declare user-editable settings in its `board-manifest.json`. Its
+settings appear as a board-named panel in Settings, with controls for the declared type and a
+**Reset** action that returns the value to the manifest default. The panel is grouped under
+**Editors** for boards that are custom editors and under **Boards** for other boards.
+
+Persephone owns the values in `%APPDATA%\persephone\data\board-settings.json`; a board can only
+read its own declared values through `persephone.settings.get(id)` and subscribe with
+`persephone.settings.onChange(callback)`. The bridge exposes effective values, so a reset sends
+the declaration's default. See [Boards](../boards.md#board-settings) for the manifest and bridge
+example.
 
 ## Settings worth knowing about
 

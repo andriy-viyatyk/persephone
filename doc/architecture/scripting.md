@@ -737,8 +737,9 @@ The Settings descriptor adds a computed grouped `sections` catalog with explicit
 and generated setting-row elements, plus key-named `elements` and `highlight(key)`. Highlighting
 opens or activates the Settings page, waits for its named box-bearing section wrapper, and then
 delegates to the shared overlay; the section roots themselves retain `display: contents`. The
-inner Settings panel stack is the future scroll boundary, while click-to-scroll and scroll-spy
-behavior are deferred to US-1498. The Clipboard section owns
+inner Settings panel stack owns scrolling: Content-tree clicks scroll to the first section in a
+group or to the selected section, and the scroll-spy selects the topmost visible section without
+scrolling the Content pane. The Clipboard section owns
 `clipboard.enabled` and `clipboard.max-items`; the clipboard root is exposed to AiVision only while
 history is enabled. Five real settings have no Settings-page row (`tab-recent-languages`,
 `search-max-file-size`, `pinned-editors`, `visualizer-effect`, and `audio-shuffle`) and remain

@@ -1,3 +1,58 @@
+## EPIC-111 — Board settings and the Settings page redesign
+
+Completed 2026-09-23. Not a roadmap phase — created from a gap EPIC-109 uncovered, then widened by
+a user-specified redesign. [Epic document](EPIC-111.md).
+
+- [x] US-1497: Settings page — per-group panels and the Content tree
+- [x] US-1498: Scroll linkage — click-to-scroll and the scroll-spy
+- [x] US-1499: Board identity — shared namespace, `author` + `name`, scaffolding
+- [x] US-1500: The board settings store and its board-facing API
+- [x] US-1501: Manifest `settings` declaration and Settings-page rendering
+- [x] US-1502: Excalidraw's library path becomes a board setting
+
+Persephone no longer knows about an Excalidraw library path. A board declares typed settings in its
+manifest, Persephone owns every value in a namespaced `board-settings.json`, renders them on its own
+Settings page, and exposes them to the board read-only through bridge 1.13.0. The Settings page
+itself became a fixed two-level Content tree beside a scrolling stack of per-group panels, linked in
+both directions.
+
+**The epic's founding argument was wrong, and pre-investigation caught it.** It claimed EPIC-110
+would *orphan* `drawing.library-path` by deleting `editors/draw`. Every surviving reader was already
+outside that folder and the bundled board read the key through `persephone.call`, so the setting
+would have kept working untouched. The goal survived the argument: the dependency pointed the wrong
+way, and that is what this epic fixed. EPIC-111 gated EPIC-110 **by choice of scope, not technical
+necessity** — recorded as such rather than left as an assumption.
+
+Eleven decisions (S1–S11) settled the design, several by dissolving the question. Persephone owns
+values because the Settings page renders before any board frame exists and must work when the board
+is disabled or has never been opened (S1). Settings are a separate store from board vars — sharing
+one would force vars' unlock prompt onto the Settings page or strip it from vars — while sharing
+*code* with `BoardEnvStore` was explicitly welcome (S2, S3). There is **no trust gate**: an
+untrusted board never gets a frame, so reaching the bridge is itself proof of permission, and
+"disabled" is a registration preference rather than a trust revocation (S10). Orphaned values are
+retained deliberately, so reinstalling a board restores its configuration — a promise that only
+holds because S7 requires `author` + `name`, guaranteeing a portable key (S11).
+
+Three defects were found by live verification that `typecheck`, `lint` and `build-prod` all passed.
+Two came from measuring geometry that was not yet real: US-1498 decided section navigability from
+`getClientRects()` and width/height while the view builds *before* first layout — and a non-active
+page measures 0×0 — so every section was filtered out and the Content tree rendered **empty**; and
+the board panel's `data-name` was keyed on the absolute board root, repeating exactly the
+instability EPIC-109 D5 exists to prevent. The third was a namespace cache invalidated on trust and
+bundled-registry changes, neither of which is what a namespace depends on, so adding a missing
+`name` to enable settings would have appeared to do nothing until a restart.
+
+`/review` at close re-proposed widening `settings.get<T = unknown>` to `any`, a decision already
+rejected once during implementation. It was reverted again — and the reasoning moved into a doc
+comment on the overload itself, because the decision had existed only in a commit message where a
+fresh agent could not find it. That is the transferable lesson: a decision a future reader could
+plausibly reverse belongs in the code, not in the history.
+
+Two things are explicitly unverified: scaffolding a new board end to end, and a settings-change push
+reaching a board's **secondary** frame. The fan-out is per-frame by construction, but no board in
+the repository both declares settings and has secondary views; the demo board is the natural fixture
+for it.
+
 ## EPIC-109 — Bundled boards and the Excalidraw board
 
 Completed 2026-09-23. Platform roadmap **Phase F, part 1**. [Epic document](EPIC-109.md).

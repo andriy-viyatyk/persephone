@@ -219,6 +219,16 @@ class Settings implements ISettings {
     }
 
     get<K extends AppSettingsKey>(key: K): AppSettingsState["settings"][K];
+    /**
+     * Arbitrary-key escape hatch. The default stays `unknown` **deliberately** — do not widen it
+     * to `any`.
+     *
+     * This has been proposed twice, both times to keep `editors/draw/drawLibrary.ts` compiling
+     * after EPIC-111 removed `drawing.library-path` from the typed union. Widening here disables
+     * checking for every untyped settings read in the codebase, permanently, to serve one file
+     * that EPIC-110 deletes. The fix belongs at the call site: `settings.get<string>(key)`, which
+     * is what `drawLibrary.ts` now does, and which typecheck, lint and build-prod all accept.
+     */
     get<T = unknown>(key: string): T;
     get(key: string) {
         return this.state.get().settings[key as AppSettingsKey];

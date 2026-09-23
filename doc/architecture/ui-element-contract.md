@@ -145,8 +145,12 @@ addressing handles; the section names are box-bearing containers for highlightin
 controls. The grouped catalog rows and their setting-key purposes are supplied by
 `settings.sections`. The existing `data-type` values remain unchanged, including
 `data-type="settings-section"` on each section root. Section selectors target the
-`.settings-section-wrapper` box, not the `display: contents` section root. The panel stack is the
-future scroll boundary; click-to-scroll and scroll-spy behavior belong to US-1498.
+`.settings-section-wrapper` box, not the `display: contents` section root. The panel stack owns
+the Settings scroll boundary. Clicking a group targets its first visible section; clicking a
+section scrolls that section into view. As the panel stack scrolls, the scroll-spy selects the
+topmost visible section and keeps tree selection in sync without moving the Content pane.
+Programmatic scroll settles before the spy resumes, and the final section remains selected when
+the stack reaches its bottom.
 
 | Element | Selector |
 |---|---|
@@ -206,8 +210,8 @@ future scroll boundary; click-to-scroll and scroll-spy behavior belong to US-149
 | Video Player section | `[data-name="settings-section-video-player"]` |
 | Terminal section | `[data-name="settings-section-terminal"]` |
 
-Future board-contributed rows use the same `group:<group-id>` / `section:<section-id>` value
-scheme and corresponding `settings-content-group-<group-id>`,
+Board-contributed rows use the same `group:<group-id>` / `section:<section-id>` value scheme and
+corresponding `settings-content-group-<group-id>`,
 `settings-content-section-<section-id>`, and `settings-panel-<section-id>` names. An empty
 Boards group is not rendered.
 

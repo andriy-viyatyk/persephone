@@ -65,7 +65,7 @@ const sections = await app.call("settings.sections");
 await app.call("settings.highlight", { args: ["mcp.enabled"] });
 ```
 
-The catalog has 15 sections and 27 Settings-page rows:
+The catalog has 14 built-in sections and 26 Settings-page rows:
 
 | Section | Rows |
 |---------|------|
@@ -81,13 +81,17 @@ The catalog has 15 sections and 27 Settings-page rows:
 | Git Integration | `git.enabled` |
 | Board Environment Variables | `board-vars.file` |
 | Script Library | `script-library.path` |
-| Drawing Library | `drawing.library-path` |
 | Video Player | `vlc-path`, `video-stream.port` |
 | Terminal | `terminal.command` |
 
 Five real settings have no Settings-page row because their controls live elsewhere:
 `tab-recent-languages`, `search-max-file-size`, `pinned-editors`, `visualizer-effect`, and
 `audio-shuffle`. They remain available through `app.settings.get()` and `app.settings.set()`.
+
+Board settings are separate from `app.settings`. A board declares them in its manifest and reads
+its own effective values through `persephone.settings.get(id)` and
+`persephone.settings.onChange(callback)`; Persephone stores those values in
+`board-settings.json`. See [Boards — board settings](../../boards.md#board-settings).
 
 ## Common Settings
 

@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-20
-**Completed:** —
+**Completed:** 2026-09-23
 
 ## Overview
 
@@ -840,9 +840,7 @@ so an interruption after any task is a coherent stopping point rather than a hal
 | [US-1501](../tasks/US-1501-board-settings-rendering/README.md) | Manifest `settings` declaration and Settings-page rendering | Implemented `a393771b` |
 | [US-1502](../tasks/US-1502-excalidraw-library-setting/README.md) | Excalidraw's library path becomes a board setting | Implemented `1391b4bc` |
 
-**All six implemented 2026-09-23, none reviewed.** The epic's `/review`, `/document` and
-`/userdoc` have not been run and the commits are local only. Per the epic-task rule the dashboard
-entries stay `[ ]` until review.
+**All six shipped 2026-09-23**, reviewed and documented at close.
 
 ### US-1497 — Settings page: per-group panels and the Content tree
 
@@ -960,6 +958,40 @@ Verify against a real library before and after, since this is the one task that 
 
 - Epic created from a user observation while planning EPIC-109's US-1490. Recorded as a prerequisite
   of EPIC-110 under EPIC-109 D11 (parity before removal).
+
+### 2026-09-23 — epic close
+
+**Exit criteria verified live.** All eight were exercised against the running app, not inferred
+from a green build. Criterion 4 was checked in the form that actually matters — an untrusted board
+contributes nothing *by construction* (S10), so the case exercised was a **disabled bundled**
+board: its panel and tree node disappear and return without a restart, which is the live registry
+subscription working. Criterion 3 was checked from inside a board frame: two changes pushed from
+the renderer arrived as exactly `{ id, value }`, with no wire discriminator leaking into the
+board's event — the defect US-1489 had to fix in the navigation-return API, avoided here.
+Criterion 2's "survives a reinstall elsewhere" is satisfied **by construction**: the stored key is
+`Persephone/Excalidraw`, which contains no path at all.
+
+**`/review` re-proposed a decision that had already been rejected, and the fix was a comment.**
+It reinstated `settings.get<T = any>` — widening the arbitrary-key overload so the legacy
+`drawLibrary.ts` compiles — together with an `eslint-disable` for `no-explicit-any`, and stripped
+the explicit `<string>` call-site generics that had replaced it. That was reverted for the same
+reason as the first time: widening disables checking for every untyped settings read in the
+codebase, permanently, to serve one file EPIC-110 deletes, and the call-site form demonstrably
+compiles.
+
+The review was not at fault. The decision existed only in a commit message and in the reviewing
+agent's context, so a fresh agent reading only the task document re-derived the opposite and acted
+on it. The durable fix was to move the reasoning to the overload itself
+(`api/settings.ts`), where anyone hitting the compile question meets it first. **Any decision that
+a future reader could plausibly reverse needs to live in the code, not in the history.**
+
+**Two things were not verified, and are not claimed.** Scaffolding a new board end to end was not
+exercised — it writes board folders outside the repository. And no board in this repository both
+declares settings *and* has declared secondary views, so a settings-change push reaching a
+**secondary** frame is unverified. The fan-out is per-frame by construction — each `BoardWebview`
+subscribes for itself, so main and secondary frames are structurally identical in this respect —
+but structure is not a test. The demo board already has secondary views and would make the natural
+fixture for it.
 
 ### 2026-09-23 — implementation
 

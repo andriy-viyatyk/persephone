@@ -126,6 +126,12 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capabilities.ts      # Built-in capability lookup and invocation (`app.capabilities`)
 │   ├── settings.ts         # ISettings implementation
+│   ├── board-namespace.ts  # Stable board settings/vars namespace resolution and collision checks
+│   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
+│   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
+│   │   ├── board-settings-bridge.ts    # Effective reads/writes/resets and board-frame change delivery
+│   │   ├── types.ts                    # Board setting declarations, scalar values, and file shape
+│   │   └── index.ts                    # Board settings exports
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
 │   ├── fs.ts               # IFileSystem implementation
@@ -164,7 +170,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │
 │   ├── board-vars/         # Board environment-variables store — secrets kept outside the board folder
 │   │   ├── BoardEnvStore.ts    # Session-singleton store over the settings-configured .env.json (namespace → profile → key → value; encryption reuse)
-│   │   ├── namespace.ts        # resolveBoardNamespace (author/name → path fallback) + registration-time collision check
 │   │   ├── board-vars-bridge.ts # Orchestrates a board's persephone.var.* request against ITS namespace (create-storage dialog, locked handling, serialized chain)
 │   │   ├── admin-api.ts        # BoardVarsAdmin — app.boardVars, unrestricted-namespace admin surface for scripts/agents
 │   │   ├── types.ts            # BoardVarsFile schema, DEFAULT_PROFILE
@@ -571,7 +576,9 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   └── index.ts
 │   ├── settings/           # Settings page (non-text, no trait)
 │   │   ├── SettingsEditor.ts         # EditorModel
-│   │   ├── SettingsView.ts            # Page layout + section composition
+│   │   ├── SettingsView.ts            # Height-constrained panel stack, fixed Content tree, and scroll linkage
+│   │   ├── settings-catalog.ts        # Built-in groups, sections, setting-row purposes, and stable element names
+│   │   ├── settings.css               # Settings page and panel-stack styling
 │   │   ├── sections/                  # Focused settings views + component models
 │   │   │   ├── BrowserProfilesSection.ts
 │   │   │   ├── BrowserProfilesSectionModel.ts # Profile CRUD, bookmarks + partition cleanup
@@ -584,6 +591,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   │   ├── ClipboardSectionModel.ts
 │   │   │   ├── ThemeSection.ts
 │   │   │   ├── SettingsSections.ts
+│   │   │   ├── BoardSettingsSection.ts # Manifest-declared board controls and reset actions
 │   │   │   └── settings-native.ts   # Shared native settings helpers
 │   │   └── index.ts
 │   ├── storybook/          # Native Storybook editor and component gallery
@@ -653,12 +661,12 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
 │   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
-│   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake + ui.log reset
+│   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake, settings change pushes, and ui.log reset
 │   │   ├── board-pipe-handler.ts      # Renderer side of board://<host>/__pipe/<pageId> range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields plus permissions/minBridgeVersion/service axes and matcher/accessor helpers
+│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
 │   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)

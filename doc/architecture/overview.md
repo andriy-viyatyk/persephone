@@ -375,6 +375,7 @@ supervisor.
 - `execute(commandLine, opts)` — thin client over `command-runner.ts` in the main process. Returns an `IExecuteHandle` (buffered: `getText`/`getJson`/`getBytes`; streaming: `on("stdout"|"stderr"|"exit"|"error")`, `write`, `kill`). `opts.name` gives a job a caller-chosen name — the re-association key for `getJobs()` (below). The same main-process command runner backs `app.proc.execute()` in scripts.
 - Integration tier: `openRawLink(href, opts?)` (optional `{ editor }` requests a specific editor — e.g. `"md-view"` — routed via `ILinkData.target`), `notify(msg, type)`, `openFileDialog` / `saveFileDialog` / `openFolderDialog`, and `readFile(path, opts?)` / `writeFile(path, data, opts?)` (relative paths resolve against the board root; text or `base64`; a sanctioned persistence primitive that avoids shelling a script).
 - Native clipboard writes: `persephone.clipboard.writeImage(data)` accepts encoded image bytes and `persephone.clipboard.writeText(text)` writes text through Electron's main-process clipboard. This path is focus-independent, which matters when a board action is triggered from Persephone's own toolbar and the board document is not focused; `navigator.clipboard` can reject that same write.
+- Renderer-owned board settings (bridge version **1.13.0**): `persephone.settings.get(id)` reads the effective value of a setting declared by the calling board, and `persephone.settings.onChange(callback)` receives effective values after a user changes or resets one. The board bridge is read-only; Persephone owns both the declarations and stored values.
 - Process retention (busy boards): by default, everything a board spawned is tree-killed when its iframe unloads (page navigation or board reload). `setBoardBusy(true)` opts out — main keys job sinks by the owning `BoardEditorModel` id (stable across mounts) and keeps a busy owner's jobs when the port is disposed; the model itself survives navigation as an invisible ownership handle, so page/tab close (or app quit) still kills everything. The renderer is the authoritative busy holder (shim → host-frame `postMessage` → model → IPC mirror to main). On re-open the board reinitializes itself: `getBoardBusy()` (carried in the port handshake) and `getJobs()` — live jobs including previous board lifetimes, re-associated by the `execute()` `name`, control-only (kill/stdin work; no output streaming, output produced while unloaded is dropped). The Boards panel shows a green "running" dot for busy boards; a cross-window page move kills a busy board's processes.
 - Theme/tokens: `--p-*` CSS variables are injected into the served HTML `<head>` at serve time by the `board://` handler, so the first paint is themed (no white flash). Live theme switches are pushed host→board over the port. Also available as `persephone.theme` / `persephone.tokens` (snapshots) and `persephone.getTheme()` / `persephone.getTokens()` (live). `persephone.onThemeChange(cb)` fires on every switch.
 
@@ -393,6 +394,18 @@ main-owned store and one per-board mutation queue, so neither process writes a s
 Storage is available while the service process is alive, including during `starting` before `ready`;
 loading persisted state before declaring readiness is a normal service startup shape.
 
+Board settings use a separate renderer-owned plaintext store at `<userData>/data/board-settings.json`.
+A board declares scalar settings (`string`, `boolean`, `number`, or `enum`) in its manifest; both
+non-empty `author` and `name` are required so the persisted namespace remains portable across board
+copies. The Settings page registers trusted and bundled declarations as board-owned panels, while
+`BoardSettingsStore` persists user overrides and resolves the manifest default whenever an override
+is absent. Reset removes the override, which causes the current manifest default to be delivered to
+the board. The Excalidraw board declares `library-path` itself, so `drawing.library-path` is no
+longer part of Persephone's typed settings catalog. The legacy `drawLibrary.ts` helper remains an
+intentional untyped compatibility consumer during the transition and is not part of this ownership
+change; the board-settings bridge migrates a non-empty legacy value when Excalidraw's setting is
+first read.
+
 ### Capability bus
 
 The capability bus is the renderer-local request counterpart to the content pipeline. A derived
@@ -406,7 +419,7 @@ failure taxonomy.
 
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload** toolbar action and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each load starts a fresh `ui.log` (reset to a single "board loaded" line, so the log only ever holds the current board lifetime — clicking Show-log never opens an empty page). Load failures funnel into that `ui.log` and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.
 
-**Board structure:** `board-manifest.json` (identity marker plus optional file and folder editor
+**Board structure:** `board-manifest.json` (identity marker plus optional `settings`, file and folder editor
 association fields, user-trust-gated for external boards — never trust flags), `index.html`, `app.js`, `style.css`,
 `board-base.css` (shared base: page defaults + themed scrollbars, plus an opt-in `.p-*` chrome
 layer carrying the app's control metrics), optional `scripts/` folder, optional

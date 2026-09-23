@@ -304,9 +304,64 @@ state continue to refer to the same board when the application is installed in a
 
 Boards do **not** reload automatically when files change. To apply edits to `index.html`, `app.js`, or any `.js`/`.css`, click the **Reload** button in the in-board toolbar. AI agents editing board files should call `pages[pageId].editor.reload()` and then re-run `pages[pageId].editor.snapshot()` to see the updated board.
 
-Settings declared in `board-manifest.json` appear as a Settings sub-page once the board is
-trusted or installed. The registry caches the manifest, so editing that file directly does not
-update the Settings page live; toggle trust off and on or restart Persephone to refresh it.
+Settings declared in `board-manifest.json` appear as a Settings panel once the board is trusted or
+bundled. The registry caches the manifest, so editing that file directly does not update the
+Settings page live; toggle trust off and on or restart Persephone to refresh it.
+
+### Board settings
+
+A board can declare user-editable settings in its manifest. The declaration requires stable,
+non-empty `name` and `author` fields, and each setting needs a unique `id`, a scalar `type`, and a
+default value. Supported types are `string`, `number`, `boolean`, and `enum`; enum settings also
+provide a non-empty `options` array. Use `format: "folderPath"` for a string that should be edited
+with a folder picker.
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "Weather Board",
+  "author": "Example",
+  "settings": [
+    {
+      "id": "units",
+      "type": "enum",
+      "options": ["celsius", "fahrenheit"],
+      "default": "celsius",
+      "label": "Temperature units",
+      "description": "How temperatures are displayed."
+    },
+    {
+      "id": "data-folder",
+      "type": "string",
+      "format": "folderPath",
+      "default": "",
+      "label": "Data folder"
+    }
+  ]
+}
+```
+
+The settings appear in a board-named panel in **Settings**. A board that is also a custom editor
+appears under **Editors**; a standalone board appears under **Boards**. Persephone stores explicit
+values in `%APPDATA%\persephone\data\board-settings.json`, namespaced by the board's stable
+`author`/`name` identity. Resetting a setting removes its stored value and restores the manifest
+default.
+
+Inside the board, bridge version **1.13.0** adds read-only settings access:
+
+```js
+const units = await persephone.settings.get("units");
+
+const stopListening = persephone.settings.onChange(({ id, value }) => {
+  if (id === "units") renderUnits(value);
+});
+
+// Call stopListening() when the board no longer needs notifications.
+```
+
+`get()` returns the stored value or the current manifest default when no value is stored.
+`onChange()` reports effective values after a user edits or resets a setting in Persephone. The
+board cannot write its setting values through the bridge; use the Settings panel for changes.
 
 ---
 

@@ -60,9 +60,9 @@ diagram, image, or rendered HTML capture can arrive as drawing content.
 
 Use Excalidraw's **Library** controls to browse for a `.excalidrawlib` library. When you return to
 Persephone, it asks for confirmation before adding the library; accepted items are merged into your
-existing library rather than replacing it. The built-in Drawing editor and the bundled Excalidraw
-board use the same library folder, configured in **Settings → Drawing Library**, so your collected
-shapes remain available whichever implementation is active.
+existing library rather than replacing it. The bundled Excalidraw board owns its library location:
+configure **Settings → Editors → Excalidraw → Library folder**. The old app-wide Drawing Library
+setting is no longer exposed by Persephone.
 
 ## Agent API
 

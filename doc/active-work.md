@@ -28,7 +28,7 @@ below tracks which phases have shipped.
 | C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
-| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **blocked by EPIC-111** (EPIC-112 shipped 2026-09-21) |
+| F — Excalidraw extraction, part 2: remove `editors/draw` and React | — | not started (EPIC-110) — **unblocked**: EPIC-111 shipped 2026-09-23, EPIC-112 2026-09-21 |
 | E — Torrent board and audio player (proof 1) | — | not started |
 
 **[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
@@ -43,26 +43,7 @@ deleting `editors/draw` no longer takes them with it.
 
 ## Active
 
-- **[EPIC-111: Board settings and the Settings page redesign](epics/EPIC-111.md)** — a board
-  declares settings in its manifest; Persephone owns every value, renders them on its Settings page,
-  and lets the board read them. Carries a **Settings page redesign** (user vision, 2026-09-23):
-  per-group panels replacing the single 560px column, a fixed two-level Content tree beside them,
-  and two-way linkage between the tree and the scroll position — board settings need somewhere to
-  render. Fourteen decisions (S1–S14) are recorded in the epic; all its open questions are closed.
-  The motivation is that **Persephone should know nothing about an Excalidraw library path**:
-  `drawing.library-path` is removed and the board declares it instead. A prerequisite of EPIC-110
-  **by choice of scope, not technical necessity** — pre-investigation disproved the orphaning
-  argument the epic was originally founded on.
-  - [ ] [US-1497: Settings page — per-group panels and the Content tree](tasks/US-1497-settings-panels-tree/README.md)
-  - [ ] [US-1498: Scroll linkage — click-to-scroll and the scroll-spy](tasks/US-1498-settings-scroll-linkage/README.md)
-  - [ ] [US-1499: Board identity — shared namespace, `author` + `name`, scaffolding](tasks/US-1499-board-identity/README.md)
-  - [ ] [US-1500: The board settings store and its board-facing API](tasks/US-1500-board-settings-store/README.md)
-  - [ ] [US-1501: Manifest `settings` declaration and Settings-page rendering](tasks/US-1501-board-settings-rendering/README.md)
-  - [ ] [US-1502: Excalidraw's library path becomes a board setting](tasks/US-1502-excalidraw-library-setting/README.md)
-
-  All six are **implemented and committed but not yet reviewed** — `[ ]` per the epic-task rule.
-  The epic's completion skills (`/review`, `/document`, `/userdoc`) have not been run, and the
-  commits are **local only, not pushed**, pending the user's review.
+*(nothing active — pick the next item from Planned.)*
 
 ## Planned
 

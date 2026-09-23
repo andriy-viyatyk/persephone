@@ -60,6 +60,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Settings has a navigable two-pane layout:** settings are arranged as per-group panels, with a
+  fixed two-level **Content** tree on the left. Click a group or section to scroll to it; the tree
+  follows the panel currently visible as you scroll. Board-declared settings appear in their own
+  **Editors** or **Boards** panel.
+- **Boards can declare user settings:** add typed declarations to `board-manifest.json` and
+  Persephone presents them in Settings, stores explicit values in `board-settings.json`, and
+  exposes the effective values to the board through bridge version 1.13.0's
+  `persephone.settings.get()` and `persephone.settings.onChange()` methods. The board cannot
+  write these values itself; users change or reset them in Settings.
+- **Excalidraw owns its library location:** the bundled Drawing board declares `library-path` as
+  its own setting, available at **Settings → Editors → Excalidraw → Library folder**, instead of
+  using a Persephone-wide Drawing Library setting.
+
 - **Boards can put their own controls in the page toolbar:** a trusted or bundled board declares
   buttons, toggles, menus, selects and text inputs from a fixed catalog and Persephone renders them
   in its own toolbar, themed and addressable by an agent, delivering an event to the board on each
