@@ -833,12 +833,16 @@ so an interruption after any task is a coherent stopping point rather than a hal
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1497 | Settings page: per-group panels and the Content tree | Planned |
-| US-1498 | Scroll linkage: click-to-scroll and the scroll-spy | Planned |
-| US-1499 | Board identity: shared namespace, `author` + `name` requirement, scaffolding | Planned |
-| US-1500 | The board settings store and its board-facing API | Planned |
-| US-1501 | Manifest `settings` declaration and Settings-page rendering | Planned |
-| US-1502 | Excalidraw's library path becomes a board setting | Planned |
+| [US-1497](../tasks/US-1497-settings-panels-tree/README.md) | Settings page: per-group panels and the Content tree | Implemented `ef052d24` |
+| [US-1498](../tasks/US-1498-settings-scroll-linkage/README.md) | Scroll linkage: click-to-scroll and the scroll-spy | Implemented `63d3aaf5` |
+| [US-1499](../tasks/US-1499-board-identity/README.md) | Board identity: shared namespace, `author` + `name` requirement, scaffolding | Implemented `f29d5838` |
+| [US-1500](../tasks/US-1500-board-settings-store/README.md) | The board settings store and its board-facing API | Implemented `bdb8b970` |
+| [US-1501](../tasks/US-1501-board-settings-rendering/README.md) | Manifest `settings` declaration and Settings-page rendering | Implemented `a393771b` |
+| [US-1502](../tasks/US-1502-excalidraw-library-setting/README.md) | Excalidraw's library path becomes a board setting | Implemented `1391b4bc` |
+
+**All six implemented 2026-09-23, none reviewed.** The epic's `/review`, `/document` and
+`/userdoc` have not been run and the commits are local only. Per the epic-task rule the dashboard
+entries stay `[ ]` until review.
 
 ### US-1497 — Settings page: per-group panels and the Content tree
 
@@ -956,6 +960,26 @@ Verify against a real library before and after, since this is the one task that 
 
 - Epic created from a user observation while planning EPIC-109's US-1490. Recorded as a prerequisite
   of EPIC-110 under EPIC-109 D11 (parity before removal).
+
+### 2026-09-23 — implementation
+
+- All six tasks implemented and committed locally (unpushed) in one overnight session under the
+  user's autonomous-work authorisation. Each was verified live against the running app rather than
+  on a green build alone.
+- **Three defects were found by that live verification, not by typecheck/lint/build**, which passed
+  throughout. US-1498 decided section navigability partly from geometry, and since the view builds
+  before first layout — and a non-active page measures 0x0 — every section was filtered out and the
+  Content tree rendered **empty**. US-1499 shipped a namespace cache invalidated on trust and
+  bundled-registry changes, neither of which is what the namespace depends on, so adding a missing
+  `name` to enable settings would have appeared to do nothing until a restart. US-1501/US-1502 keyed
+  the board panel's `data-name` on the absolute board root, repeating precisely the instability
+  EPIC-109 D5 exists to prevent; it now keys on the portable `<author>/<name>`.
+- One proposal was rejected on review: relaxing `settings.get<T = unknown>` to `<T = any>` so the
+  doomed `drawLibrary.ts` would keep compiling. Explicit `<string>` call sites in that file achieve
+  the same thing without weakening the default generic for every untyped settings read.
+- **Not verified:** scaffolding a new board end to end (it writes board folders outside the repo),
+  and a board with a declared *secondary view* receiving a settings-change push — the multi-frame
+  fan-out is implemented per frame and reviewed, but no such fixture was exercised.
 
 ### 2026-09-23
 

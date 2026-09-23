@@ -53,12 +53,16 @@ deleting `editors/draw` no longer takes them with it.
   `drawing.library-path` is removed and the board declares it instead. A prerequisite of EPIC-110
   **by choice of scope, not technical necessity** — pre-investigation disproved the orphaning
   argument the epic was originally founded on.
-  - [ ] US-1497: Settings page — per-group panels and the Content tree
-  - [ ] US-1498: Scroll linkage — click-to-scroll and the scroll-spy
-  - [ ] US-1499: Board identity — shared namespace, `author` + `name`, scaffolding
-  - [ ] US-1500: The board settings store and its board-facing API
-  - [ ] US-1501: Manifest `settings` declaration and Settings-page rendering
-  - [ ] US-1502: Excalidraw's library path becomes a board setting
+  - [ ] [US-1497: Settings page — per-group panels and the Content tree](tasks/US-1497-settings-panels-tree/README.md)
+  - [ ] [US-1498: Scroll linkage — click-to-scroll and the scroll-spy](tasks/US-1498-settings-scroll-linkage/README.md)
+  - [ ] [US-1499: Board identity — shared namespace, `author` + `name`, scaffolding](tasks/US-1499-board-identity/README.md)
+  - [ ] [US-1500: The board settings store and its board-facing API](tasks/US-1500-board-settings-store/README.md)
+  - [ ] [US-1501: Manifest `settings` declaration and Settings-page rendering](tasks/US-1501-board-settings-rendering/README.md)
+  - [ ] [US-1502: Excalidraw's library path becomes a board setting](tasks/US-1502-excalidraw-library-setting/README.md)
+
+  All six are **implemented and committed but not yet reviewed** — `[ ]` per the epic-task rule.
+  The epic's completion skills (`/review`, `/document`, `/userdoc`) have not been run, and the
+  commits are **local only, not pushed**, pending the user's review.
 
 ## Planned
 
