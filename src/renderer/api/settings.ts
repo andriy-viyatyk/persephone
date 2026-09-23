@@ -53,7 +53,8 @@ export type AppSettingsKey =
     | "window.close-to-tray"
     | "editor.word-wrap"
     | "board-vars.file"
-    | "boards.default-author";
+    | "boards.default-author"
+    | "boards.excalidraw-library-migrated";
 
 // =============================================================================
 // State
@@ -128,6 +129,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "editor.word-wrap": "Default word wrapping for newly shown Text Editor pages.\nBoolean. Default: false. This is read when a Text Editor page is first shown\nwithout saved page state; existing pages keep their own persisted choice.",
     "board-vars.file": "Absolute path to the board environment-variables file (.env.json).\nHolds per-board variables and secrets, deliberately OUTSIDE board folders so a board\nfolder can be shared without its secrets. May be password-encrypted via the file's\nencryption menu, in which case its values cannot be read until the user unlocks it.",
     "boards.default-author": "Default author written into manifests for boards created by Persephone.\nEmpty means newly created boards have no stable author until you set one.",
+    "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
 const defaultAppSettingsState = {
@@ -165,6 +167,7 @@ const defaultAppSettingsState = {
         "editor.word-wrap": false,
         "board-vars.file": "",
         "boards.default-author": "",
+        "boards.excalidraw-library-migrated": false,
     },
 };
 

@@ -403,8 +403,9 @@ is absent. Reset removes the override, which causes the current manifest default
 the board. The Excalidraw board declares `library-path` itself, so `drawing.library-path` is no
 longer part of Persephone's typed settings catalog. The legacy `drawLibrary.ts` helper remains an
 intentional untyped compatibility consumer during the transition and is not part of this ownership
-change; the board-settings bridge migrates a non-empty legacy value when Excalidraw's setting is
-first read.
+change; the board-settings bridge imports a non-empty user-selected legacy value once, skips the
+legacy path that is already the board's `<userData>/data/excalidraw-lib` fallback, and records
+completion explicitly so resetting the board setting does not trigger the import again.
 
 ### Capability bus
 

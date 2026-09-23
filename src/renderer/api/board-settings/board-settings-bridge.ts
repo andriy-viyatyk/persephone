@@ -4,7 +4,9 @@ import {
     readBoardManifest,
 } from "../../editors/board/board-manifest";
 import { resolveBoardNamespace } from "../board-namespace";
+import { fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { settings } from "../settings";
+import { api } from "../../../ipc/renderer/api";
 import { errMessage } from "../../../shared/utils";
 import { boardSettings } from "./BoardSettingsStore";
 import type {
@@ -21,6 +23,7 @@ export interface BoardSettingsReply {
 
 const EXCALIDRAW_SETTINGS_NAMESPACE = "Persephone/Excalidraw";
 const EXCALIDRAW_LIBRARY_SETTING_ID = "library-path";
+const EXCALIDRAW_LIBRARY_MIGRATED_KEY = "boards.excalidraw-library-migrated";
 let legacyExcalidrawLibraryPathMigration: Promise<void> | undefined;
 
 function matchesType(value: BoardSettingValue, declaration: BoardSettingDeclaration): boolean {
@@ -64,6 +67,37 @@ function validateValue(value: BoardSettingValue, declaration: BoardSettingDeclar
     }
 }
 
+/**
+ * Whether a legacy path is the same folder the board already falls back to on its own.
+ *
+ * `assets/boards/excalidraw/index.html` resolves an empty `library-path` to
+ * `<userData>/data/excalidraw-lib`, and the legacy draw editor created exactly that folder and
+ * stored its absolute path. Importing it would pin a machine-specific path that means precisely
+ * what empty already means — and a pinned absolute path is the one thing that stops board
+ * settings surviving a reinstall elsewhere (EPIC-111 S11). Only a folder the user actually chose
+ * is worth carrying over.
+ */
+async function isDefaultExcalidrawLibraryPath(legacyPath: string): Promise<boolean> {
+    try {
+        const userData = await api.getCommonFolder("userData");
+        return fpNormalizeForCompare(legacyPath)
+            === fpNormalizeForCompare(fpJoin(userData, "data", "excalidraw-lib"));
+    } catch {
+        // The fallback folder could not be resolved, so treat the path as user-chosen and import
+        // it: importing a redundant path is undone with one Reset, losing a real one is not.
+        return false;
+    }
+}
+
+/**
+ * One-time import of the pre-5.0.4 `drawing.library-path` into the board's own setting.
+ *
+ * "Already done" is an explicit settings flag rather than "the board setting has no stored
+ * value", because those are not the same thing. Reset also leaves no stored value, so inferring
+ * from it re-imports the legacy path on the next start and silently undoes the reset — and
+ * because this runs once per process, the reset appears to hold until the app is restarted,
+ * which is the worst possible moment to discover it did not.
+ */
 function migrateLegacyExcalidrawLibraryPath(
     namespace: string,
     declaration: BoardSettingDeclaration,
@@ -74,14 +108,21 @@ function migrateLegacyExcalidrawLibraryPath(
     ) return Promise.resolve();
 
     legacyExcalidrawLibraryPathMigration ??= (async () => {
-        const stored = await boardSettings.get(namespace, declaration.id);
-        if (stored !== undefined) return;
-
         await settings.wait();
-        const legacyPath = settings.get<string | undefined>("drawing.library-path");
-        if (typeof legacyPath === "string" && legacyPath.trim() !== "") {
-            await boardSettings.set(namespace, declaration.id, legacyPath);
+        if (settings.get(EXCALIDRAW_LIBRARY_MIGRATED_KEY)) return;
+
+        // Never overwrite a value already in board settings — only an unset setting can be an
+        // un-migrated one.
+        if (await boardSettings.get(namespace, declaration.id) === undefined) {
+            const legacyPath = settings.get<string | undefined>("drawing.library-path");
+            if (
+                typeof legacyPath === "string" && legacyPath.trim() !== ""
+                && !await isDefaultExcalidrawLibraryPath(legacyPath)
+            ) {
+                await boardSettings.set(namespace, declaration.id, legacyPath);
+            }
         }
+        settings.set(EXCALIDRAW_LIBRARY_MIGRATED_KEY, true);
     })();
 
     return legacyExcalidrawLibraryPathMigration;
