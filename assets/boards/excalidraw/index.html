@@ -151,9 +151,7 @@
         }
 
         async function resolveLibraryPath() {
-            const configuredDir = await persephone.call("settings.get", {
-                args: ["drawing.library-path"],
-            });
+            const configuredDir = await persephone.settings.get("library-path");
             if (typeof configuredDir === "string" && configuredDir.trim() !== "") {
                 return libraryFilePath(configuredDir);
             }

@@ -18,7 +18,6 @@ import { ThemeSectionView } from "./sections/ThemeSection";
 import { BoardSettingsSectionView } from "./sections/BoardSettingsSection";
 import {
     BoardVarsSectionView,
-    DrawingLibrarySectionView,
     EditorBehaviorSectionView,
     GitIntegrationSectionView,
     LinkBehaviorSectionView,
@@ -68,7 +67,6 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     "editor-behavior": () => new EditorBehaviorSectionView({}),
     "script-library": () => new ScriptLibrarySectionView({}),
     "video-player": () => new VideoPlayerSectionView({}),
-    "drawing-library": () => new DrawingLibrarySectionView({}),
     "browser-profiles": () => new BrowserProfilesSectionView({}),
     "default-browser": () => new DefaultBrowserSectionView({}),
     "link-behavior": () => new LinkBehaviorSectionView({}),
@@ -374,7 +372,10 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         groupId: "editors" | "boards",
         groupTitle: string,
     ): BoardSettingsSectionDescriptor {
-        const id = `board-${encodeURIComponent(board.boardRoot)}`;
+        // Keyed on the board's portable identity, never on its root path: `data-name` is an
+        // addressability contract (ui-element-contract.md) and a board root changes between dev
+        // and packaged builds and on a reinstall elsewhere (EPIC-109 D5).
+        const id = `board-${encodeURIComponent(board.namespace)}`;
         return {
             kind: "board",
             groupId,

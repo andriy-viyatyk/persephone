@@ -4,6 +4,7 @@ import {
     readBoardManifest,
 } from "../../editors/board/board-manifest";
 import { resolveBoardNamespace } from "../board-namespace";
+import { settings } from "../settings";
 import { errMessage } from "../../../shared/utils";
 import { boardSettings } from "./BoardSettingsStore";
 import type {
@@ -17,6 +18,10 @@ export interface BoardSettingsReply {
     result?: BoardSettingValue;
     error?: string;
 }
+
+const EXCALIDRAW_SETTINGS_NAMESPACE = "Persephone/Excalidraw";
+const EXCALIDRAW_LIBRARY_SETTING_ID = "library-path";
+let legacyExcalidrawLibraryPathMigration: Promise<void> | undefined;
 
 function matchesType(value: BoardSettingValue, declaration: BoardSettingDeclaration): boolean {
     if (declaration.type === "enum") {
@@ -59,11 +64,35 @@ function validateValue(value: BoardSettingValue, declaration: BoardSettingDeclar
     }
 }
 
+function migrateLegacyExcalidrawLibraryPath(
+    namespace: string,
+    declaration: BoardSettingDeclaration,
+): Promise<void> {
+    if (
+        namespace !== EXCALIDRAW_SETTINGS_NAMESPACE
+        || declaration.id !== EXCALIDRAW_LIBRARY_SETTING_ID
+    ) return Promise.resolve();
+
+    legacyExcalidrawLibraryPathMigration ??= (async () => {
+        const stored = await boardSettings.get(namespace, declaration.id);
+        if (stored !== undefined) return;
+
+        await settings.wait();
+        const legacyPath = settings.get<string | undefined>("drawing.library-path");
+        if (typeof legacyPath === "string" && legacyPath.trim() !== "") {
+            await boardSettings.set(namespace, declaration.id, legacyPath);
+        }
+    })();
+
+    return legacyExcalidrawLibraryPathMigration;
+}
+
 async function readEffectiveBoardSetting(
     boardRoot: string,
     id: string,
 ): Promise<BoardSettingValue> {
     const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
+    await migrateLegacyExcalidrawLibraryPath(namespace, declaration);
     const stored = await boardSettings.get(namespace, declaration.id);
     if (stored !== undefined) {
         validateValue(stored, declaration);
@@ -111,6 +140,7 @@ export async function setBoardSetting(
 ): Promise<void> {
     const run = requestChain.then(async () => {
         const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
+        await migrateLegacyExcalidrawLibraryPath(namespace, declaration);
         validateValue(value, declaration);
         await boardSettings.set(namespace, declaration.id, value);
     });
@@ -122,6 +152,7 @@ export async function setBoardSetting(
 export async function unsetBoardSetting(boardRoot: string, id: string): Promise<void> {
     const run = requestChain.then(async () => {
         const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
+        await migrateLegacyExcalidrawLibraryPath(namespace, declaration);
         await boardSettings.unset(namespace, declaration.id);
     });
     requestChain = run.then((): void => undefined, (): void => undefined);

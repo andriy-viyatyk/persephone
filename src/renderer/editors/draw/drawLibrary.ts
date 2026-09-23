@@ -11,7 +11,7 @@ const LIBRARY_FILENAME = "library.excalidrawlib";
  * Called once when the first draw editor mounts.
  */
 export async function initDefaultLibraryPath(): Promise<void> {
-    if (settings.get("drawing.library-path")) return;
+    if (settings.get<string>("drawing.library-path")) return;
     const userData = await api.getCommonFolder("userData");
     const dir = fpJoin(userData, "data", "excalidraw-lib");
     await fs.mkdir(dir);
@@ -26,7 +26,7 @@ export async function initDefaultLibraryPath(): Promise<void> {
  * in Settings take effect on next load/save without restarting.
  */
 export function createLibraryAdapter(): LibraryPersistenceAdapter {
-    const getDir = () => settings.get("drawing.library-path");
+    const getDir = () => settings.get<string>("drawing.library-path");
 
     return {
         async load() {

@@ -126,19 +126,6 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         ],
     },
     {
-        groupId: "editors",
-        groupTitle: "Editors",
-        id: "drawing-library",
-        title: "Drawing Library",
-        description: "Choose the folder for reusable Excalidraw shapes.",
-        elementName: "settings-section-drawing-library",
-        panelName: "settings-panel-drawing-library",
-        where: "Settings > Editors > Drawing Library",
-        rows: [
-            { key: "drawing.library-path", label: "Drawing library path", purpose: "The Excalidraw reusable-shapes folder; empty uses the automatic default." },
-        ],
-    },
-    {
         groupId: "browser",
         groupTitle: "Browser",
         id: "browser-profiles",

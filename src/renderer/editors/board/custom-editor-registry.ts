@@ -145,6 +145,10 @@ interface BoardCapabilityRegistrationIntent {
 export interface BoardSettingsRegistration {
     boardRoot: string;
     name: string;
+    /** The board's portable `<author>/<name>` identity. Addressable UI names key on this rather
+     *  than on `boardRoot`, which differs between dev and packaged builds and changes on a
+     *  reinstall elsewhere (EPIC-109 D5). */
+    namespace: string;
     origin: "trusted" | "bundled";
     declarations: BoardSettingDeclaration[];
     editorAssociation: BoardEditorAssociation | null;
@@ -326,6 +330,10 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 settingsBoards.push({
                     boardRoot: root,
                     name: (manifest?.name && manifest.name.trim()) || fpBasename(root),
+                    // `normalizeBoardSettings` drops the block unless the manifest carries both
+                    // `author` and `name` (EPIC-111 S7), so reaching here means both are present
+                    // and the identity is the portable one — not the install-dependent root path.
+                    namespace: `${(manifest?.author ?? "").trim()}/${(manifest?.name ?? "").trim()}`,
                     origin,
                     declarations: settingsDeclarations,
                     editorAssociation: assoc,

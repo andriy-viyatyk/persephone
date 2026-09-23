@@ -3,6 +3,16 @@
   "name": "Excalidraw",
   "description": "The bundled Excalidraw editor.",
   "author": "Persephone",
+  "settings": [
+    {
+      "id": "library-path",
+      "type": "string",
+      "format": "folderPath",
+      "label": "Library folder",
+      "description": "Folder for Excalidraw library items (reusable shapes)",
+      "default": ""
+    }
+  ],
   "permissions": ["capabilities"],
   "capabilities": [
     { "id": "image.edit", "version": 1, "priority": 60, "title": "Edit image" },

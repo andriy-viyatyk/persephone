@@ -435,21 +435,6 @@ export class ScriptLibrarySectionView extends LibraryPathSectionView {
     }
 }
 
-export class DrawingLibrarySectionView extends LibraryPathSectionView {
-    public constructor(props: Record<string, never>) {
-        super(props, {
-            read: () => settings.get("drawing.library-path"),
-            subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "drawing.library-path") listener(); }),
-            title: "Drawing Library",
-            description: "Folder for Excalidraw library items (reusable shapes)",
-            emptyText: "Default (auto)",
-            browse: async () => { const result = await api.showOpenFolderDialog({ title: "Select Drawing Library Folder", defaultPath: settings.get("drawing.library-path") || undefined }); if (result?.[0]) settings.set("drawing.library-path", result[0]); },
-            reset: () => settings.set("drawing.library-path", ""),
-            clearLabel: "Reset",
-        });
-    }
-}
-
 interface VideoPlayerState { portValue: string; }
 interface VideoPlayerProps { videoStreamPort: number; }
 
@@ -585,4 +570,4 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
     }
 }
 
-export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, ScriptLibrarySectionView as ScriptLibrarySection, DrawingLibrarySectionView as DrawingLibrarySection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };
+export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, ScriptLibrarySectionView as ScriptLibrarySection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };

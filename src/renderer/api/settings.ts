@@ -39,7 +39,6 @@ export type AppSettingsKey =
     | "mneme.enabled"
     | "mneme.port"
     | "script-library.path"
-    | "drawing.library-path"
     | "pinned-editors"
     | "disabled-bundled-boards"
     | "tor.exe-path"
@@ -114,7 +113,6 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "mneme.enabled": "Enable Mneme, the local markdown knowledge base with full-text and semantic search.\nBoolean. Default: false. Persephone runs mneme.exe as a sidecar and connects over loopback HTTP.\nMneme exposes its OWN MCP server on \"mneme.port\" — separate from \"mcp.port\" above.",
     "mneme.port": "Port for the Mneme HTTP (MCP) server.\nNumber. Default: 7700. Changing this alone does NOT move a running server —\nset \"mneme.enabled\": false, save, then set it back to true.",
     "script-library.path": "Absolute path to the script library folder — saved scripts and reusable modules.\nEmpty means no library is linked; the Menu Bar's Script Library category then offers\nto pick one. Changing it here re-points the category immediately.",
-    "drawing.library-path": "Absolute path to the Excalidraw library folder — reusable shapes for the Drawing editor.\nEmpty uses the default under the app's user-data folder.",
     "pinned-editors": "Editors listed in the '+' new-page menu, in this order.\nArray of creatable item ids, e.g. \"grid-json\", \"draw-view\", \"browser\", \"script-js\".\nThe full set is in the Tools & Editors page; unpinned editors remain available there.",
     "disabled-bundled-boards": "Bundled boards disabled in Tools & Editors.\nArray of stable bundled board folder ids; changes apply live without restarting. Default: [].",
     "tor.exe-path": "Absolute path to tor.exe. Required for Browser (Tor) mode; empty disables it.\nGet it from the Tor Expert Bundle, or reuse the tor.exe inside a Tor Browser installation.",
@@ -152,7 +150,6 @@ const defaultAppSettingsState = {
         "mneme.enabled": false,
         "mneme.port": 7700,
         "script-library.path": "",
-        "drawing.library-path": "",
         "pinned-editors": ["script-js", "script-ts", "draw-view", "grid-json", "grid-csv", "browser"] as string[],
         "disabled-bundled-boards": [] as string[],
         "tor.exe-path": "",
