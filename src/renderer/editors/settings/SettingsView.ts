@@ -219,6 +219,10 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
 
         const tree = this.child(new TreeView<SettingsContentItem>(this.contentTreeProps()));
         this.contentTree = tree;
+        // The tree takes the pane's remaining height so the footer below it stays pinned to the
+        // bottom; `minHeight: 0` lets it shrink rather than pushing the footer out of view.
+        tree.root.style.flex = "1 1 auto";
+        tree.root.style.minHeight = "0";
         treePane.append(tree.root);
         tree.mount();
 
@@ -235,9 +239,11 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
 
         const footer = createPanelElement({
             direction: "row",
-            justify: "end",
+            justify: "start",
             width: "100%",
             paddingY: "sm",
+            shrink: false,
+            borderTop: true,
         });
         footer.dataset.part = "footer";
         this.footerElement = footer;
@@ -250,7 +256,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             children: "View Settings File",
         }));
         footer.append(viewFileButton.root);
-        panels.append(footer);
+        treePane.append(footer);
         viewFileButton.mount();
 
         const generation = this.initializationGeneration;
@@ -300,7 +306,11 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             width: "100%",
             shrink: false,
             padding: "xxl",
-            background: "light",
+            // Outlined rather than filled: `border: true` alone resolves to the subtle token
+            // (#2b2b2b), which is nearly invisible against the page background (#1f1f1f), so the
+            // panel edge is stated explicitly.
+            border: true,
+            borderColor: "default",
             rounded: "lg",
         });
         sectionPanel.dataset.part = "section-panel";
@@ -344,7 +354,9 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
                 .map((candidate) => this.sectionPanels.get(candidate.id))
                 .find((candidate): candidate is HTMLDivElement => candidate !== undefined);
             const panel = this.appendSectionPanel(section, panels);
-            panels.insertBefore(panel, nextPanel ?? this.footerElement ?? null);
+            // The footer used to sit last in this stack; it now lives in the Content pane, so a
+            // panel with no successor simply goes at the end.
+            panels.insertBefore(panel, nextPanel ?? null);
             this.dynamicSectionIds.add(section.id);
         }
         this.rebuildContentItems();
