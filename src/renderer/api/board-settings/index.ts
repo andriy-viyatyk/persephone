@@ -1,6 +1,7 @@
 export { boardSettings } from "./BoardSettingsStore";
 export {
     normalizeBoardSettings,
+    getBoardSetting,
     resolveBoardSettingsRequest,
     setBoardSetting,
     subscribeBoardSettings,

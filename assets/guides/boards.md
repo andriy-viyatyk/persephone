@@ -304,6 +304,10 @@ state continue to refer to the same board when the application is installed in a
 
 Boards do **not** reload automatically when files change. To apply edits to `index.html`, `app.js`, or any `.js`/`.css`, click the **Reload** button in the in-board toolbar. AI agents editing board files should call `pages[pageId].editor.reload()` and then re-run `pages[pageId].editor.snapshot()` to see the updated board.
 
+Settings declared in `board-manifest.json` appear as a Settings sub-page once the board is
+trusted or installed. The registry caches the manifest, so editing that file directly does not
+update the Settings page live; toggle trust off and on or restart Persephone to refresh it.
+
 ---
 
 ## In-board toolbar

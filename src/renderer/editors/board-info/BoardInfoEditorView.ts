@@ -436,7 +436,9 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 issues.append(text(
                     `${issue.kind === "provider"
                         ? "Provider"
-                        : issue.kind === "scheme" ? "Scheme" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
+                        : issue.kind === "scheme"
+                          ? "Scheme"
+                          : issue.kind === "settings" ? "Settings" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
                     { size: "sm", color: "warning" },
                 ));
             }

@@ -1,5 +1,6 @@
 import { app } from "../../../api/app";
 import { settings } from "../../../api/settings";
+import { ui } from "../../../api/ui";
 import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
 import { fpBasename } from "../../../core/utils/file-path";
@@ -16,6 +17,7 @@ import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
+import { errMessage } from "../../../../shared/utils";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -331,20 +333,23 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
     }
 }
 
-interface LibraryPathConfig {
-    pathKey: "script-library.path" | "drawing.library-path";
+export interface LibraryPathConfig {
+    read: () => string | undefined | Promise<string | undefined>;
+    subscribe: (listener: () => void) => () => void;
     title: string;
     description: string;
     emptyText: string;
     browse: () => Promise<void>;
+    reset: () => void | Promise<void>;
     clearLabel: string;
 }
 
-class LibraryPathSectionView extends VanillaView<Record<string, never>> {
+export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
     private readonly config: LibraryPathConfig;
     private valuePanel: HTMLDivElement | undefined;
     private row: HTMLDivElement | undefined;
     private clearButton: ButtonView | undefined;
+    private syncGeneration = 0;
 
     public constructor(_props: Record<string, never>, config: LibraryPathConfig) {
         super(_props, createSectionRoot("settings-section"));
@@ -357,22 +362,38 @@ class LibraryPathSectionView extends VanillaView<Record<string, never>> {
         this.row = row;
         this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
         row.append(this.valuePanel);
-        const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.config.browse(), children: "Browse..." }));
+        const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: "Browse..." }));
         row.append(browse.root);
         browse.mount();
         this.root.append(row);
-        this.sync();
-        const subscription = settings.onChanged.subscribe(({ key }) => { if (key === this.config.pathKey) this.sync(); });
-        this.own(subscription);
+        void this.sync();
+        this.own(this.config.subscribe(() => { void this.sync(); }));
     }
 
-    protected onDispose(): void { this.valuePanel = undefined; this.row = undefined; this.clearButton = undefined; }
+    protected onDispose(): void {
+        this.syncGeneration++;
+        this.valuePanel = undefined;
+        this.row = undefined;
+        this.clearButton = undefined;
+    }
 
-    private sync(): void {
-        const value = settings.get(this.config.pathKey);
+    private async sync(): Promise<void> {
+        const generation = ++this.syncGeneration;
+        try {
+            const value = await this.config.read();
+            if (this.isDisposed || generation !== this.syncGeneration) return;
+            this.renderValue(value);
+        } catch (error: unknown) {
+            if (!this.isDisposed && generation === this.syncGeneration) {
+                ui.notify(errMessage(error, `Failed to read ${this.config.title.toLowerCase()}.`), "warning");
+            }
+        }
+    }
+
+    private renderValue(value: string | undefined): void {
         this.valuePanel?.replaceChildren(value ? settingsPath(value) : text(this.config.emptyText, { size: "sm", italic: true, color: "light" }));
         if (value && !this.clearButton) {
-            const clearButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => settings.set(this.config.pathKey, ""), children: this.config.clearLabel }));
+            const clearButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleReset(), children: this.config.clearLabel }));
             this.clearButton = clearButton;
             this.row?.append(clearButton.root);
             clearButton.mount();
@@ -381,17 +402,51 @@ class LibraryPathSectionView extends VanillaView<Record<string, never>> {
             this.clearButton = undefined;
         }
     }
+
+    private async handleBrowse(): Promise<void> {
+        try {
+            await this.config.browse();
+        } catch (error: unknown) {
+            ui.notify(errMessage(error, `Failed to choose ${this.config.title.toLowerCase()}.`), "warning");
+        }
+    }
+
+    private async handleReset(): Promise<void> {
+        try {
+            await this.config.reset();
+        } catch (error: unknown) {
+            ui.notify(errMessage(error, `Failed to reset ${this.config.title.toLowerCase()}.`), "warning");
+        }
+    }
 }
 
 export class ScriptLibrarySectionView extends LibraryPathSectionView {
     public constructor(props: Record<string, never>) {
-        super(props, { pathKey: "script-library.path", title: "Script Library", description: "Folder for saved scripts and reusable modules", emptyText: "Not linked", browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); }, clearLabel: "Unlink" });
+        super(props, {
+            read: () => settings.get("script-library.path"),
+            subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "script-library.path") listener(); }),
+            title: "Script Library",
+            description: "Folder for saved scripts and reusable modules",
+            emptyText: "Not linked",
+            browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
+            reset: () => settings.set("script-library.path", ""),
+            clearLabel: "Unlink",
+        });
     }
 }
 
 export class DrawingLibrarySectionView extends LibraryPathSectionView {
     public constructor(props: Record<string, never>) {
-        super(props, { pathKey: "drawing.library-path", title: "Drawing Library", description: "Folder for Excalidraw library items (reusable shapes)", emptyText: "Default (auto)", browse: async () => { const result = await api.showOpenFolderDialog({ title: "Select Drawing Library Folder", defaultPath: settings.get("drawing.library-path") || undefined }); if (result?.[0]) settings.set("drawing.library-path", result[0]); }, clearLabel: "Reset" });
+        super(props, {
+            read: () => settings.get("drawing.library-path"),
+            subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "drawing.library-path") listener(); }),
+            title: "Drawing Library",
+            description: "Folder for Excalidraw library items (reusable shapes)",
+            emptyText: "Default (auto)",
+            browse: async () => { const result = await api.showOpenFolderDialog({ title: "Select Drawing Library Folder", defaultPath: settings.get("drawing.library-path") || undefined }); if (result?.[0]) settings.set("drawing.library-path", result[0]); },
+            reset: () => settings.set("drawing.library-path", ""),
+            clearLabel: "Reset",
+        });
     }
 }
 

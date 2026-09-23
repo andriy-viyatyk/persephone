@@ -1149,6 +1149,10 @@ board's manifest when the board becomes trusted and caches it from then on, so a
 toggling the board's trust off and on, or restarting the app. A reload that appears to ignore a
 manifest change is this, not a broken manifest.
 
+The same boundary applies to `settings`: a board declaring settings gets a Settings sub-page
+once it is trusted or installed, but editing the cached manifest directly does not update that
+page live. Toggle trust off and on or restart Persephone to refresh it.
+
 ## Testing & automation (for an AI agent)
 
 Once the user has opened this board in Persephone, an agent can drive it with

@@ -6,6 +6,11 @@ import {
     normalizeBoardRelativePath,
 } from "../../../shared/guides/mounted-source";
 import { normalizeVersionRequirement } from "../../../shared/version-utils";
+import type {
+    BoardSettingDeclaration,
+    BoardSettingType,
+    BoardSettingValue,
+} from "../../api/board-settings/types";
 
 export { normalizeBoardGuidesFolder, normalizeBoardRelativePath };
 
@@ -99,6 +104,7 @@ export interface BoardManifest {
     contentProviders?: BoardContentProviderDeclaration[];
     /** Capability handlers contributed by a trusted board. */
     capabilities?: BoardCapabilityDeclaration[];
+    settings?: unknown;
 
     // ── Custom Editor axis (EPIC-042) — acted upon only when the board is TRUSTED ──
     /**
@@ -227,6 +233,135 @@ export function hasStableBoardIdentity(
         && manifest.author.trim().length > 0
         && typeof manifest.name === "string"
         && manifest.name.trim().length > 0;
+}
+
+export type BoardSettingsIssueReporter = (name: string, reason: string) => void;
+
+interface RawBoardSetting {
+    id?: unknown;
+    type?: unknown;
+    default?: unknown;
+    options?: unknown;
+    format?: unknown;
+    label?: unknown;
+    description?: unknown;
+}
+
+function isBoardSettingValue(value: unknown): value is BoardSettingValue {
+    return typeof value === "string"
+        || typeof value === "boolean"
+        || (typeof value === "number" && Number.isFinite(value));
+}
+
+function isBoardSettingType(value: unknown): value is BoardSettingType {
+    return value === "string" || value === "boolean" || value === "number" || value === "enum";
+}
+
+function normalizeBoardSettingDeclaration(
+    raw: unknown,
+    index: number,
+    report?: BoardSettingsIssueReporter,
+): BoardSettingDeclaration | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        report?.(`entry ${index + 1}`, "The setting declaration must be an object.");
+        return undefined;
+    }
+
+    const candidate = raw as RawBoardSetting;
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+    if (!id) {
+        report?.(`entry ${index + 1}`, "The setting declaration requires a non-empty id.");
+        return undefined;
+    }
+    if (!isBoardSettingType(candidate.type)) {
+        report?.(id, "The setting declaration has an unsupported type.");
+        return undefined;
+    }
+    if (!isBoardSettingValue(candidate.default)) {
+        report?.(id, "The setting declaration requires a finite scalar default.");
+        return undefined;
+    }
+
+    const options: string[] = [];
+    if (Array.isArray(candidate.options)) {
+        for (const option of candidate.options) {
+            if (typeof option !== "string") continue;
+            const normalizedOption = option.trim();
+            if (normalizedOption && !options.includes(normalizedOption)) options.push(normalizedOption);
+        }
+    }
+
+    const declaration: BoardSettingDeclaration = {
+        id,
+        type: candidate.type,
+        default: candidate.default,
+        ...(options.length > 0 ? { options } : {}),
+        ...(typeof candidate.format === "string" && candidate.format.trim()
+            ? { format: candidate.format.trim() }
+            : {}),
+        ...(typeof candidate.label === "string" && candidate.label.trim()
+            ? { label: candidate.label.trim() }
+            : {}),
+        ...(typeof candidate.description === "string" && candidate.description.trim()
+            ? { description: candidate.description.trim() }
+            : {}),
+    };
+
+    if (declaration.type === "enum") {
+        if (!declaration.options || declaration.options.length === 0) {
+            report?.(id, "Enum settings require non-empty string options.");
+            return undefined;
+        }
+        if (typeof declaration.default !== "string"
+            || !declaration.options.includes(declaration.default)) {
+            report?.(id, "The enum default must be one of its options.");
+            return undefined;
+        }
+        return declaration;
+    }
+
+    const matchesType = declaration.type === "string"
+        ? typeof declaration.default === "string"
+        : declaration.type === "boolean"
+          ? typeof declaration.default === "boolean"
+          : typeof declaration.default === "number" && Number.isFinite(declaration.default);
+    if (!matchesType) {
+        report?.(id, `The default does not match the declared ${declaration.type} type.`);
+        return undefined;
+    }
+    return declaration;
+}
+
+/** Normalize user-facing board settings without trusting raw manifest data or throwing. */
+export function normalizeBoardSettings(
+    manifest: unknown,
+    report?: BoardSettingsIssueReporter,
+): BoardSettingDeclaration[] {
+    const candidate = manifest && typeof manifest === "object" && !Array.isArray(manifest)
+        ? manifest as { author?: unknown; name?: unknown; settings?: unknown }
+        : undefined;
+    if (!candidate || !Object.prototype.hasOwnProperty.call(candidate, "settings")) return [];
+    if (!hasStableBoardIdentity(candidate as BoardManifest)) {
+        const missing: string[] = [];
+        if (typeof candidate.author !== "string" || candidate.author.trim().length === 0) missing.push("author");
+        if (typeof candidate.name !== "string" || candidate.name.trim().length === 0) missing.push("name");
+        report?.("identity", `Board settings require a stable board identity; missing ${missing.join(" and ")}.`);
+        return [];
+    }
+    if (!Array.isArray(candidate.settings)) {
+        report?.("settings", "The settings manifest field must be an array.");
+        return [];
+    }
+
+    const declarations: BoardSettingDeclaration[] = [];
+    const seen = new Set<string>();
+    candidate.settings.forEach((raw, index) => {
+        const declaration = normalizeBoardSettingDeclaration(raw, index, report);
+        if (!declaration || seen.has(declaration.id)) return;
+        seen.add(declaration.id);
+        declarations.push(declaration);
+    });
+    return declarations;
 }
 
 /** A fresh manifest with the identity fields used by Persephone-created boards. */

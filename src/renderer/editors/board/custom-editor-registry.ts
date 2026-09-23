@@ -39,6 +39,7 @@ import { createBoardProvider } from "../../content/board-provider-factory";
 import {
     normalizeContentProviders,
     normalizeCapabilities,
+    normalizeBoardSettings,
     getBoardEditorAssociation,
     matchesBoardMasks,
     matchesContentMasks,
@@ -46,7 +47,9 @@ import {
     readBoardManifest,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
+    type BoardEditorAssociation,
 } from "./board-manifest";
+import type { BoardSettingDeclaration } from "../../api/board-settings/types";
 import {
     registerCapability,
     unregisterBoardCapabilities,
@@ -119,7 +122,7 @@ export interface CustomEditorIncompatibility {
     reason: string;
 }
 
-export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability";
+export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability" | "settings";
 
 export interface CustomEditorRegistrationIssue {
     boardRoot: string;
@@ -139,9 +142,19 @@ interface BoardCapabilityRegistrationIntent {
     declaration: BoardCapabilityDeclaration;
 }
 
+export interface BoardSettingsRegistration {
+    boardRoot: string;
+    name: string;
+    origin: "trusted" | "bundled";
+    declarations: BoardSettingDeclaration[];
+    editorAssociation: BoardEditorAssociation | null;
+}
+
 interface CustomEditorRegistryState {
     /** Every trusted and bundled board association, in trusted-list then bundled order. */
     entries: CustomEditorMatch[];
+    /** Active trusted and bundled boards with normalized Settings declarations. */
+    settingsBoards: BoardSettingsRegistration[];
     /** Compatibility diagnostics retained for Board Info and future board listings. */
     incompatibilities: CustomEditorIncompatibility[];
     /** Provider and scheme declarations refused during the latest board-source rebuild. */
@@ -150,6 +163,7 @@ interface CustomEditorRegistryState {
 
 const defaultState: CustomEditorRegistryState = {
     entries: [],
+    settingsBoards: [],
     incompatibilities: [],
     registrationIssues: [],
 };
@@ -255,6 +269,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             origin: "trusted" | "bundled";
         }> = [];
         const entries: CustomEditorMatch[] = [];
+        const settingsBoards: BoardSettingsRegistration[] = [];
         const incompatibilities: CustomEditorIncompatibility[] = [];
         const registrationIntents: BoardRegistrationIntent[] = [];
         const capabilityRegistrationIntents: BoardCapabilityRegistrationIntent[] = [];
@@ -303,7 +318,19 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     source: "trusted",
                 });
             }
+            const settingsDeclarations = normalizeBoardSettings(manifest, (name, reason) => {
+                addRegistrationIssue(registrationIssues, root, "settings", name, reason, undefined);
+            });
             const assoc = getBoardEditorAssociation(manifest);
+            if (settingsDeclarations.length > 0) {
+                settingsBoards.push({
+                    boardRoot: root,
+                    name: (manifest?.name && manifest.name.trim()) || fpBasename(root),
+                    origin,
+                    declarations: settingsDeclarations,
+                    editorAssociation: assoc,
+                });
+            }
             if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
             const name =
                 assoc.editorName ||
@@ -423,6 +450,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         }
         this.state.update((s) => {
             s.entries = entries;
+            s.settingsBoards = settingsBoards;
             s.incompatibilities = incompatibilities;
             s.registrationIssues = registrationIssues;
         });
@@ -431,6 +459,11 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     /** All file-associated boards (sync, non-reactive). */
     get entries(): CustomEditorMatch[] {
         return this.state.get().entries;
+    }
+
+    /** Active trusted and bundled boards with normalized user-facing settings. */
+    get settingsBoards(): readonly BoardSettingsRegistration[] {
+        return this.state.get().settingsBoards;
     }
 
     /** Trusted boards excluded by the bridge compatibility gate, with a readable reason. */

@@ -928,6 +928,9 @@ the manifest's `loadOrder`.
   `editorPriority`, `folderEditorPriority`, `editorSources`)
   applies only after toggling the board's trust off and on, or restarting the app — not after
   `pages[pageId].editor.reload()`.
+- A `settings` declaration follows the same cache boundary: its Settings sub-page appears once
+  the board is trusted or installed, and direct edits to the cached manifest do not update that
+  page live. Toggle trust off and on or restart Persephone to refresh it.
 
 ## Test it
 

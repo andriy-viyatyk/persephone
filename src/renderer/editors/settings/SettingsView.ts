@@ -1,10 +1,13 @@
 import { app } from "../../api/app";
 import { settings } from "../../api/settings";
+import { ui } from "../../api/ui";
+import { customEditorRegistry, type BoardSettingsRegistration } from "../board/custom-editor-registry";
 import { createLinkData } from "../../../shared/link-data";
+import { errMessage } from "../../../shared/utils";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { TreeView } from "../../uikit/Tree/TreeView";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
 import { SETTINGS_CATALOG, type SettingsCatalogSection } from "./settings-catalog";
 import { BrowserProfilesSectionView } from "./sections/BrowserProfilesSection";
 import { ClipboardSectionView } from "./sections/ClipboardSection";
@@ -12,6 +15,7 @@ import { DefaultBrowserSectionView } from "./sections/DefaultBrowserSection";
 import { FileSearchSectionView } from "./sections/FileSearchSection";
 import { McpSectionView } from "./sections/McpSection";
 import { ThemeSectionView } from "./sections/ThemeSection";
+import { BoardSettingsSectionView } from "./sections/BoardSettingsSection";
 import {
     BoardVarsSectionView,
     DrawingLibrarySectionView,
@@ -38,9 +42,24 @@ interface SettingsContentItem {
     readonly items?: SettingsContentItem[];
 }
 
-type SettingsChildView = VanillaView<Record<string, never>>;
+interface BoardSettingsSectionDescriptor {
+    readonly kind: "board";
+    readonly groupId: string;
+    readonly groupTitle: string;
+    readonly id: string;
+    readonly title: string;
+    readonly description: string;
+    readonly elementName: string;
+    readonly panelName: string;
+    readonly board: BoardSettingsRegistration;
+}
 
-const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsChildView>> = {
+type SettingsSectionDescriptor = SettingsCatalogSection | BoardSettingsSectionDescriptor;
+
+type SettingsChildView = IOwnedView;
+type SettingsBuiltInView = VanillaView<Record<string, never>>;
+
+const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>> = {
     theme: () => new ThemeSectionView({}),
     "window-behavior": () => new WindowBehaviorSectionView({}),
     clipboard: () => new ClipboardSectionView({}),
@@ -69,10 +88,11 @@ const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {
 };
 
 function createSettingsContentItems(
+    sections: readonly SettingsSectionDescriptor[],
     isNavigableSection: (sectionId: string) => boolean,
 ): SettingsContentItem[] {
     const groups: SettingsContentItem[] = [];
-    for (const section of SETTINGS_CATALOG) {
+    for (const section of sections) {
         if (!isNavigableSection(section.id)) continue;
         let group = groups[groups.length - 1];
         if (!group || group.value !== `group:${section.groupId}`) {
@@ -128,6 +148,9 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     private pendingProgrammaticScroll: PendingProgrammaticScroll | undefined;
     private programmaticSettleFrame: number | undefined;
     private selectedContentValue: string | undefined;
+    private readonly dynamicSectionIds = new Set<string>();
+    private footerElement: HTMLDivElement | undefined;
+    private initializationGeneration = 0;
 
     public constructor(props: SettingsEditorProps) {
         const root = createPanelElement({
@@ -187,6 +210,13 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
 
         this.panelsElement = panels;
         for (const section of SETTINGS_CATALOG) this.appendSectionPanel(section, panels);
+        this.own(customEditorRegistry.state.subscribe<readonly BoardSettingsRegistration[]>(
+            (settingsBoards) => {
+                if (!this.isDisposed) this.rebuildDynamicSections(settingsBoards);
+            },
+            (state) => state.settingsBoards,
+        ));
+        this.rebuildDynamicSections(customEditorRegistry.settingsBoards);
         this.rebuildContentItems();
 
         const tree = this.child(new TreeView<SettingsContentItem>(this.contentTreeProps()));
@@ -212,6 +242,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             paddingY: "sm",
         });
         footer.dataset.part = "footer";
+        this.footerElement = footer;
         const viewFileButton = this.child(new ButtonView({
             name: "settings-view-file",
             variant: "link",
@@ -223,23 +254,42 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         footer.append(viewFileButton.root);
         panels.append(footer);
         viewFileButton.mount();
+
+        const generation = this.initializationGeneration;
+        void customEditorRegistry.ensureInitialized().catch((error: unknown) => {
+            if (this.isDisposed || generation !== this.initializationGeneration) return;
+            ui.notify(errMessage(error, "Failed to load board settings."), "warning");
+        });
     }
 
     protected onDispose(): void {
+        this.initializationGeneration++;
         this.cancelProgrammaticScroll();
         this.contentTree = undefined;
         this.panelsElement = undefined;
+        this.footerElement = undefined;
         this.sectionViews.clear();
         this.sectionPanels.clear();
         this.sectionWrappers.clear();
+        this.dynamicSectionIds.clear();
         this.settingsContentItems = [];
     }
 
-    private appendSectionPanel(section: SettingsCatalogSection, parent: HTMLDivElement): void {
-        const factory = SECTION_VIEW_FACTORIES[section.id];
-        if (!factory) throw new Error(`No Settings section view registered for ${section.id}.`);
-
-        const view = this.child(factory());
+    private appendSectionPanel(section: SettingsSectionDescriptor, parent: HTMLDivElement): HTMLDivElement {
+        let view: SettingsChildView;
+        if ("kind" in section && section.kind === "board") {
+            const boardView = this.child(new BoardSettingsSectionView({
+                boardRoot: section.board.boardRoot,
+                displayName: section.board.name,
+                declarations: section.board.declarations,
+            }));
+            boardView.mount();
+            view = boardView;
+        } else {
+            const builtInView = this.child(this.createBuiltInSectionView(section as SettingsCatalogSection));
+            builtInView.mount();
+            view = builtInView;
+        }
         const wrapper = document.createElement("div");
         wrapper.dataset.name = section.elementName;
         wrapper.dataset.part = "section-wrapper";
@@ -261,7 +311,81 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         this.sectionViews.set(section.id, view);
         this.sectionPanels.set(section.id, sectionPanel);
         this.sectionWrappers.set(section.id, wrapper);
-        view.mount();
+        return sectionPanel;
+    }
+
+    private createBuiltInSectionView(section: SettingsCatalogSection): SettingsBuiltInView {
+        const factory = SECTION_VIEW_FACTORIES[section.id];
+        if (!factory) throw new Error(`No Settings section view registered for ${section.id}.`);
+        return factory();
+    }
+
+    private rebuildDynamicSections(settingsBoards: readonly BoardSettingsRegistration[]): void {
+        const panels = this.panelsElement;
+        if (!panels || this.isDisposed) return;
+
+        for (const sectionId of this.dynamicSectionIds) {
+            const view = this.sectionViews.get(sectionId);
+            if (view) this.releaseChild(view);
+            const panel = this.sectionPanels.get(sectionId);
+            panel?.remove();
+            this.sectionViews.delete(sectionId);
+            this.sectionPanels.delete(sectionId);
+            this.sectionWrappers.delete(sectionId);
+        }
+        this.dynamicSectionIds.clear();
+
+        const dynamicSections = this.createRuntimeSections(settingsBoards)
+            .filter((section): section is BoardSettingsSectionDescriptor => "kind" in section && section.kind === "board");
+        const runtimeSections = this.createRuntimeSections(settingsBoards);
+        for (let index = dynamicSections.length - 1; index >= 0; index--) {
+            const section = dynamicSections[index];
+            const runtimeIndex = runtimeSections.findIndex((candidate) => candidate.id === section.id);
+            const nextPanel = runtimeSections
+                .slice(runtimeIndex + 1)
+                .map((candidate) => this.sectionPanels.get(candidate.id))
+                .find((candidate): candidate is HTMLDivElement => candidate !== undefined);
+            const panel = this.appendSectionPanel(section, panels);
+            panels.insertBefore(panel, nextPanel ?? this.footerElement ?? null);
+            this.dynamicSectionIds.add(section.id);
+        }
+        this.rebuildContentItems();
+    }
+
+    private createRuntimeSections(settingsBoards: readonly BoardSettingsRegistration[]): SettingsSectionDescriptor[] {
+        const editorSections = settingsBoards
+            .filter((board) => board.editorAssociation !== null)
+            .map((board) => this.createBoardSectionDescriptor(board, "editors", "Editors"));
+        const boardSections = settingsBoards
+            .filter((board) => board.editorAssociation === null)
+            .map((board) => this.createBoardSectionDescriptor(board, "boards", "Boards"));
+        const sections: SettingsSectionDescriptor[] = [...SETTINGS_CATALOG];
+        const lastEditor = sections.reduce(
+            (lastIndex, section, index) => section.groupId === "editors" ? index : lastIndex,
+            -1,
+        );
+        sections.splice(lastEditor + 1, 0, ...editorSections);
+        sections.push(...boardSections);
+        return sections;
+    }
+
+    private createBoardSectionDescriptor(
+        board: BoardSettingsRegistration,
+        groupId: "editors" | "boards",
+        groupTitle: string,
+    ): BoardSettingsSectionDescriptor {
+        const id = `board-${encodeURIComponent(board.boardRoot)}`;
+        return {
+            kind: "board",
+            groupId,
+            groupTitle,
+            id,
+            title: board.name,
+            description: "",
+            elementName: `settings-section-${id}`,
+            panelName: `settings-panel-${id}`,
+            board,
+        };
     }
 
     private isNavigableSection(sectionId: string): boolean {
@@ -278,7 +402,10 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     }
 
     private rebuildContentItems(): void {
-        this.settingsContentItems = createSettingsContentItems((sectionId) => this.isNavigableSection(sectionId));
+        this.settingsContentItems = createSettingsContentItems(
+            this.createRuntimeSections(customEditorRegistry.settingsBoards),
+            (sectionId) => this.isNavigableSection(sectionId),
+        );
         if (!this.containsContentValue(this.selectedContentValue)) {
             this.selectedContentValue = this.firstSectionValue() ?? undefined;
         }
@@ -340,7 +467,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     private firstVisibleSectionId(groupValue: string): string | undefined {
         const groupId = this.sectionIdFromValue(groupValue, "group:");
         if (!groupId) return undefined;
-        return SETTINGS_CATALOG.find((section) =>
+        return this.createRuntimeSections(customEditorRegistry.settingsBoards).find((section) =>
             section.groupId === groupId && this.isNavigableSection(section.id),
         )?.id;
     }
@@ -435,7 +562,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         if (!panels) return undefined;
         const viewport = panels.getBoundingClientRect();
         let firstVisibleSectionId: string | undefined;
-        for (const section of SETTINGS_CATALOG) {
+        for (const section of this.createRuntimeSections(customEditorRegistry.settingsBoards)) {
             if (!this.isNavigableSection(section.id)) continue;
             const wrapper = this.sectionWrappers.get(section.id);
             if (!wrapper) continue;
@@ -452,8 +579,9 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     }
 
     private lastNavigableSectionId(): string | undefined {
-        for (let index = SETTINGS_CATALOG.length - 1; index >= 0; index--) {
-            const section = SETTINGS_CATALOG[index];
+        const sections = this.createRuntimeSections(customEditorRegistry.settingsBoards);
+        for (let index = sections.length - 1; index >= 0; index--) {
+            const section = sections[index];
             if (this.isNavigableSection(section.id)) return section.id;
         }
         return undefined;

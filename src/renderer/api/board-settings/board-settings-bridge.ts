@@ -1,5 +1,6 @@
 import {
     hasStableBoardIdentity,
+    normalizeBoardSettings,
     readBoardManifest,
 } from "../../editors/board/board-manifest";
 import { resolveBoardNamespace } from "../board-namespace";
@@ -7,33 +8,14 @@ import { errMessage } from "../../../shared/utils";
 import { boardSettings } from "./BoardSettingsStore";
 import type {
     BoardSettingDeclaration,
-    BoardSettingType,
     BoardSettingValue,
 } from "./types";
+
+export { normalizeBoardSettings } from "../../editors/board/board-manifest";
 
 export interface BoardSettingsReply {
     result?: BoardSettingValue;
     error?: string;
-}
-
-type RawBoardSetting = {
-    id?: unknown;
-    type?: unknown;
-    default?: unknown;
-    options?: unknown;
-    format?: unknown;
-    label?: unknown;
-    description?: unknown;
-};
-
-function isSettingValue(value: unknown): value is BoardSettingValue {
-    return typeof value === "string"
-        || typeof value === "boolean"
-        || (typeof value === "number" && Number.isFinite(value));
-}
-
-function isType(value: unknown): value is BoardSettingType {
-    return value === "string" || value === "boolean" || value === "number" || value === "enum";
 }
 
 function matchesType(value: BoardSettingValue, declaration: BoardSettingDeclaration): boolean {
@@ -45,49 +27,6 @@ function matchesType(value: BoardSettingValue, declaration: BoardSettingDeclarat
         : declaration.type === "boolean"
           ? typeof value === "boolean"
           : typeof value === "number" && Number.isFinite(value);
-}
-
-function normalizeDeclaration(raw: unknown): BoardSettingDeclaration | undefined {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-    const candidate = raw as RawBoardSetting;
-    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
-    if (!id || !isType(candidate.type) || !isSettingValue(candidate.default)) return undefined;
-    const options = Array.isArray(candidate.options)
-        ? candidate.options.filter((option): option is string => typeof option === "string" && option.length > 0)
-        : undefined;
-    const declaration: BoardSettingDeclaration = {
-        id,
-        type: candidate.type,
-        default: candidate.default,
-        ...(options && options.length > 0 ? { options: [...new Set(options)] } : {}),
-        ...(typeof candidate.format === "string" && candidate.format.trim()
-            ? { format: candidate.format.trim() }
-            : {}),
-        ...(typeof candidate.label === "string" ? { label: candidate.label } : {}),
-        ...(typeof candidate.description === "string" ? { description: candidate.description } : {}),
-    };
-    if (declaration.type === "enum"
-        && (!declaration.options || declaration.options.length === 0
-            || !declaration.options.includes(declaration.default as string))) return undefined;
-    return matchesType(declaration.default, declaration) ? declaration : undefined;
-}
-
-/** Shared declaration seam for the bridge and the later renderer Settings page. */
-export function normalizeBoardSettings(manifest: unknown): BoardSettingDeclaration[] {
-    if (!hasStableBoardIdentity(manifest as Parameters<typeof hasStableBoardIdentity>[0])) return [];
-    const raw = manifest && typeof manifest === "object"
-        ? (manifest as { settings?: unknown }).settings
-        : undefined;
-    if (!Array.isArray(raw)) return [];
-    const declarations: BoardSettingDeclaration[] = [];
-    const seen = new Set<string>();
-    for (const candidate of raw) {
-        const declaration = normalizeDeclaration(candidate);
-        if (!declaration || seen.has(declaration.id)) continue;
-        seen.add(declaration.id);
-        declarations.push(declaration);
-    }
-    return declarations;
 }
 
 function missingIdentityFields(manifest: unknown): string[] {
@@ -120,6 +59,19 @@ function validateValue(value: BoardSettingValue, declaration: BoardSettingDeclar
     }
 }
 
+async function readEffectiveBoardSetting(
+    boardRoot: string,
+    id: string,
+): Promise<BoardSettingValue> {
+    const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
+    const stored = await boardSettings.get(namespace, declaration.id);
+    if (stored !== undefined) {
+        validateValue(stored, declaration);
+        return stored;
+    }
+    return declaration.default;
+}
+
 let requestChain: Promise<unknown> = Promise.resolve();
 
 /** Serialized board-facing request entry point. The board transport accepts only `get`. */
@@ -135,18 +87,18 @@ export function resolveBoardSettingsRequest(
             return { error: "Board setting id must be a non-empty string." };
         }
         try {
-            const normalizedId = id.trim();
-            const { namespace, declaration } = await resolveDeclaration(boardRoot, normalizedId);
-            const stored = await boardSettings.get(namespace, normalizedId);
-            if (stored !== undefined) {
-                validateValue(stored, declaration);
-                return { result: stored };
-            }
-            return { result: declaration.default };
+            return { result: await readEffectiveBoardSetting(boardRoot, id.trim()) };
         } catch (error: unknown) {
             return { error: errMessage(error, "Failed to read board setting.") };
         }
     });
+    requestChain = run.then((): void => undefined, (): void => undefined);
+    return run;
+}
+
+/** Renderer-only effective read. Defaults are returned without being persisted. */
+export function getBoardSetting(boardRoot: string, id: string): Promise<BoardSettingValue> {
+    const run = requestChain.then(() => readEffectiveBoardSetting(boardRoot, id.trim()));
     requestChain = run.then((): void => undefined, (): void => undefined);
     return run;
 }
