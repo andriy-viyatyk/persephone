@@ -172,6 +172,18 @@ const defaultState: CustomEditorRegistryState = {
     registrationIssues: [],
 };
 
+/** Last path segment of a registered-scheme URL — decoded, without query or fragment. This is the
+ *  file name `resolveEditorIdForFile` matches on; the ORIGINAL url stays its `filePath` argument so
+ *  the locality gate still judges the real source. Mirrors `extractEffectivePath` in
+ *  `content/resolvers.ts`, which does the same for http(s). */
+function schemeEffectivePath(url: string): string {
+    try {
+        return decodeURIComponent(new URL(url).pathname.split("/").pop() || "");
+    } catch {
+        return "";
+    }
+}
+
 function createBoardSchemeHooks(providerType: string): SchemeHooks {
     return {
         async parse(data, context) {
@@ -181,7 +193,6 @@ function createBoardSchemeHooks(providerType: string): SchemeHooks {
             data.handled = true;
         },
         async resolve(data, context) {
-            data.target ||= "monaco";
             data.pipeDescriptor = {
                 provider: {
                     type: providerType,
@@ -191,6 +202,11 @@ function createBoardSchemeHooks(providerType: string): SchemeHooks {
             };
             data.pipe = context.createPipe(data.pipeDescriptor);
             if (context.phase === "source-path") return;
+            // Target resolution is an OPEN-phase concern: `source-path` rebuilds a pipe for a page
+            // that already exists and discards `data.target` (EPIC-113 D15).
+            data.target = data.target
+                || resolveEditorIdForFile(data.url, schemeEffectivePath(data.url))
+                || "monaco";
             data.handled = false;
             await context.delegate();
             data.handled = true;
