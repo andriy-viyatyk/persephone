@@ -418,7 +418,7 @@ await app.events.openRawLink.sendAsync(
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `target` | `string?` | Target editor ID override (e.g., `"browser"`, `"monaco"`). Auto-resolved from URL if omitted. |
+| `target` | `string?` | Target editor or capability ID override (e.g., `"browser"`, `"monaco"`, or `"image.edit"`). Auto-resolved from URL if omitted. |
 | `url` | `string?` | Resolved URL to use directly instead of parsing `href`. |
 | `pageId` | `string?` | Open in this specific existing page instead of a new tab. |
 | `revealLine` | `number?` | Scroll to this line after opening. |

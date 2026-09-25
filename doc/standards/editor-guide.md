@@ -99,7 +99,7 @@ The only custom editor-icon contract is `getIconElement?: () => Element | undefi
 `noLanguage` editor that owns a glyph should return a fresh DOM node, using
 `createIconElement("name", props)` for registry icons or
 `createIconComponentElement(icon, props)` for an icon component without a registry name. Do not
-return a React element or use the removed `getIcon` contract. The node is single-use: appending it
+return a framework element or use the removed `getIcon` contract. The node is single-use: appending it
 to another host moves it, so build it at the point of use and never cache, memoise, hoist, or share
 one node across tabs, panels, buttons, or menus. For a registry name that is wrong,
 `createIconElement` produces an empty `<svg>`; inspect for that symptom when a migrated glyph is
@@ -174,17 +174,12 @@ Choose the page chrome before writing the view:
   non-text editors.
 - **`TextChromeView`** — use for a text-host editor. It supplies the native host-aware toolbar,
   script panel, content-host footer, focus/key handling, and overlay slot. The editor's `View`
-  composes it directly; a React body may remain a bounded island in its `children` slot.
+  composes it directly; the body is a native slot in its `children` slot.
 
 Every editor module requires a native `View` arm. A converted or new DOM-heavy view should use
 `VanillaView` and export it as `View` (or `BodyView` when embeddable). Keep the root stable and
-pass DOM nodes through native slots. The only React body is the Excalidraw vendor island under
-`editors/draw/`; native editor chrome is not wrapped in a React error boundary.
-
-If a third-party editor widget requires React, keep the React code in a named, minimal island and
-let the native view own its host element, surrounding chrome, model bindings, and disposal. Give
-the host explicit size styles when the widget does not establish its own geometry; do not hide the
-island in a `.ts` file merely to satisfy an extension count.
+pass DOM nodes through native slots. Editor chrome is native and owns its host element, model
+bindings, and disposal.
 
 ### Size editor bodies to their container
 
@@ -246,8 +241,8 @@ editor and scope its selectors below a semantic editor root. Do not add a genera
 `className` or `style` escape hatch to UIKit to carry those rules.
 
 For a text-bearing native editor, construct `TextChromeView` directly, register it with `child()`,
-and mount/update it alongside the editor body. Pass DOM nodes through native slots; no React element
-or error-boundary adapter is needed.
+and mount/update it alongside the editor body. Pass DOM nodes through native slots; no framework
+element or error-boundary adapter is needed.
 
 ## Step 4: Export the EditorModule
 
@@ -328,7 +323,7 @@ The default `makeAccepts` implementation checks `acceptFile(fileName)` first, th
 text-host switch list supplies the host's language and uses its file path, falling back to the
 page title for extensionless or untitled pages. Therefore language-only matchers can offer
 Markdown, JSON, CSV, JSONL, HTML, or Mermaid views without a file extension, while specialized
-JSON editors and `draw-view` keep their filename/content safeguards. `svg-view` additionally
+JSON editors keep their filename/content safeguards. `svg-view` additionally
 accepts `xml` only when the page name has no file extension, so an untitled XML page can show SVG
 Preview but a real `.xml` file remains text-only.
 
@@ -339,13 +334,13 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 - `0` — Fallback: monaco, the floor that guarantees every file resolves
 - `10` — Rendered view preferred over source: markdown preview
 - `20` — Compound file names: `*.grid.json`, `*.note.json`, `*.rest.json`, `*.link.json`, `*.log.jsonl`, `*.env.json`, `*.grid.csv`
-- `50` — Dedicated format editors: `.excalidraw` → drawing
+- `50` — Available to custom board editors; no built-in `.excalidraw` claimant remains
 - `100` — Exclusive viewers with no text view: image, archive, video
 - `200` — Pseudo-paths: `tree-category://` links
 
 Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget and `detectContentEditor`, not which editor opens a file.
 
-A trusted or bundled board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. The bundled Excalidraw board uses `60` to outrank the built-in `.excalidraw` matcher at `50` while the built-in remains available. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
+A trusted or bundled board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. The bundled Excalidraw board uses `50`; it wins `.excalidraw` because Monaco is the remaining built-in fallback at `0`, while a trusted replacement at the same board priority wins by board-origin tie rules. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
 
 Folder resolution uses a separate ladder: `0` is the `category-view` floor for every directory;
 specialized folder editors such as Git Tree and Mneme use `20` only for their enabled, verified
@@ -388,8 +383,8 @@ class MyEditor extends EditorModel<MyEditorState> {
 Register the panel in `/src/renderer/ui/secondary-views/secondary-view-registry.ts`. A registration
 returns `VanillaViewCtor<SecondaryViewProps>`; the secondary-view host owns the asynchronous load,
 stable root, and retirement lifecycle. Build headers with `SideBarPanelHeaderView` against the
-provided `headerHost`, pass DOM `Node` slots, and keep the Excalidraw React island out of secondary
-views. Do not register a replaced record view with `this.child()`.
+provided `headerHost`, pass DOM `Node` slots, and keep editor bodies out of secondary views unless
+the editor explicitly owns that panel. Do not register a replaced record view with `this.child()`.
 
 ## Testing Your Editor
 

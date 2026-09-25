@@ -1,7 +1,7 @@
 ---
 title: "Image Viewer"
 audience: both
-summary: "Image viewer with zoom, pan, clipboard paste, format-preserving save, and Drawing Editor handoff."
+summary: "Image viewer with zoom, pan, clipboard paste, format-preserving save, and Excalidraw handoff."
 editorId: "image-view"
 ---
 
@@ -49,9 +49,10 @@ Viewer is a specialized route rather than a general `pages.addEditorPage` target
 ## Viewing and transfer
 
 Zoom with the mouse wheel or zoom actions, pan while zoomed, and reset to fit-to-window. Copy uses
-PNG data. **Save as .png** re-encodes; **Save original** preserves source bytes. **Open in Drawing
-Editor** sends the image to Excalidraw for annotation. With the bundled Excalidraw board enabled,
-that handoff opens the board; disabling it sends the image to the built-in Drawing editor instead.
+PNG data. **Save as .png** re-encodes; **Save original** preserves source bytes. **Open in Drawing**
+sends the image to the bundled Excalidraw board for annotation. If no board provides the `image.edit`
+capability, Persephone shows **No image editor is registered. Enable the board in Tools & Editors or
+install a replacement.**
 
 `Ctrl+V` can open a bitmap clipboard image in a new Image Viewer tab, unless a focused text field or
 grid owns the paste. HTML-only clipboard content can open in HTML Preview; plain text is not
@@ -67,8 +68,8 @@ reading, and save operations. Verified elements are `image-save`, `image-open-dr
 is 2048 pixels; pass a positive integer `maxDimension` to choose another bound. The result includes
 `width`, `height`, `originalWidth`, and `originalHeight` alongside base64 PNG data. Through MCP
 `call`, it appears as metadata text plus a native inline image block, works for inactive image pages,
-and does not write a file. `call.maxLength` is applied before image conversion, so raise it to about
-1.4 times the PNG byte size plus result overhead; an empty or partial object means the bound was too
+and does not write a file. An explicit `maxLength` is applied before image conversion, so set it to
+about 1.4 times the PNG byte size plus result overhead; an empty or partial object means the bound was too
 low.
 
 ```javascript

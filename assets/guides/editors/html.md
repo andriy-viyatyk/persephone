@@ -54,7 +54,9 @@ remains available in Text Editor; agents can create an HTML content page with
 JavaScript runs inside the isolated preview and updates as the source changes. **Show Resources**
 extracts images, scripts, stylesheets, media, fonts, iframes, favicons, and links into a categorized
 link collection. Capture the rendered page at its current window size to **Copy**, **Save**, open in
-Image Viewer, or open in Drawing Editor for annotation. Right-click can open the local file in the
+Image Viewer, or open in Excalidraw for annotation. If no board provides the `image.edit`
+capability, Persephone shows **No image editor is registered. Enable the board in Tools & Editors or
+install a replacement.** Right-click can open the local file in the
 Browser for interactive testing and DevTools.
 
 ## Agent API

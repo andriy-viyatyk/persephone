@@ -579,7 +579,8 @@ await persephone.call("page.grouped.content", {
 ```
 
 Pass `args` to invoke the final method, `value` to assign a writable property, or `maxLength` to
-bound string shaping. `args` and `value` cannot be combined. See the bundled regex verification
+bound string shaping. Programmatic board calls are unbounded by default so binary/data strings are
+not silently clipped; an explicit `maxLength` is still honored. `args` and `value` cannot be combined. See the bundled regex verification
 Board under `assets/board-call-regex/` for a complete Run/Write example.
 
 Append `.$describe` to a node path when a program needs the descriptor as data rather than prose:
@@ -594,7 +595,7 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   the board equivalent of the script API's `pages.addEditorPage(...)`, and the right call whenever
   the content lives in the board's memory rather than in a file `openRawLink` could point at (a
   rendered Markdown summary, an extracted subgraph, a table to open in the JSON grid). `editor` is a
-  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, `"draw-view"`, …);
+  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, …);
   `language` defaults to `"plaintext"`, `title` to `"untitled"`.
   ```js
   const pageId = await persephone.openContent({
@@ -609,8 +610,8 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
 - `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
   `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — useful to open a
   Markdown doc rendered rather than as source; falls back to the default editor when omitted/unmatched.
-  An **image `data:` URL** with `{ editor: "draw-view" }` opens the image as a **new editable
-  Excalidraw drawing** (rasterize your view to a PNG data URL first).
+  An **image `data:` URL** with `{ editor: "image.edit" }` requests the image-edit capability and
+  opens the image as a **new editable drawing** (rasterize your view to a PNG data URL first).
   - **External links are auto-routed for you.** A plain `<a href="https://…">` click inside a
     board would otherwise navigate the board frame itself to a URL its `board://` origin can't
     load, blanking the board. Persephone intercepts anchor clicks (and middle-clicks) and routes

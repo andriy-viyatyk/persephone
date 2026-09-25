@@ -2,6 +2,7 @@ import { pagesModel } from "../pages";
 import { isBoardPermitted } from "../../editors/board/board-access";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
+import { UNBOUNDED_CALL_MAX_LENGTH } from "../../scripting/ai-vision/call-limits";
 import { errMessage } from "../../../shared/utils";
 import type { McpParams, McpResponse } from "./types";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
@@ -30,7 +31,11 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
         hints: "never" as const,
         ...(requestData.args !== undefined ? { args: requestData.args as unknown[] } : {}),
         ...(Object.prototype.hasOwnProperty.call(requestData, "value") ? { value: requestData.value } : {}),
-        ...(typeof requestData.maxLength === "number" ? { maxLength: requestData.maxLength } : {}),
+        // A board receives this value in JavaScript, not as text an agent reads, so it is not
+        // subject to the agent-facing 20,000-character default. See UNBOUNDED_CALL_MAX_LENGTH.
+        maxLength: typeof requestData.maxLength === "number"
+            ? requestData.maxLength
+            : UNBOUNDED_CALL_MAX_LENGTH,
         ...(requestData.timeoutMs !== undefined ? { timeoutMs: requestData.timeoutMs } : {}),
     };
     const page = pagesModel.findPage(ownerId);

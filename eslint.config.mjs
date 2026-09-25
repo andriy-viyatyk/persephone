@@ -5,7 +5,6 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
-import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 const vanillaViewPlugin = {
@@ -428,11 +427,7 @@ export default tseslint.config(
             importPlugin.flatConfigs.electron,
             importPlugin.flatConfigs.typescript,
         ],
-        // react-hooks: pinned to the classic two rules (exact match of the pre-upgrade v4
-        // surface). react-hooks v7's `recommended` additionally folds in the React-Compiler
-        // rules — intentionally not adopted here.
         plugins: {
-            "react-hooks": reactHooks,
             "vanilla-view": vanillaViewPlugin,
         },
         languageOptions: {
@@ -453,10 +448,6 @@ export default tseslint.config(
             },
         },
         rules: {
-            // ---- react-hooks classic rules ----
-            "react-hooks/rules-of-hooks": "error",
-            "react-hooks/exhaustive-deps": "warn",
-
             // ---- carried over verbatim from .eslintrc.json ----
             "no-useless-escape": "off",
             "@typescript-eslint/no-empty-function": "off",
@@ -564,28 +555,14 @@ export default tseslint.config(
                     message: "EPIC-057 C4-1: import from uikit/DataGrid, not from av-grid directly.",
                 }, {
                     name: "react",
-                    message: "EPIC-074 F-h: React is confined to editors/draw/**, where @excalidraw/excalidraw requires it as a peer dependency. Nothing else may import React.",
+                    message: "EPIC-110 D4: React is not part of the Persephone renderer source. Nothing in src/ may import React.",
                 }, {
                     name: "react-dom",
-                    message: "EPIC-074 F-h: React is confined to editors/draw/**, where @excalidraw/excalidraw requires it as a peer dependency. Nothing else may import React.",
+                    message: "EPIC-110 D4: React is not part of the Persephone renderer source. Nothing in src/ may import React.",
                 }],
                 patterns: ["av-grid/*", "react-dom/*"],
             }],
         },
     },
 
-    // Flat-config overrides replace rule options, so this draw exemption re-states the av-grid
-    // restriction to keep EPIC-057 C4-1 enforced inside the one legitimate React island.
-    {
-        files: ["src/renderer/editors/draw/**/*.ts", "src/renderer/editors/draw/**/*.tsx"],
-        rules: {
-            "no-restricted-imports": ["error", {
-                paths: [{
-                    name: "av-grid",
-                    message: "EPIC-057 C4-1: import from uikit/DataGrid, not from av-grid directly.",
-                }],
-                patterns: ["av-grid/*"],
-            }],
-        },
-    },
 );

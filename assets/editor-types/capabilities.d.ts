@@ -8,7 +8,7 @@ export interface CapabilityInfo {
     readonly version: number;
     readonly priority: number;
     /**
-     * Which handler serves this candidate — a built-in editor id (`md-view`, `draw-view`) for a
+     * Which handler serves this candidate — a built-in editor id (`md-view`) for a
      * `platform` origin, or the board's handler key otherwise. Without it two candidates for the
      * same id are indistinguishable, which matters most for `content.view`: six built-in editors
      * register it and they differ only by this field.

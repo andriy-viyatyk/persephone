@@ -760,9 +760,16 @@ appear here and are part of the epic, not assumed:
    The board uses the Phase D inline intent path first; measure structured-clone size and p95
    clone cost during this proof. Crossing the documented threshold is the trigger to add the
    deferred data-handle protocol here.
-4. **Removal** — delete `editors/draw`, its facade, matcher row, `EditorType` member and the
-   `app-asset://excalidraw` serving; `react`, `react-dom` and `@excalidraw/*` leave
-   `package.json`; the De-React programme's last exception closes.
+4. **Removal** — delete `editors/draw`, its facade, matcher row and `EditorType` member; the
+   De-React programme's last exception closes. **Shipped as [EPIC-110](epics/EPIC-110.md),
+   2026-09-25**, which corrected two details of this step:
+   - **There is no `app-asset://excalidraw` serving left to delete.** It was gone before the epic
+     began — the board's fonts already ship inside the board folder, as EPIC-109 intended.
+   - **The packages cannot leave `package.json`.** `scripts/build-board-lib.mjs` regenerates the
+     board's committed `lib/deps/` from `node_modules/@excalidraw/excalidraw`, bundling `react`,
+     `react-dom`, `react-dom/client` and `react/jsx-runtime` into it. They moved to
+     `devDependencies` instead, which is what this step's actual goal — no React in the shipped
+     renderer — requires, since electron-builder ships `dependencies` only. See EPIC-110 D4.
 
 Exit: the user-visible loss list from Phase F.3 is empty on a fresh install with no network;
 every existing `.excalidraw` page restores into the board; the core bundle no longer contains

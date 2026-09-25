@@ -5,6 +5,7 @@ import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { IImageExport } from "../base/IImageExport";
 import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
 import { app } from "../../api/app";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 export type SvgQueueEvent = { type: "focus" };
@@ -74,6 +75,7 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueu
                 title,
             });
         } catch (error) {
+            if (getMissingEditCapabilityMessage(error, "image.edit")) throw error;
             throw new Error(`SVG preview cannot open in Drawing Editor: ${errMessage(error)}`);
         }
     }

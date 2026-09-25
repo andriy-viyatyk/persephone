@@ -8,6 +8,7 @@ import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
 import { blobToDataUrl, copyPngBlobToClipboard } from "../shared/image-export";
 import type { IImageExport } from "../base/IImageExport";
+import { getMissingEditCapabilityMessage, type EditCapabilityId } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 export type HtmlQueueEvent = { type: "focus" };
@@ -96,7 +97,11 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
     }
 
     /** Run an export-derived action with a transient `capturing` guard + error toast. */
-    private async withCapture(action: (blob: Blob) => Promise<void> | void, failMessage: string): Promise<void> {
+    private async withCapture(
+        action: (blob: Blob) => Promise<void> | void,
+        failMessage: string,
+        capability?: EditCapabilityId,
+    ): Promise<void> {
         if (this.state.get().capturing) return;
         this.state.update((s) => {
             s.capturing = true;
@@ -104,7 +109,8 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
         try {
             await action(await this.exportPng());
         } catch (err) {
-            ui.notify(`${failMessage}: ${errMessage(err)}`, "error");
+            const message = capability ? getMissingEditCapabilityMessage(err, capability) : undefined;
+            ui.notify(message ?? `${failMessage}: ${errMessage(err)}`, message ? "warning" : "error");
         } finally {
             this.state.update((s) => {
                 s.capturing = false;
@@ -127,12 +133,12 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
         }, "Failed to open image");
     }
 
-    /** Open the captured PNG in the Draw editor (Excalidraw) for editing (new page). */
+    /** Open the captured PNG in the Excalidraw board for editing (new page). */
     editImage(): Promise<void> {
         return this.withCapture(async (blob) => {
             const dataUrl = await blobToDataUrl(blob);
             await pagesModel.addDrawPage(dataUrl, `${this.suggestedImageName()}.excalidraw`);
-        }, "Failed to open image for editing");
+        }, "Failed to open image for editing", "image.edit");
     }
 
     // ── Dispose ─────────────────────────────────────────────────────────

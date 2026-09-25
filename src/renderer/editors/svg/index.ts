@@ -10,6 +10,7 @@ import { savePngViaDialog } from "../shared/image-export";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
 import { ui } from "../../api/ui";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 function createContentsRoot(): HTMLSpanElement {
@@ -71,6 +72,11 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
         try {
             await this.model.openInDrawingEditor();
         } catch (error) {
+            const message = getMissingEditCapabilityMessage(error, "image.edit");
+            if (message) {
+                ui.notify(message, "warning");
+                return;
+            }
             ui.notify(`Failed to open SVG in Drawing Editor: ${errMessage(error)}`, "error");
         }
     };

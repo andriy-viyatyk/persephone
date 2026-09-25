@@ -264,8 +264,8 @@ explicit because it removes a notification the user may not have read. The imple
 `app.capabilities` is the script-facing capability registry and request surface. Its built-in
 handlers are seeded from editor declarations rather than editor-specific imports: `text.open`
 opens a text editor; `content.view` selects a built-in representation (`svg`, `html`, `markdown`,
-`mermaid`, `grid`, or `log`); `image.edit` opens the Drawing editor for an image payload; and
-`diagram.edit` converts diagram source for the Drawing editor. Trusted and enabled bundled board
+`mermaid`, `grid`, or `log`); `image.edit` opens the registered image-edit board for an image
+payload; and `diagram.edit` converts diagram source for the registered diagram-edit board. Trusted and enabled bundled board
 declarations are indexed beside those platform handlers, so `list()` and `handlers(id)` discover both origins
 without activation and `invoke(id, payload, options?)` can resolve a board handler by id.
 
@@ -543,7 +543,6 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` | `svg` (read-only), `savePngToFile()` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
-| `page.editor` | `DrawEditorFacade` | `DrawEditor` | `addImage()`, `exportAsSvg()`, `exportAsPng()`, `elementCount`, `editorIsMounted` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
 | `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, shared frame automation operations, secondary-frame selection, and reload |
@@ -614,7 +613,10 @@ defaults to a 2048-pixel maximum longer side, preserves aspect ratio, and does n
 depend on the active page's viewport. Callers may provide a positive integer `maxDimension`; a
 missing runtime URL is reported as an unavailable/loading error. Because AiVision result shaping
 applies `call.maxLength` before image conversion, callers should allow roughly 1.4 times the PNG
-byte size plus result overhead; an empty or partial record means the bound was too low.
+byte size plus result overhead; an empty or partial record means the bound was too low. `app.call()`
+and a board's `persephone.call()` default to an unbounded transport-size limit for programmatic
+results; an explicit `maxLength` still applies. The MCP `call` tool keeps its 20,000-character
+default because its result is agent-facing text.
 Interface definitions: `/src/renderer/api/types/*.d.ts`
 
 ## Auto-Cleanup Lifecycle
@@ -1185,7 +1187,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only + savePngToFile)
-    ├── ImageEditorFacade.ts     # Image viewer (bounded read, export, Drawing Editor, clipboard)
+    ├── ImageEditorFacade.ts     # Image viewer (bounded read, export, image-edit board, clipboard)
     ├── VideoEditorFacade.ts     # Video/audio playback and media state
     ├── FileDiffEditorFacade.ts  # File Diff revision state
     ├── BrowserEditorFacade.ts   # Browser page operations

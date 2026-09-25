@@ -154,7 +154,7 @@ export interface BoardManifest {
     contentMasks?: string[];
     /**
      * File-open resolution priority on Persephone's editor ladder (monaco 0 / grid 20 /
-     * draw 50 / viewers 100 / category 200). The board becomes the DEFAULT editor for its
+     * viewers 100 / category 200). The board becomes the DEFAULT editor for its
      * masks when this exceeds the best built-in claimant's priority for the file.
      * Omitted/0 → switch-option-only; the built-in default is unchanged. A board is always
      * a switch option regardless of this value.

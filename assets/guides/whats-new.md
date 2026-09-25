@@ -48,10 +48,22 @@ Release notes and changelog for Persephone (formerly js-notepad).
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
 - **Excalidraw ships as a bundled board:** `.excalidraw` files and image/diagram handoffs use the
   offline-capable bundled board by default. It appears under **Built-in** with a **Disable** action;
-  disabling it keeps the built-in Drawing editor as the fallback, and the disabled entry stays in
-  the list greyed out so you can right-click it and choose **Enable** again. Excalidraw library browsing now
+  disabling it removes those capabilities; if no replacement is installed, Persephone explains that
+  no image or diagram editor is registered. The disabled entry stays in the list greyed out so you can
+  right-click it and choose **Enable** again. Excalidraw library browsing now
   returns to the drawing, asks before adding a library, and merges accepted items with the existing
-  library. See [Drawing Editor](./editors/draw.md#libraries).
+  library. See [Excalidraw Board](./editors/draw.md#libraries).
+- **Script API breaking change — drawing pages are boards:** `pages[i].editor` for an Excalidraw page
+  now exposes the board facade. The removed `IDrawEditor`, `DrawEditorFacade`, and `draw-view` editor
+  id are no longer valid. `app.pages.addDrawPage()` is unchanged and remains the supported way to
+  create a drawing page.
+- **Script and Board link routing now uses capabilities:** route an image data URL with
+  `openRawLink(imageDataUrl, { editor: "image.edit" })`; the old `{ editor: "draw-view" }` form no
+  longer routes. When no handler is available, Persephone reports **No image editor is registered**
+  or **No diagram editor is registered** and points to Tools & Editors or a replacement board.
+- **Programmatic `call()` results are no longer silently truncated:** `app.call()` in scripts and
+  `persephone.call()` in boards are unbounded by default. Pass `maxLength` explicitly when you want
+  a limit; the MCP `call` tool keeps its 20,000-character display limit.
 - **Boards can write to the OS clipboard:** board authors can use `persephone.clipboard.writeText()`
   or `persephone.clipboard.writeImage()` for copy actions triggered from Persephone's own toolbar,
   even when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).
@@ -78,9 +90,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   in its own toolbar, themed and addressable by an agent, delivering an event to the board on each
   interaction. A board can also replace the toolbar's text label, which falls back to the board path
   when it sets nothing. See [Boards](./boards.md).
-- **The Drawing board has the Drawing editor's toolbar:** the bundled Excalidraw board now carries
-  the same five controls as the built-in Drawing editor — theme, copy image, save as SVG/PNG, open
-  in a new tab, and screen snip.
+- **The Excalidraw board has its drawing toolbar:** the bundled board carries five controls — theme,
+  copy image, save as SVG/PNG, open in a new tab, and screen snip.
 - **Board path switching now uses the Boards panels:** clicking the board path no longer opens a
   switcher; use the **Boards** panel or the Explorer **Boards** panel to switch boards.
 - **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now

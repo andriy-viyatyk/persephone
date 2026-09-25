@@ -8,7 +8,7 @@ Detailed organization of the codebase. Verified against actual source files.
 persephone/
 ├── src/                    # Source code
 │   ├── main/               # Electron main process
-│   ├── renderer/           # Native VanillaView frontend plus the Excalidraw React island (see below)
+│   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
 │   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
@@ -115,8 +115,8 @@ construction never waits for a preference read.
 
 The renderer entry is `src/renderer.ts`: after asynchronous application bootstrap it calls
 `mount(container)` exported by `src/renderer/index.ts`. The application shell, coupled views,
-editors, and UIKit are framework-free `VanillaView` classes. The only React root is the Excalidraw
-vendor island under `editors/draw/`; native global styles are installed by `theme/global-styles.ts`.
+editors, and UIKit are framework-free `VanillaView` classes. Native global styles are installed by
+`theme/global-styles.ts`.
 
 ```
 /src/renderer/
@@ -502,13 +502,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── MermaidEditor.ts          # EditorModel — SVG URL, loading, error, light mode
 │   │   ├── MermaidBodyView.ts         # Native preview body
 │   │   ├── render-mermaid.ts         # Rendering utilities (shared with Markdown)
-│   │   └── index.ts
-│   ├── draw/               # Excalidraw drawing editor (text-bearing, IContentHost + TRAIT)
-│   │   ├── DrawEditor.ts             # EditorModel — JSON parsing, fingerprint change detection
-│   │   ├── DrawBodyView.ts            # Native chrome, model binding, and vendor-host lifecycle
-│   │   ├── ExcalidrawIsland.tsx       # Deliberate React island required by Excalidraw
-│   │   ├── drawExport.ts             # Export helpers
-│   │   ├── drawLibrary.ts            # Library persistence
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (text-bearing, IContentHost + TRAIT)
 │   │   ├── LogViewEditor.ts          # EditorModel — JSONL parsing, entry management

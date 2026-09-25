@@ -32,7 +32,7 @@ function isLegacyTextFileHost(host: unknown): host is TextFileModel {
  *  - override `adoptHost` (call `super.adoptHost(host)` first) to attach
  *    domain subscriptions via `registerHostSubscription` /
  *    `subscribeHostContent` / `mirrorHostSettings` and to kick the initial
- *    parse when the editor parses inside adoption (Graph, Draw, Mermaid,
+ *    parse when the editor parses inside adoption (Graph, Mermaid,
  *    EnvVars pattern).
  *  - override `onHostAttached` when the initial load must not run inside
  *    `adoptHost` itself (Grid, Link, Notebook, Rest, LogView pattern) — the

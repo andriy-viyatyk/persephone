@@ -42,10 +42,10 @@ app.pages.activePage.content;
 
 Resolve a path in the live application object model from a script. Paths use the same names as the
 scripting API and can read values, invoke the final method, or assign a writable property. Results
-are plain JSON-safe values. Use `maxLength` to bound long strings or structured arrays and
-objects; structured truncation keeps whole values. The MCP `call` envelope reports how many
-collection items or properties were shown and how many were available; `app.call()` returns the
-bounded value itself.
+are plain JSON-safe values. Script calls are unbounded by default, so long strings and structured
+results arrive intact. Pass `maxLength` when you want to impose a bound; structured truncation keeps
+whole values. The MCP `call` envelope reports how many collection items or properties were shown and
+how many were available; `app.call()` returns the value itself.
 
 ```javascript
 // Read the grouped output page for the current script
@@ -79,7 +79,7 @@ if (panels.length) {
 | `path` | `string` | Object-model path, such as `page.grouped.content`, `pages[0].content`, or `settings.theme`. |
 | `options.args` | `unknown[]` | Arguments for the final method. Cannot be combined with `value`. |
 | `options.value` | `unknown` | Value for the final writable property. Cannot be combined with `args`. |
-| `options.maxLength` | `number` | Maximum serialized length for a shaped string or structured result. |
+| `options.maxLength` | `number` | Optional maximum serialized length for a shaped string or structured result. Omit it for an unbounded script result. |
 | `options.timeoutMs` | `number` | Per-call timeout for a remote board or browser-page `.app` leaf. Timeout precedence continues with the remote declaration, session-only `boards.callTimeoutMs`, then the 30-second default. |
 
 `app.call()` is rooted in the current script's window. It can address pages, editor
@@ -151,15 +151,15 @@ await app.boards.openBoard("C:/work/boards/My Board");
 // Request a specific editor — render Markdown instead of opening its source
 await app.openRawLink("C:/notes/README.md", { editor: "md-view" });
 
-// An image data URL + "draw-view" opens a new, untitled, editable Excalidraw
+// An image data URL + the image-edit capability opens a new, untitled, editable Excalidraw
 // drawing with the image embedded (equivalent to app.pages.addDrawPage)
-await app.openRawLink(imageDataUrl, { editor: "draw-view" });
+await app.openRawLink(imageDataUrl, { editor: "image.edit" });
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `href` | `string` | File path, URL, in-app link scheme, or (for `{ editor: "draw-view" }`) an image `data:` URL. |
-| `options.editor` | `string` | Optional. Request a specific editor for `href` (e.g. `"md-view"`). Falls back to the default editor when omitted or when the requested editor doesn't accept `href`. |
+| `href` | `string` | File path, URL, in-app link scheme, or (for `{ editor: "image.edit" }`) an image `data:` URL. |
+| `options.editor` | `string` | Optional. Request a specific editor or capability for `href` (e.g. `"md-view"` or `"image.edit"`). Falls back to the default editor when omitted or when the requested target doesn't accept `href`. |
 
 **Returns:** `Promise<void>` — resolves after the navigation is dispatched.
 

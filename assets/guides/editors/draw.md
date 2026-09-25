@@ -1,76 +1,63 @@
 ---
-title: "Drawing Editor"
+title: "Excalidraw Board"
 audience: both
-summary: "Excalidraw drawing canvas for editable shapes, annotation, screen snips, and export."
-editorId: "draw-view"
+summary: "The bundled Excalidraw board for drawing, annotation, screen snips, and image export."
 ---
 
-# Drawing Editor
+# Excalidraw Board
 
-Drawing Editor hosts an Excalidraw canvas for shapes, arrows, freehand marks, text, self-hosted fonts,
-and annotations. Its canvas theme can be changed independently of the app theme.
+The bundled Excalidraw board provides an editable canvas for shapes, arrows, freehand marks, text,
+images, and annotations. It is a board rather than a built-in editor, so it can be enabled,
+disabled, or replaced independently of Persephone.
 
 ## How to Open
 
-Open a `.excalidraw` file or send an image, SVG, Mermaid diagram, HTML capture, or screen snip to
-Excalidraw. When the bundled Excalidraw board is enabled, `.excalidraw` files and these handoffs use
-that board; the built-in Drawing editor remains available from **Tools & Editors → Built-in** and
-becomes the fallback when the board is disabled. Agents can create a drawing content page with
-`pages.addEditorPage("draw-view", "json", title, content)`.
+Open a `.excalidraw` file, choose **Excalidraw** from **Tools & Editors → Built-in**, or use an
+image, SVG, Mermaid, or HTML preview's **Edit Image**, **Open in Drawing**, or **Convert to
+Excalidraw** action. The board is bundled with Persephone and does not require a trust prompt.
+
+If Excalidraw is disabled, right-click it in **Tools & Editors → Built-in** and choose **Enable**.
+If no replacement handles the requested image or diagram action, Persephone shows **No image editor
+is registered** or **No diagram editor is registered** and tells you how to restore the capability.
 
 ## Layout
 
-```
-+---------------------------------------------------------------------+
-| [Nav]                  [Theme] [Copy] [Save] [Open] [Snip] [Switch] |  shared toolbar: page navigation left, Draw actions and switch right
-+---------------------------------------------------------------------+
-| [Excalidraw canvas]                                                 |  Excalidraw canvas below the toolbar
-+---------------------------------------------------------------------+
-```
+The Persephone toolbar above the board contains these board controls:
 
-### User-facing label → `elements` name
+- **Theme** — switch the Excalidraw canvas between light and dark themes.
+- **Copy Image** — copy the current drawing to the clipboard as an image.
+- **Save as file** — save the drawing as SVG or PNG.
+- **Open in new tab** — open an SVG or image export in another Persephone tab.
+- **Screen Snip** — capture a screen region and insert it into the drawing.
 
-- Theme, Copy image, Save, Open in new tab, and Screen Snip → no entry: Draw has no static `elements` list by design
-- Page navigation and Editor switch → no entry: shell-owned controls
-- Excalidraw tools and canvas → no entry: editor-internal/third-party content
+The Excalidraw canvas below the toolbar contains the normal Excalidraw drawing tools, selection,
+zoom, libraries, and canvas controls.
 
-### When the Excalidraw canvas and toolbar are mounted
-
-```
-+---------------------------------------------------------------------+
-| [Theme] [Copy] [Save] [Open] [Snip]                                 |  visible Draw toolbar content, not addressable facade controls
-+---------------------------------------------------------------------+
-| [Excalidraw canvas]                                                 |  Excalidraw canvas below the toolbar
-+---------------------------------------------------------------------+
-```
-
-### Drawn controls without `elements`
-
-- Draw toolbar controls — no entry: `DrawEditorFacade` publishes no static elements inventory.
-- Excalidraw tools and canvas — no entry: editor-internal/third-party content.
-
-## Drawing and export
-
-The canvas supports the normal Excalidraw drawing workflow, custom shape libraries, and a Screen Snip
-action that inserts a captured region directly into the drawing. Export drawings as 2x PNG or SVG to
-the clipboard, a file, or a new tab. Other viewers use this editor for annotation: an SVG, Mermaid
-diagram, image, or rendered HTML capture can arrive as drawing content.
-
-### Libraries
+## Libraries
 
 Use Excalidraw's **Library** controls to browse for a `.excalidrawlib` library. When you return to
-Persephone, it asks for confirmation before adding the library; accepted items are merged into your
-existing library rather than replacing it. The bundled Excalidraw board owns its library location:
-configure **Settings → Editors → Excalidraw → Library folder**. The old app-wide Drawing Library
-setting is no longer exposed by Persephone.
+Persephone, confirm before adding it; accepted items are merged with your existing library.
+Configure the location at **Settings → Editors → Excalidraw → Library folder**.
 
-## Agent API
+## Scripting
 
-After narrowing `page.editor.id` to `draw-view`, the `DrawEditor` facade exposes canvas count, mount
-state, image insertion, and export operations. It has no static UI elements inventory, so this guide
-describes user actions and facade methods without assigning names to canvas controls.
+`app.pages.addDrawPage(dataUrl, title?)` is still the supported way to create a new Excalidraw
+page with an image. A page opened in Excalidraw now exposes the board facade through
+`pages[i].editor`; the old `IDrawEditor`, `DrawEditorFacade`, and `draw-view` editor id no longer
+exist. Board-specific methods are available from the board's own facade/model as described in the
+[Board guide](./board.md) and [scripting API](../scripting/api/page.md#editor-facades).
+
+To route an image data URL through the general link API, request the capability rather than the
+removed editor id:
+
+```javascript
+await app.openRawLink(imageDataUrl, { editor: "image.edit" });
+```
+
+This is equivalent to `app.pages.addDrawPage(imageDataUrl)`. A normal image file or an
+`.excalidraw` file continues to use its ordinary content route.
 
 ## Errors and limits
 
-Drawing content is an Excalidraw document, not arbitrary image or SVG source. Use the viewer that
-produced an image for source editing, then send its rendered result to Drawing Editor for annotation.
+Excalidraw documents are drawing scenes, not arbitrary image or SVG source. Edit the source in its
+viewer, then send the rendered result to this board for annotation.

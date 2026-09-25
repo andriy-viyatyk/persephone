@@ -235,12 +235,13 @@ The **Tools & Editors** entry appears between Recent Files and Script Library. I
 - **Boards** — All trusted [boards](./boards.md) across every location, grouped by folder. Drag a board leaf to the **Pinned** rail; folder rows cannot be pinned by dragging.
 - **Tools** — All registered [Agent Tools](./agent-tools.md) toolsets.
 
-Click any item to create a new page (or open the board/toolset) with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set (for new installations) is: **Open Folder**, **Open File**, Script (JS), Drawing, Grid (CSV), Browser.
+Click any item to create a new page (or open the board/toolset) with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set (for new installations) is: **Open Folder**, **Open File**, Script (JS), **Excalidraw**, Grid (CSV), Browser.
 
 Bundled boards such as **Excalidraw** are listed in **Built-in Editors**, not in the **Boards** /
 **Registered boards** list. Right-click a bundled board and choose **Disable** to remove its file
-association while keeping the built-in Drawing editor available. It stays listed, greyed out, so
-you can right-click it again and choose **Enable**.
+association and capabilities. It stays listed, greyed out, so you can right-click it again and
+choose **Enable**. If no replacement handles an image or diagram handoff while it is disabled,
+Persephone shows the corresponding “No … editor is registered” message.
 
 **Open in new tab** — A button in the panel header opens the same content as a full page instead of a slide-out panel — handy when you want more room, or want to keep browsing while doing something else in the app. The full-page **Tools & Editors hub** has the same **Pinned** rail plus four tabs: **Built-in**, **Registered boards**, **Search boards**, and **Tools**. **Search boards** is hub-only — it browses the catalog of boards published by the project and lets you install one directly, without needing a matching file open. See [Boards — Published boards catalog](./boards.md#published-boards-catalog--discover-install-update).
 
@@ -248,7 +249,7 @@ The pin and unpin drag actions work in both the slide-out panel and the full-pag
 
 **Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
 
-Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always listed and can be pinned regardless of the clipboard-history setting.
+Items include all standard editors (Script, Grid, Notebook, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always listed and can be pinned regardless of the clipboard-history setting.
 
 **Clipboard** — Opens one dedicated page whose sidebar contains the Clipboard history panel. If
 history is disabled, the panel shows a **Disabled** badge, an explanation, and an **Open Settings**

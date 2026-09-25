@@ -41,7 +41,7 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 
 ## Object Model
 
-The **Object Model** is the central architectural concept. It provides a single, typed API (`app.*`) that all consumers use — native views, the bounded Excalidraw React island, user scripts, and coding agents all access the same interfaces.
+The **Object Model** is the central architectural concept. It provides a single, typed API (`app.*`) that all consumers use — native views, boards, user scripts, and coding agents all access the same interfaces.
 
 ```
   Consumers:    Native UI + draw island │ User Scripts │ Coding Agents
@@ -140,12 +140,8 @@ JSON owner over typed IPC; writes update the cache immediately and persist best-
 
 The renderer has a framework-free application shell. `src/renderer.ts` performs the asynchronous
 bootstrap and calls the `mount(container)` export from `src/renderer/index.ts`. The shell,
-coupled components, editor bodies, and Storybook are `VanillaView` classes. React is confined to
-the Excalidraw vendor island in `editors/draw/ExcalidrawIsland.tsx`; its root adapter lives beside
-that editor in `editors/draw/react-island.ts`. The `react` and `react-dom` runtime entries in
-`package.json` are retained solely for this island: `ExcalidrawIsland.tsx` uses React and the
-adjacent adapter uses `react-dom/client` to mount it. Global styles are installed by the native
-`theme/global-styles.ts` module, so startup creates no React root.
+coupled components, editor bodies, and Storybook are `VanillaView` classes. Global styles are
+installed by the native `theme/global-styles.ts` module.
 
 ```
 /src/renderer/
@@ -297,7 +293,7 @@ See [trait-system.md](./trait-system.md).
 - CSS Custom Properties — `color.ts` returns `var()` references, and theme definitions set actual values on `:root`
 - Theme-independent design tokens are emitted as `--space-*`, `--gap-*`, `--radius-*`, `--size-*`, and `--font-*` variables on `:root`; numeric exports remain available for JavaScript calculations
 - Theme definitions in `src/renderer/theme/themes/` (one file per theme, 9 themes)
-- `themeState` in `src/renderer/theme/theme-state.ts` is the shared `{ id, isDark }` snapshot: React consumers use the hook, while Monaco, canvas, webview, and other non-React consumers use `get()` and `subscribe()`
+- `themeState` in `src/renderer/theme/theme-state.ts` is the shared `{ id, isDark }` snapshot; Monaco, canvas, webview, and other native consumers use `get()` and `subscribe()`
 - `resolveColor()` in `src/renderer/theme/themes/index.ts` is the single JavaScript path for resolving a theme color to a concrete value; CSS continues to use `var(--color-...)`
 - Startup: synchronous `fs.readFileSync` + inline `<script>` in `index.html` for flash-free startup
 
@@ -401,11 +397,10 @@ copies. The Settings page registers trusted and bundled declarations as board-ow
 `BoardSettingsStore` persists user overrides and resolves the manifest default whenever an override
 is absent. Reset removes the override, which causes the current manifest default to be delivered to
 the board. The Excalidraw board declares `library-path` itself, so `drawing.library-path` is no
-longer part of Persephone's typed settings catalog. The legacy `drawLibrary.ts` helper remains an
-intentional untyped compatibility consumer during the transition and is not part of this ownership
-change; the board-settings bridge imports a non-empty user-selected legacy value once, skips the
-legacy path that is already the board's `<userData>/data/excalidraw-lib` fallback, and records
-completion explicitly so resetting the board setting does not trigger the import again.
+longer part of Persephone's typed settings catalog. The board-settings bridge imports a non-empty
+user-selected legacy value once, skips the legacy path that is already the board's
+`<userData>/data/excalidraw-lib` fallback, and records completion explicitly so resetting the board
+setting does not trigger the import again.
 
 ### Capability bus
 
@@ -478,7 +473,7 @@ Every editor follows the same pattern:
 ├── index.ts              # EditorModule registration (factory + matchers; required native View)
 ├── [Name]Editor.ts       # EditorModel subclass — state, lifecycle, business logic
 ├── [Name]BodyView.ts      # Native body (when the editor has an embeddable body)
-├── [Name]Body.tsx         # Only for the Excalidraw vendor island under editors/draw/
+├── [Name]BodyView.ts       # Native embeddable body, when the editor has one
 └── components/           # Editor-specific (optional)
 ```
 
@@ -486,7 +481,6 @@ Every editor follows the same pattern:
 
 | Type | Convention | Example |
 |------|------------|---------|
-| React island | PascalCase.tsx | `ExcalidrawIsland.tsx` (draw only) |
 | Model/State | PascalCase.ts | `PagesModel.ts`, `GridViewModel.ts` |
 | Utility | kebab-case.ts | `csv-utils.ts` |
 | Types | kebab-case.d.ts | `page.d.ts`, `settings.d.ts` |

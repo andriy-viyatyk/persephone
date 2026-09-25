@@ -86,7 +86,7 @@ When subscribing to `openRawLink`, the event IS the `ILinkData` object:
 | Property | Type | Description |
 |----------|------|-------------|
 | `href` | `string` | The raw link string (file path, URL, cURL, etc.). Set by `io.createLinkData()`. |
-| `target` | `string \| undefined` | Target editor ID override. Optional — auto-resolved from URL if omitted. |
+| `target` | `string \| undefined` | Target editor or capability ID override. Optional — auto-resolved from URL if omitted. For example, use `"image.edit"` for an image data URL. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 
 ---
@@ -111,7 +111,7 @@ await app.events.openLink.sendAsync(
 | Property | Type | Description |
 |----------|------|-------------|
 | `url` | `string` | Normalized URL or file path. Set by link parsing or by the caller directly. |
-| `target` | `string \| undefined` | Target editor ID. Optional — auto-resolved if omitted. |
+| `target` | `string \| undefined` | Target editor or capability ID. Optional — auto-resolved if omitted. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 
 #### ILinkMetadata
@@ -156,7 +156,7 @@ When subscribing to `openContent`, the event IS the `ILinkData` object with pars
 | Property | Type | Description |
 |----------|------|-------------|
 | `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). |
-| `target` | `string` | Resolved editor ID. |
+| `target` | `string` | Resolved editor or capability ID. |
 | `url` | `string` | Resolved URL or file path. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 | *(other fields)* | | All original `ILinkData` fields (title, headers, pageId, etc.) pass through unchanged. |

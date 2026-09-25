@@ -395,7 +395,7 @@ interface PersephoneBoardApi {
      *  board holds in memory rather than a file `openRawLink` could point at.
      *
      *  `editor` must be a registered content-host editor id (`"md-view"`, `"grid-json"`,
-     *  `"monaco"`, `"draw-view"`, …); `language` defaults to `"plaintext"`; `title` defaults to
+     *  `"monaco"`, …); `language` defaults to `"plaintext"`; `title` defaults to
      *  `"untitled"`. Rejects with a readable message for an unknown editor or language, a
      *  standalone editor, another board's id, or content over 16 M characters.
      *

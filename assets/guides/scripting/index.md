@@ -478,8 +478,10 @@ await app.shell.openExternal("https://github.com");
 ### Resolve the live object model
 
 `app.call()` lets a script address the same discoverable object-model paths used by the MCP `call`
-tool. Use `args` to invoke the final method or `value` to assign a writable property; these options
-are mutually exclusive:
+tool. Script results are unbounded by default, so programmatic reads are not silently clipped at the
+MCP tool's 20,000-character display limit. Pass `maxLength` explicitly when you want a bound. Use
+`args` to invoke the final method or `value` to assign a writable property; these options are
+mutually exclusive:
 
 ```javascript
 const content = await app.call("page.content");

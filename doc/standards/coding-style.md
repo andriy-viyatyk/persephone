@@ -59,28 +59,11 @@ every other owner. The explicit
 Clipboard Web API reads remain appropriate where a feature needs to read external clipboard
 content.
 
-## React island
+## Renderer views
 
-React is confined to the Excalidraw vendor island under `src/renderer/editors/draw/`. New renderer
-components and editor chrome use native `VanillaView` classes and DOM events. Do not add React
-imports outside that directory.
-
-```typescript
-// GOOD
-function ExcalidrawIsland({ title }: { title: string }) {
-  return <h1>{title}</h1>;
-}
-
-// Or with interface
-interface MyComponentProps {
-  title: string;
-  onClick?: () => void;
-}
-
-function MyComponent({ title, onClick }: MyComponentProps) {
-  return <h1 onClick={onClick}>{title}</h1>;
-}
-```
+Renderer components and editor chrome use native `VanillaView` classes and DOM events. Keep
+framework-specific rendering out of the renderer; use the model/view lifecycle and native slots
+described in [model-view-pattern.md](model-view-pattern.md).
 
 ### Hooks at Top Level
 

@@ -59,7 +59,7 @@ await page.tab.highlight("page-tab");
 
 The operation-bearing ids are `monaco`, `grid-json`, `grid-csv`, `grid-jsonl`, `notebook-view`,
 `rest-client`, `env-vars-view`, `archive-view`, `log-view`, `category-view`, `git-tree`,
-`link-view`, `md-view`, `svg-view`, `html-view`, `mermaid-view`, `draw-view`,
+`link-view`, `md-view`, `svg-view`, `html-view`, `mermaid-view`,
 `browser-view`, `mcp-view`, `image-view`, `video-view`, `file-diff`, `board-view`, `board-info`,
 `toolset-view`, `tools-hub-view`, `mneme-config`, and `mneme-root`. A custom board secondary view
 uses an id such as `board-editor:details`. Each facade also exposes its registry `name`.
@@ -89,7 +89,7 @@ ids preserve the registry's existing rejection. The page toolbar is available as
 ## Editor facades
 
 The current `page.editor` value exposes the following existing operation surfaces when its id is
-narrowed:
+narrowed. A drawing page is a board page, so its `pages[i].editor` value is the board facade.
 
 - `monaco`: selection, cursor, insertion, replacement, line reveal, highlighting, and the
   page-local `wordWrap` / `toggleWordWrap()` controls.
@@ -100,7 +100,8 @@ narrowed:
 - `svg-view`: SVG source and PNG export.
 - `html-view`: HTML source, preview capture, image export, and resource/image actions.
 - `mermaid-view`: diagram state and PNG export.
-- `draw-view`: drawing image insertion and SVG/PNG export.
+- `board-view` and `board-editor:<id>`: board state and board-specific operations. An Excalidraw
+  page uses this board facade; it no longer has a dedicated drawing-editor facade.
 - `browser-view`: browser navigation, tabs, DOM queries, ref-based interaction, waits, screenshots,
   network requests, and evaluation. DOM, wait, screenshot, and network methods accept an optional
   `{ tabId }` for a specific internal browser tab.

@@ -3,9 +3,6 @@ import "./renderer/theme/style-layers.css";
 import "./renderer/theme/root.css";
 import { app } from "./renderer/api/app";
 import { api } from "./ipc/renderer/api";
-import { startPerformanceJanitor } from "./renderer/core/utils/performance-janitor";
-
-startPerformanceJanitor();
 
 async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     const [cont] = await Promise.all([

@@ -8,7 +8,7 @@ editorId: "mermaid-view"
 # Mermaid Diagram Viewer
 
 Mermaid Viewer renders diagrams from Mermaid source with zoom, pan, theme selection, image export,
-and two different Drawing Editor handoffs.
+and two different Excalidraw handoffs.
 
 ## How to Open
 
@@ -65,10 +65,11 @@ independent of the app theme. **Copy** places the rendered diagram on the clipbo
 PNG** rasterizes it with Persephone's renderer.
 
 **Convert to Excalidraw** turns flowchart, sequence, and class diagrams into individually editable
-shapes. **Open in Drawing Editor** embeds any diagram type as one flat image for annotation; state,
+shapes. **Open in Drawing** embeds any diagram type as one flat image for annotation; state,
 ER, Gantt, pie, and git-graph diagrams use this image route when native conversion is unavailable.
-When the bundled Excalidraw board is enabled, both handoffs open that board; disabling it uses the
-built-in Drawing editor.
+When no board provides the requested capability, Persephone shows **No image editor is registered**
+for the flat-image route or **No diagram editor is registered** for native conversion, with a
+suggestion to enable Excalidraw or install a replacement.
 
 ## Agent API
 

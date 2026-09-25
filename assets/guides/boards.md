@@ -91,10 +91,11 @@ Some editors are shipped as **bundled boards**. They appear in **Tools & Editors
 than **Boards** / **Registered boards**, and they need no trust confirmation because they are part of
 the Persephone installation. The bundled **Excalidraw** board handles `.excalidraw` files and is
 included in the offline installation. Right-click it in the Built-in list and choose **Disable** to
-remove its file association and return image and diagram handoffs to the built-in Drawing editor;
-the Drawing editor itself remains available. A disabled bundled board stays in the Built-in list,
-greyed out and no longer creatable — right-click it and choose **Enable** to bring it back. The
-change takes effect immediately, with no restart.
+remove its file association and its image/diagram handoff capabilities. If no replacement board is
+installed, those actions show **No image editor is registered** or **No diagram editor is
+registered**. A disabled bundled board stays in the Built-in list, greyed out and no longer
+creatable — right-click it and choose **Enable** to bring it back. The change takes effect
+immediately, with no restart.
 
 The three parts:
 
@@ -572,15 +573,16 @@ const pageId = await persephone.openContent({
 ```
 
 `editor` is a registered content-host editor such as `"monaco"`, `"grid-json"`, `"md-view"`,
-`"mermaid-view"`, or `"draw-view"`. `language` defaults to `"plaintext"` and `title` to
+`"mermaid-view"`, or another registered content-host editor. `language` defaults to `"plaintext"` and `title` to
 `"untitled"`. The call creates the page and returns its id; it does not provide a way for the
 board to read, navigate, close, or modify other pages. It rejects for an unknown editor or
 language, a standalone editor, another board, or content over 16 million characters, so handle
 the returned Promise.
 
 The bundled Excalidraw board is a content-host board. Opening an image, SVG, or Mermaid result in
-Drawing routes it to the enabled Excalidraw editor; if the bundled board is disabled, the built-in
-Drawing editor handles the same handoff.
+Excalidraw routes it to the enabled board. If it is disabled, install or enable another board that
+provides the required image or diagram capability; otherwise Persephone reports that no such
+editor is registered.
 
 ### `persephone.call(path, options?)`
 
@@ -593,8 +595,9 @@ await persephone.call("page.grouped.content", { value: JSON.stringify(matches, n
 ```
 
 The method always suppresses hints and returns only a JSON-safe shaped value. `args` calls the final
-method, `value` assigns a writable property, and `maxLength` bounds strings or structured results;
-structured truncation keeps whole values. `persephone.call()` returns the bounded value itself;
+method, `value` assigns a writable property, and an explicit `maxLength` optionally bounds strings
+or structured results; structured truncation keeps whole values. Board calls are unbounded by
+default, so a large string arrives intact. `persephone.call()` returns the value itself; the
 the `shown`/`total` metadata is part of the external MCP `call` envelope. `args` and `value` are
 mutually exclusive. Calls reject as `Error` on resolver, transport, timeout, or trust failures.
 Trust is checked at resolution time, and existing descriptor restrictions still apply. Calls remain
@@ -816,7 +819,7 @@ Declare the association with fields in `board-manifest.json`:
 | `fileMasks` | One or more glob masks matched against the file's name — `*` matches any run of characters, `?` matches a single character. A bare extension (e.g. `drawio` or `.drawio`) is treated the same as `*.drawio`. A mask with no wildcard but a dot inside it is an **exact file name** — `"DASHBOARD.md"` claims files named exactly that, not every `.md` file. Masks also support compound extensions, e.g. `*.grid.json`. |
 | `contentMasks` | Optional regular-expression sources tested case-insensitively against the page's text. A match adds the board to the editor switch, including on an untitled in-memory page. Content detection is a switch option only: it never chooses the editor that opens a file. A board may use `contentMasks` alone or together with `fileMasks`; only the first 64 KB is checked and invalid expressions are ignored. |
 | `folderMasks` | Optional — one or more glob masks matched against the file's *parent folder*, narrowing where `fileMasks` applies. See [Scoping to a folder](#scoping-to-a-folder--foldermasks) below. |
-| `editorPriority` | A number that decides whether the board also becomes the **default** editor for matching files (not just a switch option). Persephone's built-in editors each sit at their own priority level; set a value higher than the built-in editor for that file type to make the board the one that opens automatically. Ties go to the built-in editor. Omit it (or leave it `0`) and the board is offered only as a switch option — the built-in editor keeps opening by default. Built-in priority levels: Text Editor `0`, Markdown Preview `10`, compound-name editors such as `*.grid.json`/`*.note.json` `20`, Drawing `50`, PDF/image/archive/video viewers `100`. For example, a board claiming `.md` files (like the `folderMasks` example below, which uses `fileMasks: ["DASHBOARD.md"]`) needs `editorPriority` **above 10** to open by default — Markdown Preview now claims that slot, not the Text Editor's floor of `0`. |
+| `editorPriority` | A number that decides whether the board also becomes the **default** editor for matching files (not just a switch option). Persephone's built-in editors each sit at their own priority level; set a value higher than the built-in editor for that file type to make the board the one that opens automatically. Ties go to the first registered match. Omit it (or leave it `0`) and the board is offered only as a switch option — the normal editor keeps opening by default. Built-in priority levels include Text Editor `0`, Markdown Preview `10`, compound-name editors such as `*.grid.json`/`*.note.json` `20`, and the bundled Excalidraw board `50`. For example, a board claiming `.md` files (like the `folderMasks` example below, which uses `fileMasks: ["DASHBOARD.md"]`) needs `editorPriority` **above 10** to open by default — Markdown Preview claims that slot. |
 | `editorName` | The label shown for the board in the editor-switch control. Falls back to the board's folder name if omitted. |
 | `editorKind` | Optional — `"simple"` (default), `"content-host"`, or `"stream-host"`. A simple board reads/writes a path; a content-host board receives text through `persephone.host.*`; a stream-host board receives an origin-local pipe URL through `persephone.host.streamUrl()` without materialization. |
 | `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive or at an `http(s)` URL. Persephone copies those non-local sources into a local cache file first, so the board's own code can use `persephone.getFilePath()`. It is the copy-based alternative to `stream-host` and is ignored by content-host and stream-host boards. |

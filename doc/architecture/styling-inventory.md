@@ -70,8 +70,8 @@ handles, editor chrome, and content-specific presentation; they are not part of 
 ## Ownership and boundaries
 
 `theme/root.css` is static application geometry, while `theme/global-styles.ts` owns the
-theme-dependent native stylesheet. The Excalidraw island is the only React boundary and its
-`editors/draw/react-island.ts` host is not part of the component-style inventory.
+theme-dependent native stylesheet. All renderer component boundaries are native and editor-local
+styling is kept out of the shell inventory.
 
 Inline styles remain appropriate for measured layout, image dimensions, and third-party/native
 hosts. Static component presentation belongs in a co-located stylesheet and

@@ -1,7 +1,7 @@
 ---
 title: "SVG Preview"
 audience: both
-summary: "Live SVG preview with zoom, raster export, clipboard copy, and Drawing Editor handoff."
+summary: "Live SVG preview with zoom, raster export, clipboard copy, and Excalidraw handoff."
 editorId: "svg-view"
 ---
 
@@ -53,8 +53,9 @@ file remains in Text Editor.
 ## Preview actions
 
 The preview reflects unsaved SVG edits. Use zoom and pan, **Save as PNG**, **Copy**, or **Open in
-Drawing Editor** to place the rendered SVG in an Excalidraw canvas. With the bundled Excalidraw
-board enabled, the handoff opens that board; disabling it uses the built-in Drawing editor.
+Drawing** to place the rendered SVG in the bundled Excalidraw board. If no board provides the
+`image.edit` capability, Persephone shows **No image editor is registered. Enable the board in
+Tools & Editors or install a replacement.**
 
 ## Agent API
 

@@ -30,7 +30,6 @@ All editor code lives in `/src/renderer/editors/`.
 | `notebook-view` | `NotebookEditor` | `.note.json` | ✓ | ✓ |
 | `link-view` | `LinkEditor` | `.link.json` | ✓ | ✓ |
 | `log-view` | `LogViewEditor` | `.log.jsonl` | ✓ | ✓ |
-| `draw-view` | `DrawEditor` | `.excalidraw` | ✓ | ✓ |
 | `rest-client` | `RestClientEditor` | `.rest.json` | ✓ | ✓ |
 | `env-vars-view` | `EnvVarsEditor` | `.env.json` | ✓ | ✓ |
 | `file-diff` | `FileDiffEditor` | (switch — "Git Diff", offered for files in a git repo) | ✓ | ✓ |
@@ -133,11 +132,9 @@ miss can therefore fail during synchronous `attachEditorToPage`, while a later v
 is reported by the native error host. A guard around `createEditorFromFile` cannot be treated as
 coverage for either later boundary; each caller or view owner must handle the boundary it owns.
 
-The rest-client, env-vars, and file-diff editor bodies are native `VanillaView`s. The draw
-editor is native around its vendor boundary: `DrawBodyView` owns the chrome, model bindings, and
-teardown, while `ExcalidrawIsland.tsx` is the named React island required by the Excalidraw
-package. A vendor host introduced by a native view must have explicit geometry in its scoped CSS
-when the hosted widget cannot establish its own size.
+The rest-client, env-vars, file-diff, and board editor bodies are native `VanillaView`s. A board
+host introduced by a native view must have explicit geometry in its scoped CSS when the hosted
+widget cannot establish its own size.
 
 ### Monaco widget hosting
 
@@ -502,7 +499,6 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` |
-| `page.editor` | `DrawEditorFacade` | `DrawEditor` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` |
 | `page.editor` | `ImageEditorFacade` | `ImageEditor` |
@@ -546,7 +542,6 @@ File path → editorRegistry.resolve(filePath) → EditorModule → createEditor
 | 0 | `monaco` | everything — the floor that guarantees a file always resolves |
 | 10 | `md-view` | any extension the Monaco language table maps to `markdown` |
 | 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `rest-client`, `link-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
-| 50 | `draw-view` | `.excalidraw` |
 | 100 | `image-view`, `archive-view`, `video-view` | binary-format extensions |
 | 200 | `category-view` | `tree-category://` links |
 
@@ -583,7 +578,7 @@ A trusted or bundled **Board** can register itself as the editor for a file type
   folder-editor association even when the board has no `fileMasks` or `contentMasks`.
 - `folderEditorPriority` — optional folder-resolution priority for `folderEditorMasks`; a board
   becomes the default folder editor only when it strictly exceeds the matching built-in priority.
-- `editorPriority` — the board's slot on the same numeric resolution ladder the built-in editors use (monaco 0 / markdown 10 / compound names 20 / draw 50 / viewers 100 / category 200 — see [Editor Resolution](#editor-resolution)). The board becomes the **default** editor for its masks only when this strictly exceeds the best built-in claimant; omitted/`0` makes it a switch option only. Note the floor is not always 0: a board claiming a Markdown file competes with `md-view` at 10, so it needs `editorPriority` above **10** — not merely above 0 — to open by default.
+- `editorPriority` — the board's slot on the same numeric resolution ladder the built-in editors use (monaco 0 / markdown 10 / compound names 20 / viewers 100 / category 200 — see [Editor Resolution](#editor-resolution)). The board becomes the **default** editor for its masks only when this strictly exceeds the best built-in claimant; omitted/`0` makes it a switch option only. Note the floor is not always 0: a board claiming a Markdown file competes with `md-view` at 10, so it needs `editorPriority` above **10** — not merely above 0 — to open by default.
 - `editorName` — the switch-widget label (falls back to the manifest `name`, then the folder name).
 - `editorSources` — `"local"` (default) or `"any"`: whether the board may be offered for a **non-local** source (an archive entry, an `http(s)` URL). Default-closed on purpose — see [Non-Local Sources](#non-local-sources).
 
@@ -608,8 +603,9 @@ Callers may legitimately pass a bare file **name** instead of a path — a page 
 **Merged resolution.** `resolveEditorIdForFile(filePath, matchPath?)` reads both registries and returns the winning id: it compares the best built-in `acceptFile` priority against the highest-priority trusted or bundled board claiming the file. A board wins only on a strictly-greater priority (built-ins win exact ties; among boards, registry order), and — for a non-local source — only when it is eligible for one (see [Non-Local Sources](#non-local-sources)). The optional `matchPath` exists because those are two different questions about the same open: locality is judged on the **original** url (`isPlainLocalPath`), while mask and built-in matching run against the **effective** path, so an `archive.zip!doc.pdf` entry is matched as `doc.pdf` without being mistaken for a local file. This helper — **not** `editorRegistry.resolveId` — is the merge point, called at the two file-open decision points: direct open (`PagesLifecycleModel.newEditorModel`) and the Layer 2 `openRawLink` file resolver (`content/resolvers.ts`). It is deliberately kept out of `editorRegistry.resolveId` so a `board-editor:<root>` id never leaks into `TextFileModel`/`resolvers` internal lookups.
 
 Bundled and trusted board matches use the same priority ladder: built-ins win exact ties, and
-board-to-board ties follow registry order. The bundled Excalidraw board declares priority `60`,
-so it wins over the built-in `.excalidraw` matcher at `50` while both editors remain available.
+board-to-board ties follow registry order. The bundled Excalidraw board declares priority `50`,
+which is sufficient because Monaco is the remaining `.excalidraw` fallback at priority `0`, while
+a trusted replacement at the same board priority wins by the board-origin tie rules.
 
 For folders, `resolveEditorIdForFolder(folderPath)` performs the analogous merge over the built-in
 folder resolver and trusted or bundled `folderEditorMasks`, but `getFolderEditorsForFolder(folderPath)` keeps
@@ -696,7 +692,6 @@ Every editor follows this pattern:
 ├── index.ts               # EditorModule export — factory + matchers
 ├── [Name]Editor.ts        # EditorModel subclass (state, lifecycle, business logic)
 ├── [Name]BodyView.ts      # Native body, or [Name]View.ts for a standalone main view
-├── [Name]Body.tsx         # Only for the Excalidraw vendor island under editors/draw/
 ├── components/            # Editor-specific components (optional)
 └── utils/                 # Editor-specific utilities (optional)
 ```
@@ -723,7 +718,7 @@ matcher. The default `makeAccepts` order is `acceptFile(fileName)` first, then
 switcher can appear on an extensionless or untitled page, while a matcher can use the optional
 file name to keep a specialized editor tied to its filename pattern. For example, Markdown,
 JSON, CSV, JSONL, HTML, and Mermaid switchers can be selected from their language alone; the
-specialized JSON editors and `draw-view` retain filename/content-specific safeguards. `svg-view`
+specialized JSON editors retain filename/content-specific safeguards. `svg-view`
 is the one XML exception: it accepts `xml` for an extensionless page (including an untitled page)
 but not for a named `.xml` file, which is not assumed to be SVG.
 

@@ -518,7 +518,7 @@ page. Persephone closes the tab the return created and leaves the tab the user w
 - `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
   `{ editor }` to request a specific editor (e.g. `openRawLink(path, { editor: "md-view" })` to render
   a Markdown doc instead of its source); falls back to the default editor when omitted/unmatched.
-  An **image `data:` URL** with `{ editor: "draw-view" }` opens the image as a **new editable
+  An **image `data:` URL** with `{ editor: "image.edit" }` opens the image as a **new editable
   Excalidraw drawing** (rasterize your view to a PNG data URL first) — see the how-to recipe
   linked below.
   - **External links are auto-routed.** A plain `<a href="https://…">` click inside a board is
@@ -534,7 +534,7 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   the board equivalent of the script API's `pages.addEditorPage(...)`, and the right call whenever
   the content lives in the board's memory rather than in a file `openRawLink` could point at (a
   rendered Markdown summary, an extracted subgraph, a table to open in the JSON grid). `editor` is a
-  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, `"draw-view"`, …);
+  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, …);
   `language` defaults to `"plaintext"`, `title` to `"untitled"`.
   ```js
   const pageId = await persephone.openContent({
@@ -584,8 +584,9 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call
   always uses `hints: "never"` and returns only a JSON-safe plain value; it rejects an `Error` for
   resolver, transport, timeout, or serialization failures. `args` invokes the final method,
-  `value` assigns a writable property, and `maxLength` bounds shaped strings or structured results
-  (structured truncation keeps whole values). `persephone.call()` returns the bounded value itself;
+  `value` assigns a writable property, and an explicit `maxLength` optionally bounds shaped strings
+  or structured results (structured truncation keeps whole values). Board calls are unbounded by
+  default. `persephone.call()` returns the bounded value itself;
   `shown`/`total` metadata is available in the external MCP `call` envelope. `args` and `value`
   cannot be combined.
   ```js
@@ -1046,7 +1047,7 @@ the plumbing has usually been solved once already:
 **<https://github.com/andriy-viyatyk/persephone-boards/tree/main/how-to>**
 
 Example: *Open an image in the Drawing (Excalidraw) editor* documents the
-`openRawLink(imageDataUrl, { editor: "draw-view" })` case above (data-URL-only, opens a new
+`openRawLink(imageDataUrl, { editor: "image.edit" })` case above (data-URL-only, opens a new
 untitled drawing, PNG-over-SVG). Add a new recipe there when you solve a fresh integration case.
 
 ## Errors & verification

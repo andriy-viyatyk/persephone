@@ -158,7 +158,7 @@ preview, REST client (`.rest.json` collections).
 ## Tech Stack
 
 - **Runtime:** Electron 43 — [Castlabs ECS](https://github.com/castlabs/electron-releases) fork with Widevine DRM (nodeIntegration: true, contextIsolation: false)
-- **Frontend:** framework-free `VanillaView` classes; React 19 only in the Excalidraw island `editors/draw/**`
+- **Frontend:** framework-free `VanillaView` classes; the shipped renderer has no React runtime
 - **Editor:** Monaco
 - **State:** custom reactive primitives (TOneState, TGlobalState, TComponentState, TModel)
 - **Build:** Vite 8 (rolldown) — `scripts/dev.mjs` (dev + HMR), `scripts/build-prod.mjs`, electron-builder
@@ -178,7 +178,7 @@ npm run lint        # ESLint
 ```
 /src
   /main              # Electron main process
-  /renderer          # VanillaView frontend; React confined to editors/draw/**
+  /renderer          # VanillaView frontend
     /api             # Object Model — app.settings, app.pages, app.fs, app.proc, etc.
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
     /editors         # ALL editors (text, grid, markdown, compare, notebook, board, …)
@@ -266,19 +266,11 @@ TextFileIOModel uses dual pipes: primary (source file) + cache (auto-save). Pipe
 `sendAsync()` pipeline awaits subscribers newest-first, letting late subscribers (e.g. the open
 handler) intercept before earlier ones; it stops when the event is marked handled.
 
-### 7. React-root measurement and conversion debugging
-`editors/draw/react-island.ts` owns the only React-root adapter; `mountReactHandle` marks its host
-with `data-react-root` — the authoritative marker for a live React root (`fillSlot` is native,
-creates none). Check visibility (`offsetParent`) separately from `textContent`, which includes
-hidden subtrees. If a converted dynamic import reports `Failed to fetch dynamically imported module`
-after a `.tsx` → `.ts` rename, touch the importer to invalidate Vite's stale specifier resolution —
-a renderer reload alone does not clear it.
-
 ## Coding Standards (Quick Reference)
 
 - **TypeScript** for all new code
 - **Static/co-located CSS** for native views; editor-owned generated-content and integration styling in scoped local CSS
-- **React hooks only inside `editors/draw/**`**; `VanillaView` classes everywhere else
+- **Framework-free renderer views** — use `VanillaView` classes and explicit model/view lifecycles
 - **Direct imports** over barrel imports (avoids circular deps)
 - **Meaningful names** — descriptive, no abbreviations
 - **No hardcoded colors** — only `import color from "../../theme/color"`; never hex, `rgb()`/`rgba()`, or named colors. Missing color → add to `color.ts` and all themes in `/src/renderer/theme/themes/`.

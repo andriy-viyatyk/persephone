@@ -50,7 +50,7 @@ editor when available, or the guide contents otherwise.
   - **Open Folder** — Pick a folder; opens a new tab with the File Explorer panel rooted at that folder. Such a page is Persephone's equivalent of a VS Code workspace
   - **Script (JS)** — JavaScript file for scripting
   - **Script (TS)** — TypeScript file for scripting
-  - **Drawing** — Excalidraw-based drawing canvas
+  - **Excalidraw** — bundled Excalidraw drawing board
   - **Grid (JSON)** — Grid editor for JSON data
   - **Grid (CSV)** — Grid editor for CSV data
   - **Browser** — Built-in web browser (or pick a specific profile / incognito)

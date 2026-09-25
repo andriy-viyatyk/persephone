@@ -132,12 +132,6 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
             && /"type"\s*:\s*"link-editor"/.test(content)
             && content.includes('"links"'),
     },
-    "draw-view": {
-        acceptFile: (fn) => (matchesExtension(fn, [".excalidraw"]) ? 50 : -1),
-        switchOption: (_lang, fn) => (!!fn && matchesExtension(fn, [".excalidraw"]) ? 10 : -1),
-        validForLanguage: (lang) => lang === "json",
-        detectsContent: (_lang, content) => /^\s*\{\s*"type"\s*:\s*"excalidraw"/.test(content),
-    },
     "image-view": {
         acceptFile: (fn) => (matchesExtension(fn, IMAGE_EXTENSIONS) ? 100 : -1),
     },

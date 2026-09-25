@@ -62,7 +62,6 @@ classDiagram
     EditorModel <|-- NotebookEditor
     EditorModel <|-- LinkEditor
     EditorModel <|-- LogViewEditor
-    EditorModel <|-- DrawEditor
     EditorModel <|-- RestClientEditor
     EditorModel <|-- BrowserEditorModel
     EditorModel <|-- ImageEditor
@@ -83,7 +82,6 @@ classDiagram
     NotebookEditor ..|> IContentHostTrait
     LinkEditor ..|> IContentHostTrait
     LogViewEditor ..|> IContentHostTrait
-    DrawEditor ..|> IContentHostTrait
     RestClientEditor ..|> IContentHostTrait
 
     MonacoEditor o-- IContentHost : composes

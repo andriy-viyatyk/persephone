@@ -176,8 +176,10 @@ architecture to a task history:
 
 1. The capability index remains renderer-local and derived. Trust changes rebuild it in each
    renderer; there is no main-owned registry or `registryChanged` broadcast.
-2. Links remain content-only. A capability request and a content link have different lifecycles and
-   result channels, so `ILinkData.target` does not carry capability ids.
+2. Links may carry a capability id when opening content is the capability request. For example,
+   `target: "image.edit"` routes a `data:image/*` URL through the image-edit capability and
+   `addDrawPage()` remains the page-producing implementation. Layer 2 may set or override the
+   target before Layer 3 consumes it; ordinary content links still resolve through the normal pipe.
 3. Caller-window routing is the rule. Reuse or open the winning handler page in the caller's
    window; cross-window handler routing requires a future main-side forwarding protocol.
 4. Registrations coexist and resolve by priority, platform tie-break, and board registration order;

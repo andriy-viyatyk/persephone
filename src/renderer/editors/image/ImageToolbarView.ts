@@ -3,6 +3,9 @@ import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { openMenu, type MenuHandle, type MenuAttachOptions } from "../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../uikit/Menu/types";
 import { guard } from "../../core/utils/guard";
+import { ui } from "../../api/ui";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
+import { errMessage } from "../../../shared/utils";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
 import { DrawIcon } from "../../theme/language-icons";
@@ -161,7 +164,13 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
     }
 
     private readonly onDrawClick = (): void => {
-        void this.model.openInDrawingEditor();
+        void this.model.openInDrawingEditor().catch((error: unknown) => {
+            const message = getMissingEditCapabilityMessage(error, "image.edit");
+            ui.notify(
+                message ?? `Failed to open image in Drawing Editor: ${errMessage(error)}`,
+                message ? "warning" : "error",
+            );
+        });
     };
 
     private readonly onCopyClick = (): void => {

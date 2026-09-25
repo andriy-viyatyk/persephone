@@ -9,7 +9,7 @@ import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
 import {
-    DrawIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
+    GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
@@ -51,7 +51,7 @@ export interface CreatableItem {
 // =============================================================================
 
 export const DEFAULT_PINNED_EDITORS = [
-    "open-folder", "open-file", "script-js", "draw-view", "grid-csv", "browser",
+    "open-folder", "open-file", "script-js", "bundled-board:excalidraw", "grid-csv", "browser",
 ];
 
 // =============================================================================
@@ -106,13 +106,6 @@ const staticItems: CreatableItem[] = [
         label: "Script (TS)",
         icon: TypescriptIcon.createElement(),
         create: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
-        category: "editor",
-    },
-    {
-        id: "draw-view",
-        label: "Drawing",
-        icon: DrawIcon.createElement(),
-        create: () => pagesModel.addEditorPage("draw-view", "json", "untitled.excalidraw"),
         category: "editor",
     },
     {

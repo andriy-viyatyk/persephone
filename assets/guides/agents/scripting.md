@@ -66,8 +66,8 @@ logic, loops, or Node.js.
 | `app.downloads` | Download tracking |
 | `app.boards` | Boards — `createBoard(name, dir)` / `createDemoBoard(name, dir)` / `openBoard(root)`. See `persephone://guides/boards`. |
 | `app.boardVars` | Env vars/secrets store for boards — get/set/list per namespace, resolve a board's namespace, open the editor. See `persephone://guides/boards`. |
-| `app.openRawLink(href, options?)` | Open any link (file path, URL, or in-app scheme) in a new/reused tab and make it active. `options.editor` requests a specific editor (e.g. `{ editor: "md-view" }` for rendered Markdown); falls back to the default when omitted/unmatched |
-| `app.call(path, options?)` | Resolve the live AiVision tree from the script's own page context; returns a plain bounded value and rejects `Error` on resolver failure |
+| `app.openRawLink(href, options?)` | Open any link (file path, URL, or in-app scheme) in a new/reused tab and make it active. `options.editor` requests a specific editor or capability (e.g. `{ editor: "md-view" }` or `{ editor: "image.edit" }`); falls back to the default when omitted/unmatched |
+| `app.call(path, options?)` | Resolve the live AiVision tree from the script's own page context; returns the full value by default, or an explicitly bounded value when `maxLength` is supplied, and rejects `Error` on resolver failure |
 
 The MCP `call` root also exposes `clipboard` only when `clipboard.enabled` is true. It is stored
 history, not the live Windows clipboard: use `clipboard.items` or `clipboard.list(offset, limit)`
@@ -364,9 +364,10 @@ To simply *look at* an image page through the agent surface, narrow `page.editor
 `"image-view"` and call `read()`. It returns `{ type: "image", data, mimeType: "image/png", width,
 height, originalWidth, originalHeight }`; MCP `call` renders that as metadata text plus a native
 image block. It works for inactive pages, defaults to a 2048-pixel maximum longer side, and accepts
-a positive-integer `maxDimension`. `call.maxLength` still applies before image conversion, so raise
-it to about 1.4 times the PNG byte size plus overhead; an empty or partial result means it was too
-low. `read()` does not write a file, while `savePngToFile` remains the way to put the image on disk.
+a positive-integer `maxDimension`. An explicit `maxLength` still applies before image conversion, so
+set it to about 1.4 times the PNG byte size plus overhead when needed; an empty or partial result
+means it was too low. `read()` does not write a file, while `savePngToFile` remains the way to put
+the image on disk.
 
 ### `page.editor` when `id === "video-view"` — Video/audio facade
 
@@ -404,25 +405,10 @@ diff.readOnly   // Whether the selected modified revision is not the working tre
 The revision picker controls are exposed through `diff.elements`; the File History sidebar is
 available through `page.panels`, not duplicated in the editor facade.
 
-### `page.editor` when `id === "draw-view"`
+### Excalidraw board pages
 
-Drawing editor facade for Excalidraw pages (`.excalidraw`).
-
-```
-const draw = page.editor;
-draw.editorIsMounted  // true if editor is mounted (pages stay mounted)
-draw.elementCount     // number of canvas elements
-
-// Insert image into live canvas (editor must be mounted)
-await draw.addImage(dataUrl, { x: 0, y: 0, maxDimension: 1200 });
-
-// Export
-const svg = await draw.exportAsSvg();    // SVG markup string
-const png = await draw.exportAsPng();    // PNG data URL
-const png2x = await draw.exportAsPng({ scale: 3 });
-```
-
-To create a **new** drawing page with an image (without opening the editor first):
+Excalidraw pages now expose the board facade through `page.editor`; the old `draw-view` editor id,
+`IDrawEditor`, and `DrawEditorFacade` are gone. To create a **new** drawing page with an image:
 
 ```
 await app.pages.addDrawPage(dataUrl, "Screenshot.excalidraw");

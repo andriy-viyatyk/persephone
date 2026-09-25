@@ -106,13 +106,15 @@ app.pages.addEditorPage("monaco", "markdown", "Notes", "# Hello\n");
 
 ### addDrawPage(dataUrl, title?) → `Promise<IPage>`
 
-Create a new drawing page with an embedded image. The image is converted to an Excalidraw scene with the image element pre-inserted.
+Create a new Excalidraw board page with an embedded image. The image is converted to an Excalidraw
+scene with the image element pre-inserted. This method is unchanged even though the old
+`draw-view` editor id and drawing-editor facade were removed.
 
 - `dataUrl` — image as a data URL (e.g., `"data:image/png;base64,..."`)
 - `title` — optional page title (default: `"untitled.excalidraw"`)
 
 ```javascript
-// Capture something as a data URL, then open in the drawing editor
+// Capture something as a data URL, then open in Excalidraw
 const drawPage = await app.pages.addDrawPage(dataUrl, "annotated-screenshot.excalidraw");
 ```
 
@@ -136,7 +138,7 @@ When a plain string is passed, the filename part of the path is used as the disp
 | `isDirectory` | `boolean` | Yes | `true` if the item is a folder/container, `false` for leaf links. |
 | `id` | `string` | No | Unique ID (auto-generated if omitted). |
 | `imgSrc` | `string` | No | Preview image URL or path (shown in tile view). |
-| `target` | `string` | No | Preferred editor for opening this link (e.g., `"image-view"`, `"monaco"`). When set, the link opens in that editor instead of the auto-detected one. |
+| `target` | `string` | No | Preferred editor or capability for opening this link (e.g., `"image-view"`, `"monaco"`, or `"image.edit"`). When set, the link uses that target instead of auto-detection. |
 
 ```javascript
 // From file paths — titles are derived from filenames

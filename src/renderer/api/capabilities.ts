@@ -6,7 +6,6 @@ import type {
     CapabilityInvokeOptions,
     CapabilityPageResult,
     ContentRepresentation,
-    DiagramEditPayload,
     DiagramEditResult,
     ICapabilities,
     ImageEditPayload,
@@ -102,23 +101,10 @@ function createPageHandler(
     };
 }
 
-function createDrawHandler(
-    id: "image.edit" | "diagram.edit",
-): CapabilityHandler {
-    return async (payload: unknown): Promise<CapabilityResult> => {
-        const { imageEdit, diagramEdit } = await import("../editors/draw/capability-handlers");
-        if (id === "image.edit") return imageEdit(payload as ImageEditPayload);
-        return diagramEdit(payload as DiagramEditPayload);
-    };
-}
-
 function createHandler(
     editorId: string,
     declaration: EditorCapabilityDeclaration,
 ): CapabilityHandler {
-    if (editorId === "draw-view") {
-        return createDrawHandler(declaration.id as "image.edit" | "diagram.edit");
-    }
     return createPageHandler(editorId, declaration.id, declaration.representation);
 }
 

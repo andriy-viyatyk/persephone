@@ -39,7 +39,6 @@ export type EditorView =
     | "link-view"
     | "log-view"
     | "browser-view"
-    | "draw-view"
     | "mcp-view"
     | "mneme-config"
     | "archive-view"

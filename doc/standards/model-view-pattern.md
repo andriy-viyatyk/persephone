@@ -1,8 +1,7 @@
 # Model-View Pattern
 
 This document describes the model-view pattern used for complex components in Persephone. Renderer
-components use framework-free `VanillaView` classes; the only React code is the bounded Excalidraw
-vendor island under `editors/draw/`.
+components use framework-free `VanillaView` classes and native DOM slots.
 
 ## Overview
 
@@ -31,14 +30,11 @@ Editor views have three intentional shapes:
 
 Export a native main view as `EditorModule.View`, or an embeddable native body as `BodyView`;
 `AsyncEditorView` mounts a main `View` directly. `TextChromeView` and `PageToolbarView` compose
-native child views and DOM slots. The Excalidraw body is the sole exception: it owns one explicit
-React vendor island under `editors/draw/`.
+native child views and DOM slots.
 
 The native main-view shape is used by the text-bearing editor set, including `svg`, `html`,
 `markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the rest-client, env-vars, board, and
-file-diff bodies follow the same `VanillaView` shape. The draw editor also uses a native body, with
-one bounded `ExcalidrawIsland.tsx` inside it because the vendor package requires React. A vendor
-island is a deliberate implementation boundary, not a second page shell. The five embeddable
+file-diff bodies follow the same `VanillaView` shape. The five embeddable
 bodies (`svg`, `html`, `markdown`, `grid`, and `mermaid`) also expose `BodyView`, so notebook note
 dispatch can mount them without page chrome.
 
@@ -610,9 +606,8 @@ mount and drains model-owned resources.
 
 Native components compose `VanillaView` instances directly. The concrete end-to-end reference is
 [`PathInputView`](../../src/renderer/uikit/PathInput/PathInputView.ts), which combines the driver,
-`bind`, `KeyedList`, native events, and static CSS. The only React boundary is the Excalidraw
-vendor adapter at [`editors/draw/react-island.ts`](../../src/renderer/editors/draw/react-island.ts);
-do not add a general-purpose renderer adapter for ordinary DOM nodes or converted components.
+`bind`, `KeyedList`, native events, and static CSS. Do not add a general-purpose renderer adapter
+for ordinary DOM nodes or converted components.
 
 ### Hosting an imperative widget
 
@@ -634,26 +629,18 @@ For a native slot inside a vanilla view, use `fillSlot` from
 host and replaces text or DOM-node content with generation-safe cleanup. If the requested native
 nodes already exactly match the host's direct children, it leaves them attached while still
 advancing the generation; text content is deliberately not compared. Do not mutate a fill-slot
-host directly; the host's direct-child shape is part of the component contract. The draw editor's
-`react-island.ts` is the only place that may create a React root.
+host directly; the host's direct-child shape is part of the component contract.
 
 Do not reuse a `DocumentFragment` as a slot value: slot filling appends the supplied node, which
 consumes a fragment on the first fill and leaves later refills empty. A one-shot fragment is valid
 when it will not be handed to `fillSlot` again; use an array, persistent element, or mounted view
 root for content that may be projected more than once.
 
-The React root created by draw's `mountReactHandle` marks its host with
-`data-react-root`; disposal removes the marker. A root created directly by that helper is not
-inside the `[data-part="children-slot"]` host used by `fillSlot`, so DOM measurements of React
-islands must query both `[data-part="children-slot"]` and `[data-react-root]`.
-
 When checking a converted panel, assert visibility separately from content: `textContent`
 includes text in a `display: none` subtree. Use `offsetParent` for ordinary-flow elements; for
 fixed-position overlays such as popovers, dialogs, menus, and tooltips, use
 `getBoundingClientRect()` together with computed visibility because `offsetParent` is `null` by
-design. During development, renaming an imported converted module from `.tsx` to `.ts` can leave
-Vite resolving the old specifier; a renderer reload does not clear that stale dynamic-import
-resolution. Touch the importer to invalidate it before debugging the conversion itself.
+design.
 
 ## Before and after: the same model, two view runtimes
 
@@ -886,7 +873,7 @@ class MyViewModel extends TComponentModel<State, Props> {
 1. **Don't put rendering logic in model** - Model computes values, view renders them
 2. **Don't call hooks in model** - Hooks only in component function
 3. **Don't access DOM directly in model** - Use refs and methods
-4. **Don't use React hooks in native views** - Use explicit `VanillaView` lifecycle methods and model methods
+4. **Keep view lifecycle explicit** - Use `VanillaView` lifecycle methods and model methods
 5. **Don't treat `setProps()` as a pre-init hook** - The driver performs an initial prop pump before `init()`; guard post-mount work when necessary
 6. **Don't use a selector for plain model fields** - Subscribe to reactive state and use explicit prop/update handling for plain fields
 7. **Don't leave asynchronous model work uncancellable** - Release subscriptions and reject or cancel deferred work during `dispose()`

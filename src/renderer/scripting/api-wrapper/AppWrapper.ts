@@ -5,6 +5,7 @@ import type { PageWrapper } from "./PageWrapper";
 import type { EventChannel, EventHandler } from "../../api/events/EventChannel";
 import type { IApp, IAppCallOptions } from "../../api/types/app";
 import { resolveCall } from "ai-vision";
+import { UNBOUNDED_CALL_MAX_LENGTH } from "../ai-vision/call-limits";
 import { AiRoot } from "../ai-vision/root";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 
@@ -109,7 +110,9 @@ class AppWrapperImplementation {
             ...(options && Object.prototype.hasOwnProperty.call(options, "value")
                 ? { value: options.value }
                 : {}),
-            ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
+            // Same reasoning as the board bridge: a script reads this value in JavaScript,
+            // so it does not get the agent-facing default. See UNBOUNDED_CALL_MAX_LENGTH.
+            maxLength: options?.maxLength ?? UNBOUNDED_CALL_MAX_LENGTH,
         };
         const callContext = { timeoutMs: options?.timeoutMs };
         const result = await resolveCall(new AiRoot(this as unknown as AppWrapper, {

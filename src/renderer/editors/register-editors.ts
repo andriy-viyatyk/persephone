@@ -170,7 +170,6 @@ const EDITORS: EditorRow[] = [
     { id: "svg-view", name: "Preview", guidePath: "editors/svg", hasContentHost: true, capabilities: [{ id: "content.view", representation: "svg" }], load: async () => (await import("./svg")).svgModule },
     { id: "html-view", name: "Preview", guidePath: "editors/html", hasContentHost: true, capabilities: [{ id: "content.view", representation: "html" }], load: async () => (await import("./html")).htmlModule },
     { id: "mermaid-view", name: "Mermaid", guidePath: "editors/mermaid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "mermaid" }], load: async () => (await import("./mermaid")).mermaidModule },
-    { id: "draw-view", name: "Drawing", guidePath: "editors/draw", hasContentHost: true, capabilities: [{ id: "image.edit" }, { id: "diagram.edit" }], load: async () => (await import("./draw")).drawModule },
     { id: "link-view", name: "Links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
     { id: "rest-client", name: "Rest Client", guidePath: "editors/rest-client", hasContentHost: true, load: async () => (await import("./rest-client")).restClientModule },
     { id: "notebook-view", name: "Notebook", guidePath: "editors/notebook", hasContentHost: true, load: async () => (await import("./notebook")).notebookModule },

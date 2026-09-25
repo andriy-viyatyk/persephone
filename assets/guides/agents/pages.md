@@ -28,6 +28,10 @@ normal Monaco fallback.
 - **Other non-text pages** (browser, board, video, PDF, …) expose their live behavior through
   `pages[i].editor`, `window.screen`, or the relevant `script.execute` facade.
 
+`.excalidraw` pages are provided by the bundled Excalidraw board. Their `pages[i].editor` is the
+board facade, not the removed `draw-view` drawing facade. `app.pages.addDrawPage(dataUrl, title?)`
+continues to create a new drawing page.
+
 ## Automating Persephone's Own UI
 
 `window.screen` drives Persephone's own window — not just web pages and boards. Use it to see and
@@ -186,7 +190,7 @@ folder Explorer or is browsing an archive.
 **Creatable with `pages.addEditorPage`** (content-hosting editors — see the table below for the
 required `language` and title suffix):
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"`
 
 **Standalone editors** — `pages.addEditorPage` rejects these with a hint; open them the way listed:
 
@@ -215,7 +219,6 @@ optional initial content as its fourth positional argument.
 | `link-view` | **`json`** | `.link.json` (**required**) | `"Bookmarks.link.json"` |
 | `svg-view` | **`xml`** | `.svg` (**required**) | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
-| `draw-view` | **`json`** | `.excalidraw` (**required**) | `"Sketch.excalidraw"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 | `grid-jsonl` | **`jsonl`** | — | `"Logs"` |
 | `log-view` | **`jsonl`** | `.log.jsonl` (optional) | `"Output.log.jsonl"` |

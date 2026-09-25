@@ -8,6 +8,7 @@ import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
 import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
 import { app } from "../../api/app";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
@@ -210,6 +211,7 @@ export class MermaidEditor
                 title,
             });
         } catch (error) {
+            if (getMissingEditCapabilityMessage(error, "image.edit")) throw error;
             throw new Error(`Mermaid preview cannot open in Drawing Editor: ${errMessage(error)}`);
         }
     }
@@ -224,6 +226,7 @@ export class MermaidEditor
         try {
             result = await app.capabilities.invoke("diagram.edit", { source, title });
         } catch (error) {
+            if (getMissingEditCapabilityMessage(error, "diagram.edit")) throw error;
             throw new Error(`Mermaid preview cannot open the Excalidraw page: ${errMessage(error)}`);
         }
         if (result.status === "conversion-failed") {

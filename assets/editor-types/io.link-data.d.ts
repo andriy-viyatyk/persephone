@@ -47,7 +47,8 @@ export interface ILinkCore extends Partial<ILink> {
  * where a link should open and why, rather than transient pipeline work.
  */
 export interface ILinkNav {
-    /** Target editor ID. Can be set by caller (from ILink.target), overridden by pipeline. */
+    /** Target editor or capability ID. Callers seed it from ILink.target; Layer 2 resolvers may
+     * set or override it before Layer 3 consumes it. */
     target?: string;
     /** Resolved pipe descriptor (set by Layer 2 resolvers). Persisted in page state. */
     pipeDescriptor?: IPipeDescriptor;

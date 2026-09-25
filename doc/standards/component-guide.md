@@ -29,7 +29,7 @@ See [/doc/standards/uikit-vs-components-split.md](./uikit-vs-components-split.md
 - **Rule 8** — model-view pattern (`TComponentModel`) once a component exceeds the small-and-readable threshold.
 - **Rule 9** — converted components may expose a framework-free `VanillaView`; follow the lifecycle, ownership, model-driver, and structural-helper contract in [`model-view-pattern.md`](./model-view-pattern.md).
 - **Primitive attribute contract** — never override a UIKit primitive's generated `data-type`; its CSS is keyed by that value. Use an additive class or a separate data attribute for app-specific state.
-- **Icon slots** — use `IconRef` for icon-bearing props. It is `IconName | Node`: pass a registry name string where possible, or a freshly built DOM node for an icon that is not in the registry. `IconRef` never accepts a React element. Use plain `string` for text-bearing props, and reserve `SlotText` for the small set of props that genuinely accept rich React content.
+- **Icon slots** — use `IconRef` for icon-bearing props. It is `IconName | Node`: pass a registry name string where possible, or a freshly built DOM node for an icon that is not in the registry. Use plain `string` for text-bearing props, and reserve `SlotText` for the small set of props that genuinely accept rich native slot content.
 
 Two conversion footguns are part of the contract: claiming a vanilla child does not mount it, so
 call `mount()` exactly once before inserting or returning its root; and a converted root whose CSS
@@ -84,9 +84,9 @@ single registry record in `src/renderer/theme/icon-registry.ts`. Use
 `createIconElement(name, props?)` for a registry icon. For an icon component that is not in the
 registry, use `createIconComponentElement(icon, props?)` from `theme/icons.ts`; `SvgIconComponent`
 is a builder contract with a required `createElement` function and optional `viewBox`, not a
-callable React component. Language/file resolution lives in
+callable framework component. Language/file resolution lives in
 `components/icons/language-icon-resolver.ts` and `icon-elements.ts`; DOM builders are passed as
-native elements rather than as React-node icon values. Native callers use the icon builders from
+native elements rather than framework-node icon values. Native callers use the icon builders from
 `components/icons/icon-elements.ts` or `theme/icons.ts`; there is no generic UIKit `Icon` face.
 
 DOM icon nodes are single-use resources: appending one to a second host moves it and leaves the
@@ -104,8 +104,8 @@ empty `<svg>` is never a valid fallback.
 text, DOM nodes, and arrays of those values. `fillSlot` owns replacement and cleanup for a
 view-owned DOM region. When the requested native nodes are already the host's exact direct
 children, it preserves them in place while still advancing its generation; text content is not
-compared. React values are not part of the UIKit slot contract; the sole React island is the
-Excalidraw vendor boundary under `editors/draw/`.
+compared. Framework values are not part of the UIKit slot contract; slots carry native text and
+DOM nodes.
 
 For a `Tree` row's right-side content, use `renderTrailing` for a slot value that may be rebuilt,
 and `trailingElement` for a stable, caller-owned DOM node. The direct-node form is identity-aware:
@@ -130,14 +130,14 @@ Because the ListBox trailing host is `display: contents`, the hover opacity is a
 children rather than to the host itself.
 
 For text slots, prefer `string` whenever callers supply data text. `SlotText` documents an
-intentional rich-content exception; it is not a way to make every public prop React-shaped. An
+intentional rich-content exception; it is not a way to make every public prop framework-shaped. An
 arbitrary subtree belongs in `children` or a named child slot and should cross a future view
 boundary as a mounted subtree, not as a framework-specific callback.
 
 ### Dead faces and barrels
 
-A React mount face can become callerless when its native view is adopted by a shell or editor, while
-the same file may still contain live types, models, or constants. Split those symbols into a
+An adapter or mount face can become callerless when its native view is adopted by a shell or editor,
+while the same file may still contain live types, models, or constants. Split those symbols into a
 framework-free core before removing the face. Treat barrels separately: a live barrel can re-export
 dead faces, and a dead barrel can hide the last stale edge. Re-run symbol and importer searches when
 removing either; typechecking and production builds do not detect an unused face or barrel.
@@ -178,7 +178,7 @@ controls, and generated children.
 ## Naming conventions
 
 UIKit components and Storybook demos use framework-free `VanillaView` implementations with a
-`View.ts` suffix. The Excalidraw vendor island is the only React component surface.
+`View.ts` suffix.
 
 - Component name — PascalCase (`Button`, `MultiSelect`).
 - File name — `<ComponentName>View.ts` inside the component's own subfolder.

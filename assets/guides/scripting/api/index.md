@@ -87,10 +87,8 @@ ui.log("Hello");
   - **[.editor](./page.md#editor-facades)** when `.editor.id === "image-view"` — Image viewer facade
     - `.read(options?)` — Bounded PNG image result for inline MCP display
     - `.savePngToFile(path)` / `.saveAsPng()` / `.saveOriginal()` — Save image data
-  - **[.editor](./page.md#editor-facades)** when `.editor.id === "draw-view"` — Drawing (Excalidraw) facade
-    - `.elementCount` / `.editorIsMounted`
-    - `.addImage(dataUrl, options?)` — Insert image onto canvas
-    - `.exportAsSvg()` / `.exportAsPng(options?)` — Export drawing
+  - **[.editor](./page.md#editor-facades)** when the page is an Excalidraw board — board facade
+    (`board-view` or `board-editor:<id>`); use `app.pages.addDrawPage()` to create a drawing page
   - **[.editor](./page.md#editor-facades)** when `.editor.id === "mcp-view"` — MCP Inspector facade
     - `.connectionStatus` / `.serverName` / `.serverTitle` / `.serverVersion` / `.errorMessage`
     - `.transportType` / `.url` / `.connectionName` *(read/write; URL rejects embedded credentials)*

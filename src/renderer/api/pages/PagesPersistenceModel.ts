@@ -25,11 +25,12 @@ import {
     resolveBoardEditorId,
 } from "../../editors/board/custom-editor-registry";
 import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
+import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
 import {
     decodePersephoneBoardLink,
     encodePersephoneBoardLink,
 } from "../../content/persephone-board-link";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,9 +74,33 @@ async function normalizeEditorDescriptor(
         state.editor = await resolveBoardEditorId(state.editor);
     }
 
+    let editorId = await resolveBoardEditorId(descriptor.editorId);
+    if (descriptor.editorId === "draw-view") {
+        await bundledBoardRegistry.ensureInitialized();
+        const excalidrawBoard = bundledBoardRegistry.list().find(
+            (board) => board.id === "excalidraw",
+        );
+        const association = excalidrawBoard
+            ? getBoardEditorAssociation(excalidrawBoard.manifest)
+            : undefined;
+        if (excalidrawBoard && association?.editorKind === "content-host") {
+            // `BoardEditorModel.restore()` does NOT re-derive the selection from `boardRoot` —
+            // `refreshBoards()` only ever CLEARS it — and `BoardEditorView` renders the
+            // not-found branch whenever `selectedBoard` is unset. So a descriptor carrying only
+            // `boardRoot` restores as an empty "board not found" tab holding the user's drawing.
+            // Seed exactly what `selectBoard()` writes on the live path: the board folder name,
+            // in `selectedBoard` (renders) and `iconKey` (tab icon).
+            const boardName = fpBasename(excalidrawBoard.root);
+            editorId = "board-view";
+            state.boardRoot = excalidrawBoard.root;
+            state.selectedBoard = boardName;
+            state.iconKey = boardName;
+        }
+    }
+
     return {
         ...descriptor,
-        editorId: await resolveBoardEditorId(descriptor.editorId),
+        editorId,
         state,
     };
 }

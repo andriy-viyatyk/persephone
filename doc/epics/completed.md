@@ -1,3 +1,66 @@
+## EPIC-110 — Excalidraw extraction, part 2: remove `editors/draw` and React
+
+Completed 2026-09-25. Roadmap Phase F, part 2. [Epic document](EPIC-110.md).
+
+- [x] US-1507: Migrate persisted `draw-view` state — pinned `+` slot and open pages
+- [x] US-1508: Remove the built-in drawing editor and every seam that names it
+- [x] US-1509: Close the De-React programme — dependencies, tsconfig, eslint
+- [x] US-1510: "No image editor is registered" when the bundled board is disabled
+
+The built-in drawing editor is gone — eight files, 1,309 lines — along with its facade, registry and
+matcher rows, capability branch and public `IDrawEditor` surface. `react`, `react-dom` and
+`@excalidraw/*` moved to `devDependencies`, the eslint draw exemption and `react-hooks` plugin were
+retired, and `src/` now holds no `.tsx` file and no React import. **The De-React programme's last
+exception is closed.** Measured rather than asserted: the production renderer bundle went from 630
+files / 44,601,739 bytes to 546 / 39,948,771 — **−4,652,968 bytes, −10.4%** — and of 13 surviving
+React-marker hits, every one is a `jsx-runtime`/`jsxDEV` literal inside Monaco's TypeScript language
+service, which knows how to *emit* JSX for user code. No `createRoot`, `REACT_ELEMENT_TYPE`,
+`ReactCurrentDispatcher` or `__REACT_DEVTOOLS_GLOBAL_HOOK__` anywhere.
+
+**Three of the roadmap's four removal items were wrong, and investigation caught each.**
+`app-asset://excalidraw` serving no longer existed to delete. The packages **cannot** leave
+`package.json` — `scripts/build-board-lib.mjs` regenerates the board's committed `lib/deps/` from
+them, so `devDependencies` is the accurate relationship and still satisfies the real criterion, since
+electron-builder ships `dependencies` only (D4). And `app.pages.addDrawPage()` needed **no work at
+all**: it was already written against the capability bus rather than naming an editor, which is Phase
+D paying for itself a phase later (D5). The roadmap was corrected in place.
+
+**The real risk was persisted state, and it is where the epic nearly shipped a defect.** Two places
+store the string `draw-view`: every user's `pinned-editors` array and the `editor` id on any open
+`.excalidraw` page. Restore hands that id to `editorRegistry.createEditorSync`, which throws on an
+unknown id, so it had to be **rewritten**, not merely unregistered (D1). Review moved the rewrite out
+of a proposed one-time pre-restore pass over `openFiles{windowIndex}.json` and into
+`normalizeEditorDescriptor`, which already performs exactly this class of rewrite as the first
+statement of `restorePage`. That removed a new module, a bootstrap barrier, a bookkeeping settings
+key — and a silent data-loss bug: the session file is **per window**, so a one-time pass guarded by a
+single global flag would have migrated one window and let every other window's drawing pages be
+dropped by the per-editor catch.
+
+**Runtime verification then caught what static checks could not.** The first implementation restored
+a drawing page with the correct editor id and content intact — and `renderState: "not-found"`,
+because `BoardEditorModel.restore()` never re-derives `selectedBoard` from `boardRoot`
+(`refreshBoards()` only ever *clears* it). The board rendered its not-found view holding the user's
+drawing, with typecheck, lint and build all green. Fixed by seeding what `selectBoard()` writes on
+the live path, then re-verified end to end. `boardRoot` alone is not a complete board descriptor.
+
+**Two breaking changes to documented APIs**, both announced by `/userdoc`: a drawing page's
+`pages[i].editor` is the board facade rather than `IDrawEditor` narrowed by `"draw-view"`, and
+`openRawLink(dataUrl, { editor: "draw-view" })` no longer routes — the target is the capability id
+`"image.edit"` (D6). No legacy alias was kept, deliberately.
+
+US-1510 shipped the epic's only new user-facing behaviour, and investigation found it was more than
+wording: three consumers already toasted, but the **Image Viewer dropped the rejection entirely** (a
+bare `void` with no catch), and the screen-snip flow reaches the user through that same button — so
+with the board disabled, clicking *Open in Drawing Editor* did nothing at all. Verified live with the
+board genuinely disabled: both messages appear as warnings, the bus keeps its typed `no-handler`
+rejection, and re-enabling restores every consumer with no restart.
+
+**D10 was added from a user observation during implementation:** the bundled board was the only board
+in the app without an icon. It now ships `icon.svg`, the cyan pencil glyph lifted from the built-in
+editor's `DrawIcon`, so the board reads as the thing it replaces in the place it replaces it.
+
+`/review` at close found no architecture or coding concerns.
+
 ## EPIC-111 — Board settings and the Settings page redesign
 
 Completed 2026-09-23. Not a roadmap phase — created from a gap EPIC-109 uncovered, then widened by

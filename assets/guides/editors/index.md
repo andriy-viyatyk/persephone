@@ -12,8 +12,9 @@ the screen, its script-facing `editorId`, and the detailed guide.
 The [screen catalogue](../screens/index.md) owns the `tools-hub-view` mapping because the Tools &
 Editors hub is an application screen; this page remains the editor catalogue.
 
-The catalogue families are **Text and code**, **Structured data**, **Viewers and previews**,
-**Drawing**, and **Web and custom apps**.
+The catalogue families are **Text and code**, **Structured data**, **Viewers and previews**, and
+**Web and custom apps**. The bundled Excalidraw board has its own guide at
+[Excalidraw Board](./draw.md).
 
 | Editor | editorId | What it opens | Guide |
 |---|---|---|---|
@@ -32,7 +33,6 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 | Video Player | `video-view` | Video, audio, and streams | [Video Player](./video.md) |
 | Archive Editor | `archive-view` | Compressed archives and entries | [Archive Editor](./archive.md) |
 | Folder View | `category-view` | Folders and archive directories | [Folder View](./folder.md) |
-| Drawing Editor | `draw-view` | Built-in Excalidraw canvas and fallback for `.excalidraw` drawings | [Drawing Editor](./draw.md) |
 | Browser | `browser-view` | Web pages and web resources | [Browser](./browser.md) |
 | Board | `board-view` | Trusted or bundled custom HTML applications | [Board](./board.md) |
 | Git Tree | `git-tree` | Repository history and Git status | [Git Tree](./git-tree.md) |
@@ -49,13 +49,13 @@ an untitled or extensionless XML page can use **SVG Preview**. A named `.xml` fi
 **Text Editor**.
 The [screen catalogue](../screens/index.md) documents the surrounding Explorer, tabs, sidebar, and
 [Menu Bar](../screens/menu-bar.md) chrome. Window-owned [Screen Snip](../screens/header.md) is
-documented with the header; the Drawing guide covers the handoff from a snip into a canvas.
+documented with the header; the [Excalidraw Board guide](./draw.md) covers drawing and snip handoff.
 
 ## Switching editors
 
 The default and switchable combinations include JSON with Grid, Markdown with Preview, `.note.json`
 with Notebook, `.link.json` with Links, `.rest.json` with REST Client,
-`.excalidraw` with Drawing and the bundled Excalidraw board, `.svg` and `.html` with Preview, and
+`.excalidraw` with the bundled Excalidraw board, `.svg` and `.html` with Preview, and
 `.mmd`/`.mermaid` with Mermaid.
 CSV, JSONL, and NDJSON can use Grid; Git Diff is offered for text files in a repository when Git
 integration is enabled. Archives, images, and audio/video normally have one specialized editor.

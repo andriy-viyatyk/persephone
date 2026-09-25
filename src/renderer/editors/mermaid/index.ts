@@ -7,6 +7,7 @@ import { DrawIcon, DrawOrangeIcon } from "../../theme/language-icons";
 import { createIconComponentElement } from "../../theme/icons";
 import { savePngViaDialog } from "../shared/image-export";
 import { ui } from "../../api/ui";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
@@ -177,12 +178,22 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
 
     private readonly onOpenDraw = (): void => {
         void this.model.openInDrawingEditor().catch((error: unknown) => {
+            const message = getMissingEditCapabilityMessage(error, "image.edit");
+            if (message) {
+                void ui.notify(message, "warning");
+                return;
+            }
             ui.notify(`Failed to open Mermaid in Drawing Editor: ${errMessage(error)}`, "error");
         });
     };
 
     private readonly onConvertToExcalidraw = (): void => {
         void this.model.convertToExcalidraw().catch((error: unknown) => {
+            const message = getMissingEditCapabilityMessage(error, "diagram.edit");
+            if (message) {
+                void ui.notify(message, "warning");
+                return;
+            }
             ui.notify(`Failed to convert Mermaid diagram: ${errMessage(error)}`, "error");
         });
     };
