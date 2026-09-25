@@ -43,6 +43,7 @@ interface ServiceLeaseClient {
     acquisitionState?: Acquisition;
     pending: Map<string, PendingRequest>;
     capabilities: Map<string, boolean>;
+    rangeCapabilities: Map<string, boolean>;
     watchIntents: Map<string, ProviderWatchIntent>;
     requestNumber: number;
     disposed: boolean;
@@ -125,6 +126,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             state: "idle",
             pending: new Map(),
             capabilities: new Map(),
+            rangeCapabilities: new Map(),
             watchIntents: new Map(),
             requestNumber: 0,
             disposed: false,
@@ -187,6 +189,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     if (message.kind === "provider-capabilities") {
         if (client.state === "attached" && typeof message.type === "string") {
             client.capabilities.set(message.type, message.writable === true);
+            client.rangeCapabilities.set(message.type, message.rangeReadable === true);
         }
         return;
     }
@@ -231,6 +234,7 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     client.port = undefined;
     client.state = "lost";
     client.capabilities.clear();
+    client.rangeCapabilities.clear();
     for (const intent of client.watchIntents.values()) intent.acknowledged = false;
     if (port) {
         port.onmessage = null;
@@ -402,6 +406,11 @@ function providerWritable(boardRoot: string, type: string): boolean | undefined 
     return client?.capabilities.get(type);
 }
 
+function providerRangeReadable(boardRoot: string, type: string): boolean | undefined {
+    const client = clients.get(normalizeRoot(boardRoot));
+    return client?.rangeCapabilities.get(type);
+}
+
 function dispose(): void {
     portSubscription?.();
     statusSubscription?.();
@@ -419,5 +428,6 @@ export const moduleService = {
     request,
     subscribeProvider,
     providerWritable,
+    providerRangeReadable,
     dispose,
 };

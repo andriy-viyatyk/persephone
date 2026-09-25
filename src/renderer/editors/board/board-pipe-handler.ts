@@ -102,6 +102,12 @@ async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo): Promise<num
                         throw new Error("The board pipe has no bounded streaming provider.");
                     }
                     if (typeof pipe.provider.createReadStream === "function") {
+                        // Deliberate re-read, not a redundant duplicate of the hasDirectStream()
+                        // check above: this runs AFTER pipe.stat() has round-tripped, by which
+                        // point the provider-capabilities announcement is guaranteed to have
+                        // arrived (see US-1474's task doc, "Timing was checked"). Reusing the
+                        // earlier hasDirectStream() result here would silently downgrade every
+                        // ranged-capable board provider to the buffered path on a cold start.
                         memo.totalSize = stat.size;
                         return stat.size;
                     }

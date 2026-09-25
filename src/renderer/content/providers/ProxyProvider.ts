@@ -10,6 +10,11 @@ import { MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
 import { errMessage } from "../../../shared/utils";
 import { ProviderUnavailableError } from "../registry";
 
+// Node's `stream` module for `Readable.from`. `require` rather than `import` because Vite
+// externalizes Node builtins into broken browser stubs when statically imported — same pattern
+// as link-utils.ts's `require("url")`.
+const { Readable } = require("stream") as typeof import("stream");
+
 let watchNumber = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -93,7 +98,7 @@ export class ProxyProvider implements IProvider {
 
     private requestMessage(
         operation: ProviderOperation,
-        extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data">> = {},
+        extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data" | "range">> = {},
     ): ProviderRequest {
         return {
             kind: "provider",
@@ -106,7 +111,7 @@ export class ProxyProvider implements IProvider {
 
     private async request(
         operation: ProviderOperation,
-        extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data">> = {},
+        extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data" | "range">> = {},
     ): Promise<Extract<ProviderResult, { ok: true }>> {
         try {
             const result: unknown = await moduleService.request(
@@ -157,6 +162,52 @@ export class ProxyProvider implements IProvider {
             data: new Uint8Array(data),
         });
         if (result.operation !== "writeBinary") throw invalidResult("writeBinary");
+    }
+
+    private get rangeReadable(): boolean {
+        return moduleService.providerRangeReadable(this.boardRoot, this.type) === true;
+    }
+
+    /** Present only when the board's registered implementation has `readRange` — mirrors
+     *  `get writable()` above (`:82-85`, reading `moduleService.providerWritable(...)`) so
+     *  `hasDirectStream()` (board-pipe-handler.ts) sees an absent method, not a function that would
+     *  fail, for a provider that never implements ranging. Deliberately asymmetric with `writable`:
+     *  there is NO `this.config`-based fallback here. `writable` falls back to `config.writable ===
+     *  true` before the capability is known; `rangeReadable` must not, or a board could declare
+     *  ranging support its service module never implements and defeat D5's "absence is the buffered
+     *  path" guarantee. Do not add a config fallback to "fix" this inconsistency. */
+    get createReadStream(): ((range?: { start: number; end: number }) => NodeJS.ReadableStream) | undefined {
+        if (!this.rangeReadable) return undefined;
+        return (range) => this.buildRangeStream(range);
+    }
+
+    private buildRangeStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+        // An UNRANGED call must keep behaving exactly as it did before this provider gained
+        // `createReadStream`. `IContentPipe.createReadStream(range?)` passes `range` straight
+        // through (ContentPipe.ts:77-80) and is public scripting surface (`io.createPipe`), so a
+        // script streaming a board pipe whole used to land in ContentPipe's buffered fallback.
+        // Erroring here instead would regress it; `readBinary()` keeps the same 256 MB ceiling
+        // that fallback always had. `board-pipe-handler.ts` itself always supplies a bounded
+        // range (readChunk():176-181), so the ranged branch is the one that carries the traffic.
+        const fetched = range ? this.fetchRange(range) : this.readBinary();
+        return Readable.from((async function* () {
+            yield await fetched;
+        })());
+    }
+
+    private async fetchRange(range: { start: number; end: number }): Promise<Buffer> {
+        const result = await this.request("readRange", { range });
+        if (result.operation !== "readRange" || !isUint8Array(result.data)) {
+            throw invalidResult("readRange");
+        }
+        const requestedLength = range.end - range.start + 1;
+        if (result.data.byteLength > requestedLength) {
+            throw new ProviderOperationError(
+                "provider-payload-too-large",
+                "createReadStream() exceeded the requested range.",
+            );
+        }
+        return Buffer.from(result.data);
     }
 
     async stat(): Promise<IProviderStat> {

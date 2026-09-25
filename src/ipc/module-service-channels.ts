@@ -84,6 +84,7 @@ export type ServiceMainMessage =
 
 export type ProviderOperation =
     | "readBinary"
+    | "readRange"
     | "writeBinary"
     | "stat"
     | "watchSubscribe"
@@ -96,6 +97,7 @@ export interface ProviderRequest {
     config: Record<string, unknown>;
     subscriptionId?: string;
     data?: Uint8Array;
+    range?: { start: number; end: number };
 }
 
 export interface ProviderWireStat {
@@ -107,6 +109,7 @@ export interface ProviderWireStat {
 export type ProviderWireErrorCode =
     | "provider-not-registered"
     | "provider-read-only"
+    | "provider-range-unsupported"
     | "provider-invalid-result"
     | "provider-failed"
     | "provider-payload-too-large";
@@ -119,6 +122,7 @@ export interface ProviderWireError {
 
 export type ProviderResult =
     | { kind: "provider-result"; operation: "readBinary"; ok: true; data: Uint8Array }
+    | { kind: "provider-result"; operation: "readRange"; ok: true; data: Uint8Array }
     | { kind: "provider-result"; operation: "writeBinary"; ok: true }
     | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
     | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe"; ok: true }
@@ -134,6 +138,7 @@ export interface ProviderCapabilities {
     kind: "provider-capabilities";
     type: string;
     writable: boolean;
+    rangeReadable: boolean;
 }
 
 export type RendererServiceMessage =

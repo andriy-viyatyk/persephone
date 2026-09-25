@@ -175,6 +175,36 @@ persephone.providers.register("acme/mem", {
 ```
 
 `readBinary()` must return a `Uint8Array`; `writeBinary()`, `stat()`, and `watch()` are optional.
+
+Add `readRange(config, range)` to serve ranged reads without buffering the whole resource into
+memory first — this is what lets the built-in editors (Monaco, Image, the media player) and a
+`stream-host` page's `persephone.host.streamUrl()` seek through a board's own provider. `range` is
+`{ start, end }` (inclusive byte offsets); **return a `Uint8Array`, the same as `readBinary()` —
+never a stream** (Persephone's own pipe layer has a separate, unrelated streaming concept with a
+similarly-named method; `readRange` is not that — it is a bounded, byte-returning read, like
+`readBinary()` but for a slice). Return at most `range.end - range.start + 1` bytes, and never more
+than 1 MB in one call — the platform pulls a large read as a sequence of bounded requests and asks
+again for the next range once the previous one is consumed:
+
+```js
+persephone.providers.register("acme/mem", {
+    readBinary(config) { /* ... */ },
+    readRange(config, range) {
+        const data = loadFromWherever(config);
+        return data.subarray(range.start, range.end + 1);
+    },
+    stat(config) {
+        return { exists: true, size: totalSizeOf(config) };
+    },
+});
+```
+
+`readRange` is optional and detected automatically from what you register — nothing in
+`board-manifest.json` declares it. A provider that omits it keeps working exactly as before: every
+read still goes through `readBinary()`, buffered and capped at 256 MB. Adding `readRange` also
+means `stat()` must now return a `size` — seeking needs a length to seek against, and a resource
+over 256 MB can only be opened through the ranged path.
+
 The service starts when a page first needs its provider. A saved page keeps its provider descriptor
 while the board is absent or untrusted: it reports **Provider missing** and remains restorable. If
 the board is trusted but its service is still starting, the same page waits briefly for registration;

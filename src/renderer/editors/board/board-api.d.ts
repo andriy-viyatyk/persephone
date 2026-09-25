@@ -288,6 +288,10 @@ interface PersephoneProviderApi {
      * the module service; structured-clone bridge RPC cannot carry their methods. */
     register(type: string, implementation: {
         readBinary(config: Record<string, unknown>): Promise<Uint8Array> | Uint8Array;
+        readRange?(
+            config: Record<string, unknown>,
+            range: { start: number; end: number },
+        ): Promise<Uint8Array> | Uint8Array;
         writeBinary?(config: Record<string, unknown>, data: Uint8Array): Promise<void> | void;
         stat?(config: Record<string, unknown>): Promise<{
             exists: boolean;

@@ -15,6 +15,9 @@ if (!parentPort || !serviceEntry || !Number.isFinite(deadlineMs) || deadlineMs <
 // dependency-free, so it cannot import the TypeScript constant from src/shared.
 const MAX_BUFFERED_PIPE_BYTES = 256 * 1024 * 1024;
 
+// Mirrors src/shared/board-pipe-constants.ts MAX_BOARD_PIPE_CHUNK_BYTES.
+const MAX_BOARD_PIPE_CHUNK_BYTES = 1024 * 1024;
+
 const storagePending = new Map();
 let requestNumber = 0;
 
@@ -105,6 +108,7 @@ function announceCapabilities() {
             kind: "provider-capabilities",
             type,
             writable: implementation.writable === true && typeof implementation.writeBinary === "function",
+            rangeReadable: typeof implementation.readRange === "function",
         });
     }
 }
@@ -152,7 +156,7 @@ function registerProvider(type, implementation) {
     if (!isRecord(implementation) || typeof implementation.readBinary !== "function") {
         throw new Error(`provider-registration-invalid-implementation:${type}`);
     }
-    for (const method of ["writeBinary", "stat", "watch"]) {
+    for (const method of ["writeBinary", "stat", "watch", "readRange"]) {
         if (implementation[method] !== undefined && typeof implementation[method] !== "function") {
             throw new Error(`provider-registration-invalid-implementation:${type}`);
         }
@@ -174,7 +178,8 @@ globalThis.persephone = persephone;
 
 function validProviderRequest(message) {
     if (!isRecord(message) || message.kind !== "provider") return "Expected a provider request.";
-    if (!["readBinary", "writeBinary", "stat", "watchSubscribe", "watchUnsubscribe"].includes(message.operation)) {
+    if (!["readBinary", "readRange", "writeBinary", "stat", "watchSubscribe", "watchUnsubscribe"]
+        .includes(message.operation)) {
         return "Unknown provider operation.";
     }
     if (typeof message.type !== "string" || message.type.length === 0 || !isRecord(message.config)) {
@@ -187,6 +192,15 @@ function validProviderRequest(message) {
     if (message.operation === "writeBinary"
         && (!isUint8Array(message.data) || message.data.byteLength > MAX_BUFFERED_PIPE_BYTES)) {
         return "Malformed or oversized provider payload.";
+    }
+    if (message.operation === "readRange") {
+        const range = message.range;
+        if (!isRecord(range)
+            || !Number.isInteger(range.start) || range.start < 0
+            || !Number.isInteger(range.end) || range.end < range.start
+            || (range.end - range.start + 1) > MAX_BOARD_PIPE_CHUNK_BYTES) {
+            return "Malformed or oversized provider range.";
+        }
     }
     return undefined;
 }
@@ -226,6 +240,26 @@ async function executeProviderRequest(lease, request) {
             return providerFailure("provider-payload-too-large", "readBinary() exceeded the buffered payload limit.");
         }
         return { kind: "provider-result", operation: "readBinary", ok: true, data: copyBytes(data) };
+    }
+
+    if (request.operation === "readRange") {
+        if (typeof implementation.readRange !== "function") {
+            return providerFailure(
+                "provider-range-unsupported",
+                `Provider "${request.type}" does not support ranged reads.`,
+            );
+        }
+        const data = await withDeadline(
+            Promise.resolve(implementation.readRange(request.config, request.range)),
+        );
+        if (!isUint8Array(data)) {
+            return providerFailure("provider-invalid-result", "readRange() must return a Uint8Array.");
+        }
+        const requestedLength = request.range.end - request.range.start + 1;
+        if (data.byteLength > requestedLength) {
+            return providerFailure("provider-payload-too-large", "readRange() exceeded the requested range.");
+        }
+        return { kind: "provider-result", operation: "readRange", ok: true, data: copyBytes(data) };
     }
 
     if (request.operation === "writeBinary") {
