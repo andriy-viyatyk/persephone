@@ -633,3 +633,22 @@ implementation detail, not design.)*
   deliberately: it is exactly what `http://…/x.pdf` does today, and diverging would make board
   schemes an undiscoverable special case. The fix is D9's `getFilePath()` migration, already
   deferred in Non-goals.
+- US-1474 implemented, and the `_test/range-provider-test` fixture board (D13) built in
+  `persephone-boards`. The fixture is what turned the acceptance list from a plan into a test, and
+  it did so immediately — **acceptance items 1, 2, 3, 4 and 9 are now verified in the running app**:
+  - **Item 1 (US-1517, verified for the first time).** Four board-scheme links, one board, four
+    different editors: `rangetest://fixture/notes.md` → `md-view`, `…/photo.png` → `image-view`,
+    `…/track.mp3` → `video-view`, `…/archive.zzz` → `monaco`. Before US-1517 every one of these
+    opened in Monaco. `.mp3` resolves to the player but cannot yet *play* — that is US-1519.
+  - **Items 2-4.** A 300 MB resource opened and seeked to its last 64 bytes in ~2 ms, byte-verified
+    against the fixture's deterministic generator, with the provider's `readBinary` counter still
+    at zero — so no whole-resource read happened at any point.
+  - **Item 9.** The fixture's second provider (`test/norange`, no `readRange`) behaved exactly as
+    before: buffered reads, and a 300 MB request correctly refused, so the 256 MB ceiling still
+    holds where it should.
+- **D6's premise confirmed by measurement.** The fixture's `stall=1` scenario failed at ~10 005 ms,
+  not indefinitely — `SERVICE_REQUEST_DEADLINE_MS`. That is exactly the deadline US-1518 removes,
+  and it is now reproducible on demand rather than argued from the source.
+- Two cosmetic defects noticed while verifying, neither in scope here, both worth a look later: a
+  board-scheme tab is titled with the query string included (`notes.md?size=200`), and the media
+  player titles its tab `Video Player` rather than the file name. Recorded, not fixed.
