@@ -29,7 +29,8 @@ below tracks which phases have shipped.
 | D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
 | F — Excalidraw extraction, part 2: remove `editors/draw` and React | [EPIC-110](epics/EPIC-110.md) | **shipped 2026-09-25** — React left the renderer bundle (−10.4%); packages moved to `devDependencies` rather than removed |
-| E — Torrent board and audio player (proof 1) | — | not started |
+| E — part 1: a board provider feeds Persephone's own editors | [EPIC-113](epics/EPIC-113.md) | **active** — created 2026-09-26; audio-player board dropped by user decision |
+| E — part 2: the torrent viewer board | — | not started (EPIC-114, after EPIC-113) |
 
 **[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
 EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
@@ -43,18 +44,37 @@ deleting `editors/draw` did not take them with it.
 
 ## Active
 
-*(nothing active — pick the next item from Planned.)*
+- **EPIC-113** — [A board provider can feed Persephone's own editors](epics/EPIC-113.md)
+  — Phase E part 1. A link a board hands to `openRawLink` opens in the editor its file name
+  deserves, and that editor's pipe pulls the bytes back out of the board, a range at a time. No
+  board is written here; the torrent board is EPIC-114.
+  - [ ] [US-1517: A board-scheme link resolves to the editor its file name deserves, not always
+    Monaco](tasks/US-1517-board-scheme-editor-resolution/README.md) — `createBoardSchemeHooks` set
+    `data.target ||= "monaco"` before every downstream resolver that would have matched the file
+    name. Smallest task, and the user-visible one.
+  - [ ] US-1474: Ranged reads pushed into a board-implemented provider (`createReadStream` over the
+    module service) — the pre-committed deferral from [EPIC-107](epics/EPIC-107.md) D11, moved here
+    from *(no epic)*; this epic is the consumer D11 was waiting for. Ships the
+    `persephone-boards/_test/` fixture board (slow, stallable, >256 MB) that makes the epic
+    verifiable without EPIC-114.
+  - [ ] US-1518: A content read has **no deadline** — it waits until the page closes or the user
+    deletes the source. Replaces the fixed 10 s cap with wire-level cancellation, and keeps waiting
+    reads out of the 32-slot budget the board's own control requests (including delete) share.
+  - [ ] US-1519: The built-in media player plays from a pipe — a third `video-stream-server` source
+    beside local file and HTTP, so the in-page `<video>` **and** Open in VLC both work. Must use the
+    127.0.0.1 HTTP surface, not `board://__pipe`: VLC is an external process and cannot fetch a
+    custom Electron protocol.
+  - [ ] US-1521: `persephone.content.open(link)` → `{ url, size, contentType }` — a ranged,
+    origin-local URL for any link, so boards and built-in editors alike stop reading paths
+    directly. A new namespace, not an overload of `host.streamUrl()`, which is gated to
+    content-host/stream-host boards while every published board is `simple`. Shares its seam with
+    US-1519 and lands first.
+  - [ ] US-1520: Close the documented gaps — `boards.md` seeking note, roadmap §3.8 and Phase E
+    corrections
 
 ## Planned
 
 - *(no epic)*
-  - [ ] US-1474: Credit-based ranged streaming into a board-implemented provider
-    — deferred out of [EPIC-107](epics/EPIC-107.md) by decision D11, its pre-committed abort
-    boundary. `ProxyProvider` serves whole-resource reads and `stream-host` serves ranged reads from
-    any platform-owned pipe, but a range is not yet pushed **down** into a board provider — which is
-    what lets a torrent client prioritise pieces (roadmap §3.8 step 7). **Belongs to Phase E**, its
-    only consumer; the seam is in place (`IProvider.createReadStream?(range)` left unimplemented,
-    `ContentPipe` falls back to a buffered read).
   - [ ] US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`
     — split out of [US-1476](tasks/US-1476-browser-scheme-routing/README.md) during review. A download
     takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`, so it

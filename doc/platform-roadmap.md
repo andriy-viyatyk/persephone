@@ -701,6 +701,29 @@ the epic record and do not change the Phase E/F dependency boundary.
 
 ### Phase E — Torrent board and audio player (proof 1)
 
+> **Split in two and re-scoped, 2026-09-26.** [EPIC-113](epics/EPIC-113.md) takes the platform
+> seams; EPIC-114 will take the torrent board. Four details of this section are corrected there:
+>
+> - **No audio player board; the built-in editors are the target** *(user decision)*. The
+>   numbered step 1 below ("Audio player board") is dropped entirely. A board hands a link to `openRawLink` and **Persephone** resolves it
+>   to whichever editor the file name deserves — Monaco for `.txt`/`.md`, the Image viewer for
+>   `.jpeg`, the built-in media player for `.mp3` — then that editor's pipe pulls the bytes back
+>   out of the board. Two consequences: `media.play` loses its only planned caller and is not part
+>   of Phase E (steps 4-5 are ordinary link resolution, which §3.8 already says needs nothing from
+>   the bus); and the built-in media player, which today accepts only a local path or an HTTP URL
+>   (`VideoEditor.ts:106-124`), must learn to read from a pipe.
+> - **The torrent board is a VIEWER, not a torrent client** *(user decision)*. Resolving a torrent
+>   fetches metadata only and deselects every file; bytes move only when a provider range asks for
+>   them; nothing is written to disk; nothing is seeded as a feature. "Download this file" exists
+>   as one explicit per-file request. Step 3 below already implied demand-driven playback; this
+>   makes it the product rule rather than a consequence.
+> - **Step 7's "credit-based frames" were never built.** EPIC-107 shipped a *bounded pull* instead
+>   — `MAX_BOARD_PIPE_CHUNK_BYTES` per reply with continuation ranges — which is backpressure by
+>   construction. EPIC-113 D5 keeps that shape rather than adding a second transport.
+> - **Step 1 is already done and needs no work.** `browser-service.ts:306-309` routes any
+>   non-Chromium protocol, `magnet:` included, to `eOpenPipelineCandidate`. The "to verify" note in
+>   the §3.8 table is resolved.
+
 The worked flow of 3.8, end to end, as two boards in the `persephone-boards` repository. Neither
 needs a bundler: the audio player is a page with an `<audio>` element, and the torrent board's
 UI is plain HTML with `webtorrent` vendored under its own `node_modules` for the service.
@@ -776,6 +799,24 @@ every existing `.excalidraw` page restores into the board; the core bundle no lo
 React; `image.edit` from the image viewer, SVG, Mermaid and the snip tool lands in the board.
 
 ### After the roadmap (not scheduled here)
+
+**A pipe-level loading state, so an editor can show that content is still arriving.**
+*(Raised by the user, 2026-09-26, while scoping [EPIC-113](epics/EPIC-113.md); deliberately out of
+its scope.)* `ContentPipe` and `IContentPipe` carry no loading state today, so there is nothing for
+an editor to observe even if it wanted to — Monaco, the Image viewer and the grids show nothing at
+all while a pipe reads. It has not mattered: almost everything opens from a local file, and HTTP
+sources have been fast enough not to notice.
+
+A demand-driven provider changes that. With [EPIC-113](epics/EPIC-113.md) D6 removing the deadline
+on a content read, a page can legitimately wait minutes for a cold swarm with no feedback beyond an
+empty editor. The editors that do show spinners today (browser, mermaid, mneme-root, board) each
+built their own for unrelated reasons; none is pipe-driven, so this would be a new seam on
+`IContentPipe` rather than a widening of an existing one.
+
+**Not scheduled, and deliberately so** — whether it is needed at all is a judgement to make after
+testing the torrent board (EPIC-114) against real magnet links, not before. EPIC-113 D6 already
+requires that a board can *know* a read is outstanding, which is the half of the problem that
+cannot be retrofitted; the presentation half can wait for evidence that it is wanted.
 
 Video and REST client extraction as ordinary epics using Phases B–D; `ProxyTreeProvider` so a
 module's contents appear in Explorer; `persephone.fetch` / network permission; `persephone.events.on`;
