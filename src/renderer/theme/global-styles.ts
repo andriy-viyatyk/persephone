@@ -105,27 +105,44 @@ function buildGlobalStyles(): string {
 
         /* VSCode-like scrollbar: hidden by default, thumb fades in on hover.
          *
-         * The second selector covers av-grid's scroll container, which RenderGrid builds itself.
-         * The retired uikit/VirtualGrid fork added scroll-container to its own container inside
-         * VirtualGridView, so every grid built on it inherited this treatment and no consumer
-         * could forget it. We no longer own that class, so the single place that cannot be
-         * forgotten is this rule -- and putting the selector here, rather than restating the
-         * declarations in DataGrid.css, keeps one definition of what a scrollbar looks like.
+         * The strip selectors cover every av-grid RenderGrid, whose scrollbars the library
+         * builds itself. The retired uikit/VirtualGrid fork added scroll-container to its own
+         * container inside VirtualGridView, so every grid built on it inherited this treatment
+         * and no consumer could forget it. We no longer own that class, so the single place that
+         * cannot be forgotten is this rule -- and putting the selector here, rather than
+         * restating the declarations in DataGrid.css, keeps one definition of what a scrollbar
+         * looks like.
          *
          * This deliberately covers the DataGrid too: av-grid ships no scrollbar styling of its
          * own, so those grids had the browser default. Every grid in the app now scrolls the
          * same way.
          *
+         * The strips, not the scroll container, are what carry a scrollbar. av-grid 2.12.1
+         * stopped letting the viewport show its own -- that is the fix for the flicker while
+         * dragging -- and moved the bar the user sees onto two absolutely positioned siblings,
+         * leaving the viewport at scrollbar-width: none, set inline. A rule on
+         * render-grid-scroll therefore styles an element that has no scrollbar to style. The
+         * Grid editor went on looking right only by accident: scrollbar-color is an INHERITED
+         * property, and a grid page sits inside page-editor-container.scroll-container, so the
+         * strips picked the colours up from an ancestor. A grid in the Explorer panel has no
+         * such ancestor and got the platform default, which is the bug this replaces.
+         *
+         * Hover is taken on the grid ROOT, not the strip: the strip is a few pixels wide, and
+         * the gesture being restored is "the pointer is over this grid", which is what hovering
+         * the old full-size scroll container meant.
+         *
          * No backticks in this comment on purpose -- the whole block is a template literal, and
          * one would end it. */
         .scroll-container,
-        [data-type="render-grid-scroll"] {
+        [data-type="render-grid-scrollbar-y"],
+        [data-type="render-grid-scrollbar-x"] {
             scrollbar-color: transparent transparent;
             scrollbar-width: thin;
             transition: scrollbar-color 0.3s ease;
         }
         .scroll-container:hover,
-        [data-type="render-grid-scroll"]:hover {
+        [data-type="render-grid"]:hover > [data-type="render-grid-scrollbar-y"],
+        [data-type="render-grid"]:hover > [data-type="render-grid-scrollbar-x"] {
             scrollbar-color: ${color.background.scrollBarThumb} transparent;
         }
 

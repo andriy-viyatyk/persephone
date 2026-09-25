@@ -881,7 +881,7 @@ each skin from the raw base URL (also returned by `main.boardsManifestUrl` /
   `baseUrl` is the manifest's top-level `baseUrl` field. A component with `skin.file: null`
   (`"type": "none"`) has **no skin to fetch** — it reads `--p-*` itself.
 
-**Tabular data → use `av-grid` 2.11.2.** It is the catalog's default grid and a port of Persephone's own
+**Tabular data → use `av-grid` 2.12.1.** It is the catalog's default grid and a port of Persephone's own
 internal grid (VAGrid), so it is native to the app: it matches the built-in grid editors, needs **no
 skin and no theme code** (its `--avg-*` tokens fall back to `--p-*`, so a theme switch re-tints it
 with zero JS), and it renders more smoothly than Tabulator — noticeably so even on small datasets.

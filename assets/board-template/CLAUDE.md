@@ -1097,7 +1097,7 @@ For **anything grid-shaped**, the default is **[av-grid](https://github.com/andr
 (npm `av-grid`), not Tabulator. It is a port of Persephone's own internal grid (VAGrid), so
 it is native to the app: it matches the built-in grid editors' look and keyboard behaviour,
 and it renders more smoothly than Tabulator — noticeably so **even on small datasets**. The
-catalog is verified against av-grid 2.11.2: its text filters support per-column operators
+catalog is verified against av-grid 2.12.1: its text filters support per-column operators
 (`contains`, `equals`, `startsWith`, `blank`, `notBlank`), hosts can own filtering and sorting,
 `treeColumn` provides a gutter over flat rows, and `pinned: "left"` / `"right"` provides
 leading/trailing sticky data columns.

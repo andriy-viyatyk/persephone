@@ -90,6 +90,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   that width; the sidebar is capped at 90% of the page area so the editor remains visible.
 - **Git Tree remembers its layout for new pages:** column widths and order, plus the lower
   Commit/Diff panel height, carry forward when you open another Git Tree page.
+- **Grids no longer flicker while you scroll them:** dragging a grid's scrollbar, or scrolling
+  quickly through a long list, used to blink. Affects every table view — the grid editors,
+  the Explorer and Boards trees, Git Changes and the Git Tree.
 
 ---
 
