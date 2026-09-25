@@ -837,8 +837,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     /** Set transient main-frame page-toolbar text for one live board-frame generation (US-1494).
-     *  The empty string is retained as an explicit board clear; the toolbar view resolves both
-     *  it and an unset value to the board path fallback. */
+     *  The empty string is retained as an explicit board clear; the toolbar view renders it and
+     *  an unset value identically, as a blank slot — there is no board-path fallback. */
     setToolbarTextForFrame(frameGeneration: number, text: string): void {
         this.state.update((s) => {
             s.toolbarTextFrameGeneration = frameGeneration;

@@ -303,7 +303,7 @@ state continue to refer to the same board when the application is installed in a
 
 ### 3. Edit and reload
 
-Boards do **not** reload automatically when files change. To apply edits to `index.html`, `app.js`, or any `.js`/`.css`, click the **Reload** button in the in-board toolbar. AI agents editing board files should call `pages[pageId].editor.reload()` and then re-run `pages[pageId].editor.snapshot()` to see the updated board.
+Boards do **not** reload automatically when files change. To apply edits to `index.html`, `app.js`, or any `.js`/`.css`, choose **Reload board** from the in-board toolbar's **…** menu. AI agents editing board files should call `pages[pageId].editor.reload()` and then re-run `pages[pageId].editor.snapshot()` to see the updated board.
 
 Settings declared in `board-manifest.json` appear as a Settings panel once the board is trusted or
 bundled. The registry caches the manifest, so editing that file directly does not update the
@@ -373,9 +373,8 @@ Every open board displays a thin toolbar above the board's content area. The too
 | Control | Description |
 |---------|-------------|
 | **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. |
-| **Board path label** | Shows the full path to the board's folder as a non-interactive label. |
-| **Reload** (refresh icon) | Remount the board to pick up edited files (`index.html`, `app.js`, CSS, etc.). |
-| **Show log** (log icon) | Open the board's `ui.log` file in a new tab so you can inspect errors and the board load line. |
+| **Text slot** | Empty unless the open board fills it with `persephone.toolbar.setText()`. A non-interactive label; the board's own folder path is under **… → Board properties** and the tab's **Copy Board Path**. |
+| **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. An update-available dot appears here when a newer catalog version is ready. |
 | **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
 
 ---
@@ -512,7 +511,7 @@ grant: trusting a board already permits arbitrary renderer and Node code.
 
 ### Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 
-By default, a board's spawned processes are **killed whenever the board unloads** — the user navigates the page to something else, or clicks **Reload**. A board that starts a dev server, watcher, or any process meant to keep running opts out with the busy flag:
+By default, a board's spawned processes are **killed whenever the board unloads** — the user navigates the page to something else, or chooses **… → Reload board**. A board that starts a dev server, watcher, or any process meant to keep running opts out with the busy flag:
 
 ```js
 // Start a long-running process and name it
@@ -532,7 +531,7 @@ backend.kill();
 persephone.setBoardBusy(false);
 ```
 
-- **`persephone.setBoardBusy(true)`** — declares "my processes must outlive me". While busy, unloading the board (navigating its page elsewhere, or **Reload**) leaves its processes running. They are still killed when the page/tab is closed, when Persephone quits, or after you call `setBoardBusy(false)` and the board next unloads.
+- **`persephone.setBoardBusy(true)`** — declares "my processes must outlive me". While busy, unloading the board (navigating its page elsewhere, or **… → Reload board**) leaves its processes running. They are still killed when the page/tab is closed, when Persephone quits, or after you call `setBoardBusy(false)` and the board next unloads.
 - **`persephone.getBoardBusy()`** → `Promise<boolean>` — the flag itself survives a reload (it lives in the app, not the board's JS). Read it on startup to know whether you should re-enter "running" mode.
 - **`persephone.getJobs()`** → `Promise<PersephoneJobInfo[]>` — this board's currently live jobs, including ones spawned by a previous lifetime of the board (the board's own JS state, including any `execute()` handles, does not survive a reload). Each entry has `jobId`, `command`, the optional `name` you gave it, and `kill()` / `write()` / `endStdin()`. Surviving jobs are **control-only** — there is no `stdout`/`stderr`/`exit` streaming for them (their output went to the previous lifetime; anything a process prints while the board is unloaded is dropped). Poll `getJobs()` if you need to notice a job has exited.
 - **Name your long-running jobs** — pass `{ name: "backend" }` to `execute()`. The name is the re-association key `getJobs()` uses after a reload, since a board cannot rely on `localStorage` to remember an old `jobId` (board storage does not persist across app restarts).
@@ -934,11 +933,13 @@ Three things a content-host board can do that a simple board cannot:
 
 **Page-toolbar text:** a trusted or bundled board's main view can call
 `persephone.toolbar.setText(text)` to replace the wide middle label in the page toolbar. This is
-separate from the content-host footer status: it works for plain and content-host boards, is
-transient and non-persistent, and `persephone.toolbar.setText("")` returns the label to the board
-root path. The label remains non-interactive, and its native tooltip keeps the full path visible
-while an override is shown. Reloading, navigating away, a frame error, or losing trust clears the
-override; the newly mounted frame must set it again.
+separate from the content-host footer status: it works for plain and content-host boards and is
+transient and non-persistent. **The slot starts empty**: it used to show the board's folder path
+when no board had claimed it, which spent the toolbar's whole flexible span on something the user
+had just chosen and could not act on. So `persephone.toolbar.setText("")` now clears the slot
+rather than restoring that path. The label remains non-interactive, and while a board's text is
+shown its native tooltip carries the full path. Reloading, navigating away, a frame error, or
+losing trust clears the text; the newly mounted frame must set it again.
 
 **Saving:** press **Ctrl+S** (or **Cmd+S**) anywhere in the board and Persephone saves the file through the pipe automatically — no board code required. A board that wants to handle the keystroke itself can call `event.preventDefault()` in its own key handler to opt out, in which case the automatic save stands down. `persephone.host.save()` is also available if you want to trigger a save from your own UI (e.g. a Save button).
 
@@ -964,7 +965,7 @@ into a cache file and returning that local path from `getFilePath()`.
 The pipe can range-read platform providers, but a board provider currently serves whole-resource
 reads. `ProxyProvider` does not implement `createReadStream`, so a range request falls back to a
 buffered `readBinary()` and is not pushed into the board service. Seeking-provider support is
-deferred to Phase E by EPIC-107 D11.
+not implemented yet.
 
 ---
 
@@ -991,13 +992,13 @@ You can delete a downloaded-but-not-yet-registered board directly from this scre
 
 ### Board properties, updates, and rollback
 
-Once a board is installed, the same **Board Info** screen switches to a **properties** view — reached from the **Boards** tab, the in-board toolbar's **Properties** button (info icon), the hub, or an update notification. It shows the board's description, author, install location, file-type association, trust state, and installed version, plus:
+Once a board is installed, the same **Board Info** screen switches to a **properties** view — reached from the **Boards** tab, the in-board toolbar's **… → Board properties**, the hub, or an update notification. It shows the board's description, author, install location, file-type association, trust state, and installed version, plus:
 
 - **Versions** — the board's full published version history, newest first, fetched on demand. The version you have installed is marked **Current**; a newer compatible version is highlighted. Click **Update** (or **Install** on an older entry) to switch to that version — the swap is safe: your existing folder is only replaced once the new version has downloaded and verified successfully, so a failed download or a cancelled update never leaves you with a broken board. A version that needs a newer Persephone than the one you're running is shown disabled with a **"Requires Persephone ≥ X"** hint.
 - **Uninstall** — removes the board's folder from disk and forgets it (untrust + unpin). This only appears for boards installed from the catalog; a board you (or an agent) created locally shows **Unregister** instead, which only forgets it — the folder is kept.
 - **Open board** — switches back to the board itself.
 
-**Update notifications:** when a compatible newer version is published, installed boards get a silent **"Update available"** badge in the **Boards** tab (with an **Update** action in its context menu) and a small dot on the board's in-board **Properties** button — no pop-up interruptions, just a quiet indicator you can act on when convenient.
+**Update notifications:** when a compatible newer version is published, installed boards get a silent **"Update available"** badge in the **Boards** tab (with an **Update** action in its context menu) and a small dot on the board's in-board **…** button — no pop-up interruptions, just a quiet indicator you can act on when convenient.
 
 If a board you're updating is currently open (or has background processes still running via `setBoardBusy`), Persephone asks you to close its pages first, with a **Close pages & continue** shortcut that does it for you (respecting any unsaved changes) and proceeds with the update.
 
@@ -1149,7 +1150,7 @@ If the board is also a [custom editor](#custom-editors--associate-a-board-with-a
 
 ## Error log (`ui.log`)
 
-All board errors — script failures, bridge errors, and board load failures — are shown as a toast notification **and** appended to a `ui.log` file in the board folder. `console.error`/`console.warn` calls made by the board's own code are also mirrored there (as `[error]`/`[warn]` lines), so a misbehaving board's log gives a fuller picture even without a toast. Click **Show log** (log icon) in the in-board toolbar at any time to open `ui.log`. The log is reset to a single `board loaded` line on every board open or Reload, so it reflects only the current board lifetime — it never accumulates across sessions. Keep `catch` blocks in your board JS calling `persephone.notify(message, "error")` so failures are captured there.
+All board errors — script failures, bridge errors, and board load failures — are shown as a toast notification **and** appended to a `ui.log` file in the board folder. `console.error`/`console.warn` calls made by the board's own code are also mirrored there (as `[error]`/`[warn]` lines), so a misbehaving board's log gives a fuller picture even without a toast. Choose **Open board log** from the in-board toolbar's **…** menu at any time to open `ui.log`. The log is reset to a single `board loaded` line on every board open or Reload, so it reflects only the current board lifetime — it never accumulates across sessions. Keep `catch` blocks in your board JS calling `persephone.notify(message, "error")` so failures are captured there.
 
 ---
 
@@ -1249,8 +1250,8 @@ side without modifying source files.
 | Open a board from the sidebar | **Tools & Editors** panel → **Boards** tab → click the board |
 | Open a board (script) | `await app.boards.openBoard("C:/path/to/board/root")` |
 | Open File Explorer from inside a board | Click the **File Explorer** button (folder icon) in the in-board toolbar |
-| Reload the board | Click the **Reload** button in the in-board toolbar |
-| View the error log | Click **Show log** (log icon) in the in-board toolbar |
+| Reload the board | In the in-board toolbar, open **…** → **Reload board** |
+| View the error log | In the in-board toolbar, open **…** → **Open board log** |
 | Pin a board | In the **Boards** tab, hover the board row and click the pin button |
 | Copy a board's folder path | Right-click the board in the **Boards** Explorer panel, or in the sidebar's **Boards** tab / the hub's **Registered boards** tab → **Copy board path**, or right-click an open board page tab → **Copy Board Path** |
 | Open a board's folder as a workspace page | Right-click the board in the **Boards** Explorer panel, or in the sidebar's **Boards** tab / the hub's **Registered boards** tab → **Open board folder**, or right-click an open board page tab → **Open Board Folder**. The new page's File Explorer is rooted at the board folder. |
@@ -1258,7 +1259,7 @@ side without modifying source files.
 | Delete a locally-created board | Right-click in the **Boards** Explorer panel → **Delete Board** |
 | Rename a locally-created board | Rename the board's folder in the file system (Explorer, terminal, or the File Explorer sidebar), or ask an AI agent to rename it (`app.boards.renameBoard`) |
 | Discover & install a board published by the project | Open a matching file and click **+** in the editor switch, or open the **Search boards** tab of the Tools & Editors hub — see [Published boards catalog](#published-boards-catalog--discover-install-update) |
-| Update an installed catalog board | **Boards** tab → **Update available** badge / context menu, or the dot on the board's **Properties** button |
+| Update an installed catalog board | **Boards** tab → **Update available** badge / context menu, or the dot on the board's **…** button |
 | Roll back an installed catalog board to an older version | Board's **Properties** screen → **Versions** list → **Install** on the older version |
 | Remove an installed catalog board (deletes its folder) | Board's **Properties** screen → **Uninstall** |
 

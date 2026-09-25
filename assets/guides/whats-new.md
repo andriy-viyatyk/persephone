@@ -92,6 +92,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
   when it sets nothing. See [Boards](./boards.md).
 - **The Excalidraw board has its drawing toolbar:** the bundled board carries five controls — theme,
   copy image, save as SVG/PNG, open in a new tab, and screen snip.
+- **Board recovery actions now share a single toolbar menu:** **Reload board**, **Open board log**,
+  and **Board properties** are under **…**. The addressable `BOARD_ELEMENTS` contract now exposes
+  `board-toolbar-more`; `board-toolbar-reload`, `board-toolbar-log`, and
+  `board-toolbar-properties` were removed because menu items are not addressable controls.
+- **The board toolbar text slot starts empty:** a board can fill it with
+  `persephone.toolbar.setText(text)`, while `setText("")` clears it instead of restoring the board
+  path. The path remains available under **… → Board properties** and the tab's **Copy Board Path**.
+- **Board toolbars now match the app's other editor chrome:** their background uses the same dark
+  toolbar surface instead of appearing a shade lighter.
+- **Excalidraw uses its own brand icon:** the bundled board now shows Excalidraw's recognizable
+  purple mark wherever Persephone displays its board icon.
+- **Excalidraw opens without a white flash on dark themes:** its initial document background uses
+  Persephone's theme before the drawing app finishes loading.
 - **Board path switching now uses the Boards panels:** clicking the board path no longer opens a
   switcher; use the **Boards** panel or the Explorer **Boards** panel to switch boards.
 - **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now

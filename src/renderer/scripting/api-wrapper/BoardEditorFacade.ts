@@ -50,9 +50,7 @@ import { errMessage } from "../../../shared/utils";
 
 const BOARD_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "board-toolbar-explorer", purpose: "Locate the toolbar control that toggles the board's Explorer navigator.", where: "left edge of the board toolbar" },
-    { name: "board-toolbar-reload", purpose: "Locate the toolbar Reload board control; the facade action is reload().", where: "left side of the board toolbar, after File Explorer" },
-    { name: "board-toolbar-log", purpose: "Locate the control that opens the board's ui.log.", where: "left side of the board toolbar, after Reload" },
-    { name: "board-toolbar-properties", purpose: "Locate the control that opens Board Info/properties.", where: "right side of the board toolbar, before the editor switch" },
+    { name: "board-toolbar-more", purpose: "Locate the … control whose menu holds Reload board, Open board log, and Board properties; those three items are menu entries, not toolbar controls, so they have no element names of their own. The facade action for reload is reload().", where: "right side of the board toolbar, before the editor switch" },
     { name: "board-trust", purpose: "Locate the Trust board action in the untrusted placeholder.", where: "center of the untrusted board placeholder, when the board is untrusted" },
 ];
 

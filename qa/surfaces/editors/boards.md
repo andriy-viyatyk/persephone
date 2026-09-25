@@ -86,18 +86,18 @@ then claims an unqualified success is the failure this shape exists to prevent.
 
 **Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
 
-**Verify:** All five are declared either way, but `visible` is honest: everything reads `false`
-while the page is inactive, and the four toolbar controls read `true` once it is active.
+**Verify:** All three are declared either way, but `visible` is honest: everything reads `false`
+while the page is inactive, and the two addressable toolbar controls read `true` once it is active.
 `board-trust` stays `false` on a trusted board — it lives in the untrusted placeholder. Then
-`highlight("board-toolbar-properties")` rings exactly one control and reports `found: true`.
+`highlight("board-toolbar-more")` rings exactly one control and reports `found: true`.
 
-The board path is a non-interactive label; switch boards from the **Boards** panel or the Explorer
+The toolbar's text slot is a non-interactive label and is empty unless the board fills it; switch boards from the **Boards** panel or the Explorer
 **Boards** panel.
 
 ## Test B.6: Board Info shows only what the board's situation offers
 
 **Preparation:** open Board Info for a locally trusted, non-catalog board (the board toolbar's
-properties control).
+**… → Board properties** menu item).
 
 **Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
 

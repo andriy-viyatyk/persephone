@@ -650,7 +650,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── board/              # Board editor (non-text, Pattern B survive-navigation)
 │   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; file/folder sources keep boardRoot separate from filePath/folderPath; busy keep-alive
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
-│   │   ├── BoardToolbar.ts           # In-board toolbar — Reload / Show-log / board text slot / File Explorer button; hosts the board-declared control group
+│   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer / board text slot / … menu; hosts the board-declared control group
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
 │   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root

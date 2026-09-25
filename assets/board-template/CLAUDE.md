@@ -59,8 +59,9 @@ the controls and their dynamic element declarations, and a new frame must call `
 ## Board page-toolbar text
 
 The main view may call `persephone.toolbar.setText(text)` to replace the wide middle toolbar label
-temporarily. A non-empty string is shown; `persephone.toolbar.setText("")` restores the board root
-path, which is also always available in the label's native tooltip. The value is not persisted and
+temporarily. The slot is blank until the board supplies text; `persephone.toolbar.setText("")` clears
+it rather than restoring the board root path. While board text is shown, the label's native tooltip
+carries that full path. The value is not persisted and
 is cleared when the frame reloads, errors, is disposed, loses trust, or is navigated away from, so
 the replacement frame must set it again.
 
@@ -1128,8 +1129,8 @@ leading/trailing sticky data columns.
 ## Errors & the log
 
 Report failures with `persephone.notify(message, "error")` — they're toasted **and**
-appended to **`ui.log`** in this folder (the **Show-log** button in the in-board toolbar
-opens it). Persephone also logs board *load* failures there automatically: navigation
+appended to **`ui.log`** in this folder (choose **… → Open board log** in the in-board toolbar
+to open it). Persephone also logs board *load* failures there automatically: navigation
 errors, CSP violations, and uncaught script errors / unhandled rejections — and it mirrors
 every **`console.error`** / **`console.warn`** from the board's frames into the log
 (`console.log`/`info` are not mirrored), so runtime problems your code or a library reports
@@ -1147,7 +1148,7 @@ sidebar. First match wins (SVG preferred). Without one, a default glyph is used.
 ## Editing & reload
 
 Boards do **not** auto-reload when you edit their files. After editing `index.html`,
-`app.js`, or `.css`, apply the changes with the **Reload** button in the in-board
+`app.js`, or `.css`, apply the changes with **… → Reload board** in the in-board
 toolbar. When an AI agent is driving the board, it reloads with
 `pages[pageId].editor.reload()` — the path returns only after the reloaded main frame has
 finished loading, so `pages[pageId].editor.snapshot()` right after it sees the new content.

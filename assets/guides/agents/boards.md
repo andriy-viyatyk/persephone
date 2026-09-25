@@ -105,7 +105,8 @@ content, not a replacement for the existing trust gate.
 The catalog exists only for the live trusted main frame. Reload, navigation away, frame disposal,
 or loss of trust clears controls, dynamic element declarations, menus, and pending input timers;
 the next frame must call `set()` again. The toolbar group is visually separated from Persephone's
-own reload/log/properties controls, but it does not add a permission or trust surface.
+own **…** menu, which contains Reload board, Open board log, and Board properties; it does not add a
+permission or trust surface.
 
 ## What a board is
 
@@ -690,9 +691,9 @@ must respect.
   (non-content-host) boards, which have no footer — so guard with `persephone.setStatusText?.(…)`
   if the board must also run on older app builds.
 - `persephone.toolbar.setText(text)` — set transient text in the wide middle slot of the page
-  toolbar from the board's **main** view. A non-empty string replaces the visible board path;
-  `""` and an unset value show the path again, never a blank slot. The slot's native tooltip
-  always retains the complete path, even while an override is visible. The value is not persisted
+  toolbar from the board's **main** view. **The slot is empty unless your board fills it** — it
+  no longer falls back to the board path — so `""` and an unset value both leave it blank. While
+  your text is visible, the slot's native tooltip carries the board's full path. The value is not persisted
   and is cleared when the main frame reloads, errors, is disposed, loses trust, or the board is
   navigated away from; a newly mounted frame must set it again.
 
@@ -965,7 +966,7 @@ the manifest's `loadOrder`.
 - Optional `icon.svg` / `icon.png` / `icon.ico` in the board folder sets the board's icon (SVG
   preferred). Without one, a default glyph is used.
 - **Reload model:** boards do **not** auto-reload on file changes. After editing a board's files,
-  apply the changes with the **Reload** button in the in-board toolbar — or, when driving the board
+  apply the changes with **… → Reload board** in the in-board toolbar — or, when driving the board
   as an agent, `pages[pageId].editor.reload()`. The path returns after the reloaded main frame has
   finished loading, so an iterate loop is race-free: edit files → `reload()` → `snapshot()`.
 - **`board-manifest.json` is not covered by a reload.** Persephone caches a board's manifest from the

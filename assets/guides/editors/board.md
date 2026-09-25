@@ -23,7 +23,7 @@ the file and folder association details.
 
 ```
 +---------------------------------------------------------------------+
-| [Explorer] [Text]   [Board controls] [Reload] [Log] [Properties] [Switch] |  Board toolbar: Explorer and text left, board controls then Persephone's actions and the switch at right
+| [Explorer] [Text]        [Board controls] […] [Switch]               |  Board toolbar: Explorer and text left, the board's own controls then Persephone's … menu and the switch at right
 +---------------------------------------------------------------------+
 | [Board]                                  [Script panel]             |  board content and optional script panel
 +---------------------------------------------------------------------+
@@ -35,10 +35,9 @@ the file and folder association details.
 
 - File Explorer → `board-toolbar-explorer`
 - Board controls → `board-toolbar-control-<id>`, one per control the open board declares, in the order it declared them; absent when the board declares none
-- Toolbar text → no entry: a label, not a control
-- Reload → `board-toolbar-reload`
-- Show log → `board-toolbar-log`
-- Properties → `board-toolbar-properties`
+- Toolbar text → no entry: a label, not a control, and empty unless the open board fills it
+- … (Board actions) → `board-toolbar-more`
+- Reload board / Open board log / Board properties → no entry: they are items inside the … menu, not toolbar controls
 - Trust board → `board-trust`
 - Editor switch and generic Page navigation → no entry: Board owns its toolbar and draws no generic shell switch
 - Board webview controls → no entry: embedded board content
@@ -86,8 +85,7 @@ installed/published-board path still uses the user trust gate.
 After narrowing `page.editor.id` to `board-view` or `board-editor:<root>`, the `BoardEditor` facade exposes trust/render state,
 manifest metadata, reload, status, declared secondary views, snapshots, clicks, typing, evaluation,
 screenshots, network requests, and frame selection. Verified chrome elements include
-`board-toolbar-explorer`, `board-toolbar-reload`, `board-toolbar-log`, `board-toolbar-properties`,
-and `board-trust`. A trusted board that publishes `persephone.aiVision.expose(root)` also exposes
+`board-toolbar-explorer`, `board-toolbar-more`, and `board-trust`. A trusted board that publishes `persephone.aiVision.expose(root)` also exposes
 its optional named model at `page.editor.app`, with help, hints, state, methods, elements, and
 highlighting in the owning frame. Board iframe content without that model is reached through
 snapshots rather than the chrome inventory.

@@ -11,6 +11,18 @@
             height: 100%;
             margin: 0;
         }
+
+        /* Excalidraw paints nothing until its React bundle has loaded and mounted
+           (~0.5s on a cold open), and a document with no background of its own paints
+           the UA default white over the host iframe — a white flash on a dark theme.
+           `--p-bg` is injected by the board:// handler as a `:root` <style> BEFORE this
+           stylesheet is parsed, so this is themed at first paint with no script involved.
+           The fallback is `transparent`, which reveals the iframe element's own themed
+           background rather than white. Both track the app theme, which is also what
+           seeds `drawDarkMode` below, so the placeholder matches what mounts over it. */
+        html {
+            background: var(--p-bg, transparent);
+        }
     </style>
     <!-- import-map:start -->
     <script type="importmap">

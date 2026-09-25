@@ -1368,7 +1368,8 @@ function createHandle(
                 controls: Array.isArray(partial) ? partial as BoardToolbarUpdateMsg["controls"] : [],
             });
         },
-        /** Set transient text in the main page toolbar; `""` restores the board path fallback. */
+        /** Set transient text in the main page toolbar; `""` clears it. The slot has no
+         *  fallback — it is blank until a board fills it. */
         setText(text: string): void {
             try {
                 window.parent.postMessage(
