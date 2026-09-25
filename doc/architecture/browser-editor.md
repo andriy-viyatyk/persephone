@@ -68,6 +68,14 @@ remains the shared positioning dependency for eight UIKit consumers.
 
 `BrowserTabsModel` maintains a private `activeTabHistory` stack (array of tab IDs, most recent last). When `switchTab()` or `addTab()` changes the active tab, the previous active tab ID is pushed onto the stack. When `closeTab()` closes the active tab, it pops from the stack to find the most recent still-existing tab to activate, falling back to an adjacent tab if history is empty. The stack is cleaned up when tabs are closed (`closeTab`, `closeOtherTabs`, `closeTabsBelow`).
 
+### Tab Creation and Focus
+
+`BrowserEditor.addTab()` is the editor-level entry point for creating internal tabs. It delegates
+tab state to `BrowserTabsModel`, then focuses the URL bar when the new tab is blank
+(`about:blank`). The tabs panel's plus row uses this facade so a blank tab added to an existing
+browser page receives the same URL-bar focus as the initial blank tab. Tabs opened with a URL keep
+focus on the loading webview instead of stealing it for the URL bar.
+
 ### New Window Handling
 
 | Source | Disposition | Behavior |

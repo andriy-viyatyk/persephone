@@ -561,8 +561,18 @@ export class BrowserEditor extends EditorModel<
 
     /** Add a new internal tab and switch to it.
      *  If parentGroupId is provided, the new tab inherits that group and is inserted after the active tab.
-     *  Otherwise the tab is appended at the end. Returns the new tab's ID. */
-    addTab = (url = DEFAULT_URL, parentGroupId?: string): string => this.tabs.addTab(url, parentGroupId);
+     *  Otherwise the tab is appended at the end. Returns the new tab's ID.
+     *
+     *  A blank tab focuses the URL bar, because a blank tab is a question the user has to answer
+     *  and the URL bar is where the answer goes. `BrowserView` does this for a new browser page;
+     *  doing it here is what makes a tab added to an existing page behave the same. A tab opened
+     *  *at* a URL is left alone: the page it is loading is the answer, and stealing focus from it
+     *  would fight the webview for the caret. */
+    addTab = (url = DEFAULT_URL, parentGroupId?: string): string => {
+        const internalTabId = this.tabs.addTab(url, parentGroupId);
+        if (url === DEFAULT_URL) this.urlBar.focusUrlInput();
+        return internalTabId;
+    };
     closeTab = (internalTabId: string) => this.tabs.closeTab(internalTabId);
     closeOtherTabs = (internalTabId: string) => this.tabs.closeOtherTabs(internalTabId);
     closeTabsBelow = (internalTabId: string) => this.tabs.closeTabsBelow(internalTabId);
