@@ -678,6 +678,39 @@ implementation detail, not design.)*
   independent of `withDeadline()`. Removing only the three sites D6 listed would have left the fix
   silently incomplete.
 
+### 2026-09-26 — US-1518's no-deadline rule had a hole, found by US-1521's first measurement
+
+**`stat` kept a deadline while `readBinary`/`readRange` lost theirs, so `content.open()` without
+`timeoutMs` failed at 10 007 ms** despite D6 promising it waits. Measured against the fixture, not
+reasoned about.
+
+The cause is worth recording because it is not where it looks. The renderer and main both already
+sent `stat` the `Infinity` sentinel — `ProxyProvider.stat()` passes it. But
+`assets/module-service-host.mjs` does not receive a per-request deadline at all: its `deadlineMs`
+is a **process-level constant from argv**, and US-1518 expressed "no deadline" there as a hardcoded
+operation list, `CONTENT_READ_OPERATIONS = {readBinary, readRange}`. `stat` was not in it, so the
+host's outer timer — and `withDeadline()`'s race — still bounded it. This was the fourth deadline
+site doing exactly what US-1518's own note warned a missed site would do: degrade silently to 10 s
+rather than hang.
+
+**Fixed by splitting one predicate into the two questions it was conflating**, which US-1518 could
+not distinguish because it only had two operations:
+
+- *Released by cancellation rather than a deadline?* — now `UNBOUNDED_OPERATIONS`, which adds
+  `stat`. `content.open()` sizes eagerly, so its `stat()` is on the same critical path as the reads
+  that follow and must wait the same way.
+- *Exempt from the 32-slot control-request cap, and counted as an outstanding content read?* —
+  still `CONTENT_READ_OPERATIONS`, and `stat` is deliberately **not** in it. That budget is what
+  guarantees a board's own `delete` gets through while reads are outstanding (D6). Exempting a
+  metadata call would erode the very escape hatch D6 depends on.
+
+`stat` now also receives the `AbortSignal`, because with no timer cancellation is its only release.
+
+Verified both directions after the change: no `timeoutMs` → **still pending at 16 013 ms**;
+`timeoutMs: 2500` → **rejected at 2502 ms**. The fixture's `stat()` had to be taught to honour its
+own `delay`/`stall` controls first — it did not, which is why US-1521's first pass reported this
+scenario as passing when it was never exercised.
+
 ### 2026-09-26 — a consequence of D6 the user should decide on
 
 **A source that stalls on its FIRST read now opens no page at all, and there is nothing to close.**

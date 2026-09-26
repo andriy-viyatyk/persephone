@@ -221,10 +221,18 @@ function withDeadline(promise) {
     });
 }
 
+/** Exempt from the control-request cap, and counted as outstanding content reads. */
 const CONTENT_READ_OPERATIONS = new Set(["readBinary", "readRange"]);
+/** Released by cancellation rather than by a deadline. A superset: `stat` waits like a read
+ *  (US-1521's eager sizing) but still competes for the capped control budget. */
+const UNBOUNDED_OPERATIONS = new Set(["readBinary", "readRange", "stat"]);
 
 function isContentReadOperation(operation) {
     return CONTENT_READ_OPERATIONS.has(operation);
+}
+
+function isUnboundedOperation(operation) {
+    return UNBOUNDED_OPERATIONS.has(operation);
 }
 
 /** US-1518 decision 10: pushes the live outstanding-content-read count to the renderer over the
@@ -300,7 +308,11 @@ async function executeProviderRequest(lease, request, controller) {
         if (typeof implementation.stat !== "function") {
             return { kind: "provider-result", operation: "stat", ok: true, stat: { exists: true } };
         }
-        const stat = await withDeadline(Promise.resolve(implementation.stat(request.config)));
+        // Neither the outer timer nor withDeadline()'s race applies to `stat` any more — the same
+        // treatment readBinary/readRange already get. The signal is its ONLY release.
+        const stat = await Promise.resolve(
+            implementation.stat(request.config, { signal: controller?.signal }),
+        );
         if (!validStat(stat)) return providerFailure("provider-invalid-result", "stat() returned malformed metadata.");
         return { kind: "provider-result", operation: "stat", ok: true, stat };
     }
@@ -365,6 +377,7 @@ function handleRendererRequest(lease, message) {
         return;
     }
     const isContentRead = isContentReadOperation(request.operation);
+    const isUnbounded = isUnboundedOperation(request.operation);
     if (!isContentRead) {
         let controlCount = 0;
         for (const pending of lease.pending.values()) {
@@ -375,13 +388,21 @@ function handleRendererRequest(lease, message) {
             return;
         }
     }
-    // Content reads (readBinary/readRange) get no outer timer and an AbortController instead
-    // (US-1518): the platform stops waiting via cancellation (page close, board teardown, or an
-    // explicit {kind:"cancel"} message), never via a deadline. Everything else keeps the original
-    // outer timer, independent of executeProviderRequest()'s own (redundant, for those operations)
-    // withDeadline() race.
-    const controller = isContentRead ? new AbortController() : undefined;
-    const timer = isContentRead ? undefined : setTimeout(() => {
+    // Two separate questions, deliberately no longer answered by one list (US-1521 follow-up).
+    //
+    // "Does this operation get an outer timer?" — no for every UNBOUNDED operation, which now
+    // includes `stat`. `content.open()` resolves size eagerly (US-1521), so its `stat()` sits on
+    // the same critical path as the reads that follow it. It used to die here at ~10s while
+    // `readBinary`/`readRange` waited forever: the renderer and main both already send `stat` the
+    // `Infinity` sentinel (ProxyProvider.stat), and this host timer was the last site still
+    // bounding it — which made `content.open()` without `timeoutMs` fail at 10s despite D6.
+    //
+    // "Does it bypass the control-request cap and count as an outstanding content read?" stays
+    // keyed on CONTENT_READ_OPERATIONS, and `stat` is deliberately NOT in it. The 32-slot budget
+    // is what guarantees a board's own control requests — `delete` above all — still get through
+    // while reads are outstanding (D6); exempting a metadata call would erode that.
+    const controller = isUnbounded ? new AbortController() : undefined;
+    const timer = isUnbounded ? undefined : setTimeout(() => {
         if (!lease.pending.delete(message.requestId)) return;
         postRenderer(lease.port, {
             kind: "response",
