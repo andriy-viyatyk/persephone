@@ -364,6 +364,14 @@ than reset to a renderer-local counter: a counter that restarted at zero after r
 later snapshots as stale, silently preventing trust changes (including untrust) from reaching the
 supervisor.
 
+**Browser-download claims:** `CustomEditorRegistry.refresh()` also produces a generation-numbered
+snapshot of accepted, normalized `browserUrlMasks` claims from trusted and enabled bundled boards.
+Main consumes that snapshot synchronously in `download-service.ts` at Electron's `will-download`
+boundary. On a match, the renderer event sends the source URL to `openRawLink` with the winning
+board target. This is a download-only path; ordinary scheme routing remains separate in the Browser
+webContents handoff and the registered-scheme pipeline. The interception contract is source-verified
+only until the Browser-download scenario is exercised end to end.
+
 **Bridge (`window.persephone`):**
 - `persephone.call(path, options?)` is a page-scoped bridge operation over the board's MessagePort. The renderer resolves the AiVision tree using the Board's hosting page (not whichever tab is active), returns JSON-safe shaped values with hints disabled, and rechecks Board trust for every call. It exposes the renderer tree only; process-wide `main` and `windows` routing belongs to the MCP tool.
 - Board `.app` registration has two lifecycles. The main frame's initial `expose()` (and a new remote after reload or a second `expose()`) sends `reason: "register"`; `remote.refresh()` sends `reason: "refresh"` when the same live remote republishes a changed shape. `BoardEditorModel` increments `token` for every shape publication so the facade rebuilds its proxy, but increments `incarnation` only for a new remote. The token is the proxy-cache/shape-generation key; the incarnation is the in-flight-request validity key, so refresh replaces the cached shape without cancelling requests already using the same live handlers.

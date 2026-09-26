@@ -246,6 +246,54 @@ if the service cannot attach or register the type, it reports **Provider unavail
 hanging. Reinstall or trust the declaring board to make the page recover with its original descriptor;
 if the service itself was fixed, reload the page to retry the read.
 
+### Torrent-style self-contained provider links
+
+A provider that needs to restore a resource without its board page open must put everything needed
+to identify that resource in the persisted URL. The torrent viewer uses the `torrent/viewer`
+provider and creates links in this form:
+
+```text
+torrent://<40-lowercase-hex-infohash>/<encodeURIComponent(normalized-file-path)>?magnet=<encodeURIComponent(magnet-uri)>
+```
+
+Normalize the file path to `/` before encoding it as one URL path value. The provider receives the
+complete href in `config.url`, not separate `infoHash` and `path` fields; the embedded magnet is
+what makes a cold-start restore possible. WebTorrent piece selection and prioritisation belong to
+the provider's implementation. `readRange` remains an optional bounded byte-returning method, not
+a stream.
+
+### Browser-download URL masks
+
+`browserUrlMasks` is a declaration on `board-manifest.json` that is independent of `fileMasks`.
+`fileMasks: ["*.torrent"]` associates a local file name; it does not opt the board into Browser
+download interception. A board that wants both claims declares both explicitly:
+
+```json
+{
+  "fileMasks": ["*.torrent"],
+  "browserUrlMasks": ["*://*/*.torrent", "*://*/*.torrent?*"]
+}
+```
+
+Values are trimmed, lowercased, de-duplicated, and bounded to 64 masks of at most 512 characters
+each. They are case-insensitive whole-URL globs anchored at both ends. That anchoring matters:
+`*://*/*.torrent` matches `https://example.test/a.torrent` but misses
+`https://example.test/a.torrent?dl=1`; declare the query-form mask alongside it.
+
+The source-verified contract is download-only and runs before the save dialog. It never captures
+ordinary navigation: navigation is handled by the registered-scheme path, and broad navigation
+capture would let a board silently take over browsing. On a match, the source URL is sent to
+`openRawLink`, the download is cancelled, no save path or download entry is made, and the user is
+notified with the winning board name. This interception has not been exercised end to end in the
+running app, so the cancellation and notification are not a live acceptance observation.
+
+Only trusted boards and enabled bundled boards contribute claims. Registration order is trusted
+roots followed by bundled boards; an exact normalized duplicate is refused and reported as a
+`browser-url-mask` registration issue. Distinct overlapping masks remain ordered and the first
+matching claim wins. Trust and bundled eligibility protect registry correctness and user
+disclosure; trust is not a sandbox or a per-API permission gate, and a trusted board is a user
+application with the execution privileges described above.
+
 ### Capability handlers and in-memory intents
 
 A board can provide named work without making callers know which board handles it. Declare the

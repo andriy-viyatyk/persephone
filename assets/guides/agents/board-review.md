@@ -43,7 +43,8 @@ can it change after the user clicks Trust?**
 
 1. **`board-manifest.json` first.** It declares the board's identity, `permissions`,
    `minBridgeVersion`, any `service` entry, and any `contentProviders` declarations, plus (for an
-   editor board) `fileMasks` / `contentMasks` / `folderMasks` and `editorKind`. These say which of
+   editor board) `fileMasks` / `contentMasks` / `folderMasks` / `browserUrlMasks` and `editorKind`.
+   These say which of
    the user's files this board
    will be handed automatically. Broad masks on a board whose stated purpose is narrow is a finding
    on its own.
@@ -59,7 +60,8 @@ board may legitimately spawn a process — but every one of them needs a reason 
 | Search for | Why it matters |
 |---|---|
 | `execute(`, `executeNode(`, `service`, `scripts/service.mjs` | Every process the board can start. Read the command string or service entry. For a service, inspect the handshake, request routing, `persephone.storage` calls, crash and handshake-hang behavior, imports, network use, and `ui.log`. |
-| `contentProviders`, `persephone.providers.register`, `streamUrl` | Check that provider types are namespaced, the service owns the function-valued implementation, payloads stay bounded, and a stream-host page uses the broker URL rather than a copied path. Board-provider seeking is not available yet. |
+| `contentProviders`, `persephone.providers.register`, `readRange`, `streamUrl` | Check that provider types are namespaced, the service owns the function-valued implementation, `readRange` is optional and returns bounded `Uint8Array` replies of at most 1 MiB (not a stream), payloads stay bounded, and a stream-host page uses the broker URL rather than a copied path. For a torrent provider, piece selection remains its responsibility. |
+| `browserUrlMasks` | Treat every mask as a Browser-download claim, not a navigation claim. Check the exact whole-URL scope, retain the paired `*://*/*.torrent` and `*://*/*.torrent?*` forms where query strings are possible, and inspect trust/bundled eligibility and collision diagnostics. The runtime interception is source-verified only until exercised end to end. |
 | `persephone.call(` | Check the path. `fs`, `proc`, `shell`, `script.execute`, `tools.execute`, `boardVars`, `settings` each need a purpose; `script.execute` is arbitrary code and is rarely justified. |
 | `fetch(`, `http`, `https`, `axios`, `curl`, `Invoke-WebRequest`, `wget` | Where the board talks to the network — in backend scripts, where nothing blocks it. |
 | `readFile(`/`writeFile(` with an absolute path, `..`, `~`, `%APPDATA%`, `$HOME` | Reaching outside the board folder. |
@@ -69,8 +71,9 @@ board may legitimately spawn a process — but every one of them needs a reason 
 
 Declaring `service` is **not a security boundary**. `permissions` is disclosure and lifecycle
 hygiene, not a privilege grant or sandbox, because trust already permits arbitrary renderer and
-Node execution. Review the service as another process and supply-chain surface. For the
-service-versus-`executeNode()` ownership decision, use the canonical wording in the
+Node execution. Review the service as another process and supply-chain surface; a trusted board's
+service must be inspected because trust grants it the same user-application execution authority.
+For the service-versus-`executeNode()` ownership decision, use the canonical wording in the
 [board-authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice)
 instead of creating a second rule here.
 

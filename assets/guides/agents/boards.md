@@ -402,6 +402,49 @@ use `boards.list()` to confirm the result. A full renderer reload is script-driv
 `script.execute("setTimeout(() => location.reload(), 50); return 'reloading'")`; the editor's
 `reload()` only reloads the board iframe.
 
+### Browser-download URL claims
+
+`browserUrlMasks` is a manifest axis separate from `fileMasks`. `fileMasks: ["*.torrent"]`
+associates local file names; it does not claim matching Browser downloads. A board intending both
+must declare both:
+
+```json
+{
+  "fileMasks": ["*.torrent"],
+  "browserUrlMasks": ["*://*/*.torrent", "*://*/*.torrent?*"]
+}
+```
+
+The normalizer trims, lowercases, de-duplicates, and bounds the declaration to 64 masks of 512
+characters each. Matching is case-insensitive against the whole URL and is anchored at both ends.
+Therefore `*://*/*.torrent` matches `https://example.test/a.torrent` but misses
+`https://example.test/a.torrent?dl=1`; keep the query-form mask beside it.
+
+The source-verified path applies only to Browser downloads, before the save dialog. It does not
+intercept ordinary navigation: registered schemes handle protocol links, while navigation capture
+would let a board silently take over browsing. A match cancels the download, sends its source URL
+to `openRawLink` with the winning board target, creates no save path or download entry, and notifies
+the user with the board name. This has not been exercised end to end in the running app, so do not
+report the cancellation as observed runtime behavior.
+
+Only trusted boards and enabled bundled boards contribute claims. Trusted roots register before
+bundled boards; an exact normalized duplicate is refused and reported as a
+`browser-url-mask` registration issue, while distinct overlapping masks keep their order and the
+first matching claim wins. These eligibility and collision rules protect registry correctness and
+user disclosure. Trust is not a sandbox or a per-API permission gate: a trusted board is a user
+application with the execution privileges described in the review guide.
+
+For a torrent viewer, persist a self-contained link so the provider can restore without its board
+page. The `torrent/viewer` provider receives the complete href in `config.url`:
+
+```text
+torrent://<40-lowercase-hex-infohash>/<encodeURIComponent(normalized-file-path)>?magnet=<encodeURIComponent(magnet-uri)>
+```
+
+Normalize paths to `/` and encode the normalized path as one URL path value. The provider owns
+WebTorrent piece selection and prioritisation; its optional `readRange(config, range)` returns
+bounded `Uint8Array` replies (at most 1 MiB), never a stream.
+
 ### Capability handlers and in-memory intents
 
 Use the manifest's `capabilities` array to register named work. Put `"capabilities"` in
@@ -953,6 +996,8 @@ the manifest's `loadOrder`.
   `["\"type\"\s*:\s*\"force-graph\""]`; case-insensitive, tested against the first 64 KB,
   uncompilable masks ignored, switch-option scope only so content never decides which editor *opens
   a file*; usable with or without `fileMasks`),
+  optional `browserUrlMasks` (whole-URL globs for Browser downloads, independent of `fileMasks`;
+  normalized, anchored, and limited to trusted or enabled bundled boards),
   optional `editorPriority` (a number; makes the board the *default* editor for those masks when it
   strictly outranks the built-in that also claims the file — omit/`0` = switch option only. Built-in
   ladder: Monaco `0`, Markdown Preview `10`, compound-name editors like `*.grid.json` `20`, Drawing

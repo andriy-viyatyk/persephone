@@ -345,21 +345,24 @@ exists. Every axis above adds bridge members, so:
 ### 3.8 Worked flow: a torrent link to a playing `.mp3`
 
 The end-to-end scenario the platform must carry, used here to check that the pieces above
-compose. A trusted **torrent board** (`fileMasks: ["*.torrent"]`, `service:
-"scripts/service.mjs"`, `contentProviders: [{ type: "torrent", schemes: ["magnet", "torrent"]
-}]`) supplies the bytes; Persephone's built-in media player is the `.mp3` consumer.
+compose. A trusted **torrent board** (`fileMasks: ["*.torrent"]`,
+`browserUrlMasks: ["*://*/*.torrent", "*://*/*.torrent?*"]`, `service: "scripts/service.mjs"`,
+`contentProviders: [{ type: "torrent/viewer", schemes: ["torrent", "magnet"] }]`) supplies the
+bytes; Persephone's built-in media player is the `.mp3` consumer. The three entry paths are
+separate: a local `.torrent` uses `fileMasks`, a `magnet:` link uses the registered scheme, and a
+matching Browser download uses `browserUrlMasks` (source-verified only; not exercised end to end).
 
 | Step | What happens | Provided by |
 |---|---|---|
-| 1 | The user clicks a `magnet:` or `.torrent` link in the Browser | `browser-service.ts:306-309` preventDefaults any non-Chromium protocol and sends it to the renderer, which forwards it to `openRawLink` **only if the scheme is registered** (`RendererEventsService.handlePipelineCandidate:84-86` returns early otherwise). So step 1 is carried by the torrent board's own `registerScheme("magnet")` — it is not free, and nothing routes a magnet link today |
-| 2 | Layer 1: the torrent board's parser recognises `magnet:`; `.torrent` matches its `fileMasks`; the torrent board page opens | `registerScheme` (3.2), custom editor registry (today) |
+| 1 | **Historically accurate when written; superseded by US-1525/D11 on 2026-09-26.** The Browser already prevented non-Chromium protocols and forwarded registered ones, but US-1523 deliberately withheld `magnet` until the board-target and source-handoff fixes landed. US-1525 added those fixes and the board's `magnet` claim. A Browser download is a separate D12 path through `browserUrlMasks`, source-verified only. | `browser-service.ts:306-309`, `RendererEventsService`, US-1525/D11 and D12 |
+| 2 | **Stale/incomplete after US-1478/D12 on 2026-09-27.** A local `.torrent` matches `fileMasks`; a registered `magnet:` uses the scheme path; a matching Browser attachment URL uses `browserUrlMasks` and the `will-download` path. The last path is source-verified only, not a live acceptance result. | registered scheme, custom editor registry, `download-service.ts` |
 | 3 | The board asks its service to fetch metadata; the page lists the torrent's files | `executeNode`-style service process (3.5), board UI |
-| 4 | Double-click on `track.mp3`: the board calls `persephone.openRawLink("torrent://<infohash>/track.mp3")` — no target named; Persephone picks the built-in media player from the file name | bridge `openRawLink`; editor resolution by name |
-| 5 | Layer 2: the torrent scheme's resolver returns `{ provider: { type: "torrent", config: { infoHash, path } } }`; Layer 3 opens the built-in media-player page with that pipe | `registerScheme` resolve hook (3.2), `ProxyProvider` (3.3) |
+| 4 | **Superseded by D5/US-1524 on 2026-09-26.** Double-click on `track.mp3`: the board calls `persephone.openRawLink("torrent://<40-lowercase-infohash>/<encodeURIComponent(normalized-file-path)>?magnet=<encodeURIComponent(magnet-uri)>")`; the path is normalized to `/` and encoded as one URL path value. No target is named; Persephone picks the built-in media player from the file name. | bridge `openRawLink`; editor resolution by name |
+| 5 | **Superseded by D4/D5 and US-1524 on 2026-09-26.** The registered provider is `torrent/viewer`, and the descriptor carries `config: { url: <full torrent href> }`. The provider parses the authority, encoded path, and embedded magnet from that self-contained href; it does not receive separate `{ infoHash, path }` fields. | scheme resolve hook, board provider, `ProxyProvider` |
 | 6 | The built-in media player receives a pipe-backed session through `video-stream-server` and its `<video>` element issues `Range` requests | pipe-backed media session (EPIC-113) |
-| 7 | The protocol handler pulls each bounded range from the torrent service; each provider reply is at most 1 MiB and continuation ranges are requested only after the previous reply is consumed | bounded pull, backpressure, main-owned service ports |
+| 7 | **Correction against the shipped source.** Persephone's board-pipe/module-service path requests bounded `readRange` operations from the board provider. Each reply is a `Uint8Array` of at most 1 MiB; the platform owns continuation and HTTP `Range` handling. The torrent board did not port av-player's torrent HTTP protocol handler. | bounded provider pull, board-pipe continuation, main-owned service ports |
 | 8 | Playback starts before the download completes; seeking issues a new range and re-prioritises | same |
-| 9 | Closing the page closes the stream; the torrent keeps downloading only if the torrent board says so | request lifecycle (3.1), service lifecycle (3.5) |
+| 9 | **Superseded by D1/US-1525 on 2026-09-26.** Closing the content page cancels the active read and stops payload transfer. The service and torrent may remain resident for the board's explicit lifecycle policy, but metadata/listing residency is not continued downloading. | request lifecycle, service lifecycle |
 
 What the flow forced into the design: bounded ranged pulls on the proxy provider (3.3), a
 pipe-backed built-in media-player session that never materializes a cache file, and continuation
@@ -367,9 +370,12 @@ range serving so playback does not require a whole-resource read. What it does *
 capability bus — steps 4 and 5 are ordinary link resolution, which is the point of making the
 pipeline registries open.
 
-Restore: the media-player page persists `{ provider: "torrent", … }`. If the torrent board is trusted,
-its service is started on demand by the pending provider (Phase C) and playback resumes; if it
-was uninstalled, the page shows the *provider missing* placeholder from 3.2.
+Restore: **superseded by D5/US-1526 on 2026-09-27.** The media-player page persists the
+`torrent/viewer` descriptor whose full URL contains the encoded magnet, so the provider can start
+without a board page open. Untrust, an absent folder, and catalog uninstall are distinct lifecycle
+paths: board placeholders and empty-page behavior follow the existing lifecycle rules, while a
+`torrent://` content page whose provider is gone remains a page with a legible unavailable/recovery
+state.
 
 ## 4. Phases
 
@@ -714,20 +720,27 @@ the epic record and do not change the Phase E/F dependency boundary.
 > - **Step 7's "credit-based frames" were never built.** EPIC-107 shipped a *bounded pull* instead
 >   — `MAX_BOARD_PIPE_CHUNK_BYTES` per reply with continuation ranges — which is backpressure by
 >   construction. EPIC-113 D5 keeps that shape rather than adding a second transport.
-> - **Step 1 is already done and needs no work.** `browser-service.ts:306-309` routes any
->   non-Chromium protocol, `magnet:` included, to `eOpenPipelineCandidate`. The "to verify" note in
->   the §3.8 table is resolved.
+> - **Historically accurate when written; superseded by US-1525/D11 on 2026-09-26.**
+>   `browser-service.ts:306-309` already routed any non-Chromium protocol, `magnet:` included, to
+>   `eOpenPipelineCandidate`. The predicted board-target/source-handoff work was then completed by
+>   US-1525, which also added the `magnet` claim. D12 separately added the Browser-download claim
+>   path through `browserUrlMasks`; that path is source-verified only.
 
 The worked flow of 3.8, end to end, as a torrent board in the `persephone-boards` repository
-feeding Persephone's built-in editors. The board UI is plain HTML with `webtorrent` vendored under
-its own `node_modules` for the service; no audio-player board is needed.
+feeding Persephone's built-in editors. The board UI is plain HTML with WebTorrent 3.0.21 and
+`memory-chunk-store` bundled into the committed board-local `lib/webtorrent.bundle.mjs`; its
+`node_modules` is build-time only and excluded from publishing. **The original vendored-
+`node_modules` design is superseded by D3 on 2026-09-26.** No audio-player board is needed.
 
-1. **Torrent board** — port of av-player's main-process code (`torrent-proxy.ts`,
-   `streaming-server.ts`, about 500 lines) into `scripts/service.mjs`: WebTorrent with
-   `memory-chunk-store`, no WebRTC/native addon in the pilot; `contentProviders: [{ type:
-   "torrent", schemes: ["magnet", "torrent"] }]`; `fileMasks: ["*.torrent"]`; a page listing
-   torrents and their files from the service's status stream; double-click issues
-   `persephone.openRawLink("torrent://<infohash>/<path>")`.
+1. **Torrent board** — **R10 is superseded by D2-D5/US-1523-US-1524, and R11 is superseded by
+   D5/D11/D12, on 2026-09-26 to 2026-09-27.** Port the
+   client/metadata and provider-read substance only into `scripts/service.mjs`: use the bundled
+   WebTorrent 3.0.21 and `MemoryChunkStore`, with no WebRTC/native addon in the pilot. Do not port
+   av-player's `streaming-server.ts` or torrent HTTP protocol handler because Persephone's bounded
+   provider contract owns that layer. The manifest uses `type: "torrent/viewer"`, schemes
+   `torrent` and `magnet`, `fileMasks: ["*.torrent"]`, and the independent browser URL masks
+   `browserUrlMasks: ["*://*/*.torrent", "*://*/*.torrent?*"]`; file links use the self-contained
+   encoded href from §3.8 step 4.
 2. **Built-in media player** — the file-name resolver selects `video-view` for media links; its
    pipe-backed session serves the in-page player and Open in VLC without materializing a cache file.
 3. Playback while downloading, seeking re-prioritising pieces, page close stopping the stream,
@@ -737,6 +750,11 @@ Exit: every row of the 3.8 table observed on a real magnet link, including the f
 with the `userData` watcher clean. This is the first time a module outside the core contributes
 below the UI, and it is what the roadmap is for. The board handler remains page-backed in the
 caller's window; a headless service-backed capability is not implied by this phase.
+
+Verification status: `browserUrlMasks` download interception is source-verified only; it has not
+been exercised end to end in the running app. EPIC-114 acceptance item 8, the D6 peak-RSS
+measurement while streaming at least 200 MB, has not been run, so no memory result or 512 MiB
+follow-up decision is settled.
 
 ### Phase F — Excalidraw extraction (proof 2)
 
