@@ -32,11 +32,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
   not a privilege grant or sandbox. See [Boards — declared services](./boards.md#declared-services-storage-and-lifecycle)
   and the [canonical service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
 - **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders`
-  type in the manifest and register its bounded whole-resource implementation from the service;
+  type in the manifest and register its provider from the service; implement optional `readRange`
+  for bounded provider-side pulls, while providers without it retain the bounded whole-resource
+  fallback;
   `editorKind: "stream-host"` exposes `persephone.host.streamUrl()` for `Range` reads without a
   materialized source file. Saved pages retain their provider descriptor and show a recoverable
-  missing/unavailable state if the board is absent or its service cannot start. Board-provider range
-  pushdown is deferred to Phase E.
+  missing/unavailable state if the board is absent or its service cannot start. `persephone.content.open()`
+  also gives simple boards an origin-local ranged URL for any supported link.
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
   scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
   unregistered non-web schemes remain blocked.

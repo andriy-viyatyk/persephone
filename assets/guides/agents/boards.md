@@ -370,11 +370,12 @@ Declare `contentProviders: [{ "type": "acme/mem", "schemes": ["mem"] }]` in the 
 implement the matching type inside the module service with
 `persephone.providers.register(type, implementation)`. This registration is service-only because
 the implementation contains functions that cannot cross the board frame's structured-clone RPC.
-The implementation supplies `readBinary(config)` and may supply `writeBinary(config, data)`,
-`stat(config)`, and `watch(config, onChange)`; `watch` returns a disposer. Payloads are bounded
-(currently 256 MiB) and reads are whole-resource buffered. `ProxyProvider` has no
-`createReadStream`, so a board provider receives the requested range only after the pipe buffers
-the resource.
+The implementation supplies `readBinary(config)` and may supply `readRange(config, range)`,
+`writeBinary(config, data)`, `stat(config)`, and `watch(config, onChange)`; `watch` returns a
+disposer. `readRange` is optional: when present, the provider receives bounded ranged pulls (at
+most 1 MiB per call) as `Uint8Array` results; when absent, the pipe falls back to whole-resource
+`readBinary()` buffering, capped at 256 MiB. Content reads have no platform deadline and are
+released by cancellation, such as page or frame teardown.
 
 Provider types must contain `/` because un-namespaced types are reserved for the platform. The
 type is persisted in page state, so renaming it orphans old pages. Types and schemes are
@@ -720,8 +721,10 @@ must respect.
   text or a materialized file. That no-write behavior is a broker policy, not an OS guarantee:
   memory may be paged and Chromium may keep caches. By contrast, `editorSources: "any"` copies
   non-local input into a cache file and returns its local path. Board-provider ranges still fall
-  back to buffered `readBinary()` because `ProxyProvider` lacks `createReadStream`; do not author a
-  seeking provider expecting range pushdown yet.
+  back to buffered `readBinary()` when the provider omits `readRange`; a provider that implements
+  it receives bounded range requests instead. For any link, including one unrelated to the page's
+  current file, use `persephone.content.open()` above; `host.streamUrl()` remains the page-pipe API
+  for content-host and stream-host boards.
 
 **Clipboard:** use `persephone.clipboard.writeImage(data)` for encoded image bytes (`Uint8Array` or
 `ArrayBuffer`) or `persephone.clipboard.writeText(text)` for text. These methods write through

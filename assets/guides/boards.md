@@ -1022,10 +1022,11 @@ source to disk. This is a broker policy, not an OS guarantee: memory may be page
 keep its own caches. `editorSources: "any"` solves the same non-local problem by copying the source
 into a cache file and returning that local path from `getFilePath()`.
 
-The pipe can range-read platform providers, but a board provider currently serves whole-resource
-reads. `ProxyProvider` does not implement `createReadStream`, so a range request falls back to a
-buffered `readBinary()` and is not pushed into the board service. Seeking-provider support is
-not implemented yet.
+The pipe can range-read platform providers, and a board provider that implements `readRange`
+receives bounded ranged pulls without a whole-resource `readBinary()` first. A provider that omits
+`readRange` keeps the buffered `readBinary()` fallback and its 256 MiB ceiling. Content reads have
+no platform deadline; cancellation, including page teardown or a superseded request, releases the
+outstanding operation.
 
 ---
 

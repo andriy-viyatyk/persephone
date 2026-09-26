@@ -96,7 +96,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
-| Board provider delegate (bounded whole-resource reads/writes, stat and watch over the renderer service lease) | `/src/renderer/content/providers/ProxyProvider.ts` |
+| Board provider delegate (bounded reads/writes, optional ranged reads, stat and watch over the renderer service lease) | `/src/renderer/content/providers/ProxyProvider.ts` |
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Pipe rebuild from a persisted source path (`pipeFromSourcePath` — plain / `archive.zip!entry` / `http(s)`; shared by the Image editor, board file materialization and page restore) | `/src/renderer/content/rebuild-pipe.ts` |

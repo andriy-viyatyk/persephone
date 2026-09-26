@@ -380,8 +380,8 @@ Service requests deliberately use two channels. An ordinary request goes through
 `persephone.service.request(message)`. The renderer `MessagePort` lease is a separate host-renderer
 channel reserved for Phase C's high-volume provider traffic; a service is not required to implement
 that port at all. A request API must not assume that the lease is attached. When a board declares a
-content provider, `ProxyProvider` uses the renderer lease for bounded whole-resource provider
-operations; unavailable leases surface as typed provider-unavailable errors.
+content provider, `ProxyProvider` uses the renderer lease for bounded provider operations, including
+optional ranged reads; unavailable leases surface as typed provider-unavailable errors.
 
 `persephone.storage` is a JSON key/value store in a per-board folder under
 `<userData>/data/board-storage/`, keyed by the SHA-256 hash of the canonical board root. The folder

@@ -20,15 +20,15 @@ restores across a restart, and the board's own `<audio>` / `<video>` / `<img>` c
 pipe as an origin-local URL with `Range` support and nothing written to disk.
 
 Nothing in this epic needs a visible board page, which is the point. The torrent flow of roadmap
-§3.8 is the shape being built for: a `torrent://` link opens in Monaco while the torrent board's
-page is closed, and an `.mp3` plays while it is still downloading.
+§3.8 is the shape being built for: a `torrent://` link opens in the built-in editor selected by
+its file name while the torrent board's page is closed, and an `.mp3` plays while it is still downloading.
 
 ## Why this now
 
-Every remaining phase is blocked on it in a different way. Phase D's capability bus assumes the
-in-memory transport that this epic's credit-based stream frames establish. Phase E (the torrent
-board and audio player) is *entirely* this epic's surface — it adds no platform code at all.
-Phase F needs none of it, which is precisely why it is last.
+Every remaining phase is blocked on it in a different way. Phase D's capability bus is independent
+of the provider pipe transport. Phase E combines the torrent board with the built-in media-player
+integration; its platform half is delivered by EPIC-113 rather than by this epic alone. Phase F
+needs none of it, which is precisely why it is last.
 
 More immediately: EPIC-105 D2 deliberately left `createProviderFromDescriptor` throwing on an
 unknown provider type, and assigned the *provider missing* placeholder and `PendingProvider` to
@@ -130,8 +130,8 @@ Verified against the source on 2026-09-20, not taken from the roadmap.
   stated one-owner rule rather than by `Map.set`.
 - A board can read a page's pipe as `board://<host>/__pipe/<pageId>` with working `Range` requests
   and seeking, and **nothing is written under `userData`** for that page.
-- Ranged reads reach a board-implemented provider over credit-based frames, with backpressure and
-  explicit close/error — not the shim's unbounded queue.
+- Ranged reads reach a board-implemented provider through bounded pulls, with backpressure and
+  explicit cancellation/error — not the shim's unbounded queue.
 - An unknown scheme typed or clicked in the Browser reaches `openRawLink` rather than being
   swallowed.
 
@@ -272,13 +272,13 @@ service (EPIC-106 D4's lazy start, unchanged) and then delegates.
 A genuinely malformed descriptor — missing `type`, not an object — still throws. The placeholder
 is for *absent*, not for *corrupt*.
 
-**D9 — Credit-based stream frames are a transport for `createReadStream`, and this epic does not
-build a general data channel.** Roadmap §3.1a describes `DataHandle`, `persephone.data.read/
+**D9 — Bounded provider pulls are a transport for ranged reads, and this epic does not build a
+general data channel.** Roadmap §3.1a describes `DataHandle`, `persephone.data.read/
 stream/forward` and reference-counted forwarding as the capability bus's payload channel. All of
-that is **Phase D**. What this epic builds is narrower and must not be mistaken for it: a
-credit-based framed byte stream between one `ProxyProvider` and one service, for one ranged read,
-with grant / chunk / end / error / cancel frames and a bounded in-flight window. Phase D may
-generalize it; it does not inherit it by assumption.
+that is **Phase D**. What Phase E uses for board providers is narrower and must not be mistaken for
+it: one bounded request/reply between one `ProxyProvider` and one service for one ranged read, with
+continuation ranges requested only after the previous reply is consumed. Phase D may generalize
+its own channel; it does not inherit the provider operation by assumption.
 
 **D10 — Verification is live through MCP, and the fixture is the already-trusted demo board.**
 EPIC-105 and EPIC-106 each closed with defects that typecheck, lint and `build-prod` all passed —
@@ -298,11 +298,11 @@ under *Needs user verification* rather than granted.
 | `persephone.fetch` / `network` permission / CSP relaxation | After the roadmap | Roadmap §4; nothing here needs it |
 | `media.play` as a capability invocation | Phase D | The torrent flow's steps 4-5 are ordinary link resolution (roadmap §3.8) |
 | Granted-permission record, *changed grant* re-prompt | The trust-model merge (roadmap §5) | Inherited from EPIC-106 D1; D3 above deliberately does not extend it |
-| Credit-based ranged streaming to a board provider (US-1474) | Phase E | D11 — the pre-committed abort boundary, taken; Phase E is its only consumer |
-| A real torrent board or audio player | Phase E | This epic ships the platform and a fixture, not a product |
+| Bounded ranged reads to a board provider (US-1474) | Phase E | D11 — the pre-committed abort boundary, taken; Phase E is its only consumer |
+| A real torrent board or built-in media-player integration | Phase E | This epic ships the platform and a fixture, not a product |
 | Enforcing `minAppVersion` on local registration | Its own task | EPIC-106 recorded it as an untouched scope cut; unchanged here |
 
-**D11 — US-1474 (credit-based ranged streaming to a board provider) is deferred to Phase E. This
+**D11 — US-1474 (bounded ranged reads to a board provider) is deferred to Phase E. This
 was the pre-committed abort boundary, and it is being taken as written.**
 
 The Concerns section below said, before any code existed: *"It is sequenced last deliberately:
@@ -332,7 +332,7 @@ provider omits it, so nothing is broken by its absence.
 | US-1471 | `contentProviders` and `stream-host` manifest axes; reserved names and the one-owner rule | Done |
 | US-1472 | *Provider missing* placeholder and `PendingProvider` | Done |
 | US-1473 | `ProxyProvider` and `persephone.providers.register` over the service port | Done |
-| US-1474 | Credit-based ranged streaming: `createReadStream(range)` through the bridge and the pipe | **Deferred to Phase E** (D11) |
+| US-1474 | Bounded ranged reads: `readRange(config, range)` through the bridge and the pipe | **Deferred to Phase E** (D11) |
 | US-1475 | `editorKind: "stream-host"` and `board://<host>/__pipe/<pageId>` Range serving | Done |
 | US-1476 | Browser routing of `magnet:` and `.torrent` into `openRawLink` | Done |
 | US-1477 | Demo-board provider and stream-host fixtures, and the authoring documentation | Done |
@@ -393,8 +393,8 @@ Each is an observation, per D10.
 
 ## Concerns
 
-- **US-1474 is the task most likely to overrun.** Credit-based framing is the only genuinely new
-  protocol in the epic, and it is the last wave. It is sequenced last deliberately: criteria 1-9
+- **US-1474 is the task most likely to overrun.** The bounded ranged-read operation is the only
+  genuinely new provider protocol in the epic, and it is the last wave. It is sequenced last deliberately: criteria 1-9
   and 12 are all reachable without it, so if the epic has to stop early it stops after wave 3 with
   a coherent, shippable slice and US-1474 moves to Phase E, which is its only consumer.
 - **`__pipe` lifetime is a leak surface.** A range request names a `pageId`; if the page closes

@@ -11,7 +11,7 @@
 Phase E of the [platform roadmap](../platform-roadmap.md), **split in two** the way Phase F was,
 and re-scoped by a user decision on 2026-09-26 (D2).
 
-This epic builds the platform half: **a link handed to `openRawLink` by a board resolves to
+This epic built the platform half: **a link handed to `openRawLink` by a board resolves to
 whichever built-in editor its file name deserves — Monaco for `.txt`, the Image viewer for
 `.jpeg`, the media player for `.mp3` — and that editor's pipe then pulls its bytes back out of the
 board, on demand, a range at a time.** The board is the data source; Persephone picks the editor
@@ -34,9 +34,12 @@ Most of the §3.8 flow is already built. Measured against the source, not assume
   `persephone.host.streamUrl()` (`board-shim.ts:1627-1636`) returns `board://<host>/__pipe/<pageId>`
   and `board-protocol-service.ts:388-395` serves it with `Range`.
 
-Three things are **not** done, and they are this epic:
+Three things were **not** done when this epic was scoped, and they were its whole content.
+**All three shipped**; the diagnosis is kept because it is the cited evidence the epic was
+built on, and EPIC-114 inherits the same seams. What closed each is named inline.
 
-**1. A board-scheme link always opens in Monaco, whatever the file name.**
+**1. A board-scheme link always opened in Monaco, whatever the file name.** *(Closed by
+US-1517.)*
 `createBoardSchemeHooks` sets `data.target ||= "monaco"` (`custom-editor-registry.ts:184`) before
 delegating to `openContent`. Registered schemes run **before** the file fallback
 (`resolvers.ts:75-79`), and every downstream resolver assigns the target with `||` / `??`
@@ -46,7 +49,8 @@ delegating to `openContent`. Registered schemes run **before** the file fallback
 opens its bytes as text. This is the single thing standing between the platform and the stated
 requirement, and it is roughly a one-line fix.
 
-**2. A range never reaches a board's provider.** `board-pipe-handler.ts:84-87` will push a range
+**2. A range never reached a board's provider.** *(Closed by US-1474; a provider without
+`readRange` still takes the buffered path and its 256 MB ceiling, by design — D5.)* `board-pipe-handler.ts:84-87` will push a range
 straight into a provider — but only when `pipe.provider.createReadStream` exists. `ProxyProvider`
 does not implement it, and `ProviderOperation` (`ipc/module-service-channels.ts:84-89`) has no
 streaming member at all. So a range against a board provider falls back to `readBuffered()` — a
@@ -58,7 +62,8 @@ That is not a performance detail. Under `readBinary()`, opening one `.mp3` from 
 downloads **the entire file** before a byte plays, and anything over 256 MB cannot be opened at
 all. "Nothing is fetched until something asks for a piece" is unimplementable without this.
 
-**3. The built-in media player does not read from a pipe at all.** `VideoEditor.resolveStreamUrl`
+**3. The built-in media player did not read from a pipe at all.** *(Closed by US-1519, which
+also made archive-hosted media playable for the first time.)* `VideoEditor.resolveStreamUrl`
 (`editors/video/VideoEditor.ts:106-124`) builds a `VideoStreamSessionConfig` that is either
 `{ filePath }` or `{ url }` (`ipc/api-param-types.ts:166-180`) and hands it to
 `video-stream-server.ts`, which opens a local file with `fs` or proxies HTTP. There is no third
@@ -68,6 +73,18 @@ fall into the `filePath` branch, fail to open, and the `catch` would hand the ra
 `<video>` element, which cannot load it either. **`.mp3 → built-in player` therefore needs new
 work**, and it is the one file type of the user's examples that does. Monaco and the Image viewer
 are both already pipe-backed (`ImageEditor.ts:135` reads `pipe.readBinary()` into a blob URL).
+
+1. Board-scheme links resolve by their effective file name, while an explicit target still wins.
+2. A provider that implements board-side `readRange` receives bounded ranged pulls over the
+   module service; providers without it retain the buffered `readBinary()` fallback and its
+   256 MB ceiling.
+3. The built-in media player now has a pipe-backed video-stream session, including the shared
+   HTTP session used by the in-page player and Open in VLC.
+
+A fourth thing was added during the epic rather than found in scoping: US-1521 exposes
+`persephone.content.open(link)` to **simple** boards — an origin-local ranged URL for any
+supported link, without opening a page or materializing a cache file. It is the migration path
+off `getFilePath()` for the five published viewer boards (D9, D12).
 
 ## Goals
 
@@ -80,7 +97,7 @@ are both already pipe-backed (`ImageEditor.ts:135` reads `pipe.readBinary()` int
   the page that wanted it closes, or when the user deletes the source in the board.
 - The built-in media player plays and seeks a file whose bytes come from a pipe, with no
   materialized cache file.
-- A resource larger than 256 MB opens and seeks. Today that is a hard failure.
+- A resource larger than 256 MB opens and seeks through the ranged provider path.
 - The board-authoring guide stops documenting seeking as unimplemented.
 
 ## Non-goals
@@ -562,6 +579,28 @@ Verified in the running app, not only built:
    through the local streaming server and seeks there — the scenario that decided D10.
 9. A provider that does **not** implement the streaming operation behaves exactly as before, and
    local-file and HTTP media playback are unchanged.
+
+### Acceptance results — all nine verified in the running app, 2026-09-26
+
+Measured, not asserted. Items 2-9 used the `range-provider-test` fixture board (D13); item 5 also
+needed a second fixture, `content-open-test-fixture`, because the first is `stream-host` and could
+not prove the `simple`-board case US-1521 exists for.
+
+| # | Result |
+|---|---|
+| 1 | `notes.md` -> `md-view`, `photo.png` -> `image-view`, `track.mp3` -> `video-view`, `archive.zzz` -> `monaco` |
+| 2 | Provider counters after playing a 4.48 MB file: `readBinary: 0`, `readRange: 5` |
+| 3 | 300 MB resource opened and seeked; the no-range provider correctly refused it at the 256 MB ceiling |
+| 4 | Last 64 bytes of the 300 MB resource returned in ~2 ms, byte-verified against `genByte(offset)` |
+| 5 | Board-provider `.mp3` played in the built-in player: `readyState 4`, true 185.5 s duration, **no cache file written** |
+| 6 | A 20 s read completed at 20 074 ms instead of failing at ~10 s; after closing a page holding 6 stalled reads, 40/40 control ops succeeded in 12 ms |
+| 7 | A control request answered in **1 ms** while 6 provider reads were stalled indefinitely |
+| 8 | **VLC launched with the exact session id the in-page `<audio>` was using** (`772b1b39-...`), and `readRange` went 5 -> 10 while `readBinary` stayed 0 — an external process streaming bounded ranges from a board provider. Confirmed audible by the user. Works with `vlc-path` empty: `vlc-launcher.ts`'s `resolveVlcPath()` already probes both Program Files locations |
+| 9 | `test/norange` behaviour unchanged; local-file and HTTP playback unchanged |
+
+Item 8 is the scenario that decided D10, and the matching session id is the part worth keeping:
+it proves *one* session serves both consumers, which is what stops a torrent being downloaded
+twice to watch it once. `openInVlc()` originally created a second session — see US-1519.
 
 ## Concerns / open questions
 

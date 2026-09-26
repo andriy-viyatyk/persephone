@@ -179,7 +179,7 @@ link, and original pipe descriptor.
 | `HttpProvider` | `http` | No | No | HTTP/HTTPS fetch via `nodeFetch`; adds the content-pipe default User-Agent only when the caller supplied none. Supports method, headers, body. Re-fetches on each read (no internal caching). |
 | `CacheFileProvider` | `cache` | Yes | No | Cache directory file (`{userData}/cache/{pageId}.txt`). Used as provider for cache pipes. |
 | `GuideProvider` | `guide` | No | No | Read-only access to application-shipped Markdown guides through `persephone-guide://`; strips front matter and returns UTF-8 body bytes. |
-| `ProxyProvider` | board-declared type | Depends on service | Service-defined | Renderer-side delegate to a trusted board's module service over the optional renderer `MessagePort` lease. Whole-resource reads and writes are bounded by the buffered payload limit. |
+| `ProxyProvider` | board-declared type | Depends on service | Service-defined | Renderer-side delegate to a trusted board's module service over the optional renderer `MessagePort` lease. Whole-resource fallback reads and writes are bounded by the buffered payload limit; providers may also expose bounded ranged reads. |
 
 All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity. `HttpProvider` builds request headers at call time so its default `CONTENT_USER_AGENT` is not written into the descriptor; an explicitly supplied User-Agent, including one with different casing, wins. `nodeFetch` remains header-neutral because REST requests must send exactly the headers the user supplied. `GuideProvider` is the intentional encoding exception: its packaged corpus has a known UTF-8 encoding, so it decodes the source to remove front matter before returning body bytes.
 
@@ -206,9 +206,9 @@ The handler parses one inclusive byte range, returns `206` with `Content-Range` 
 `Accept-Ranges: bytes`, and returns `416` with `bytes */<total>` for an unsatisfiable range. A
 transformer-free provider with `createReadStream()` is read directly for bounded chunks; transformed
 pipes and providers without a stream are read through a bounded in-memory buffer. Each IPC chunk is
-limited to 1 MiB and fallback buffering is limited to 256 MiB. This path can serve a local file,
-HTTP source, transformed pipe, or service-backed provider, but a `ProxyProvider` remains a
-whole-resource provider, so a range is buffered before it is sent to the board.
+limited to 1 MiB and fallback buffering is limited to 256 MiB. A board-backed `ProxyProvider` uses
+that direct ranged path when its service implementation supplies `readRange`; otherwise a range is
+buffered before it is sent to the board.
 
 ## Built-in Transformers
 

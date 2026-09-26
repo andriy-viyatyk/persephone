@@ -31,10 +31,9 @@ explicit sequencing decision of 2026-09-19.
   `diagram.edit` from the image viewer, SVG, Mermaid and the snip tool. Phase A already rewrote
   those call sites to `capabilities.invoke()`, but the registry behind `invoke()` is closed to
   boards, so the board could never win the call. This epic is precisely the missing half.
-- **Phase E uses it for `media.play`.** The torrent flow's steps 4–5 are ordinary link
-  resolution and need nothing from here (roadmap §3.8); `media.play` matters only when a caller
-  has bytes rather than a link, and the audio-player board declares it through this epic's
-  manifest axis.
+- **Phase E does not use it for media playback.** The torrent flow's steps 4–5 are ordinary link
+  resolution and need nothing from here (roadmap §3.8); the built-in media player is selected
+  directly for the link, so there is no audio-player board or `media.play` caller.
 - **Phase A left one question explicitly open for this phase** — whether an `ILinkData.target` may
   name a capability. D2 below answers it.
 
@@ -314,8 +313,8 @@ which is precisely the board hop.
 integration hands it a screenshot. If Phase F measures a single `image.edit` payload above the cap
 in ordinary use, or measures a clone cost above ~50 ms at the 95th percentile, the handle store
 becomes a task in that epic. Until then it is unbuilt, not assumed — and EPIC-107 D9 already said
-in terms that its credit-based provider frames are *not* this channel and must not be inherited by
-assumption.
+in terms that the provider's bounded ranged-read operation is *not* this channel and must not be
+inherited by assumption.
 
 **D8 — `capabilities` is a manifest axis disclosed in `permissions`, with the functional trigger
 being the array. This holds EPIC-107 D3's line exactly, and deliberately does not extend
@@ -389,7 +388,7 @@ proves nothing an agent can observe.
 | Catalog indexing of capability ids; the "install a board that provides this" entry for `no-handler` | Phase E / the storefront | No published board declares a capability until Phase E; indexing an empty set is untestable |
 | `payloadSchema` **validation** | The handler, permanently | Roadmap §6 — the platform stores and surfaces the schema; enforcement stays with the handler |
 | Headless (service-backed) capability handlers | Phase E at the earliest | D3 — EPIC-106 already routes service requests; joining the two needs a consumer |
-| A built-in `media.play → video-view` registration | Phase E | Phase E's audio-player board declares it; a built-in registration would be guessing at a payload contract with no caller |
+| A built-in `media.play → video-view` registration | Not scheduled | Phase E has no audio-player board or `media.play` caller; board links resolve directly to the built-in media player |
 | Granted-permission record, *changed grant* re-prompt | The trust-model merge (roadmap §5) | Inherited from EPIC-106 D1; D8 deliberately does not extend it |
 | US-1474 (ranged streaming into a board provider), US-1478 (download routing) | Phase E | Already on the dashboard under Planned; neither belongs to the bus |
 

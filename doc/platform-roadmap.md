@@ -252,11 +252,11 @@ board-side registration `persephone.providers.register(type, impl)`.
   so the platform knows the type exists *before* the board runs and can restore descriptors.
 - Text decoding stays in `ContentPipe` (providers only speak `Buffer`), so a board implements
   four methods and gets encoding detection, transformers, caching and save-back for free.
-- **Ranged streaming is in scope**, not deferred: the proxy provider implements
-  `createReadStream(range)` and `stat()` over the credit-based stream frames of 3.1a. The
-  range is not an optimisation — it is how a torrent client learns which pieces to prioritise
-  (WebTorrent's `file.createReadStream({ start, end })` does exactly this), so the worked flow
-  in 3.8 does not exist without it.
+- **Board-provider ranged reads are supplied by Phase E:** the proxy provider exposes optional
+  `readRange(config, range)` and `stat()` over the bounded-pull provider operation. The range is
+  not an optimisation — it is how a torrent client learns which pieces to prioritise (WebTorrent's
+  `file.createReadStream({ start, end })` does exactly this), so the worked flow in 3.8 depends on
+  it.
 - Tree contribution follows the same pattern later (`ProxyTreeProvider` over `ITreeProvider`),
   but `ITreeProvider` is large and mostly optional; ship it after providers prove the bridge.
 
@@ -345,31 +345,29 @@ exists. Every axis above adds bridge members, so:
 ### 3.8 Worked flow: a torrent link to a playing `.mp3`
 
 The end-to-end scenario the platform must carry, used here to check that the pieces above
-compose. Two boards are installed and trusted: an **audio player** (`fileMasks: ["*.mp3", …]`,
-`editorKind: "stream-host"`, capability `media.play`) and a **torrent board** (`fileMasks:
-["*.torrent"]`, `service: "scripts/service.mjs"`, `contentProviders: [{ type: "torrent",
-schemes: ["magnet", "torrent"] }]`).
+compose. A trusted **torrent board** (`fileMasks: ["*.torrent"]`, `service:
+"scripts/service.mjs"`, `contentProviders: [{ type: "torrent", schemes: ["magnet", "torrent"]
+}]`) supplies the bytes; Persephone's built-in media player is the `.mp3` consumer.
 
 | Step | What happens | Provided by |
 |---|---|---|
-| 1 | The user clicks a `magnet:` or `.torrent` link in the Browser | Browser navigation handler → `openRawLink` — **to verify**: `browser-service.ts:269-290` blocks only `file:`/`app-asset:`; where an unknown scheme is routed into the pipeline must be confirmed in the task doc |
+| 1 | The user clicks a `magnet:` or `.torrent` link in the Browser | `browser-service.ts:306-309` preventDefaults any non-Chromium protocol and sends it to the renderer, which forwards it to `openRawLink` **only if the scheme is registered** (`RendererEventsService.handlePipelineCandidate:84-86` returns early otherwise). So step 1 is carried by the torrent board's own `registerScheme("magnet")` — it is not free, and nothing routes a magnet link today |
 | 2 | Layer 1: the torrent board's parser recognises `magnet:`; `.torrent` matches its `fileMasks`; the torrent board page opens | `registerScheme` (3.2), custom editor registry (today) |
 | 3 | The board asks its service to fetch metadata; the page lists the torrent's files | `executeNode`-style service process (3.5), board UI |
-| 4 | Double-click on `track.mp3`: the board calls `persephone.openRawLink("torrent://<infohash>/track.mp3")` — no target named; the platform picks the editor for the file name | bridge `openRawLink` (today); editor resolution by name → audio board (today) |
-| 5 | Layer 2: the torrent scheme's resolver returns `{ provider: { type: "torrent", config: { infoHash, path } } }`; Layer 3 opens the audio board page with that pipe | `registerScheme` resolve hook (3.2), `ProxyProvider` (3.3) |
-| 6 | The audio board asks `persephone.host.streamUrl()` and sets it on `<audio>`; the element issues `Range` requests | `stream-host` (3.4) |
-| 7 | The protocol handler forwards each range to the torrent service over its port; the service calls `file.createReadStream({ start, end })`, WebTorrent prioritises those pieces, bytes flow back as credit-based frames | 3.3 ranged streaming, 3.1a backpressure, main-owned service ports (3.5) |
+| 4 | Double-click on `track.mp3`: the board calls `persephone.openRawLink("torrent://<infohash>/track.mp3")` — no target named; Persephone picks the built-in media player from the file name | bridge `openRawLink`; editor resolution by name |
+| 5 | Layer 2: the torrent scheme's resolver returns `{ provider: { type: "torrent", config: { infoHash, path } } }`; Layer 3 opens the built-in media-player page with that pipe | `registerScheme` resolve hook (3.2), `ProxyProvider` (3.3) |
+| 6 | The built-in media player receives a pipe-backed session through `video-stream-server` and its `<video>` element issues `Range` requests | pipe-backed media session (EPIC-113) |
+| 7 | The protocol handler pulls each bounded range from the torrent service; each provider reply is at most 1 MiB and continuation ranges are requested only after the previous reply is consumed | bounded pull, backpressure, main-owned service ports |
 | 8 | Playback starts before the download completes; seeking issues a new range and re-prioritises | same |
 | 9 | Closing the page closes the stream; the torrent keeps downloading only if the torrent board says so | request lifecycle (3.1), service lifecycle (3.5) |
 
-What the flow forced into the design: ranged streaming on the proxy provider (3.3), a
-stream-host mode that never touches disk (3.4), and main serving `__pipe` ranges straight from
-the service port so audio does not round-trip through the renderer. What it does **not** need:
-the capability bus — steps 4 and 5 are ordinary link resolution, which is the point of making
-the pipeline registries open. `media.play` matters only when a caller has bytes rather than a
-link.
+What the flow forced into the design: bounded ranged pulls on the proxy provider (3.3), a
+pipe-backed built-in media-player session that never materializes a cache file, and continuation
+range serving so playback does not require a whole-resource read. What it does **not** need: the
+capability bus — steps 4 and 5 are ordinary link resolution, which is the point of making the
+pipeline registries open.
 
-Restore: the audio page persists `{ provider: "torrent", … }`. If the torrent board is trusted,
+Restore: the media-player page persists `{ provider: "torrent", … }`. If the torrent board is trusted,
 its service is started on demand by the pending provider (Phase C) and playback resumes; if it
 was uninstalled, the page shows the *provider missing* placeholder from 3.2.
 
@@ -491,7 +489,7 @@ A  refactor seams
 └─► B  bridge contract + module service process
     └─► C  open providers + ranged streaming + stream-host
         └─► D  capability bus + in-memory data channel
-            ├─► E  torrent board + audio player   (proof 1: pipeline side; needs A–C, uses D for media.play)
+            ├─► E  torrent board + built-in media player   (proof 1: pipeline side; needs A–C)
             └─► F  Excalidraw extraction           (proof 2: editor side; needs A, B, D)
 ```
 
@@ -577,12 +575,10 @@ state visible in `boards.list()`.
 > `editorSources: "any"`**, which solves the same problem by materializing the pipe to a cache file.
 > **`persephone.host.streamUrl()` is available to `content-host` pages too** (D6).
 >
-> **Deferred to Phase E (D11): US-1474, credit-based ranged streaming into a board-implemented
-> provider.** This was the epic's pre-committed abort boundary. A board provider serves
-> whole-resource reads, and `stream-host` serves ranged reads from any platform-owned pipe — but a
-> range is not yet pushed down into a board provider, which is what step 7 of §3.8 needs for a
-> torrent client to prioritise pieces. `ProxyProvider` leaves `createReadStream` unimplemented and
-> `ContentPipe` falls back to a buffered read, so nothing is broken by its absence.
+> **Deferred to Phase E (D11), then shipped by EPIC-113: US-1474's ranged provider reads.** This
+> was the epic's pre-committed abort boundary. EPIC-113 adds optional board-side `readRange` over
+> the bounded-pull service operation: a provider can receive each requested range directly, while
+> providers without it retain the buffered `readBinary()` fallback.
 >
 > **Two defects in earlier phases were found by building on them.** EPIC-105 D2's throw on an
 > unknown provider type is replaced by the placeholder, as planned. More seriously, **Phase B's
@@ -594,8 +590,8 @@ state visible in `boards.list()`.
 The pipeline side of the platform. Nothing here needs a visible board page.
 
 1. `ProxyProvider` with `readBinary`, `writeBinary`, `stat`, `watch` **and**
-   `createReadStream(range)` over credit-based frames (3.1a) to a service port;
-   `contentProviders` manifest axis; namespaced provider `type` strings.
+   optional board-side `readRange(config, range)` over the bounded-pull service operation to a
+   service port; `contentProviders` manifest axis; namespaced provider `type` strings.
 2. Reserved-scheme list and one-owner rule (3.2); board schemes dispatch by scheme, not by
    subscription order.
 3. *Provider missing* placeholder and the `PendingProvider` that starts a trusted board's service
@@ -656,10 +652,8 @@ confirms no cache file was written.
 > question open, and Phase F is the first phase whose board ships inside the installer, so it meets
 > the bundled-board trust decision of §6.
 >
-> **Phase E inherits a working `media.play` path but no built-in registration.** No
-> `media.play → video-view` row was added: the audio-player board declares the id itself through
-> this epic's manifest axis, and a built-in registration would have guessed at a payload contract
-> with no caller. Phase E's steps 4–5 still need nothing from the bus, exactly as §3.8 says.
+> **Phase E has no `media.play` caller or built-in registration.** Its steps 4–5 use ordinary link
+> resolution, exactly as §3.8 says; the built-in media player is selected directly for a media link.
 >
 > **Three defects were found by live testing that typecheck, lint and `build-prod` all passed**, two
 > of which made the feature useless in ordinary use: an intent dispatched to an **already-open**
@@ -699,7 +693,7 @@ cover typed no-handler/timeout/rejected/cycle outcomes, priority and loser disco
 message delivery, and untrust settlement. The remaining unverified lifecycle cases are tracked in
 the epic record and do not change the Phase E/F dependency boundary.
 
-### Phase E — Torrent board and audio player (proof 1)
+### Phase E — Torrent board and built-in media player (proof 1)
 
 > **Split in two and re-scoped, 2026-09-26.** [EPIC-113](epics/EPIC-113.md) takes the platform
 > seams; EPIC-114 will take the torrent board. Four details of this section are corrected there:
@@ -724,27 +718,25 @@ the epic record and do not change the Phase E/F dependency boundary.
 >   non-Chromium protocol, `magnet:` included, to `eOpenPipelineCandidate`. The "to verify" note in
 >   the §3.8 table is resolved.
 
-The worked flow of 3.8, end to end, as two boards in the `persephone-boards` repository. Neither
-needs a bundler: the audio player is a page with an `<audio>` element, and the torrent board's
-UI is plain HTML with `webtorrent` vendored under its own `node_modules` for the service.
+The worked flow of 3.8, end to end, as a torrent board in the `persephone-boards` repository
+feeding Persephone's built-in editors. The board UI is plain HTML with `webtorrent` vendored under
+its own `node_modules` for the service; no audio-player board is needed.
 
-1. **Audio player board** — `fileMasks` for the audio extensions, `editorKind: "stream-host"`,
-   `capabilities: [media.play]` honored by Phase D's bus. Plays from
-   `persephone.host.streamUrl()`; nothing else.
-2. **Torrent board** — port of av-player's main-process code (`torrent-proxy.ts`,
+1. **Torrent board** — port of av-player's main-process code (`torrent-proxy.ts`,
    `streaming-server.ts`, about 500 lines) into `scripts/service.mjs`: WebTorrent with
    `memory-chunk-store`, no WebRTC/native addon in the pilot; `contentProviders: [{ type:
    "torrent", schemes: ["magnet", "torrent"] }]`; `fileMasks: ["*.torrent"]`; a page listing
    torrents and their files from the service's status stream; double-click issues
    `persephone.openRawLink("torrent://<infohash>/<path>")`.
+2. **Built-in media player** — the file-name resolver selects `video-view` for media links; its
+   pipe-backed session serves the in-page player and Open in VLC without materializing a cache file.
 3. Playback while downloading, seeking re-prioritising pieces, page close stopping the stream,
    restore starting the service on demand, uninstall showing the placeholder.
 
 Exit: every row of the 3.8 table observed on a real magnet link, including the failure rows,
 with the `userData` watcher clean. This is the first time a module outside the core contributes
-below the UI, and it is what the roadmap is for. Because Phase D is already in place, the audio
-player's `media.play` registration is honored here too. The board handler remains page-backed in
-the caller's window; a headless service-backed capability is not implied by this phase.
+below the UI, and it is what the roadmap is for. The board handler remains page-backed in the
+caller's window; a headless service-backed capability is not implied by this phase.
 
 ### Phase F — Excalidraw extraction (proof 2)
 
