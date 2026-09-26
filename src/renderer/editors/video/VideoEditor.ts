@@ -23,6 +23,7 @@ import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
 import { pipeFromLink } from "../../content/rebuild-pipe";
+import { isSchemeRegistered } from "../../content/scheme-registry";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -233,7 +234,31 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
                 && !/^https?:\/\//i.test(url)
                 && !isPlainLocalPath(url);
             if (isPipeSource) {
-                if (!this.pipe) await this.ensurePipeForSource(url);
+                if (!this.pipe) {
+                    try {
+                        await this.ensurePipeForSource(url);
+                    } catch (error: unknown) {
+                        // A persisted link whose scheme is no longer REGISTERED means the board
+                        // that owned it is gone — uninstalled or untrusted — and no amount of
+                        // retrying rebuilds it. Keep the page with a legible state instead of
+                        // dropping it. Deliberately keyed on registration and not on the scheme's
+                        // name: core must not know which board claims `torrent:`. A link whose
+                        // scheme IS registered failed for some other reason and still throws.
+                        const persistedLink = this.state.get().sourceLink?.href;
+                        const scheme = persistedLink?.match(/^([a-z][a-z\d+.-]*):/i)?.[1];
+                        if (scheme && !isSchemeRegistered(scheme)) {
+                            this.state.update((s) => { s.playerState = "error"; });
+                            ui.notify(
+                                `This page was opened from a "${scheme}:" link, and the board that `
+                                + "provides it is missing or untrusted. Reinstall or trust that "
+                                + "board to restore it.",
+                                "error",
+                            );
+                            return;
+                        }
+                        throw error;
+                    }
+                }
                 if (!this.page) return;
             }
             const { streamingUrl } = await this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId);

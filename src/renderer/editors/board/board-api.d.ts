@@ -275,6 +275,8 @@ interface PersephoneServiceApi {
      * and `service-exited` when the running service exits.
      */
     request(message: unknown): Promise<unknown>;
+    /** Stop this board's module service explicitly. This does not start the service. */
+    stop(): Promise<void>;
 }
 
 /** The frame-side failure returned by the service-only provider registration guard. */

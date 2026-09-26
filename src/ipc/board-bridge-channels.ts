@@ -167,6 +167,7 @@ export type BoardRpcMethod =
     | "writeFile"
     | "getJobs"
     | "serviceRequest"
+    | "serviceStop"
     | "storageGet"
     | "storageSet"
     | "storageDelete"

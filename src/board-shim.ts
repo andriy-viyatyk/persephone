@@ -1379,6 +1379,7 @@ function createHandle(
     // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText` (US-1496).
     // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()` (EPIC-111).
     // 1.14.0 adds `getSourceUrl()` for non-materializing source identity handoff (D11).
+    // 1.15.0 adds explicit board service stopping through the main supervisor.
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1562,6 +1563,10 @@ function createHandle(
         /** Request the trusted board module service. The service starts lazily on first use. */
         request(message: unknown): Promise<unknown> {
             return rpc("serviceRequest", [message]);
+        },
+        /** Stop this board's service without starting it when it is not already running. */
+        stop(): Promise<void> {
+            return rpc("serviceStop", []) as Promise<void>;
         },
     },
 

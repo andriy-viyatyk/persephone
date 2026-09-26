@@ -395,6 +395,71 @@ Verified in the running app, not only built:
 
 ## Notes
 
+### 2026-09-27 — US-1526 verified: restore works, and a failed page cannot be recovered
+
+**Acceptance item 6 passes.** A `torrent://` media page streams with **no board page open**:
+`playerState: playing`, `boardPages: 0`. The provider started the service itself and D5's
+self-contained link carried the magnet, which is the whole reason that decision exists.
+
+It took three attempts to establish that, and the two failures were more interesting than the pass.
+
+**The failures were not what they looked like.** The first cold-start restore landed in `error`, and
+the obvious readings were both wrong: not the missing-board branch (no notification fired, and
+`torrent` was registered), and not metadata (a direct provider `stat` returned
+`{exists: true, size: 129241752}`). The main-process log had the real cause:
+
+```
+Api Error: Error: The video pipe page is not owned by this renderer.
+    at createVideoStreamSession
+```
+
+**The defect: reopening a `torrent://` link onto a page already in `error` does not recover it.**
+`createVideoStreamSession` refuses unless `boardPipeService.ownsPage(pageId, sender)`
+(`core-handlers.ts:319-321`), and a reused errored page no longer holds that ownership — it is
+registered in `PagesModel.attachPage` (`:69`) and torn down in `detachPage` (`:116`). Measured:
+
+| action | result |
+|---|---|
+| open the link with **no** existing page | **playing** |
+| reopen it onto an existing **playing** page | stays playing |
+| reopen it onto an existing **errored** page | stays `error`, ownership throw in the main log |
+
+This matters because of the swarm's bimodality recorded above: a restore *will* sometimes fail, and
+when it does the user's only natural recourse — open the link again — is exactly the path that
+cannot work. US-1526 gave the *board* a manual retry and left the **content page** without one; this
+is that gap, with a concrete mechanism behind it. **Not fixed here** — it needs its own task, since
+the fix is in page reuse/ownership rather than anything torrent-specific.
+
+**Still outstanding: acceptance item 8**, the D6 RSS measurement over a ≥200 MB stream against the
+512 MiB threshold the plan committed to in advance. Not run.
+
+### 2026-09-27 — `activeReaders` is the wrong signal for "a page is using this torrent"
+
+US-1526's plan review settled the removal rule as *refuse while `activeReaders > 0`*. That was my
+call, and verifying it in the app showed it does not deliver what its own message promised.
+
+Observed: with `Sintel.mp4` **playing**, a removal of its torrent was **accepted**, and the snapshot
+taken in the same call reported `activeReaders: 0`. The page kept playing from its buffer and would
+have failed only when that drained — the worst shape of failure, because it arrives minutes after
+the action that caused it.
+
+The cause is that a provider read is **bounded and short**. The media player opens a `readRange`,
+drains up to 1 MiB, and closes it; between reads the count is legitimately zero, which is most of
+playback. So `activeReaders > 0` protects only an in-flight read — a genuine and worth-keeping
+guarantee, but a far narrower one than *"this torrent is being read by an open page"*, which is
+what the refusal told the user.
+
+Fixed by asking the honest question instead: a torrent is in use while it has an active reader
+**or** was read within `RECENT_READ_WINDOW_MS` (30 s). A playing page reads every few seconds, so
+that covers playback; a page closed a minute ago stops protecting a torrent the user wants gone.
+The refusal message now matches the mechanism ("in use by an open page — close it, wait a few
+seconds, then remove").
+
+The general lesson, and it is the same one D1 taught in US-1523: **a counter that is true at the
+moment you sample it is not the same as the condition you meant.** "Is a read in flight?" and "is
+something consuming this?" differ by exactly the duty cycle of the reads, and the plan — mine —
+conflated them.
+
 ### 2026-09-27 — D8 measured at last, and a second timer that pre-empts it
 
 D8's 30-second bound was inherited from av-player without measurement, and the epic has been
@@ -402,19 +467,29 @@ carrying that as a known weakness since US-1524. It is now measured: eight resol
 Sintel magnet, fresh client each time, `deselect: true` and the memory store — the same shape the
 service uses — with a 60 s cap set deliberately above the bound so a slow success would still show.
 
-| | |
-|---|---|
-| resolved | **8 / 8** |
-| p50 | **4 750 ms** |
-| min / max | 2 683 ms / 5 200 ms |
-| would have failed at 30 s | **0** |
+| | first sample (8 runs) | later sample (3 runs) | combined |
+|---|---|---|---|
+| resolved | 8 / 8 | 2 / 3 | **10 / 11** |
+| p50 of successes | 4 750 ms | 2 966 ms | ≈ 3 400 ms |
+| min / max of successes | 2 683 / 5 200 ms | 2 591 / 2 966 ms | **2 591 / 5 200 ms** |
+| failed even at a 60 s cap | 0 | **1** | 1 |
 
-So on a healthy swarm the bound has roughly **6× headroom**, and the conclusion is the opposite of
-the one the weakness suggested: **lengthening it buys nothing.** The failure mode we actually met
-was not a slow swarm but an absent one — the outage recorded on 2026-09-26 lasted about half an
-hour, against which 30 s and 120 s fail identically. The bound stays; what was missing is a way for
-the user to try again, which is why US-1526 adds a manual retry rather than a longer timer or an
-automatic one.
+The second sample is the informative one, and it **corrects the framing of the first**. I initially
+read 8/8 as "the bound has ~6× headroom over the tail". There is no tail. The distribution is
+**bimodal**: a resolution either lands in **2.5–5.2 s** or does not arrive at all — the one failure
+was still unresolved at **60 s**, twice D8's bound, on the same magnet that had answered in under
+three seconds minutes earlier.
+
+That makes the conclusion stronger, not weaker. **Lengthening the bound converts no failures into
+successes**, because the failures are not slow — they are absent. A 60 s cap failed on exactly the
+attempt a 30 s cap would have. The same shape produced the half-hour outage recorded on
+2026-09-26, and two consecutive in-app resolutions that were still pending at ≈26 s during
+US-1526's verification.
+
+So the bound stays at 30 s, and the only thing that actually recovers a transient swarm is asking
+again — which is why US-1526 adds a **manual** retry rather than a longer timer or an automatic
+one. It also means acceptance must not treat a single failed resolution as a defect: the honest
+pass condition is that failures are *legible and retryable*, not that they never happen.
 
 **A second timer makes the first one mostly theoretical.** The service holds both:
 
