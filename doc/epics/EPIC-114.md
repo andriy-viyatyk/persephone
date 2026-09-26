@@ -333,8 +333,17 @@ Globs rather than the regex `contentMasks` use, because these are matched agains
 input and a glob cannot backtrack.
 
 ```json
-"browserUrlMasks": ["*://*/*.torrent"]
+"browserUrlMasks": ["*://*/*.torrent", "*://*/*.torrent?*"]
 ```
+
+**Both masks, and that is not redundant.** Measured against the shipped matcher 2026-09-27: a mask is
+anchored at both ends, exactly like `fileMasks`, so `*://*/*.torrent` matches
+`https://x.org/a.torrent` and **fails** `https://x.org/a.torrent?dl=1`. A query string is common on
+precisely the pages that serve torrents, so the single-mask form this decision first showed would
+have missed them, and the first board author to copy it would have inherited the gap. Anchoring is
+kept — an unanchored mask would make `*` mean "contains", which is not what a glob says anywhere
+else in this codebase — and the idiom is to declare the query-string form alongside. The bound of
+64 masks per board leaves ample room for it.
 
 **Scope: downloads only, deliberately.** A URL mask intercepts `will-download` and nothing else.
 Navigation interception is excluded on purpose: a mask like `https://*/*` would let one trusted
@@ -392,7 +401,7 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 | US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's routing fix and source handoff** and the `magnet` scheme declaration | In progress |
 | US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
 | US-1478 | `browserUrlMasks`: a board claims browser URLs explicitly, and a matching download is routed to it instead of saved (D12) | Planned |
-| US-1527 | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
+| [US-1527](../tasks/US-1527-torrent-board-documentation/README.md) | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
 
 **Suggested order:** US-1523 → US-1524 → US-1525 are a straight line, each observable in the running
 app. US-1526 needs all three. US-1478 is independent and carries a product question, so it is
@@ -430,7 +439,8 @@ Verified in the running app, not only built:
 7. A dead magnet (no peers) reports a metadata failure within ~30 s rather than hanging (D8), while
    a *slow but live* read is not killed by any deadline (US-1518).
 8. Peak RSS of the service process is recorded while streaming ≥200 MB of a file, as D6's measured
-   risk.
+   risk. **Measured 2026-09-27 — PASSES at 440.4 MB against the 512 MiB threshold.** See the Notes
+   entry for the ratio that governs it; the pass is a property of the test file's size, not headroom.
 9. Removing the board degrades legibly — split into the two paths it actually has, because they
    differ **by design** *(corrected 2026-09-27, while reviewing US-1526's plan; the original
    wording assumed one path and would have licensed changing shared board behaviour)*:
@@ -705,3 +715,60 @@ The spike above was run before this document existed, because the roadmap's "por
 framing hid four failures that would each have surfaced as a confusing dead end mid-implementation —
 one of them (D2) invalidating the port target entirely. The cost was one scratch folder; the return
 is that every decision here rests on an observed result rather than on a plan.
+
+### 2026-09-27 — D6 measured at last, and the number is a ratio rather than a ceiling
+
+Acceptance item 8, run on the product path: magnet → board → double-click → media player, on Big Buck
+Bunny (263 MB, 634.6 s). A seek sweep drove coverage to 92% of the file, so roughly **242 MB** was
+fetched — clearing the ≥200 MB bar.
+
+Peak **working set 440.4 MB**, peak private bytes 359.9 MB, against the pre-committed **512 MiB**
+(536.9 MB). **It passes, at 82% of budget.**
+
+The samples are the point, not the peak: 206 → 220 → 274 → 305 → 349 → 381 → 432 MB, rising
+monotonically with bytes fetched and never falling. That is `MemoryChunkStore` with no eviction,
+exactly as D6 predicted, and it means the result is a **ratio: peak RSS ≈ 1.67 × bytes fetched.**
+So the threshold is not headroom — a single file over roughly **320 MB would cross 512 MiB**. D6's
+no-eviction risk is therefore confirmed as real and merely unhit at this file size; do not read this
+pass as "memory is fine".
+
+Two lifecycle behaviours fell out of the same run, both correct and both worth recording:
+
+- **Closing the video page released nothing** (432.6 MB retained), and the board returned to
+  *"metadata only"*. That is D5 (the torrent stays resident so a cold-start restore works) and D1
+  (no reader, no transfer) holding simultaneously.
+- **Removing the torrent stopped the service outright** — the process exited and all 440 MB
+  returned to the OS. US-1526's state-based stop working, and the user's only lever against the
+  ratio above.
+
+### 2026-09-27 — US-1478 verified live, and it exposed a privacy defect in D12
+
+The platform half works end to end. A Browser navigation to a `.torrent` URL produced **no save
+dialog and no download entry** — cancelled before the dialog as D12 specifies — and opened a Torrent
+Viewer page titled from the URL, which fetched the file through the board's own provider and
+resolved it to 12 files. The registry reported the claim live with both masks and no collisions.
+
+**But D12's cancel-and-re-fetch leaks a Tor user's identity, and this is not a board bug.**
+
+Measured, with a discriminating test. `webtorrent.io` is blocked on the clear net here; archive.org
+is not. From a **Tor** browser page:
+
+- `webtorrent.io/torrents/big-buck-bunny.torrent` — the browser reached it over Tor and the
+  download fired (which is *why* interception happened), then the board's own fetch of the same URL
+  **failed**.
+- `archive.org/.../Sintel_archive.torrent` — succeeded, 12 files, 4 peers.
+
+The browser reached a host over Tor that the board could not reach. **The board's provider fetch
+does not use the originating page's Tor circuit.** The functional symptom is a failed download; the
+real defect is the case where the host *is* reachable on the clear net, because then Persephone
+silently re-issues, with the user's real IP, a request they deliberately made anonymously — and
+tells them nothing.
+
+This is created by D12's design, not by the torrent board: cancelling a download and handing the URL
+to a board means *something else* fetches it, and that something else inherits none of the
+originating page's network identity. Any board claiming a URL from an incognito or Tor page has the
+same problem.
+
+**Not fixed here.** It needs its own task and a decision: propagate the originating page's session
+to the board's fetch, or refuse to route a claimed download from a Tor/incognito page and say why.
+Until then D12 is correct for ordinary pages and wrong for anonymous ones.

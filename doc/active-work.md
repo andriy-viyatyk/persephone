@@ -49,15 +49,20 @@ deleting `editors/draw` did not take them with it.
   - [ ] US-1524: The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link, piece prioritisation
   - [ ] [US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file](tasks/US-1525-torrent-board-page/README.md)
   - [ ] [US-1526: Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder](tasks/US-1526-torrent-board-lifecycle/README.md)
-  - [ ] [US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`](tasks/US-1476-browser-scheme-routing/README.md)
-    — moved under EPIC-114 from *(no epic)*; it is the `.torrent` half of the board's entry points (D10).
-    A download takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`,
-    so it never reaches the content pipeline. Needs a product decision plus download-manager lifecycle work.
-  - [ ] US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides
+  - [ ] [US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`](tasks/US-1478-browser-url-masks/README.md)
+    — moved under EPIC-114 from *(no epic)*; it is the download half of the board's entry points (D12).
+    A matching Browser download is cancelled before the save dialog and its source URL is handed to
+    `openRawLink`; the task document settles the snapshot, trust, collision, and lifecycle work.
+  - [ ] [US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides](tasks/US-1527-torrent-board-documentation/README.md)
 
 ## Planned
 
 - *(no epic)*
+  - [ ] [US-1528: Re-establish page pipe ownership when reusing an errored media page](tasks/US-1528-errored-page-pipe-ownership/README.md)
+    — platform defect found during US-1526 live verification; the torrent board is discovery context only.
+    A pipe-backed media page can enter `error` before page ownership registration is ready, and reopening
+    the same source is rejected by the correct renderer-ownership guard. Fix registration readiness/reuse;
+    do not weaken the guard or file this under EPIC-114.
   - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
     — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
     before returning it and `EventChannel` has no replay, so the `openRawLink` fired during
