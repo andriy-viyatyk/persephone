@@ -221,8 +221,8 @@ blocked behind it.
 
 **D11 — A board-claimed link with NO file name opens the claiming board.**
 
-*(Found while reviewing US-1523's plan, 2026-09-26. This is the platform change the epic needs, and
-the only one.)*
+*(Found while reviewing US-1523's plan, 2026-09-26. Mechanism corrected, and scope widened, while
+reviewing US-1525's plan the same day — see the note at the end of this decision.)*
 
 EPIC-114 goal 1 — a magnet link opens the torrent board — has **no mechanism today**, and the gap is
 not where the roadmap assumed. The roadmap says step 1 is free because `browser-service.ts` routes
@@ -240,8 +240,20 @@ data.target = data.target
 
 and `schemeEffectivePath` is `new URL(url).pathname.split("/").pop()` (`:179-185`). A magnet URI is
 **opaque, not hierarchical** — `new URL("magnet:?xt=urn:btih:…").pathname` is `""`. So a
-board-claimed `magnet:` link resolves to an empty file name, falls through to `"monaco"`, and opens
-**Monaco on a torrent pipe**.
+board-claimed `magnet:` link resolves to an empty file name and opens **Monaco on a torrent pipe**.
+
+**How it reaches Monaco matters, and the first version of this decision got it wrong.** It does
+*not* fall through to the `|| "monaco"` arm. `resolveEditorIdForFile` opens with
+`const match = matchPath || filePath` (`:578`), so an empty effective path falls back to the
+**whole magnet URI** as the match string — and Monaco's matcher is `acceptFile: () => 0`
+(`editor-matchers.ts:47-49`), an unconditional catch-all that beats the `-1` floor. The call
+therefore *returns* `"monaco"`.
+
+The consequence is the one that governs the fix: **the `|| "monaco"` arm is dead code for any
+non-empty `data.url`.** Editing it would change nothing. The empty-name branch must be taken
+*before* `resolveEditorIdForFile` is called, because after the call there is no failure signal left
+to branch on — and any later "simplification" that folds the check back into the `||` chain
+silently restores the bug.
 
 That is worse than today, where nothing routes a magnet at all. So the board must **not** claim
 `magnet` until this is fixed — US-1523 declares `schemes: ["torrent"]` only, deliberately.
@@ -252,10 +264,28 @@ board's own editor rather than `"monaco"`. When it yields a file name, nothing c
 The narrowness is the point. The fallback must trigger on an *absent* file name, **not** on an
 *unrecognised extension* — otherwise `archive.zzz` would open the claiming board and break EPIC-113
 acceptance item 1 ("an extension nothing claims still opens Monaco"), which was verified in the
-running app. Those two cases both reach the `|| "monaco"` arm today and must be separated.
+running app. Both cases resolve to Monaco today by the same call, and only the effective path
+distinguishes them.
 
 This needs no manifest field: a board that claims a scheme already declares `editorName` /
-`editorKind`, which is the editor to target.
+`editorKind`, which is the editor to target. `createBoardSchemeHooks` is constructed at `:459-462`
+inside a loop where the owning `boardRoot` is in scope, and `boardEditorId(boardRoot)` (`:64-65`)
+turns it into the id — so the claiming board's editor is available without threading anything new
+through the registry.
+
+**Scope, corrected 2026-09-26 — D11 also covers the source handoff, and that is a second platform
+change.** Routing a magnet to the board is half a feature: the board page then has no way to learn
+*which* magnet opened it. The handshake carries only `filePath` and `materialize`
+(`board-bridge-channels.ts:270-281`; `board-shim.ts:926-942`), and `getFilePath()` is the wrong
+tool because it materialises a non-local source. The raw magnet *is* already persisted — the board
+provider sets `sourceUrl` from `config.url` (`content/registry.ts:483-496`) and the open handler
+copies it to `sourceLink.url` (`open-handler.ts:20,29-30`) — it is simply not exposed.
+
+So D11 grows one narrow, non-materialising accessor: `sourceUrl` on the handshake, settled once
+like `filePath`, read through `persephone.getSourceUrl()`. The epic's earlier claim that D11 was
+the *only* platform change is superseded rather than quietly widened; this is the second and the
+last. A plain board must still settle it to `undefined` rather than hang, which is the failure mode
+this pattern has already had once.
 
 **Owned by US-1525**, the task that builds the page a magnet should open — landing the platform
 change and the `magnet` declaration together, so the scheme is never claimed while it would
@@ -297,7 +327,7 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 |------|-------|--------|
 | US-1523 | The board skeleton: manifest, vendored WebTorrent bundle (D3), and a service that resolves a magnet to metadata (D1, D2, D8) | Planned |
 | US-1524 | The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link (D5), piece prioritisation (D9) | Planned |
-| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's platform change** and the `magnet` scheme declaration | Planned |
+| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's routing fix and source handoff** and the `magnet` scheme declaration | In progress |
 | US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
 | US-1478 | Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink` (D10) | Planned |
 | US-1527 | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
@@ -318,6 +348,13 @@ Verified in the running app, not only built:
    D11; before it lands, the board does not claim `magnet` at all.
 1b. EPIC-113 acceptance item 1 still holds after D11 — a board-scheme link to an extension
    nothing claims (`archive.zzz`) still opens **Monaco**, not the claiming board.
+1c. The Demo Board is unchanged where it is exercised today, and the one place D11 *does* change it
+   is checked rather than discovered: `mem://demo` has an **empty** effective path (`demo` is the
+   authority, not a path segment), so opening it **as a page** now targets the Demo Board's own
+   editor. Its `content.open("mem://demo")` use is unaffected, because that route resolves at
+   `phase: "source-path"` and returns before the target line. Both observed.
+1d. `persephone.getSourceUrl()` on a **plain** board (no scheme source) resolves to `undefined`
+   promptly rather than hanging — the same settle-once guarantee `filePath` has.
 2. Double-clicking a `.txt`/`.srt` inside the torrent opens **Monaco**, a `.jpg` opens the **image
    viewer**, an `.mp4` opens the **media player** — none of them named by the board.
 3. The media player plays an `.mp4` from the swarm while it is still downloading, with **no cache

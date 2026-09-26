@@ -47,7 +47,7 @@ deleting `editors/draw` did not take them with it.
 - **EPIC-114** — [The torrent board — a module contributes below the UI](epics/EPIC-114.md)
   - [ ] US-1523: The board skeleton: manifest, vendored WebTorrent bundle, and a service that resolves a magnet to metadata
   - [ ] US-1524: The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link, piece prioritisation
-  - [ ] US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file
+  - [ ] [US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file](tasks/US-1525-torrent-board-page/README.md)
   - [ ] US-1526: Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder
   - [ ] [US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`](tasks/US-1476-browser-scheme-routing/README.md)
     — moved under EPIC-114 from *(no epic)*; it is the `.torrent` half of the board's entry points (D10).
