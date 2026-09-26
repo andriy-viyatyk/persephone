@@ -348,6 +348,43 @@ Verified in the running app, not only built:
 
 ## Notes
 
+### 2026-09-26 — D1 needed one more line than the reference implementation has
+
+US-1523's first live run reported every file deselected **and downloaded 82 MB in seconds** at
+4.8 MB/s. Both facts were true at once, which is the whole trap.
+
+`file.deselect()` removes that file's own selection. It does not remove the **torrent-level
+selection over the whole piece range** that WebTorrent creates at metadata time unless
+`opts.deselect` is set (`webtorrent/lib/torrent.js:155`, `_startAsDeselected`; the option is
+documented at `:68` as "create the torrent with no pieces selected"). So a torrent added the
+ordinary way downloads everything while truthfully reporting that no file is selected.
+
+**av-player's `torrent-proxy.ts` has this bug too** (`:107-109` deselects each file and nothing
+else). It was invisible there because that app is a player that downloads on purpose. Ported
+literally, it would have made D1 — the epic's central product rule, and the user's own framing of
+what this board is — silently false, while every observable the plan checked said it held.
+
+Fixed by adding `deselect: true` to `client.add`. Measured after: 655 KB total, then **0 bytes over
+20 seconds with 22 peers connected**.
+
+The lesson for the remaining tasks: "is it selected?" is not the same question as "is it
+downloading?", and only the second one is D1. US-1524 should assert on transferred bytes, not on
+selection state.
+
+### 2026-09-26 — a defect the out-of-app check could not have caught
+
+US-1523's service resolved the Sintel magnet correctly from a throwaway Node script and failed in
+the app with `Cannot read properties of undefined (reading 'name')`.
+
+`startResolver` is `async` and returns `undefined` — it hands its result to `operation.resolve(…)`
+and swallows failures into `operation.reject(…)`. The job wiring awaited the *function's* promise
+rather than `operation.promise`, so every job completed with `torrent: undefined` and no job could
+ever fail. The out-of-app check passed because it called `resolveTorrent()`, which does return
+`operation.promise`; the job path only exists on the board's own request route.
+
+Worth keeping in mind when the later tasks are verified: a check that exercises a different entry
+point than the product does proves less than it appears to.
+
 ### 2026-09-26 — the epic starts with its riskiest assumption already tested
 
 The spike above was run before this document existed, because the roadmap's "port ~500 lines"
