@@ -215,8 +215,9 @@ through `fileMasks: ["*.torrent"]`. But a `.torrent` **downloaded in the Browser
 never enters the content pipeline. That is the pre-existing **US-1478**, which moves under this epic
 because this is the epic that gives it a reason to exist.
 
-US-1478 needs a product decision (cancel the download and open the source URL, versus save first and
-hand the saved path to `openRawLink`) and is scheduled **last**, so the rest of the epic is not
+US-1478 needed a product decision, and it has one: **D12** settles both the declaration (a board's
+own `browserUrlMasks`, never `fileMasks`) and the behaviour (cancel before the save dialog, hand the
+source URL to `openRawLink`, write nothing). It stays scheduled late so the rest of the epic is not
 blocked behind it.
 
 **D11 — A board-claimed link with NO file name opens the claiming board.**
@@ -292,6 +293,67 @@ change and the `magnet` declaration together, so the scheme is never claimed whi
 misroute. *This corrects roadmap §3.8 step 1's "already done and needs no work" note, which is true
 of the Browser and false of the pipeline; the correction goes back into the roadmap at epic close.*
 
+**D12 — A board claims browser URLs with its OWN declaration, separate from `fileMasks`.**
+
+*(User decision, 2026-09-27, answering D10's open product question and widening it.)*
+
+The user's framing: *"a board can register either a protocol or a url mask that the browser should
+check — if one is registered and the browser detects it, the link goes to the board that registered
+it."* And then, on being asked whether `fileMasks` could carry the URL claim: *"file mask is the
+file mask and browser url is browser url. They may not be the same things. The board that intends
+to handle a specific url should register it explicitly."*
+
+That is the right cut, and it is the whole decision: **editing a file type and intercepting a URL
+are two different claims, and a board makes them separately.** A board that edits `.torrent` files
+is not necessarily one that wants to take over downloading them.
+
+**The protocol half already exists and is verified working.** A board declares
+`contentProviders[].schemes`; the browser cancels any navigation to a non-Chromium protocol and
+emits `eOpenPipelineCandidate` (`browser-service.ts:306-308`); the renderer routes it **only if a
+board claimed that scheme** — `isSchemeRegistered(scheme)` (`RendererEventsService.ts:85-90`) — and
+hands it to `openRawLink`. Measured 2026-09-27: clicking a Sintel magnet link in a Browser tab
+opened Torrent Viewer with 11 files listed, metadata only, 16 peers. The mechanism was dormant only
+because nothing claimed a scheme the browser would ever see; US-1525's `magnet` claim and D11 lit it
+up. **No work is needed for protocols.**
+
+**The URL half does not exist, and it is a download problem, not a navigation problem.** An
+`https://…/x.torrent` link is an ordinary Chromium navigation, so the scheme path never sees it;
+the server marks it an attachment and it becomes a download. `will-download`
+(`download-service.ts:31,86-112`) then shows a save dialog, writes the file, and lists it. No board
+is ever consulted.
+
+*(Correcting D10, which said `will-download` "takes it and opens it with `shell.openPath`". It does
+not: `shell.openPath` is in `openDownload(id)` (`:49-53`), a **user** action on a completed
+download. The "never enters the content pipeline" half of D10 stands; the mechanism does not — and
+the difference decides where interception belongs.)*
+
+**The declaration.** A new manifest field, `browserUrlMasks`: globs matched against the whole URL,
+normalized like `fileMasks` (trimmed, lowercased, de-duplicated, bounded in count and length).
+Globs rather than the regex `contentMasks` use, because these are matched against attacker-adjacent
+input and a glob cannot backtrack.
+
+```json
+"browserUrlMasks": ["*://*/*.torrent"]
+```
+
+**Scope: downloads only, deliberately.** A URL mask intercepts `will-download` and nothing else.
+Navigation interception is excluded on purpose: a mask like `https://*/*` would let one trusted
+board silently capture all browsing, and a download is already leaving the browser — redirecting it
+is a lateral move, not a capture. Non-http protocols are already covered by the scheme path above,
+which is where `magnet:` belongs.
+
+**Behaviour on match:** cancel the download **before the save dialog** and hand the *source URL* to
+`openRawLink`. Nothing is written to disk — which keeps D1 intact and means a board that wants the
+bytes fetches them through its own provider, as the torrent board already does. The user is told
+what happened, naming the board; a silent change to what a download does is delightful once and
+alarming the first time it surprises someone.
+
+**Trust and collisions** follow the existing rules exactly: trusted and bundled boards only, first
+registration wins, and a refused claim is recorded as a `CustomEditorRegistrationIssue` like a
+refused provider or scheme.
+
+**Owned by US-1478.**
+
 ## UI design
 
 Deliberately plain, and written to be argued with after the user sees it. Two panes in one page:
@@ -329,7 +391,7 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 | US-1524 | The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link (D5), piece prioritisation (D9) | Planned |
 | US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's routing fix and source handoff** and the `magnet` scheme declaration | In progress |
 | US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
-| US-1478 | Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink` (D10) | Planned |
+| US-1478 | `browserUrlMasks`: a board claims browser URLs explicitly, and a matching download is routed to it instead of saved (D12) | Planned |
 | US-1527 | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
 
 **Suggested order:** US-1523 → US-1524 → US-1525 are a straight line, each observable in the running
@@ -385,7 +447,7 @@ Verified in the running app, not only built:
 
 ## Concerns / open questions
 
-- **US-1478 needs a product decision** (D10) — raised when that task is planned, not now.
+- ~~**US-1478 needs a product decision**~~ — settled by **D12** on 2026-09-27.
 - **D6's memory growth** is bounded only by behaviour. Acceptance item 8 measures it; if the number
   is bad, an eviction store is the follow-up.
 - **Peer availability with TCP only** (D7) may make some magnets slow or unusable. The Sintel magnet
