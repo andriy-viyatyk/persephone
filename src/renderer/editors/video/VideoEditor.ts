@@ -17,11 +17,12 @@ import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
-import { fpDirname } from "../../core/utils/file-path";
+import { fpDirname, isPlainLocalPath } from "../../core/utils/file-path";
 import type { ITreeProvider, ILink } from "../../api/types/io.tree";
 import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
+import { pipeFromLink } from "../../content/rebuild-pipe";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,9 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     noLanguage = true;
     skipSave = true;
     private mediaElement: HTMLMediaElement | null = null;
+    private activeSessionId: string | undefined;
+    private activeSessionPageId: string | undefined;
+    private sourceRequestId = 0;
 
     constructor(state: TComponentState<VideoEditorState>) {
         super(state);
@@ -92,6 +96,32 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         this.mediaElement = element;
     };
 
+    override setPage(page: Parameters<EditorModel["setPage"]>[0]): void {
+        super.setPage(page);
+        if (!page) return;
+        const { url, format, parsedRequest, streamUrl } = this.state.get();
+        if (!url || streamUrl || format === "m3u8"
+            || /^https?:\/\//i.test(url) || isPlainLocalPath(url) || !this.pipe) return;
+
+        const sourceRequestId = ++this.sourceRequestId;
+        void this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId).then(
+            ({ streamingUrl }) => {
+                this.state.update((s) => {
+                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
+                        s.streamUrl = streamingUrl;
+                    }
+                });
+            },
+            () => {
+                this.state.update((s) => {
+                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
+                        s.playerState = "error";
+                    }
+                });
+            },
+        );
+    }
+
     /** Update raw input text as user types. */
     setInputText = (text: string) => {
         this.state.update((s) => { s.inputText = text; });
@@ -103,24 +133,58 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
      * All other sources (MP4, local files) are proxied through the local
      * streaming server, which provides HTTP range request support.
      */
+    private ensurePipeForSource = async (url: string): Promise<IContentPipe> => {
+        if (this.pipe) return this.pipe;
+        const sourceLink = this.state.get().sourceLink;
+        const pipe = await pipeFromLink(sourceLink?.href ?? url);
+        this.pipe = pipe;
+        return pipe;
+    };
+
+    private deleteActiveSession = async (): Promise<void> => {
+        const sessionId = this.activeSessionId;
+        this.activeSessionId = undefined;
+        this.activeSessionPageId = undefined;
+        if (sessionId) await api.deleteVideoStreamSession(sessionId);
+    };
+
     private resolveStreamUrl = async (
         url: string,
         format: VideoFormat,
         parsedRequest: ParsedHttpRequest | null,
-    ): Promise<string> => {
-        if (format === "m3u8") return url;
+        sourceRequestId: number,
+    ): Promise<{ streamingUrl: string }> => {
+        if (sourceRequestId !== this.sourceRequestId) return { streamingUrl: "" };
+        await this.deleteActiveSession();
+        if (format === "m3u8") return { streamingUrl: url };
+        const isHttpUrl = /^https?:\/\//i.test(url);
+        const isPlainLocalFile = isPlainLocalPath(url);
         try {
-            const isHttpUrl = url.startsWith("http://") || url.startsWith("https://");
+            const pageId = this.page?.id;
             const sessionConfig = isHttpUrl
-                ? { url, headers: parsedRequest?.headers, pageId: this.page?.id }
-                : { filePath: url, pageId: this.page?.id };
-            const { streamingUrl } = await api.createVideoStreamSession(
+                ? { url, headers: parsedRequest?.headers, pageId }
+                : isPlainLocalFile
+                    ? { filePath: url, pageId }
+                    : this.pipe && pageId
+                        ? { pipe: true as const, pageId }
+                        : null;
+            if (!sessionConfig) {
+                throw new Error("The video source has no live content pipe.");
+            }
+            const session = await api.createVideoStreamSession(
                 sessionConfig,
                 settings.get("video-stream.port"),
             );
-            return streamingUrl;
-        } catch {
-            return url; // fallback to direct URL if streaming server fails
+            if (sourceRequestId !== this.sourceRequestId) {
+                await api.deleteVideoStreamSession(session.sessionId);
+                return { streamingUrl: "" };
+            }
+            this.activeSessionId = session.sessionId;
+            this.activeSessionPageId = pageId;
+            return { streamingUrl: session.streamingUrl };
+        } catch (error: unknown) {
+            if (!isHttpUrl && !isPlainLocalFile) throw error;
+            return { streamingUrl: url }; // fallback to direct URL for local/HTTP sources
         }
     };
 
@@ -128,9 +192,11 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     submitUrl = async (text: string) => {
         const trimmed = text.trim();
         if (!trimmed) return;
+        const sourceRequestId = ++this.sourceRequestId;
         const parsed = parseHttpRequest(trimmed);
         const resolvedUrl = parsed ? parsed.url : trimmed;
         const format = detectVideoFormat(resolvedUrl);
+        await this.deleteActiveSession();
 
         this.state.update((s) => {
             s.inputText = trimmed;
@@ -142,11 +208,16 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         });
 
         if (format !== "m3u8") {
-            const streamUrl = await this.resolveStreamUrl(resolvedUrl, format, parsed ?? null);
+            const { streamingUrl } = await this.resolveStreamUrl(
+                resolvedUrl,
+                format,
+                parsed ?? null,
+                sourceRequestId,
+            );
             // Only update if URL hasn't changed while resolving
             this.state.update((s) => {
-                if (s.url === resolvedUrl) {
-                    s.streamUrl = streamUrl;
+                if (s.url === resolvedUrl && sourceRequestId === this.sourceRequestId) {
+                    s.streamUrl = streamingUrl;
                 }
             });
         }
@@ -155,12 +226,20 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Called after model creation when opening a file — resolves stream URL for immediate playback. */
     async restore(): Promise<void> {
         await super.restore();
-        const { url, format, parsedRequest, playerState } = this.state.get();
-        if (url && playerState === "loading") {
-            const streamUrl = await this.resolveStreamUrl(url, format, parsedRequest);
+        const { url, format, parsedRequest } = this.state.get();
+        const sourceRequestId = ++this.sourceRequestId;
+        if (url) {
+            const isPipeSource = format !== "m3u8"
+                && !/^https?:\/\//i.test(url)
+                && !isPlainLocalPath(url);
+            if (isPipeSource) {
+                if (!this.pipe) await this.ensurePipeForSource(url);
+                if (!this.page) return;
+            }
+            const { streamingUrl } = await this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId);
             this.state.update((s) => {
-                if (s.url === url) {
-                    s.streamUrl = streamUrl;
+                if (s.url === url && sourceRequestId === this.sourceRequestId) {
+                    s.streamUrl = streamingUrl;
                 }
             });
         }
@@ -391,33 +470,32 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Clean up streaming server sessions when the editor tab is closed. */
     async dispose(): Promise<void> {
         this.mediaElement = null;
-        const pageId = this.page?.id;
-        if (pageId) {
-            await api.deleteVideoStreamSessionsByPage(pageId);
+        this.sourceRequestId++;
+        const sessionId = this.activeSessionId;
+        const pageId = this.activeSessionPageId ?? this.page?.id;
+        this.activeSessionId = undefined;
+        this.activeSessionPageId = undefined;
+        const pipe = this.pipe;
+        this.pipe = null;
+        await Promise.all([
+            sessionId ? api.deleteVideoStreamSession(sessionId) : Promise.resolve(),
+            pageId ? api.deleteVideoStreamSessionsByPage(pageId) : Promise.resolve(),
+        ]);
+        if (pipe) {
+            pipe.dispose();
         }
+        this.state.update((s) => { s.streamUrl = ""; });
         await super.dispose();
     }
 
     /** Open the current video in VLC. Uses the local streaming server for HTTP sources. */
     openInVlc = async () => {
-        const { url, format, parsedRequest } = this.state.get();
+        const { url, format, streamUrl } = this.state.get();
         if (!url) return;
 
         try {
-            let vlcUrl = url;
-
-            if (format !== "m3u8") {
-                const isHttpUrl = url.startsWith("http://") || url.startsWith("https://");
-                const sessionConfig = isHttpUrl
-                    ? { url, headers: parsedRequest?.headers, pageId: this.page?.id }
-                    : { filePath: url, pageId: this.page?.id };
-                const { streamingUrl } = await api.createVideoStreamSession(
-                    sessionConfig,
-                    settings.get("video-stream.port"),
-                );
-                vlcUrl = streamingUrl;
-            }
-
+            const vlcUrl = format === "m3u8" ? url : streamUrl;
+            if (!vlcUrl) return;
             await api.openInVlc(vlcUrl, settings.get("vlc-path"));
         } catch (e: unknown) {
             const message = errMessage(e);

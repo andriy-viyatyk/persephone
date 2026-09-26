@@ -60,7 +60,7 @@ deleting `editors/draw` did not take them with it.
   - [ ] US-1518: A content read has **no deadline** — it waits until the page closes or the user
     deletes the source. Replaces the fixed 10 s cap with wire-level cancellation, and keeps waiting
     reads out of the 32-slot budget the board's own control requests (including delete) share.
-  - [ ] US-1519: The built-in media player plays from a pipe — a third `video-stream-server` source
+  - [ ] [US-1519: The built-in media player plays from a pipe](tasks/US-1519-media-player-pipe-source/README.md) — a third `video-stream-server` source
     beside local file and HTTP, so the in-page `<video>` **and** Open in VLC both work. Must use the
     127.0.0.1 HTTP surface, not `board://__pipe`: VLC is an external process and cannot fetch a
     custom Electron protocol.

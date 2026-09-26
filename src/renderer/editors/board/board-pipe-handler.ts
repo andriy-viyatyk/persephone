@@ -13,7 +13,6 @@ import { errMessage } from "../../../shared/utils";
 import { parseRangeHeader, type ByteRange } from "../../../shared/range-utils";
 import { pages } from "../../api/pages";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import type { BoardEditorModel } from "./BoardEditorModel";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
 
 interface PipeMemo {
@@ -140,11 +139,25 @@ async function readChunk(request: BoardPipeReadRequest, signal: AbortSignal): Pr
         pipe = contentResources.get(request.pipeId);
     } else {
         const page = pages.findPage(request.pipeId);
-        const board = page?.mainEditorInstance as BoardEditorModel | null;
-        if (!board || !board.pipeUrlEnabled) throw new Error("The board pipe page is unavailable.");
-        pipe = await board.resolveStreamPipe();
+        const editor = page?.mainEditorInstance as {
+            pipeUrlEnabled?: boolean;
+            resolveStreamPipe?: () => Promise<IContentPipe>;
+            pipe?: IContentPipe | null;
+        } | null;
+        // A capability check, not `instanceof` — `BoardEditorModel` is imported as a type here and
+        // making it a value import would pull the editor graph into this chunk (US-1519).
+        // `resolveStreamPipe` is what marks a BOARD page, and a board page is still gated on
+        // `pipeUrlEnabled`: falling through to `.pipe` for a board that fails the gate would
+        // quietly delete it, since the open handler assigns every board page a pipe. Only a
+        // NON-board page (a video editor, say) is read straight off `editor.pipe`.
+        if (typeof editor?.resolveStreamPipe === "function") {
+            if (editor.pipeUrlEnabled !== true) throw new Error("The board pipe page is unavailable.");
+            pipe = await editor.resolveStreamPipe();
+        } else {
+            pipe = editor?.pipe ?? undefined;
+        }
     }
-    if (!pipe) throw new Error("The board pipe resource is unavailable.");
+    if (!pipe) throw new Error("The page content pipe is unavailable.");
 
     const memoKey = `${request.pipeKind}:${request.pipeId}`;
     let memo = pipeMemos.get(memoKey);

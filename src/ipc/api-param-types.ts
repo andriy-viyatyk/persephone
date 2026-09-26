@@ -164,10 +164,12 @@ export interface BoardArchiveDownloadRequest {
 }
 
 export interface VideoStreamSessionConfig {
-    /** Local file path to stream. Mutually exclusive with url. */
+    /** Local file path to stream. Mutually exclusive with url and pipe. */
     filePath?: string;
-    /** HTTP/HTTPS URL to proxy. Mutually exclusive with filePath. */
+    /** HTTP/HTTPS URL to proxy. Mutually exclusive with filePath and pipe. */
     url?: string;
+    /** Read from the owning page's current content pipe. Mutually exclusive with filePath and url. */
+    pipe?: true;
     /** Custom request headers forwarded to the source URL. */
     headers?: Record<string, string>;
     /** HTTP method for the source request. Defaults to "GET". */

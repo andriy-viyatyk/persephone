@@ -77,8 +77,13 @@ class BoardPipeService {
         this.removeOwner(key, new BoardPipeError(404, "Board pipe resource is no longer available."));
     }
 
+    ownsPage(pageId: string, webContents: WebContents): boolean {
+        const owner = this.owners.get(this.ownerKey("page", pageId));
+        return !!owner && owner.webContents === webContents && !webContents.isDestroyed();
+    }
+
     read(
-        host: string,
+        host: string | undefined,
         pipeKind: BoardPipeKind,
         pipeId: string,
         rangeHeader?: string,

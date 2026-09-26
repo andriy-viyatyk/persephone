@@ -114,6 +114,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     detachPage = (page: PageModel) => {
         const pageId = page.id;
         void api.unregisterBoardPipePage(pageId);
+        void api.deleteVideoStreamSessionsByPage(pageId);
         void import("../../editors/board/board-pipe-handler").then(({ invalidateBoardPipePage }) => {
             invalidateBoardPipePage(pageId);
         });

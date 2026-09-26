@@ -4,7 +4,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { VideoStreamSessionConfig, VideoStreamSessionResult } from "../ipc/api-param-types";
-import { parseRangeHeader } from "../shared/range-utils";
+import type { BoardPipeReadReply } from "../ipc/board-pipe-channels";
+import { BoardPipeError, boardPipeService } from "./board-pipe-service";
+import { MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
+import {
+    contentLength,
+    contentRangeHeader,
+    parseRangeHeader,
+    unsatisfiableContentRangeHeader,
+    type ByteRange,
+} from "../shared/range-utils";
+import { errMessage } from "../shared/utils";
 
 const DEFAULT_PORT = 7866;
 const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
@@ -39,6 +49,7 @@ interface SessionData {
     lastAccessed: number;
     pageId: string | undefined;
     faststart?: FaststartLayout;
+    activePipeRequests: Set<AbortController>;
 }
 
 const sessions = new Map<string, SessionData>();
@@ -52,6 +63,14 @@ export async function createSession(
     config: VideoStreamSessionConfig,
     port = DEFAULT_PORT,
 ): Promise<VideoStreamSessionResult> {
+    const sourceCount = [config.filePath !== undefined, config.url !== undefined, config.pipe === true]
+        .filter(Boolean).length;
+    if (sourceCount !== 1) {
+        throw new Error("A video stream session must have exactly one source.");
+    }
+    if (config.pipe === true && !config.pageId) {
+        throw new Error("A pipe video stream session requires a page owner.");
+    }
     await ensureServerRunning(port);
     const sessionId = randomUUID();
 
@@ -61,7 +80,13 @@ export async function createSession(
         if (layout) faststart = layout;
     }
 
-    sessions.set(sessionId, { config, lastAccessed: Date.now(), pageId: config.pageId, faststart });
+    sessions.set(sessionId, {
+        config,
+        lastAccessed: Date.now(),
+        pageId: config.pageId,
+        faststart,
+        activePipeRequests: new Set(),
+    });
     return {
         sessionId,
         streamingUrl: `http://127.0.0.1:${currentPort}/video-stream/${sessionId}`,
@@ -69,12 +94,16 @@ export async function createSession(
 }
 
 export function deleteSession(sessionId: string): void {
+    const session = sessions.get(sessionId);
+    if (!session) return;
+    abortPipeRequests(session);
     sessions.delete(sessionId);
 }
 
 export function deleteSessionsByPage(pageId: string): void {
     for (const [id, session] of sessions) {
         if (session.pageId === pageId) {
+            abortPipeRequests(session);
             sessions.delete(id);
         }
     }
@@ -86,6 +115,7 @@ export function stopVideoStreamServer(): void {
     }
     httpServer?.close();
     httpServer = undefined;
+    for (const session of sessions.values()) abortPipeRequests(session);
     sessions.clear();
 }
 
@@ -103,6 +133,7 @@ async function ensureServerRunning(port: number): Promise<void> {
         const now = Date.now();
         for (const [id, session] of sessions) {
             if (now - session.lastAccessed > SESSION_EXPIRY_MS) {
+                if (session.activePipeRequests.size > 0) continue;
                 sessions.delete(id);
             }
         }
@@ -149,16 +180,18 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
     const rangeHeader = req.headers.range;
     const { config } = session;
 
-    const onError = (err: Error) => {
+    const onError = (err: unknown) => {
         if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "text/plain" });
-            res.end(err.message || "Internal Server Error");
+            res.end(errMessage(err, "Internal Server Error"));
         } else if (!res.writableEnded) {
-            res.destroy(err);
+            res.destroy(new Error(errMessage(err, "Internal Server Error")));
         }
     };
 
-    if (config.filePath) {
+    if (config.pipe === true) {
+        handlePipeRequest(session, req, rangeHeader, res);
+    } else if (config.filePath) {
         if (session.faststart) {
             handleFaststartRequest(session.faststart, rangeHeader, res).catch(onError);
         } else {
@@ -599,4 +632,138 @@ function getContentTypeFromPath(filePath: string): string {
         case ".ts":   return "video/mp2t";
         default:      return "application/octet-stream";
     }
+}
+
+function abortPipeRequests(session: SessionData): void {
+    for (const controller of session.activePipeRequests) controller.abort();
+    session.activePipeRequests.clear();
+}
+
+function handlePipeRequest(
+    session: SessionData,
+    req: http.IncomingMessage,
+    rangeHeader: string | undefined,
+    res: http.ServerResponse,
+): void {
+    const controller = new AbortController();
+    session.activePipeRequests.add(controller);
+    const abort = (): void => controller.abort();
+    req.once("aborted", abort);
+    res.once("close", abort);
+    void servePipeRequest(session, rangeHeader, res, controller.signal)
+        .catch((error: unknown) => {
+            if (controller.signal.aborted || res.destroyed) return;
+            const status = error instanceof BoardPipeError ? error.status : 503;
+            if (!res.headersSent) {
+                res.writeHead(status, { "Content-Type": "text/plain" });
+                res.end(errMessage(error, "Board pipe unavailable."));
+            } else if (!res.writableEnded) {
+                res.destroy(new Error(errMessage(error, "Board pipe unavailable.")));
+            }
+        })
+        .finally(() => {
+            session.activePipeRequests.delete(controller);
+            req.removeListener("aborted", abort);
+            res.removeListener("close", abort);
+        });
+}
+
+async function servePipeRequest(
+    session: SessionData,
+    rangeHeader: string | undefined,
+    res: http.ServerResponse,
+    signal: AbortSignal,
+): Promise<void> {
+    const pageId = session.config.pageId;
+    if (!pageId) throw new Error("The pipe video stream session has no page owner.");
+
+    const first = await boardPipeService.read(undefined, "page", pageId, rangeHeader, undefined, signal);
+    if (first.ok === false) throw new BoardPipeError(first.status, first.error);
+    if (!Number.isSafeInteger(first.totalSize) || first.totalSize < 0) {
+        throw new Error("The board pipe returned an invalid total size.");
+    }
+
+    const requestedRange = rangeHeader === undefined
+        ? first.totalSize > 0 ? { start: 0, end: first.totalSize - 1 } : null
+        : parseRangeHeader(rangeHeader, first.totalSize);
+    if (!requestedRange) {
+        if (rangeHeader !== undefined) {
+            res.writeHead(416, {
+                "Content-Range": unsatisfiableContentRangeHeader(first.totalSize),
+                "Accept-Ranges": "bytes",
+            });
+        } else {
+            res.writeHead(200, {
+                "Content-Type": first.contentType || "application/octet-stream",
+                "Accept-Ranges": "bytes",
+                "Content-Length": "0",
+            });
+        }
+        res.end();
+        return;
+    }
+
+    validatePipeReply(first, requestedRange, first.totalSize, requestedRange.start);
+    const status = rangeHeader === undefined ? 200 : 206;
+    res.writeHead(status, {
+        "Content-Type": first.contentType || "application/octet-stream",
+        "Accept-Ranges": "bytes",
+        "Content-Length": contentLength(requestedRange),
+        ...(status === 206 ? { "Content-Range": contentRangeHeader(requestedRange, first.totalSize) } : {}),
+    });
+    await writePipeChunk(first.data, res);
+
+    let nextStart = first.range!.end + 1;
+    while (nextStart <= requestedRange.end) {
+        if (signal.aborted || res.destroyed) return;
+        const nextEnd = Math.min(
+            requestedRange.end,
+            nextStart + MAX_BOARD_PIPE_CHUNK_BYTES - 1,
+        );
+        const chunk = await boardPipeService.read(
+            undefined,
+            "page",
+            pageId,
+            undefined,
+            { start: nextStart, end: nextEnd },
+            signal,
+        );
+        if (chunk.ok === false) throw new BoardPipeError(chunk.status, chunk.error);
+        validatePipeReply(chunk, { start: nextStart, end: nextEnd }, first.totalSize, nextStart);
+        await writePipeChunk(chunk.data, res);
+        nextStart = chunk.range!.end + 1;
+    }
+    if (!res.destroyed) res.end();
+}
+
+function validatePipeReply(
+    reply: BoardPipeReadReply,
+    requestedRange: ByteRange,
+    totalSize: number,
+    expectedStart: number,
+): asserts reply is Extract<BoardPipeReadReply, { ok: true }> {
+    if (!reply.ok
+        || reply.totalSize !== totalSize
+        || !reply.range
+        || reply.range.start !== expectedStart
+        || reply.range.end < reply.range.start
+        || reply.range.end > requestedRange.end
+        || reply.range.end !== reply.range.start + reply.data.length - 1
+        || reply.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
+        throw new Error("The board pipe returned an invalid byte range.");
+    }
+}
+
+function writePipeChunk(data: Uint8Array, res: http.ServerResponse): Promise<void> {
+    if (res.destroyed || res.writableEnded) return Promise.resolve();
+    if (res.write(data)) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+        const done = (): void => {
+            res.removeListener("drain", done);
+            res.removeListener("close", done);
+            resolve();
+        };
+        res.once("drain", done);
+        res.once("close", done);
+    });
 }

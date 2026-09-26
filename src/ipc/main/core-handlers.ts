@@ -29,6 +29,7 @@ import {
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
 import type { BoardEndpoint } from "./board-handlers";
 import type { GitEndpoint } from "./git-handlers";
+import { boardPipeService } from "../../main/board-pipe-service";
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
@@ -315,6 +316,9 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         config: VideoStreamSessionConfig,
         port?: number,
     ): Promise<VideoStreamSessionResult> => {
+        if (config.pipe === true && (!config.pageId || !boardPipeService.ownsPage(config.pageId, event.sender))) {
+            throw new Error("The video pipe page is not owned by this renderer.");
+        }
         const { createSession } = await import("../../main/video-stream-server");
         return createSession(config, port);
     };
