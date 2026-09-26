@@ -29,8 +29,11 @@ export class ArchiveTransformer implements ITransformer {
         return isZipBasedArchive(this.archivePath);
     }
 
-    async read(_data: Buffer): Promise<Buffer> {
-        return archiveService.readFile(this.archivePath, this.entryPath);
+    async read(_data: Buffer, signal?: AbortSignal): Promise<Buffer> {
+        if (signal?.aborted) throw new Error("The archive read was aborted.");
+        const data = await archiveService.readFile(this.archivePath, this.entryPath);
+        if (signal?.aborted) throw new Error("The archive read was aborted.");
+        return data;
     }
 
     async write(data: Buffer, readOriginal: () => Promise<Buffer>): Promise<Buffer> {

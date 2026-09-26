@@ -693,10 +693,32 @@ case, because no page was ever created. Clicking a file in a torrent whose swarm
 would look exactly like clicking nothing at all.
 
 The follow-up already deferred by user decision — *a pipe-level loading indicator*, recorded in the
-roadmap's "After the roadmap" section, decision deferred until after testing the torrent board — is
-what closes this, and this measurement makes it concrete rather than speculative. **It is now the
-difference between "slow" and "appears broken", so it is worth reconsidering as in-scope for
-EPIC-114 rather than after it.** Not changed here; flagged for the user.
+roadmap's "After the roadmap" section — is what closes this, and this measurement makes it concrete
+rather than speculative.
+
+**RESOLVED 2026-09-26 (user decision).** The indicator stays **out of scope for EPIC-113 and
+EPIC-114**, to be implemented later. Raised as possibly in-scope for EPIC-114 given the measurement
+above; the user chose to keep it out and ship the torrent board without it.
+
+**The user's reasoning, which is what makes it a later task rather than a smaller one**
+*(2026-09-26)*: the editor should open **instantly**, as soon as the editor for the link is
+resolved. Building the pipe happens after that, or in parallel, and the progress indicator appears
+**immediately** — not when the first bytes arrive. Under that model the stalled-first-read case
+stops being special: there is always a tab, and it always shows that it is working.
+
+That is a restructuring of the open path, not an addition to it. The ordering today, verified:
+`PagesLifecycleModel.openFile()` (`:456`) awaits `createEditorFromFile()`, which ends in
+`await editor.restore()` (`:233`) — the first read — and only then calls `this.addPage(adapter)`
+(`:519`). The page is therefore a *consequence* of a completed read. Inverting that means a page
+and its editor must be able to exist against a pipe that has produced nothing yet, and every
+editor's `restore()` must tolerate running against an already-mounted view.
+
+**Half the groundwork is already done, by US-1517 in this epic.** Which editor a link deserves is
+now resolved from the link alone — `resolveEditorIdForFile(url, effectivePath)` needs no bytes —
+so "open the editor first" has the answer it requires before any read starts. What remains is the
+page-creation ordering and the indicator itself.
+
+Until then, a torrent file whose swarm has no seeders presents as a click that did nothing.
 
 Deliberately NOT worked around by keeping a deadline on the first read: that would reinstate the
 arbitrary number D6 removed, and it would fire exactly where the user said waiting is correct.

@@ -11,7 +11,7 @@ import {
     parseRangeHeader,
     unsatisfiableContentRangeHeader,
 } from "../shared/range-utils";
-import type { BoardPipeReadReply } from "../ipc/board-pipe-channels";
+import type { BoardPipeKind, BoardPipeReadReply } from "../ipc/board-pipe-channels";
 import { BoardPipeError, boardPipeService } from "./board-pipe-service";
 import { errMessage } from "../shared/utils";
 
@@ -289,7 +289,8 @@ function logBoardDocMissing(root: string, rel: string, reason: string): void {
 
 async function serveBoardPipe(
     host: string,
-    pageId: string,
+    pipeKind: BoardPipeKind,
+    pipeId: string,
     rangeHeader?: string,
     requestSignal?: AbortSignal,
 ): Promise<Response> {
@@ -303,7 +304,7 @@ async function serveBoardPipe(
 
     let first: BoardPipeReadReply;
     try {
-        first = await boardPipeService.read(host, pageId, rangeHeader, undefined, abort.signal);
+        first = await boardPipeService.read(host, pipeKind, pipeId, rangeHeader, undefined, abort.signal);
     } catch (error: unknown) {
         const status = error instanceof BoardPipeError ? error.status : 503;
         return new Response(status === 404 ? "Not found" : errMessage(error, "Board pipe unavailable."), { status });
@@ -370,7 +371,8 @@ async function serveBoardPipe(
                         );
                         const chunk = await boardPipeService.read(
                             host,
-                            pageId,
+                            pipeKind,
+                            pipeId,
                             undefined,
                             { start: nextStart, end: nextEnd },
                             abort.signal,
@@ -404,7 +406,18 @@ async function serveBoardPipe(
 
 async function serveBoardFile(request: Request): Promise<Response> {
     const { host, pathname } = new URL(request.url);
-    if (pathname === "/__pipe" || pathname.startsWith("/__pipe/")) {
+    if (pathname.startsWith("/__pipe/resource/")) {
+        const encodedResourceId = pathname.slice("/__pipe/resource/".length);
+        if (!encodedResourceId || encodedResourceId.includes("/")) return new Response("Not found", { status: 404 });
+        let resourceId: string;
+        try {
+            resourceId = decodeURIComponent(encodedResourceId);
+        } catch {
+            return new Response("Not found", { status: 404 });
+        }
+        return serveBoardPipe(host, "resource", resourceId, request.headers.get("Range") || undefined, request.signal);
+    }
+    if (pathname.startsWith("/__pipe/")) {
         const encodedPageId = pathname.slice("/__pipe/".length);
         if (!encodedPageId || encodedPageId.includes("/")) return new Response("Not found", { status: 404 });
         let pageId: string;
@@ -413,7 +426,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
         } catch {
             return new Response("Not found", { status: 404 });
         }
-        return serveBoardPipe(host, pageId, request.headers.get("Range") || undefined, request.signal);
+        return serveBoardPipe(host, "page", pageId, request.headers.get("Range") || undefined, request.signal);
     }
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });

@@ -21,6 +21,18 @@ export function initBoardPipeHandlers(): void {
             boardPipeService.unregisterPage(pageId, event.sender);
         },
     );
+    bindEndpoint(
+        Endpoint.registerBoardPipeResource,
+        async (event: IpcMainEvent, resourceId: string, host: string): Promise<void> => {
+            boardPipeService.registerResource(resourceId, event.sender, host);
+        },
+    );
+    bindEndpoint(
+        Endpoint.unregisterBoardPipeResource,
+        async (event: IpcMainEvent, resourceId: string): Promise<void> => {
+            boardPipeService.unregisterResource(resourceId, event.sender);
+        },
+    );
     ipcMain.on(BOARD_PIPE_REPLY_CHANNEL, (event, reply: BoardPipeReadReply) => {
         boardPipeService.handleReply(event.sender, reply);
     });

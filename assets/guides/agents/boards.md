@@ -547,6 +547,24 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   rejection, don't fire and forget. It is **create-only**: the id it returns belongs to a page the
   board just made, and there is no counterpart call to read, list, navigate, close, or modify any
   other page, so `persephone.call` keeps its scoping to the page hosting this board.
+- `persephone.content.open(link, options?)` → `Promise<{ url, size, contentType }>` — resolve a
+  supported link to bytes without opening a Persephone page. Built-in file paths, `file:` URLs,
+  archive-entry paths, HTTP/HTTPS URLs, `data:` URLs, and registered board schemes are supported;
+  unsupported or unresolvable links reject. The returned URL is origin-local to the calling board:
+  `board://<host>/__pipe/resource/<opaque-id>`. It is intended for in-frame consumers such as
+  `fetch`, `<img>`, `<video>`, and pdf.js, supports byte ranges, and is revoked when the calling
+  board frame is reloaded/replaced or its page closes. An outstanding request may be cancelled and
+  reject during that teardown. This works for simple boards and is the migration path from
+  `getFilePath()` when the source is not a local file.
+
+  Size is eager: without a deadline, `open()` may wait for provider metadata or a transformed read.
+  Pass `{ timeoutMs: 5000 }` when an escape hatch is needed; the timeout aborts and disposes the
+  pending resource. The URL is not an HTTP/127.0.0.1 URL for external consumers; that media-player
+  form is deferred to US-1519.
+  ```js
+  const resource = await persephone.content.open("https://example.com/report.pdf", { timeoutMs: 10000 });
+  const response = await fetch(resource.url, { headers: { Range: "bytes=0-1023" } });
+  ```
 - `persephone.notify(message, type)` — toast (`"info"|"success"|"warning"|"error"`); errors are
   also appended to **`ui.log`** in the board folder (an on-board indicator opens it). `ui.log` also
   receives, automatically: load failures, CSP violations, uncaught errors / unhandled rejections,

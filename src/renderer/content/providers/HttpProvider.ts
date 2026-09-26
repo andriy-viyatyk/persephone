@@ -59,7 +59,7 @@ export class HttpProvider implements IProvider {
         return headers;
     }
 
-    async readBinary(): Promise<Buffer> {
+    async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
         if (this._cachedBuffer) {
             return this._cachedBuffer;
         }
@@ -68,6 +68,7 @@ export class HttpProvider implements IProvider {
             method: this.method,
             headers: this.requestHeaders(),
             body: this.body,
+            signal: options?.signal,
         });
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -77,7 +78,7 @@ export class HttpProvider implements IProvider {
         return this._cachedBuffer;
     }
 
-    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+    createReadStream(range?: { start: number; end: number }, options?: { signal?: AbortSignal }): NodeJS.ReadableStream {
         const { PassThrough } = require("stream") as typeof import("stream");
         const passThrough = new PassThrough();
 
@@ -86,7 +87,7 @@ export class HttpProvider implements IProvider {
         );
 
         import("../../api/node-fetch")
-            .then(({ nodeFetch }) => nodeFetch(this.url, { method: this.method, headers }))
+            .then(({ nodeFetch }) => nodeFetch(this.url, { method: this.method, headers, signal: options?.signal }))
             .then((response) => {
                 if (!response.ok && response.status !== 206) {
                     passThrough.destroy(

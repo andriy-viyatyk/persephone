@@ -1,10 +1,40 @@
 import type { IContentPipe } from "../api/types/io.pipe";
 import { ContentPipe } from "./ContentPipe";
 import { FileProvider } from "./providers/FileProvider";
-import { HttpProvider } from "./providers/HttpProvider";
-import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
 import "./builtin-schemes";
+import { createPipeFromDescriptor } from "./registry";
+import { resolveUrlToPipeDescriptor } from "./link-utils";
 import { resolveRegisteredSourcePath } from "./scheme-registry";
+
+/**
+ * Resolve a link to a content pipe — the canonical link→pipe route.
+ *
+ * Resolution order:
+ * - a registered scheme                   → the registry's source-path pipe
+ * - anything `resolveUrlToPipeDescriptor` recognises → that descriptor
+ *   (`data:`, `http(s)://`, an archive path, a plain file path)
+ * - anything else                         → per `options.unknownScheme`
+ *
+ * `unknownScheme` is the only behavioural difference between the two callers. `"reject"` is
+ * right for a link a board named: an unresolvable link is an error the caller must see, not a
+ * `FileProvider` pointed at a string that is not a path. `"file"` preserves the shape guess
+ * `pipeFromSourcePath` has always made — see its own note below.
+ *
+ * Asynchronous so registered resolvers may do their own async work.
+ */
+export async function pipeFromLink(
+    link: string,
+    options: { unknownScheme: "reject" | "file" } = { unknownScheme: "reject" },
+): Promise<IContentPipe> {
+    const registered = await resolveRegisteredSourcePath(link);
+    if (registered) return registered;
+
+    const descriptor = resolveUrlToPipeDescriptor(link);
+    if (descriptor) return createPipeFromDescriptor(descriptor);
+
+    if (options.unknownScheme === "file") return new ContentPipe(new FileProvider(link));
+    throw new Error("The link cannot be resolved to content.");
+}
 
 /**
  * Rebuild a content pipe from a source path alone.
@@ -16,30 +46,9 @@ import { resolveRegisteredSourcePath } from "./scheme-registry";
  * headers, body). Prefer `createPipeFromDescriptor(pipeDescriptor)` when a persisted
  * descriptor is available; reach for this only when it isn't.
  *
- * Resolution order:
- * - a registered scheme                   → the registry's source-path pipe
- * - `http://…` / `https://…`            → `HttpProvider` fallback
- * - `archive.zip!path/inside.txt`       → `FileProvider` + `ArchiveTransformer` fallback
- * - anything else                       → `FileProvider` fallback
- *
- * Unknown schemes retain the final shape guess. This remains asynchronous so registered
- * resolvers may do their own async work, and `createPipeFromDescriptor(pipeDescriptor)` remains
- * preferred whenever a persisted descriptor is available.
+ * Keeps the final `FileProvider` shape guess for an unrecognised path, which is what a
+ * restored editor holding an exotic path relies on.
  */
 export async function pipeFromSourcePath(path: string): Promise<IContentPipe> {
-    const registered = await resolveRegisteredSourcePath(path);
-    if (registered) return registered;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return new ContentPipe(new HttpProvider(path));
-    }
-    const bangIndex = path.indexOf("!");
-    if (bangIndex >= 0) {
-        const archivePath = path.slice(0, bangIndex);
-        const entryPath = path.slice(bangIndex + 1);
-        return new ContentPipe(
-            new FileProvider(archivePath),
-            [new ArchiveTransformer(archivePath, entryPath)],
-        );
-    }
-    return new ContentPipe(new FileProvider(path));
+    return pipeFromLink(path, { unknownScheme: "file" });
 }

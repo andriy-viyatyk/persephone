@@ -124,6 +124,8 @@ export enum Endpoint {
     unregisterBoardFrame = "unregisterBoardFrame",
     registerBoardPipePage = "registerBoardPipePage",
     unregisterBoardPipePage = "unregisterBoardPipePage",
+    registerBoardPipeResource = "registerBoardPipeResource",
+    unregisterBoardPipeResource = "unregisterBoardPipeResource",
     getPublishedBoards = "getPublishedBoards",
     getBoardVersions = "getBoardVersions",
     downloadBoardArchive = "downloadBoardArchive",
@@ -290,6 +292,8 @@ export type Api = {
     [Endpoint.unregisterBoardFrame]: (boardId: string, tab?: string, frameNonce?: string) => Promise<void>;
     [Endpoint.registerBoardPipePage]: (pageId: string, host?: string) => Promise<void>;
     [Endpoint.unregisterBoardPipePage]: (pageId: string) => Promise<void>;
+    [Endpoint.registerBoardPipeResource]: (resourceId: string, host: string) => Promise<void>;
+    [Endpoint.unregisterBoardPipeResource]: (resourceId: string) => Promise<void>;
     [Endpoint.getPublishedBoards]: (force?: boolean) => Promise<PublishedBoardsResult>;
     [Endpoint.getBoardVersions]: (id: string) => Promise<PublishedBoardVersions | null>;
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;

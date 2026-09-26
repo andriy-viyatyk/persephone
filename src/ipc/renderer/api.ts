@@ -502,6 +502,14 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.unregisterBoardPipePage, pageId);
     };
 
+    registerBoardPipeResource = async (resourceId: string, host: string) => {
+        return executeOnce<void>(Endpoint.registerBoardPipeResource, resourceId, host);
+    };
+
+    unregisterBoardPipeResource = async (resourceId: string) => {
+        return executeOnce<void>(Endpoint.unregisterBoardPipeResource, resourceId);
+    };
+
     getPublishedBoards = async (force?: boolean) => {
         return executeOnce<PublishedBoardsResult>(Endpoint.getPublishedBoards, force);
     };

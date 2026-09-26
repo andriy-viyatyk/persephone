@@ -62,7 +62,7 @@ export class ContentPipe implements IContentPipe {
     async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
         let data = await this.provider.readBinary(options);
         for (const transformer of this._transformers) {
-            data = await transformer.read(data);
+            data = await transformer.read(data, options?.signal);
         }
         return data;
     }
@@ -83,7 +83,7 @@ export class ContentPipe implements IContentPipe {
         }
 
         const { Readable } = require("stream") as typeof import("stream");
-        const read = this.readBinary().then((buffer) => {
+        const read = this.readBinary(options).then((buffer) => {
             const selected = range
                 ? buffer.subarray(range.start, Math.min(buffer.length, range.end + 1))
                 : buffer;
@@ -94,11 +94,11 @@ export class ContentPipe implements IContentPipe {
         })());
     }
 
-    async stat(): Promise<IProviderStat> {
+    async stat(options?: { signal?: AbortSignal }): Promise<IProviderStat> {
         if (this._transformers.length === 0 && this.provider.stat) {
-            return this.provider.stat();
+            return this.provider.stat(options);
         }
-        const buffer = await this.readBinary();
+        const buffer = await this.readBinary(options);
         return { exists: true, size: buffer.length };
     }
 

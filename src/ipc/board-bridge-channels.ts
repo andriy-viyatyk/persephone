@@ -108,6 +108,24 @@ export interface BoardOpenContentResultMsg {
     error?: string;
 }
 
+/** Board frame -> host: open a link as an origin-local ranged resource. */
+export interface BoardContentOpenRequestMsg {
+    __persephone: "board:contentOpen";
+    reqId: number;
+    link: string;
+    timeoutMs?: number;
+}
+
+/** Host -> board frame: metadata for a content resource URL. */
+export interface BoardContentOpenResultMsg {
+    __persephone: "contentOpen:result";
+    reqId: number;
+    url?: string;
+    size?: number;
+    contentType?: string;
+    error?: string;
+}
+
 /** Encoding for the board file bridge (US-756 C4). "utf8" returns/accepts a plain
  *  string; "base64" returns/accepts base64; "binary" returns/accepts the bytes
  *  themselves as a `Uint8Array` (bridge API 1.1.0 / app 4.0.21 — US-933).
@@ -370,6 +388,7 @@ export interface BoardToHostMsg {
         | "board:settings" // board requested a settings.get — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
         | "board:openContent" // persephone.openContent — create a page in another editor; request/reply, needs a reqId
+        | "board:contentOpen" // persephone.content.open — create a ranged in-frame resource
         | "board:aiVision"
         | "board:aiNotify"
         | "board:aiResult";
@@ -414,6 +433,9 @@ export interface BoardToHostMsg {
     text?: string;
     /** `board:openContent` payload — the requested editor/language/title/content. */
     openContent?: BoardOpenContentRequest;
+    /** `board:contentOpen` link and optional positive timeout. */
+    link?: string;
+    timeoutMs?: number;
 }
 
 /** Host content pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-043).
@@ -603,6 +625,7 @@ export type BoardHostFrameMsg =
     | BoardHostContentMsg
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
+    | BoardContentOpenResultMsg
     | BoardVarResultMsg
     | BoardSettingsResultMsg
     | BoardSettingsChangedMsg

@@ -12,9 +12,12 @@ export type BoardPipeChannel =
     | typeof BOARD_PIPE_REPLY_CHANNEL
     | typeof BOARD_PIPE_CANCEL_CHANNEL;
 
+export type BoardPipeKind = "page" | "resource";
+
 export interface BoardPipeReadRequest {
     requestId: string;
-    pageId: string;
+    pipeKind: BoardPipeKind;
+    pipeId: string;
     /** Present only on the first request for a protocol response. */
     rangeHeader?: string;
     /** Present on continuation requests after the first bounded reply. */

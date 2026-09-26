@@ -6,6 +6,7 @@ import {
     type BoardPipeReadReply,
     type BoardPipeReadRequest,
     type BoardPipeReadSuccess,
+    type BoardPipeKind,
 } from "../../../ipc/board-pipe-channels";
 import { MAX_BOARD_PIPE_CHUNK_BYTES, MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
 import { errMessage } from "../../../shared/utils";
@@ -13,6 +14,7 @@ import { parseRangeHeader, type ByteRange } from "../../../shared/range-utils";
 import { pages } from "../../api/pages";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { BoardEditorModel } from "./BoardEditorModel";
+import { contentTypeForPipe } from "../../content/board-pipe-utils";
 
 interface PipeMemo {
     pipe: IContentPipe;
@@ -23,7 +25,8 @@ interface PipeMemo {
 }
 
 interface PendingRead {
-    pageId: string;
+    pipeKind: BoardPipeKind;
+    pipeId: string;
     cancelled: boolean;
     /** US-1518: aborted on page close (`invalidateBoardPipePage()`) or on an explicit
      *  {requestId}-scoped cancel from main (`handleCancel()`, section 7a). Threaded into
@@ -33,40 +36,11 @@ interface PendingRead {
 }
 
 const pipeMemos = new Map<string, PipeMemo>();
+/** Link-built resources (US-1521), keyed by the opaque id their `board://…/__pipe/resource/<id>`
+ *  URL carries. Separate from `pipeMemos`, which caches read state rather than owning a pipe. */
+const contentResources = new Map<string, IContentPipe>();
 const pendingReads = new Map<string, PendingRead>();
 let initialized = false;
-
-function contentTypeForPipe(pipe: IContentPipe): string {
-    const name = pipe.displayName || pipe.provider.sourceUrl;
-    const extension = name.split(/[?#]/, 1)[0].split(".").pop()?.toLowerCase();
-    switch (extension) {
-        case "aac": return "audio/aac";
-        case "flac": return "audio/flac";
-        case "m4a": return "audio/mp4";
-        case "mp3": return "audio/mpeg";
-        case "oga":
-        case "ogg": return "audio/ogg";
-        case "opus": return "audio/opus";
-        case "wav": return "audio/wav";
-        case "avi": return "video/x-msvideo";
-        case "mkv": return "video/x-matroska";
-        case "mov": return "video/quicktime";
-        case "mp4": return "video/mp4";
-        case "m3u8": return "application/vnd.apple.mpegurl";
-        case "ts": return "video/mp2t";
-        case "webm": return "video/webm";
-        case "ogv": return "video/ogg";
-        case "avif": return "image/avif";
-        case "gif": return "image/gif";
-        case "ico": return "image/x-icon";
-        case "jpeg":
-        case "jpg": return "image/jpeg";
-        case "png": return "image/png";
-        case "svg": return "image/svg+xml";
-        case "webp": return "image/webp";
-        default: return "application/octet-stream";
-    }
-}
 
 async function readBuffered(pipe: IContentPipe, memo: PipeMemo, signal?: AbortSignal): Promise<Buffer> {
     if (memo.buffer) return memo.buffer;
@@ -95,14 +69,14 @@ function hasDirectStream(pipe: IContentPipe): boolean {
         && typeof pipe.provider.stat === "function";
 }
 
-async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo): Promise<number> {
+async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo, signal?: AbortSignal): Promise<number> {
     if (memo.totalSize !== undefined) return memo.totalSize;
     if (!memo.totalSizePromise) {
         memo.totalSizePromise = (async () => {
             if (!hasDirectStream(pipe)) {
-                if (pipe.transformers.length > 0) return (await readBuffered(pipe, memo)).length;
-                if (typeof pipe.provider.stat !== "function") return (await readBuffered(pipe, memo)).length;
-                const stat = await pipe.stat();
+                if (pipe.transformers.length > 0) return (await readBuffered(pipe, memo, signal)).length;
+                if (typeof pipe.provider.stat !== "function") return (await readBuffered(pipe, memo, signal)).length;
+                const stat = await pipe.stat({ signal });
                 if (stat.exists && stat.size !== undefined) {
                     if (typeof pipe.provider.createReadStream !== "function"
                         && stat.size > MAX_BUFFERED_PIPE_BYTES) {
@@ -119,10 +93,10 @@ async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo): Promise<num
                         return stat.size;
                     }
                 }
-                return (await readBuffered(pipe, memo)).length;
+                return (await readBuffered(pipe, memo, signal)).length;
             }
 
-            const stat = await pipe.stat();
+            const stat = await pipe.stat({ signal });
             if (!stat.exists || stat.size === undefined || !Number.isSafeInteger(stat.size) || stat.size < 0) {
                 throw new Error("The board pipe provider did not report a usable resource size.");
             }
@@ -158,18 +132,28 @@ function validContinuationRange(range: ByteRange | undefined, totalSize: number)
 }
 
 async function readChunk(request: BoardPipeReadRequest, signal: AbortSignal): Promise<BoardPipeReadSuccess> {
-    const page = pages.findPage(request.pageId);
-    const board = page?.mainEditorInstance as BoardEditorModel | null;
-    if (!board || !board.pipeUrlEnabled) throw new Error("The board pipe page is unavailable.");
+    let pipe: IContentPipe | undefined;
+    if (request.pipeKind === "resource") {
+        // Resolved by id, never by searching the open pages for whoever happens to hold it. The
+        // owning `BoardEditorModel` publishes the pipe here when it opens the resource and removes
+        // it in `releaseContentResource()`, so this map's lifetime IS the resource's lifetime.
+        pipe = contentResources.get(request.pipeId);
+    } else {
+        const page = pages.findPage(request.pipeId);
+        const board = page?.mainEditorInstance as BoardEditorModel | null;
+        if (!board || !board.pipeUrlEnabled) throw new Error("The board pipe page is unavailable.");
+        pipe = await board.resolveStreamPipe();
+    }
+    if (!pipe) throw new Error("The board pipe resource is unavailable.");
 
-    const pipe = await board.resolveStreamPipe();
-    let memo = pipeMemos.get(request.pageId);
+    const memoKey = `${request.pipeKind}:${request.pipeId}`;
+    let memo = pipeMemos.get(memoKey);
     if (!memo || memo.pipe !== pipe) {
         memo = { pipe };
-        pipeMemos.set(request.pageId, memo);
+        pipeMemos.set(memoKey, memo);
     }
 
-    const totalSize = await resolveTotalSize(pipe, memo);
+    const totalSize = await resolveTotalSize(pipe, memo, signal);
     const selected = request.range
         ? validContinuationRange(request.range, totalSize)
         : request.rangeHeader !== undefined
@@ -214,8 +198,15 @@ function reply(reply: BoardPipeReadReply): void {
 
 function handleRequest(rawRequest: unknown): void {
     const request = rawRequest as BoardPipeReadRequest | undefined;
-    if (!request || typeof request.requestId !== "string" || typeof request.pageId !== "string") return;
-    const pending: PendingRead = { pageId: request.pageId, cancelled: false, controller: new AbortController() };
+    if (!request || typeof request.requestId !== "string"
+        || (request.pipeKind !== "page" && request.pipeKind !== "resource")
+        || typeof request.pipeId !== "string") return;
+    const pending: PendingRead = {
+        pipeKind: request.pipeKind,
+        pipeId: request.pipeId,
+        cancelled: false,
+        controller: new AbortController(),
+    };
     pendingReads.set(request.requestId, pending);
     void readChunk(request, pending.controller.signal)
         .then((result) => {
@@ -254,9 +245,26 @@ export function initBoardPipeHandler(): void {
 }
 
 export function invalidateBoardPipePage(pageId: string): void {
-    pipeMemos.delete(pageId);
+    pipeMemos.delete(`page:${pageId}`);
     for (const [requestId, pending] of pendingReads) {
-        if (pending.pageId !== pageId) continue;
+        if (pending.pipeKind !== "page" || pending.pipeId !== pageId) continue;
+        pending.cancelled = true;
+        pending.controller.abort();
+        pendingReads.delete(requestId);
+    }
+}
+
+/** Publish a link-built resource's pipe for the read path. Called by `BoardEditorModel`, which
+ *  owns the resource and its disposal; this map holds no reference the model does not also hold. */
+export function registerBoardContentResource(resourceId: string, pipe: IContentPipe): void {
+    contentResources.set(resourceId, pipe);
+}
+
+export function invalidateBoardPipeResource(resourceId: string): void {
+    contentResources.delete(resourceId);
+    pipeMemos.delete(`resource:${resourceId}`);
+    for (const [requestId, pending] of pendingReads) {
+        if (pending.pipeKind !== "resource" || pending.pipeId !== resourceId) continue;
         pending.cancelled = true;
         pending.controller.abort();
         pendingReads.delete(requestId);

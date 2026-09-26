@@ -56,7 +56,7 @@ export interface IProvider {
     /** Write binary content to the source. Only present if writable. */
     writeBinary?(data: Buffer): Promise<void>;
     /** Get resource metadata (size, modified date, existence). */
-    stat?(): Promise<IProviderStat>;
+    stat?(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Watch for external changes. Returns a disposer to stop watching. */
     watch?(callback: (event: string) => void): () => void;
     /** Serialize to descriptor for persistence. */

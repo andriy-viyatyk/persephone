@@ -47,7 +47,7 @@ export function nodeFetch(
     const maxRedirects = options?.maxRedirects ?? 10;
     const rejectUnauthorized = options?.rejectUnauthorized !== false;
 
-    return doFetch(url, method, headers, body, timeout, maxRedirects, rejectUnauthorized);
+    return doFetch(url, method, headers, body, timeout, maxRedirects, rejectUnauthorized, options?.signal);
 }
 
 function doFetch(
@@ -58,6 +58,7 @@ function doFetch(
     timeout: number,
     maxRedirects: number,
     rejectUnauthorized: boolean,
+    signal?: AbortSignal,
 ): Promise<Response> {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
@@ -149,6 +150,7 @@ function doFetch(
                     timeout,
                     maxRedirects - 1,
                     rejectUnauthorized,
+                    signal,
                 ).then(resolve, reject);
 
                 return;
@@ -231,6 +233,12 @@ function doFetch(
                     responseStream.removeAllListeners();
                 },
             });
+            signal?.addEventListener("abort", () => {
+                if (responseStream !== res) {
+                    (responseStream as NodeJS.ReadableStream & { destroy?(): void }).destroy?.();
+                }
+                res.destroy();
+            }, { once: true });
 
             // Some status codes have no body
             const hasBody =
@@ -259,6 +267,16 @@ function doFetch(
         req.on("error", (err) => {
             reject(err);
         });
+
+        if (signal?.aborted) {
+            req.destroy();
+            reject(new Error("The HTTP request was aborted."));
+        } else {
+            signal?.addEventListener("abort", () => {
+                req.destroy();
+                reject(new Error("The HTTP request was aborted."));
+            }, { once: true });
+        }
 
         // Send request body
         if (body && typeof body === "string") {

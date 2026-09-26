@@ -5,16 +5,18 @@ import {
     type BoardPipeCancelMessage,
     type BoardPipeReadReply,
     type BoardPipeReadRequest,
+    type BoardPipeKind,
 } from "../ipc/board-pipe-channels";
 import type { ByteRange } from "../shared/range-utils";
 
-interface PageOwner {
+interface PipeOwner {
     webContents: WebContents;
-    host?: string;
+    host: string | undefined;
 }
 
 interface PendingRead {
-    pageId: string;
+    pipeKind: BoardPipeKind;
+    pipeId: string;
     webContents: WebContents;
     resolve: (reply: BoardPipeReadReply) => void;
     reject: (error: Error) => void;
@@ -31,42 +33,59 @@ export class BoardPipeError extends Error {
 }
 
 class BoardPipeService {
-    private readonly owners = new Map<string, PageOwner>();
+    private readonly owners = new Map<string, PipeOwner>();
     private readonly ownersByWebContents = new Map<number, Set<string>>();
     private readonly pending = new Map<string, PendingRead>();
     private readonly wiredWebContents = new Map<number, WebContents>();
     private requestSequence = 0;
 
     registerPage(pageId: string, webContents: WebContents, host?: string): void {
-        const previous = this.owners.get(pageId);
+        this.registerOwner("page", pageId, webContents, host);
+    }
+
+    registerResource(resourceId: string, webContents: WebContents, host: string): void {
+        this.registerOwner("resource", resourceId, webContents, host);
+    }
+
+    private registerOwner(pipeKind: BoardPipeKind, pipeId: string, webContents: WebContents, host?: string): void {
+        const key = this.ownerKey(pipeKind, pipeId);
+        const previous = this.owners.get(key);
         if (previous && previous.webContents !== webContents) {
-            this.removeOwner(pageId, new BoardPipeError(404, "Board pipe page is no longer available."));
+            this.removeOwner(key, new BoardPipeError(404, "Board pipe is no longer available."));
         }
 
-        this.owners.set(pageId, { webContents, host });
+        this.owners.set(key, { webContents, host });
         let pageIds = this.ownersByWebContents.get(webContents.id);
         if (!pageIds) {
             pageIds = new Set<string>();
             this.ownersByWebContents.set(webContents.id, pageIds);
         }
-        pageIds.add(pageId);
+        pageIds.add(key);
         this.wireWebContents(webContents);
     }
 
     unregisterPage(pageId: string, webContents: WebContents): void {
-        const owner = this.owners.get(pageId);
+        const owner = this.owners.get(this.ownerKey("page", pageId));
         if (!owner || owner.webContents !== webContents) return;
-        this.removeOwner(pageId, new BoardPipeError(404, "Board pipe page is no longer available."));
+        this.removeOwner(this.ownerKey("page", pageId), new BoardPipeError(404, "Board pipe page is no longer available."));
+    }
+
+    unregisterResource(resourceId: string, webContents: WebContents): void {
+        const key = this.ownerKey("resource", resourceId);
+        const owner = this.owners.get(key);
+        if (!owner || owner.webContents !== webContents) return;
+        this.removeOwner(key, new BoardPipeError(404, "Board pipe resource is no longer available."));
     }
 
     read(
         host: string,
-        pageId: string,
+        pipeKind: BoardPipeKind,
+        pipeId: string,
         rangeHeader?: string,
         range?: ByteRange,
         signal?: AbortSignal,
     ): Promise<BoardPipeReadReply> {
-        const owner = this.owners.get(pageId);
+        const owner = this.owners.get(this.ownerKey(pipeKind, pipeId));
         if (!owner || owner.host !== host || owner.webContents.isDestroyed()) {
             return Promise.reject(new BoardPipeError(404, "Board pipe resource not found."));
         }
@@ -77,7 +96,8 @@ class BoardPipeService {
         const requestId = `board-pipe-${Date.now()}-${++this.requestSequence}`;
         const request: BoardPipeReadRequest = {
             requestId,
-            pageId,
+            pipeKind,
+            pipeId,
             ...(rangeHeader !== undefined ? { rangeHeader } : {}),
             ...(range !== undefined ? { range } : {}),
         };
@@ -98,7 +118,8 @@ class BoardPipeService {
             };
             signal?.addEventListener("abort", onAbort, { once: true });
             this.pending.set(requestId, {
-                pageId,
+                pipeKind,
+                pipeId,
                 webContents: owner.webContents,
                 resolve: (value) => {
                     if (settled) return;
@@ -150,10 +171,10 @@ class BoardPipeService {
     }
 
     private removeWebContents(webContents: WebContents): void {
-        const pageIds = this.ownersByWebContents.get(webContents.id);
-        if (pageIds) {
-            for (const pageId of pageIds) {
-                this.removeOwner(pageId, new BoardPipeError(404, "Board pipe page is no longer available."));
+        const pipeKeys = this.ownersByWebContents.get(webContents.id);
+        if (pipeKeys) {
+            for (const pipeKey of pipeKeys) {
+                this.removeOwner(pipeKey, new BoardPipeError(404, "Board pipe is no longer available."));
             }
         }
         this.ownersByWebContents.delete(webContents.id);
@@ -165,16 +186,30 @@ class BoardPipeService {
         }
     }
 
-    private removeOwner(pageId: string, error: Error): void {
-        const owner = this.owners.get(pageId);
+    private removeOwner(pipeKey: string, error: Error): void {
+        const owner = this.owners.get(pipeKey);
         if (!owner) return;
-        this.owners.delete(pageId);
-        this.ownersByWebContents.get(owner.webContents.id)?.delete(pageId);
+        this.owners.delete(pipeKey);
+        this.ownersByWebContents.get(owner.webContents.id)?.delete(pipeKey);
+        const separator = pipeKey.indexOf(":");
+        const pipeKind = pipeKey.slice(0, separator) as BoardPipeKind;
+        const pipeId = pipeKey.slice(separator + 1);
         for (const [requestId, request] of this.pending) {
-            if (request.pageId !== pageId) continue;
+            if (request.pipeKind !== pipeKind || request.pipeId !== pipeId) continue;
             this.pending.delete(requestId);
+            if (pipeKind === "resource") {
+                try {
+                    owner.webContents.send(BOARD_PIPE_CANCEL_CHANNEL, { requestId } satisfies BoardPipeCancelMessage);
+                } catch {
+                    // The renderer may already be gone; rejection still releases the HTTP read.
+                }
+            }
             request.reject(error);
         }
+    }
+
+    private ownerKey(pipeKind: BoardPipeKind, pipeId: string): string {
+        return `${pipeKind}:${pipeId}`;
     }
 }
 

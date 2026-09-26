@@ -218,6 +218,8 @@ export interface IFetchOptions {
     timeout?: number;
     /** Maximum number of redirects to follow. Default: 10. */
     maxRedirects?: number;
+    /** Abort the request when the operation's owner is torn down. */
+    signal?: AbortSignal;
     /** Set to false to skip SSL certificate validation (e.g. self-signed certs). Default: true. */
     rejectUnauthorized?: boolean;
 }

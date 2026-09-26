@@ -40,6 +40,7 @@ import type {
     BoardCapabilityInvokeResultMsg,
     BoardCapabilityListRequestMsg,
     BoardCapabilityListResultMsg,
+    BoardContentOpenResultMsg,
     BoardBootContext,
     BoardJsonValue,
     BoardFireMethod,
@@ -375,6 +376,13 @@ const pendingFilePath = new Map<
 >();
 let filePathReqId = 0;
 
+/** Pending content.open request/reply promises keyed by reqId. */
+const pendingContentOpen = new Map<
+    number,
+    { resolve: (value: { url: string; size: number; contentType: string }) => void; reject: (error: Error) => void }
+>();
+let contentOpenReqId = 0;
+
 /** Ask the renderer for a readable local path for this board's file. Used only when the source is
  *  non-local — the renderer materializes it (which for an `http(s)` source means downloading it),
  *  so this can take a while. */
@@ -389,6 +397,25 @@ function filePathRpc(): Promise<string | undefined> {
             );
         } catch {
             pendingFilePath.delete(reqId);
+            reject(new Error("Persephone host is unavailable."));
+        }
+    });
+}
+
+function contentOpenRpc(
+    link: string,
+    timeoutMs?: number,
+): Promise<{ url: string; size: number; contentType: string }> {
+    return new Promise((resolve, reject) => {
+        const reqId = ++contentOpenReqId;
+        pendingContentOpen.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage(
+                { __persephone: "board:contentOpen", reqId, link, ...(timeoutMs === undefined ? {} : { timeoutMs }) },
+                hostPostTarget,
+            );
+        } catch {
+            pendingContentOpen.delete(reqId);
             reject(new Error("Persephone host is unavailable."));
         }
     });
@@ -1130,6 +1157,23 @@ onHostMessage((event) => {
     else p.resolve(data.path);
 });
 
+// content.open request reply — renderer -> board over the host-frame channel.
+onHostMessage((event) => {
+    const data = event.data as BoardContentOpenResultMsg | undefined;
+    if (!data || data.__persephone !== "contentOpen:result" || typeof data.reqId !== "number") return;
+    const pending = pendingContentOpen.get(data.reqId);
+    if (!pending) return;
+    pendingContentOpen.delete(data.reqId);
+    if (data.error != null) {
+        pending.reject(new Error(data.error));
+    } else if (typeof data.url === "string" && typeof data.size === "number"
+        && Number.isFinite(data.size) && data.size >= 0 && typeof data.contentType === "string") {
+        pending.resolve({ url: data.url, size: data.size, contentType: data.contentType });
+    } else {
+        pending.reject(new Error("Malformed persephone.content.open() response."));
+    }
+});
+
 // Var request reply (EPIC-046) — renderer → board. Same trust gate as host:content/state:sync.
 onHostMessage((event) => {
     const data = event.data as
@@ -1437,6 +1481,22 @@ function createHandle(
             title: options.title,
             content: options.content,
         });
+    },
+
+    content: {
+        open(link: string, options?: { timeoutMs?: number }): Promise<{ url: string; size: number; contentType: string }> {
+            if (typeof link !== "string") {
+                return Promise.reject(new Error("content.open() requires a link string."));
+            }
+            if (options !== undefined && (!options || typeof options !== "object")) {
+                return Promise.reject(new Error("content.open() options must be an object."));
+            }
+            const timeoutMs = options?.timeoutMs;
+            if (timeoutMs !== undefined && (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)) {
+                return Promise.reject(new Error("content.open() timeoutMs must be a positive integer."));
+            }
+            return whenHandshake().then(() => contentOpenRpc(link, timeoutMs));
+        },
     },
 
     /** The one capability request currently delivered to this board, if any. */

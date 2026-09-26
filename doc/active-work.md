@@ -64,7 +64,7 @@ deleting `editors/draw` did not take them with it.
     beside local file and HTTP, so the in-page `<video>` **and** Open in VLC both work. Must use the
     127.0.0.1 HTTP surface, not `board://__pipe`: VLC is an external process and cannot fetch a
     custom Electron protocol.
-  - [ ] US-1521: `persephone.content.open(link)` → `{ url, size, contentType }` — a ranged,
+  - [ ] [US-1521: `persephone.content.open(link)` → `{ url, size, contentType }`](tasks/US-1521-content-open-api/README.md) — a ranged,
     origin-local URL for any link, so boards and built-in editors alike stop reading paths
     directly. A new namespace, not an overload of `host.streamUrl()`, which is gated to
     content-host/stream-host boards while every published board is `simple`. Shares its seam with

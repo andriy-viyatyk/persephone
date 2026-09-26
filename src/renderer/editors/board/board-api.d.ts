@@ -321,6 +321,25 @@ interface PersephoneHostApi {
     streamUrl(): Promise<string>;
 }
 
+interface PersephoneContentOpenResult {
+    /** Origin-local board:// URL for in-frame byte consumers; supports Range requests. */
+    readonly url: string;
+    /** Logical post-transform byte length, resolved eagerly by content.open(). */
+    readonly size: number;
+    /** Extension-derived MIME type for the resource. */
+    readonly contentType: string;
+}
+
+interface PersephoneContentApi {
+    /**
+     * Resolve a file/file-URL/archive/HTTP/HTTPS/data link or registered board scheme to bytes
+     * without opening a page. The URL is revoked when this board frame or page is torn down.
+     * Size is eager and may wait indefinitely unless a positive timeoutMs is supplied; a timeout
+     * aborts and disposes the pending resource. This returns board:// bytes, not an HTTP URL.
+     */
+    open(link: string, options?: { timeoutMs?: number }): Promise<PersephoneContentOpenResult>;
+}
+
 type PersephoneCapabilityErrorCode =
     | "no-handler" | "untrusted" | "handler-closed" | "crashed" | "cancelled"
     | "timeout" | "cycle" | "payload-too-large" | "busy" | "rejected";
@@ -475,6 +494,8 @@ interface PersephoneBoardApi {
     readonly providers: PersephoneProviderApi;
     readonly intent: PersephoneIntentApi;
     readonly capabilities: PersephoneCapabilitiesApi;
+    /** Resolve links to bytes for in-frame consumers; the URL is revoked with this frame/page. */
+    readonly content: PersephoneContentApi;
     readonly host: PersephoneHostApi;
 }
 

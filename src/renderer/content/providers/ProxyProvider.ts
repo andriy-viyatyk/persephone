@@ -222,8 +222,8 @@ export class ProxyProvider implements IProvider {
         return Buffer.from(result.data);
     }
 
-    async stat(): Promise<IProviderStat> {
-        const result = await this.request("stat");
+    async stat(options?: { signal?: AbortSignal }): Promise<IProviderStat> {
+        const result = await this.request("stat", {}, Infinity, options?.signal);
         if (result.operation !== "stat" || !isRecord(result.stat)
             || typeof result.stat.exists !== "boolean"
             || (result.stat.size !== undefined

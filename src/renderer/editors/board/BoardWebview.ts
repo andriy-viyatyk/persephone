@@ -16,6 +16,8 @@ import type {
     BoardCapabilityInvokeResultMsg,
     BoardCapabilityListRequestMsg,
     BoardCapabilityListResultMsg,
+    BoardContentOpenRequestMsg,
+    BoardContentOpenResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
     BoardOpenContentRequest,
@@ -143,6 +145,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }>();
     private readonly initialIntentIds = new Set<string>();
     private capabilityFrame: BoardCapabilityFrame | undefined;
+    private readonly pendingContentOpen = new Set<AbortController>();
 
     public constructor(props: BoardWebviewProps) {
         super(props, createPanelElement({
@@ -181,6 +184,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
         this.generation++;
+        this.abortPendingContentOpen();
+        this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         this.rejectPendingAiVision(new Error("Board frame was replaced."));
         this.rejectPendingCapability("handler-closed", "The board frame was replaced.", false);
         this.unregisterCapabilityFrame();
@@ -398,6 +403,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
+        this.abortPendingContentOpen();
+        this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
         this.generation++;
         this.installSettingsSubscription();
@@ -461,7 +468,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg
             | BoardAiVisionResultMsg | BoardCapabilityIntentResultMsg | BoardCapabilityListRequestMsg
             | BoardCapabilityInvokeRequestMsg | BoardNavigationCreateReturnUrlMsg
-            | BoardToolbarSetMsg | BoardToolbarUpdateMsg | undefined;
+            | BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardContentOpenRequestMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
@@ -573,6 +580,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             case "board:openContent":
                 if (typeof legacy.reqId === "number") {
                     this.resolveOpenContent(legacy.reqId, legacy.openContent, host, frame);
+                }
+                break;
+            case "board:contentOpen":
+                if (typeof legacy.reqId === "number") {
+                    void this.resolveContentOpen(data as BoardContentOpenRequestMsg, model, host, frame);
                 }
                 break;
             case "navigation:createReturnUrl":
@@ -874,6 +886,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.unregisterCapabilityFrame();
     };
 
+    private abortPendingContentOpen(): void {
+        for (const controller of this.pendingContentOpen) controller.abort();
+        this.pendingContentOpen.clear();
+    }
+
     private async resolveCapabilityList(
         message: BoardCapabilityListRequestMsg,
         frame: HTMLIFrameElement,
@@ -967,6 +984,85 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             __persephone: "filePath:result", reqId, path: reply.path, error: reply.error,
         };
         frame.contentWindow.postMessage(message, `board://${host}`);
+    }
+
+    private async resolveContentOpen(
+        request: BoardContentOpenRequestMsg,
+        model: BoardEditorModel,
+        host: string,
+        frame: HTMLIFrameElement,
+    ): Promise<void> {
+        const generation = this.generation;
+        const controller = new AbortController();
+        this.pendingContentOpen.add(controller);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let timedOut = false;
+        let openedResourceId: string | undefined;
+
+        let reply: BoardContentOpenResultMsg;
+        try {
+            if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
+            if (typeof request.link !== "string") throw new Error("content.open() requires a link string.");
+            if (request.timeoutMs !== undefined
+                && (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs <= 0)) {
+                throw new Error("content.open() timeoutMs must be a positive integer.");
+            }
+            if (request.timeoutMs !== undefined) {
+                timer = setTimeout(() => {
+                    timedOut = true;
+                    controller.abort();
+                }, request.timeoutMs);
+            }
+            if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
+                throw new Error("The board frame is unavailable.");
+            }
+            const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal);
+            openedResourceId = info.resourceId;
+            if (controller.signal.aborted) {
+                model.releaseContentResource(info.resourceId);
+                throw new Error("The content resource request was cancelled.");
+            }
+            if (!this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
+                model.releaseContentResource(info.resourceId);
+                return;
+            }
+            try {
+                await api.registerBoardPipeResource(info.resourceId, host);
+            } catch (error: unknown) {
+                model.releaseContentResource(info.resourceId);
+                throw error;
+            }
+            if (!this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
+                model.releaseContentResource(info.resourceId);
+                return;
+            }
+            reply = {
+                __persephone: "contentOpen:result",
+                reqId: request.reqId,
+                url: `board://${host}/__pipe/resource/${encodeURIComponent(info.resourceId)}`,
+                size: info.size,
+                contentType: info.contentType,
+            };
+        } catch (error: unknown) {
+            reply = {
+                __persephone: "contentOpen:result",
+                reqId: request.reqId,
+                error: timedOut
+                    ? "content.open() timed out while resolving the resource."
+                    : errMessage(error, "The content resource could not be opened."),
+            };
+        } finally {
+            if (timer !== undefined) clearTimeout(timer);
+            this.pendingContentOpen.delete(controller);
+        }
+        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
+        try {
+            frame.contentWindow.postMessage(reply, `board://${host}`);
+        } catch {
+            if (openedResourceId) model.releaseContentResource(openedResourceId);
+        }
     }
 
     private resolveNavigationReturnUrl(

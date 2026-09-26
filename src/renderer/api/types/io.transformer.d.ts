@@ -25,7 +25,7 @@ export interface ITransformer {
      *  Undefined or true means writable. False for read-only formats (RAR, 7z, TAR). */
     readonly writable?: boolean;
     /** Transform bytes on read (source → editor). */
-    read(data: Buffer): Promise<Buffer>;
+    read(data: Buffer, signal?: AbortSignal): Promise<Buffer>;
     /** Reverse-transform bytes on write (editor → source).
      *  `readOriginal` lazily returns the bytes that entered this transformer on read.
      *  Most transforms do not need it; ArchiveTransformer uses it to rebuild a ZIP. */

@@ -9,7 +9,8 @@ import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { createPipeFromDescriptor } from "../../content/registry";
-import { pipeFromSourcePath } from "../../content/rebuild-pipe";
+import { pipeFromLink, pipeFromSourcePath } from "../../content/rebuild-pipe";
+import { contentTypeForPipe } from "../../content/board-pipe-utils";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { boardEditorId, customEditorRegistry } from "./custom-editor-registry";
 import { isBoardFolder, normalizeSecondaryViews, readBoardManifest, readBoardSecondaryViews, type BoardManifest, type SecondaryViewDecl } from "./board-manifest";
@@ -38,6 +39,18 @@ export type BoardAiVisionRequestHandler = (
     timeoutMs: number,
     timeoutError: Error,
 ) => Promise<IAiRemoteResponse>;
+
+export interface ContentResourceInfo {
+    readonly resourceId: string;
+    readonly size: number;
+    readonly contentType: string;
+}
+
+interface ContentResource {
+    readonly pipe: IContentPipe;
+    readonly tabId: string;
+    readonly generation: number;
+}
 
 export interface BoardAiVisionRegistration {
     readonly shape: IAiVisionShape;
@@ -186,6 +199,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private reloadAwaitingRegistration = false;
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
+    private readonly contentResources = new Map<string, ContentResource>();
     private initialIntent: IBoardIntent | undefined;
     private toolbarFrameGeneration: number | undefined;
     private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
@@ -596,6 +610,61 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return pipe;
     }
 
+    async openContentResource(
+        link: string,
+        tabId: string,
+        generation: number,
+        signal?: AbortSignal,
+    ): Promise<ContentResourceInfo> {
+        if (signal?.aborted) throw new Error("The content resource request was cancelled.");
+        const pipe = await pipeFromLink(link);
+        try {
+            const stat = await pipe.stat({ signal });
+            if (signal?.aborted) throw new Error("The content resource request was cancelled.");
+            if (!stat.exists || stat.size === undefined || !Number.isFinite(stat.size) || stat.size < 0) {
+                throw new Error("The content provider did not report a usable resource size.");
+            }
+            let resourceId = `resource-${crypto.randomUUID()}`;
+            while (this.contentResources.has(resourceId)) resourceId = `resource-${crypto.randomUUID()}`;
+            this.contentResources.set(resourceId, { pipe, tabId, generation });
+            // Publish to the read path BEFORE returning, so the URL handed to the board is already
+            // serviceable — the board may fetch it on the next line.
+            const { registerBoardContentResource } = await import("./board-pipe-handler");
+            registerBoardContentResource(resourceId, pipe);
+            return {
+                resourceId,
+                size: stat.size,
+                contentType: contentTypeForPipe(pipe),
+            };
+        } catch (error: unknown) {
+            pipe.dispose();
+            throw error;
+        }
+    }
+
+    getContentResourceIds(tabId?: string, generation?: number): string[] {
+        return [...this.contentResources.entries()]
+            .filter(([, resource]) => (tabId === undefined || resource.tabId === tabId)
+                && (generation === undefined || resource.generation === generation))
+            .map(([resourceId]) => resourceId);
+    }
+
+    releaseContentResource(resourceId: string): void {
+        const resource = this.contentResources.get(resourceId);
+        if (!resource) return;
+        this.contentResources.delete(resourceId);
+        resource.pipe.dispose();
+        void api.unregisterBoardPipeResource(resourceId);
+        void import("./board-pipe-handler").then(({ invalidateBoardPipeResource }) => {
+            invalidateBoardPipeResource(resourceId);
+        });
+    }
+
+    releaseContentResources(tabId?: string, generation?: number): void {
+        const resourceIds = this.getContentResourceIds(tabId, generation);
+        for (const resourceId of resourceIds) this.releaseContentResource(resourceId);
+    }
+
     /**
      * Resolve a readable LOCAL path holding this board's content — what `getFilePath()` returns to
      * the board. Plain local file → the source path itself, untouched and with no I/O. Any other
@@ -929,6 +998,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         });
         this.aiVisionDisposed = true;
         this.reloadAwaitingRegistration = false;
+        this.releaseContentResources();
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the
         // open-handler — dispose it for hygiene (EPIC-042 CC8). `ensureContentPath` may have read
         // it since; disposing is correct either way.

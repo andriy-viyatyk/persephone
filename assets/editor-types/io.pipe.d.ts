@@ -45,7 +45,7 @@ export interface IContentPipe {
         options?: { signal?: AbortSignal },
     ): NodeJS.ReadableStream;
     /** Read logical pipe metadata, including the post-transform size when known. */
-    stat(): Promise<IProviderStat>;
+    stat(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Read as text — readBinary() then decode using detected encoding (auto-detected on first read, defaults to UTF-8). */
     readText(): Promise<string>;
     /** Write binary content — reverse-piped through transformers back to provider.

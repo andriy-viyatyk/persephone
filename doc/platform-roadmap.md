@@ -813,10 +813,23 @@ empty editor. The editors that do show spinners today (browser, mermaid, mneme-r
 built their own for unrelated reasons; none is pipe-driven, so this would be a new seam on
 `IContentPipe` rather than a widening of an existing one.
 
-**Not scheduled, and deliberately so** — whether it is needed at all is a judgement to make after
-testing the torrent board (EPIC-114) against real magnet links, not before. EPIC-113 D6 already
-requires that a board can *know* a read is outstanding, which is the half of the problem that
-cannot be retrofitted; the presentation half can wait for evidence that it is wanted.
+**Not scheduled, and deliberately so** — EPIC-113 D6 already requires that a board can *know* a
+read is outstanding, which is the half of the problem that cannot be retrofitted; the presentation
+half can wait.
+
+**CONFIRMED OUT OF SCOPE for EPIC-113 and EPIC-114** *(user decision, 2026-09-26, after US-1518
+measured a stalled first read opening no page at all)*. The torrent board ships without it.
+
+The decision came with a shape for whatever does close it, and it is larger than "an editor shows a
+spinner". In the user's terms: **the editor should open instantly, as soon as the editor for the
+link is resolved**; the pipe is built afterwards or in parallel, and the indicator appears
+immediately rather than when the first bytes arrive. Today the page is a *consequence* of a
+completed read — `PagesLifecycleModel.openFile()` awaits `createEditorFromFile()`, which ends in
+`await editor.restore()`, and only then calls `addPage()`. Inverting that is a change to the open
+path, not an addition to it, and it is what makes the stalled-source case tractable at all: with no
+tab there is nothing to attach an indicator to. US-1517 already did the half that unblocks it —
+which editor a link deserves is now resolved from the link alone, before any byte is read. See
+EPIC-113's "a consequence of D6" note for the measurement and the cited lines.
 
 Video and REST client extraction as ordinary epics using Phases B–D; `ProxyTreeProvider` so a
 module's contents appear in Explorer; `persephone.fetch` / network permission; `persephone.events.on`;

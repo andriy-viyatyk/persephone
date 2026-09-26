@@ -22,13 +22,16 @@ export class FileProvider implements IProvider {
         this.displayName = fpBasename(filePath);
     }
 
-    async readBinary(): Promise<Buffer> {
-        return nodefs.promises.readFile(this.filePath);
+    async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
+        return nodefs.promises.readFile(this.filePath, options?.signal ? { signal: options.signal } : undefined);
     }
 
-    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
-        const options = range ? { start: range.start, end: range.end } : undefined;
-        return nodefs.createReadStream(this.filePath, options);
+    createReadStream(range?: { start: number; end: number }, options?: { signal?: AbortSignal }): NodeJS.ReadableStream {
+        const streamOptions = {
+            ...(range ? { start: range.start, end: range.end } : {}),
+            ...(options?.signal ? { signal: options.signal } : {}),
+        };
+        return nodefs.createReadStream(this.filePath, streamOptions);
     }
 
     async writeBinary(data: Buffer): Promise<void> {
