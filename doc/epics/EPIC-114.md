@@ -369,8 +369,18 @@ Verified in the running app, not only built:
    a *slow but live* read is not killed by any deadline (US-1518).
 8. Peak RSS of the service process is recorded while streaming ≥200 MB of a file, as D6's measured
    risk.
-9. Uninstalling the board shows the placeholder, and a `torrent://` restore with the board absent
-   degrades cleanly rather than throwing.
+9. Removing the board degrades legibly — split into the two paths it actually has, because they
+   differ **by design** *(corrected 2026-09-27, while reviewing US-1526's plan; the original
+   wording assumed one path and would have licensed changing shared board behaviour)*:
+   - **Untrust** → the board page shows the existing untrusted placeholder; an absent folder shows
+     the not-found placeholder.
+   - **Catalog uninstall** → open board pages go **empty**, which is correct and consented:
+     `ensureBoardIdle` asks first and its dialog says *"The page(s) stay open and go empty"*
+     (`board-updates.ts:129-135`). This is not a gap to fix, and fixing it inside this epic would
+     change behaviour for every installed board.
+   - In **both** cases a `torrent://` **content** page whose provider is gone stays a page with a
+     legible unavailable state and a recovery notice, rather than throwing or silently vanishing.
+     That is the part this epic owns.
 10. `.torrent` opened from disk works via `fileMasks`; the Browser-download path is US-1478.
 
 ## Concerns / open questions
@@ -384,6 +394,48 @@ Verified in the running app, not only built:
   test corpus is the public-domain Sintel torrent WebTorrent itself publishes.
 
 ## Notes
+
+### 2026-09-27 — D8 measured at last, and a second timer that pre-empts it
+
+D8's 30-second bound was inherited from av-player without measurement, and the epic has been
+carrying that as a known weakness since US-1524. It is now measured: eight resolutions of the live
+Sintel magnet, fresh client each time, `deselect: true` and the memory store — the same shape the
+service uses — with a 60 s cap set deliberately above the bound so a slow success would still show.
+
+| | |
+|---|---|
+| resolved | **8 / 8** |
+| p50 | **4 750 ms** |
+| min / max | 2 683 ms / 5 200 ms |
+| would have failed at 30 s | **0** |
+
+So on a healthy swarm the bound has roughly **6× headroom**, and the conclusion is the opposite of
+the one the weakness suggested: **lengthening it buys nothing.** The failure mode we actually met
+was not a slow swarm but an absent one — the outage recorded on 2026-09-26 lasted about half an
+hour, against which 30 s and 120 s fail identically. The bound stays; what was missing is a way for
+the user to try again, which is why US-1526 adds a manual retry rather than a longer timer or an
+automatic one.
+
+**A second timer makes the first one mostly theoretical.** The service holds both:
+
+```
+const METADATA_TIMEOUT_MS = 30_000;   // service.mjs:6  — D8's bound
+const NO_POLL_TIMEOUT_MS  = 15_000;   // service.mjs:8  — reaps unpolled jobs
+```
+
+The watchdog cancels any resolution whose status has not been polled within 15 s
+(`service.mjs:605-608`) — **half** the bound it coexists with. So a resolution reaches D8's 30 s
+only while something polls it continuously. Measured on the real product path, a dead magnet ended
+at 29.7 s as `state: "cancelled"`, reason `torrent-resolution-no-status-poll` — the watchdog, not
+the timeout, because the polling gap exceeded 15 s.
+
+That is a live defect and not only a measurement nuisance: a hidden board page's frame is torn down
+(`WebContents not found or destroyed` on an inactive board page), so **switching tabs mid-resolution
+cancels the resolution at 15 s**, surfacing an internal token rather than a sentence. It reads as
+"torrents randomly fail to load". **Owned by US-1526.**
+
+The narrower lesson for acceptance: an elapsed time of ≈30 s does not identify *which* timer fired.
+Any D8 verification must assert on the failure **reason**, not the duration.
 
 ### 2026-09-26 — US-1525 verified: the epic's headline gesture works, and two defects only the app showed
 
