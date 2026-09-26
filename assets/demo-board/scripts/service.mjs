@@ -12,6 +12,9 @@ globalThis.persephone.providers.register("demo/mem", {
     readBinary() {
         return providerBytes;
     },
+    readRange(_config, range) {
+        return providerBytes.subarray(range.start, range.end + 1);
+    },
     stat() {
         return { exists: true, size: providerBytes.byteLength };
     },

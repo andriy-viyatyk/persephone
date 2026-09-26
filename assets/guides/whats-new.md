@@ -42,6 +42,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
   scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
   unregistered non-web schemes remain blocked.
+- **Video Player plays archive-hosted media:** audio and video entries opened from supported archives
+  can play and seek without loading the entire source first. When VLC is available, **Open in VLC**
+  uses the same streamed source.
 - **Boards can provide named capability handlers:** declare a capability in a trusted board's
   manifest, receive structured requests through `persephone.intent`, and let scripts or other
   boards discover and invoke it without knowing which board owns the implementation. The same

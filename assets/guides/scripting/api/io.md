@@ -46,11 +46,11 @@ The provider contract has these mandatory and optional members:
 | `sourceUrl: string` | Yes | URL or path that identifies the provider's source. |
 | `restorable: boolean` | Yes | Declares whether the provider can be reconstructed. |
 | `writable: boolean` | Yes | Declares whether the pipe can write. |
-| `readBinary(): Promise<Buffer>` | Yes | Reads the provider bytes. |
+| `readBinary(options?: { signal?: AbortSignal }): Promise<Buffer>` | Yes | Reads the provider bytes. The optional signal is aborted when Persephone stops waiting for the read. |
 | `toDescriptor(): IProviderDescriptor` | Yes | Serializes the provider configuration. |
-| `createReadStream(range?: { start: number; end: number })` | No | Optional ranged stream for large binary content. |
+| `createReadStream(range?: { start: number; end: number }, options?: { signal?: AbortSignal })` | No | Optional ranged stream for large binary content. The range end is inclusive; the signal is optional. |
 | `writeBinary(data: Buffer)` | No | Optional write operation for writable providers. |
-| `stat(): Promise<IProviderStat>` | No | Optional size, modification-time, and existence metadata. |
+| `stat(options?: { signal?: AbortSignal }): Promise<IProviderStat>` | No | Optional size, modification-time, and existence metadata. |
 | `watch(callback: (event: string) => void): () => void` | No | Optional external-change notifications. |
 | `dispose(): void` | No | Optional resource cleanup. |
 
@@ -59,6 +59,12 @@ the required members. If it is malformed, one error names the provider type and 
 members, for example `Provider "demo-mem" is missing required member(s): toDescriptor().` The
 check is cached for that registration, while optional members remain optional. Platform providers
 are not subject to this script registration check.
+
+When Persephone supplies `options.signal`, the provider must tolerate the extra argument. The
+signal is aborted when Persephone stops waiting for the operation, such as when a page is closed or
+a request is cancelled. A provider can listen for it to stop its own work early; honoring the signal
+is optional. The same signal is forwarded through an `IContentPipe` to the provider and transformers
+where supported.
 
 Registering a type already registered by your scripts replaces that factory and reports an `info`
 notification. Built-in provider types cannot be replaced; trying to register one reports an error.
@@ -99,7 +105,8 @@ io.registerProvider(providerType, (config) => {
         sourceUrl: `${scheme}://hello`,
         restorable: true,
         writable: false,
-        async readBinary() {
+        async readBinary(options) {
+            if (options?.signal?.aborted) throw new Error("Read cancelled");
             return Buffer.from(text, "utf8");
         },
         toDescriptor() {
@@ -287,13 +294,42 @@ const pipe = io.createPipe(new io.FileProvider("C:/data/report.csv"));
 const text = await pipe.readText();
 ```
 
-#### readBinary() -> `Promise<Buffer>`
+#### readBinary(options?) -> `Promise<Buffer>`
 
 Read raw binary content as a Node.js `Buffer`.
 
 ```javascript
 const pipe = io.createPipe(new io.HttpProvider("https://example.com/image.png"));
 const buffer = await pipe.readBinary();
+```
+
+Pass `{ signal }` to make cancellation available to the provider:
+
+```javascript
+const controller = new AbortController();
+const pending = pipe.readBinary({ signal: controller.signal });
+controller.abort();
+await pending; // rejects if the provider stops on cancellation
+```
+
+#### createReadStream(range?, options?) -> `NodeJS.ReadableStream`
+
+Create a stream of logical pipe bytes. `range` uses inclusive `start` and `end` byte offsets; omit
+it to request the whole pipe. The optional `options.signal` is forwarded to the provider where
+supported.
+
+```javascript
+const stream = pipe.createReadStream({ start: 0, end: 1023 });
+```
+
+#### stat(options?) -> `Promise<IProviderStat>`
+
+Read metadata for the logical pipe, including its post-transform size when known. The optional
+`options.signal` follows the same cancellation rules as `readBinary()`.
+
+```javascript
+const info = await pipe.stat();
+console.log(info.exists, info.size);
 ```
 
 ### Writing

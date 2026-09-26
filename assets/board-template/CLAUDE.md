@@ -494,19 +494,27 @@ service implementation has this shape:
 ```js
 persephone.providers.register("acme/mem", {
   writable: false,
-  readBinary: async (config) => new Uint8Array(/* bounded bytes */),
+  readBinary: async (config, options) => new Uint8Array(/* bounded bytes */),
+  readRange: async (config, range, options) => new Uint8Array(/* range.start..range.end */),
   writeBinary: async (config, data) => {},       // only when writable is true
-  stat: async (config) => ({ exists: true, size: 0, mtime: "..." }),
+  stat: async (config, options) => ({ exists: true, size: 0, mtime: "..." }),
   watch: (config, onChange) => () => {},
 });
 ```
 
-`readBinary(config)` returns `Uint8Array`; `writeBinary(config, data)` receives bytes;
-`stat(config)` returns `{ exists, size?, mtime? }`; and `watch(config, onChange)` returns a
-disposer. Omit unsupported optional methods. Read and write payloads are bounded by the platform
-(currently 256 MiB); this API is whole-resource buffered I/O. In particular, `ProxyProvider`
-does not implement `createReadStream`, so a `Range` request for a board provider falls back to a
-buffered read.
+`readBinary(config, options?)` returns `Uint8Array`; the optional `readRange(config, range,
+options?)` returns a byte slice with inclusive `{ start, end }` offsets. Both receive an optional
+`{ signal }` as their final argument. `readRange` is the pushdown path for seeking and must return
+no more than the requested range or 1 MiB, whichever is smaller. A provider that omits it keeps
+the whole-resource `readBinary()` fallback, capped at 256 MiB. `writeBinary(config, data)`
+receives bytes; `stat(config, options?)` returns `{ exists, size?, mtime? }`; and
+`watch(config, onChange)` returns a disposer. Omit unsupported optional methods.
+
+Content reads have no platform deadline. Persephone aborts the signal when it stops waiting (for
+example, page/frame teardown, a superseded range, or an explicit timeout supplied by a higher-level
+API). Honoring the signal is optional, but accepting the extra argument is required; older
+implementations that ignore it remain compatible. Other provider operations keep their ordinary
+deadlines.
 
 ### Resident backend server (the key pattern)
 
@@ -810,8 +818,24 @@ may keep its own caches. That differs from `editorSources: "any"`, which solves 
 copying the source into a cache file and returning that local path through `getFilePath()`.
 
 The pipe can range-read platform providers and falls back to buffering when needed. A board
-provider's `readBinary()` is still whole-resource: `ProxyProvider` has no `createReadStream`, so
-the range is buffered before it is returned to the board.
+provider that implements `readRange` receives bounded ranged pulls; one that omits it falls back to
+buffered `readBinary()` and its 256 MiB ceiling.
+
+### Opening arbitrary content without a page — `persephone.content.open()`
+
+`persephone.content.open(link, options?)` resolves a supported file path, `file:` URL, archive
+entry, HTTP(S) URL, `data:` URL, or registered board-scheme link without opening a Persephone page:
+
+```js
+const resource = await persephone.content.open("https://example.com/report.pdf", { timeoutMs: 10000 });
+const response = await fetch(resource.url, { headers: { Range: "bytes=0-1023" } });
+```
+
+The result is `{ url, size, contentType }`. `url` is an origin-local
+`board://<host>/__pipe/resource/<opaque-id>` URL for in-frame consumers such as `fetch`, `<img>`,
+`<video>`, and pdf.js; it supports byte ranges and is revoked when the board frame reloads or the
+page closes. Size is resolved eagerly, so an unbounded provider may make `open()` wait; a positive
+`timeoutMs` aborts and disposes the pending resource. A teardown can also make the request reject.
 
 ## Secondary views & shared state
 

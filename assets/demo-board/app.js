@@ -321,6 +321,24 @@
             document.getElementById("stream-readout").textContent = JSON.stringify(result, null, 2);
             print(JSON.stringify(result, null, 2));
         },
+        async openContent() {
+            header("persephone.content.open → Range");
+            const resource = await P.content.open("mem://demo");
+            const response = await fetch(resource.url, { headers: { Range: "bytes=0-7" } });
+            const bytes = new Uint8Array(await response.arrayBuffer());
+            const result = {
+                url: resource.url,
+                size: resource.size,
+                contentType: resource.contentType,
+                status: response.status,
+                contentRange: response.headers.get("Content-Range") ?? "(missing)",
+                text: dec.decode(bytes),
+            };
+            document.getElementById("stream-status").textContent =
+                `${response.status} · ${result.contentRange} · content.open()`;
+            document.getElementById("stream-readout").textContent = JSON.stringify(result, null, 2);
+            print(JSON.stringify(result, null, 2));
+        },
 
         // --- integration tier ----------------------------------------------
         async notify() {

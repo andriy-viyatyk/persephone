@@ -302,7 +302,10 @@ interface PersephoneProviderApi {
             options?: { signal?: AbortSignal },
         ): Promise<Uint8Array> | Uint8Array;
         writeBinary?(config: Record<string, unknown>, data: Uint8Array): Promise<void> | void;
-        stat?(config: Record<string, unknown>): Promise<{
+        stat?(
+            config: Record<string, unknown>,
+            options?: { signal?: AbortSignal },
+        ): Promise<{
             exists: boolean;
             size?: number;
             mtime?: string;

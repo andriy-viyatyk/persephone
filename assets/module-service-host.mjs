@@ -127,6 +127,7 @@ function disposeSubscriptions() {
 function settleLeasePending(lease) {
     for (const [requestId, pending] of lease.pending) {
         clearTimeout(pending.timer);
+        pending.controller?.abort();
         postRenderer(lease.port, {
             kind: "response",
             requestId,

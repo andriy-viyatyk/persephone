@@ -97,9 +97,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
 | Board provider delegate (bounded reads/writes, optional ranged reads, stat and watch over the renderer service lease) | `/src/renderer/content/providers/ProxyProvider.ts` |
+| Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
-| Pipe rebuild from a persisted source path (`pipeFromSourcePath` — plain / `archive.zip!entry` / `http(s)`; shared by the Image editor, board file materialization and page restore) | `/src/renderer/content/rebuild-pipe.ts` |
+| Pipe rebuild from a persisted source path (`pipeFromSourcePath` — plain / `archive.zip!entry` / `http(s)`; shared by the Image editor, board file materialization, media playback and page restore) | `/src/renderer/content/rebuild-pipe.ts` |
 | Pipe resolvers (Layer 2; the HTTP resolver's content-extension set decides browser-vs-content, then normal registry matching and eligible board resolution choose the editor; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution utils    | `/src/renderer/content/link-utils.ts`             |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
@@ -211,6 +212,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native HTML preview body (sandboxed iframe, guarded `srcdoc`, host-content binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
 | Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |
 | Native Markdown body (find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
+| Video/audio editor (pipe-backed media playback, transient range sessions, archive/board sources, and VLC handoff) | `/src/renderer/editors/video/VideoEditor.ts` |
 | Markdown body host/model contract reused by embedded guide rendering | `/src/renderer/editors/markdown/MarkdownBodyModel.ts` |
 | Native Markdown block renderer (unified/remark pipeline, HAST overrides, and owned interactive nodes) | `/src/renderer/editors/markdown/MarkdownBlockView.ts` |
 | Hand-written HAST-to-DOM property and namespace conversion | `/src/renderer/editors/markdown/hast-dom.ts` |
@@ -312,7 +314,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Audio player view | `/src/renderer/editors/video/AudioPlayer.ts` |
 | Audio controls view | `/src/renderer/editors/video/AudioControls.ts` |
 | Audio visualizer view | `/src/renderer/editors/video/AudioVisualizer.ts` |
-| Video streaming server   | `/src/main/video-stream-server.ts`                |
+| Video streaming server (main-side HTTP range sessions for local, HTTP, and renderer-pipe sources) | `/src/main/video-stream-server.ts` |
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
 | Terminal launcher (main; `detectTerminal` via `where`, `openTerminalAt` via `cmd /c start` so a console shell gets a visible window; supports pwsh/powershell/cmd/wt) | `/src/main/terminal-launcher.ts` |
 | Terminal open helper (renderer; reads `terminal.command`, auto-detects pwsh→powershell→cmd on first use and saves it, then launches — drives the "Open Terminal here" folder menu item) | `/src/renderer/api/terminal.ts` |
@@ -427,8 +429,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board navigation-return service (nonce-scoped `.invalid` return URLs for native and board frames; query/hash decoding; active claims delivered to the owning page/frame; retired claims consume late returns and restore the browser navigation when possible) | `/src/renderer/api/board-navigation-return.ts` |
 | `persephone-board://` link scheme (encode/decode; dispatched by the registered-scheme adapter to `target: "board-view"`) | `/src/renderer/content/persephone-board-link.ts` |
 | Board editor model (single-board lifecycle, per-board trust, live iframe ref, icon; file/folder sources keep installed `boardRoot` separate from `filePath`/`folderPath`; folder boards expose `getFolderPath()` and use stable `board-view` persistence; busy keep-alive — while `persephone.setBoardBusy(true)`, survives navigation as an invisible ownership handle so its spawned processes outlive the iframe; dispose reaps them; **secondary views + shared state** (base for every board) — seeds `secondaryViewDefs` from the manifest, derives `state.secondaryView = board-secondary:<id>` list, `setSecondaryViews`, `sharedState`/`sharedStateRestorableKeys` with a monotonic `sharedStateSeq`, opt-in `getRestoreData` persistence; **multi-frame** — a per-tab frame map + `activeTabId`, `markFrameLoaded`/`waitForFrameLoad` (deterministic `reload()`); **file materialization** — `getFilePath()` always resolves to a readable LOCAL path for file sources) | `/src/renderer/editors/board/BoardEditorModel.ts` |
-| Board pipe page lifecycle and stream-pipe resolution (stream-host no-cache policy, live/restored pipe selection, URL eligibility) | `/src/renderer/editors/board/BoardEditorModel.ts` |
-| Board pipe handler (owning renderer; resolves page pipes, parses ranges, streams direct providers, and buffers transformed/service-backed providers) | `/src/renderer/editors/board/board-pipe-handler.ts` |
+| Board pipe page lifecycle and resource resolution (stream-host no-cache policy, `content.open()` resources, live/restored pipe selection, URL eligibility) | `/src/renderer/editors/board/BoardEditorModel.ts` |
+| Board pipe handler (owning renderer; resolves page pipes, parses ranges, streams direct and `readRange` providers, and buffers transformed/fallback providers) | `/src/renderer/editors/board/board-pipe-handler.ts` |
 | Content-host board model (`BoardContentEditorModel extends BoardEditorModel` — composes an `IContentHost`/`TextFileModel` via `CONTENT_HOST_TRAIT`; manifest `editorKind: "content-host"`; switches with built-in editors by transferring the shared host — no reload; delegates save/dirty to the host, `skipSave=false`; persists the host descriptor in `getRestoreData` — `d.host` on a `board-view` descriptor is the content-host discriminator; no busy — host transfers out on switch; content over the `persephone.host.*` bridge; always reports the `board-editor:<root>` editorId + falls back to the page title as the file name when path-less, so the switch appears and round-trips on an untitled page renamed to a matching name; `override get modified()` delegates to the host so `page.modified` / `pages` report a dirty content-host board correctly) | `/src/renderer/editors/board/BoardContentEditorModel.ts` |
 | Busy-boards reactive registry (busy board roots → Boards panel "running" dot) | `/src/renderer/editors/board/busy-boards.ts` |
 | Board editor view (native four-way branch host; also renders `ScriptPanel` + `ContentHostFooter` below the iframe when `model.contentHost` is set) | `/src/renderer/editors/board/BoardEditorView.ts` |

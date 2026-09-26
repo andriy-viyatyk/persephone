@@ -205,14 +205,14 @@ read still goes through `readBinary()`, buffered and capped at 256 MB. Adding `r
 means `stat()` must now return a `size` — seeking needs a length to seek against, and a resource
 over 256 MB can only be opened through the ranged path.
 
-**A content read (`readBinary`/`readRange`) has no deadline.** Unlike every other provider
-operation (`writeBinary`, `stat`, `watch*`, which still fail after 10 s), the platform waits as
-long as it takes — a cold-swarm torrent read is expected to take a while. Release happens instead
-through cancellation: closing the page, the board deleting its own backing resource (the read then
-fails naturally, from inside your implementation), the service stopping, or the platform abandoning
-interest (e.g. a seek superseding a previous chunk request). Both methods receive an optional
-second (`readBinary`) or third (`readRange`) argument, `{ signal }`, an `AbortSignal` that fires
-when the platform stops waiting:
+**Content reads and metadata sizing (`readBinary`, `readRange`, and `stat`) have no deadline.**
+`content.open()` resolves size eagerly, so its `stat()` call follows the same cancellation-only
+rule. `writeBinary()` and `watch*()` retain the 10-second deadline. Release happens instead through
+cancellation: closing the page, the board deleting its own backing resource (the read then fails
+naturally, from inside your implementation), the service stopping, or the platform abandoning
+interest (e.g. a seek superseding a previous chunk request). Each unbounded method receives an
+optional trailing `{ signal }` argument — second for `readBinary`/`stat`, third for `readRange` — an
+`AbortSignal` that fires when the platform stops waiting:
 
 ```js
 persephone.providers.register("acme/mem", {
@@ -223,6 +223,10 @@ persephone.providers.register("acme/mem", {
     readRange(config, range, options) {
         options?.signal?.addEventListener("abort", () => cancelUnderlyingWork());
         return loadFromWherever(config).subarray(range.start, range.end + 1);
+    },
+    stat(config, options) {
+        options?.signal?.addEventListener("abort", () => cancelUnderlyingWork());
+        return { exists: true, size: totalSizeOf(config) };
     },
 });
 ```

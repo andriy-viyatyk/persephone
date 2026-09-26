@@ -139,6 +139,11 @@ provider.readBinary() → transformer[0].read() → transformer[1].read() → ..
 ```
 
 `readText()` adds encoding detection after the binary chain: `readBinary() → decodeBuffer()`.
+Binary/range pipe reads accept an optional `AbortSignal`; `ContentPipe` passes it to the provider
+and each transformer so cancellation reaches the underlying source. Board-provider `readBinary()` and
+`readRange()` calls intentionally have no platform deadline: teardown, superseded work, or an
+explicit higher-level timeout aborts the signal instead. Metadata and other service operations
+retain their ordinary bounded deadlines.
 
 ### Write flow
 
@@ -208,7 +213,30 @@ transformer-free provider with `createReadStream()` is read directly for bounded
 pipes and providers without a stream are read through a bounded in-memory buffer. Each IPC chunk is
 limited to 1 MiB and fallback buffering is limited to 256 MiB. A board-backed `ProxyProvider` uses
 that direct ranged path when its service implementation supplies `readRange`; otherwise a range is
-buffered before it is sent to the board.
+buffered before it is sent to the board. Cancellation releases the pending request even when the
+provider does not observe the signal; cooperative providers can also stop their underlying work.
+
+## Board content resources
+
+`persephone.content.open(link, options?)` resolves a file path, `file:` URL, archive entry,
+HTTP(S) URL, `data:` URL, or registered board scheme without creating a page. It eagerly resolves
+the logical post-transform size, then returns `{ url, size, contentType }`, where `url` is an
+origin-local `board://<host>/__pipe/resource/<opaque-id>` endpoint for in-frame consumers such as
+`fetch`, media elements, and pdf.js. The endpoint supports byte ranges and is owned by the calling
+board frame/page: reload, replacement, and page close revoke it and release pending reads. Because
+size resolution can wait on an unbounded provider read, a positive `timeoutMs` is an explicit
+escape hatch; it aborts and disposes the pending resource.
+
+## Media editor delivery
+
+For pipe-backed sources, the video/audio editor keeps the page's `IContentPipe` as the source of
+truth. HLS (`.m3u8`) URLs remain direct player sources; local and HTTP sources use a main-side HTTP
+streaming session, while archive entries and other non-local sources use the same session backed by
+the owning renderer's pipe. The session serves byte ranges, including transformed/archive data, so
+the player does not need a materialized source file. Sessions are page-owned and transient:
+replacing the source or disposing the editor deletes the session and disposes the pipe, and the
+streaming URL is not persisted. VLC uses that session URL for non-HLS sources, keeping the in-app
+player and external player on the same source.
 
 ## Built-in Transformers
 

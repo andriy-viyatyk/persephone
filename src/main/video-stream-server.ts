@@ -741,7 +741,7 @@ function validatePipeReply(
     requestedRange: ByteRange,
     totalSize: number,
     expectedStart: number,
-): asserts reply is Extract<BoardPipeReadReply, { ok: true }> {
+): asserts reply is Extract<BoardPipeReadReply, { ok: true }> & { range: ByteRange } {
     if (!reply.ok
         || reply.totalSize !== totalSize
         || !reply.range

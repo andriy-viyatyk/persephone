@@ -290,11 +290,14 @@
             <div class="row">
                 <button class="p-btn primary" data-test="openStreamHost">open local stream-host fixture</button>
                 <button class="p-btn primary" data-test="probeStream">fetch a Range from this page</button>
+                <button class="p-btn primary" data-test="openContent">content.open mem://demo</button>
             </div>
             <p class="muted">
                 The first button opens <code>stream-fixture.stream-demo</code> through this board's
                 <code>editorKind: "stream-host"</code> association. On that page, the second button
                 calls <code>persephone.host.streamUrl()</code> and sends <code>Range: bytes=0-31</code>.
+                The provider also implements <code>readRange</code>; the third button resolves the
+                same service-backed bytes through <code>persephone.content.open()</code> without a page.
             </p>
             <div class="service-status" id="stream-status" role="status">No stream request made.</div>
             <pre id="stream-readout" class="service-readout">Range response details appear here.</pre>

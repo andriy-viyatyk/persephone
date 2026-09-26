@@ -12,8 +12,9 @@ Video Player handles local media, URLs, HLS streams, and audio with an optional 
 ## How to Open
 
 Open `.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u`, `.mp3`, `.wav`, `.aac`, `.flac`,
-`.m4a`, `.wma`, `.ogg`, or `.opus`. It is also available from the **+** menu, where a path, HTTPS
-URL, HLS stream, or cURL/fetch command can be submitted. Agents open a file with `app.pages.openFile(path)`.
+`.m4a`, `.wma`, `.ogg`, or `.opus`. Media entries inside supported archives play too when opened
+from the Archive panel. It is also available from the **+** menu, where a path, HTTPS URL, HLS
+stream, or cURL/fetch command can be submitted. Agents open a file with `app.pages.openFile(path)`.
 
 ## Layout
 
@@ -70,8 +71,9 @@ URL, HLS stream, or cURL/fetch command can be submitted. Agents open a file with
 
 ## Playback
 
-Local media uses the streaming server where needed. Audio offers Bars, Circular, and None visualizer
-effects, plus play/pause, mute, seek, and track navigation. When opened from Explorer or Links,
+Local and archive-hosted media use the streaming server where needed, so seeking does not require
+loading the entire source first. Audio offers Bars, Circular, and None visualizer effects, plus
+play/pause, mute, seek, and track navigation. When opened from Explorer or Links,
 **Next Track** and **Shuffle** can traverse the surrounding folder, category, or tag. If Chromium
 cannot decode a file, **Open in VLC** appears when VLC is configured in Settings.
 
