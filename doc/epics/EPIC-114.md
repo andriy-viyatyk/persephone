@@ -367,22 +367,43 @@ The measurement that matters for D1, taken after closing the page:
 The last row is the point. The torrent stops *asking* while still connected, rather than merely
 losing the swarm — which is the difference between D1 holding and D1 looking like it holds.
 
-**Out-of-app verification is no longer possible on this machine, and that is not a code problem.**
-A plain `node.exe` WebTorrent client cannot bootstrap: the pre-epic spike in this document — same
-code, same magnet, same session — resolved metadata in seconds earlier and now times out at 120 s,
-while `electron.exe` resolves the same magnet in seconds. The cause is environmental, almost
-certainly a firewall rule that admits Electron and not Node.
+**Metadata resolution failed for a while, and the cause was transient — not the code, and not the
+environment.** *(Corrected 2026-09-26, after the first explanation was tested and disproved.)*
 
-Two consequences worth carrying forward:
+For roughly half an hour, every new WebTorrent client timed out fetching metadata, including the
+pre-epic spike in this document — same code, same magnet — which had resolved in seconds earlier in
+the same session. Persephone's already-running service still had peers throughout.
 
-- A delegated agent's "it timed out" is not evidence the code is wrong. Codex reported a 30 s
-  metadata timeout for US-1524 and the implementation was correct; the same harness shape had
-  worked for US-1523 hours earlier. **Verification for the rest of this epic happens in the running
-  app**, and an out-of-app check is at best a smoke test.
-- D8's 30-second metadata bound is tighter than it looks. It was inherited from av-player without
-  measurement, and a two-tracker magnet can exceed it on a cold DHT while a twenty-tracker magnet
-  resolves in seconds. US-1526 or acceptance should record a real distribution before the number is
-  treated as settled.
+The first explanation written here was that `node.exe` was firewalled and `electron.exe` was not.
+**That was wrong**, and it was wrong in an instructive way: two variables were changed at once — the
+magnet (2 trackers → 20) *and* the process (Node → Electron) — and the result was attributed to the
+process without testing it. Checked afterwards:
+
+| Test | Result |
+|---|---|
+| Firewall rules for `node.exe` / `electron.exe` | **none exist**; no block rules either |
+| 20-tracker magnet from `node.exe` | metadata in **1 351 ms** |
+| 2-tracker magnet from `node.exe` | metadata in **2 182 ms** |
+
+Both magnets, both processes, seconds. The outage was a transient tracker/swarm condition that
+recovered on its own.
+
+Worth stating plainly because the board's engine model invites this confusion: a board service runs
+in `utilityProcess.fork()`, which is a **plain Node environment** — V8 and libuv, no Chromium and no
+browser network stack. Its sockets behave exactly as standalone Node's. Chromium governs only the
+board's iframe, which is CSP-locked to `connect-src 'self'` and never reaches the swarm. There is no
+"Electron networking" versus "Node networking" distinction to appeal to.
+
+Two consequences survive the correction:
+
+- **A delegated agent's "it timed out" is not evidence the code is wrong.** Codex reported a 30 s
+  metadata timeout for US-1524 and the implementation was correct. Verification for the rest of this
+  epic happens in the running app, and a green out-of-app check is a smoke test at best.
+- **D8's 30-second metadata bound is more brittle than it looks**, and this episode is evidence
+  *for* that rather than against it: a swarm can simply stop answering for a while, and the board's
+  only response today is a hard failure at 30 s. It was inherited from av-player without
+  measurement. US-1526 or acceptance should record a real distribution, and should decide whether a
+  retry is warranted, before the number is treated as settled.
 
 ### 2026-09-26 — D1 needed one more line than the reference implementation has
 
