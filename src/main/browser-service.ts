@@ -81,6 +81,14 @@ interface RegisteredWebview {
 // Active registrations: `${tabId}/${internalTabId}` → registration
 const registrations = new Map<string, RegisteredWebview>();
 
+/** True only for a Browser editor guest that was registered by the renderer. */
+export function isRegisteredBrowserWebContents(contents: WebContents): boolean {
+    for (const registration of registrations.values()) {
+        if (registration.webContents === contents) return true;
+    }
+    return false;
+}
+
 // Track senders that already have a "destroyed" listener to avoid stacking
 const watchedSenders = new WeakSet<WebContents>();
 

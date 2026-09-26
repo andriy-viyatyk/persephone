@@ -6,6 +6,7 @@ import { signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
 import { isSchemeRegistered } from "../../content/scheme-registry";
+import { boardEditorId } from "../../editors/board/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
@@ -29,6 +30,7 @@ export class RendererEventsService {
         // URL opening
         rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
         rendererEvents.eOpenPipelineCandidate.subscribe(this.handlePipelineCandidate);
+        rendererEvents.eOpenClaimedBrowserDownload.subscribe(this.handleClaimedBrowserDownload);
         rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
 
         // Quit handler
@@ -87,6 +89,14 @@ export class RendererEventsService {
 
         await guard("Failed to open URL", () =>
             app.events.openRawLink.sendAsync(createLinkData(url)),
+        );
+    };
+
+    private handleClaimedBrowserDownload = async (data: { url: string; boardRoot: string }) => {
+        await guard("Failed to open URL", () =>
+            app.events.openRawLink.sendAsync(
+                createLinkData(data.url, { target: boardEditorId(data.boardRoot) }),
+            ),
         );
     };
 

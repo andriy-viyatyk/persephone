@@ -437,8 +437,10 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                     `${issue.kind === "provider"
                         ? "Provider"
                         : issue.kind === "scheme"
-                          ? "Scheme"
-                          : issue.kind === "settings" ? "Settings" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
+                        ? "Scheme"
+                          : issue.kind === "settings"
+                            ? "Settings"
+                            : issue.kind === "browser-url-mask" ? "Browser URL mask" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
                     { size: "sm", color: "warning" },
                 ));
             }

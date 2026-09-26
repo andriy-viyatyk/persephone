@@ -23,7 +23,7 @@ export interface IBoardInfoCapabilityDeclaration {
 }
 
 export interface IBoardInfoRegistrationIssue {
-    readonly kind: "provider" | "scheme" | "capability" | "settings";
+    readonly kind: "provider" | "scheme" | "capability" | "settings" | "browser-url-mask";
     readonly name: string;
     readonly reason: string;
     readonly owner?: string;

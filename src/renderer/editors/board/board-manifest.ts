@@ -6,6 +6,7 @@ import {
     normalizeBoardRelativePath,
 } from "../../../shared/guides/mounted-source";
 import { normalizeVersionRequirement } from "../../../shared/version-utils";
+import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
 import type {
     BoardSettingDeclaration,
     BoardSettingType,
@@ -13,6 +14,7 @@ import type {
 } from "../../api/board-settings/types";
 
 export { normalizeBoardGuidesFolder, normalizeBoardRelativePath };
+export { matchesBrowserUrlMask };
 
 /** File name of the board-identity manifest, at the board folder root. */
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
@@ -114,6 +116,8 @@ export interface BoardManifest {
      * ".DRAWIO") into a suffix mask ("*.drawio"). Empty/absent → not a file-associated editor.
      */
     fileMasks?: string[];
+    /** Whole-URL globs for Browser downloads; independent of fileMasks. */
+    browserUrlMasks?: string[];
     /**
      * Optional FOLDER scope for `fileMasks` — the board claims a matching file only when the
      * folder CONTAINING it also matches one of these masks. Absent/empty → any folder (the
@@ -835,4 +839,21 @@ export async function writeBoardManifest(boardRoot: string, manifest: BoardManif
 export async function ensureBoardManifest(boardRoot: string): Promise<void> {
     if (await isBoardFolder(boardRoot)) return;
     await writeBoardManifest(boardRoot, defaultBoardManifest(fpBasename(boardRoot)));
+}
+
+export const MAX_BROWSER_URL_MASK_CHARS = 512;
+export const MAX_BROWSER_URL_MASKS = 64;
+
+/** Normalize whole-URL download claims without applying file-mask extension coercion. */
+export function normalizeBrowserUrlMasks(raw: unknown): string[] {
+    if (!Array.isArray(raw)) return [];
+    const out: string[] = [];
+    for (const entry of raw) {
+        if (typeof entry !== "string") continue;
+        const mask = entry.trim().toLowerCase();
+        if (!mask || mask.length > MAX_BROWSER_URL_MASK_CHARS) continue;
+        if (!out.includes(mask)) out.push(mask);
+        if (out.length >= MAX_BROWSER_URL_MASKS) break;
+    }
+    return out;
 }

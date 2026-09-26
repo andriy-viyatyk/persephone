@@ -1,6 +1,7 @@
 import { PageDragData, PageDescriptor, WindowPages } from "../shared/types";
 import {
     BoardArchiveDownloadRequest,
+    BrowserUrlMaskSnapshot,
     CommonFolder,
     DownloadEntry,
     OpenFileDialogParams,
@@ -131,6 +132,7 @@ export enum Endpoint {
     downloadBoardArchive = "downloadBoardArchive",
     cancelBoardDownload = "cancelBoardDownload",
     syncTrustedBoardSnapshot = "syncTrustedBoardSnapshot",
+    syncBrowserUrlMaskSnapshot = "syncBrowserUrlMaskSnapshot",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
     requestModuleService = "requestModuleService",
@@ -300,6 +302,8 @@ export type Api = {
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Private renderer-bootstrap snapshot; not a script-facing service API. */
     [Endpoint.syncTrustedBoardSnapshot]: (snapshot: TrustedBoardSnapshot) => Promise<void>;
+    /** Private renderer-bootstrap snapshot for synchronous Browser-download routing. */
+    [Endpoint.syncBrowserUrlMaskSnapshot]: (snapshot: BrowserUrlMaskSnapshot) => Promise<void>;
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
     [Endpoint.getModuleServiceStatuses]: () => Promise<BoardServiceStatus[]>;
     /** Request the renderer-only lease for a board module service. */
@@ -334,6 +338,7 @@ export enum EventEndpoint {
     eUpdateAvailable = "eUpdateAvailable",
     eOpenUrl = "eOpenUrl",
     eOpenPipelineCandidate = "eOpenPipelineCandidate",
+    eOpenClaimedBrowserDownload = "eOpenClaimedBrowserDownload",
     eOpenExternalUrl = "eOpenExternalUrl",
     eDownloadStarted = "eDownloadStarted",
     eDownloadProgress = "eDownloadProgress",
@@ -378,6 +383,7 @@ export type EventApi = {
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
     [EventEndpoint.eOpenUrl]: EventObject<string>;
     [EventEndpoint.eOpenPipelineCandidate]: EventObject<string>;
+    [EventEndpoint.eOpenClaimedBrowserDownload]: EventObject<{ url: string; boardRoot: string }>;
     [EventEndpoint.eOpenExternalUrl]: EventObject<string>;
     [EventEndpoint.eDownloadStarted]: EventObject<DownloadEntry>;
     [EventEndpoint.eDownloadProgress]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;

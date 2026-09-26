@@ -91,6 +91,10 @@ class RendererEvents implements EventApi {
         EventEndpoint.eOpenPipelineCandidate
     );
 
+    [EventEndpoint.eOpenClaimedBrowserDownload] = new RendererEventObject<{ url: string; boardRoot: string }>(
+        EventEndpoint.eOpenClaimedBrowserDownload
+    );
+
     [EventEndpoint.eOpenExternalUrl] = new RendererEventObject<string>(
         EventEndpoint.eOpenExternalUrl
     );

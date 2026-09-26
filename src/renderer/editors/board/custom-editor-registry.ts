@@ -17,6 +17,9 @@
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
+import { api } from "../../../ipc/renderer/api";
+import type { BrowserUrlMaskClaim as BrowserUrlMaskSnapshotClaim } from "../../../ipc/api-param-types";
+import { errMessage } from "../../../shared/utils";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
@@ -44,6 +47,7 @@ import {
     matchesBoardMasks,
     matchesContentMasks,
     matchesFolderEditorMasks,
+    normalizeBrowserUrlMasks,
     readBoardManifest,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
@@ -122,7 +126,7 @@ export interface CustomEditorIncompatibility {
     reason: string;
 }
 
-export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability" | "settings";
+export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability" | "settings" | "browser-url-mask";
 
 export interface CustomEditorRegistrationIssue {
     boardRoot: string;
@@ -154,9 +158,17 @@ export interface BoardSettingsRegistration {
     editorAssociation: BoardEditorAssociation | null;
 }
 
+export interface BrowserUrlMaskClaim {
+    boardRoot: string;
+    name: string;
+    masks: string[];
+}
+
 interface CustomEditorRegistryState {
     /** Every trusted and bundled board association, in trusted-list then bundled order. */
     entries: CustomEditorMatch[];
+    /** Accepted whole-URL download claims, in trusted-list then bundled order. */
+    browserUrlMaskClaims: BrowserUrlMaskClaim[];
     /** Active trusted and bundled boards with normalized Settings declarations. */
     settingsBoards: BoardSettingsRegistration[];
     /** Compatibility diagnostics retained for Board Info and future board listings. */
@@ -167,6 +179,7 @@ interface CustomEditorRegistryState {
 
 const defaultState: CustomEditorRegistryState = {
     entries: [],
+    browserUrlMaskClaims: [],
     settingsBoards: [],
     incompatibilities: [],
     registrationIssues: [],
@@ -258,6 +271,9 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
      *  list — leaving a just-trusted board unregistered. Only the newest generation may write. */
     private refreshGen = 0;
 
+    /** Main keeps the highest generation across renderer reloads; seed from the clock accordingly. */
+    private browserUrlMaskSnapshotGeneration = Date.now();
+
     constructor() {
         super(new TGlobalState(defaultState));
         // In-memory reactive subscription (NOT a filesystem watcher): re-enumerate on any
@@ -304,6 +320,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             origin: "trusted" | "bundled";
         }> = [];
         const entries: CustomEditorMatch[] = [];
+        const browserUrlMaskClaims: BrowserUrlMaskClaim[] = [];
+        const browserUrlMaskOwners = new Map<string, string>();
         const settingsBoards: BoardSettingsRegistration[] = [];
         const incompatibilities: CustomEditorIncompatibility[] = [];
         const registrationIntents: BoardRegistrationIntent[] = [];
@@ -329,6 +347,27 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 }
                 continue;
             }
+            const boardName = (manifest?.name && manifest.name.trim()) || fpBasename(root);
+            const acceptedBrowserUrlMasks: string[] = [];
+            for (const mask of normalizeBrowserUrlMasks(manifest?.browserUrlMasks)) {
+                const owner = browserUrlMaskOwners.get(mask);
+                if (owner !== undefined) {
+                    addRegistrationIssue(
+                        registrationIssues,
+                        root,
+                        "browser-url-mask",
+                        mask,
+                        `Browser URL mask "${mask}" is already owned by board "${owner}".`,
+                        owner,
+                    );
+                    continue;
+                }
+                browserUrlMaskOwners.set(mask, root);
+                acceptedBrowserUrlMasks.push(mask);
+            }
+            if (acceptedBrowserUrlMasks.length > 0) {
+                browserUrlMaskClaims.push({ boardRoot: root, name: boardName, masks: acceptedBrowserUrlMasks });
+            }
             for (const declaration of normalizeCapabilities(manifest?.capabilities)) {
                 capabilityRegistrationIntents.push({ boardRoot: root, declaration });
             }
@@ -348,7 +387,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 providerDeclarations.push({
                     type: declaration.type,
                     boardRoot: root,
-                    boardName: (manifest?.name && manifest.name.trim()) || fpBasename(root),
+                    boardName,
                     trusted: true,
                     source: "trusted",
                 });
@@ -360,7 +399,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             if (settingsDeclarations.length > 0) {
                 settingsBoards.push({
                     boardRoot: root,
-                    name: (manifest?.name && manifest.name.trim()) || fpBasename(root),
+                    name: boardName,
                     // `normalizeBoardSettings` drops the block unless the manifest carries both
                     // `author` and `name` (EPIC-111 S7), so reaching here means both are present
                     // and the identity is the portable one — not the install-dependent root path.
@@ -373,8 +412,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
             const name =
                 assoc.editorName ||
-                (manifest && typeof manifest.name === "string" && manifest.name.trim()) ||
-                fpBasename(root);
+                boardName;
             entries.push({
                 origin,
                 editorId: boardEditorId(root),
@@ -489,15 +527,32 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         }
         this.state.update((s) => {
             s.entries = entries;
+            s.browserUrlMaskClaims = browserUrlMaskClaims;
             s.settingsBoards = settingsBoards;
             s.incompatibilities = incompatibilities;
             s.registrationIssues = registrationIssues;
+        });
+        const snapshot: BrowserUrlMaskSnapshotClaim[] = browserUrlMaskClaims.map((claim) => ({
+            boardRoot: claim.boardRoot,
+            boardName: claim.name,
+            masks: [...claim.masks],
+        }));
+        void api.syncBrowserUrlMaskSnapshot({
+            generation: ++this.browserUrlMaskSnapshotGeneration,
+            claims: snapshot,
+        }).catch((error: unknown) => {
+            console.error(`Browser URL mask snapshot sync failed: ${errMessage(error)}`);
         });
     }
 
     /** All file-associated boards (sync, non-reactive). */
     get entries(): CustomEditorMatch[] {
         return this.state.get().entries;
+    }
+
+    /** Accepted whole-URL download claims in registration order. */
+    get browserUrlMaskClaims(): readonly BrowserUrlMaskClaim[] {
+        return this.state.get().browserUrlMaskClaims;
     }
 
     /** Active trusted and bundled boards with normalized user-facing settings. */

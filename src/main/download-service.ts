@@ -2,20 +2,36 @@ import path from "node:path";
 import fs from "node:fs";
 import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents } from "electron";
 import { DownloadEntry } from "../ipc/api-param-types";
+import type { BrowserUrlMaskSnapshot } from "../ipc/api-param-types";
 import { EventEndpoint } from "../ipc/api-types";
+import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
 import { getDataFolder, preparePath } from "./utils";
 import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
 import { withNativeDialogSync } from "./native-dialog-tracker";
+import { isRegisteredBrowserWebContents } from "./browser-service";
 
 const PERSIST_FILE = "recentDownloads.json";
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
 
+function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, data: unknown): void {
+    const hostContents = (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
+    try {
+        if (hostContents && !hostContents.isDestroyed()) {
+            hostContents.send(endpoint, data);
+        }
+    } catch {
+        // The host renderer may be destroyed before the webview is disposed.
+    }
+}
+
 class DownloadService {
     private downloads = new Map<string, { entry: DownloadEntry; item?: DownloadItem }>();
     private hookedSessions = new WeakSet<Session>();
     private idCounter = 0;
+    private browserUrlMaskSnapshot: BrowserUrlMaskSnapshot | undefined;
+    private browserUrlMaskSnapshotGeneration = -1;
 
     init(): void {
         this.loadPersisted();
@@ -31,6 +47,19 @@ class DownloadService {
         ses.on("will-download", (_event, item, webContents) => {
             this.handleWillDownload(item, webContents);
         });
+    }
+
+    syncBrowserUrlMaskSnapshot(snapshot: BrowserUrlMaskSnapshot): void {
+        if (snapshot.generation < this.browserUrlMaskSnapshotGeneration) return;
+        this.browserUrlMaskSnapshotGeneration = snapshot.generation;
+        this.browserUrlMaskSnapshot = {
+            generation: snapshot.generation,
+            claims: snapshot.claims.map((claim) => ({
+                boardRoot: claim.boardRoot,
+                boardName: claim.boardName,
+                masks: [...claim.masks],
+            })),
+        };
     }
 
     getDownloads(): DownloadEntry[] {
@@ -84,6 +113,36 @@ class DownloadService {
     }
 
     private handleWillDownload(item: DownloadItem, webContents: WebContents): void {
+        if (!isRegisteredBrowserWebContents(webContents)) {
+            return this.handleOrdinaryDownload(item, webContents);
+        }
+
+        const url = item.getURL();
+        const claim = this.findBrowserUrlClaim(url);
+        if (claim) {
+            item.cancel();
+            sendToBrowserHost(webContents, EventEndpoint.eOpenClaimedBrowserDownload, {
+                url,
+                boardRoot: claim.boardRoot,
+            });
+            sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
+                message: `${claim.boardName} claimed this download and opened its source URL.`,
+                type: "info",
+            });
+            return;
+        }
+
+        return this.handleOrdinaryDownload(item, webContents);
+    }
+
+    private findBrowserUrlClaim(url: string): BrowserUrlMaskSnapshot["claims"][number] | undefined {
+        for (const claim of this.browserUrlMaskSnapshot?.claims ?? []) {
+            if (claim.masks.some((mask) => matchesBrowserUrlMask(url, mask))) return claim;
+        }
+        return undefined;
+    }
+
+    private handleOrdinaryDownload(item: DownloadItem, webContents: WebContents): void {
         const id = this.generateId();
         let lastProgressSent = 0;
 

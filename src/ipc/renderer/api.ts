@@ -1,6 +1,7 @@
 import { PageDragData, WindowPages } from "../../shared/types";
 import {
     BoardArchiveDownloadRequest,
+    BrowserUrlMaskSnapshot,
     CommonFolder,
     DownloadEntry,
     OpenFileDialogParams,
@@ -528,6 +529,10 @@ class ApiCalls implements Api {
 
     syncTrustedBoardSnapshot = async (snapshot: TrustedBoardSnapshot) => {
         return executeOnce<void>(Endpoint.syncTrustedBoardSnapshot, snapshot);
+    };
+
+    syncBrowserUrlMaskSnapshot = async (snapshot: BrowserUrlMaskSnapshot) => {
+        return executeOnce<void>(Endpoint.syncBrowserUrlMaskSnapshot, snapshot);
     };
 
     getModuleServiceStatuses = async () => {
