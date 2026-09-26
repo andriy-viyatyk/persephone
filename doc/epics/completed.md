@@ -1,3 +1,52 @@
+## EPIC-113 — A board provider can feed Persephone's own editors
+
+Completed 2026-09-26. Roadmap Phase E, part 1. [Epic document](EPIC-113.md).
+
+- [x] US-1517: A board-scheme link resolves to the editor its file name deserves, not always Monaco
+- [x] US-1474: Ranged reads pushed into a board-implemented provider (`readRange` over the module service)
+- [x] US-1518: A content read has no deadline; cancellation is what releases it
+- [x] US-1521: `persephone.content.open(link)` -> `{ url, size, contentType }`
+- [x] US-1519: The built-in media player plays from a pipe
+- [x] US-1520: Close the documented gaps
+
+A link a board hands to `openRawLink` now opens in the editor its file name deserves, and that
+editor's pipe pulls the bytes back out of the board a range at a time. No board is written here;
+the torrent board is EPIC-114. **All nine acceptance items were verified in the running app** --
+see the epic's acceptance table, which records measurements rather than ticks.
+
+The proof that matters: a `.mp3` served by a board provider played in the built-in player with
+`readBinary: 0` and `readRange: 5`, and **VLC launched with the exact session id the in-page
+`<audio>` element was already using**, taking `readRange` to 10 while `readBinary` stayed 0. One
+session, two consumers, bounded ranges throughout -- which is what stops a torrent being
+downloaded twice to watch it once. That scenario is the one that decided D10.
+
+**Three of the epic's own decisions turned out to be wrong, and each was corrected in place rather
+than quietly edited.**
+
+- **D6 claimed the escape hatch shares a budget** with the board's own control requests. It does
+  not -- the renderer pool, the main supervisor pool and the main storage adapter are three
+  separate maps in two processes. Found while investigating US-1518.
+- **D10 said "the VLC flow itself needs no work."** `openInVlc()` built its own config and opened a
+  *second* session. Found by checking the claim instead of repeating it.
+- **US-1518's own no-deadline rule had a hole.** `stat` kept its deadline while `readBinary` and
+  `readRange` lost theirs, so `content.open()` without `timeoutMs` died at 10 007 ms despite D6.
+  The cause was not where it looked: `module-service-host.mjs` never receives a per-request
+  deadline, so "no deadline" was expressed there as a hardcoded operation list. Fixed by splitting
+  that one predicate into the two questions it was conflating -- released-by-cancellation, and
+  exempt-from-the-control-budget -- which are not the same set.
+
+Two fixture boards make the epic verifiable without EPIC-114, and they are the reason the
+acceptance table exists at all: `range-provider-test` (ranged, stallable, >256 MB, and able to
+serve a real file's bytes so media is decodable) and `content-open-test-fixture`, a deliberately
+`simple` board -- the first is `stream-host` and therefore could not prove the case US-1521 exists
+for.
+
+**Deferred by user decision, and still open:** the pipe-level loading indicator. A source that
+stalls on its *first* read opens no page at all, so there is nothing to attach an indicator to.
+Closing that means opening the editor as soon as the link resolves and building the pipe
+afterwards -- a change to the open path rather than a spinner. US-1517 already did the half that
+unblocks it: which editor a link deserves is now decided without reading a byte.
+
 ## EPIC-110 — Excalidraw extraction, part 2: remove `editors/draw` and React
 
 Completed 2026-09-25. Roadmap Phase F, part 2. [Epic document](EPIC-110.md).
