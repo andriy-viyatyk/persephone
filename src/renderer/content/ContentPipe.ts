@@ -59,8 +59,8 @@ export class ContentPipe implements IContentPipe {
 
     // ── Read ────────────────────────────────────────────────────────
 
-    async readBinary(): Promise<Buffer> {
-        let data = await this.provider.readBinary();
+    async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
+        let data = await this.provider.readBinary(options);
         for (const transformer of this._transformers) {
             data = await transformer.read(data);
         }
@@ -74,9 +74,12 @@ export class ContentPipe implements IContentPipe {
         return decoded.content;
     }
 
-    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+    createReadStream(
+        range?: { start: number; end: number },
+        options?: { signal?: AbortSignal },
+    ): NodeJS.ReadableStream {
         if (this._transformers.length === 0 && this.provider.createReadStream) {
-            return this.provider.createReadStream(range);
+            return this.provider.createReadStream(range, options);
         }
 
         const { Readable } = require("stream") as typeof import("stream");

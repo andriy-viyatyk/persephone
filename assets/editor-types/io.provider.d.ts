@@ -36,16 +36,23 @@ export interface IProvider {
     readonly restorable: boolean;
     /** Whether this provider supports writing. */
     readonly writable: boolean;
-    /** Read binary content from the source. */
-    readBinary(): Promise<Buffer>;
+    /** Read binary content from the source. `options.signal`, when present, is aborted once
+     *  Persephone stops waiting on this read (page close, cancellation); honoring it is optional,
+     *  tolerating its presence is mandatory (US-1518). */
+    readBinary(options?: { signal?: AbortSignal }): Promise<Buffer>;
     /**
      * Create a readable stream from the source with an optional byte range.
      * Used for large binary content (video, audio) where loading the full
      * buffer into memory is impractical.
      * Optional — providers that do not support streaming should omit this method.
      * The range end is inclusive (same as the HTTP Range header convention).
+     * `options.signal`, when present, is aborted once Persephone stops waiting on this read;
+     * honoring it is optional, tolerating its presence is mandatory (US-1518).
      */
-    createReadStream?(range?: { start: number; end: number }): NodeJS.ReadableStream;
+    createReadStream?(
+        range?: { start: number; end: number },
+        options?: { signal?: AbortSignal },
+    ): NodeJS.ReadableStream;
     /** Write binary content to the source. Only present if writable. */
     writeBinary?(data: Buffer): Promise<void>;
     /** Get resource metadata (size, modified date, existence). */

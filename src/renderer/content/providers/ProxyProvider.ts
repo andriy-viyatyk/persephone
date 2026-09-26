@@ -112,11 +112,15 @@ export class ProxyProvider implements IProvider {
     private async request(
         operation: ProviderOperation,
         extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data" | "range">> = {},
+        deadlineMs?: number,
+        signal?: AbortSignal,
     ): Promise<Extract<ProviderResult, { ok: true }>> {
         try {
             const result: unknown = await moduleService.request(
                 this.boardRoot,
                 this.requestMessage(operation, extras),
+                deadlineMs,
+                signal,
             );
             if (!isRecord(result) || result.kind !== "provider-result" || typeof result.ok !== "boolean") {
                 throw invalidResult(operation);
@@ -131,8 +135,10 @@ export class ProxyProvider implements IProvider {
         }
     }
 
-    async readBinary(): Promise<Buffer> {
-        const result = await this.request("readBinary");
+    async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
+        // Infinity is the "no deadline" sentinel (US-1518 decision 2) — readBinary/readRange are
+        // the only two operations released this way; everything else keeps the 10s default.
+        const result = await this.request("readBinary", {}, Infinity, options?.signal);
         if (result.operation !== "readBinary" || !isUint8Array(result.data)) {
             throw invalidResult("readBinary");
         }
@@ -176,12 +182,18 @@ export class ProxyProvider implements IProvider {
      *  true` before the capability is known; `rangeReadable` must not, or a board could declare
      *  ranging support its service module never implements and defeat D5's "absence is the buffered
      *  path" guarantee. Do not add a config fallback to "fix" this inconsistency. */
-    get createReadStream(): ((range?: { start: number; end: number }) => NodeJS.ReadableStream) | undefined {
+    get createReadStream(): ((
+        range?: { start: number; end: number },
+        options?: { signal?: AbortSignal },
+    ) => NodeJS.ReadableStream) | undefined {
         if (!this.rangeReadable) return undefined;
-        return (range) => this.buildRangeStream(range);
+        return (range, options) => this.buildRangeStream(range, options?.signal);
     }
 
-    private buildRangeStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+    private buildRangeStream(
+        range?: { start: number; end: number },
+        signal?: AbortSignal,
+    ): NodeJS.ReadableStream {
         // An UNRANGED call must keep behaving exactly as it did before this provider gained
         // `createReadStream`. `IContentPipe.createReadStream(range?)` passes `range` straight
         // through (ContentPipe.ts:77-80) and is public scripting surface (`io.createPipe`), so a
@@ -189,14 +201,14 @@ export class ProxyProvider implements IProvider {
         // Erroring here instead would regress it; `readBinary()` keeps the same 256 MB ceiling
         // that fallback always had. `board-pipe-handler.ts` itself always supplies a bounded
         // range (readChunk():176-181), so the ranged branch is the one that carries the traffic.
-        const fetched = range ? this.fetchRange(range) : this.readBinary();
+        const fetched = range ? this.fetchRange(range, signal) : this.readBinary({ signal });
         return Readable.from((async function* () {
             yield await fetched;
         })());
     }
 
-    private async fetchRange(range: { start: number; end: number }): Promise<Buffer> {
-        const result = await this.request("readRange", { range });
+    private async fetchRange(range: { start: number; end: number }, signal?: AbortSignal): Promise<Buffer> {
+        const result = await this.request("readRange", { range }, Infinity, signal);
         if (result.operation !== "readRange" || !isUint8Array(result.data)) {
             throw invalidResult("readRange");
         }

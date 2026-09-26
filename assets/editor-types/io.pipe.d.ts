@@ -34,10 +34,16 @@ export interface IContentPipe {
     removeTransformer(type: string): ITransformer | undefined;
     /** Serialize pipe to a descriptor (only includes persistent transformers). */
     toDescriptor(): IPipeDescriptor;
-    /** Read binary content — provider.readBinary() piped through all transformers. */
-    readBinary(): Promise<Buffer>;
-    /** Create a stream of logical pipe bytes for an inclusive range. */
-    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream;
+    /** Read binary content — provider.readBinary() piped through all transformers.
+     *  `options.signal`, when present, is forwarded to the underlying provider where supported
+     *  (US-1518). */
+    readBinary(options?: { signal?: AbortSignal }): Promise<Buffer>;
+    /** Create a stream of logical pipe bytes for an inclusive range. `options.signal`, when
+     *  present, is forwarded to the underlying provider where supported (US-1518). */
+    createReadStream(
+        range?: { start: number; end: number },
+        options?: { signal?: AbortSignal },
+    ): NodeJS.ReadableStream;
     /** Read logical pipe metadata, including the post-transform size when known. */
     stat(): Promise<IProviderStat>;
     /** Read as text — readBinary() then decode using detected encoding (auto-detected on first read, defaults to UTF-8). */

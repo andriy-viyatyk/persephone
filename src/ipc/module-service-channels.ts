@@ -141,11 +141,24 @@ export interface ProviderCapabilities {
     rangeReadable: boolean;
 }
 
+/** Pushed by the host whenever the number of in-flight `readBinary`/`readRange` requests for a
+ *  lease changes (US-1518 decision 10). A count, not a per-resource breakdown — D6 only requires
+ *  that "a board can know a read is outstanding," not which one. */
+export interface ProviderActiveContentReadCount {
+    kind: "content-read-count";
+    count: number;
+}
+
 export type RendererServiceMessage =
     | { kind: "hello"; generation: number; leaseNonce: string }
     | { kind: "hello-ack"; generation: number; leaseNonce: string }
     | { kind: "request"; requestId: string; message: unknown }
+    /** Renderer → host only, no response expected. Frees the matching `readBinary`/`readRange`
+     *  request's slot and best-effort aborts the board's implementation (US-1518). Never sent for
+     *  control operations (`writeBinary`/`stat`/`watch*`), which keep their 10s deadline instead. */
+    | { kind: "cancel"; requestId: string }
     | { kind: "response"; requestId: string; result?: unknown; error?: unknown }
     | ProviderEvent
     | ProviderCapabilities
+    | ProviderActiveContentReadCount
     | { kind: "lease-lost"; reason: RendererLeaseLostReason };

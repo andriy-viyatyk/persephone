@@ -18,7 +18,10 @@ import { fpNormalizeForCompare } from "../core/utils/file-path";
 interface PendingRequest {
     resolve: (value: unknown) => void;
     reject: (reason: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
+    timer?: ReturnType<typeof setTimeout>;
+    /** `readBinary`/`readRange` — excluded from the `MAX_OUTSTANDING_REQUESTS_PER_SERVICE` cap
+     *  (US-1518 decision 9); everything else (`writeBinary`/`stat`/`watch*`) counts against it. */
+    isContentRead: boolean;
 }
 
 interface Acquisition {
@@ -47,6 +50,9 @@ interface ServiceLeaseClient {
     watchIntents: Map<string, ProviderWatchIntent>;
     requestNumber: number;
     disposed: boolean;
+    /** Live count of outstanding `readBinary`/`readRange` requests, pushed by the host via
+     *  `content-read-count` (US-1518 decision 10). */
+    activeContentReads: number;
 }
 
 const clients = new Map<string, ServiceLeaseClient>();
@@ -65,6 +71,7 @@ const lifecycleCodes = new Set([
     "permission-denied",
     "service-busy",
     "renderer-port-attach-failed",
+    "provider-cancelled",
 ]);
 
 function normalizeRoot(boardRoot: string): string {
@@ -130,6 +137,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             watchIntents: new Map(),
             requestNumber: 0,
             disposed: false,
+            activeContentReads: 0,
         };
         clients.set(key, client);
     }
@@ -208,10 +216,16 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
         loseLease(client, leaseLossCode(message.reason));
         return;
     }
+    if (message.kind === "content-read-count") {
+        client.activeContentReads = typeof message.count === "number" && message.count >= 0
+            ? message.count
+            : client.activeContentReads;
+        return;
+    }
     if (message.kind !== "response") return;
     const pending = client.pending.get(message.requestId);
     if (!pending) return;
-    clearTimeout(pending.timer);
+    if (pending.timer) clearTimeout(pending.timer);
     client.pending.delete(message.requestId);
     if ("error" in message) {
         pending.reject(errorForCode(errorCode(message.error)));
@@ -222,7 +236,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
 
 function rejectPending(client: ServiceLeaseClient, code: string): void {
     for (const [requestId, pending] of client.pending) {
-        clearTimeout(pending.timer);
+        if (pending.timer) clearTimeout(pending.timer);
         client.pending.delete(requestId);
         pending.reject(errorForCode(code));
     }
@@ -235,6 +249,7 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     client.state = "lost";
     client.capabilities.clear();
     client.rangeCapabilities.clear();
+    client.activeContentReads = 0;
     for (const intent of client.watchIntents.values()) intent.acknowledged = false;
     if (port) {
         port.onmessage = null;
@@ -281,25 +296,71 @@ function acquire(boardRoot: string): Promise<void> {
     return acquisition;
 }
 
-function request(boardRoot: string, message: unknown, deadlineMs?: number): Promise<unknown> {
+function isContentReadOperation(message: unknown): boolean {
+    if (!message || typeof message !== "object") return false;
+    const operation = (message as Partial<ProviderRequest>).operation;
+    return operation === "readBinary" || operation === "readRange";
+}
+
+function request(
+    boardRoot: string,
+    message: unknown,
+    deadlineMs?: number,
+    signal?: AbortSignal,
+): Promise<unknown> {
     if (typeof boardRoot !== "string" || boardRoot.length === 0) {
         return Promise.reject(errorForCode("service-not-declared"));
     }
     ensureInitialized();
     const client = getClient(boardRoot);
-    if (client.pending.size >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
-        return Promise.reject(errorForCode("service-busy"));
+    const isContentRead = isContentReadOperation(message);
+    if (!isContentRead) {
+        let controlCount = 0;
+        for (const pending of client.pending.values()) {
+            if (!pending.isContentRead) controlCount++;
+        }
+        if (controlCount >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
+            return Promise.reject(errorForCode("service-busy"));
+        }
     }
     const requestId = `renderer-${++client.requestNumber}`;
-    const timeout = Number.isFinite(deadlineMs) && (deadlineMs ?? 0) > 0
-        ? deadlineMs as number
-        : SERVICE_REQUEST_DEADLINE_MS;
+    // Infinity is the "no deadline" sentinel (US-1518 decision 2). It deliberately fails this
+    // guard's old shape (Number.isFinite(Infinity) === false), so a call site that forgets to
+    // pass it falls back to SERVICE_REQUEST_DEADLINE_MS — today's behavior — rather than hanging
+    // forever. Do not "simplify" this into a uniform branch.
+    const timeout = deadlineMs === Infinity
+        ? undefined
+        : Number.isFinite(deadlineMs) && (deadlineMs ?? 0) > 0
+            ? deadlineMs as number
+            : SERVICE_REQUEST_DEADLINE_MS;
     return new Promise<unknown>((resolve, reject) => {
-        const timer = setTimeout(() => {
+        const timer = timeout === undefined ? undefined : setTimeout(() => {
             client.pending.delete(requestId);
             reject(errorForCode("service-timeout"));
         }, timeout);
-        client.pending.set(requestId, { resolve, reject, timer });
+        const onAbort = (): void => {
+            if (!client.pending.delete(requestId)) return;
+            if (timer) clearTimeout(timer);
+            reject(errorForCode("provider-cancelled"));
+            if (client.port && client.state === "attached") {
+                try {
+                    client.port.postMessage({ kind: "cancel", requestId } satisfies RendererServiceMessage);
+                } catch {
+                    // The port may already be gone; loseLease() will have rejected this already.
+                }
+            }
+        };
+        if (signal) signal.addEventListener("abort", onAbort, { once: true });
+        const settle = (fn: () => void): void => {
+            if (signal) signal.removeEventListener("abort", onAbort);
+            fn();
+        };
+        client.pending.set(requestId, {
+            resolve: (value) => settle(() => resolve(value)),
+            reject: (reason) => settle(() => reject(reason)),
+            timer,
+            isContentRead,
+        });
         void acquire(boardRoot).then(() => {
             const pending = client.pending.get(requestId);
             if (!pending || !client.port || client.state !== "attached") return;
@@ -311,7 +372,7 @@ function request(boardRoot: string, message: unknown, deadlineMs?: number): Prom
         }, (error: unknown) => {
             const pending = client.pending.get(requestId);
             if (!pending) return;
-            clearTimeout(pending.timer);
+            if (pending.timer) clearTimeout(pending.timer);
             client.pending.delete(requestId);
             pending.reject(errorForCode(errorCode(error)));
         });
@@ -411,6 +472,13 @@ function providerRangeReadable(boardRoot: string, type: string): boolean | undef
     return client?.rangeCapabilities.get(type);
 }
 
+/** Live count of `readBinary`/`readRange` requests currently outstanding against this board's
+ *  service (US-1518 decision 10). Mirrors `providerWritable()`/`providerRangeReadable()`'s shape —
+ *  a plain getter, no new subscription primitive. */
+function activeContentReads(boardRoot: string): number {
+    return clients.get(normalizeRoot(boardRoot))?.activeContentReads ?? 0;
+}
+
 function dispose(): void {
     portSubscription?.();
     statusSubscription?.();
@@ -429,5 +497,6 @@ export const moduleService = {
     subscribeProvider,
     providerWritable,
     providerRangeReadable,
+    activeContentReads,
     dispose,
 };

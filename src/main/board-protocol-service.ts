@@ -287,10 +287,23 @@ function logBoardDocMissing(root: string, rel: string, reason: string): void {
     }
 }
 
-async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string): Promise<Response> {
+async function serveBoardPipe(
+    host: string,
+    pageId: string,
+    rangeHeader?: string,
+    requestSignal?: AbortSignal,
+): Promise<Response> {
+    // One AbortController per HTTP request, covering the first read and every continuation read
+    // inside the stream's pull loop. Aborted from two sources: the inbound Request's own signal,
+    // and the response ReadableStream's cancel() algorithm — the mechanism the Streams spec fires
+    // when the consumer (Chromium) abandons an in-flight response, e.g. a <video> seek that
+    // supersedes the previous Range request without the page ever closing (US-1518 section 7a).
+    const abort = new AbortController();
+    requestSignal?.addEventListener("abort", () => abort.abort(), { once: true });
+
     let first: BoardPipeReadReply;
     try {
-        first = await boardPipeService.read(host, pageId, rangeHeader);
+        first = await boardPipeService.read(host, pageId, rangeHeader, undefined, abort.signal);
     } catch (error: unknown) {
         const status = error instanceof BoardPipeError ? error.status : 503;
         return new Response(status === 404 ? "Not found" : errMessage(error, "Board pipe unavailable."), { status });
@@ -350,6 +363,7 @@ async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string
                     if (!first.range) throw new Error("board-pipe-missing-range");
                     let nextStart = first.range.end + 1;
                     while (nextStart <= requestedRange.end) {
+                        if (abort.signal.aborted) return; // consumer gone; stop asking for more
                         const nextEnd = Math.min(
                             requestedRange.end,
                             nextStart + MAX_BOARD_PIPE_CHUNK_BYTES - 1,
@@ -359,6 +373,7 @@ async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string
                             pageId,
                             undefined,
                             { start: nextStart, end: nextEnd },
+                            abort.signal,
                         );
                         if (chunk.ok === false) throw new BoardPipeError(chunk.status, chunk.error);
                         if (!chunk.range
@@ -375,9 +390,13 @@ async function serveBoardPipe(host: string, pageId: string, rangeHeader?: string
                     }
                     controller.close();
                 } catch (error: unknown) {
+                    if (abort.signal.aborted) return; // cancellation, not a real failure — nothing to report
                     controller.error(new Error(errMessage(error, "Board pipe unavailable.")));
                 }
             })();
+        },
+        cancel(reason: unknown) {
+            abort.abort(reason);
         },
     });
     return new Response(body, { status, headers });
@@ -394,7 +413,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
         } catch {
             return new Response("Not found", { status: 404 });
         }
-        return serveBoardPipe(host, pageId, request.headers.get("Range") || undefined);
+        return serveBoardPipe(host, pageId, request.headers.get("Range") || undefined, request.signal);
     }
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });

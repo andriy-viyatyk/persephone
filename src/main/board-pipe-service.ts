@@ -1,6 +1,8 @@
 import type { WebContents } from "electron";
 import {
+    BOARD_PIPE_CANCEL_CHANNEL,
     BOARD_PIPE_READ_CHANNEL,
+    type BoardPipeCancelMessage,
     type BoardPipeReadReply,
     type BoardPipeReadRequest,
 } from "../ipc/board-pipe-channels";
@@ -62,10 +64,14 @@ class BoardPipeService {
         pageId: string,
         rangeHeader?: string,
         range?: ByteRange,
+        signal?: AbortSignal,
     ): Promise<BoardPipeReadReply> {
         const owner = this.owners.get(pageId);
         if (!owner || owner.host !== host || owner.webContents.isDestroyed()) {
             return Promise.reject(new BoardPipeError(404, "Board pipe resource not found."));
+        }
+        if (signal?.aborted) {
+            return Promise.reject(new BoardPipeError(503, "Board pipe read was cancelled."));
         }
 
         const requestId = `board-pipe-${Date.now()}-${++this.requestSequence}`;
@@ -76,16 +82,43 @@ class BoardPipeService {
             ...(range !== undefined ? { range } : {}),
         };
         return new Promise<BoardPipeReadReply>((resolve, reject) => {
+            let settled = false;
+            const onAbort = (): void => {
+                if (settled || !this.pending.delete(requestId)) return;
+                settled = true;
+                reject(new BoardPipeError(503, "Board pipe read was cancelled."));
+                try {
+                    owner.webContents.send(
+                        BOARD_PIPE_CANCEL_CHANNEL,
+                        { requestId } satisfies BoardPipeCancelMessage,
+                    );
+                } catch {
+                    // The renderer may already be gone; nothing left to cancel.
+                }
+            };
+            signal?.addEventListener("abort", onAbort, { once: true });
             this.pending.set(requestId, {
                 pageId,
                 webContents: owner.webContents,
-                resolve,
-                reject,
+                resolve: (value) => {
+                    if (settled) return;
+                    settled = true;
+                    signal?.removeEventListener("abort", onAbort);
+                    resolve(value);
+                },
+                reject: (error) => {
+                    if (settled) return;
+                    settled = true;
+                    signal?.removeEventListener("abort", onAbort);
+                    reject(error);
+                },
             });
             try {
                 owner.webContents.send(BOARD_PIPE_READ_CHANNEL, request);
             } catch (error) {
                 this.pending.delete(requestId);
+                settled = true;
+                signal?.removeEventListener("abort", onAbort);
                 reject(new BoardPipeError(503, "The board renderer is unavailable."));
             }
         });

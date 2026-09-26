@@ -287,10 +287,19 @@ interface PersephoneProviderApi {
     /** Always throws in a board frame. Function-valued provider implementations must remain in
      * the module service; structured-clone bridge RPC cannot carry their methods. */
     register(type: string, implementation: {
-        readBinary(config: Record<string, unknown>): Promise<Uint8Array> | Uint8Array;
+        /** `options.signal`, when present, is aborted once Persephone stops waiting on this read
+         *  (page close, board teardown, an explicit cancel). Honoring it is optional — it lets a
+         *  cooperative implementation stop real work early — but tolerating its presence is
+         *  mandatory: the platform releases the request either way (US-1518). An implementation
+         *  written before this option existed keeps working unchanged. */
+        readBinary(
+            config: Record<string, unknown>,
+            options?: { signal?: AbortSignal },
+        ): Promise<Uint8Array> | Uint8Array;
         readRange?(
             config: Record<string, unknown>,
             range: { start: number; end: number },
+            options?: { signal?: AbortSignal },
         ): Promise<Uint8Array> | Uint8Array;
         writeBinary?(config: Record<string, unknown>, data: Uint8Array): Promise<void> | void;
         stat?(config: Record<string, unknown>): Promise<{

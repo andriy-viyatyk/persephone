@@ -267,16 +267,27 @@ Most of those signals already exist and already reject pending requests:
 So what US-1518 must build is the **cancel message** (the missing half of page-close) and one thing
 the earlier framing did not surface:
 
-**The escape hatch shares a budget with the thing it cancels — this is the trap.** Provider reads
-from the renderer go over the MessagePort path (`module-service.ts:280-313`) into a
-`client.pending` map capped at `MAX_OUTSTANDING_REQUESTS_PER_SERVICE` = 32. The board frame's own
-`persephone.service.request()` calls — status, metadata, **and "delete this torrent"** — share that
-map and that cap. Enough forever-waiting reads and the board's control requests fail with
-`service-busy`: the board goes blind, and the explicit-delete escape hatch is blocked by exactly
-the reads it exists to release. It needs ~32 wedged pages, so it is unlikely — but the failure mode
-is the board becoming uncontrollable at the moment the user needs to control it, so **waiting reads
-must not consume the control-plane budget.** Separate accounting for streaming reads, or a reserved
-control slot; US-1518 decides which.
+**CORRECTED 2026-09-26, during US-1518's investigation.** The paragraph that stood here claimed
+the board's own control requests — status, metadata and *delete this torrent* — share the 32-slot
+`client.pending` map with waiting provider reads, so enough stalled reads would block the very
+escape hatch meant to release them. **That is wrong, and the source says so explicitly.**
+`app.boards.requestService()` and the board frame's `persephone.service.request()` are routed
+through **main**, not over the renderer MessagePort lease — `boards.ts:411-419` carries a comment
+saying exactly that, and gives the reason: a service is not obliged to implement the lease port at
+all, so routing script and agent requests over it made every such call fail. They land in the
+supervisor's `record.requests` (`module-service-supervisor.ts:328`) — a different map, in a
+different process, over a different transport from the renderer's `client.pending`
+(`module-service.ts:290`). The host confirms it from the other end: its `parentPort` handler
+answers only `attach-renderer` and `drop-renderer`, so a service request over that channel is
+answered by the board's own service module, never by the pooled lease path.
+
+**The real risk is narrower, and survives.** Both pools are capped at
+`MAX_OUTSTANDING_REQUESTS_PER_SERVICE` = 32, and the renderer pool genuinely can be exhausted by
+stalled reads — at which point `stat()` or a read for a *different file of the same board* fails
+`service-busy`. That is still worth fixing, and the same accounting split fixes it; it simply is
+not the dramatic "the board goes blind at the moment the user needs to control it" failure that
+was recorded here. So the requirement US-1518 carries forward is narrower too: **waiting reads
+must not consume the budget ordinary provider operations need.**
 
 **Plumbing.** `deadlineMs` is already a parameter on both `request()` functions, but
 `Number.isFinite(deadlineMs) && deadlineMs > 0` means `Infinity` **and** `0` both fall back to the
@@ -652,3 +663,40 @@ implementation detail, not design.)*
 - Two cosmetic defects noticed while verifying, neither in scope here, both worth a look later: a
   board-scheme tab is titled with the query string included (`notes.md?size=200`), and the media
   player titles its tab `Video Player` rather than the file name. Recorded, not fixed.
+- US-1518 implemented and **verified by measurement**: the fixture's `delay=20000` scenario now
+  completes in 20 074 ms with no error, where before this task every provider read failed at
+  ~10 005 ms (`SERVICE_REQUEST_DEADLINE_MS`). D6's "a content read waits as long as the content
+  takes" is now true in the running app rather than on paper.
+- **D6's correction, recorded above in place.** The claim that waiting reads could block the board's
+  own *delete* action was wrong: `app.boards.requestService()` and the board frame's
+  `persephone.service.request()` route through main (`boards.ts:411-419` says so explicitly, with
+  the reason), landing in `record.requests` (`module-service-supervisor.ts:328`) — a different map,
+  process and transport from the renderer's `client.pending` (`module-service.ts:290`). The real
+  risk is narrower and still addressed. Found during US-1518's investigation.
+- A **fourth** deadline site was found that no earlier reading of this epic had named:
+  `handleRendererRequest()` in `module-service-host.mjs` runs its own `setTimeout(…, deadlineMs)`
+  independent of `withDeadline()`. Removing only the three sites D6 listed would have left the fix
+  silently incomplete.
+
+### 2026-09-26 — a consequence of D6 the user should decide on
+
+**A source that stalls on its FIRST read now opens no page at all, and there is nothing to close.**
+Measured, not inferred: `pages.openUrl()` resolves only *after* the first read completes — the
+20 s scenario returned at 20 074 ms and the tab appeared only then. The content pipeline creates
+the page after resolving content, so while the first read is outstanding there is no tab, no
+spinner and no error.
+
+This is **pre-existing pipeline behaviour, not something US-1518 introduced** — but US-1518 removes
+the bound that was hiding it. Before, a dead source failed at 10 s with a visible error. Now it
+waits forever, and D6's stated escape hatch ("the user closes the page") does not exist for this
+case, because no page was ever created. Clicking a file in a torrent whose swarm has no seeders
+would look exactly like clicking nothing at all.
+
+The follow-up already deferred by user decision — *a pipe-level loading indicator*, recorded in the
+roadmap's "After the roadmap" section, decision deferred until after testing the torrent board — is
+what closes this, and this measurement makes it concrete rather than speculative. **It is now the
+difference between "slow" and "appears broken", so it is worth reconsidering as in-scope for
+EPIC-114 rather than after it.** Not changed here; flagged for the user.
+
+Deliberately NOT worked around by keeping a deadline on the first read: that would reinstate the
+arbitrary number D6 removed, and it would fire exactly where the user said waiting is correct.

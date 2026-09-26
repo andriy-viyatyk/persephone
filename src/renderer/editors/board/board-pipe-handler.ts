@@ -1,6 +1,8 @@
 import {
+    BOARD_PIPE_CANCEL_CHANNEL,
     BOARD_PIPE_READ_CHANNEL,
     BOARD_PIPE_REPLY_CHANNEL,
+    type BoardPipeCancelMessage,
     type BoardPipeReadReply,
     type BoardPipeReadRequest,
     type BoardPipeReadSuccess,
@@ -23,6 +25,11 @@ interface PipeMemo {
 interface PendingRead {
     pageId: string;
     cancelled: boolean;
+    /** US-1518: aborted on page close (`invalidateBoardPipePage()`) or on an explicit
+     *  {requestId}-scoped cancel from main (`handleCancel()`, section 7a). Threaded into
+     *  `createReadStream()`/`readBinary()` so the underlying module-service request is released
+     *  even though a board's implementation is not obliged to observe the signal. */
+    controller: AbortController;
 }
 
 const pipeMemos = new Map<string, PipeMemo>();
@@ -61,10 +68,10 @@ function contentTypeForPipe(pipe: IContentPipe): string {
     }
 }
 
-async function readBuffered(pipe: IContentPipe, memo: PipeMemo): Promise<Buffer> {
+async function readBuffered(pipe: IContentPipe, memo: PipeMemo, signal?: AbortSignal): Promise<Buffer> {
     if (memo.buffer) return memo.buffer;
     if (!memo.bufferPromise) {
-        memo.bufferPromise = pipe.readBinary().then(
+        memo.bufferPromise = pipe.readBinary({ signal }).then(
             (buffer) => {
                 if (buffer.length > MAX_BUFFERED_PIPE_BYTES) {
                     throw new Error("The transformed board pipe exceeds the in-memory streaming limit.");
@@ -150,7 +157,7 @@ function validContinuationRange(range: ByteRange | undefined, totalSize: number)
     return range;
 }
 
-async function readChunk(request: BoardPipeReadRequest): Promise<BoardPipeReadSuccess> {
+async function readChunk(request: BoardPipeReadRequest, signal: AbortSignal): Promise<BoardPipeReadSuccess> {
     const page = pages.findPage(request.pageId);
     const board = page?.mainEditorInstance as BoardEditorModel | null;
     if (!board || !board.pipeUrlEnabled) throw new Error("The board pipe page is unavailable.");
@@ -184,8 +191,8 @@ async function readChunk(request: BoardPipeReadRequest): Promise<BoardPipeReadSu
         end: Math.min(selected.end, selected.start + MAX_BOARD_PIPE_CHUNK_BYTES - 1),
     };
     const data = hasDirectStream(pipe)
-        ? await collectChunk(pipe.createReadStream(boundedRange))
-        : (await readBuffered(pipe, memo)).subarray(
+        ? await collectChunk(pipe.createReadStream(boundedRange, { signal }))
+        : (await readBuffered(pipe, memo, signal)).subarray(
             boundedRange.start,
             boundedRange.end + 1,
         );
@@ -208,9 +215,9 @@ function reply(reply: BoardPipeReadReply): void {
 function handleRequest(rawRequest: unknown): void {
     const request = rawRequest as BoardPipeReadRequest | undefined;
     if (!request || typeof request.requestId !== "string" || typeof request.pageId !== "string") return;
-    const pending: PendingRead = { pageId: request.pageId, cancelled: false };
+    const pending: PendingRead = { pageId: request.pageId, cancelled: false, controller: new AbortController() };
     pendingReads.set(request.requestId, pending);
-    void readChunk(request)
+    void readChunk(request, pending.controller.signal)
         .then((result) => {
             if (!pending.cancelled && pendingReads.get(request.requestId) === pending) reply(result);
         })
@@ -229,10 +236,21 @@ function handleRequest(rawRequest: unknown): void {
         });
 }
 
+function handleCancel(rawMessage: unknown): void {
+    const message = rawMessage as BoardPipeCancelMessage | undefined;
+    if (!message || typeof message.requestId !== "string") return;
+    const pending = pendingReads.get(message.requestId);
+    if (!pending) return;
+    pending.cancelled = true;
+    pending.controller.abort();
+    pendingReads.delete(message.requestId);
+}
+
 export function initBoardPipeHandler(): void {
     if (initialized) return;
     initialized = true;
     window.electron.ipcRenderer.on(BOARD_PIPE_READ_CHANNEL, handleRequest);
+    window.electron.ipcRenderer.on(BOARD_PIPE_CANCEL_CHANNEL, handleCancel);
 }
 
 export function invalidateBoardPipePage(pageId: string): void {
@@ -240,6 +258,7 @@ export function invalidateBoardPipePage(pageId: string): void {
     for (const [requestId, pending] of pendingReads) {
         if (pending.pageId !== pageId) continue;
         pending.cancelled = true;
+        pending.controller.abort();
         pendingReads.delete(requestId);
     }
 }

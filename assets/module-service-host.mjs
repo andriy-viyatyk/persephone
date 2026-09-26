@@ -221,6 +221,29 @@ function withDeadline(promise) {
     });
 }
 
+const CONTENT_READ_OPERATIONS = new Set(["readBinary", "readRange"]);
+
+function isContentReadOperation(operation) {
+    return CONTENT_READ_OPERATIONS.has(operation);
+}
+
+/** US-1518 decision 10: pushes the live outstanding-content-read count to the renderer over the
+ *  existing announcement transport, whenever it changes. */
+function pushActiveContentReads(lease) {
+    if (!lease.attached) return;
+    postRenderer(lease.port, { kind: "content-read-count", count: lease.activeContentReads });
+}
+
+function incrementActiveContentReads(lease) {
+    lease.activeContentReads += 1;
+    pushActiveContentReads(lease);
+}
+
+function decrementActiveContentReads(lease) {
+    lease.activeContentReads = Math.max(0, lease.activeContentReads - 1);
+    pushActiveContentReads(lease);
+}
+
 function validStat(stat) {
     return isRecord(stat)
         && typeof stat.exists === "boolean"
@@ -229,12 +252,15 @@ function validStat(stat) {
         && (stat.mtime === undefined || typeof stat.mtime === "string");
 }
 
-async function executeProviderRequest(lease, request) {
+async function executeProviderRequest(lease, request, controller) {
     const implementation = providers.get(request.type);
     if (!implementation) return providerFailure("provider-not-registered", `Provider "${request.type}" is not registered.`);
 
     if (request.operation === "readBinary") {
-        const data = await withDeadline(Promise.resolve(implementation.readBinary(request.config)));
+        // No withDeadline() — content reads have no deadline (US-1518). `controller?.signal` is
+        // offered so a cooperative implementation can stop real work early; nothing on the
+        // release path depends on it being honored (see handleRendererRequest()/the cancel branch).
+        const data = await Promise.resolve(implementation.readBinary(request.config, { signal: controller?.signal }));
         if (!isUint8Array(data)) return providerFailure("provider-invalid-result", "readBinary() must return a Uint8Array.");
         if (data.byteLength > MAX_BUFFERED_PIPE_BYTES) {
             return providerFailure("provider-payload-too-large", "readBinary() exceeded the buffered payload limit.");
@@ -249,8 +275,8 @@ async function executeProviderRequest(lease, request) {
                 `Provider "${request.type}" does not support ranged reads.`,
             );
         }
-        const data = await withDeadline(
-            Promise.resolve(implementation.readRange(request.config, request.range)),
+        const data = await Promise.resolve(
+            implementation.readRange(request.config, request.range, { signal: controller?.signal }),
         );
         if (!isUint8Array(data)) {
             return providerFailure("provider-invalid-result", "readRange() must return a Uint8Array.");
@@ -319,8 +345,9 @@ async function executeProviderRequest(lease, request) {
 function finishProviderRequest(lease, requestId, result) {
     const pending = lease.pending.get(requestId);
     if (!pending || rendererLease !== lease) return;
-    clearTimeout(pending.timer);
+    if (pending.timer) clearTimeout(pending.timer);
     lease.pending.delete(requestId);
+    if (pending.isContentRead) decrementActiveContentReads(lease);
     postRenderer(lease.port, { kind: "response", requestId, result });
 }
 
@@ -337,11 +364,24 @@ function handleRendererRequest(lease, message) {
         });
         return;
     }
-    if (lease.pending.size >= requestCap) {
-        postRenderer(lease.port, { kind: "response", requestId: message.requestId, error: "service-busy" });
-        return;
+    const isContentRead = isContentReadOperation(request.operation);
+    if (!isContentRead) {
+        let controlCount = 0;
+        for (const pending of lease.pending.values()) {
+            if (!pending.isContentRead) controlCount++;
+        }
+        if (controlCount >= requestCap) {
+            postRenderer(lease.port, { kind: "response", requestId: message.requestId, error: "service-busy" });
+            return;
+        }
     }
-    const timer = setTimeout(() => {
+    // Content reads (readBinary/readRange) get no outer timer and an AbortController instead
+    // (US-1518): the platform stops waiting via cancellation (page close, board teardown, or an
+    // explicit {kind:"cancel"} message), never via a deadline. Everything else keeps the original
+    // outer timer, independent of executeProviderRequest()'s own (redundant, for those operations)
+    // withDeadline() race.
+    const controller = isContentRead ? new AbortController() : undefined;
+    const timer = isContentRead ? undefined : setTimeout(() => {
         if (!lease.pending.delete(message.requestId)) return;
         postRenderer(lease.port, {
             kind: "response",
@@ -349,8 +389,14 @@ function handleRendererRequest(lease, message) {
             result: providerFailure("provider-failed", "Provider operation timed out."),
         });
     }, deadlineMs);
-    lease.pending.set(message.requestId, { timer });
-    void executeProviderRequest(lease, request).then(
+    lease.pending.set(message.requestId, {
+        timer,
+        controller,
+        operation: request.operation,
+        isContentRead,
+    });
+    if (isContentRead) incrementActiveContentReads(lease);
+    void executeProviderRequest(lease, request, controller).then(
         (result) => finishProviderRequest(lease, message.requestId, result),
         (error) => finishProviderRequest(
             lease,
@@ -371,6 +417,7 @@ function attachRenderer(message, port) {
         attached: false,
         pending: new Map(),
         timer: undefined,
+        activeContentReads: 0,
     };
     rendererLease = lease;
     lease.timer = setTimeout(() => closeRendererLease(lease), deadlineMs);
@@ -391,6 +438,16 @@ function attachRenderer(message, port) {
                     leaseNonce: lease.leaseNonce,
                 });
                 announceCapabilities();
+                return;
+            }
+            if (nested.kind === "cancel" && typeof nested.requestId === "string") {
+                const pending = lease.pending.get(nested.requestId);
+                if (pending) {
+                    if (pending.timer) clearTimeout(pending.timer);
+                    lease.pending.delete(nested.requestId);
+                    if (pending.isContentRead) decrementActiveContentReads(lease);
+                    pending.controller?.abort();
+                }
                 return;
             }
             handleRendererRequest(lease, nested);

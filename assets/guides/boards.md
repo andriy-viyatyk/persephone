@@ -205,6 +205,36 @@ read still goes through `readBinary()`, buffered and capped at 256 MB. Adding `r
 means `stat()` must now return a `size` — seeking needs a length to seek against, and a resource
 over 256 MB can only be opened through the ranged path.
 
+**A content read (`readBinary`/`readRange`) has no deadline.** Unlike every other provider
+operation (`writeBinary`, `stat`, `watch*`, which still fail after 10 s), the platform waits as
+long as it takes — a cold-swarm torrent read is expected to take a while. Release happens instead
+through cancellation: closing the page, the board deleting its own backing resource (the read then
+fails naturally, from inside your implementation), the service stopping, or the platform abandoning
+interest (e.g. a seek superseding a previous chunk request). Both methods receive an optional
+second (`readBinary`) or third (`readRange`) argument, `{ signal }`, an `AbortSignal` that fires
+when the platform stops waiting:
+
+```js
+persephone.providers.register("acme/mem", {
+    readBinary(config, options) {
+        options?.signal?.addEventListener("abort", () => cancelUnderlyingWork());
+        return loadFromWherever(config);
+    },
+    readRange(config, range, options) {
+        options?.signal?.addEventListener("abort", () => cancelUnderlyingWork());
+        return loadFromWherever(config).subarray(range.start, range.end + 1);
+    },
+});
+```
+
+**Honoring the signal is optional; tolerating its presence is mandatory.** An implementation
+written before this option existed — one or two arguments, no `options` parameter — keeps working
+exactly as before; the platform now passes one extra trailing argument it has never declared and
+therefore never reads. A well-behaved provider that does inspect `options.signal` can stop real
+work early (close a socket, cancel a torrent piece request, abort a `fetch()`); a provider that
+ignores it is not broken and not penalized — the platform stops waiting either way, it is only the
+underlying work that keeps running until your own code notices.
+
 The service starts when a page first needs its provider. A saved page keeps its provider descriptor
 while the board is absent or untrusted: it reports **Provider missing** and remains restorable. If
 the board is trusted but its service is still starting, the same page waits briefly for registration;
