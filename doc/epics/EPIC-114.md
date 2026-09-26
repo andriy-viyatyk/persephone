@@ -348,6 +348,42 @@ Verified in the running app, not only built:
 
 ## Notes
 
+### 2026-09-26 — US-1524 verified, and why out-of-app verification stopped working
+
+The provider works: a 57 MB FLAC inside a 91-file torrent streamed from a live swarm into the
+built-in media player, `playerState: playing`, confirmed audible by the user. The file's path
+carries spaces, commas, brackets and parentheses across two nested directories, so it exercised
+D5's encoding rather than assuming it.
+
+The measurement that matters for D1, taken after closing the page:
+
+| | |
+|---|---|
+| bytes transferred over 20 s | **0** |
+| active readers | 0 |
+| all files deselected | true |
+| peers still connected | 9 |
+
+The last row is the point. The torrent stops *asking* while still connected, rather than merely
+losing the swarm — which is the difference between D1 holding and D1 looking like it holds.
+
+**Out-of-app verification is no longer possible on this machine, and that is not a code problem.**
+A plain `node.exe` WebTorrent client cannot bootstrap: the pre-epic spike in this document — same
+code, same magnet, same session — resolved metadata in seconds earlier and now times out at 120 s,
+while `electron.exe` resolves the same magnet in seconds. The cause is environmental, almost
+certainly a firewall rule that admits Electron and not Node.
+
+Two consequences worth carrying forward:
+
+- A delegated agent's "it timed out" is not evidence the code is wrong. Codex reported a 30 s
+  metadata timeout for US-1524 and the implementation was correct; the same harness shape had
+  worked for US-1523 hours earlier. **Verification for the rest of this epic happens in the running
+  app**, and an out-of-app check is at best a smoke test.
+- D8's 30-second metadata bound is tighter than it looks. It was inherited from av-player without
+  measurement, and a two-tracker magnet can exceed it on a cold DHT while a twenty-tracker magnet
+  resolves in seconds. US-1526 or acceptance should record a real distribution before the number is
+  treated as settled.
+
 ### 2026-09-26 — D1 needed one more line than the reference implementation has
 
 US-1523's first live run reported every file deselected **and downloaded 82 MB in seconds** at
