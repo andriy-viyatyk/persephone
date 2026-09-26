@@ -219,6 +219,49 @@ US-1478 needs a product decision (cancel the download and open the source URL, v
 hand the saved path to `openRawLink`) and is scheduled **last**, so the rest of the epic is not
 blocked behind it.
 
+**D11 — A board-claimed link with NO file name opens the claiming board.**
+
+*(Found while reviewing US-1523's plan, 2026-09-26. This is the platform change the epic needs, and
+the only one.)*
+
+EPIC-114 goal 1 — a magnet link opens the torrent board — has **no mechanism today**, and the gap is
+not where the roadmap assumed. The roadmap says step 1 is free because `browser-service.ts` routes
+any non-Chromium protocol to the renderer. It does. The failure is one layer later.
+
+A board that claims a scheme gets `createBoardSchemeHooks`
+(`custom-editor-registry.ts:187-215`), whose `resolve` hook **always** builds a content pipe and then
+picks the editor from the file name:
+
+```ts
+data.target = data.target
+    || resolveEditorIdForFile(data.url, schemeEffectivePath(data.url))
+    || "monaco";                                    // :207-209
+```
+
+and `schemeEffectivePath` is `new URL(url).pathname.split("/").pop()` (`:179-185`). A magnet URI is
+**opaque, not hierarchical** — `new URL("magnet:?xt=urn:btih:…").pathname` is `""`. So a
+board-claimed `magnet:` link resolves to an empty file name, falls through to `"monaco"`, and opens
+**Monaco on a torrent pipe**.
+
+That is worse than today, where nothing routes a magnet at all. So the board must **not** claim
+`magnet` until this is fixed — US-1523 declares `schemes: ["torrent"]` only, deliberately.
+
+**The rule:** when a board-claimed link yields **no file name at all**, the target is the claiming
+board's own editor rather than `"monaco"`. When it yields a file name, nothing changes.
+
+The narrowness is the point. The fallback must trigger on an *absent* file name, **not** on an
+*unrecognised extension* — otherwise `archive.zzz` would open the claiming board and break EPIC-113
+acceptance item 1 ("an extension nothing claims still opens Monaco"), which was verified in the
+running app. Those two cases both reach the `|| "monaco"` arm today and must be separated.
+
+This needs no manifest field: a board that claims a scheme already declares `editorName` /
+`editorKind`, which is the editor to target.
+
+**Owned by US-1525**, the task that builds the page a magnet should open — landing the platform
+change and the `magnet` declaration together, so the scheme is never claimed while it would
+misroute. *This corrects roadmap §3.8 step 1's "already done and needs no work" note, which is true
+of the Browser and false of the pipeline; the correction goes back into the roadmap at epic close.*
+
 ## UI design
 
 Deliberately plain, and written to be argued with after the user sees it. Two panes in one page:
@@ -254,7 +297,7 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 |------|-------|--------|
 | US-1523 | The board skeleton: manifest, vendored WebTorrent bundle (D3), and a service that resolves a magnet to metadata (D1, D2, D8) | Planned |
 | US-1524 | The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link (D5), piece prioritisation (D9) | Planned |
-| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file | Planned |
+| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's platform change** and the `magnet` scheme declaration | Planned |
 | US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
 | US-1478 | Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink` (D10) | Planned |
 | US-1527 | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
@@ -271,7 +314,10 @@ Every row of the roadmap's §3.8 table, observed on a **real magnet link**, plus
 Verified in the running app, not only built:
 
 1. A magnet link opens the torrent board page and lists the torrent's files with correct sizes,
-   having transferred metadata only — confirmed by the client's byte counters.
+   having transferred metadata only — confirmed by the client's byte counters. This exercises
+   D11; before it lands, the board does not claim `magnet` at all.
+1b. EPIC-113 acceptance item 1 still holds after D11 — a board-scheme link to an extension
+   nothing claims (`archive.zzz`) still opens **Monaco**, not the claiming board.
 2. Double-clicking a `.txt`/`.srt` inside the torrent opens **Monaco**, a `.jpg` opens the **image
    viewer**, an `.mp4` opens the **media player** — none of them named by the board.
 3. The media player plays an `.mp4` from the swarm while it is still downloading, with **no cache
