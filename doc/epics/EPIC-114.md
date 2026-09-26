@@ -385,6 +385,37 @@ Verified in the running app, not only built:
 
 ## Notes
 
+### 2026-09-26 — US-1525 verified: the epic's headline gesture works, and two defects only the app showed
+
+The §3.8 flow, observed end to end on the Sintel magnet. The magnet opens **Torrent Viewer** (D11),
+lists 11 files largest-first, and transfers **0 bytes over 15 s with 16 peers**. Double-clicking
+`poster.jpg` opens **image-view**; double-clicking `Sintel.mp4` opens **video-view** with
+`playerState: playing`, streaming from the swarm. Neither editor was named by the board. Closing the
+video page returns transfer to **0 bytes over 15 s with 19 peers still connected** — the torrent
+stops asking without losing the swarm, which is the D1 distinction. `archive.zzz` still opens
+**Monaco**, so EPIC-113 acceptance item 1 survives.
+
+**Two defects surfaced only in the running app**, and both would have passed any out-of-app check:
+
+1. **A board opened plainly still carries a `sourceLink.url`** — the `persephone-board://` link
+   that opened the board itself. `getSourceUrl()` returned it, the board fed its own page URL to
+   its resolver, and every plain open raised *"Invalid torrent identifier"*. Filtered out in
+   `currentSourceUrl()`, plus a board-side guard that only resolves a source it can own. Acceptance
+   item 1d passes after the fix: `(undefined)` in 0 ms.
+2. **Board-scheme pages were titled with the raw percent-encoded href** — for a torrent link, the
+   entire magnet inside the query string. A named link is now titled by its file (`poster.jpg`), a
+   nameless one by the claiming board (`Torrent Viewer`).
+
+Neither is exotic. The first fires on the most ordinary way to open the board — clicking it in the
+board list — and it shipped through a green typecheck, lint and build.
+
+**Acceptance item 1c could not be tested and is not passed.** It predicted that `mem://demo`, being
+an empty-effective-path link, would now open the Demo Board. In this environment `mem` is **not a
+registered scheme** (`isSchemeRegistered("mem")` is false), so the D11 branch never fires for it and
+`mem://demo` still reaches Monaco by a different route entirely. The residual is real but currently
+unreachable; it should be checked if that board's provider is ever registered, not recorded as
+verified.
+
 ### 2026-09-26 — US-1524 verified, and why out-of-app verification stopped working
 
 The provider works: a 57 MB FLAC inside a 91-file torrent streamed from a live swarm into the
