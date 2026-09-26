@@ -30,7 +30,7 @@ below tracks which phases have shipped.
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
 | F — Excalidraw extraction, part 2: remove `editors/draw` and React | [EPIC-110](epics/EPIC-110.md) | **shipped 2026-09-25** — React left the renderer bundle (−10.4%); packages moved to `devDependencies` rather than removed |
 | E — part 1: a board provider feeds Persephone's own editors | [EPIC-113](epics/EPIC-113.md) | **shipped 2026-09-26** — audio-player board dropped by user decision (D2); all nine acceptance items verified in the running app, VLC included |
-| E — part 2: the torrent viewer board | — | **next** (EPIC-114) |
+| E — part 2: the torrent viewer board | [EPIC-114](epics/EPIC-114.md) | **in progress** |
 
 **[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
 EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
@@ -44,15 +44,20 @@ deleting `editors/draw` did not take them with it.
 
 ## Active
 
+- **EPIC-114** — [The torrent board — a module contributes below the UI](epics/EPIC-114.md)
+  - [ ] US-1523: The board skeleton: manifest, vendored WebTorrent bundle, and a service that resolves a magnet to metadata
+  - [ ] US-1524: The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link, piece prioritisation
+  - [ ] US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file
+  - [ ] US-1526: Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder
+  - [ ] [US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`](tasks/US-1476-browser-scheme-routing/README.md)
+    — moved under EPIC-114 from *(no epic)*; it is the `.torrent` half of the board's entry points (D10).
+    A download takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`,
+    so it never reaches the content pipeline. Needs a product decision plus download-manager lifecycle work.
+  - [ ] US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides
+
 ## Planned
 
 - *(no epic)*
-  - [ ] US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`
-    — split out of [US-1476](tasks/US-1476-browser-scheme-routing/README.md) during review. A download
-    takes `will-download` in `src/main/download-service.ts` and is opened with `shell.openPath`, so it
-    never reaches the content pipeline. Routing it needs a product decision (cancel the download and
-    open the source URL, or save first and hand the saved path to `openRawLink`) plus download-manager
-    lifecycle work — larger than the navigation fix US-1476 owned. **Not part of EPIC-107.**
   - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
     — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
     before returning it and `EventChannel` has no replay, so the `openRawLink` fired during
