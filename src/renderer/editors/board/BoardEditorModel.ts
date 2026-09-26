@@ -11,7 +11,10 @@ import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { createPipeFromDescriptor } from "../../content/registry";
 import { pipeFromLink, pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
-import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
+import {
+    decodePersephoneBoardLink,
+    PERSEPHONE_BOARD_PREFIX,
+} from "../../content/persephone-board-link";
 import { boardEditorId, customEditorRegistry } from "./custom-editor-registry";
 import { isBoardFolder, normalizeSecondaryViews, readBoardManifest, readBoardSecondaryViews, type BoardManifest, type SecondaryViewDecl } from "./board-manifest";
 import { boardSecondaryPanelId } from "./board-secondary";
@@ -546,6 +549,22 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     currentFilePath(): string | undefined {
         const s = this.state.get();
         return s.filePath ?? s.sourceLink?.filePath;
+    }
+
+    /** The raw persisted source identity for this board. Open-link boards use `sourceLink.url`;
+     * switch-style opens fall back to their ordinary file path. This accessor never materializes
+     * a source or reads through the board file-path bridge.
+     *
+     * A board opened PLAINLY still carries a `sourceLink.url` — the `persephone-board://` link
+     * that opened the board itself — and that is the board's own address, not a source it was
+     * given. Returning it made the torrent board feed its own page URL to its resolver and raise
+     * "Invalid torrent identifier" on every plain open, so that one scheme is filtered out here
+     * rather than in each board. */
+    currentSourceUrl(): string | undefined {
+        const s = this.state.get();
+        const url = s.sourceLink?.url ?? s.filePath;
+        if (url?.startsWith(PERSEPHONE_BOARD_PREFIX)) return undefined;
+        return url;
     }
 
     /** Publish host toolbar declarations only after the catalog DOM is consistent. */

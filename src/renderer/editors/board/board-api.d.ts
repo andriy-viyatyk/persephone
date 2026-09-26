@@ -467,6 +467,9 @@ interface PersephoneBoardApi {
      *  `true`, re-enter "running" mode via `getJobs()` (and call `setBoardBusy(false)`
      *  if nothing actually lives anymore). */
     getBoardBusy(): Promise<boolean>;
+    /** The raw persisted source identity for this board, or `undefined` for a plain board.
+     *  This never materializes a non-local source or returns a cache path. */
+    getSourceUrl(): Promise<string | undefined>;
     /** This board's LIVE jobs, including ones surviving from a previous board lifetime
      *  (busy retention). Re-associate by `name`. See {@link PersephoneJobInfo}. */
     getJobs(): Promise<PersephoneJobInfo[]>;

@@ -367,6 +367,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const port = this.pendingPort;
         if (!this.live || !host || !frame || !port) return;
         const filePath = this.props.model.currentFilePath();
+        const sourceUrl = this.props.model.currentSourceUrl();
         const pageId = this.props.model.page?.id;
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
         if (pageId) void api.registerBoardPipePage(pageId, host);
@@ -376,6 +377,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             pageId,
             pipeUrlEnabled,
             filePath,
+            sourceUrl,
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
             materialize: !!filePath && !isPlainLocalPath(filePath) && !this.props.model.isStreamHost,

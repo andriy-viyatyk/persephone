@@ -166,6 +166,9 @@ function settleBusy(value: boolean): void {
 let filePathSettled = false;
 let filePathValue: string | undefined;
 const filePathResolvers: Array<(p: string | undefined) => void> = [];
+let sourceUrlSettled = false;
+let sourceUrlValue: string | undefined;
+const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
 let folderPathValue: string | undefined;
 let pipePageId: string | undefined;
 let pipeUrlEnabled = false;
@@ -183,6 +186,13 @@ function settleFilePath(value: string | undefined): void {
     filePathValue = value;
     for (const r of filePathResolvers) r(value);
     filePathResolvers.length = 0;
+}
+
+function settleSourceUrl(value: string | undefined): void {
+    sourceUrlSettled = true;
+    sourceUrlValue = value;
+    for (const r of sourceUrlResolvers) r(value);
+    sourceUrlResolvers.length = 0;
 }
 
 /** Resolves once the host handshake has landed (every handshake settles the file path,
@@ -924,6 +934,7 @@ onHostMessage((event) => {
     const data = event.data as
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
+            sourceUrl?: string;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
             pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
         }
@@ -941,6 +952,9 @@ onHostMessage((event) => {
         folderPathValue = typeof data.folderPath === "string" ? data.folderPath : undefined;
         settleFilePath(data.filePath);
     }
+    // sourceUrl carried at handshake (D11). Every handshake settles it — a plain board carries
+    // `undefined`, so `getSourceUrl()` still resolves (to undefined).
+    if (!sourceUrlSettled) settleSourceUrl(data.sourceUrl);
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
@@ -1364,6 +1378,7 @@ function createHandle(
     // 1.11.0 adds transient board-settable page-toolbar text (US-1494).
     // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText` (US-1496).
     // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()` (EPIC-111).
+    // 1.14.0 adds `getSourceUrl()` for non-materializing source identity handoff (D11).
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1669,6 +1684,13 @@ function createHandle(
             );
         }
         return materializedPromise;
+    },
+
+    /** The raw persisted source identity for this board, or `undefined` for a plain board.
+     *  Unlike `getFilePath()`, this never materializes a non-local source or returns a cache path. */
+    getSourceUrl(): Promise<string | undefined> {
+        if (sourceUrlSettled) return Promise.resolve(sourceUrlValue);
+        return new Promise<string | undefined>((resolve) => sourceUrlResolvers.push(resolve));
     },
 
     /** The absolute folder claimed by this board, or undefined for plain/file-only boards. */

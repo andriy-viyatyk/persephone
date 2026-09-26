@@ -184,7 +184,12 @@ function schemeEffectivePath(url: string): string {
     }
 }
 
-function createBoardSchemeHooks(providerType: string): SchemeHooks {
+/** The claiming board's display name, for titling a page opened on a link that carries none. */
+function boardDisplayName(boardRoot: string): string | undefined {
+    return customEditorRegistry.entries.find((e) => e.boardRoot === boardRoot)?.name;
+}
+
+function createBoardSchemeHooks(providerType: string, boardRoot: string): SchemeHooks {
     return {
         async parse(data, context) {
             data.url = data.href;
@@ -204,9 +209,19 @@ function createBoardSchemeHooks(providerType: string): SchemeHooks {
             if (context.phase === "source-path") return;
             // Target resolution is an OPEN-phase concern: `source-path` rebuilds a pipe for a page
             // that already exists and discards `data.target` (EPIC-113 D15).
+            const effectivePath = schemeEffectivePath(data.url);
+            // Evaluate the empty-name branch BEFORE resolveEditorIdForFile: it substitutes the
+            // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's
+            // unconditional `acceptFile: () => 0` returns "monaco". Every arm after that call is
+            // unreachable for a non-empty url, so do not fold this branch into the `||` chain.
             data.target = data.target
-                || resolveEditorIdForFile(data.url, schemeEffectivePath(data.url))
+                || (effectivePath ? resolveEditorIdForFile(data.url, effectivePath) : boardEditorId(boardRoot))
                 || "monaco";
+            // Without this the tab is titled with the raw percent-encoded href — for a torrent
+            // link, the whole magnet inside the query string. A named link is titled by its file;
+            // a nameless one (a magnet) by the claiming board, since there is nothing else to say.
+            data.title = data.title
+                || (effectivePath ? fpBasename(effectivePath) : boardDisplayName(boardRoot));
             data.handled = false;
             await context.delegate();
             data.handled = true;
@@ -457,7 +472,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             for (const scheme of declaration.schemes ?? []) {
                 const schemeResult = registerScheme(
                     scheme,
-                    createBoardSchemeHooks(declaration.type),
+                    createBoardSchemeHooks(declaration.type, boardRoot),
                     { origin: "board", owner: boardRoot },
                 );
                 if (!schemeResult.accepted) {

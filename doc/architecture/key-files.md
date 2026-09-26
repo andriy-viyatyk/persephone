@@ -518,5 +518,5 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Renderer-to-main trust/service snapshot synchronizer (complete generation-numbered snapshots with clock-seeded reload-safe ordering) | `/src/renderer/api/board-trust-sync.ts` |
 | Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
-| Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.13.0` includes renderer-owned board settings reads and change notifications) | `/src/shared/board-bridge-version.ts` |
+| Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.14.0` adds non-materializing `persephone.getSourceUrl()` to the renderer-owned board settings contract) | `/src/shared/board-bridge-version.ts` |
 | Static utility-process module-service host (injects `persephone.storage` and imports the board-relative ESM service entry) | `/assets/module-service-host.mjs` |
