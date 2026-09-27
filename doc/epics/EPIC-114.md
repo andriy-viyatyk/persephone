@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-26
-**Completed:** —
+**Completed:** 2026-09-27
 
 ## Overview
 
@@ -449,15 +449,15 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1523 | The board skeleton: manifest, vendored WebTorrent bundle (D3), and a service that resolves a magnet to metadata (D1, D2, D8) | Planned |
-| US-1524 | The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link (D5), piece prioritisation (D9) | Planned |
-| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's routing fix and source handoff** and the `magnet` scheme declaration | In progress |
-| US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
-| US-1478 | `browserUrlMasks`: a board claims browser URLs explicitly, and a matching download is routed to it instead of saved (D12) | Planned |
-| [US-1527](../tasks/US-1527-torrent-board-documentation/README.md) | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
-| [US-1529](../tasks/US-1529-torrent-board-service-snapshot/README.md) | The torrent list comes from the service snapshot, not page-local state | Implemented |
-| [US-1530](../tasks/US-1530-single-instance-boards/README.md) | Single-instance boards — one page for every link a board claims | In progress |
-| [US-1531](../tasks/US-1531-claimed-download-session/README.md) | A claimed download is fetched on the originating page's session (D13) | Placeholder |
+| US-1523 | The board skeleton: manifest, vendored WebTorrent bundle (D3), and a service that resolves a magnet to metadata (D1, D2, D8) | Completed |
+| US-1524 | The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link (D5), piece prioritisation (D9) | Completed |
+| US-1525 | The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file — **plus D11's routing fix and source handoff** and the `magnet` scheme declaration | Completed |
+| US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Completed |
+| US-1478 | `browserUrlMasks`: a board claims browser URLs explicitly, and a matching download is routed to it instead of saved (D12) | Completed |
+| [US-1527](../tasks/US-1527-torrent-board-documentation/README.md) | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Completed |
+| [US-1529](../tasks/US-1529-torrent-board-service-snapshot/README.md) | The torrent list comes from the service snapshot, not page-local state | Completed |
+| [US-1530](../tasks/US-1530-single-instance-boards/README.md) | Single-instance boards — one page for every link a board claims | Completed |
+| [US-1531](../tasks/US-1531-claimed-download-session/README.md) | A claimed download is fetched on the originating page's session (D13) | Completed |
 
 **Suggested order:** US-1523 → US-1524 → US-1525 are a straight line, each observable in the running
 app. US-1526 needs all three. US-1478 is independent and carries a product question, so it is

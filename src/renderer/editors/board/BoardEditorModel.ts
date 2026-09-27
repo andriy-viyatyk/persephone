@@ -688,8 +688,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         signal?: AbortSignal,
     ): Promise<ContentResourceInfo> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
-        // The handle stays valid until it expires, so a retry reuses it. Once it has expired, a
-        // private source fails here: falling back to the default session would leak the request.
+        // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
+        // retains it for its reads and the source map must no longer authorize another open.
         const sessionHandle = this.sourceSessionHandles.get(link);
         if (!sessionHandle && this.sessionBoundSources.has(link)) {
             throw new Error("The private session for this source has expired. Open the link again from its page.");
@@ -708,6 +708,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             // serviceable — the board may fetch it on the next line.
             const { registerBoardContentResource } = await import("./board-pipe-handler");
             registerBoardContentResource(resourceId, pipe);
+            if (sessionHandle && this.sourceSessionHandles.get(link) === sessionHandle) {
+                this.sourceSessionHandles.delete(link);
+                const timer = this.sourceSessionHandleTimers.get(link);
+                if (timer) clearTimeout(timer);
+                this.sourceSessionHandleTimers.delete(link);
+            }
             return {
                 resourceId,
                 size: stat.size,

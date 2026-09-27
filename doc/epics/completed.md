@@ -1,3 +1,53 @@
+## EPIC-114 — The torrent board: a module contributes below the UI
+
+Completed 2026-09-27. Roadmap Phase E, part 2 — the last roadmap phase. [Epic document](EPIC-114.md).
+
+- [x] US-1523: The board skeleton: manifest, vendored WebTorrent bundle, and a service that resolves a magnet to metadata
+- [x] US-1524: The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link, piece prioritisation
+- [x] US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file
+- [x] US-1526: Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder
+- [x] US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`
+- [x] US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides
+- [x] US-1529: The torrent list comes from the service snapshot, not page-local state
+- [x] US-1530: Single-instance boards — one page for every link a board claims
+- [x] US-1531: A claimed download is fetched on the originating page's session (D13)
+
+A magnet link, a `.torrent` file, or a `.torrent` download in the Browser now opens the Torrent
+Viewer board (persephone-boards, `torrent-viewer`, 1.7.0 at close), which lists the torrent's files
+having fetched metadata only. Double-clicking a file opens it in **Persephone's own editor for that
+file type** — Monaco, the image viewer, the media player — none of them named by the board, streamed
+from the swarm through the board's module service and a `torrent/viewer` content provider, with no
+cache file and ranged reads that skip the bytes a seek jumps over. That is the platform roadmap's
+thesis in one gesture: a module contributes below the UI, and the app's editors consume it.
+
+**What the platform gained, beyond the board:**
+
+- **D11** — a board-claimed link with no file name opens the claiming board (the `magnet:` entry point).
+- **D12 / US-1478** — `browserUrlMasks`: a board claims Browser URLs with its own declaration, and a
+  matching download is cancelled before the save dialog and handed to the board.
+- **D13 / US-1531** — a claimed download from a Tor or incognito page is fetched on that page's own
+  session through an opaque, five-minute, main-issued handle, and the user is told once that the swarm
+  connection is not anonymous. A sentence, not a gate.
+- **D14 / US-1530** — single-instance boards: one page per window for every link a board claims,
+  state shared per app.
+- **US-1529** — a board can read its service state without starting it (bridge 1.16.0), and the
+  torrent list comes from the service snapshot rather than page-local state.
+
+**Measured, not assumed:** D8's 30-second metadata deadline (and a watchdog that pre-empted it,
+fixed in US-1526); D6's memory growth, 440.4 MB peak RSS streaming ≥200 MB against a 512 MiB
+threshold — a ratio of the file size, not headroom.
+
+**Epic close review** (Codex `/review`, `/document`, `/userdoc`): one defect fixed — a private
+session handle stayed in `BoardEditorModel`'s source map after its resource opened, so a second
+open of the same link could reuse it for up to five minutes; US-1531's plan said to drop it once the
+provider holds it. `overview.md`, `key-files.md`, `folder-structure.md`, the roadmap, and the three
+board guides were corrected.
+
+**Not verified:** US-1531's manual Tor / incognito / cold-start / range run was never performed. The
+session-handle path is built and reviewed, not observed in the app. **Split off:** US-1528 (reusing an
+errored media page is rejected by the pipe-ownership guard) is a platform defect found during US-1526
+and stays Planned outside the epic.
+
 ## EPIC-113 — A board provider can feed Persephone's own editors
 
 Completed 2026-09-26. Roadmap Phase E, part 1. [Epic document](EPIC-113.md).

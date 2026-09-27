@@ -30,7 +30,7 @@ below tracks which phases have shipped.
 | F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
 | F — Excalidraw extraction, part 2: remove `editors/draw` and React | [EPIC-110](epics/EPIC-110.md) | **shipped 2026-09-25** — React left the renderer bundle (−10.4%); packages moved to `devDependencies` rather than removed |
 | E — part 1: a board provider feeds Persephone's own editors | [EPIC-113](epics/EPIC-113.md) | **shipped 2026-09-26** — audio-player board dropped by user decision (D2); all nine acceptance items verified in the running app, VLC included |
-| E — part 2: the torrent viewer board | [EPIC-114](epics/EPIC-114.md) | **in progress** |
+| E — part 2: the torrent viewer board | [EPIC-114](epics/EPIC-114.md) | **shipped 2026-09-27** — Torrent Viewer board in persephone-boards (1.7.0); the one unverified item is US-1531's manual Tor/incognito run |
 
 **[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
 EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
@@ -44,19 +44,7 @@ deleting `editors/draw` did not take them with it.
 
 ## Active
 
-- **EPIC-114** — [The torrent board — a module contributes below the UI](epics/EPIC-114.md)
-  - [ ] US-1523: The board skeleton: manifest, vendored WebTorrent bundle, and a service that resolves a magnet to metadata
-  - [ ] US-1524: The `torrent` content provider: `stat` + `readRange` + `readBinary`, the self-contained link, piece prioritisation
-  - [ ] [US-1525: The board page: torrent list, file list, double-click → `openRawLink`, Download-this-file](tasks/US-1525-torrent-board-page/README.md)
-  - [ ] [US-1526: Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder](tasks/US-1526-torrent-board-lifecycle/README.md)
-  - [ ] [US-1478: Route a downloaded `.torrent` (and other board-claimed downloads) into `openRawLink`](tasks/US-1478-browser-url-masks/README.md)
-    — moved under EPIC-114 from *(no epic)*; it is the download half of the board's entry points (D12).
-    A matching Browser download is cancelled before the save dialog and its source URL is handed to
-    `openRawLink`; the task document settles the snapshot, trust, collision, and lifecycle work.
-  - [ ] [US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides](tasks/US-1527-torrent-board-documentation/README.md)
-  - [ ] [US-1529: The torrent list comes from the service snapshot, not page-local state](tasks/US-1529-torrent-board-service-snapshot/README.md)
-  - [ ] [US-1530: Single-instance boards — one page for every link a board claims](tasks/US-1530-single-instance-boards/README.md) — *US-1529 landed*
-    - [ ] [US-1531: A claimed download is fetched on the originating page's session (D13)](tasks/US-1531-claimed-download-session/README.md)
+*(nothing active)*
 
 ## Planned
 

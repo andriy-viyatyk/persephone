@@ -424,12 +424,18 @@ characters each. Matching is case-insensitive against the whole URL and is ancho
 Therefore `*://*/*.torrent` matches `https://example.test/a.torrent` but misses
 `https://example.test/a.torrent?dl=1`; keep the query-form mask beside it.
 
-The source-verified path applies only to Browser downloads, before the save dialog. It does not
-intercept ordinary navigation: registered schemes handle protocol links, while navigation capture
-would let a board silently take over browsing. A match cancels the download, sends its source URL
-to `openRawLink` with the winning board target, creates no save path or download entry, and notifies
-the user with the board name. This has not been exercised end to end in the running app, so do not
-report the cancellation as observed runtime behavior.
+This path applies only to Browser downloads, before the save dialog; it does not intercept ordinary
+navigation. A live run confirmed that a match cancels the download, sends its source URL to
+`openRawLink` with the winning board target, creates no save path or download entry, and notifies the
+user with the board name.
+
+For a claim made by a Tor or Incognito page, the platform fetches the URL through the originating
+Electron session. The session handle is transient host-side context: it is not sent through the
+board bridge or stored in the provider descriptor, and the restored board source handshake is
+blocked for that private URL. The platform displays **“The metadata was fetched privately, but the
+swarm connection is not anonymous.”** The notice describes the boundary: only the claimed source
+fetch uses the page's session; tracker and peer connections are not routed through Tor, so swarm
+peers can see the user's real IP. Ordinary-session claims do not receive this private-session notice.
 
 Only trusted boards and enabled bundled boards contribute claims. Trusted roots register before
 bundled boards; an exact normalized duplicate is refused and reported as a
@@ -1009,6 +1015,8 @@ the manifest's `loadOrder`.
   a file*; usable with or without `fileMasks`),
   optional `browserUrlMasks` (whole-URL globs for Browser downloads, independent of `fileMasks`;
   normalized, anchored, and limited to trusted or enabled bundled boards),
+  optional `singleInstance: true` (converges claimed sources on one board page per renderer window;
+  windows keep separate pages, so use the shared module service when their state must agree),
   optional `editorPriority` (a number; makes the board the *default* editor for those masks when it
   strictly outranks the built-in that also claims the file — omit/`0` = switch option only. Built-in
   ladder: Monaco `0`, Markdown Preview `10`, compound-name editors like `*.grid.json` `20`, Drawing

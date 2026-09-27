@@ -280,12 +280,15 @@ each. They are case-insensitive whole-URL globs anchored at both ends. That anch
 `*://*/*.torrent` matches `https://example.test/a.torrent` but misses
 `https://example.test/a.torrent?dl=1`; declare the query-form mask alongside it.
 
-The source-verified contract is download-only and runs before the save dialog. It never captures
-ordinary navigation: navigation is handled by the registered-scheme path, and broad navigation
-capture would let a board silently take over browsing. On a match, the source URL is sent to
-`openRawLink`, the download is cancelled, no save path or download entry is made, and the user is
-notified with the winning board name. This interception has not been exercised end to end in the
-running app, so the cancellation and notification are not a live acceptance observation.
+This contract applies only to Browser downloads, before the save dialog; ordinary navigation is not
+captured. A live run confirmed that a matching download is cancelled, creates no save path or
+download entry, and opens the source URL in the board that won the claim. Persephone also notifies
+you with the board's name.
+
+When a matching download starts from a Tor or Incognito page, Persephone fetches the source through
+that page's browser session and shows this notice: **“The metadata was fetched privately, but the
+swarm connection is not anonymous.”** The private session applies to fetching the source only; the
+torrent's tracker and peer connections are not routed through Tor. Other peers can see your real IP.
 
 Only trusted boards and enabled bundled boards contribute claims. Registration order is trusted
 roots followed by bundled boards; an exact normalized duplicate is refused and reported as a

@@ -350,12 +350,12 @@ compose. A trusted **torrent board** (`fileMasks: ["*.torrent"]`,
 `contentProviders: [{ type: "torrent/viewer", schemes: ["torrent", "magnet"] }]`) supplies the
 bytes; Persephone's built-in media player is the `.mp3` consumer. The three entry paths are
 separate: a local `.torrent` uses `fileMasks`, a `magnet:` link uses the registered scheme, and a
-matching Browser download uses `browserUrlMasks` (source-verified only; not exercised end to end).
+matching Browser download uses `browserUrlMasks` and the Browser's `will-download` path.
 
 | Step | What happens | Provided by |
 |---|---|---|
-| 1 | **Historically accurate when written; superseded by US-1525/D11 on 2026-09-26.** The Browser already prevented non-Chromium protocols and forwarded registered ones, but US-1523 deliberately withheld `magnet` until the board-target and source-handoff fixes landed. US-1525 added those fixes and the board's `magnet` claim. A Browser download is a separate D12 path through `browserUrlMasks`, source-verified only. | `browser-service.ts:306-309`, `RendererEventsService`, US-1525/D11 and D12 |
-| 2 | **Stale/incomplete after US-1478/D12 on 2026-09-27.** A local `.torrent` matches `fileMasks`; a registered `magnet:` uses the scheme path; a matching Browser attachment URL uses `browserUrlMasks` and the `will-download` path. The last path is source-verified only, not a live acceptance result. | registered scheme, custom editor registry, `download-service.ts` |
+| 1 | **Historically accurate when written; superseded by US-1525/D11 on 2026-09-26.** The Browser already prevented non-Chromium protocols and forwarded registered ones, but US-1523 deliberately withheld `magnet` until the board-target and source-handoff fixes landed. US-1525 added those fixes and the board's `magnet` claim. A Browser download is a separate D12 path through `browserUrlMasks`, which was exercised end to end. A claimed download from a private page carries an opaque, URL-bound session handle to the board provider; this preserves the page's fetch session, not anonymity for later swarm connections. | `browser-service.ts`, `download-service.ts`, `session-src-protocol.ts`, US-1525/D11 and D12 |
+| 2 | **Completed and live-verified after US-1478/D12 on 2026-09-27.** A local `.torrent` matches `fileMasks`; a registered `magnet:` uses the scheme path; a matching Browser attachment URL uses `browserUrlMasks` and the `will-download` path. The live run confirmed cancellation before the save dialog, no download entry, and opening the board on the claimed URL. | registered scheme, custom editor registry, `download-service.ts` |
 | 3 | The board asks its service to fetch metadata; the page lists the torrent's files | `executeNode`-style service process (3.5), board UI |
 | 4 | **Superseded by D5/US-1524 on 2026-09-26.** Double-click on `track.mp3`: the board calls `persephone.openRawLink("torrent://<40-lowercase-infohash>/<encodeURIComponent(normalized-file-path)>?magnet=<encodeURIComponent(magnet-uri)>")`; the path is normalized to `/` and encoded as one URL path value. No target is named; Persephone picks the built-in media player from the file name. | bridge `openRawLink`; editor resolution by name |
 | 5 | **Superseded by D4/D5 and US-1524 on 2026-09-26.** The registered provider is `torrent/viewer`, and the descriptor carries `config: { url: <full torrent href> }`. The provider parses the authority, encoded path, and embedded magnet from that self-contained href; it does not receive separate `{ infoHash, path }` fields. | scheme resolve hook, board provider, `ProxyProvider` |
@@ -723,8 +723,9 @@ the epic record and do not change the Phase E/F dependency boundary.
 > - **Historically accurate when written; superseded by US-1525/D11 on 2026-09-26.**
 >   `browser-service.ts:306-309` already routed any non-Chromium protocol, `magnet:` included, to
 >   `eOpenPipelineCandidate`. The predicted board-target/source-handoff work was then completed by
->   US-1525, which also added the `magnet` claim. D12 separately added the Browser-download claim
->   path through `browserUrlMasks`; that path is source-verified only.
+>   US-1525, which also added the `magnet` claim. D12 separately added and live-verified the
+>   Browser-download claim path through `browserUrlMasks`; private-page fetches retain the source
+>   session, while later swarm connections do not inherit Tor anonymity.
 
 The worked flow of 3.8, end to end, as a torrent board in the `persephone-boards` repository
 feeding Persephone's built-in editors. The board UI is plain HTML with WebTorrent 3.0.21 and
@@ -746,15 +747,17 @@ feeding Persephone's built-in editors. The board UI is plain HTML with WebTorren
 3. Playback while downloading, seeking re-prioritising pieces, page close stopping the stream,
    restore starting the service on demand, uninstall showing the placeholder.
 
-Exit: every row of the 3.8 table observed on a real magnet link, including the failure rows,
-with the `userData` watcher clean. This is the first time a module outside the core contributes
-below the UI, and it is what the roadmap is for. The board handler remains page-backed in the
-caller's window; a headless service-backed capability is not implied by this phase.
+Exit: the 3.8 flow and failure rows were observed on a real magnet link, and the Browser-download
+claim was exercised end to end, with the `userData` watcher clean. The board handler remains
+page-backed in the caller's window; a headless service-backed capability is not implied by this
+phase.
 
-Verification status: `browserUrlMasks` download interception is source-verified only; it has not
-been exercised end to end in the running app. EPIC-114 acceptance item 8, the D6 peak-RSS
-measurement while streaming at least 200 MB, has not been run, so no memory result or 512 MiB
-follow-up decision is settled.
+Memory verification: streaming about 242 MB of a 263 MB video reached 92% coverage and peaked at
+440.4 MB working set (359.9 MB private bytes), below the 512 MiB budget. Memory rose monotonically
+at roughly 1.67 times bytes fetched, confirming the in-memory chunk store has no eviction; a single
+file above roughly 320 MB could exceed that budget. Removing the torrent stopped the service and
+released the memory. A claimed download from a Tor page fetches its metadata through that page's
+session, but the torrent swarm connection itself is not anonymous.
 
 ### Phase F — Excalidraw extraction (proof 2)
 

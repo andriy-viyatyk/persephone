@@ -41,10 +41,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   also gives simple boards an origin-local ranged URL for any supported link.
 - **Torrent Viewer uses a self-contained provider link:** the torrent board is a metadata-only
   viewer backed by bounded `readRange` pulls, with `torrent/viewer` descriptors carrying the full
-  URL and embedded magnet needed for restore. Boards can separately declare
-  `browserUrlMasks: ["*://*/*.torrent", "*://*/*.torrent?*"]` alongside `fileMasks` to claim
-  matching Browser downloads. The URL-mask contract is source-verified but has not been exercised
-  end to end in the running app.
+  URL and embedded magnet needed for restore. The live-verified `browserUrlMasks` claim cancels a
+  matching Browser download before saving it and opens its source in the board. A claim from a Tor
+  or Incognito page fetches the source through that page's session and shows a notice that tracker
+  and peer connections are not anonymous. The Torrent Viewer keeps one page per window; its torrent
+  list is shared across windows.
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
   scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
   unregistered non-web schemes remain blocked.

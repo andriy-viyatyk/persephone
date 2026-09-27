@@ -660,7 +660,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
+│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, singleInstance, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
 │   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
@@ -958,7 +958,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Download management and tracked synchronous save dialogs
+├── download-service.ts     # Download management, Browser URL claims, and tracked synchronous save dialogs
+├── session-src-protocol.ts # Short-lived URL-bound capability for fetching one source through its private Browser session
 ├── native-dialog-tracker.ts # Per-window tracking and non-actionable attention for native dialogs
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
 ├── search-worker.ts        # File search walk — runs in a worker_thread (bundled separately to .vite/build/search-worker.js); never imports electron
