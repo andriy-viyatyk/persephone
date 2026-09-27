@@ -104,6 +104,8 @@ export interface ILinkPipeline {
     folderPath?: string;
     /** One-shot capability request for a newly opened board; never persisted. */
     intent?: IBoardIntent;
+    /** Main-issued private-session capability for one claimed download; never persisted. */
+    sessionHandle?: string;
 }
 
 /**

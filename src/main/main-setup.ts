@@ -12,6 +12,7 @@ import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
 import { initTorHandlers, torService } from "./tor-service";
 import { registerTorSrcProtocol } from "./tor-src-protocol";
+import { registerSessionSrcProtocol } from "./session-src-protocol";
 import { initWorkerHost } from "./worker-host";
 import { initCommandRunner, killAllCommands } from "./command-runner";
 import { disposeAllBoardPorts } from "./board-bridge";
@@ -56,6 +57,17 @@ export function setupMainProcess() {
                 standard: true,
                 secure: true,
                 supportFetchAPI: true,
+            },
+        },
+        {
+            // Short-lived private-session capabilities for claimed browser downloads (US-1531).
+            scheme: "session-src",
+            privileges: {
+                standard: true,
+                secure: true,
+                supportFetchAPI: true,
+                // HttpProvider fetches it from the renderer origin, which is cross-origin.
+                corsEnabled: true,
             },
         },
         {
@@ -115,6 +127,7 @@ export function setupMainProcess() {
         // a Tor page's blank tab) fetch a remote URL through that page's Tor session.
         // Only the app window's session needs it — do not widen to other partitions.
         registerTorSrcProtocol(appPartition);
+        registerSessionSrcProtocol(appPartition);
         // Single host-routed board:// handler on the main window's session (EPIC-037 /
         // US-770) — boards load board://<host> iframes in this session, routed by host.
         const { initBoardProtocol } = await import("./board-protocol-service");

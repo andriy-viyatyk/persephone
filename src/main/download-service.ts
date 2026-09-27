@@ -10,6 +10,8 @@ import { getDataFolder, preparePath } from "./utils";
 import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
 import { withNativeDialogSync } from "./native-dialog-tracker";
 import { isRegisteredBrowserWebContents } from "./browser-service";
+import { registerSessionSource } from "./session-src-protocol";
+import { torService } from "./tor-service";
 
 const PERSIST_FILE = "recentDownloads.json";
 const MAX_PERSISTED = 5;
@@ -121,10 +123,21 @@ class DownloadService {
         const claim = this.findBrowserUrlClaim(url);
         if (claim) {
             item.cancel();
+            const torPartition = torService.findActivePartitionForSession(webContents.session);
+            const sessionHandle = torPartition || !webContents.session.isPersistent()
+                ? registerSessionSource(webContents.session, url, torPartition)
+                : undefined;
             sendToBrowserHost(webContents, EventEndpoint.eOpenClaimedBrowserDownload, {
                 url,
                 boardRoot: claim.boardRoot,
+                ...(sessionHandle ? { sessionHandle } : {}),
             });
+            if (sessionHandle) {
+                sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
+                    message: "The metadata was fetched privately, but the swarm connection is not anonymous.",
+                    type: "info",
+                });
+            }
             sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
                 message: `${claim.boardName} claimed this download and opened its source URL.`,
                 type: "info",

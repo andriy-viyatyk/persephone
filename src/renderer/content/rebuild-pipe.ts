@@ -24,12 +24,18 @@ import { resolveRegisteredSourcePath } from "./scheme-registry";
  */
 export async function pipeFromLink(
     link: string,
-    options: { unknownScheme: "reject" | "file" } = { unknownScheme: "reject" },
+    options: {
+        unknownScheme?: "reject" | "file";
+        sessionHandle?: string;
+    } = { unknownScheme: "reject" },
 ): Promise<IContentPipe> {
     const registered = await resolveRegisteredSourcePath(link);
     if (registered) return registered;
 
-    const descriptor = resolveUrlToPipeDescriptor(link);
+    const descriptor = resolveUrlToPipeDescriptor(link, {
+        url: link,
+        sessionHandle: options.sessionHandle,
+    });
     if (descriptor) return createPipeFromDescriptor(descriptor);
 
     if (options.unknownScheme === "file") return new ContentPipe(new FileProvider(link));

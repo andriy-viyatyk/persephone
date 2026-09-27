@@ -92,10 +92,17 @@ export class RendererEventsService {
         );
     };
 
-    private handleClaimedBrowserDownload = async (data: { url: string; boardRoot: string }) => {
+    private handleClaimedBrowserDownload = async (data: {
+        url: string;
+        boardRoot: string;
+        sessionHandle?: string;
+    }) => {
         await guard("Failed to open URL", () =>
             app.events.openRawLink.sendAsync(
-                createLinkData(data.url, { target: boardEditorId(data.boardRoot) }),
+                createLinkData(data.url, {
+                    target: boardEditorId(data.boardRoot),
+                    sessionHandle: data.sessionHandle,
+                }),
             ),
         );
     };

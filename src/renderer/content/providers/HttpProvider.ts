@@ -20,17 +20,24 @@ export class HttpProvider implements IProvider {
     private readonly method: string;
     private readonly headers: Record<string, string>;
     private readonly body: string | undefined;
+    private readonly sessionHandle: string | undefined;
     private _cachedBuffer: Buffer | null = null;
 
     constructor(
         url: string,
-        options?: { method?: string; headers?: Record<string, string>; body?: string },
+        options?: {
+            method?: string;
+            headers?: Record<string, string>;
+            body?: string;
+            sessionHandle?: string;
+        },
     ) {
         this.url = url;
         this.sourceUrl = url;
         this.method = options?.method ?? "GET";
         this.headers = options?.headers ?? {};
         this.body = options?.body;
+        this.sessionHandle = options?.sessionHandle;
 
         try {
             const parsed = new URL(url);
@@ -63,13 +70,17 @@ export class HttpProvider implements IProvider {
         if (this._cachedBuffer) {
             return this._cachedBuffer;
         }
-        const { nodeFetch } = await import("../../api/node-fetch");
-        const response = await nodeFetch(this.url, {
-            method: this.method,
-            headers: this.requestHeaders(),
-            body: this.body,
-            signal: options?.signal,
-        });
+        const response = this.sessionHandle !== undefined
+            ? await this.fetchThroughSession(this.requestHeaders(), options?.signal)
+            : await (async () => {
+                const { nodeFetch } = await import("../../api/node-fetch");
+                return nodeFetch(this.url, {
+                    method: this.method,
+                    headers: this.requestHeaders(),
+                    body: this.body,
+                    signal: options?.signal,
+                });
+            })();
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -86,8 +97,12 @@ export class HttpProvider implements IProvider {
             range ? { Range: `bytes=${range.start}-${range.end}` } : undefined,
         );
 
-        import("../../api/node-fetch")
-            .then(({ nodeFetch }) => nodeFetch(this.url, { method: this.method, headers, signal: options?.signal }))
+        const request = this.sessionHandle !== undefined
+            ? this.fetchThroughSession(headers, options?.signal)
+            : import("../../api/node-fetch")
+                .then(({ nodeFetch }) => nodeFetch(this.url, { method: this.method, headers, signal: options?.signal }));
+
+        request
             .then((response) => {
                 if (!response.ok && response.status !== 206) {
                     passThrough.destroy(
@@ -114,6 +129,19 @@ export class HttpProvider implements IProvider {
             .catch((err) => passThrough.destroy(err));
 
         return passThrough;
+    }
+
+    private fetchThroughSession(
+        headers: Record<string, string>,
+        signal?: AbortSignal,
+    ): Promise<Response> {
+        const sessionUrl = `session-src://${this.sessionHandle}/?u=${encodeURIComponent(this.url)}`;
+        return fetch(sessionUrl, {
+            method: this.method,
+            headers,
+            body: this.body,
+            signal,
+        });
     }
 
     toDescriptor(): IProviderDescriptor {

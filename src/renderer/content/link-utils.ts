@@ -127,6 +127,7 @@ function resolveHttpPipeDescriptor(url: string, data?: ILinkData): IPipeDescript
     if (data?.method) httpConfig.method = data.method;
     if (data?.headers) httpConfig.headers = data.headers;
     if (data?.body) httpConfig.body = data.body;
+    if (data?.sessionHandle !== undefined) httpConfig.sessionHandle = data.sessionHandle;
 
     // No "!" archive detection for HTTP URLs — "!" is valid in HTTP URLs.
     // Archive-in-HTTP support deferred to future.

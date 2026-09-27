@@ -70,8 +70,20 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
         fallbackTarget,
         folderPath,
         intent,
+        sessionHandle,
         ...stored
     } = data;
+    if (stored.pipeDescriptor?.provider?.config) {
+        const providerConfig = { ...stored.pipeDescriptor.provider.config };
+        delete providerConfig.sessionHandle;
+        stored.pipeDescriptor = {
+            ...stored.pipeDescriptor,
+            provider: {
+                ...stored.pipeDescriptor.provider,
+                config: providerConfig,
+            },
+        };
+    }
     return Object.fromEntries(
         Object.entries(stored).filter(([, value]) => value !== undefined),
     ) as StoredLinkData;

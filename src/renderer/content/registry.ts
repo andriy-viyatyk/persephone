@@ -584,6 +584,7 @@ registerProvider("http", (config) => new HttpProvider(
         method: config.method as string | undefined,
         headers: config.headers as Record<string, string> | undefined,
         body: config.body as string | undefined,
+        sessionHandle: config.sessionHandle as string | undefined,
     },
 ), { origin: "platform" });
 registerProvider("data", (config) => new DataUrlProvider(config.url as string), { origin: "platform" });

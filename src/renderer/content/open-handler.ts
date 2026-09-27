@@ -52,9 +52,9 @@ export function registerOpenHandler(): void {
                 pagesModel.navigation.showPage(existingPage.id);
                 if (!sourceLink.url.startsWith(PERSEPHONE_BOARD_PREFIX)) {
                     const editor = existingPage.mainEditorInstance as {
-                        enqueueSourceUrl?: (sourceUrl: string) => void;
+                        enqueueSourceUrl?: (sourceUrl: string, sessionHandle?: string) => void;
                     } | null;
-                    editor?.enqueueSourceUrl?.(sourceLink.url);
+                    editor?.enqueueSourceUrl?.(sourceLink.url, data.sessionHandle);
                 }
                 data.pipe.dispose();
                 data.handled = true;
@@ -96,6 +96,7 @@ export function registerOpenHandler(): void {
                     folderPath: data.folderPath,
                     diffFrom: data.diffFrom,
                     diffTo: data.diffTo,
+                    sessionHandle: data.sessionHandle,
                 });
                 const title = data.title;
                 if (page && title) {

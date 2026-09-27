@@ -128,11 +128,14 @@ export class PagesLifecycleModel {
         filePath: string | undefined,
         pipe: IContentPipe | undefined,
         sourceLink: ILinkData | undefined,
+        sessionHandle?: string,
     ): void {
         const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
         if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        const editor = page.mainEditorInstance as BoardEditorModel | null;
-        editor?.enqueueSourceUrl(sourceUrl);
+        const editor = page.mainEditorInstance as (BoardEditorModel & {
+            enqueueSourceUrl?: (url: string, handle?: string) => void;
+        }) | null;
+        editor?.enqueueSourceUrl(sourceUrl, sessionHandle);
     }
 
     /** Route an open to an existing single-instance board page in this window. */
@@ -142,6 +145,7 @@ export class PagesLifecycleModel {
         options?: {
             sourceLink?: ILinkData;
             target?: string;
+            sessionHandle?: string;
         },
     ): Promise<PageModel | undefined> {
         const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
@@ -151,7 +155,7 @@ export class PagesLifecycleModel {
         if (!existingPage) return undefined;
 
         this.model.navigation.showPage(existingPage.id);
-        this.enqueueBoardSource(existingPage, filePath, pipe, options?.sourceLink);
+        this.enqueueBoardSource(existingPage, filePath, pipe, options?.sourceLink, options?.sessionHandle);
         pipe?.dispose();
         return existingPage;
     }
@@ -523,6 +527,7 @@ export class PagesLifecycleModel {
             diffTo?: ILinkDiffRevision;
             fragment?: string;
             intent?: IBoardIntent;
+            sessionHandle?: string;
         },
     ): Promise<PageModel | undefined> => {
         if (!filePath && options?.folderPath === undefined) return undefined;
@@ -579,6 +584,14 @@ export class PagesLifecycleModel {
         }
         const adapter = wrap(editor);
         const page = this.addPage(adapter);
+        if (options?.sessionHandle) {
+            const sourceUrl = options.sourceLink?.url ?? filePath;
+            if (sourceUrl) {
+                (adapter as unknown as {
+                    registerSourceSessionHandle?: (url: string, handle: string) => void;
+                }).registerSourceSessionHandle?.(sourceUrl, options.sessionHandle);
+            }
+        }
         // Apply caller-chosen diff revisions to a freshly-built File Diff editor
         // (no-op for any other editor type / when no revisions given) (US-637).
         (adapter as { applyDiffRevisions?: (f?: ILinkDiffRevision, t?: ILinkDiffRevision) => void })

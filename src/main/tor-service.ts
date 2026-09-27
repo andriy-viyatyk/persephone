@@ -8,7 +8,7 @@
  */
 import path from "path";
 import fs from "fs";
-import { app, BrowserWindow, ipcMain, session } from "electron";
+import { app, BrowserWindow, ipcMain, session, Session } from "electron";
 import { TorChannel, TorIpInfo, TorStatus } from "../ipc/tor-ipc";
 import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
@@ -165,6 +165,14 @@ class TorService {
      */
     isActiveTorPartition(partition: string): boolean {
         return this.sidecar.isRunning && this.activePartitions.has(partition);
+    }
+
+    /** Find the live Tor partition that owns an originating browser Session. */
+    findActivePartitionForSession(originatingSession: Session): string | undefined {
+        for (const partition of this.activePartitions) {
+            if (session.fromPartition(partition) === originatingSession) return partition;
+        }
+        return undefined;
     }
 
     getStatus(): {

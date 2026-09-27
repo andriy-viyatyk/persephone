@@ -383,7 +383,11 @@ export type EventApi = {
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
     [EventEndpoint.eOpenUrl]: EventObject<string>;
     [EventEndpoint.eOpenPipelineCandidate]: EventObject<string>;
-    [EventEndpoint.eOpenClaimedBrowserDownload]: EventObject<{ url: string; boardRoot: string }>;
+    [EventEndpoint.eOpenClaimedBrowserDownload]: EventObject<{
+        url: string;
+        boardRoot: string;
+        sessionHandle?: string;
+    }>;
     [EventEndpoint.eOpenExternalUrl]: EventObject<string>;
     [EventEndpoint.eDownloadStarted]: EventObject<DownloadEntry>;
     [EventEndpoint.eDownloadProgress]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;

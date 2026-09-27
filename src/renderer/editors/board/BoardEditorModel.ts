@@ -8,6 +8,7 @@ import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { cleanForStorage } from "../../../shared/link-data";
 import { createPipeFromDescriptor } from "../../content/registry";
 import { pipeFromLink, pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
@@ -150,6 +151,8 @@ export interface BoardEditorState extends EditorStateBase {
     toolbarText?: string;
     /** Frame generation that owns `toolbarText`. TRANSIENT — independent from toolbar controls. */
     toolbarTextFrameGeneration?: number;
+    /** Prevents a restored board from handing a private claimed HTTP source back to the board. */
+    sourceRestoreBlocked?: boolean;
 }
 
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
@@ -205,6 +208,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private readonly contentResources = new Map<string, ContentResource>();
     private initialIntent: IBoardIntent | undefined;
     private readonly pendingSourceUrls: string[] = [];
+    private readonly sourceSessionHandles = new Map<string, string>();
+    private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    /** Sources that arrived with a private session. They are never fetched on the default one. */
+    private readonly sessionBoundSources = new Set<string>();
+    private sourceRestoreBlockedOnRestore = false;
     private readonly pendingSourceListeners = new Set<() => void>();
     private toolbarFrameGeneration: number | undefined;
     private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
@@ -258,9 +266,28 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         }
     }
 
+    /** Remember the capability for a source while the board opens it. */
+    registerSourceSessionHandle(sourceUrl: string, sessionHandle?: string): void {
+        if (!sourceUrl || !sessionHandle) return;
+        const previousTimer = this.sourceSessionHandleTimers.get(sourceUrl);
+        if (previousTimer) clearTimeout(previousTimer);
+        this.sourceSessionHandles.set(sourceUrl, sessionHandle);
+        this.sessionBoundSources.add(sourceUrl);
+        this.state.update((state) => {
+            state.sourceRestoreBlocked = true;
+        });
+        const timer = setTimeout(() => {
+            if (this.sourceSessionHandles.get(sourceUrl) !== sessionHandle) return;
+            this.sourceSessionHandles.delete(sourceUrl);
+            this.sourceSessionHandleTimers.delete(sourceUrl);
+        }, 5 * 60 * 1000);
+        this.sourceSessionHandleTimers.set(sourceUrl, timer);
+    }
+
     /** Queue a raw source identity for the main board frame. It is transient and never persisted. */
-    enqueueSourceUrl(sourceUrl: string): void {
+    enqueueSourceUrl(sourceUrl: string, sessionHandle?: string): void {
         if (!sourceUrl) return;
+        this.registerSourceSessionHandle(sourceUrl, sessionHandle);
         this.pendingSourceUrls.push(sourceUrl);
         // A live frame flushes immediately; a frame still loading flushes on load/handshake.
         for (const listener of this.pendingSourceListeners) listener();
@@ -586,6 +613,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      * rather than in each board. */
     currentSourceUrl(): string | undefined {
         const s = this.state.get();
+        if (this.sourceRestoreBlockedOnRestore) return undefined;
         const url = s.sourceLink?.url ?? s.filePath;
         if (url?.startsWith(PERSEPHONE_BOARD_PREFIX)) return undefined;
         return url;
@@ -660,7 +688,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         signal?: AbortSignal,
     ): Promise<ContentResourceInfo> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
-        const pipe = await pipeFromLink(link);
+        // The handle stays valid until it expires, so a retry reuses it. Once it has expired, a
+        // private source fails here: falling back to the default session would leak the request.
+        const sessionHandle = this.sourceSessionHandles.get(link);
+        if (!sessionHandle && this.sessionBoundSources.has(link)) {
+            throw new Error("The private session for this source has expired. Open the link again from its page.");
+        }
+        const pipe = await pipeFromLink(link, { sessionHandle });
         try {
             const stat = await pipe.stat({ signal });
             if (signal?.aborted) throw new Error("The content resource request was cancelled.");
@@ -823,11 +857,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             ...(data.state as Record<string, unknown>),
             boardRoot: s.boardRoot,
             folderPath: s.folderPath,
+            sourceLink: s.sourceLink ? cleanForStorage(s.sourceLink) : undefined,
             sharedState,
             statusText: undefined,
             toolbarText: undefined,
             toolbarTextFrameGeneration: undefined,
             contentPath: undefined,
+            sourceRestoreBlocked: s.sourceRestoreBlocked === true ? true : undefined,
         };
         return data;
     }
@@ -876,6 +912,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     async restore(): Promise<void> {
         const s = this.state.get();
         if (!s.boardRoot) throw new Error("legacy project-mode board editor — dropped on restore");
+        this.sourceRestoreBlockedOnRestore = s.sourceRestoreBlocked === true;
         // Busy is transient (US-799): processes never survive an app restart
         // (`will-quit` kills every child), so a persisted flag is always stale.
         if (s.busy) this.state.update((st) => { st.busy = false; });
@@ -1052,6 +1089,10 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     override async dispose(): Promise<void> {
         this.initialIntent = undefined;
         this.pendingSourceUrls.length = 0;
+        for (const timer of this.sourceSessionHandleTimers.values()) clearTimeout(timer);
+        this.sourceSessionHandles.clear();
+        this.sourceSessionHandleTimers.clear();
+        this.sessionBoundSources.clear();
         this.pendingSourceListeners.clear();
         this.toolbarFrameGeneration = undefined;
         this.liveToolbarElements = [];
