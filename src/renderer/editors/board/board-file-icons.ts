@@ -68,8 +68,7 @@ async function iconUrlFor(name: string, iconColor: string): Promise<{ key: strin
 
 /** Resolve names (basenames are used; paths are accepted) to deduplicated `data:` URLs. */
 export async function resolveBoardFileIcons(names: readonly unknown[]): Promise<BoardFileIcons> {
-    const iconColor = getComputedStyle(document.documentElement).getPropertyValue("--color-icon-default").trim()
-        || "#cccccc";
+    const iconColor = getComputedStyle(document.documentElement).getPropertyValue("--color-icon-default").trim();
     const urls: string[] = [];
     const icons: Record<string, number> = {};
     const indexByKey = new Map<string, number>();

@@ -58,14 +58,6 @@ deleting `editors/draw` did not take them with it.
   - [ ] [US-1530: Single-instance boards — one page for every link a board claims](tasks/US-1530-single-instance-boards/README.md) — *US-1529 landed*
     - [ ] [US-1531: A claimed download is fetched on the originating page's session (D13)](tasks/US-1531-claimed-download-session/README.md)
 
-- *(no epic)*
-  - [ ] [US-1532: Board toolbar declarations made before the frame's load event are lost](tasks/US-1532-board-toolbar-early-declaration/README.md)
-    — found in the Torrent Viewer 1.6.0 redesign: `BoardWebview.handleLoad` clears controls set while
-    the board document was still parsing. Fix in the shim (hold toolbar messages until `load`); no bridge bump.
-  - [ ] [US-1533: Boards can ask Persephone for a file's icon](tasks/US-1533-board-file-icon-api/README.md)
-    — `persephone.icons.forFiles(names)` returning `data:` URLs from `resolveFileIcon`; bridge 1.18.0.
-    First consumer: the Torrent Viewer's file list.
-
 ## Planned
 
 - *(no epic)*

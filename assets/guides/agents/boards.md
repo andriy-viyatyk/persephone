@@ -11,8 +11,10 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.13.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.13.0` adds
+The board bridge is version **1.18.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.18.0` adds
+`persephone.icons.forFiles(names)` for getting Persephone's file icons as image URLs. Bridge
+`1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access
 to settings declared by the board; bridge `1.12.0` added
 `persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS

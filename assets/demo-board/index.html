@@ -346,6 +346,22 @@
                 <li><code>service.mjs</code> — an ESM service entry with a board-root cwd, sanitized environment, standard Node built-ins, and board-root <code>node_modules</code> resolution. Its stdout/stderr diagnostics are captured in <code>ui.log</code>; use <code>persephone.service.request</code> and <code>persephone.storage</code> rather than inventing a persistence file.</li>
             </ul>
 
+            <h2>Use Persephone's file icons</h2>
+            <p>
+                File lists can use the same icons as Persephone's Explorer without opening the files.
+                Pass basenames (or paths) to <code>persephone.icons.forFiles()</code>; the result maps
+                each requested name to a <code>data:</code> URL suitable for an image. Request again
+                after <code>persephone.onThemeChange</code> because single-colour icons follow the theme.
+            </p>
+            <pre><code>const names = ["movie.mp4", "package.json"];
+const icons = await persephone.icons.forFiles(names);
+for (const name of names) {
+  const image = document.createElement("img");
+  image.src = icons[name];
+  image.alt = "";
+  fileList.append(image, name);
+}</code></pre>
+
             <h2>Returning data reliably</h2>
             <p>
                 A bare <code>getJson()</code> assumes stdout contains <em>only</em> your JSON. The moment a script

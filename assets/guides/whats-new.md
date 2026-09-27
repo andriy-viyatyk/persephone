@@ -102,8 +102,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Boards can put their own controls in the page toolbar:** a trusted or bundled board declares
   buttons, toggles, menus, selects and text inputs from a fixed catalog and Persephone renders them
   in its own toolbar, themed and addressable by an agent, delivering an event to the board on each
-  interaction. A board can also replace the toolbar's text label, which falls back to the board path
-  when it sets nothing. See [Boards](./boards.md).
+  interaction. A board can also set the toolbar's text label; the slot stays empty when it sets
+  nothing. See [Boards](./boards.md).
 - **The Excalidraw board has its drawing toolbar:** the bundled board carries five controls — theme,
   copy image, save as SVG/PNG, open in a new tab, and screen snip.
 - **Board recovery actions now share a single toolbar menu:** **Reload board**, **Open board log**,

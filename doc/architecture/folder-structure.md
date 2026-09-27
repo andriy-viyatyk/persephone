@@ -654,6 +654,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
 │   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
+│   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake, settings change pushes, and ui.log reset
 │   │   ├── board-pipe-handler.ts      # Renderer side of board://<host>/__pipe/<pageId> range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)

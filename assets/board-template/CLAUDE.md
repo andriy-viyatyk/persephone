@@ -5,8 +5,10 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.13.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.13.0` adds
+The board bridge is version **1.18.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.18.0` adds
+`persephone.icons.forFiles(names)` to retrieve Persephone's file icons as `data:` URLs, and queues
+toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
 board declares in its manifest; `1.12.0` added `persephone.clipboard.writeImage(data)` and
 `persephone.clipboard.writeText(text)` for native OS clipboard writes; the preceding `1.11.0`
@@ -55,6 +57,8 @@ replace the existing trust gate.
 
 The catalog is transient main-frame state: reload, navigation, disposal, or loss of trust clears
 the controls and their dynamic element declarations, and a new frame must call `set()` again.
+Calls made by top-level script code before the document's `load` event are queued and sent in call
+order once that event fires.
 
 ## Board page-toolbar text
 
@@ -64,6 +68,19 @@ it rather than restoring the board root path. While board text is shown, the lab
 carries that full path. The value is not persisted and
 is cleared when the frame reloads, errors, is disposed, loses trust, or is navigated away from, so
 the replacement frame must set it again.
+
+## File icons
+
+`await persephone.icons.forFiles(names)` returns an object keyed by each requested file name, with
+the `data:` URL Persephone uses for that file's icon. Names may be basenames or paths, and the file
+does not need to exist. The host deduplicates icon URLs in its reply; the shim returns the simpler
+name-to-URL mapping. Single-colour icons use the current theme's icon colour, so request them again
+from `persephone.onThemeChange()` after a theme switch.
+
+```js
+const icons = await persephone.icons.forFiles(["movie.mp4", "package.json"]);
+image.src = icons["movie.mp4"];
+```
 
 > ## 📌 Agent: rewrite this file once the board is built
 >
