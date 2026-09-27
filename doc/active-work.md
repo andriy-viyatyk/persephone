@@ -6,41 +6,8 @@ Overview of all active and planned epics and tasks.
 - Task details tracked in [`/doc/tasks/completed.md`](tasks/completed.md) after completion
 - Ideas and future concepts in [`/doc/tasks/backlog.md`](tasks/backlog.md)
 
-## Active roadmap
-
-**[Platform roadmap](platform-roadmap.md)** — Persephone as a host and registry for boards
-(user decision, 2026-09-19). It is implemented **one epic at a time, not all at once**:
-
-1. Take the next phase of the roadmap that has no epic yet (phases are in dependency order, A–F).
-2. Decide the epic's scope from that phase — a phase may become one epic or be split if it is too
-   large — and create the epic document in `epics/`, listed under **Active** below.
-3. Implement and close the epic per the normal workflow (review, docs, move to
-   `epics/completed.md`).
-4. Only then create the epic for the next phase, until every phase is done.
-
-Update the roadmap's phase notes when an epic changes a decision recorded there. The phase list
-below tracks which phases have shipped.
-
-| Phase | Epic | Status |
-|---|---|---|
-| A — Refactor the seams | [EPIC-105](epics/EPIC-105.md) | **shipped 2026-09-20** |
-| B — Bridge contract and module service process | [EPIC-106](epics/EPIC-106.md) | **shipped 2026-09-20** |
-| C — Open providers with ranged streaming | [EPIC-107](epics/EPIC-107.md) | **shipped 2026-09-20** (US-1474 deferred to Phase E) |
-| D — Capability bus and in-memory data channel | [EPIC-108](epics/EPIC-108.md) | **shipped 2026-09-20** (DataHandle store deferred to Phase F) |
-| F — Excalidraw extraction, part 1: bundled boards + the board | [EPIC-109](epics/EPIC-109.md) | **shipped 2026-09-23** |
-| F — Excalidraw extraction, part 2: remove `editors/draw` and React | [EPIC-110](epics/EPIC-110.md) | **shipped 2026-09-25** — React left the renderer bundle (−10.4%); packages moved to `devDependencies` rather than removed |
-| E — part 1: a board provider feeds Persephone's own editors | [EPIC-113](epics/EPIC-113.md) | **shipped 2026-09-26** — audio-player board dropped by user decision (D2); all nine acceptance items verified in the running app, VLC included |
-| E — part 2: the torrent viewer board | [EPIC-114](epics/EPIC-114.md) | **shipped 2026-09-27** — Torrent Viewer board in persephone-boards (1.7.0); the one unverified item is US-1531's manual Tor/incognito run |
-
-**[EPIC-111: Board settings](epics/EPIC-111.md)** is not a roadmap phase. It was created from a gap
-EPIC-109 uncovered: boards can persist state but the user can neither see nor change it, so the
-drawing library path has nowhere to live once `editors/draw` is deleted. EPIC-109 D11 made it a
-prerequisite of EPIC-110, which shipped 2026-09-25.
-
-**EPIC-112: Board toolbar controls** shipped 2026-09-21; it moved to
-[`epics/completed.md`](epics/completed.md). It cleared the second of EPIC-110's two prerequisites:
-the built-in Draw editor's five toolbar controls exist on the bundled Excalidraw board, so
-deleting `editors/draw` did not take them with it.
+The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114) finished on
+2026-09-27; its epics are in [`epics/completed.md`](epics/completed.md).
 
 ## Active
 
