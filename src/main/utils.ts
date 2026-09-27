@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
+import type { LaunchInput } from "../shared/launch-input";
 
 export const preparePath = (dirPath: string): boolean => {
     if (!fs.existsSync(dirPath)) {
@@ -103,4 +104,44 @@ export function isValidFilePath(filePath: string | undefined): boolean {
  */
 export function isValidOpenPath(filePath: string | undefined): boolean {
     return pathExists(filePath);
+}
+
+/** Select launch operands from either packaged or `electron <appPath>` argv. */
+export function launchOperands(argv: string[]): string[] {
+    const operands = argv.slice(1).filter((argument) => !argument.startsWith("--"));
+    return process.defaultApp ? operands.slice(1) : operands;
+}
+
+/** Parse ordered launch operands using the caller's working directory for relative paths. */
+export function parseLaunchArguments(operands: string[], cwd: string): LaunchInput[] {
+    const inputs: LaunchInput[] = [];
+
+    for (let index = 0; index < operands.length; index += 1) {
+        const operand = operands[index];
+        if (index === 0 && operand.toLowerCase() === "diff") {
+            const firstOperand = operands[index + 1];
+            const secondOperand = operands[index + 2];
+            index += 2;
+            if (!firstOperand || !secondOperand) continue;
+
+            const firstPath = path.resolve(cwd, firstOperand);
+            const secondPath = path.resolve(cwd, secondOperand);
+            if (isValidFilePath(firstPath) && isValidFilePath(secondPath)) {
+                inputs.push({ kind: "diff", firstPath, secondPath });
+            }
+            continue;
+        }
+
+        if (operand.startsWith("http://") || operand.startsWith("https://")) {
+            inputs.push({ kind: "url", url: operand });
+            continue;
+        }
+
+        const resolvedPath = path.resolve(cwd, operand);
+        if (isValidOpenPath(resolvedPath)) {
+            inputs.push({ kind: "file", path: resolvedPath });
+        }
+    }
+
+    return inputs;
 }

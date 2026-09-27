@@ -1,6 +1,7 @@
 import { api } from "../../ipc/renderer/api";
 import ipcRendererEvents from "../../ipc/renderer/renderer-events";
 import type { PagesModel } from "./pages/PagesModel";
+import type { RendererEventsService } from "./internal/RendererEventsService";
 import { AppEvents } from "./events/AppEvents";
 import { createLinkData } from "../../shared/link-data";
 import type { IFetchOptions } from "./types/app";
@@ -21,6 +22,7 @@ class App {
     private _servicesInitialization: Promise<void> | undefined;
     private _pagesInitialized = false;
     private _eventsInitialized = false;
+    private _rendererEventsService?: RendererEventsService;
 
     private readonly _serviceValues: Partial<
         Record<AppServiceKey, AppServiceSurface[AppServiceKey]>
@@ -194,13 +196,18 @@ class App {
         await pages.init();
     }
 
-    /**
-     * Open the file or URL this process was started with. Called in bootstrap after
-     * initEvents(), which registers the openRawLink pipeline that opens it (US-1463).
-     */
+    /** Dispatch launch inputs after the openRawLink pipeline has initialized. */
     async openStartupInputs(): Promise<void> {
-        const { pages } = await import("./pages");
-        await pages.openStartupInputs();
+        const rendererEventsService = this._rendererEventsService;
+        if (!rendererEventsService) {
+            throw new Error("Renderer events service is not initialized");
+        }
+
+        const startupInputs = await api.getStartupInputs();
+        for (const input of startupInputs) {
+            await rendererEventsService.openLaunchInput(input);
+        }
+        this._pages.checkEmptyPage();
     }
 
     /**
@@ -257,6 +264,7 @@ class App {
         const keyboard = new KeyboardService();
         const windowState = new WindowStateService();
         const rendererEvents = new RendererEventsService();
+        this._rendererEventsService = rendererEvents;
 
         // Initialize all services in parallel
         await Promise.all([

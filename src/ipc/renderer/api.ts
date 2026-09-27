@@ -1,4 +1,5 @@
 import { PageDragData, WindowPages } from "../../shared/types";
+import type { LaunchInput } from "../../shared/launch-input";
 import {
     BoardArchiveDownloadRequest,
     BrowserUrlMaskSnapshot,
@@ -165,8 +166,8 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.windowReady);
     };
 
-    getFileToOpen = async () => {
-        return executeOnce<string | undefined>(Endpoint.getFileToOpen);
+    getStartupInputs = async () => {
+        return executeOnce<LaunchInput[]>(Endpoint.getStartupInputs);
     };
 
     getWindowIndex = async () => {
@@ -207,10 +208,6 @@ class ApiCalls implements Api {
 
     setNativeTheme = async (mode: "light" | "dark") => {
         return executeOnce<void>(Endpoint.setNativeTheme, mode);
-    }
-
-    getUrlToOpen = async () => {
-        return executeOnce<string | undefined>(Endpoint.getUrlToOpen);
     }
 
     registerAsDefaultBrowser = async () => {

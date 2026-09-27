@@ -284,8 +284,6 @@ export class PagesModel extends TModel<OpenFilesState> {
     movePageOut = (pageId?: string) => this.lifecycle.movePageOut(pageId);
     duplicatePage = (pageId: string) => this.lifecycle.duplicatePage(pageId);
     handleOpenUrl = (url: string) => this.lifecycle.handleOpenUrl(url);
-    handleExternalUrl = (url: string) =>
-        this.lifecycle.handleExternalUrl(url);
     openPathInNewWindow = (filePath: string) =>
         this.lifecycle.openPathInNewWindow(filePath);
     requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
@@ -343,5 +341,4 @@ export class PagesModel extends TModel<OpenFilesState> {
     saveStateDebounced = () => this.persistence.saveStateDebounced();
     onAppQuit = () => this.persistence.onAppQuit();
     init = () => this.persistence.init();
-    openStartupInputs = () => this.persistence.openStartupInputs();
 }

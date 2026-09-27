@@ -24,6 +24,7 @@ import type {
     ClipboardStatus,
 } from "./clipboard-ipc";
 import type { BoardServiceStatus, TrustedBoardSnapshot } from "./module-service-channels";
+import type { LaunchInput } from "../shared/launch-input";
 
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
@@ -46,8 +47,7 @@ export enum Endpoint {
     showFolder = "showFolder",
     openPath = "openPath",
     windowReady = "windowReady",
-    getFileToOpen = "getFileToOpen",
-    getUrlToOpen = "getUrlToOpen",
+    getStartupInputs = "getStartupInputs",
     getWindowIndex = "getWindowIndex",
     openNewWindow = "openNewWindow",
     getWindowPages = "getWindowPages",
@@ -210,8 +210,7 @@ export type Api = {
     /** Resolves to Electron's error string — empty when the shell accepted the path. */
     [Endpoint.openPath]: (path: string) => Promise<string>;
     [Endpoint.windowReady]: () => Promise<void>;
-    [Endpoint.getFileToOpen]: () => Promise<string | undefined>;
-    [Endpoint.getUrlToOpen]: () => Promise<string | undefined>;
+    [Endpoint.getStartupInputs]: () => Promise<LaunchInput[]>;
     [Endpoint.getWindowIndex]: () => Promise<number>;
     [Endpoint.openNewWindow]: (filePath?: string) => Promise<number>;
     [Endpoint.getWindowPages]: () => Promise<WindowPages[]>;

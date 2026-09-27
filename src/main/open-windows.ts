@@ -6,6 +6,7 @@ import { OpenWindow } from "./open-window";
 import { windowStates } from "./window-states";
 import { getDataFolder, preparePath } from "./utils";
 import { PageDescriptor, WindowPages } from "../shared/types";
+import type { LaunchInput } from "../shared/launch-input";
 
 interface OpenWindowData {
     window?: OpenWindow;
@@ -143,6 +144,20 @@ class OpenWindows {
             mainWin.focus();
         }
     }
+
+    handleLaunchInput = (input: LaunchInput) => {
+        switch (input.kind) {
+            case "file":
+                this.handleOpenFile(input.path);
+                break;
+            case "url":
+                this.handleOpenUrl(input.url);
+                break;
+            case "diff":
+                this.handleOpenDiff(input.firstPath, input.secondPath);
+                break;
+        }
+    };
 
     private saveState = (): void => {
         const state: OpenWindowData[] = this.windows.map((w) => ({

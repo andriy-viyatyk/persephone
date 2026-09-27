@@ -3,7 +3,7 @@ import { CaptureRect, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "..
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
-import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
+import { getStartupInputs, windowReady } from "./window-handlers";
 import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { WindowPages, PageDragData } from "../../shared/types";
@@ -134,12 +134,8 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         const window = BrowserWindow.fromWebContents(event.sender);
         return windowReady(window);
     }
-    getFileToOpen = async (_event: IpcMainEvent): Promise<string | undefined> => {
-        return getFileToOpen();
-    }
-
-    getUrlToOpen = async (_event: IpcMainEvent): Promise<string | undefined> => {
-        return getUrlToOpen();
+    getStartupInputs = async (_event: IpcMainEvent) => {
+        return getStartupInputs();
     }
 
     getWindowIndex = async (event: IpcMainEvent): Promise<number> => {
@@ -390,8 +386,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.showFolder, controllerInstance.showFolder);
     bindEndpoint(Endpoint.openPath, controllerInstance.openPath);
     bindEndpoint(Endpoint.windowReady, controllerInstance.windowReady);
-    bindEndpoint(Endpoint.getFileToOpen, controllerInstance.getFileToOpen);
-    bindEndpoint(Endpoint.getUrlToOpen, controllerInstance.getUrlToOpen);
+    bindEndpoint(Endpoint.getStartupInputs, controllerInstance.getStartupInputs);
     bindEndpoint(Endpoint.getWindowIndex, controllerInstance.getWindowIndex);
     bindEndpoint(Endpoint.openNewWindow, controllerInstance.openNewWindow);
     bindEndpoint(Endpoint.getWindowPages, controllerInstance.getWindowPages);

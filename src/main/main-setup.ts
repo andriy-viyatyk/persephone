@@ -3,7 +3,7 @@ import { app, components, net, protocol, session } from "electron";
 import path from "node:path";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { controller } from "../ipc/main/controller";
-import { getAssetPath, isValidFilePath, isValidOpenPath } from "./utils";
+import { getAssetPath, launchOperands, parseLaunchArguments } from "./utils";
 import { pathToFileURL } from "node:url";
 import { openWindows } from "./open-windows";
 import { setupTray } from "./tray-setup";
@@ -199,44 +199,8 @@ export function setupMainProcess() {
     });
 
     app.on("second-instance", (event, commandLine, workingDirectory) => {
-        const arg = commandLine[2];
         openWindows.bringToFront();
-
-        if (!arg) return;
-
-        // URL from browser registration (http:// or https://)
-        if (arg.startsWith("http://") || arg.startsWith("https://")) {
-            openWindows.handleOpenUrl(arg);
-            return;
-        }
-
-        if (arg.toLowerCase().trim() === "diff") {
-            const firstPath = commandLine[3];
-            const secondPath = commandLine[4];
-            const resolvedFirstPath = path.isAbsolute(firstPath)
-                ? firstPath
-                : path.resolve(workingDirectory, firstPath);
-
-            const resolvedSecondPath = path.isAbsolute(secondPath)
-                ? secondPath
-                : path.resolve(workingDirectory, secondPath);
-
-            if (
-                isValidFilePath(resolvedFirstPath) &&
-                isValidFilePath(resolvedSecondPath)
-            ) {
-                openWindows.handleOpenDiff(
-                    resolvedFirstPath,
-                    resolvedSecondPath,
-                );
-            }
-        } else if (!path.isAbsolute(arg)) {
-            const resolvedPath = path.resolve(workingDirectory, arg);
-            if (isValidOpenPath(resolvedPath)) {
-                openWindows.handleOpenFile(resolvedPath);
-            }
-        } else if (isValidOpenPath(arg)) {
-            openWindows.handleOpenFile(arg);
-        }
+        const inputs = parseLaunchArguments(launchOperands(commandLine), workingDirectory);
+        inputs.forEach((input) => openWindows.handleLaunchInput(input));
     });
 }

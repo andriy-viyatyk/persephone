@@ -19,7 +19,15 @@ The installer's **Additional Options** page offers three checkboxes:
 - **Add "Open with persephone" for folders to Explorer context menu** (checked by default) — lets you open a folder straight into persephone from Explorer; it opens as a new tab with the File Explorer panel rooted at that folder. Such a page is Persephone's equivalent of a VS Code workspace
 - **Register as default browser** (unchecked by default)
 
-Passing a folder path on the command line opens the same way. If you're upgrading from an older version that had the (now removed) "Set as default app for text files" option checked, that upgrade releases those file associations — each extension reverts to whatever app previously handled it.
+Passing paths on the command line opens each file or folder in a tab. You can also pass an `http://` or `https://` URL to open it in Persephone's built-in browser, or compare two files by putting `diff` before their paths:
+
+```text
+persephone.exe notes.md another-file.js
+persephone.exe https://example.com
+persephone.exe diff before.txt after.txt
+```
+
+Quote paths that contain spaces. If Persephone is already running, these inputs open in that instance. If you're upgrading from an older version that had the (now removed) "Set as default app for text files" option checked, that upgrade releases those file associations — each extension reverts to whatever app previously handled it.
 
 ### From Source
 

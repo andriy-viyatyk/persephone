@@ -1,16 +1,12 @@
 import net from "node:net";
 import os from "node:os";
 import { openWindows } from "./open-windows";
-import { isValidFilePath, isValidOpenPath } from "./utils";
+import { parseLaunchArguments } from "./utils";
 
 const PIPE_NAME = `persephone-${os.userInfo().username}`;
 const PIPE_PATH = `\\\\.\\pipe\\${PIPE_NAME}`;
 
 let server: net.Server | undefined;
-
-function isUrl(arg: string): boolean {
-    return arg.startsWith("http://") || arg.startsWith("https://");
-}
 
 function handleMessage(message: string): void {
     const trimmed = message.trim();
@@ -21,27 +17,25 @@ function handleMessage(message: string): void {
             return;
         }
 
-        openWindows.bringToFront();
-
-        if (isUrl(argument)) {
-            openWindows.handleOpenUrl(argument);
-        } else if (isValidOpenPath(argument)) {
-            openWindows.handleOpenFile(argument);
-        }
+        dispatchInputs(parseLaunchArguments([argument], process.cwd()));
     } else if (trimmed === "SHOW") {
         openWindows.bringToFront();
     } else if (trimmed.startsWith("DIFF ")) {
-        // DIFF <absolute-path1> <absolute-path2>
-        // Paths are tab-separated to avoid issues with spaces in file paths
+        // DIFF <absolute-path1>\t<absolute-path2>; tabs preserve spaces in paths.
         const args = trimmed.substring(5).split("\t");
         const firstPath = args[0]?.trim();
         const secondPath = args[1]?.trim();
 
-        if (firstPath && secondPath && isValidFilePath(firstPath) && isValidFilePath(secondPath)) {
-            openWindows.bringToFront();
-            openWindows.handleOpenDiff(firstPath, secondPath);
+        if (firstPath && secondPath) {
+            dispatchInputs(parseLaunchArguments(["diff", firstPath, secondPath], process.cwd()));
         }
     }
+}
+
+function dispatchInputs(inputs: ReturnType<typeof parseLaunchArguments>): void {
+    if (inputs.length === 0) return;
+    openWindows.bringToFront();
+    inputs.forEach((input) => openWindows.handleLaunchInput(input));
 }
 
 function handleConnection(socket: net.Socket): void {

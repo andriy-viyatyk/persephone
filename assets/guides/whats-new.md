@@ -88,6 +88,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Command-line launches accept multiple inputs:** open several files or folders at once, pass an
+  `http(s)` URL to open it in the built-in browser, or compare two files with
+  `persephone.exe diff before.txt after.txt`. These inputs also open in the running Persephone
+  instance when one is already open. See [Getting Started — Installation](./getting-started.md#installation).
 - **Settings has a navigable two-pane layout:** settings are arranged as per-group panels, with a
   fixed two-level **Content** tree on the left. Click a group or section to scroll to it; the tree
   follows the panel currently visible as you scroll. Board-declared settings appear in their own
@@ -144,6 +148,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Failed archive and provider media can be retried:** reopen the source link to start a fresh
   playback attempt in its existing page.
 - **Files and web links supplied when starting Persephone now open as expected.**
+- **A web link that starts Persephone opens inside it when Persephone is the default browser:**
+  it no longer bounces back out to the default browser (which is Persephone itself).
 - **Board toolbar controls declared at startup now appear:** a board that called
   `persephone.toolbar.set()`, `update()` or `setText()` from its top-level script code lost those
   controls a moment later, when its page finished loading. They are now held until the page has

@@ -10,6 +10,7 @@ import { boardEditorId } from "../../editors/board/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
+import type { LaunchInput } from "../../../shared/launch-input";
 
 /**
  * Renderer IPC events service.
@@ -21,8 +22,12 @@ export class RendererEventsService {
         // App.initEvents() owns these process-lifetime IPC subscriptions; no view/model
         // owns the application event bus wiring.
         // Page operations (currently delegates to pagesModel)
-        rendererEvents.eOpenFile.subscribe(this.handleOpenFile);
-        rendererEvents.eOpenDiff.subscribe(this.handleOpenDiff);
+        rendererEvents.eOpenFile.subscribe((filePath) =>
+            this.openLaunchInput({ kind: "file", path: filePath }),
+        );
+        rendererEvents.eOpenDiff.subscribe((params) =>
+            this.openLaunchInput({ kind: "diff", ...params }),
+        );
         rendererEvents.eShowPage.subscribe(this.handleShowPage);
         rendererEvents.eMovePageIn.subscribe(this.handleMovePageIn);
         rendererEvents.eMovePageOut.subscribe(this.handleMovePageOut);
@@ -31,7 +36,9 @@ export class RendererEventsService {
         rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
         rendererEvents.eOpenPipelineCandidate.subscribe(this.handlePipelineCandidate);
         rendererEvents.eOpenClaimedBrowserDownload.subscribe(this.handleClaimedBrowserDownload);
-        rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
+        rendererEvents.eOpenExternalUrl.subscribe((url) =>
+            this.openLaunchInput({ kind: "url", url }),
+        );
 
         // Quit handler
         rendererEvents.eBeforeQuit.subscribe(this.handleBeforeQuit);
@@ -55,14 +62,31 @@ export class RendererEventsService {
         );
     };
 
-    private handleOpenFile = async (filePath: string) => {
-        await guard("Failed to open file", () =>
-            app.events.openRawLink.sendAsync(createLinkData(filePath)),
-        );
-    };
-
-    private handleOpenDiff = async (params: { firstPath: string; secondPath: string }) => {
-        await guard("Failed to open diff", () => pagesModel.openDiff(params));
+    openLaunchInput = async (input: LaunchInput): Promise<void> => {
+        switch (input.kind) {
+            case "file":
+                await guard("Failed to open file", () =>
+                    app.events.openRawLink.sendAsync(createLinkData(input.path)),
+                );
+                return;
+            case "url":
+                // Route through the pipeline — the HTTP resolver decides content vs browser.
+                // `browserMode: "internal"` prevents the shell.openExternal fallback, which
+                // would loop back to us when Persephone is the OS default browser.
+                await guard("Failed to open URL", () =>
+                    app.events.openRawLink.sendAsync(
+                        createLinkData(input.url, { browserMode: "internal" }),
+                    ),
+                );
+                return;
+            case "diff":
+                await guard("Failed to open diff", () =>
+                    pagesModel.openDiff({
+                        firstPath: input.firstPath,
+                        secondPath: input.secondPath,
+                    }),
+                );
+        }
     };
 
     private handleShowPage = async (pageId: string) => {
@@ -103,17 +127,6 @@ export class RendererEventsService {
                     target: boardEditorId(data.boardRoot),
                     sessionHandle: data.sessionHandle,
                 }),
-            ),
-        );
-    };
-
-    private handleExternalUrl = async (url: string) => {
-        // Route through pipeline — HTTP resolver decides content vs browser based on extension.
-        // `browserMode: "internal"` prevents shell.openExternal fallback, which would loop
-        // back to us when Persephone is the OS default browser.
-        await guard("Failed to open URL", () =>
-            app.events.openRawLink.sendAsync(
-                createLinkData(url, { browserMode: "internal" }),
             ),
         );
     };

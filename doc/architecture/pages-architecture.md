@@ -26,7 +26,7 @@ graph TD
     D1 --> E["app.initPages<br/>Restore pages"]
     E --> F["app.initEvents<br/>Layer 3"]
     F -->|Initialize services| F1["GlobalEventService<br/>KeyboardService<br/>WindowStateService<br/>RendererEventsService"]
-    F1 -->|Open cold-start file or URL| F2["app.openStartupInputs"]
+    F1 -->|Dispatch cold-start inputs| F2["app.openStartupInputs"]
     F2 --> G["api.windowReady<br/>Signal window ready"]
     G -->|mount(container)| H["MainPageView<br/>Tabs + Active Editor"]
     H -->|User interactions| I["Page operations"]
@@ -35,11 +35,11 @@ graph TD
     E -->|✗ Error| E2["Notify user, create empty"]
     E1 --> F
     E2 --> F
-    F2 -->|File argument| F2a["Open requested file"]
-    F2 -->|URL argument| F2b["Open URL through link pipeline"]
+    F2 -->|File or URL input| F2a["Open through link pipeline"]
+    F2 -->|Diff input| F2b["Open file diff"]
     F2a --> G
     F2b --> G
-    F2 -->|No argument| G
+    F2 -->|No inputs; ensure page exists| G
 
     style B fill:#fff3e0
     style D fill:#fff3e0
@@ -59,7 +59,7 @@ layer includes `capabilities`, whose handlers are seeded from editor capability 
 
 The gate tracks *restore in progress* and nothing else, and is released in a `finally`. A descriptor that fails to restore is an expected outcome — restore drops it and carries on, and a `schemaVersion` bump discards every page by design — so persistence must keep working afterwards. Switching saving off because a descriptor was rejected would turn a one-time loss of open pages into a session that never persists again.
 
-Cold-start input is consumed separately by `app.openStartupInputs()` after `app.initEvents()`. Main reads one packaged or unpackaged command-line argument and exposes it through one-shot file/URL getters; delaying consumption until the open handlers are registered ensures the file or URL enters the normal link pipeline. The development launcher forwards arguments after `npm start --` to Electron. Startup inputs are files or URLs; cold-start diff arguments are not handled.
+Cold-start inputs are consumed separately by `app.openStartupInputs()` after `app.initEvents()`. Main selects launch operands and parses them into a typed list of file, HTTP(S) URL, and diff inputs. The same parser handles Electron's `second-instance` event and launcher-pipe messages; relative paths use the working directory supplied by each entry point. The renderer dispatches startup inputs through the retained `RendererEventsService` only after the raw-link pipeline is registered. Files and URLs use the normal link pipeline, with launch URLs marked for internal-browser handling; diffs open through the page diff flow. After all inputs are dispatched, the app ensures an empty page exists if needed. The development launcher forwards arguments after `npm start --` to Electron, and all valid cold-start operands are opened in order.
 
 **Layer 3 — Events** (`app.initEvents()`): Initializes 4 internal event services (GlobalEventService, KeyboardService, WindowStateService, RendererEventsService) that subscribe to DOM events and IPC channels, including the raw-link open pipeline.
 

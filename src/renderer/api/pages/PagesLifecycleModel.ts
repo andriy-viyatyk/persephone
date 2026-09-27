@@ -936,8 +936,6 @@ export class PagesLifecycleModel {
 
     handleOpenUrl = (url: string) => this.sendOpenRawLink(url);
 
-    handleExternalUrl = (url: string) => this.sendOpenRawLink(url);
-
     openPathInNewWindow = (filePath: string) => {
         if (!filePath) return;
         api.openNewWindow(filePath);
