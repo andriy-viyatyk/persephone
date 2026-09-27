@@ -80,6 +80,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   even when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).
 - **Error and warning toasts reach the agent event feed:** agents can notice failures and warnings
   raised while Persephone is running without separately checking the alert list.
+- **Boards can show Persephone's file icons:** `persephone.icons.forFiles(names)` returns the icon
+  the Explorer shows for each file name, as an image a board can put in its own lists. The Torrent
+  Viewer's file list uses it. See [Boards — Integration methods](./boards.md#integration-methods).
 
 ### Improvements
 
@@ -128,6 +131,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Grids no longer flicker while you scroll them:** dragging a grid's scrollbar, or scrolling
   quickly through a long list, used to blink. Affects every table view — the grid editors,
   the Explorer and Boards trees, Git Changes and the Git Tree.
+
+### Bug Fixes
+
+- **Board toolbar controls declared at startup now appear:** a board that called
+  `persephone.toolbar.set()`, `update()` or `setText()` from its top-level script code lost those
+  controls a moment later, when its page finished loading. They are now held until the page has
+  loaded and then applied in order, so boards no longer need to wait for `load` to declare them.
 
 ---
 

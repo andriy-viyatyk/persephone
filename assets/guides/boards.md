@@ -661,6 +661,7 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.notify(message, type)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Errors are also appended to `ui.log`. |
 | `persephone.clipboard.writeText(text)` | Write text to the OS clipboard. Useful for board actions triggered from Persephone's own toolbar, where the board page may not be focused. |
 | `persephone.clipboard.writeImage(data)` | Write encoded image bytes (`Uint8Array` or `ArrayBuffer`) to the OS clipboard. |
+| `persephone.icons.forFiles(names)` | Get the icon Persephone shows for each file name, as `{ [name]: dataUrl }` for `<img src>`, so a board's file list can match the Explorer. The file does not need to exist. Single-colour icons follow the current theme; request again after `persephone.onThemeChange` fires. |
 | `persephone.openRawLink(href, options?)` | Open a file or URL in a new Persephone tab. Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — for example, render a Markdown doc instead of opening its source; falls back to the default editor when omitted. |
 | `persephone.openContent(options)` | Create a new in-memory page in another content-host editor and return its page id. Use this for content held by the board rather than a file or URL. |
 | `persephone.openFileDialog(params?)` | Show a native Open File dialog; returns the selected path. |
@@ -1051,7 +1052,9 @@ when no board had claimed it, which spent the toolbar's whole flexible span on s
 had just chosen and could not act on. So `persephone.toolbar.setText("")` now clears the slot
 rather than restoring that path. The label remains non-interactive, and while a board's text is
 shown its native tooltip carries the full path. Reloading, navigating away, a frame error, or
-losing trust clears the text; the newly mounted frame must set it again.
+losing trust clears the text; the newly mounted frame must set it again. It is safe to call
+`setText()` (and `toolbar.set()` / `update()`) from top-level script code: calls made while the
+page is still loading are held and applied, in order, once it has loaded.
 
 **Saving:** press **Ctrl+S** (or **Cmd+S**) anywhere in the board and Persephone saves the file through the pipe automatically — no board code required. A board that wants to handle the keystroke itself can call `event.preventDefault()` in its own key handler to opt out, in which case the automatic save stands down. `persephone.host.save()` is also available if you want to trigger a save from your own UI (e.g. a Save button).
 

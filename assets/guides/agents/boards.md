@@ -104,7 +104,9 @@ content, not a replacement for the existing trust gate.
 
 The catalog exists only for the live trusted main frame. Reload, navigation away, frame disposal,
 or loss of trust clears controls, dynamic element declarations, menus, and pending input timers;
-the next frame must call `set()` again. The toolbar group is visually separated from Persephone's
+the next frame must call `set()` again. Declaring from top-level script code is supported: the shim
+holds `set()`, `update()`, and `setText()` calls made before the document's `load` event and sends
+them, in call order, once it fires. The toolbar group is visually separated from Persephone's
 own **…** menu, which contains Reload board, Open board log, and Board properties; it does not add a
 permission or trust surface.
 
@@ -775,6 +777,13 @@ Electron's native clipboard and do not require the board document to be focused.
 Persephone's own toolbar can leave the board frame unfocused, in which case
 `navigator.clipboard.write*` rejects with `"Document is not focused"`; the Web Clipboard API is
 still suitable when the board document is focused and the browser gesture requirements are met.
+
+**File icons:** `await persephone.icons.forFiles(names)` returns `{ [name]: dataUrl }` — the icon
+Persephone's Explorer shows for each file name (a language icon, the claiming board's icon, the
+Windows shell icon, or the default), as a `data:` URL for `<img src>`. Only the name matters; the
+file need not exist. The shim caches per name, so a re-render does not round-trip. Single-colour
+icons are drawn in the current theme's icon colour: request again from `persephone.onThemeChange`
+(the shim drops its cache on a theme change). Bridge 1.18.0.
 Only remote *network* is blocked by the CSP.
 
 ### Secondary views & shared state

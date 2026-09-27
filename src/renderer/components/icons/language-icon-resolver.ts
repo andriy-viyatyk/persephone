@@ -156,27 +156,33 @@ const defaultSystemIconState = {
 type SystemIconState = typeof defaultSystemIconState;
 
 class SystemIconModel extends TModel<SystemIconState> {
-    private readonly pendingExtensions = new Set<string>();
+    private readonly pendingExtensions = new Map<string, Promise<void>>();
 
     constructor() {
         super(new TGlobalState(defaultSystemIconState));
     }
 
-    prepareIcon = async (fileName: string) => {
+    /** Fetch the OS icon for the name's extension once; concurrent callers share the fetch. */
+    prepareIcon = (fileName: string): Promise<void> => {
         const ext = fpExtname(fileName).toLowerCase();
-        if (!ext || this.state.get().iconCache.has(ext) || this.pendingExtensions.has(ext)) return;
+        if (!ext || this.state.get().iconCache.has(ext)) return Promise.resolve();
+        const pending = this.pendingExtensions.get(ext);
+        if (pending) return pending;
 
-        this.pendingExtensions.add(ext);
-        try {
-            const iconDataUrl = await api.getFileIcon(fileName);
-            const newMap = new Map(this.state.get().iconCache);
-            newMap.set(ext, iconDataUrl);
-            this.state.update((s) => {
-                s.iconCache = newMap;
-            });
-        } finally {
-            this.pendingExtensions.delete(ext);
-        }
+        const fetch = (async () => {
+            try {
+                const iconDataUrl = await api.getFileIcon(fileName);
+                const newMap = new Map(this.state.get().iconCache);
+                newMap.set(ext, iconDataUrl);
+                this.state.update((s) => {
+                    s.iconCache = newMap;
+                });
+            } finally {
+                this.pendingExtensions.delete(ext);
+            }
+        })();
+        this.pendingExtensions.set(ext, fetch);
+        return fetch;
     };
 }
 
@@ -204,6 +210,15 @@ export function resolveFileIcon(fileName: string, language?: string): ResolvedFi
 }
 
 export function prepareFileIcon(fileName: string): void { void systemIconModel.prepareIcon(fileName); }
+
+/** Like `prepareFileIcon`, but resolves once the OS icon is cached (or its fetch failed). */
+export async function prepareFileIconAsync(fileName: string): Promise<void> {
+    try {
+        await systemIconModel.prepareIcon(fileName);
+    } catch {
+        // No OS icon for this extension; resolveFileIcon falls back to the default icon.
+    }
+}
 
 /** Subscribe native icon owners to system-cache and trusted-board association changes. */
 export function subscribeFileIconChanges(listener: () => void): () => void {

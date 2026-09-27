@@ -51,6 +51,7 @@ import type {
     BoardToolbarControlType,
     BoardToolbarSetMsg,
     BoardToolbarUpdateMsg,
+    BoardFileIconsResultMsg,
     BoardNavigationReturnMsg,
     BoardNavigationReturnUrlResultMsg,
     BoardOpenContentRequest,
@@ -440,6 +441,58 @@ function filePathRpc(): Promise<string | undefined> {
     });
 }
 
+/** `icons.forFiles()` (US-1533): file name → icon `data:` URL. Dropped on a theme change, since
+ *  single-colour icons are serialized in the theme's icon colour. */
+const fileIconCache = new Map<string, string>();
+let fileIconCacheGeneration = 0;
+const pendingFileIcons = new Map<
+    number,
+    { resolve: (value: { urls: string[]; icons: Record<string, number> }) => void; reject: (error: Error) => void }
+>();
+let fileIconsReqId = 0;
+const FILE_ICONS_BATCH = 500;
+
+function fileIconsRpc(names: string[]): Promise<{ urls: string[]; icons: Record<string, number> }> {
+    return new Promise((resolve, reject) => {
+        const reqId = ++fileIconsReqId;
+        pendingFileIcons.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage({ __persephone: "board:fileIcons", reqId, names }, hostPostTarget);
+        } catch {
+            pendingFileIcons.delete(reqId);
+            reject(new Error("Persephone host is unavailable."));
+        }
+    });
+}
+
+async function iconsForFiles(names: unknown): Promise<Record<string, string>> {
+    if (!Array.isArray(names)) throw new TypeError("persephone.icons.forFiles() expects an array of file names.");
+    const wanted = [...new Set(names.filter((name): name is string => typeof name === "string" && name !== ""))];
+    const found = new Map<string, string>();
+    const missing: string[] = [];
+    for (const name of wanted) {
+        const url = fileIconCache.get(name);
+        if (url) found.set(name, url);
+        else missing.push(name);
+    }
+    // The host resolves at most FILE_ICONS_BATCH names per request.
+    for (let start = 0; start < missing.length; start += FILE_ICONS_BATCH) {
+        const generation = fileIconCacheGeneration;
+        const reply = await fileIconsRpc(missing.slice(start, start + FILE_ICONS_BATCH));
+        // A reply that crossed a theme change still answers this call, but stays out of the cache.
+        const cacheable = generation === fileIconCacheGeneration;
+        for (const [name, index] of Object.entries(reply.icons)) {
+            const url = reply.urls[index];
+            if (typeof url !== "string") continue;
+            found.set(name, url);
+            if (cacheable) fileIconCache.set(name, url);
+        }
+    }
+    const result: Record<string, string> = {};
+    for (const [name, url] of found) result[name] = url;
+    return result;
+}
+
 function contentOpenRpc(
     link: string,
     timeoutMs?: number,
@@ -549,12 +602,37 @@ function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) =
     };
 }
 
-function postToolbarMessage(message: BoardToolbarSetMsg | BoardToolbarUpdateMsg): void {
+type BoardToolbarTextMsg = { __persephone: "board:setToolbarText"; toolbarText: string };
+type ToolbarMessage = BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardToolbarTextMsg;
+
+// Toolbar messages posted before this document's load event would be tagged with the frame
+// generation that `BoardWebview.handleLoad` retires when the iframe's load fires, and cleared.
+// Hold them until `load`, then flush in call order. A message posted from the child's own load
+// handler arrives as a later task, after the host has bumped the generation. A document that
+// never fires `load` never flushes; its toolbar stays empty, as it would have been anyway.
+let toolbarDocumentLoaded = document.readyState === "complete";
+const pendingToolbarMessages: ToolbarMessage[] = [];
+if (!toolbarDocumentLoaded) {
+    window.addEventListener("load", () => {
+        toolbarDocumentLoaded = true;
+        for (const message of pendingToolbarMessages.splice(0)) sendToolbarMessage(message);
+    }, { once: true });
+}
+
+function sendToolbarMessage(message: ToolbarMessage): void {
     try {
         window.parent.postMessage(message, hostPostTarget);
     } catch {
         // parent gone
     }
+}
+
+function postToolbarMessage(message: ToolbarMessage): void {
+    if (!toolbarDocumentLoaded) {
+        pendingToolbarMessages.push(message);
+        return;
+    }
+    sendToolbarMessage(message);
 }
 
 function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void): () => void {
@@ -903,6 +981,8 @@ function onPortMessage(data: MainToBoard): void {
         return;
     }
     if (data.kind === "theme") {
+        fileIconCache.clear();
+        fileIconCacheGeneration++;
         currentTheme = withGraphPalette(data.palette);
         applyVars(currentTheme.vars);
         for (const cb of themeCbs) {
@@ -1209,6 +1289,17 @@ onHostMessage((event) => {
     else p.resolve(data.path);
 });
 
+// icons.forFiles request reply — renderer -> board over the host-frame channel (US-1533).
+onHostMessage((event) => {
+    const data = event.data as BoardFileIconsResultMsg | undefined;
+    if (!data || data.__persephone !== "fileIcons:result" || typeof data.reqId !== "number") return;
+    const pending = pendingFileIcons.get(data.reqId);
+    if (!pending) return;
+    pendingFileIcons.delete(data.reqId);
+    if (data.error != null) pending.reject(new Error(data.error));
+    else pending.resolve({ urls: data.urls ?? [], icons: data.icons ?? {} });
+});
+
 // content.open request reply — renderer -> board over the host-frame channel.
 onHostMessage((event) => {
     const data = event.data as BoardContentOpenResultMsg | undefined;
@@ -1420,7 +1511,15 @@ function createHandle(
     // 1.15.0 adds explicit board service stopping through the main supervisor.
     // 1.16.0 adds a read-only board service status query.
     // 1.17.0 adds runtime source-open events through `source.onOpen()`.
+    // 1.18.0 adds persephone.icons.forFiles() (US-1533).
     version: BOARD_BRIDGE_VERSION,
+
+    icons: {
+        /** Persephone's icon for each file name, as a `data:` URL for `<img src>`, keyed by the
+         *  names passed in. The icon depends only on the name. Single-colour icons use the
+         *  current theme's icon colour, so request again from `onThemeChange`. */
+        forFiles: iconsForFiles,
+    },
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
     navigation: {
@@ -1471,17 +1570,10 @@ function createHandle(
         /** Set transient text in the main page toolbar; `""` clears it. The slot has no
          *  fallback — it is blank until a board fills it. */
         setText(text: string): void {
-            try {
-                window.parent.postMessage(
-                    {
-                        __persephone: "board:setToolbarText",
-                        toolbarText: typeof text === "string" ? text : String(text ?? ""),
-                    },
-                    hostPostTarget,
-                );
-            } catch {
-                // parent gone
-            }
+            postToolbarMessage({
+                __persephone: "board:setToolbarText",
+                toolbarText: typeof text === "string" ? text : String(text ?? ""),
+            });
         },
         onAction: onToolbarAction,
     },

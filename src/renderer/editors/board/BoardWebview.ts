@@ -18,6 +18,7 @@ import type {
     BoardCapabilityListResultMsg,
     BoardContentOpenRequestMsg,
     BoardContentOpenResultMsg,
+    BoardFileIconsResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
     BoardSourceOpenedMsg,
@@ -44,6 +45,7 @@ import {
     subscribeBoardSettings,
 } from "../../api/board-settings/board-settings-bridge";
 import { resolveBoardOpenContent } from "./board-open-content";
+import { resolveBoardFileIcons } from "./board-file-icons";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { BOARD_TOKEN_VARS, computeBoardThemePalette, ensureBoardThemeSubscription } from "./board-theme";
@@ -514,7 +516,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
             settingsMethod?: "get"; settingsArgs?: unknown[];
             openContent?: BoardOpenContentRequest;
-            controls?: unknown;
+            controls?: unknown; names?: unknown;
         };
         switch (data.__persephone) {
             case "board:interact":
@@ -609,6 +611,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
             case "board:filePath":
                 if (typeof legacy.reqId === "number") void this.resolveFilePath(legacy.reqId, model, host, frame);
+                break;
+            case "board:fileIcons":
+                if (typeof legacy.reqId === "number") void this.resolveFileIcons(legacy.reqId, legacy.names, host, frame);
                 break;
             case "board:openContent":
                 if (typeof legacy.reqId === "number") {
@@ -1016,6 +1021,25 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const message: BoardFilePathResultMsg = {
             __persephone: "filePath:result", reqId, path: reply.path, error: reply.error,
         };
+        frame.contentWindow.postMessage(message, `board://${host}`);
+    }
+
+    private async resolveFileIcons(
+        reqId: number,
+        names: unknown,
+        host: string,
+        frame: HTMLIFrameElement,
+    ): Promise<void> {
+        const generation = this.generation;
+        let message: BoardFileIconsResultMsg;
+        try {
+            if (!Array.isArray(names)) throw new Error("icons.forFiles() expects an array of file names.");
+            const { urls, icons } = await resolveBoardFileIcons(names);
+            message = { __persephone: "fileIcons:result", reqId, urls, icons };
+        } catch (error: unknown) {
+            message = { __persephone: "fileIcons:result", reqId, error: errMessage(error) };
+        }
+        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         frame.contentWindow.postMessage(message, `board://${host}`);
     }
 

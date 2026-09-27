@@ -394,6 +394,7 @@ export interface BoardToHostMsg {
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
         | "board:settings" // board requested a settings.get — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
+        | "board:fileIcons" // persephone.icons.forFiles — file names to icon image URLs; request/reply, needs a reqId (US-1533)
         | "board:openContent" // persephone.openContent — create a page in another editor; request/reply, needs a reqId
         | "board:contentOpen" // persephone.content.open — create a ranged in-frame resource
         | "board:aiVision"
@@ -480,6 +481,16 @@ export interface BoardFilePathResultMsg {
     __persephone: "filePath:result";
     reqId: number;
     path?: string;
+    error?: string;
+}
+
+/** Reply to a board `board:fileIcons` request (US-1533). `urls` holds each distinct icon once, as a
+ *  `data:` URL; `icons` maps every requested name to an index into `urls`. */
+export interface BoardFileIconsResultMsg {
+    __persephone: "fileIcons:result";
+    reqId: number;
+    urls?: string[];
+    icons?: Record<string, number>;
     error?: string;
 }
 
