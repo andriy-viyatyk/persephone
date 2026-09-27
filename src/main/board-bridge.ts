@@ -264,6 +264,7 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         args[0],
         SERVICE_REQUEST_DEADLINE_MS,
     ),
+    serviceStatus: (entry) => moduleServiceSupervisor.getStatus(entry.root),
     serviceStop: (entry) => moduleServiceSupervisor.stop(entry.root, "explicit"),
     storageGet: (entry, args) => getBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
     storageSet: (entry, args) => setBoardStorageValue(

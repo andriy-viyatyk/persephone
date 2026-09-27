@@ -59,6 +59,7 @@ import type {
     BoardSettingsResultMsg,
     BoardThemePalette,
     BoardToMain,
+    BoardServiceStatus,
     MainToBoard,
 } from "./ipc/board-bridge-channels";
 import type { CapabilityErrorCode } from "./ipc/capability-bus-channels";
@@ -1380,6 +1381,7 @@ function createHandle(
     // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()` (EPIC-111).
     // 1.14.0 adds `getSourceUrl()` for non-materializing source identity handoff (D11).
     // 1.15.0 adds explicit board service stopping through the main supervisor.
+    // 1.16.0 adds a read-only board service status query.
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1563,6 +1565,11 @@ function createHandle(
         /** Request the trusted board module service. The service starts lazily on first use. */
         request(message: unknown): Promise<unknown> {
             return rpc("serviceRequest", [message]);
+        },
+        /** Read this board's service lifecycle without starting it. Resolves to undefined when
+         * there is no supervisor record for the board. */
+        status(): Promise<BoardServiceStatus | undefined> {
+            return rpc("serviceStatus", []) as Promise<BoardServiceStatus | undefined>;
         },
         /** Stop this board's service without starting it when it is not already running. */
         stop(): Promise<void> {

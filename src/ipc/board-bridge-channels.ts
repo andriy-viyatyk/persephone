@@ -33,6 +33,8 @@ import type {
     RunnerStdinMsg,
 } from "./runner-channels";
 
+export type { BoardServiceStatus } from "./module-service-channels";
+
 /** The host color palette pushed into a board: the frozen color `--p-*` contract
  *  resolved to concrete values, plus theme identity. The `vars` keys are `--p-*`
  *  names (e.g. `--p-bg`). Re-pushed on every theme switch (US-725). */
@@ -167,6 +169,7 @@ export type BoardRpcMethod =
     | "writeFile"
     | "getJobs"
     | "serviceRequest"
+    | "serviceStatus"
     | "serviceStop"
     | "storageGet"
     | "storageSet"

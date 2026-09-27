@@ -264,6 +264,17 @@ interface PersephoneStorageApi {
     keys(): Promise<string[]>;
 }
 
+type PersephoneServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
+
+interface PersephoneServiceStatus {
+    boardRoot: string;
+    state: PersephoneServiceState;
+    reason?: string;
+    pid?: number;
+    startedAt?: number;
+    restartCount: number;
+}
+
 /** A request/reply surface for the trusted board module service. */
 interface PersephoneServiceApi {
     /**
@@ -275,6 +286,10 @@ interface PersephoneServiceApi {
      * and `service-exited` when the running service exits.
      */
     request(message: unknown): Promise<unknown>;
+    /** Read the existing service lifecycle without starting it. Resolves to `undefined` when
+     * this board has no supervisor service record; otherwise returns its current state and
+     * optional failure reason/process details. */
+    status(): Promise<PersephoneServiceStatus | undefined>;
     /** Stop this board's module service explicitly. This does not start the service. */
     stop(): Promise<void>;
 }
