@@ -398,11 +398,14 @@ Service requests deliberately use two channels. An ordinary request goes through
 `app.boards.requestService(boardRoot, message)` or, from the board frame,
 `persephone.service.request(message)`. The renderer `MessagePort` lease is a separate host-renderer
 channel reserved for Phase C's high-volume provider traffic; a service is not required to implement
-that port at all. A request API must not assume that the lease is attached. When a board declares a
-content provider, `ProxyProvider` uses the renderer lease for bounded provider operations, including
-optional ranged reads; `readBinary` and `readRange` have no platform deadline and carry cancellation
-signals, while metadata and other service operations remain bounded. Unavailable leases surface as
-typed provider-unavailable errors.
+that port at all. Each host `WebContents` has an independent lease to the service host. The supervisor
+releases only that window's lease when its renderer navigates, crashes, closes, or reacquires; the
+host scopes pending provider requests and watch subscriptions to that lease. Process and service
+status remain service-scoped and continue to reach every open window. A request API must not assume
+that a lease is attached. When a board declares a content provider, `ProxyProvider` uses its window's
+renderer lease for bounded provider operations, including optional ranged reads; `readBinary` and
+`readRange` have no platform deadline and carry cancellation signals, while metadata and other
+service operations remain bounded. Unavailable leases surface as typed provider-unavailable errors.
 
 `persephone.storage` is a JSON key/value store in a per-board folder under
 `<userData>/data/board-storage/`, keyed by the SHA-256 hash of the canonical board root. The folder

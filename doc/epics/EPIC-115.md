@@ -48,7 +48,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | Task | Title | Phase | Size | Status |
 |------|-------|-------|------|--------|
 | US-1534 | [Capability handler pages open for any trusted board, not only bundled ones](../tasks/US-1534-capability-handler-open/README.md) | 1 — defect | S | Done |
-| US-1535 | One service renderer lease per window, not per service | 1 — defect | M | Planned |
+| US-1535 | [One service renderer lease per window, not per service](../tasks/US-1535-service-lease-per-window/README.md) | 1 — defect | M | Done |
 | US-1536 | Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData | 1 — defect | S–M | Planned |
 | US-1537 | Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL | 1 — defect | S | Planned |
 | US-1538 | Main owns the board trust and URL-mask snapshots | 1 — defect | M | Planned |
@@ -116,7 +116,9 @@ sequence too.
 
 ### US-1535: One service renderer lease per window, not per service
 
-*Needs live repro (two windows).* **High value if confirmed.**
+*Needs live repro (two windows).* **High value if confirmed.** **Confirmed and fixed** — live, the
+evicted window did not ping-pong: it wedged, because its `lease-lost` never arrived and every later
+read hung. See the [task document](../tasks/US-1535-service-lease-per-window/README.md).
 
 - **What is broken:** a service holds exactly one renderer lease.
   - `ServiceRecord.lease` is a single lease (`main/module-service-supervisor.ts:79`).
@@ -429,6 +431,10 @@ sequence too.
   - Serialise service errors as `{ code, message }` instead of the renderer recovering the code with
     `message.split(":")` plus an allow-list (`module-service.ts:62-93`).
   - Document the resulting API in the service authoring guide.
+- **After US-1535:** the host keeps a `Map` of renderer leases (by lease nonce) and is now the only
+  side that sends `lease-lost` to a renderer (main's copy went through an already-transferred port
+  and never arrived). `drop-renderer` carries a `reason`. Keep both when the host takes over the
+  lifecycle protocol.
 
 ### US-1544: One provider-operation policy table (deadline, cap)
 
@@ -486,6 +492,11 @@ sequence too.
   - Add `routeProcessMessage(record, msg)` plus a small `Handshake` object.
   - Add one `transition(record, state, reason)` helper.
   - Put one shared reason→code table in `module-service-channels.ts`.
+  - US-1535 added a third reason carrier: the host now settles a closed lease's pending requests with
+    `error: <lease-lost reason>` (it used to send `service-exited`). The renderer rejects those
+    requests first on `lease-lost`, so the value is not observed today, but the shared table should
+    cover it. Leases are now `Map<webContents.id, lease>` with per-lease WebContents lifecycle
+    listeners (`listenForLeaseLifecycle`), which belongs with the lease code when the file is split.
   - Add a `RestartBudget` class.
   - Move `BoundedServiceLog` out of the supervisor (US-1536 replaces it).
   - Delete the dead items above.

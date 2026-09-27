@@ -11,14 +11,10 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-*(nothing active)*
-
-## Planned
-
 - **EPIC-115** — [Platform roadmap clean-up — fix what the adjustment rounds left behind](epics/EPIC-115.md)
   - *Phase 1 — defects*
   - [x] [US-1534: Capability handler pages open for any trusted board, not only bundled ones](tasks/US-1534-capability-handler-open/README.md)
-  - [ ] US-1535: One service renderer lease per window, not per service
+  - [x] [US-1535: One service renderer lease per window, not per service](tasks/US-1535-service-lease-per-window/README.md)
   - [ ] US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData
   - [ ] US-1537: Launch arguments parsed once; a cold-start URL takes the running-instance route
   - [ ] US-1538: Main owns the board trust and URL-mask snapshots
@@ -41,6 +37,9 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] US-1553: VideoEditor's source flow in one place; one provider-recovery helper
   - [ ] US-1554: Board trust granting, bundled-board creation and Board Info each have one path
   - [ ] US-1555: Small dead code, stale comments and a torrent-specific notice in core
+
+## Planned
+
 - *(no epic)*
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the

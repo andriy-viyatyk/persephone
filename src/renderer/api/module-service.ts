@@ -157,6 +157,9 @@ function receivePort(payload: ModuleServicePortPayload, port: MessagePort): void
     client.state = "attaching";
     port.onmessage = (event: MessageEvent<RendererServiceMessage>) => handleMessage(client, event.data);
     port.onmessageerror = () => loseLease(client, "service-exited");
+    port.addEventListener("close", () => {
+        if (client.port === port) loseLease(client, "service-exited");
+    });
     try {
         port.start();
     } catch {

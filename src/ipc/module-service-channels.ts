@@ -65,7 +65,7 @@ export type ServiceParentMessage =
         generation: number;
         leaseNonce: string;
     }
-    | { kind: "drop-renderer"; generation: number; leaseNonce: string }
+    | { kind: "drop-renderer"; generation: number; leaseNonce: string; reason: RendererLeaseLostReason }
     | { kind: "shutdown"; nonce: number; reason: ServiceStopReason }
     | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown };
 

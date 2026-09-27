@@ -49,12 +49,16 @@ interface PendingRequest {
 
 interface RendererLease {
     state: "attaching" | "attached" | "lost";
+    ownerId: number;
+    owner: WebContents;
     generation: number;
     leaseNonce: string;
     rendererPort: MessagePortMain;
+    transferred: boolean;
     timer: ReturnType<typeof setTimeout>;
     resolve: () => void;
     reject: (reason: unknown) => void;
+    lifecycleListeners: Array<{ event: string; listener: () => void }>;
 }
 
 interface ServiceRecord {
@@ -76,7 +80,7 @@ interface ServiceRecord {
     cancelAttempt?: (error: ServiceError) => void;
     requests: Map<string, PendingRequest>;
     pendingRequestSlots: number;
-    lease?: RendererLease;
+    leases: Map<number, RendererLease>;
     storageAdapter?: ModuleServiceStorageAdapter;
     leaseCounter: number;
     stopRequested: boolean;
@@ -223,6 +227,7 @@ class ModuleServiceSupervisor {
                 generation: 0,
                 requests: new Map(),
                 pendingRequestSlots: 0,
+                leases: new Map(),
                 leaseCounter: 0,
                 stopRequested: false,
             };
@@ -361,38 +366,35 @@ class ModuleServiceSupervisor {
         const process = record.process;
         if (!process || record.state !== "running") throw new ServiceError("service-exited");
 
-        const oldLease = record.lease;
+        const oldLease = record.leases.get(target.id);
         if (oldLease) {
-            this.failLease(record, oldLease, "superseded");
-            try {
-                process.postMessage({
-                    kind: "drop-renderer",
-                    generation: oldLease.generation,
-                    leaseNonce: oldLease.leaseNonce,
-                } satisfies ServiceParentMessage);
-            } catch {
-                // The replacement lease can still be attempted; process failure is handled separately.
-            }
+            this.failLease(record, oldLease, "superseded", process);
         }
 
         const { port1, port2 } = new MessageChannelMain();
         const generation = record.generation;
         const leaseNonce = `${generation}:${++record.leaseCounter}`;
+        let lease: RendererLease;
         const leasePromise = new Promise<void>((resolve, reject) => {
             const timer = setTimeout(() => {
-                const current = record.lease;
-                if (current?.leaseNonce !== leaseNonce) return;
-                this.failLease(record, current, "renderer-port-attach-failed");
+                if (record.leases.get(target.id) !== lease) return;
+                this.failLease(record, lease, "renderer-port-attach-failed");
             }, SERVICE_RENDERER_LEASE_TIMEOUT_MS);
-            record.lease = {
+            lease = {
                 state: "attaching",
+                ownerId: target.id,
+                owner: target,
                 generation,
                 leaseNonce,
                 rendererPort: port1,
+                transferred: false,
                 timer,
                 resolve,
                 reject,
+                lifecycleListeners: [],
             };
+            record.leases.set(target.id, lease);
+            this.listenForLeaseLifecycle(record, lease);
         });
 
         try {
@@ -410,9 +412,11 @@ class ModuleServiceSupervisor {
                 { boardRoot: record.boardRoot, generation, leaseNonce },
                 [port1],
             );
+            if (record.leases.get(target.id) === lease) lease.transferred = true;
         } catch (error) {
-            const current = record.lease;
-            if (current?.leaseNonce === leaseNonce) this.failLease(record, current, "renderer-port-attach-failed");
+            if (record.leases.get(target.id) === lease) {
+                this.failLease(record, lease, "renderer-port-attach-failed");
+            }
             throw new ServiceError("renderer-port-attach-failed", errMessage(error));
         }
 
@@ -448,7 +452,7 @@ class ModuleServiceSupervisor {
             try {
                 this.rejectRequests(record, "quit");
                 record.storageAdapter?.settle("quit");
-                if (record.lease) this.failLease(record, record.lease, "quit");
+                for (const lease of [...record.leases.values()]) this.failLease(record, lease, "quit", process);
                 record.state = "stopped";
                 record.reason = "quit";
                 record.pid = undefined;
@@ -630,7 +634,11 @@ class ModuleServiceSupervisor {
                     return;
                 }
                 if (message.kind === "renderer-attached") {
-                    const lease = record.lease;
+                    const lease = [...record.leases.values()].find((candidate) =>
+                        candidate.state === "attaching"
+                        && candidate.generation === message.generation
+                        && candidate.leaseNonce === message.leaseNonce,
+                    );
                     if (lease
                         && lease.state === "attaching"
                         && lease.generation === message.generation
@@ -755,7 +763,7 @@ class ModuleServiceSupervisor {
         record.startedAt = undefined;
         this.rejectRequests(record, "service-exited");
         record.storageAdapter?.settle("service-exited");
-        if (record.lease) this.failLease(record, record.lease, "service-exited");
+        for (const lease of [...record.leases.values()]) this.failLease(record, lease, "service-exited");
         const reason = `service-exited:${code}`;
         this.countFailure(record, reason);
         record.state = "stopped";
@@ -806,7 +814,7 @@ class ModuleServiceSupervisor {
                 : "stopping";
         this.rejectRequests(record, stopCode);
         record.storageAdapter?.settle(stopCode);
-        if (record.lease) this.failLease(record, record.lease, leaseReason);
+        for (const lease of [...record.leases.values()]) this.failLease(record, lease, leaseReason, process);
         record.cancelAttempt?.(new ServiceError(stopCode));
         record.cancelAttempt = undefined;
 
@@ -852,20 +860,35 @@ class ModuleServiceSupervisor {
         }
     }
 
-    private failLease(record: ServiceRecord, lease: RendererLease, reason: RendererLeaseLostReason): void {
-        if (record.lease !== lease) return;
+    private failLease(
+        record: ServiceRecord,
+        lease: RendererLease,
+        reason: RendererLeaseLostReason,
+        process = record.process,
+    ): void {
+        if (record.leases.get(lease.ownerId) !== lease) return;
         clearTimeout(lease.timer);
         lease.state = "lost";
-        record.lease = undefined;
-        try {
-            lease.rendererPort.postMessage({ kind: "lease-lost", reason });
-        } catch {
-            // The renderer may already have gone away.
+        record.leases.delete(lease.ownerId);
+        this.removeLeaseLifecycleListeners(lease);
+        if (process) {
+            try {
+                process.postMessage({
+                    kind: "drop-renderer",
+                    generation: lease.generation,
+                    leaseNonce: lease.leaseNonce,
+                    reason,
+                } satisfies ServiceParentMessage);
+            } catch {
+                // The host may already have exited; its peer close notifies the renderer.
+            }
         }
-        try {
-            lease.rendererPort.close();
-        } catch {
-            // Already closed by Chromium.
+        if (!lease.transferred) {
+            try {
+                lease.rendererPort.close();
+            } catch {
+                // Already closed locally.
+            }
         }
         const code = reason === "superseded"
             ? "renderer-reloaded"
@@ -877,6 +900,28 @@ class ModuleServiceSupervisor {
                         ? reason
                         : "service-exited";
         lease.reject(new ServiceError(code));
+    }
+
+    private listenForLeaseLifecycle(record: ServiceRecord, lease: RendererLease): void {
+        const release = (reason: RendererLeaseLostReason): void => {
+            if (record.leases.get(lease.ownerId) === lease) this.failLease(record, lease, reason);
+        };
+        const listeners: Array<{ event: string; listener: () => void }> = [
+            { event: "destroyed", listener: () => release("service-exited") },
+            { event: "render-process-gone", listener: () => release("service-exited") },
+            { event: "did-navigate", listener: () => release("superseded") },
+        ];
+        for (const { event, listener } of listeners) {
+            lease.owner.on(event as "destroyed", listener);
+            lease.lifecycleListeners.push({ event, listener });
+        }
+    }
+
+    private removeLeaseLifecycleListeners(lease: RendererLease): void {
+        for (const { event, listener } of lease.lifecycleListeners) {
+            lease.owner.removeListener(event as "destroyed", listener);
+        }
+        lease.lifecycleListeners.length = 0;
     }
 
     private countFailure(record: ServiceRecord, reason: string): void {

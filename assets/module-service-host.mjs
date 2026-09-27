@@ -84,8 +84,7 @@ parentPort.on("message", (event) => {
 });
 
 const providers = new Map();
-const subscriptions = new Map();
-let rendererLease;
+const rendererLeases = new Map();
 let serviceEntryLoaded = false;
 
 function providerKey(type, subscriptionId) {
@@ -101,10 +100,10 @@ function postRenderer(port, message) {
     }
 }
 
-function announceCapabilities() {
-    if (!rendererLease?.attached || !serviceEntryLoaded) return;
+function announceCapabilities(lease) {
+    if (!lease?.attached || !serviceEntryLoaded || rendererLeases.get(lease.leaseNonce) !== lease) return;
     for (const [type, implementation] of providers) {
-        postRenderer(rendererLease.port, {
+        postRenderer(lease.port, {
             kind: "provider-capabilities",
             type,
             writable: implementation.writable === true && typeof implementation.writeBinary === "function",
@@ -113,36 +112,38 @@ function announceCapabilities() {
     }
 }
 
-function disposeSubscriptions() {
-    for (const subscription of subscriptions.values()) {
+function disposeLeaseSubscriptions(lease) {
+    for (const subscription of lease.subscriptions.values()) {
         try {
             subscription.dispose();
         } catch {
             // Process teardown is best effort; the utility process owns the resources.
         }
     }
-    subscriptions.clear();
+    lease.subscriptions.clear();
 }
 
-function settleLeasePending(lease) {
+function settleLeasePending(lease, reason) {
     for (const [requestId, pending] of lease.pending) {
         clearTimeout(pending.timer);
         pending.controller?.abort();
         postRenderer(lease.port, {
             kind: "response",
             requestId,
-            error: "service-exited",
+            error: reason,
         });
         lease.pending.delete(requestId);
     }
 }
 
-function closeRendererLease(lease) {
-    if (!lease) return;
-    if (rendererLease === lease) rendererLease = undefined;
+function closeRendererLease(lease, reason) {
+    if (!lease || rendererLeases.get(lease.leaseNonce) !== lease) return;
     clearTimeout(lease.timer);
-    settleLeasePending(lease);
-    disposeSubscriptions();
+    postRenderer(lease.port, { kind: "lease-lost", reason });
+    settleLeasePending(lease, reason);
+    disposeLeaseSubscriptions(lease);
+    lease.activeContentReads = 0;
+    rendererLeases.delete(lease.leaseNonce);
     try {
         lease.port.close();
     } catch {
@@ -164,7 +165,7 @@ function registerProvider(type, implementation) {
     }
     if (providers.has(type)) throw new Error(`provider-registration-duplicate:${type}`);
     providers.set(type, implementation);
-    announceCapabilities();
+    for (const lease of rendererLeases.values()) announceCapabilities(lease);
 }
 
 const persephone = globalThis.persephone ?? {};
@@ -320,9 +321,9 @@ async function executeProviderRequest(lease, request, controller) {
 
     const key = providerKey(request.type, request.subscriptionId);
     if (request.operation === "watchUnsubscribe") {
-        const subscription = subscriptions.get(key);
+        const subscription = lease.subscriptions.get(key);
         if (subscription) {
-            subscriptions.delete(key);
+            lease.subscriptions.delete(key);
             try {
                 subscription.dispose();
             } catch (error) {
@@ -338,7 +339,7 @@ async function executeProviderRequest(lease, request, controller) {
     let disposer;
     try {
         disposer = implementation.watch(request.config, (event) => {
-            if (rendererLease !== lease || !lease.attached || !subscriptions.has(key)) return;
+            if (rendererLeases.get(lease.leaseNonce) !== lease || !lease.attached || !lease.subscriptions.has(key)) return;
             postRenderer(lease.port, {
                 kind: "provider-event",
                 subscriptionId: request.subscriptionId,
@@ -351,13 +352,13 @@ async function executeProviderRequest(lease, request, controller) {
     if (typeof disposer !== "function") {
         return providerFailure("provider-invalid-result", "watch() must return a disposer.");
     }
-    subscriptions.set(key, { dispose: disposer });
+    lease.subscriptions.set(key, { dispose: disposer });
     return { kind: "provider-result", operation: "watchSubscribe", ok: true };
 }
 
 function finishProviderRequest(lease, requestId, result) {
     const pending = lease.pending.get(requestId);
-    if (!pending || rendererLease !== lease) return;
+    if (!pending || rendererLeases.get(lease.leaseNonce) !== lease) return;
     if (pending.timer) clearTimeout(pending.timer);
     lease.pending.delete(requestId);
     if (pending.isContentRead) decrementActiveContentReads(lease);
@@ -365,7 +366,7 @@ function finishProviderRequest(lease, requestId, result) {
 }
 
 function handleRendererRequest(lease, message) {
-    if (!lease.attached || rendererLease !== lease || !message || message.kind !== "request") return;
+    if (!lease.attached || rendererLeases.get(lease.leaseNonce) !== lease || !message || message.kind !== "request") return;
     if (typeof message.requestId !== "string") return;
     const request = message.message;
     const validationError = validProviderRequest(request);
@@ -405,6 +406,7 @@ function handleRendererRequest(lease, message) {
     const controller = isUnbounded ? new AbortController() : undefined;
     const timer = isUnbounded ? undefined : setTimeout(() => {
         if (!lease.pending.delete(message.requestId)) return;
+        if (isContentRead) decrementActiveContentReads(lease);
         postRenderer(lease.port, {
             kind: "response",
             requestId: message.requestId,
@@ -431,24 +433,25 @@ function handleRendererRequest(lease, message) {
 function attachRenderer(message, port) {
     if (!port || typeof port.postMessage !== "function" || typeof port.close !== "function"
         || typeof port.on !== "function") return;
-    closeRendererLease(rendererLease);
+    if (!Number.isInteger(message.generation) || typeof message.leaseNonce !== "string") return;
     const lease = {
         generation: message.generation,
         leaseNonce: message.leaseNonce,
         port,
         attached: false,
         pending: new Map(),
+        subscriptions: new Map(),
         timer: undefined,
         activeContentReads: 0,
     };
-    rendererLease = lease;
-    lease.timer = setTimeout(() => closeRendererLease(lease), deadlineMs);
+    rendererLeases.set(lease.leaseNonce, lease);
+    lease.timer = setTimeout(() => closeRendererLease(lease, "renderer-port-attach-failed"), deadlineMs);
     try {
         port.on("message", (event) => {
             const nested = eventData(event);
             if (!nested || typeof nested !== "object") return;
             if (nested.kind === "hello-ack") {
-                if (rendererLease !== lease || lease.attached
+                if (rendererLeases.get(lease.leaseNonce) !== lease || lease.attached
                     || nested.generation !== lease.generation || nested.leaseNonce !== lease.leaseNonce) {
                     return;
                 }
@@ -459,7 +462,7 @@ function attachRenderer(message, port) {
                     generation: lease.generation,
                     leaseNonce: lease.leaseNonce,
                 });
-                announceCapabilities();
+                announceCapabilities(lease);
                 return;
             }
             if (nested.kind === "cancel" && typeof nested.requestId === "string") {
@@ -474,18 +477,18 @@ function attachRenderer(message, port) {
             }
             handleRendererRequest(lease, nested);
         });
-        port.on("messageerror", () => closeRendererLease(lease));
+        port.on("messageerror", () => closeRendererLease(lease, "service-exited"));
         port.start();
         postRenderer(port, { kind: "hello", generation: lease.generation, leaseNonce: lease.leaseNonce });
     } catch {
-        closeRendererLease(lease);
+        closeRendererLease(lease, "service-exited");
     }
 }
 
 function dropRenderer(message) {
-    if (!rendererLease || message.generation !== rendererLease.generation
-        || message.leaseNonce !== rendererLease.leaseNonce) return;
-    closeRendererLease(rendererLease);
+    const lease = rendererLeases.get(message.leaseNonce);
+    if (!lease || message.generation !== lease.generation) return;
+    closeRendererLease(lease, message.reason);
 }
 
 parentPort.on("message", (event) => {
@@ -500,7 +503,7 @@ parentPort.on("message", (event) => {
 });
 
 process.on("exit", () => {
-    closeRendererLease(rendererLease);
+    for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
     for (const request of storagePending.values()) clearTimeout(request.timer);
     storagePending.clear();
 });
@@ -508,9 +511,9 @@ process.on("exit", () => {
 try {
     await import(pathToFileURL(serviceEntry).href);
     serviceEntryLoaded = true;
-    announceCapabilities();
+    for (const lease of rendererLeases.values()) announceCapabilities(lease);
 } catch (error) {
     console.error(`Failed to load module service entry ${serviceEntry}:`, errorMessage(error, "service-entry-failed"));
-    closeRendererLease(rendererLease);
+    for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
     process.exit(1);
 }

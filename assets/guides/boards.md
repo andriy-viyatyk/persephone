@@ -614,7 +614,9 @@ The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVIC
 `PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in `<boardRoot>/ui.log`.
 
 The service host injects `persephone.storage`, and the service shares the frame's per-board JSON
-store. Use the bridge rather than writing `store.json` yourself:
+store. A service can handle requests and provider operations from multiple windows concurrently;
+reloading or closing one window does not interrupt the others. Use the bridge rather than writing
+`store.json` yourself:
 
 ```js
 await persephone.storage.set("last-result", { ok: true });

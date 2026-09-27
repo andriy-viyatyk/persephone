@@ -159,7 +159,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── board-trust.ts      # Per-board trust registry — persists user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
 │   ├── board-trust-sync.ts # Complete generation-numbered trust/service snapshot mirror from renderer to main
-│   ├── module-service.ts   # Renderer client for main-routed service requests and the optional host-renderer lease
+│   ├── module-service.ts   # Renderer client for main-routed service requests and the optional per-window host-renderer lease
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
 │   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
@@ -297,7 +297,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
 │   │   ├── DataUrlProvider.ts  # IProvider for data: URLs (inline content, read-only)
 │   │   ├── MnemeProvider.ts    # IProvider over the shared Mneme connection — read/write/edit a document, live-refresh on resource updates
-│   │   ├── ProxyProvider.ts     # IProvider delegate to a trusted board module service over the renderer lease
+│   │   ├── ProxyProvider.ts     # IProvider delegate to a trusted board module service over its window's renderer lease
 │   │   └── GuideProvider.ts     # IProvider for packaged Markdown guides (read-only)
 │   ├── transformers/
 │   │   ├── ArchiveTransformer.ts # ITransformer for archive entry extraction/replacement
@@ -968,7 +968,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-protocol-service.ts # board:// scheme handler — host→board-root registry; serves board files + CSP; injects --p-* palette, boot context, and the bridge shim into served HTML
 ├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
-├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, trust gating, handshake deadline, restart budget, request settlement, renderer lease, untrust and quit teardown
+├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, trust gating, handshake deadline, restart budget, request settlement, per-WebContents renderer leases, untrust and quit teardown
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
 ├── board-root-key.ts       # Canonical board-root normalization and SHA-256 storage key
 ├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store
@@ -1005,7 +1005,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
-├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshots, renderer lease and storage wire types
+├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshots, per-renderer lease and storage wire types
 ├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
