@@ -1,6 +1,6 @@
 # US-1528: Re-establish page pipe ownership when reusing an errored media page
 
-Status: Implemented 2026-09-27, awaiting user testing.  
+Status: Completed 2026-09-27.  
 Scope: Platform defect; standalone, no epic. Found during US-1526 live verification on 2026-09-26/27.
 
 ## Outcome (2026-09-27)

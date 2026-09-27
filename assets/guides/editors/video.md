@@ -88,4 +88,6 @@ and `visualizer-none`.
 ## Errors and limits
 
 Unsupported codecs may require VLC. Network streams can fail independently of the editor, and custom
-headers should be supplied through a cURL/fetch command when the source requires them.
+headers should be supplied through a cURL/fetch command when the source requires them. If media from
+an archive or content provider fails to open, reopen its source link to retry playback in the same
+page.

@@ -23,24 +23,23 @@ graph TD
     C -->|Side effects| C1["configure-monaco<br/>register-editors"]
     B -->|await| D["app.initServices<br/>Layer 1"]
     D -->|Walk app-service-registry descriptors| D1["load each service<br/>then invoke optional initializer"]
-    D1 --> E["app.initPages<br/>Layer 2"]
-    E -->|Phase 1: Restore| E1["app.pages.restore<br/>Load persisted pages"]
-    E1 -->|Phase 2: HandleArgs| E2["app.pages.handleArgs<br/>--file, --url, --diff"]
-    E2 -->|Phase 3: Ready| F["app.initEvents<br/>Layer 3"]
+    D1 --> E["app.initPages<br/>Restore pages"]
+    E --> F["app.initEvents<br/>Layer 3"]
     F -->|Initialize services| F1["GlobalEventService<br/>KeyboardService<br/>WindowStateService<br/>RendererEventsService"]
-    F1 --> G["api.windowReady<br/>Signal window ready"]
+    F1 -->|Open cold-start file or URL| F2["app.openStartupInputs"]
+    F2 --> G["api.windowReady<br/>Signal window ready"]
     G -->|mount(container)| H["MainPageView<br/>Tabs + Active Editor"]
     H -->|User interactions| I["Page operations"]
 
-    E1 -->|✓ Success| E1a["Pages loaded from storage"]
-    E1 -->|✗ Error| E1b["Notify user, create empty"]
-    E1a --> E2
-    E1b --> E2
-    E2 -->|File args| E2a["Open requested files"]
-    E2 -->|URL args| E2b["Open browser with URL"]
-    E2a --> F
-    E2b --> F
-    E2 -->|No args| F
+    E -->|✓ Success| E1["Pages loaded from storage"]
+    E -->|✗ Error| E2["Notify user, create empty"]
+    E1 --> F
+    E2 --> F
+    F2 -->|File argument| F2a["Open requested file"]
+    F2 -->|URL argument| F2b["Open URL through link pipeline"]
+    F2a --> G
+    F2b --> G
+    F2 -->|No argument| G
 
     style B fill:#fff3e0
     style D fill:#fff3e0
@@ -56,13 +55,13 @@ is `downloads.init()`. Values are installed behind the root app getters, and loa
 failures are recorded and reported after the pass so one service does not abort the rest. This
 layer includes `capabilities`, whose handlers are seeded from editor capability declarations.
 
-**Layer 2 — Pages** (`app.initPages()`): Restores pages from persistent storage, then processes CLI arguments (`--file`, `--url`, `--diff`). Ensures at least one page exists.
-
-Saving is suppressed for the whole of the restore. Restore attaches pages one at a time, and each `attachPage` subscribes the page and its editors to the debounced save, so a save that fired mid-restore would serialise an empty or partial page list over the real session — normally harmless because a later save wins, but permanent if the window is closed or reloaded inside that window. `PagesPersistenceModel` gates both the debounced wrapper and `saveState` itself, because some call sites save without the debounce. The gate re-schedules rather than drops, so a suppressed save still runs once restore completes.
+**Layer 2 — Pages** (`app.initPages()`): Restores pages from persistent storage. Saving is suppressed for the whole of the restore. Restore attaches pages one at a time, and each `attachPage` subscribes the page and its editors to the debounced save, so a save that fired mid-restore would serialise an empty or partial page list over the real session — normally harmless because a later save wins, but permanent if the window is closed or reloaded inside that window. `PagesPersistenceModel` gates both the debounced wrapper and `saveState` itself, because some call sites save without the debounce. The gate re-schedules rather than drops, so a suppressed save still runs once restore completes.
 
 The gate tracks *restore in progress* and nothing else, and is released in a `finally`. A descriptor that fails to restore is an expected outcome — restore drops it and carries on, and a `schemaVersion` bump discards every page by design — so persistence must keep working afterwards. Switching saving off because a descriptor was rejected would turn a one-time loss of open pages into a session that never persists again.
 
-**Layer 3 — Events** (`app.initEvents()`): Initializes 4 internal event services (GlobalEventService, KeyboardService, WindowStateService, RendererEventsService) that subscribe to DOM events and IPC channels.
+Cold-start input is consumed separately by `app.openStartupInputs()` after `app.initEvents()`. Main reads one packaged or unpackaged command-line argument and exposes it through one-shot file/URL getters; delaying consumption until the open handlers are registered ensures the file or URL enters the normal link pipeline. The development launcher forwards arguments after `npm start --` to Electron. Startup inputs are files or URLs; cold-start diff arguments are not handled.
+
+**Layer 3 — Events** (`app.initEvents()`): Initializes 4 internal event services (GlobalEventService, KeyboardService, WindowStateService, RendererEventsService) that subscribe to DOM events and IPC channels, including the raw-link open pipeline.
 
 **Ready signal** (`api.windowReady()`): Tells the main process this window is fully initialized. The main process waits for this before sending IPC events like `eMovePageIn` (page transfer between windows). This is critical for multi-window operations.
 
@@ -88,6 +87,7 @@ PageModel (one per tab — stable identity, never changes during navigation)
 ├── activePanel: string                 // which panel is expanded
 ├── findExplorer() / createExplorer()   // ExplorerEditorModel helpers
 ├── findEditorByFilePath(path)          // existing editor on this page for a file (navigation reuse)
+├── ensurePipeOwner()                   // await renderer ownership before a pipe-backed media session
 ├── toggleNavigator() / canOpenNavigator() // sidebar toggle (creates Explorer if needed)
 ├── close()                             // checks unsaved changes, calls onClose
 ├── dispose()                           // disposes all owned resources
@@ -100,6 +100,7 @@ EditorModel (the content inside a page — replaceable during navigation)
 ├── pipe: IContentPipe                  // content source
 ├── modified: boolean                   // has unsaved changes
 ├── setPage(page) / onMainEditorChanged() // lifecycle hooks
+├── onReopen()                           // optional retry when openFile reuses this page
 ├── beforeNavigateAway(newEditor)       // secondary survival check
 ├── survivesNavigation(sourceLink)      // skip save-prompt when editor stays on page
 ├── keepAliveOnNavigation()             // stay attached with no view (busy Board handle)
@@ -108,6 +109,13 @@ EditorModel (the content inside a page — replaceable during navigation)
 ```
 
 **Source:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts)
+
+`PagesModel.attachPage()` installs the page's media-pipe owner registrar; `detachPage()` and
+`PageModel.dispose()` clear it. An editor may ask for ownership while a restored or transferred
+page is still being assembled, so `PageModel.ensurePipeOwner()` waits for attachment. It awaits the
+renderer registration, retries after a rejected registration, and rejects pending requests if the
+page is released. Pipe-backed media sessions must await this readiness before sending a request
+with `{ pipe: true, pageId }`; HTTP and local-file sessions do not use this owner guard.
 
 An editorless page is a first-class, session-only tab: `mainEditor` and `mainEditorId` are `null`,
 the tab title is `"Empty"`, and the page can still be shown, moved, pinned, grouped, navigated, or
@@ -140,6 +148,7 @@ descriptors rather than restored sidebar state.
 - **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
 - **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
+- **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen()` hook; editors can use it to retry a failed source without replacing the page.
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
 An editorless page that has contributed panels is closed automatically when its composed panel set
@@ -362,7 +371,7 @@ During restore (initialization):  catch and notify, don't crash
 During user actions:              throw, let caller handle
 ```
 
-- **Initialization errors** (restore, handleArgs): caught in `app.initPages()`, user gets a notification, an empty page is created as fallback.
+- **Restore errors** are caught during `app.initPages()` and reported; `app.openStartupInputs()` later ensures an empty page exists if no content opened. Cold-start file and URL opens are individually guarded and reported without aborting bootstrap.
 - **User action errors** (open file, navigate): the method throws, and the caller (keyboard service, renderer events service, or UI component) catches and shows a notification.
 
 ### ID resolution

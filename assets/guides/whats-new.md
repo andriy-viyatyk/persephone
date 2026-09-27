@@ -135,6 +135,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Failed archive and provider media can be retried:** reopen the source link to start a fresh
+  playback attempt in its existing page.
+- **Files and web links supplied when starting Persephone now open as expected.**
 - **Board toolbar controls declared at startup now appear:** a board that called
   `persephone.toolbar.set()`, `update()` or `setText()` from its top-level script code lost those
   controls a moment later, when its page finished loading. They are now held until the page has

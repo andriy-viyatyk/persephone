@@ -1,6 +1,6 @@
 # US-1463 — Cold-start file and URL open
 
-**Status:** Implemented 2026-09-27, awaiting user testing · **Epic:** none (deliberately not linked) · **Depends on:** none
+**Status:** Completed 2026-09-27 · **Epic:** none (deliberately not linked) · **Depends on:** none
 
 ## Outcome (2026-09-27)
 
