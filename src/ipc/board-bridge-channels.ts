@@ -455,6 +455,13 @@ export interface BoardHostContentMsg {
     language?: string;
 }
 
+/** Source identity pushed renderer → the board's main frame for runtime opens.
+ *  It never carries payload bytes or a provider pipe. */
+export interface BoardSourceOpenedMsg {
+    __persephone: "source:opened";
+    sourceUrl: string;
+}
+
 /** Shared state pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-044).
  *  A snapshot after the frame loads (seed), then on every change. `seq` is a monotonic
  *  per-model version: the shim applies a push only when `seq` exceeds the last applied,
@@ -630,6 +637,7 @@ export type BoardHostFrameMsg =
     | BoardToolbarSetMsg
     | BoardToolbarUpdateMsg
     | BoardHostContentMsg
+    | BoardSourceOpenedMsg
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
     | BoardContentOpenResultMsg

@@ -20,6 +20,7 @@ import type {
     BoardContentOpenResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
+    BoardSourceOpenedMsg,
     BoardOpenContentRequest,
     BoardOpenContentResultMsg,
     BoardNavigationCreateReturnUrlMsg,
@@ -330,6 +331,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             },
             (state) => state.sharedState,
         ));
+        this.ownSubscription(model.onPendingSourceUrl(() => this.flushPendingSourceUrls()));
         this.ownSubscription(() => {
             this.settingsUnsubscribe?.();
             this.settingsUnsubscribe = undefined;
@@ -391,6 +393,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             contentWindow.postMessage(init, `board://${host}`, [port]);
             this.props.model.consumeInitialIntent();
             this.pendingPort = null;
+            this.flushPendingSourceUrls();
         } catch (error: unknown) {
             this.rejectPendingCapability("crashed", errMessage(error, "The board handshake failed."), false);
             this.closePendingPort();
@@ -460,8 +463,36 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             };
             win.postMessage(message, `board://${host}`);
         }
+        this.flushPendingSourceUrls();
         if (this.isMain) this.focusFrame();
     };
+
+    /** Push queued runtime source identities to the live main board frame in FIFO order. */
+    private flushPendingSourceUrls(): void {
+        if (!this.isMain || !this.live || !this.host) return;
+        const frame = this.iframe;
+        const generation = this.generation;
+        if (!frame?.contentWindow) return;
+
+        while (true) {
+            const sourceUrl = this.props.model.peekPendingSourceUrl();
+            if (sourceUrl === undefined) return;
+            if (!this.live || this.generation !== generation || this.iframe !== frame
+                || this.props.model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
+            const message: BoardSourceOpenedMsg = {
+                __persephone: "source:opened",
+                sourceUrl,
+            };
+            try {
+                frame.contentWindow.postMessage(message, `board://${this.host}`);
+            } catch {
+                return;
+            }
+            if (!this.live || this.generation !== generation || this.iframe !== frame
+                || this.props.model.frames.get(this.tabId) !== frame) return;
+            this.props.model.consumePendingSourceUrl();
+        }
+    }
 
     private readonly handleMessage = (event: MessageEvent): void => {
         const host = this.host;

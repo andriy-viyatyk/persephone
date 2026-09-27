@@ -1,6 +1,7 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import type { TextFileModel } from "../../editors/text";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -26,6 +27,29 @@ export class PagesQueryModel {
         return this.model.state.get().pages.find((p) => {
             const main = p.mainEditor as { filePath?: string } | null;
             return main?.filePath === filePath;
+        });
+    };
+
+    /** Find every page whose main editor belongs to the given board root. */
+    findPagesByBoardRoot = (boardRoot?: string): PageModel[] => {
+        if (!boardRoot) return [];
+        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        return this.model.state.get().pages.filter((page) => {
+            const editor = page.mainEditorInstance as { boardRoot?: string } | null;
+            return !!editor?.boardRoot
+                && fpNormalizeForCompare(editor.boardRoot) === normalizedRoot;
+        });
+    };
+
+    /** Find the most recently shown page for a board in this renderer window. */
+    findPageByBoardRoot = (boardRoot?: string): PageModel | undefined => {
+        if (!boardRoot) return undefined;
+        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        const { ordered } = this.model.state.get();
+        return [...ordered].reverse().find((page) => {
+            const editor = page.mainEditorInstance as { boardRoot?: string } | null;
+            return !!editor?.boardRoot
+                && fpNormalizeForCompare(editor.boardRoot) === normalizedRoot;
         });
     };
 

@@ -87,6 +87,8 @@ export interface BoardManifest {
      * (tools/dashboards), false when it has masks (a file-bound board must opt in).
      */
     standalone?: boolean;
+    /** Whether claimed sources should converge on one board page per renderer window. */
+    singleInstance?: boolean;
     /**
      * Minimum Persephone version this board version requires (semver; absent = no
      * requirement, EPIC-045). Per-version app-compatibility gate.
@@ -839,6 +841,11 @@ export async function writeBoardManifest(boardRoot: string, manifest: BoardManif
 export async function ensureBoardManifest(boardRoot: string): Promise<void> {
     if (await isBoardFolder(boardRoot)) return;
     await writeBoardManifest(boardRoot, defaultBoardManifest(fpBasename(boardRoot)));
+}
+
+/** True only for an explicit `singleInstance: true` declaration. */
+export function isBoardSingleInstance(manifest: BoardManifest | null | undefined): boolean {
+    return manifest?.singleInstance === true;
 }
 
 export const MAX_BROWSER_URL_MASK_CHARS = 512;

@@ -420,7 +420,21 @@ interface PersephoneClipboardApi {
     writeText(text: string): Promise<void>;
 }
 
+interface PersephoneSourceOpenEvent {
+    /** The raw source URL, identical to `sourceUrl`. */
+    readonly url: string;
+    /** The raw source identity delivered by Persephone; no payload bytes are included. */
+    readonly sourceUrl: string;
+}
+
+interface PersephoneSourceApi {
+    /** Subscribe to runtime source opens for this board's main frame. Buffered events are
+     * delivered FIFO. The initial source is delivered only through `getSourceUrl()`. */
+    onOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void;
+}
+
 interface PersephoneBoardApi {
+    /** The current host bridge is 1.17.0; compare `version` before using newer members. */
     /** Bridge version, e.g. "1.13.0" — 1.13.0 adds renderer-owned `settings.get()` and
      *  `settings.onChange()`. Compare it before using a newer member; do not narrow it to a
      *  literal, it moves with the app. */
@@ -485,8 +499,12 @@ interface PersephoneBoardApi {
      *  if nothing actually lives anymore). */
     getBoardBusy(): Promise<boolean>;
     /** The raw persisted source identity for this board, or `undefined` for a plain board.
-     *  This never materializes a non-local source or returns a cache path. */
+     *  This never materializes a non-local source or returns a cache path. It is the initial
+     *  source only; runtime sources arrive through `source.onOpen()`. */
     getSourceUrl(): Promise<string | undefined>;
+    /** Runtime source identities for this board's main frame. Persist accepted later hrefs
+     *  yourself with `state.init(..., { restorableKeys })` if they must survive restart. */
+    readonly source: PersephoneSourceApi;
     /** This board's LIVE jobs, including ones surviving from a previous board lifetime
      *  (busy retention). Re-associate by `name`. See {@link PersephoneJobInfo}. */
     getJobs(): Promise<PersephoneJobInfo[]>;

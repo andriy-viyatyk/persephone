@@ -204,6 +204,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         return this.query.groupedPage;
     }
     findPage = (pageId?: string) => this.query.findPage(pageId);
+    findPagesByBoardRoot = (boardRoot?: string) => this.query.findPagesByBoardRoot(boardRoot);
+    findPageByBoardRoot = (boardRoot?: string) => this.query.findPageByBoardRoot(boardRoot);
     getGroupedPage = (withPageId: string) =>
         this.query.getGroupedPage(withPageId);
     getLeftGroupedPage = (withPageId: string) =>

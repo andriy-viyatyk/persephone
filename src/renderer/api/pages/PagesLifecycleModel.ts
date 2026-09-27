@@ -23,6 +23,14 @@ import {
     boardEditorId,
     customEditorRegistry,
 } from "../../editors/board/custom-editor-registry";
+import {
+    decodePersephoneBoardLink,
+    PERSEPHONE_BOARD_PREFIX,
+} from "../../content/persephone-board-link";
+import {
+    isBoardSingleInstance,
+    readBoardManifest,
+} from "../../editors/board/board-manifest";
 import type { BoardEditorModel } from "../../editors/board";
 import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
@@ -103,6 +111,50 @@ const wrap = attachEditorToPage;
 
 export class PagesLifecycleModel {
     constructor(private model: PagesModel) {}
+
+    private resolveBoardRootForOpen(target?: string, filePath?: string): string | undefined {
+        const boardRoot = target ? parseBoardEditorId(target) : null;
+        if (boardRoot !== null) return boardRoot;
+        if (target !== "board-view" || !filePath) return undefined;
+        return decodePersephoneBoardLink(filePath)?.boardRoot;
+    }
+
+    private async isSingleInstanceBoard(boardRoot: string): Promise<boolean> {
+        return isBoardSingleInstance(await readBoardManifest(boardRoot));
+    }
+
+    private enqueueBoardSource(
+        page: PageModel,
+        filePath: string | undefined,
+        pipe: IContentPipe | undefined,
+        sourceLink: ILinkData | undefined,
+    ): void {
+        const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
+        if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
+        const editor = page.mainEditorInstance as BoardEditorModel | null;
+        editor?.enqueueSourceUrl(sourceUrl);
+    }
+
+    /** Route an open to an existing single-instance board page in this window. */
+    private async openSingleInstanceBoard(
+        filePath: string | undefined,
+        pipe: IContentPipe | undefined,
+        options?: {
+            sourceLink?: ILinkData;
+            target?: string;
+        },
+    ): Promise<PageModel | undefined> {
+        const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
+        if (!boardRoot || !(await this.isSingleInstanceBoard(boardRoot))) return undefined;
+
+        const existingPage = this.model.query.findPageByBoardRoot(boardRoot);
+        if (!existingPage) return undefined;
+
+        this.model.navigation.showPage(existingPage.id);
+        this.enqueueBoardSource(existingPage, filePath, pipe, options?.sourceLink);
+        pipe?.dispose();
+        return existingPage;
+    }
 
     // ── Pipe helpers ──────────────────────────────────────────────────
 
@@ -260,6 +312,13 @@ export class PagesLifecycleModel {
         );
         if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
             throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
+        }
+        if (await this.isSingleInstanceBoard(boardRoot)) {
+            const existingPage = this.model.query.findPageByBoardRoot(boardRoot);
+            if (existingPage) {
+                this.model.navigation.showPage(existingPage.id);
+                return existingPage;
+            }
         }
 
         const editor = await this.buildEditorById(editorId);
@@ -467,6 +526,8 @@ export class PagesLifecycleModel {
         },
     ): Promise<PageModel | undefined> => {
         if (!filePath && options?.folderPath === undefined) return undefined;
+        const singletonPage = await this.openSingleInstanceBoard(filePath, pipe, options);
+        if (singletonPage) return singletonPage;
         // Existing-page dedupe is deliberately left intact (US-637): an already-
         // open file just activates its page and the diff metadata is dropped.
         // "Open in new Tab" preselection therefore applies only on a fresh open.

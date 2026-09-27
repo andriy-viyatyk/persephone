@@ -204,6 +204,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private readonly contentResources = new Map<string, ContentResource>();
     private initialIntent: IBoardIntent | undefined;
+    private readonly pendingSourceUrls: string[] = [];
+    private readonly pendingSourceListeners = new Set<() => void>();
     private toolbarFrameGeneration: number | undefined;
     private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
 
@@ -254,6 +256,28 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (requestId === undefined || this.initialIntent?.requestId === requestId) {
             this.initialIntent = undefined;
         }
+    }
+
+    /** Queue a raw source identity for the main board frame. It is transient and never persisted. */
+    enqueueSourceUrl(sourceUrl: string): void {
+        if (!sourceUrl) return;
+        this.pendingSourceUrls.push(sourceUrl);
+        // A live frame flushes immediately; a frame still loading flushes on load/handshake.
+        for (const listener of this.pendingSourceListeners) listener();
+    }
+
+    /** Notify the main board view when a source is queued. Returns the unsubscribe function. */
+    onPendingSourceUrl(listener: () => void): () => void {
+        this.pendingSourceListeners.add(listener);
+        return () => { this.pendingSourceListeners.delete(listener); };
+    }
+
+    peekPendingSourceUrl(): string | undefined {
+        return this.pendingSourceUrls[0];
+    }
+
+    consumePendingSourceUrl(): void {
+        this.pendingSourceUrls.shift();
     }
 
     setIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
@@ -1009,6 +1033,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
         this.initialIntent = undefined;
+        this.pendingSourceUrls.length = 0;
+        this.pendingSourceListeners.clear();
         this.toolbarFrameGeneration = undefined;
         this.liveToolbarElements = [];
         this.state.update((s) => {

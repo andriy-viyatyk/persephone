@@ -2,6 +2,19 @@ import { app } from "../api/app";
 import { pagesModel } from "../api/pages";
 import { buildArchivePath } from "../core/utils/file-path";
 import { cleanForStorage } from "../../shared/link-data";
+import { parseBoardEditorId } from "../editors/board/custom-editor-registry";
+import {
+    decodePersephoneBoardLink,
+    PERSEPHONE_BOARD_PREFIX,
+} from "./persephone-board-link";
+import { isBoardSingleInstance, readBoardManifest } from "../editors/board/board-manifest";
+
+function resolveBoardRoot(target: string | undefined, filePath: string): string | undefined {
+    const boardRoot = target ? parseBoardEditorId(target) : null;
+    if (boardRoot !== null) return boardRoot;
+    if (target !== "board-view") return undefined;
+    return decodePersephoneBoardLink(filePath)?.boardRoot;
+}
 
 /**
  * Register Layer 3 handler on openContent.
@@ -28,6 +41,26 @@ export function registerOpenHandler(): void {
         const pageId = data.pageId;
         const sourceLink = cleanForStorage(data);
         sourceLink.url = filePath;
+
+        if (pageId) {
+            const boardRoot = resolveBoardRoot(data.target, filePath);
+            const manifest = boardRoot ? await readBoardManifest(boardRoot) : null;
+            const existingPage = isBoardSingleInstance(manifest)
+                ? pagesModel.findPageByBoardRoot(boardRoot)
+                : undefined;
+            if (existingPage) {
+                pagesModel.navigation.showPage(existingPage.id);
+                if (!sourceLink.url.startsWith(PERSEPHONE_BOARD_PREFIX)) {
+                    const editor = existingPage.mainEditorInstance as {
+                        enqueueSourceUrl?: (sourceUrl: string) => void;
+                    } | null;
+                    editor?.enqueueSourceUrl?.(sourceLink.url);
+                }
+                data.pipe.dispose();
+                data.handled = true;
+                return;
+            }
+        }
 
         if (pageId) {
             // Navigate existing page to the new file — pass pipe through

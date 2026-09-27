@@ -45,6 +45,7 @@ import type {
     BoardJsonValue,
     BoardFireMethod,
     BoardHostContentMsg,
+    BoardSourceOpenedMsg,
     BoardJobInfo,
     BoardToolbarControlEventMsg,
     BoardToolbarControlType,
@@ -170,6 +171,12 @@ const filePathResolvers: Array<(p: string | undefined) => void> = [];
 let sourceUrlSettled = false;
 let sourceUrlValue: string | undefined;
 const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
+interface PersephoneSourceOpenEvent {
+    readonly url: string;
+    readonly sourceUrl: string;
+}
+const sourceOpenCallbacks = new Set<(event: PersephoneSourceOpenEvent) => void>();
+const pendingSourceOpenUrls: string[] = [];
 let folderPathValue: string | undefined;
 let pipePageId: string | undefined;
 let pipeUrlEnabled = false;
@@ -194,6 +201,26 @@ function settleSourceUrl(value: string | undefined): void {
     sourceUrlValue = value;
     for (const r of sourceUrlResolvers) r(value);
     sourceUrlResolvers.length = 0;
+}
+
+function deliverSourceOpen(sourceUrl: string): void {
+    const event: PersephoneSourceOpenEvent = { url: sourceUrl, sourceUrl };
+    for (const callback of [...sourceOpenCallbacks]) {
+        try {
+            callback(event);
+        } catch (error: unknown) {
+            console.error("persephone.source.onOpen callback error:", errMessage(error));
+        }
+    }
+}
+
+function onSourceOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void {
+    sourceOpenCallbacks.add(callback);
+    while (pendingSourceOpenUrls.length > 0) {
+        const sourceUrl = pendingSourceOpenUrls.shift();
+        if (sourceUrl !== undefined) deliverSourceOpen(sourceUrl);
+    }
+    return () => sourceOpenCallbacks.delete(callback);
 }
 
 /** Resolves once the host handshake has landed (every handshake settles the file path,
@@ -974,6 +1001,16 @@ onHostMessage((event) => {
     if (p) attachPort(p);
 });
 
+// Runtime source identities arrive independently of the initial source handshake. This listener
+// is installed before board application code runs, so events posted while the board is loading are
+// retained until `source.onOpen()` subscribes.
+onHostMessage((event) => {
+    const data = event.data as BoardSourceOpenedMsg | undefined;
+    if (!data || data.__persephone !== "source:opened" || typeof data.sourceUrl !== "string") return;
+    if (sourceOpenCallbacks.size === 0) pendingSourceOpenUrls.push(data.sourceUrl);
+    else deliverSourceOpen(data.sourceUrl);
+});
+
 // Board settings request reply (EPIC-111) — renderer → board over the host-frame channel.
 onHostMessage((event) => {
     const data = event.data as BoardSettingsResultMsg | undefined;
@@ -1382,6 +1419,7 @@ function createHandle(
     // 1.14.0 adds `getSourceUrl()` for non-materializing source identity handoff (D11).
     // 1.15.0 adds explicit board service stopping through the main supervisor.
     // 1.16.0 adds a read-only board service status query.
+    // 1.17.0 adds runtime source-open events through `source.onOpen()`.
     version: BOARD_BRIDGE_VERSION,
 
     /** Mint a nonce-scoped return URL and receive matching query/hash navigations. */
@@ -1703,6 +1741,13 @@ function createHandle(
     getSourceUrl(): Promise<string | undefined> {
         if (sourceUrlSettled) return Promise.resolve(sourceUrlValue);
         return new Promise<string | undefined>((resolve) => sourceUrlResolvers.push(resolve));
+    },
+
+    /** Runtime source identities delivered to this frame after the initial open. The host only
+     * persists the initial source through `getSourceUrl()`; boards that need later sources after
+     * restart must persist their accepted hrefs through `persephone.state.init`. */
+    source: {
+        onOpen: onSourceOpen,
     },
 
     /** The absolute folder claimed by this board, or undefined for plain/file-only boards. */
