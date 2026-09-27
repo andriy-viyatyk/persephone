@@ -363,6 +363,43 @@ refused provider or scheme.
 
 **Owned by US-1478.**
 
+**D13 — A claimed download from a Tor or incognito page is ALLOWED, and fetched on that page's own
+session.**
+
+*(User decision, 2026-09-27, answering the defect found while verifying US-1478 live.)*
+
+The user's call: *"let allow opening torrent links from tor and incognito mode."* So the option this
+epic takes is **propagate**, not refuse — the board's fetch of a claimed URL must use the
+originating page's session, rather than Persephone's default one.
+
+That closes the leak recorded in the Notes entry for 2026-09-27: a `.torrent` claimed from a Tor tab
+is fetched over the same circuit the user chose, so the request carries no clear-net identity and no
+second, deanonymized copy of it is issued. It also fixes the functional symptom — `webtorrent.io` is
+reachable over Tor and not over the measured clear net, and today the board fails on exactly the
+hosts Tor exists to reach.
+
+**What propagation does NOT buy, and this is the part the user must be told.** The fetch is one
+request; the torrent is a swarm. Once metadata resolves, WebTorrent opens peer connections and
+tracker announces **directly**, over the clear net, and every peer in that swarm learns the user's
+real IP. Routing BitTorrent over Tor is a documented deanonymization path and is not something this
+board will attempt. So a user who opens a torrent from a Tor tab and assumes end-to-end anonymity
+gets the opposite of what they assume — which is strictly worse than today, where the fetch simply
+fails and nothing happens.
+
+**Therefore the feature ships with a sentence, not a gate.** When a claimed download is routed from
+a Tor or incognito page, the board says once, plainly, that the metadata was fetched privately but
+the swarm connection is not anonymous. **Not a consent dialog and not a permission prompt** — a
+trusted board is a user application, and this epic does not add per-API gates. The sentence exists
+because letting someone believe a false thing about their own anonymity is a harm that a working
+feature does not excuse.
+
+**Scope.** Session propagation belongs to the platform: the claimed-download event already carries
+the source URL and the owning board, and must also carry enough to resolve the originating page's
+session so `content.open()` reads on it. The board should not be choosing a network identity, and
+core must not learn which board claims `torrent:`.
+
+**Owned by a follow-up task under this epic.**
+
 ## UI design
 
 Deliberately plain, and written to be argued with after the user sees it. Two panes in one page:
@@ -772,3 +809,32 @@ same problem.
 **Not fixed here.** It needs its own task and a decision: propagate the originating page's session
 to the board's fetch, or refuse to route a claimed download from a Tor/incognito page and say why.
 Until then D12 is correct for ordinary pages and wrong for anonymous ones.
+
+### 2026-09-27 — US-1529 verified live, and the correction it needed only shows with two pages
+
+Five checks, all on the product path with two board pages open at once:
+
+1. **Both pages list both torrents.** Each showed 2. Page 1 rendered Sintel's full 11-file list —
+   and Sintel was resolved by *page 2*. That is the defect the user reported, fixed.
+2. **A foreign failure is retained and explained.** Page 2 showed the failed Big Buck Bunny
+   resolution — a job it never started — as a row carrying the full sentence and a Retry.
+3. **One failure raises one toast.** Exactly one alert existed across both pages.
+4. **A foreign torrent's links work.** Opening `Sintel.ru.srt` from page 1 built a link carrying the
+   complete magnet query and returned real subtitle text. Had the magnet not reached the row through
+   the snapshot the row would have looked perfect and the link would have broken silently — this is
+   D5's self-contained link depending on the snapshot extension.
+5. **Rendering does not start a stopped service.** With the service cleanly `stopped`
+   (`reason: "explicit"`), opening a board page left it stopped and rendered "No active torrents."
+
+**Check 2 is the one that justifies the plan review.** `readResolutionStatus` deleted the job on
+first read (`service.mjs:710-711`), so under the shared-state model a resolution started by another
+page would, **on failure only**, disappear from every other page with no row and no error — while
+succeeding silently by luck, because the torrent still landed in `torrents[]`. Invisible with one
+page open. The fix retains terminal outcomes for the existing TTL and removes the destructive read
+along with the consuming `status`-without-`requestId` branch.
+
+**A measurement method note, recorded because it wasted a cycle.** Killing the service process to
+test the no-start path is **not a valid test**: the supervisor restarts a crashed service, and
+`restartCount` incremented with no board page open at all. Proving "rendering does not start a
+stopped service" requires a *clean* stop — reached here by adding a torrent and removing it, which
+re-verified US-1526's state-based stop as a side effect.

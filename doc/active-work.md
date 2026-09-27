@@ -54,6 +54,8 @@ deleting `editors/draw` did not take them with it.
     A matching Browser download is cancelled before the save dialog and its source URL is handed to
     `openRawLink`; the task document settles the snapshot, trust, collision, and lifecycle work.
   - [ ] [US-1527: Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides](tasks/US-1527-torrent-board-documentation/README.md)
+  - [ ] [US-1529: The torrent list comes from the service snapshot, not page-local state](tasks/US-1529-torrent-board-service-snapshot/README.md)
+  - [ ] [US-1530: Single-instance boards — one page for every link a board claims](tasks/US-1530-single-instance-boards/README.md) — *placeholder; needs US-1529 first*
 
 ## Planned
 
