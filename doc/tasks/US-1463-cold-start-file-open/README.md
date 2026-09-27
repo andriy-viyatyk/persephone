@@ -1,6 +1,41 @@
 # US-1463 — Cold-start file and URL open
 
-**Status:** Planned · **Epic:** none (deliberately not linked) · **Depends on:** none
+**Status:** Implemented 2026-09-27, awaiting user testing · **Epic:** none (deliberately not linked) · **Depends on:** none
+
+## Outcome (2026-09-27)
+
+**Reproduced.** Old code, dev cold start: dev runs `electron .`, so `argv[1]` is `.`, a valid
+folder. `getFileToOpen()` returned it and `pages.init()` sent `openRawLink(".")` before
+`initEvents()`, and no folder page opened. The open is dropped, and it had also been hiding a
+second defect: once delivery works, reading `argv[1]` unpackaged would open the project folder
+on every dev start.
+
+**Fix (option 2, defer renderer consumption):**
+
+- `PagesPersistenceModel.init()` only restores. The file/URL handling and `checkEmptyPage()` moved to
+  `openStartupInputs()`, reached through `PagesModel.openStartupInputs()` and
+  `App.openStartupInputs()`, which `src/renderer.ts` calls right after `app.initEvents()`. Each
+  open is wrapped in `guard()` like `RendererEventsService`, so a failed open is a toast and not a
+  bootstrap failure. The main getters keep their one-shot semantics; each window asks once.
+- `src/ipc/main/window-handlers.ts` reads `process.argv[app.isPackaged ? 1 : 2]` and resolves a
+  relative file path against the working directory.
+- `scripts/dev.mjs` passes arguments after `npm start --` to Electron, so the cold start can be
+  tested in dev.
+
+**Verified in the running dev app:**
+
+1. `npm start -- <file>`: the file opened once, alongside the restored pages.
+2. With that instance running, an `OPEN <file>` sent over the launcher pipe (the installed app's
+   route when an instance is running) opened the second file once; the first was not re-opened.
+3. `npm start -- https://example.com/`: one browser page, "Example Domain".
+4. `npm start` with no argument: only the restored pages; no folder page.
+
+**Found, not changed:** in dev, starting a second `electron . <file>` opened the project folder
+instead of the file. `main-setup.ts`'s `second-instance` handler reads `commandLine[2]`, which
+under `electron .` is the app folder. The installed app's route for a running instance is the
+launcher pipe, which works (check 2), and the packaged `commandLine` layout could not be
+tested here, so the handler was left as it is. Cold-start `diff <a> <b>` is also not handled by
+`window-handlers.ts` (only the pipe and second-instance routes know `diff`); out of scope.
 
 ## Goal
 

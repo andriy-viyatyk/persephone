@@ -32,6 +32,7 @@ import {
 } from "../../content/persephone-board-link";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
+import { guard } from "../../core/utils/guard";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -422,8 +423,8 @@ export class PagesPersistenceModel {
     };
 
     /**
-     * Initialize pages: restore from storage + handle CLI arguments.
-     * Called from app.initPages() during bootstrap.
+     * Initialize pages: restore from storage. Called from app.initPages() during bootstrap.
+     * The command-line file or URL is opened later, by `openStartupInputs()`.
      */
     init = async () => {
         try {
@@ -431,15 +432,27 @@ export class PagesPersistenceModel {
         } finally {
             this.restored = true;
         }
+    };
 
+    /**
+     * Open the file or URL this process was started with, then make sure a page exists.
+     * Called from app.openStartupInputs() after app.initEvents(): the openRawLink pipeline is
+     * registered there, and main hands each argument out only once, so an open sent any
+     * earlier reaches no subscriber and is lost (US-1463).
+     */
+    openStartupInputs = async () => {
         const fileToOpen = await api.getFileToOpen();
+        // Guarded like the running-instance route (RendererEventsService): a failed open is a
+        // toast, never a bootstrap failure that leaves the window unmounted.
         if (fileToOpen) {
-            await app.events.openRawLink.sendAsync(createLinkData(fileToOpen));
+            await guard("Failed to open file", () =>
+                app.events.openRawLink.sendAsync(createLinkData(fileToOpen)),
+            );
         }
 
         const urlToOpen = await api.getUrlToOpen();
         if (urlToOpen) {
-            await this.model.lifecycle.handleExternalUrl(urlToOpen);
+            await guard("Failed to open URL", () => this.model.lifecycle.handleExternalUrl(urlToOpen));
         }
 
         this.model.checkEmptyPage();

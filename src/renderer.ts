@@ -15,6 +15,7 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     await customEditorRegistry.ensureInitialized();
     await app.initPages();
     await app.initEvents();
+    await app.openStartupInputs();
     setTimeout(() => api.windowReady(), 0);
     return cont.mount;
 }

@@ -343,4 +343,5 @@ export class PagesModel extends TModel<OpenFilesState> {
     saveStateDebounced = () => this.persistence.saveStateDebounced();
     onAppQuit = () => this.persistence.onAppQuit();
     init = () => this.persistence.init();
+    openStartupInputs = () => this.persistence.openStartupInputs();
 }

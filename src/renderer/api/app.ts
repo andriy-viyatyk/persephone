@@ -195,6 +195,15 @@ class App {
     }
 
     /**
+     * Open the file or URL this process was started with. Called in bootstrap after
+     * initEvents(), which registers the openRawLink pipeline that opens it (US-1463).
+     */
+    async openStartupInputs(): Promise<void> {
+        const { pages } = await import("./pages");
+        await pages.openStartupInputs();
+    }
+
+    /**
      * Initialize event handlers. Called in bootstrap (renderer.tsx) after initPages().
      * Subscribes to global events, keyboard shortcuts, IPC events, etc.
      * Not exposed to scripts.

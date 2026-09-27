@@ -50,15 +50,14 @@ deleting `editors/draw` did not take them with it.
     A pipe-backed media page can enter `error` before page ownership registration is ready, and reopening
     the same source is rejected by the correct renderer-ownership guard. Fix registration readiness/reuse;
     do not weaken the guard or file this under EPIC-114.
+  - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
+    — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
+    before returning it and `EventChannel` has no replay, so the `openRawLink` fired during
+    `pages.init()` reaches no subscriber. Reproduced 2026-09-27 and fixed; awaiting user testing.
 
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
-    — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
-    before returning it and `EventChannel` has no replay, so the `openRawLink` fired during
-    `pages.init()` reaches no subscriber. **Diagnosed from code reading only** — confirm the
-    runtime reproduction in the task document before fixing.
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

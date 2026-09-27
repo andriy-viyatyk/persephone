@@ -151,7 +151,8 @@ const watchers = [];
 let server = null;
 
 function startElectron() {
-    electronProc = spawn(electronPath, ["."], {
+    // Arguments after `npm start --` reach the app as a cold-start file or URL.
+    electronProc = spawn(electronPath, [".", ...process.argv.slice(2)], {
         stdio: "inherit",
         env: { ...process.env },
     });
