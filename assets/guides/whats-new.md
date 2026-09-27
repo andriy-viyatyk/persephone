@@ -142,6 +142,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `persephone.toolbar.set()`, `update()` or `setText()` from its top-level script code lost those
   controls a moment later, when its page finished loading. They are now held until the page has
   loaded and then applied in order, so boards no longer need to wait for `load` to declare them.
+- **Board capability handlers open and reuse their pages consistently:** invoking a capability
+  supplied by any trusted board now opens its handler page in the caller's window when needed and
+  reuses an existing page, regardless of the board's editor kind.
 
 ---
 

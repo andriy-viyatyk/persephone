@@ -2,7 +2,7 @@ import type { PagesModel } from "./PagesModel";
 import { EditorModel } from "../../editors/base";
 import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
-import { createLinkData } from "../../../shared/link-data";
+import { cleanForStorage, createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
 import type { IBoardIntent, ILinkDiffRevision } from "../types/io.link-data";
 import {
@@ -25,6 +25,7 @@ import {
 } from "../../editors/board/custom-editor-registry";
 import {
     decodePersephoneBoardLink,
+    encodePersephoneBoardLink,
     PERSEPHONE_BOARD_PREFIX,
 } from "../../content/persephone-board-link";
 import {
@@ -338,6 +339,43 @@ export class PagesLifecycleModel {
         });
         await editor.restore();
         return this.addPage(editor as EditorModel);
+    };
+
+    /** Open the trusted capability handler board in this renderer and return its page. */
+    openBoardHandlerPage = async (
+        boardRoot: string,
+        title: string,
+        intent: IBoardIntent,
+    ): Promise<PageModel> => {
+        const editorId = boardEditorId(boardRoot);
+        const bundledContentHost = customEditorRegistry.entries.some(
+            (entry) => entry.editorId === editorId
+                && entry.boardRoot === boardRoot
+                && entry.origin === "bundled"
+                && entry.editorKind === "content-host",
+        );
+        if (bundledContentHost) {
+            return this.addBundledBoardPage(boardRoot, "json", title, intent);
+        }
+
+        const url = encodePersephoneBoardLink(boardRoot);
+        const pipe = await pipeFromSourcePath(url);
+        const data = createLinkData(url, {
+            sourceId: "app-api",
+            target: "board-view",
+        });
+        data.url = url;
+        data.pipeDescriptor = pipe.toDescriptor();
+        const sourceLink = cleanForStorage(data);
+        const page = await this.openFile(pipe.provider.sourceUrl, pipe, {
+            sourceLink,
+            target: "board-view",
+            intent,
+        });
+        if (!page) {
+            throw new Error(`The capability handler board did not open: ${boardRoot}`);
+        }
+        return page;
     };
 
     /**

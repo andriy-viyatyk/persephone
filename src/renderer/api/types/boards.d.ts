@@ -161,7 +161,10 @@ export interface IBoards {
      *
      * @param boardRoot - Absolute path of the board's root folder.
      */
-    openBoard(boardRoot: string, options?: { intent?: IBoardIntent }): Promise<void>;
+    openBoard(boardRoot: string, options?: {
+        /** @deprecated Use `app.capabilities.invoke(...)` to invoke a registered board capability. */
+        intent?: IBoardIntent;
+    }): Promise<void>;
 
     /**
      * Register (trust) an existing board so it renders and runs. Shows the **user** a

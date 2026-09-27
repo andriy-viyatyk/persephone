@@ -272,8 +272,10 @@ without activation and `invoke(id, payload, options?)` can resolve a board handl
 Platform handlers remain direct in-process calls. Board requests use the renderer-local capability
 bus, caller-window page routing, transient structured-clone intents, deadlines, typed failures,
 cycle checks, and teardown settlement. See [Capability Bus](./capability-bus.md) for the wire and
-lifecycle contract. Page-producing calls return a `pageId`; diagram conversion and board handlers
-may return a result without one.
+lifecycle contract. A board handler reuses any open page for its root or opens one in the caller's
+window; simultaneous first requests for the same root wait for the initial opening request and
+page lifecycle operation to settle before dispatching through the reused page. Page-producing
+calls return a `pageId`; diagram conversion and board handlers may return a result without one.
 
 The service is loaded through the same app-service descriptor table as the other `app.*` members.
 Its type contract is [`api/types/capabilities.d.ts`](../../src/renderer/api/types/capabilities.d.ts),
@@ -287,6 +289,10 @@ trust, optional installed id/version/update information, manifest metadata when 
 open page ids. Listing is read-only and local: it makes no network request and does not grant trust;
 `app.boards.registerBoard(root)` remains the consent path through the user trust dialog. Use a
 returned `root` with `app.boards.openBoard(root)`.
+
+The legacy `app.boards.openBoard(root, { intent })` option is deprecated for capability dispatch;
+use `app.capabilities.invoke(id, payload)` so the request follows the capability bus lifecycle and
+returns its result.
 
 The `boards` AiVision node exposes the same currently known roots as synchronous indexed `[i]`
 children for hints and `index()` reads. Those hints perform no disk, manifest, network, or async

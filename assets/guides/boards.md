@@ -322,7 +322,9 @@ breaks board-to-board ties. A caller may pin a major version with `invoke("demo.
 
 The winning board is served in the caller's window. Persephone reuses an already-open handler page
 there or opens one there and delivers the initial request in its handshake. Later requests to that
-page use the host-frame channel. The handler receives a structured request and must settle it:
+page use the host-frame channel. This applies to any trusted board that declares the winning
+capability, regardless of its editor kind. The handler receives a structured request and must
+settle it:
 
 ```js
 function handleGreeting(request) {
@@ -381,6 +383,9 @@ not an OS guarantee — memory can be paged and Chromium may retain its own cach
 Scripts running in Persephone can discover or invoke the same indexed handlers through
 [`app.capabilities`](./scripting/api/app.md#capabilities). Board pages use the asynchronous
 `persephone.capabilities` bridge documented above.
+
+Use `app.capabilities.invoke()` for capability calls from scripts. The optional `intent` argument
+to `app.boards.openBoard()` is a deprecated legacy route and does not return the handler's result.
 
 ---
 

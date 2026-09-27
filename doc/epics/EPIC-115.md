@@ -47,7 +47,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 
 | Task | Title | Phase | Size | Status |
 |------|-------|-------|------|--------|
-| US-1534 | Capability handler pages open for any trusted board, not only bundled ones | 1 — defect | S | Planned |
+| US-1534 | [Capability handler pages open for any trusted board, not only bundled ones](../tasks/US-1534-capability-handler-open/README.md) | 1 — defect | S | Done |
 | US-1535 | One service renderer lease per window, not per service | 1 — defect | M | Planned |
 | US-1536 | Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData | 1 — defect | S–M | Planned |
 | US-1537 | Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL | 1 — defect | S | Planned |
@@ -328,6 +328,16 @@ sequence too.
 - **Concurrency mismatch:** the shim answers `busy` to any second concurrent intent
   (`board-shim.ts:1153-1157`), but the renderer allows 32 per handler, and the transport's
   per-request chain map exists for concurrency the frame refuses.
+- **Found in US-1534:** a `capabilities:intent` message that reaches a frame before its init
+  handshake makes the shim ignore the page's initial intent. The cause is the
+  `if (!activeIntent && data.intent …)` check in the init handler of `board-shim.ts`, and the
+  initial intent's request then hangs until its deadline. US-1534 works around this in the
+  transport: `openingPages` makes requests that arrive during a cold open wait until the opening
+  request settles. When the transport starts holding the initial intent per page, it should also
+  queue non-initial dispatch until the handshake, and the `openingPages` wait can then go.
+- **`boards.openBoard({ intent })`:** US-1534 kept this route and marked `intent` `@deprecated`,
+  pointing callers to `app.capabilities.invoke`. This story is where to remove it or turn it into
+  an adapter. That is a public API change, so it is a user decision.
 - **Direction:**
   - The bus alone owns deadline, trust, cancellation and at-most-once delivery.
   - The transport only routes and keeps the page-scoped chain.

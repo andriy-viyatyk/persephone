@@ -68,6 +68,8 @@ interface PendingDispatch {
     pageUnsubscribe?: () => void;
     frame?: BoardCapabilityFrame;
     settled: boolean;
+    /** Set on the request whose intent opens a new handler page; releases coalesced waiters. */
+    onSettled?: () => void;
 }
 
 function boardRootOf(registration: CapabilityRegistration): string | undefined {
@@ -83,11 +85,6 @@ function clearInitialIntent(page: PageModel | undefined, requestId: string): voi
 
 function clearInitialIntentOnRoot(root: string, requestId: string): void {
     for (const page of boardPagesForRoot(root)) clearInitialIntent(page, requestId);
-}
-
-function isContentHostBoardPage(page: PageModel): boolean {
-    const editor = page.mainEditorInstance as unknown as { contentHost?: unknown } | undefined;
-    return editor?.contentHost !== null && editor?.contentHost !== undefined;
 }
 
 function capabilityTitle(request: IntentRequest): string {
@@ -128,6 +125,13 @@ function normalizeTransportError(error: unknown): BoardCapabilityTransportError 
 
 class BoardCapabilityTransport implements CapabilityTransport {
     private readonly pending = new Map<string, PendingDispatch>();
+    /**
+     * Handler roots whose page is being opened for a request, keyed by normalized root. The
+     * entry resolves only after both the opening request and lifecycle open settle. This keeps
+     * followers behind the initial-intent handshake, while a canceled request cannot release
+     * them before its still-running page open completes.
+     */
+    private readonly openingPages = new Map<string, Promise<void>>();
     private readonly pageChains = new Map<
         string,
         Map<string, { chain: string[]; depth: number }>
@@ -188,10 +192,19 @@ class BoardCapabilityTransport implements CapabilityTransport {
     }
 
     private async resolveHandler(pending: PendingDispatch, root: string): Promise<void> {
-        const pages = boardPagesForRoot(root);
-        const page = isPageProducingEditCapability(pending.request.id)
-            ? undefined
-            : pages.find(isContentHostBoardPage);
+        const producesPage = isPageProducingEditCapability(pending.request.id);
+        const rootKey = fpNormalizeForCompare(root);
+        if (!producesPage) {
+            // Another request is opening this handler's page: wait until it settles, then take
+            // the normal reuse path below (or open the page ourselves if that open failed).
+            let opening = this.openingPages.get(rootKey);
+            while (opening && !pending.settled) {
+                await opening;
+                opening = this.openingPages.get(rootKey);
+            }
+            if (pending.settled) return;
+        }
+        const page = producesPage ? undefined : boardPagesForRoot(root)[0];
         if (page) {
             this.attachPage(pending, page);
             pagesModel.navigation.showPage(page.id);
@@ -213,20 +226,40 @@ class BoardCapabilityTransport implements CapabilityTransport {
             requestId: pending.request.requestId,
             payload: pending.request.payload,
         };
+        let openingRequestSettled = false;
+        let openingOperationSettled = false;
+        let resolveOpening = (): void => {};
+        if (!producesPage) {
+            const opening = new Promise<void>((resolve) => { resolveOpening = resolve; });
+            const completeOpening = (): void => {
+                if (openingRequestSettled && openingOperationSettled) resolveOpening();
+            };
+            pending.onSettled = () => {
+                openingRequestSettled = true;
+                completeOpening();
+            };
+            this.openingPages.set(rootKey, opening);
+            void opening.then(() => {
+                if (this.openingPages.get(rootKey) === opening) this.openingPages.delete(rootKey);
+            });
+        }
         try {
             // Keep the pending map populated before this call: opening a board can synchronously
             // mount its first frame and deliver the handshake before the promise resolves.
-            const openedPage = await pagesModel.addBundledBoardPage(
+            const openedPage = await pagesModel.lifecycle.openBoardHandlerPage(
                 root,
-                "json",
                 capabilityTitle(pending.request),
                 intent,
             );
             pending.createdPage = true;
             if (openedPage) {
-                this.attachPage(pending, openedPage);
-                const frame = boardCapabilityFrameForPage(openedPage.id);
-                if (frame) this.dispatchToFrame(pending, frame);
+                if (pending.settled) {
+                    clearInitialIntent(openedPage, pending.request.requestId);
+                } else {
+                    this.attachPage(pending, openedPage);
+                    const frame = boardCapabilityFrameForPage(openedPage.id);
+                    if (frame) this.dispatchToFrame(pending, frame);
+                }
             } else if (!pending.settled) {
                 this.settle(pending, new BoardCapabilityTransportError(
                     "handler-closed",
@@ -234,10 +267,12 @@ class BoardCapabilityTransport implements CapabilityTransport {
                 ), false);
             }
         } catch (error: unknown) {
-            this.settle(pending, new BoardCapabilityTransportError(
-                "rejected",
-                errMessage(error, "The capability handler page could not be opened."),
-            ), false);
+            this.settle(pending, normalizeTransportError(error), false);
+        } finally {
+            if (!producesPage) {
+                openingOperationSettled = true;
+                if (openingRequestSettled) resolveOpening();
+            }
         }
     }
 
@@ -260,7 +295,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         for (const pending of this.pending.values()) {
             if (pending.settled || pending.frame || fpNormalizeForCompare(frame.boardRoot)
                 !== fpNormalizeForCompare(pending.registration.boardRoot ?? "")) continue;
-            // A newly-created page is attached only after addBundledBoardPage() returns.
+            // A newly-created page is attached only after its lifecycle open returns.
             // Until then, a frame for another open page of the same board root must not steal
             // the request while that page is being constructed.
             if (!pending.page) continue;
@@ -322,6 +357,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         if (pending.registration.boardRoot) {
             clearInitialIntentOnRoot(pending.registration.boardRoot, pending.request.requestId);
         }
+        pending.onSettled?.();
         if (error) pending.reject(error);
         else pending.resolve(result);
     }

@@ -17,7 +17,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 - **EPIC-115** — [Platform roadmap clean-up — fix what the adjustment rounds left behind](epics/EPIC-115.md)
   - *Phase 1 — defects*
-  - [ ] US-1534: Capability handler pages open for any trusted board, not only bundled ones
+  - [x] [US-1534: Capability handler pages open for any trusted board, not only bundled ones](tasks/US-1534-capability-handler-open/README.md)
   - [ ] US-1535: One service renderer lease per window, not per service
   - [ ] US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData
   - [ ] US-1537: Launch arguments parsed once; a cold-start URL takes the running-instance route

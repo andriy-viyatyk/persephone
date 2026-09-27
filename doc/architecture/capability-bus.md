@@ -182,6 +182,13 @@ architecture to a task history:
    target before Layer 3 consumes it; ordinary content links still resolve through the normal pipe.
 3. Caller-window routing is the rule. Reuse or open the winning handler page in the caller's
    window; cross-window handler routing requires a future main-side forwarding protocol.
+   Ordinary board capabilities reuse any open page for the registered board root, regardless of
+   editor kind, or open a handler page through the page lifecycle when none exists. Concurrent
+   cold opens for one root are serialized: followers wait for both the opening request and page
+   lifecycle operation to settle before reusing the page or attempting their own open. This keeps
+   follower intents behind the initial-frame handshake and prevents a canceled opening request
+   from releasing them while page construction is still underway. Page-producing edit
+   capabilities such as `image.edit` keep their fresh-page behavior.
 4. Registrations coexist and resolve by priority, platform tie-break, and board registration order;
    versions are major, pin-able, and separate from the stored id.
 5. The failure taxonomy is closed and each code has an observable trigger, including clone refusal
