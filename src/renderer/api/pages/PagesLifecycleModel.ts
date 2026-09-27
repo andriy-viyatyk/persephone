@@ -542,6 +542,7 @@ export class PagesLifecycleModel {
         if (existingPage) {
             pipe?.dispose();
             this.model.navigation.showPage(existingPage.id);
+            existingPage.mainEditorInstance?.onReopen?.();
             // The document is already open — an anchor link into it is still a jump
             // request, so honor the fragment on the live editor (US-901).
             if (options?.fragment) {

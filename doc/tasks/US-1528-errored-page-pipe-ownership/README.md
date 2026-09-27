@@ -1,7 +1,42 @@
 # US-1528: Re-establish page pipe ownership when reusing an errored media page
 
-Status: Planned  
+Status: Implemented 2026-09-27, awaiting user testing.  
 Scope: Platform defect; standalone, no epic. Found during US-1526 live verification on 2026-09-26/27.
+
+## Outcome (2026-09-27)
+
+The live check changed the diagnosis. Reopening a source that is already open does not rebuild the
+page: `PagesLifecycleModel.openFile()` finds it by file path and only shows it. So a page whose
+first session request was rejected (`playerState: "error"`, empty `streamUrl`) had no path that
+ever asked again. That, not a persistent owner-map gap, is why it could not be recovered; the
+logged ownership error came from the first request, which ran before the page was registered.
+
+What shipped:
+
+- `PageModel.ensurePipeOwner()` / `setPipeOwnerRegistrar()` (`IPageHost.ensurePipeOwner?`):
+  `PagesModel.attachPage()` installs the registrar, `detachPage()` and `PageModel.dispose()` clear it.
+  An editor that asks before the page is attached (restore, move-in, duplicate) waits until
+  `attachPage()`; release rejects the wait, so a detached page is never re-registered. A rejected
+  registration is not cached, so the next request retries it.
+- `VideoEditor.resolveStreamUrl()` awaits `ensurePipeOwner()` before a `{ pipe: true, pageId }`
+  session. HTTP and local-file sessions are unchanged.
+- New optional hook `EditorModel.onReopen()`, called by `openFile()` when the page is reused.
+  `VideoEditor.onReopen()` builds a fresh pipe session for a pipe-backed source in `error` or
+  `unsupported format` (a failed stream response reaches the media element as the latter).
+  Playing pages and HTTP/local sources are left alone.
+- `core-handlers.ts`, `board-pipe-service.ts` and `BoardWebview.ts` are unchanged; the guard stands.
+
+Verified in the running app with a `torrent://` page (the swarm was unreachable, so the
+provider itself failed; playback to `playing` was not reachable):
+
+1. Fresh open and window-reload restore both created a session (no ownership rejection).
+2. With the change stashed, reopening the link re-showed the page and kept the old session
+   (`sameSession: true`); nothing retried.
+3. With the change, a page forced to `error` with no session went to `loading` with a new
+   session on the same page when its link was reopened.
+
+Not reproduced: the registration race itself. Without the change, restore also got a session in
+this run, so the race is timing-dependent; the wait closes it by construction.
 
 ## Goal
 

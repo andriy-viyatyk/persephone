@@ -123,6 +123,41 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         );
     }
 
+    /** The same source was opened onto this page again. A pipe-backed source that failed gets
+     *  a fresh pipe session, so reopening its link recovers the page (US-1528). A failed
+     *  stream response reaches the media element as "unsupported format", so that state
+     *  retries too. A playing page and HTTP/local sources are left as they are. */
+    override onReopen(): void {
+        const { url, format, parsedRequest, playerState } = this.state.get();
+        if ((playerState !== "error" && playerState !== "unsupported format") || !url || !this.page || format === "m3u8"
+            || /^https?:\/\//i.test(url) || isPlainLocalPath(url)) return;
+
+        const sourceRequestId = ++this.sourceRequestId;
+        this.state.update((s) => {
+            s.playerState = "loading";
+            s.streamUrl = "";
+        });
+        void (async () => {
+            await this.ensurePipeForSource(url);
+            return this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId);
+        })().then(
+            ({ streamingUrl }) => {
+                this.state.update((s) => {
+                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
+                        s.streamUrl = streamingUrl;
+                    }
+                });
+            },
+            () => {
+                this.state.update((s) => {
+                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
+                        s.playerState = "error";
+                    }
+                });
+            },
+        );
+    }
+
     /** Update raw input text as user types. */
     setInputText = (text: string) => {
         this.state.update((s) => { s.inputText = text; });
@@ -161,7 +196,8 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         const isHttpUrl = /^https?:\/\//i.test(url);
         const isPlainLocalFile = isPlainLocalPath(url);
         try {
-            const pageId = this.page?.id;
+            const page = this.page;
+            const pageId = page?.id;
             const sessionConfig = isHttpUrl
                 ? { url, headers: parsedRequest?.headers, pageId }
                 : isPlainLocalFile
@@ -171,6 +207,15 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
                         : null;
             if (!sessionConfig) {
                 throw new Error("The video source has no live content pipe.");
+            }
+            if ("pipe" in sessionConfig) {
+                // Main accepts a pipe session only from the page's owning renderer, and a
+                // restored page's editors run before the page is registered (US-1528).
+                if (!page?.ensurePipeOwner) {
+                    throw new Error("The video page cannot own a media pipe.");
+                }
+                await page.ensurePipeOwner();
+                if (sourceRequestId !== this.sourceRequestId) return { streamingUrl: "" };
             }
             const session = await api.createVideoStreamSession(
                 sessionConfig,

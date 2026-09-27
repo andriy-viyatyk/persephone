@@ -44,16 +44,16 @@ deleting `editors/draw` did not take them with it.
 
 ## Active
 
-*(nothing active)*
-
-## Planned
-
 - *(no epic)*
   - [ ] [US-1528: Re-establish page pipe ownership when reusing an errored media page](tasks/US-1528-errored-page-pipe-ownership/README.md)
     — platform defect found during US-1526 live verification; the torrent board is discovery context only.
     A pipe-backed media page can enter `error` before page ownership registration is ready, and reopening
     the same source is rejected by the correct renderer-ownership guard. Fix registration readiness/reuse;
     do not weaken the guard or file this under EPIC-114.
+
+## Planned
+
+- *(no epic)*
   - [ ] [US-1463: Cold start drops a file or URL passed on the command line](tasks/US-1463-cold-start-file-open/README.md)
     — found while planning [EPIC-105](epics/EPIC-105.md). `getFileToOpen()` consumes the argument
     before returning it and `EventChannel` has no replay, so the `openRawLink` fired during

@@ -66,7 +66,8 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     attachPage = (page: PageModel) => {
         const pageId = page.id;
-        void api.registerBoardPipePage(pageId);
+        // Editors attached before this call (restore, move-in) wait on it before a pipe session.
+        page.setPipeOwnerRegistrar(() => api.registerBoardPipePage(pageId));
         const editorSubs = new Map<string, () => void>();
 
         const reconcileEditorSubs = () => {
@@ -113,6 +114,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     detachPage = (page: PageModel) => {
         const pageId = page.id;
+        page.setPipeOwnerRegistrar(null);
         void api.unregisterBoardPipePage(pageId);
         void api.deleteVideoStreamSessionsByPage(pageId);
         void import("../../editors/board/board-pipe-handler").then(({ invalidateBoardPipePage }) => {

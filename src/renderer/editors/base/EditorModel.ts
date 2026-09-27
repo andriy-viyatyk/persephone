@@ -323,6 +323,11 @@ export abstract class EditorModel<
      *  may have gone stale since it was last the main editor. */
     onNavigationReuse?(): void;
 
+    /** Optional. Called by `PagesLifecycleModel.openFile` when the file or link being opened
+     *  is already this page's main editor, so the page is shown instead of rebuilt. An editor
+     *  in a failed state can retry its source here (US-1528). */
+    onReopen?(): void;
+
     // ── In-document anchor navigation (US-901) ────────────────────────────
 
     /** Optional. Scroll to a document fragment (anchor / heading slug) after this
