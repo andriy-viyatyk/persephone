@@ -398,7 +398,23 @@ the source URL and the owning board, and must also carry enough to resolve the o
 session so `content.open()` reads on it. The board should not be choosing a network identity, and
 core must not learn which board claims `torrent:`.
 
-**Owned by a follow-up task under this epic.**
+**Owned by [US-1531](../tasks/US-1531-claimed-download-session/README.md).**
+
+**D14 — A single-instance board is single PER WINDOW; its state is shared PER APP.**
+
+*(User decision, 2026-09-27, answering US-1530's first open question: "it should be per window, so
+if I have browser in second window and click magnet link then torrent board is open in the same
+window. But two torrent boards on different windows should show the same list of active torrent
+files.")*
+
+- **Page routing is per window.** A link claimed in a window opens in, or is delivered to, that
+  window's board page — never focusing or pulling in a page from another window. This matches how
+  well-known pages already behave.
+- **State is per app.** Two windows' board pages show the same torrent list. That is already true by
+  construction since US-1529: both pages render the one service's snapshot. US-1530 must not
+  introduce any per-page or per-window torrent state that would break it.
+
+Owned by [US-1530](../tasks/US-1530-single-instance-boards/README.md).
 
 ## UI design
 
@@ -439,6 +455,9 @@ Theme via `board-base.css` and the bridge's theme tokens, like every other board
 | US-1526 | Lifecycle: page close stops the stream, cold-start restore with no board page, service stop, uninstall placeholder | Planned |
 | US-1478 | `browserUrlMasks`: a board claims browser URLs explicitly, and a matching download is routed to it instead of saved (D12) | Planned |
 | [US-1527](../tasks/US-1527-torrent-board-documentation/README.md) | Documentation: roadmap §3.8 + Phase E corrections, `boards.md`, the board's own guides | Planned |
+| [US-1529](../tasks/US-1529-torrent-board-service-snapshot/README.md) | The torrent list comes from the service snapshot, not page-local state | Implemented |
+| [US-1530](../tasks/US-1530-single-instance-boards/README.md) | Single-instance boards — one page for every link a board claims | In progress |
+| [US-1531](../tasks/US-1531-claimed-download-session/README.md) | A claimed download is fetched on the originating page's session (D13) | Placeholder |
 
 **Suggested order:** US-1523 → US-1524 → US-1525 are a straight line, each observable in the running
 app. US-1526 needs all three. US-1478 is independent and carries a product question, so it is
