@@ -15,6 +15,32 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Planned
 
+- **EPIC-115** — [Platform roadmap clean-up — fix what the adjustment rounds left behind](epics/EPIC-115.md)
+  - *Phase 1 — defects*
+  - [ ] US-1534: Capability handler pages open for any trusted board, not only bundled ones
+  - [ ] US-1535: One service renderer lease per window, not per service
+  - [ ] US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData
+  - [ ] US-1537: Launch arguments parsed once; a cold-start URL takes the running-instance route
+  - [ ] US-1538: Main owns the board trust and URL-mask snapshots
+  - [ ] US-1547: Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads
+  - *Phase 2 — contracts with one definition*
+  - [ ] US-1539: Capability contract single-sourced — error codes, intent envelope, outcome shape
+  - [ ] US-1540: One owner for a capability request's lifecycle
+  - [ ] US-1541: Built-in capability resolution runs the handler it resolved; one image-edit helper
+  - [ ] US-1542: Host-frame request/reply channel — one table on each side, typed message union
+  - [ ] US-1543: The service host owns the service lifecycle protocol
+  - [ ] US-1544: One provider-operation policy table (deadline, cap)
+  - *Phase 3 — structure*
+  - [ ] US-1545: Split the module-service supervisor; one state-transition helper
+  - [ ] US-1546: One `__pipe` range reader in main; one MIME table
+  - [ ] US-1548: One ownership registry for providers, schemes, capabilities and URL masks
+  - [ ] US-1549: Board manifest parsed once into a normalized model
+  - [ ] US-1550: Scheme hooks — a `handoff()` helper and shared URL helpers
+  - [ ] US-1551: Single-instance board routing in one place; a typed open-context hook
+  - [ ] US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters
+  - [ ] US-1553: VideoEditor's source flow in one place; one provider-recovery helper
+  - [ ] US-1554: Board trust granting, bundled-board creation and Board Info each have one path
+  - [ ] US-1555: Small dead code, stale comments and a torrent-specific notice in core
 - *(no epic)*
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
