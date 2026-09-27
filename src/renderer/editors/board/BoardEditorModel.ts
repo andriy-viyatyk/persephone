@@ -853,6 +853,19 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         void boardTrust.load();
         this.selectBoard(name);
         void this.refreshBoards();
+        // A plain board page is titled by the manifest's display name, as a link-opened page
+        // already is (custom-editor-registry's scheme hook); the folder name is only the fallback
+        // until the manifest is read, or when it declares no name.
+        if (!filePath && !folderPath) void this.applyManifestTitle(boardRoot, name);
+    }
+
+    private async applyManifestTitle(boardRoot: string, fallbackTitle: string): Promise<void> {
+        const manifestName = (await readBoardManifest(boardRoot))?.name?.trim();
+        if (!manifestName || this.aiVisionDisposed) return;
+        const s = this.state.get();
+        // Only replace the fallback this method set: a caller may already have retitled the page.
+        if (s.boardRoot !== boardRoot || s.title !== fallbackTitle) return;
+        this.state.update((st) => { st.title = manifestName; });
     }
 
     /** Persistence restore (app restart + cross-window). `boardRoot` rides the
@@ -882,6 +895,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
         void boardTrust.load();
         await this.refreshBoards();
+        // A plain board page persisted under its folder name (before pages took the manifest name,
+        // or when the manifest was renamed) is retitled; a page carrying a file or folder is not.
+        if (!this.currentFilePath() && !s.folderPath) {
+            void this.applyManifestTitle(s.boardRoot, fpBasename(s.boardRoot));
+        }
     }
 
     /** Re-validate the single board: clear the selection (→ BoardNotFoundView) when
