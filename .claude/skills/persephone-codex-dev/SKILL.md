@@ -1,6 +1,6 @@
 ---
 name: persephone-codex-dev
-description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (gpt-5.6-luna, high effort); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
+description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (gpt-6-luna, high effort); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
 allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 
 Codex does the reading and the typing. You do the thinking about whether the plan is
 right. That division exists because the user's Claude budget is scarce and their Codex
-budget is not — `gpt-5.6-luna` at high effort is cheap for them and competent at code.
+budget is not — `gpt-6-luna` at high effort is cheap for them and competent at code.
 
 **Target: you do 5–10% of the work.** If you are doing more, you are doing the wrong work.
 Delegate by default and treat "should I just do this myself?" as a question that almost
@@ -140,7 +140,7 @@ knows the task, so your review is the only new input it needs.
 
 Always pass `-s workspace-write` — required even for the investigation step, because Codex
 writes the task document, and read-only would fail at the last moment. Model and effort
-already default to `gpt-5.6-luna` / `high`; do not override unless the user asks. `codex exec`
+already default to `gpt-6-luna` / `high`; do not override unless the user asks. `codex exec`
 never prompts for approval, which is what makes an unattended run safe — and also means a
 sandbox set too wide runs unattended too.
 
