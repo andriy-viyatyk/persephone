@@ -1079,11 +1079,10 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return boardRoot ? readBoardManifest(boardRoot) : Promise.resolve(null);
     }
 
-    /** Absolute path to the board's `ui.log` (for the open-log action), or undefined
-     *  when no board is resolved. */
-    getSelectedBoardLogPath(): string | undefined {
+    /** Resolve the main-owned board log path, or undefined when no board is resolved. */
+    async getSelectedBoardLogPath(): Promise<string | undefined> {
         const root = this.currentBoardRoot();
-        return root ? fpJoin(root, "ui.log") : undefined;
+        return root ? api.getBoardLogPath(root) : undefined;
     }
 
     /** Drop the live `<iframe>` reference and the board frame's CDP registration on

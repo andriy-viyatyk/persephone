@@ -1,7 +1,6 @@
 import color from "../../theme/color";
 import { api } from "../../../ipc/renderer/api";
-import { fs } from "../../api/fs";
-import { fpJoin, isPlainLocalPath } from "../../core/utils/file-path";
+import { isPlainLocalPath } from "../../core/utils/file-path";
 import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
@@ -47,7 +46,7 @@ import {
 import { resolveBoardOpenContent } from "./board-open-content";
 import { resolveBoardFileIcons } from "./board-file-icons";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
-import { BOARD_CDP_TAB } from "../../../ipc/api-types";
+import { BOARD_CDP_TAB, type BoardLogLevel } from "../../../ipc/api-types";
 import { BOARD_TOKEN_VARS, computeBoardThemePalette, ensureBoardThemeSubscription } from "./board-theme";
 import { boardSecondaryPanelId } from "./board-secondary";
 import type { BoardEditorModel } from "./BoardEditorModel";
@@ -233,11 +232,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             return;
         }
         if (this.isMain) {
-            await fs.write(fpJoin(boardRoot, "ui.log"), this.logLine("info", "board loaded")).catch(() => {});
-        }
-        if (!this.live) {
-            void api.unregisterBoard(h);
-            return;
+            void api.appendBoardLog(boardRoot, "info", "----- board loaded -----").catch(() => {});
         }
         this.registeredHost = h;
         this.host = h;
@@ -1243,12 +1238,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!isFocusInSidebar()) this.iframe?.contentWindow?.focus();
     }
 
-    private appendLog(level: string, message: string): void {
-        void fs.append(fpJoin(this.props.boardRoot, "ui.log"), this.logLine(level, message)).catch(() => {});
-    }
-
-    private logLine(level: string, message: string): string {
-        return `[${new Date().toISOString()}] [${level}] ${message}\n`;
+    private appendLog(level: BoardLogLevel, message: string): void {
+        void api.appendBoardLog(this.props.boardRoot, level, message).catch(() => {});
     }
 
     private closePendingPort(): void {

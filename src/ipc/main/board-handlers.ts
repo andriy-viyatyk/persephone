@@ -1,5 +1,5 @@
 import type { IpcMainEvent } from "electron";
-import { BOARD_CDP_TAB, Endpoint } from "../api-types";
+import { BOARD_CDP_TAB, Endpoint, type BoardLogLevel } from "../api-types";
 import type {
     BoardArchiveDownloadRequest,
     BrowserUrlMaskSnapshot,
@@ -9,9 +9,12 @@ import type {
 import type { BoardThemePalette } from "../board-bridge-channels";
 import type { BoardServiceStatus, TrustedBoardSnapshot } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
+import { errMessage } from "../../shared/utils";
 
 export type BoardEndpoint =
     | Endpoint.registerBoard
+    | Endpoint.appendBoardLog
+    | Endpoint.getBoardLogPath
     | Endpoint.unregisterBoard
     | Endpoint.updateBoardTheme
     | Endpoint.requestBoardPort
@@ -68,6 +71,16 @@ export function initBoardHandlers(): void {
         const { ensureHostWired } = await import("../../main/board-bridge");
         ensureHostWired(event.sender);
         return host;
+    });
+    bindEndpoint(Endpoint.appendBoardLog, async (_event, boardRoot: string, level: BoardLogLevel, message: string): Promise<void> => {
+        try {
+            await (await import("../../main/board-log")).append(boardRoot, level, message);
+        } catch (error) {
+            console.warn(`Failed to append board log: ${errMessage(error)}`);
+        }
+    });
+    bindEndpoint(Endpoint.getBoardLogPath, async (_event, boardRoot: string): Promise<string> => {
+        return (await import("../../main/board-log")).getBoardLogPath(boardRoot);
     });
     bindEndpoint(Endpoint.unregisterBoard, async (_event, host: string): Promise<void> => {
         (await import("../../main/board-protocol-service")).unregisterBoard(host);

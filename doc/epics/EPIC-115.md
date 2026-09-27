@@ -49,7 +49,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 |------|-------|-------|------|--------|
 | US-1534 | [Capability handler pages open for any trusted board, not only bundled ones](../tasks/US-1534-capability-handler-open/README.md) | 1 — defect | S | Done |
 | US-1535 | [One service renderer lease per window, not per service](../tasks/US-1535-service-lease-per-window/README.md) | 1 — defect | M | Done |
-| US-1536 | Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData | 1 — defect | S–M | Planned |
+| US-1536 | [Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData](../tasks/US-1536-board-log-writer/README.md) | 1 — defect | S–M | Done |
 | US-1537 | Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL | 1 — defect | S | Planned |
 | US-1538 | Main owns the board trust and URL-mask snapshots | 1 — defect | M | Planned |
 | US-1547 | Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads | 1 — defect | M | Planned |
@@ -224,6 +224,10 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   - Untrusting in one window stops the service and releases providers, and that holds after the
     other window re-snapshots.
   - No generation counter is seeded from the clock.
+- **Live finding (US-1536, 2026-09-28):** on a cold `npm start`, a restored page reading a board
+  provider (`mem://` from a scratch Demo copy) failed with `ServiceError trust-not-ready` from
+  `transferRendererPort → start → requireRecord`, and toasted "Provider … is unavailable". Main
+  had not yet received the trust snapshot. Check whether main owning the snapshot fixes it.
 
 ### US-1547: Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads
 
@@ -498,7 +502,9 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
     cover it. Leases are now `Map<webContents.id, lease>` with per-lease WebContents lifecycle
     listeners (`listenForLeaseLifecycle`), which belongs with the lease code when the file is split.
   - Add a `RestartBudget` class.
-  - Move `BoundedServiceLog` out of the supervisor (US-1536 replaces it).
+  - ~~Move `BoundedServiceLog` out of the supervisor~~ — done by US-1536: the class and its
+    constants are gone; the supervisor now splits each stdout/stderr chunk into lines and calls
+    `board-log.append(root, "stdout" | "stderr", line)` (a small closure in `startOneAttempt`).
   - Delete the dead items above.
 
 ### US-1546: One `__pipe` range reader in main; one MIME table

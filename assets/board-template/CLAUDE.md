@@ -496,8 +496,12 @@ await persephone.storage.set("last-result", result);
 Requests start the service lazily and may reject with readable lifecycle errors such as
 `untrusted`, `service-not-declared`, `permission-denied`, `service-busy`, `service-timeout`,
 `service-exited`, or `service-failed`; catch them and render a useful result. A service's stdout
-and stderr are captured in `<boardRoot>/ui.log`, which is the first place to inspect when an ESM
-import, handshake, request, or dependency fails. Service status is visible in `app.boards.list()`
+and stderr are captured in the board's `ui.log`, which is the first place to inspect when an ESM
+import, handshake, request, or dependency fails. For ordinary boards this file is `<boardRoot>/ui.log`;
+for bundled boards it is under `<userData>/board-logs/<id>/ui.log` (on Windows,
+`%APPDATA%\persephone\board-logs\<id>\ui.log`). Service output and all other board-log
+writes go through main's `src/main/board-log.ts`. The log is bounded at 256 KiB and trims toward
+the last ~128 KiB on overflow. Service status is visible in `app.boards.list()`
 as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The host starts, supervises,
 restart-budgets, and stops the process on untrust; the service must not restart itself.
 
@@ -1170,14 +1174,18 @@ leading/trailing sticky data columns.
 ## Errors & the log
 
 Report failures with `persephone.notify(message, "error")` — they're toasted **and**
-appended to **`ui.log`** in this folder (choose **… → Open board log** in the in-board toolbar
-to open it). Persephone also logs board *load* failures there automatically: navigation
+appended to the board's **`ui.log`** (choose **… → Open board log** in the in-board toolbar
+to open it). For ordinary boards the file is in this folder; bundled boards store it under
+`<userData>/board-logs/<id>/ui.log` (on Windows, `%APPDATA%\persephone\board-logs\<id>\ui.log`).
+Persephone also logs board *load* failures there automatically: navigation
 errors, CSP violations, and uncaught script errors / unhandled rejections — and it mirrors
 every **`console.error`** / **`console.warn`** from the board's frames into the log
 (`console.log`/`info` are not mirrored), so runtime problems your code or a library reports
-via the console are reviewable without DevTools. The log starts
-fresh on every load (it holds only the current board lifetime, beginning with a
-`board loaded` line), so opening it after a clean load shows no errors. Keep your `catch`
+via the console are reviewable without DevTools. Each main-frame load appends a
+`----- board loaded -----` separator; history persists across reloads. Main owns all writes and
+keeps the log bounded at 256 KiB, trimming toward the last ~128 KiB when it grows past the limit.
+Opening it after a clean load shows the current load after the separator and any earlier history.
+Keep your `catch`
 blocks calling `notify(..., "error")` so problems are reviewable.
 
 ## Board icon (optional)

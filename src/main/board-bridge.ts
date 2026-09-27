@@ -63,6 +63,7 @@ import {
     writeJobStdin,
 } from "./command-runner";
 import { errMessage } from "../shared/utils";
+import * as boardLog from "./board-log";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../shared/ai-vision-timeout";
 import { sendToRendererForWebContents } from "./mcp/renderer-bridge";
 import {
@@ -348,14 +349,7 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
         win?.webContents.send(EventEndpoint.eBoardNotify, { message, type });
         // Mirror errors/warnings to the board's ui.log (US-726) for author/agent review.
         if (type === "error" || type === "warning") {
-            try {
-                fs.appendFileSync(
-                    path.join(entry.root, "ui.log"),
-                    `[${new Date().toISOString()}] [${type}] ${message}\n`,
-                );
-            } catch {
-                // Logging must never throw into the bridge.
-            }
+            void boardLog.append(entry.root, type, message).catch(() => {});
         }
     }
 }
@@ -454,11 +448,7 @@ function reapHost(hostWebContentsId: number): void {
  *  funnel for modes A and D (EPIC-037 C11). Never throws into the caller. */
 function reportBoardLoadFailure(hostWebContents: WebContents, root: string, detail: string): void {
     if (root) {
-        try {
-            fs.appendFileSync(path.join(root, "ui.log"), `[${new Date().toISOString()}] [error] ${detail}\n`);
-        } catch {
-            // Logging must never throw into the bridge.
-        }
+        void boardLog.append(root, "error", detail).catch(() => {});
     }
     try {
         hostWebContents.send(EventEndpoint.eBoardNotify, {

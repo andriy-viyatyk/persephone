@@ -366,7 +366,9 @@ available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are 
 from the board root, including its `node_modules`. The environment is sanitized to the supervisor
 allowlist plus `PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`. The host injects
 `persephone.storage`, shared with the frame and routed through main; a service must not open
-`store.json` itself. Service stdout/stderr goes to `<boardRoot>/ui.log`.
+`store.json` itself. Service stdout/stderr is written to the board's `ui.log`. Ordinary boards
+store it at `<boardRoot>/ui.log`; bundled boards store it at `%APPDATA%\persephone\board-logs\<id>\ui.log`
+(equivalent to `<userData>/board-logs/<id>/ui.log`).
 
 ### Service-backed content providers
 
@@ -620,8 +622,9 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   const response = await fetch(resource.url, { headers: { Range: "bytes=0-1023" } });
   ```
 - `persephone.notify(message, type)` — toast (`"info"|"success"|"warning"|"error"`); errors are
-  also appended to **`ui.log`** in the board folder (an on-board indicator opens it). `ui.log` also
-  receives, automatically: load failures, CSP violations, uncaught errors / unhandled rejections,
+  also appended to the board's **`ui.log`** (an on-board indicator opens it). For ordinary boards,
+  it is in the board folder; for bundled boards, it is `%APPDATA%\persephone\board-logs\<id>\ui.log`.
+  The log also receives automatically: load failures, CSP violations, uncaught errors / unhandled rejections,
   and every **`console.error`/`console.warn`** from the board's frames — read it when debugging.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)` —
   native dialogs returning a path you hand to `execute()`.
@@ -1140,9 +1143,13 @@ untitled drawing, PNG-over-SVG). Add a new recipe there when you solve a fresh i
 
 The debugging surfaces, in the order to check them:
 
-- **`ui.log`** (in the board folder) is the board's black box: load failures, CSP violations,
-  uncaught errors, unhandled rejections, and every `console.error`/`console.warn` from the
-  board's frames land there automatically. Read it first when a board renders blank or a
+- **`ui.log`** is the board's black box: ordinary boards keep it in the board folder; bundled
+  boards keep it at `%APPDATA%\persephone\board-logs\<id>\ui.log`. All entries, including
+  service stdout/stderr, are written through the main-process `src/main/board-log.ts`. Each
+  main-frame load appends a `----- board loaded -----` separator, preserving history across reloads.
+  The log is bounded at 256 KiB and trims toward its last ~128 KiB on overflow. It contains load
+  failures, CSP violations, uncaught errors, unhandled rejections, and every `console.error`/
+  `console.warn` from the board's frames. Read it first when a board renders blank or a
   feature silently does nothing.
 - **`pages[pageId].editor.reload()` returning `frameReady: false`** means the reloaded frame never signalled
   load — almost always broken board HTML/JS; `ui.log` has the reason.

@@ -114,6 +114,8 @@ export enum Endpoint {
     gitRemoteUrl = "gitRemoteUrl",
     capturePageRegion = "capturePageRegion",
     registerBoard = "registerBoard",
+    appendBoardLog = "appendBoardLog",
+    getBoardLogPath = "getBoardLogPath",
     unregisterBoard = "unregisterBoard",
     updateBoardTheme = "updateBoardTheme",
     requestBoardPort = "requestBoardPort",
@@ -144,6 +146,8 @@ export enum Endpoint {
  *  regKey is `${boardEditorId}/${BOARD_CDP_TAB}` — built identically in the
  *  renderer target (BoardTargetModel) and the main controller registration. */
 export const BOARD_CDP_TAB = "main";
+
+export type BoardLogLevel = "info" | "warn" | "warning" | "error" | "stdout" | "stderr";
 
 /** Sentinel CDP regKey for automating Persephone's OWN main window (the app UI
  *  itself, via the `browser_*` tools with `pageId: "app"`). Unlike browser/board
@@ -274,6 +278,8 @@ export type Api = {
     [Endpoint.gitRemoteUrl]: (dir: string, remote: string) => Promise<string>;
     [Endpoint.capturePageRegion]: (rect: CaptureRect) => Promise<Uint8Array>;
     [Endpoint.registerBoard]: (boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>) => Promise<string>;
+    [Endpoint.appendBoardLog]: (boardRoot: string, level: BoardLogLevel, message: string) => Promise<void>;
+    [Endpoint.getBoardLogPath]: (boardRoot: string) => Promise<string>;
     [Endpoint.unregisterBoard]: (host: string) => Promise<void>;
     [Endpoint.updateBoardTheme]: (theme: BoardThemePalette) => Promise<void>;
     // Mint a per-board MessagePort in main and deliver port1 to this renderer via

@@ -11,8 +11,6 @@ export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
 export const MAX_OUTSTANDING_REQUESTS_PER_SERVICE = 32;
 export const SERVICE_REQUEST_DEADLINE_MS = 10_000;
-export const MAX_SERVICE_LOG_BYTES = 256 * 1024;
-export const MAX_SERVICE_LOG_CHUNK_BYTES = 8 * 1024;
 
 export type BoardServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
 export type RendererLeaseState = "none" | "attaching" | "attached" | "lost";

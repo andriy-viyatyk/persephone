@@ -15,7 +15,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - *Phase 1 — defects*
   - [x] [US-1534: Capability handler pages open for any trusted board, not only bundled ones](tasks/US-1534-capability-handler-open/README.md)
   - [x] [US-1535: One service renderer lease per window, not per service](tasks/US-1535-service-lease-per-window/README.md)
-  - [ ] US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData
+  - [x] [US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData](tasks/US-1536-board-log-writer/README.md)
   - [ ] US-1537: Launch arguments parsed once; a cold-start URL takes the running-instance route
   - [ ] US-1538: Main owns the board trust and URL-mask snapshots
   - [ ] US-1547: Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads

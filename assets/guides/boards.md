@@ -611,7 +611,9 @@ board root, imports resolve `node_modules` from that root, and standard Node bui
 available, including filesystem, networking, streams, crypto, workers, and timers. It does not
 receive Electron objects such as `electron`, `app`, `BrowserWindow`, `webContents`, or `ipcMain`.
 The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1` and
-`PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in `<boardRoot>/ui.log`.
+`PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in the board's `ui.log`. For
+boards you add, that file is `<boardRoot>/ui.log`; bundled boards keep it at
+`%APPDATA%\persephone\board-logs\<id>\ui.log`.
 
 The service host injects `persephone.storage`, and the service shares the frame's per-board JSON
 store. A service can handle requests and provider operations from multiple windows concurrently;
@@ -846,13 +848,13 @@ Read `getTheme()` or the `onThemeChange` argument again after every theme switch
 
 ## Board folder layout
 
-A board can live anywhere on disk — the layout is the same regardless of location:
+An ordinary board can live anywhere on disk. Its log is kept in the board folder:
 
 ```
 My Board/                  ← board root folder (display name = folder name)
   board-manifest.json      ← board identity file (created automatically)
   CLAUDE.md                ← authoring guide (for you or an AI agent)
-  ui.log                   ← error log — review when something breaks
+  ui.log                   ← error log for boards you add — review when something breaks
   index.html               ← entry point (required at the board root)
   app.js                   ← your frontend JS
   style.css                ← your styles
@@ -1276,7 +1278,16 @@ If the board is also a [custom editor](#custom-editors--associate-a-board-with-a
 
 ## Error log (`ui.log`)
 
-All board errors — script failures, bridge errors, and board load failures — are shown as a toast notification **and** appended to a `ui.log` file in the board folder. `console.error`/`console.warn` calls made by the board's own code are also mirrored there (as `[error]`/`[warn]` lines), so a misbehaving board's log gives a fuller picture even without a toast. Choose **Open board log** from the in-board toolbar's **…** menu at any time to open `ui.log`. The log is reset to a single `board loaded` line on every board open or Reload, so it reflects only the current board lifetime — it never accumulates across sessions. Keep `catch` blocks in your board JS calling `persephone.notify(message, "error")` so failures are captured there.
+Board errors — including script and load failures — are appended to `ui.log`. The log also records
+`console.error` and `console.warn` from the board, service output, and warnings or errors sent
+through `persephone.notify()`. Choose **Open board log** from the in-board toolbar's **…** menu
+to review it. Ordinary boards keep the file in their board folder; bundled boards keep it at
+`%APPDATA%\persephone\board-logs\<id>\ui.log`.
+
+Opening or reloading a board adds a `----- board loaded -----` separator, so earlier entries remain
+available across reloads. The log is limited to 256 KiB; when it grows beyond that, older entries
+are removed to make room. Keep `catch` blocks in your board JS calling
+`persephone.notify(message, "error")` so failures are captured there.
 
 ---
 

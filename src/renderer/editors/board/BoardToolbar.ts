@@ -208,7 +208,7 @@ export class BoardToolbarView extends VanillaView<{
     }
 
     private async openLog(): Promise<void> {
-        const logPath = this.model.getSelectedBoardLogPath();
+        const logPath = await this.model.getSelectedBoardLogPath();
         if (logPath) await app.events.openRawLink.sendAsync(createLinkData(logPath));
     }
 

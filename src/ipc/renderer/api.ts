@@ -21,6 +21,7 @@ import {
     EventEndpoint,
     McpStatus,
     MnemeStatus,
+    type BoardLogLevel,
     type ModuleServicePortPayload,
 } from "../api-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../git-ipc";
@@ -436,6 +437,14 @@ class ApiCalls implements Api {
         tokens: Record<string, string>,
     ) => {
         return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens);
+    };
+
+    appendBoardLog = async (boardRoot: string, level: BoardLogLevel, message: string) => {
+        return executeOnce<void>(Endpoint.appendBoardLog, boardRoot, level, message);
+    };
+
+    getBoardLogPath = async (boardRoot: string) => {
+        return executeOnce<string>(Endpoint.getBoardLogPath, boardRoot);
     };
 
     unregisterBoard = async (host: string) => {

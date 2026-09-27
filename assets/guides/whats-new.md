@@ -121,6 +121,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   purple mark wherever Persephone displays its board icon.
 - **Excalidraw opens without a white flash on dark themes:** its initial document background uses
   Persephone's theme before the drawing app finishes loading.
+- **Board logs keep recent history across reloads:** opening or reloading a board now adds a
+  `----- board loaded -----` separator instead of clearing the log. Logs are capped at 256 KiB,
+  with older entries trimmed as needed. Bundled boards keep their logs under
+  `%APPDATA%\persephone\board-logs\<id>\ui.log`; logs for other boards remain in the board folder.
+  See [Boards — Error log](./boards.md#error-log-uilog).
 - **Board path switching now uses the Boards panels:** clicking the board path no longer opens a
   switcher; use the **Boards** panel or the Explorer **Boards** panel to switch boards.
 - **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now

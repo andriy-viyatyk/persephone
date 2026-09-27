@@ -14,6 +14,7 @@ import {
 import type { BoardPipeKind, BoardPipeReadReply } from "../ipc/board-pipe-channels";
 import { BoardPipeError, boardPipeService } from "./board-pipe-service";
 import { errMessage } from "../shared/utils";
+import * as boardLog from "./board-log";
 
 /**
  * `board://` scheme handler (EPIC-034 / US-723; host-routed in EPIC-037 / US-770) —
@@ -277,14 +278,7 @@ function boardContentType(mime: string): string {
  *  here so the failure is reported immediately and precisely (the on-board log indicator
  *  lights; the mode-D watchdog still toasts). Never throws into the handler. */
 function logBoardDocMissing(root: string, rel: string, reason: string): void {
-    try {
-        fs.appendFileSync(
-            path.join(root, "ui.log"),
-            `[${new Date().toISOString()}] [error] board document not found: ${rel} (${reason})\n`,
-        );
-    } catch {
-        // Logging must never throw into the handler.
-    }
+    void boardLog.append(root, "error", `board document not found: ${rel} (${reason})`).catch(() => {});
 }
 
 async function serveBoardPipe(

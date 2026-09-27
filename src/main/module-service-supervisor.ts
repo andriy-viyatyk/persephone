@@ -11,8 +11,6 @@ import {
 import { EventEndpoint } from "../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
-    MAX_SERVICE_LOG_BYTES,
-    MAX_SERVICE_LOG_CHUNK_BYTES,
     SERVICE_HANDSHAKE_TIMEOUT_MS,
     SERVICE_RENDERER_LEASE_TIMEOUT_MS,
     SERVICE_REQUEST_DEADLINE_MS,
@@ -31,6 +29,7 @@ import { errMessage } from "../shared/utils";
 import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
 import { getAssetPath } from "./utils";
+import * as boardLog from "./board-log";
 
 const FAILURE_WINDOW_MS = 60_000;
 
@@ -119,63 +118,6 @@ function killUtilityProcessSync(child: UtilityProcess | undefined): void {
         });
     } catch (error) {
         console.warn(`Failed to reap utility process ${pid}: ${errMessage(error)}`);
-    }
-}
-
-class BoundedServiceLog {
-    private readonly pendingChunks: Buffer[] = [];
-    private pendingBytes = 0;
-    private writing = false;
-
-    constructor(private readonly boardRoot: string) {}
-
-    append(stream: "stdout" | "stderr", chunk: unknown): void {
-        const text = Buffer.isBuffer(chunk)
-            ? chunk.toString("utf8")
-            : chunk instanceof Uint8Array
-                ? Buffer.from(chunk).toString("utf8")
-                : String(chunk);
-        const bounded = Buffer.from(text).subarray(0, MAX_SERVICE_LOG_CHUNK_BYTES).toString("utf8");
-        const lines = bounded.split(/\r?\n/).filter((line) => line.length > 0);
-        if (lines.length === 0) return;
-        const prefix = `[service:${this.boardRoot} ${stream}] `;
-        const content = lines
-            .map((line) => `${prefix}${line.slice(0, MAX_SERVICE_LOG_CHUNK_BYTES)}\n`)
-            .join("");
-        const chunkBuffer = Buffer.from(content).subarray(-MAX_SERVICE_LOG_BYTES);
-        while (this.pendingChunks.length > 0 && this.pendingBytes + chunkBuffer.length > MAX_SERVICE_LOG_BYTES) {
-            const dropped = this.pendingChunks.shift();
-            this.pendingBytes -= dropped?.length ?? 0;
-        }
-        this.pendingChunks.push(chunkBuffer);
-        this.pendingBytes += chunkBuffer.length;
-        void this.flush();
-    }
-
-    private async flush(): Promise<void> {
-        if (this.writing) return;
-        this.writing = true;
-        try {
-            while (this.pendingChunks.length > 0) {
-                const chunk = this.pendingChunks.shift() ?? Buffer.alloc(0);
-                this.pendingBytes -= chunk.length;
-                const filePath = path.join(this.boardRoot, "ui.log");
-                await fs.promises.mkdir(this.boardRoot, { recursive: true });
-                let previous: Buffer;
-                try {
-                    previous = await fs.promises.readFile(filePath);
-                } catch {
-                    previous = Buffer.alloc(0);
-                }
-                const next = Buffer.concat([previous, chunk]).subarray(-MAX_SERVICE_LOG_BYTES);
-                await fs.promises.writeFile(filePath, next);
-            }
-        } catch (error: unknown) {
-            console.warn(`Failed to write board service log: ${errMessage(error)}`);
-        } finally {
-            this.writing = false;
-            if (this.pendingChunks.length > 0) void this.flush();
-        }
     }
 }
 
@@ -591,9 +533,18 @@ class ModuleServiceSupervisor {
 
         record.process = process;
         record.pid = process.pid;
-        const log = new BoundedServiceLog(record.boardRoot);
-        process.stdout?.on("data", (chunk: unknown) => log.append("stdout", chunk));
-        process.stderr?.on("data", (chunk: unknown) => log.append("stderr", chunk));
+        const appendServiceOutput = (level: "stdout" | "stderr", chunk: unknown): void => {
+            const text = Buffer.isBuffer(chunk)
+                ? chunk.toString("utf8")
+                : chunk instanceof Uint8Array
+                    ? Buffer.from(chunk).toString("utf8")
+                    : String(chunk);
+            for (const line of text.split(/\r?\n/).filter((entry) => entry.length > 0)) {
+                void boardLog.append(record.boardRoot, level, line).catch(() => {});
+            }
+        };
+        process.stdout?.on("data", (chunk: unknown) => appendServiceOutput("stdout", chunk));
+        process.stderr?.on("data", (chunk: unknown) => appendServiceOutput("stderr", chunk));
 
         if (record.stopRequested || this.disposing || !this.isEffectivelyTrusted(record.boardRoot)) {
             record.process = undefined;
