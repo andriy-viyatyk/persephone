@@ -29,8 +29,7 @@ import {
     PERSEPHONE_BOARD_PREFIX,
 } from "../../content/persephone-board-link";
 import {
-    isBoardSingleInstance,
-    readBoardManifest,
+    readNormalizedBoardManifest,
 } from "../../editors/board/board-manifest";
 import type { BoardEditorModel } from "../../editors/board";
 import type { HubTab } from "../../editors/tools-hub";
@@ -105,7 +104,7 @@ const wrap = attachEditorToPage;
 export class PagesLifecycleModel {
     constructor(private model: PagesModel) {}
 
-    private resolveBoardRootForOpen(target?: string, filePath?: string): string | undefined {
+    resolveBoardRootForOpen(target?: string, filePath?: string): string | undefined {
         const boardRoot = target ? parseBoardEditorId(target) : null;
         if (boardRoot !== null) return boardRoot;
         if (target !== "board-view" || !filePath) return undefined;
@@ -113,7 +112,7 @@ export class PagesLifecycleModel {
     }
 
     private async isSingleInstanceBoard(boardRoot: string): Promise<boolean> {
-        return isBoardSingleInstance(await readBoardManifest(boardRoot));
+        return (await readNormalizedBoardManifest(boardRoot))?.singleInstance === true;
     }
 
     private enqueueBoardSource(
@@ -125,10 +124,11 @@ export class PagesLifecycleModel {
     ): void {
         const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
         if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        const editor = page.mainEditorInstance as (BoardEditorModel & {
-            enqueueSourceUrl?: (url: string, handle?: string) => void;
-        }) | null;
-        editor?.enqueueSourceUrl(sourceUrl, sessionHandle);
+        page.mainEditorInstance?.acceptOpenContext?.({
+            mode: "enqueue-source",
+            sourceUrl,
+            sessionHandle,
+        });
     }
 
     /** Route an open to an existing single-instance board page in this window. */
@@ -615,9 +615,11 @@ export class PagesLifecycleModel {
         if (options?.sessionHandle) {
             const sourceUrl = options.sourceLink?.url ?? filePath;
             if (sourceUrl) {
-                (adapter as unknown as {
-                    registerSourceSessionHandle?: (url: string, handle: string) => void;
-                }).registerSourceSessionHandle?.(sourceUrl, options.sessionHandle);
+                adapter.acceptOpenContext?.({
+                    mode: "register-session",
+                    sourceUrl,
+                    sessionHandle: options.sessionHandle,
+                });
             }
         }
         // Apply caller-chosen diff revisions to a freshly-built File Diff editor
@@ -763,7 +765,17 @@ export class PagesLifecycleModel {
         pageId: string,
         newFilePath: string,
         options?: NavigatePageToOptions,
-    ): Promise<boolean> => navigatePageTo(this.model, pageId, newFilePath, options);
+    ): Promise<boolean> => this.navigatePageToWithSingletonRouting(pageId, newFilePath, options);
+
+    private async navigatePageToWithSingletonRouting(
+        pageId: string,
+        newFilePath: string,
+        options?: NavigatePageToOptions,
+    ): Promise<boolean> {
+        const singletonPage = await this.openSingleInstanceBoard(newFilePath, options?.pipe, options);
+        if (singletonPage) return true;
+        return navigatePageTo(this.model, pageId, newFilePath, options);
+    }
 
     // ── Closing ──────────────────────────────────────────────────────
 

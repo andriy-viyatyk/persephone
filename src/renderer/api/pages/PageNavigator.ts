@@ -34,6 +34,7 @@ export interface NavigatePageToOptions {
     forceTextEditor?: boolean;
     sourceLink?: ILinkData;
     pipe?: IContentPipe;
+    sessionHandle?: string;
     target?: string;
     folderPath?: string;
     title?: string;
@@ -253,6 +254,17 @@ export async function navigatePageTo(
     const { attachEditorToPage } = await import("./PagesLifecycleModel");
     const adapter = attachEditorToPage(legacy);
     await page.setMainEditor(adapter);
+
+    if (options?.sessionHandle) {
+        const sourceUrl = options.sourceLink?.url ?? options.pipe?.provider.sourceUrl ?? newFilePath;
+        if (sourceUrl) {
+            adapter.acceptOpenContext?.({
+                mode: "register-session",
+                sourceUrl,
+                sessionHandle: options.sessionHandle,
+            });
+        }
+    }
 
     // Apply caller-chosen diff revisions to the freshly-built File Diff editor
     // (no-op for any other editor type / when no revisions given). The

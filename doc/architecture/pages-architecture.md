@@ -516,6 +516,8 @@ This is enforced in `_enforceMandatoryOpen()`, called whenever panel editors att
 
 ### Navigation pattern
 
+Before ordinary page navigation, `PagesLifecycleModel.navigatePageTo()` checks whether the target resolves to a board whose normalized manifest declares `singleInstance: true`. If a matching board page already exists, the lifecycle activates it, delivers the source URL and optional transient session handle through the editor's typed `acceptOpenContext` hook, disposes the incoming pipe, and returns success without replacing the page selected by `pageId`. Otherwise navigation continues through `PageNavigator` below. The same lifecycle route is used by `openFile()`, so singleton board opens converge whether they arrive as new-page opens or page-id navigation requests.
+
 In `navigatePageTo()` ([`PageNavigator.ts`](../../src/renderer/api/pages/PageNavigator.ts) — each step below is a named function there):
 
 ```

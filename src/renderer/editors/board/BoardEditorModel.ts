@@ -1,4 +1,4 @@
-import { EditorModel, type EditorStateBase } from "../base/EditorModel";
+import { EditorModel, type EditorOpenContext, type EditorStateBase } from "../base/EditorModel";
 import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
@@ -256,6 +256,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             this.sourceSessionHandleTimers.delete(sourceUrl);
         }, 5 * 60 * 1000);
         this.sourceSessionHandleTimers.set(sourceUrl, timer);
+    }
+
+    acceptOpenContext(context: EditorOpenContext): void {
+        if (context.mode === "register-session") {
+            this.registerSourceSessionHandle(context.sourceUrl, context.sessionHandle);
+            return;
+        }
+        this.enqueueSourceUrl(context.sourceUrl, context.sessionHandle);
     }
 
     /** Queue a raw source identity for the main board frame. It is transient and never persisted. */

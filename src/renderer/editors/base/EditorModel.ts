@@ -35,6 +35,10 @@ export type RestoreData<S extends EditorStateBase = EditorStateBase> = Partial<S
     highlightText?: string;
 };
 
+export type EditorOpenContext =
+    | { mode: "register-session"; sourceUrl: string; sessionHandle: string }
+    | { mode: "enqueue-source"; sourceUrl: string; sessionHandle?: string };
+
 export abstract class EditorModel<
     T extends EditorStateBase = EditorStateBase,
     R = unknown,
@@ -327,6 +331,11 @@ export abstract class EditorModel<
      *  is already this page's main editor, so the page is shown instead of rebuilt. An editor
      *  in a failed state can retry its source here (US-1528). */
     onReopen?(): void;
+
+    /** Optional. Receive transient context from a source open. Editors can
+     *  register a private-session handle for a new page or enqueue a source
+     *  delivered to an existing page. This context is never persisted. */
+    acceptOpenContext?(context: EditorOpenContext): void;
 
     // ── In-document anchor navigation (US-901) ────────────────────────────
 
