@@ -246,6 +246,11 @@ than naming a handler. A board-originated result has `{ pageId, result }`; `page
 handlers that resolve without opening a page, and `result` preserves the handler's exact value,
 including primitives, arrays, and empty objects. The ten typed rejection codes are:
 
+Requests to the same handler page are delivered serially in FIFO order, with one active intent
+context in the frame. Later requests wait for the active request to settle or be cancelled. `busy`
+means the bus reached 32 outstanding requests for that handler, including active and queued work.
+Timeouts reject with `Capability invocation deadline elapsed.` and send a best-effort cancel.
+
 | Code | Meaning to the caller |
 |---|---|
 | `no-handler` | No declaration matches the id, pinned version, or filter; a headless winner is out of scope. |
@@ -253,10 +258,10 @@ including primitives, arrays, and empty objects. The ten typed rejection codes a
 | `handler-closed` | The handler page/frame closed before settlement. |
 | `crashed` | The handler frame errored or reloaded during the request. |
 | `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
-| `timeout` | The deadline elapsed; the platform stopped waiting and sent best-effort cancel. |
+| `timeout` | The caller receives `Capability invocation deadline elapsed.`; the platform sends best-effort cancel. |
 | `cycle` | Resolution would re-enter a handler already in the request chain or exceed the depth limit. |
 | `payload-too-large` | A board-bound structured payload exceeds the inline 8 MiB cap. |
-| `busy` | The selected handler has reached its outstanding-request limit. |
+| `busy` | The handler reached the bus limit of 32 outstanding requests, including queued work. |
 | `rejected` | The handler rejected the request, the payload could not be structured-cloned, or the transport failed without another typed code. |
 
 Handle these errors rather than assuming an invocation succeeded:

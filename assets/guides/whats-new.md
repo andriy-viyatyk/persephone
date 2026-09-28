@@ -59,6 +59,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   registry also provides built-in handoffs for opening and editing content. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
+- **Board capability bridge 1.20.0 serializes requests per handler page:** overlapping requests are
+  delivered in FIFO order, up to the existing limit of 32 active and queued requests per handler.
+  Expired deadlines reject with `Capability invocation deadline elapsed.` and send a best-effort
+  cancel. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
 - **Board capability bridge 1.19.0 preserves handler results:** board callers receive the exact
   handler value under `result`, including primitives, arrays, and empty objects. Handlers can pass
   `{ discardPage: true }` to `persephone.intent.resolve(value, options)` (or the request-bound

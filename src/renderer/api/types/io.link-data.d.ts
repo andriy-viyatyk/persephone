@@ -98,7 +98,7 @@ export interface ILinkPipeline {
     fallbackTarget?: string;
     /** Decoded claimed folder for one folder-board open; never persisted. */
     folderPath?: string;
-    /** One-shot capability request for a newly opened board; never persisted. */
+    /** @deprecated Legacy fire-and-forget board capability dispatch. Use app.capabilities.invoke(). */
     intent?: import("../../../ipc/capability-bus-channels").IntentEnvelope;
     /** Main-issued private-session capability for one claimed download; never persisted. */
     sessionHandle?: string;

@@ -4,7 +4,6 @@ import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { cleanForStorage, createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
-import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
 import type { ILinkDiffRevision } from "../types/io.link-data";
 import {
     newTextFileModel,
@@ -50,14 +49,6 @@ import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { app } from "../app";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
-
-function setInitialBoardIntent(editor: EditorOrHost, intent: IntentEnvelope | undefined): void {
-    if (!intent) return;
-    const candidate = editor as unknown as {
-        setInitialIntent?: (value: IntentEnvelope) => void;
-    };
-    candidate.setInitialIntent?.(intent);
-}
 
 /** Attach an `EditorModel` or `TextFileModel` host to a `PageModel`.
  *  - `EditorModel` input: returned unchanged.
@@ -310,7 +301,7 @@ export class PagesLifecycleModel {
         boardRoot: string,
         language: string,
         title: string,
-        intent?: IntentEnvelope,
+        onPageCreated?: (page: PageModel) => void,
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const match = customEditorRegistry.entries.find(
@@ -328,7 +319,6 @@ export class PagesLifecycleModel {
         }
 
         const editor = await this.buildEditorById(editorId);
-        setInitialBoardIntent(editor, intent);
         const host = (editor as EditorModel).contentHost as unknown as TextFileModel | null;
         if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
         host.state.update((state) => {
@@ -339,14 +329,14 @@ export class PagesLifecycleModel {
             state.title = title;
         });
         await editor.restore();
-        return this.addPage(editor as EditorModel);
+        return this.addPage(editor as EditorModel, undefined, onPageCreated);
     };
 
     /** Open the trusted capability handler board in this renderer and return its page. */
     openBoardHandlerPage = async (
         boardRoot: string,
         title: string,
-        intent: IntentEnvelope,
+        onPageCreated: (page: PageModel) => void,
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const bundledContentHost = customEditorRegistry.entries.some(
@@ -356,7 +346,7 @@ export class PagesLifecycleModel {
                 && entry.editorKind === "content-host",
         );
         if (bundledContentHost) {
-            return this.addBundledBoardPage(boardRoot, "json", title, intent);
+            return this.addBundledBoardPage(boardRoot, "json", title, onPageCreated);
         }
 
         const url = encodePersephoneBoardLink(boardRoot);
@@ -371,7 +361,7 @@ export class PagesLifecycleModel {
         const page = await this.openFile(pipe.provider.sourceUrl, pipe, {
             sourceLink,
             target: "board-view",
-            intent,
+            onPageCreated,
         });
         if (!page) {
             throw new Error(`The capability handler board did not open: ${boardRoot}`);
@@ -388,8 +378,10 @@ export class PagesLifecycleModel {
     addPage = (
         editor: EditorModel | null,
         existingPage?: PageModel,
+        onPageCreated?: (page: PageModel) => void,
     ): PageModel => {
         const page = existingPage ?? new PageModel();
+        onPageCreated?.(page);
         if (editor && !page.mainEditor) {
             page.attach(editor);
             page.setMainEditorId(editor.id);
@@ -565,7 +557,7 @@ export class PagesLifecycleModel {
             diffFrom?: ILinkDiffRevision;
             diffTo?: ILinkDiffRevision;
             fragment?: string;
-            intent?: IntentEnvelope;
+            onPageCreated?: (page: PageModel) => void;
             sessionHandle?: string;
         },
     ): Promise<PageModel | undefined> => {
@@ -607,7 +599,6 @@ export class PagesLifecycleModel {
             pipe?.dispose();
             return undefined;
         }
-        setInitialBoardIntent(editor, options?.intent);
         if (options?.folderPath !== undefined) pipe?.dispose();
         if (options?.sourceLink) {
             editor.state.update((s) => { s.sourceLink = options.sourceLink; });
@@ -623,7 +614,7 @@ export class PagesLifecycleModel {
             editor.state.update((s) => { s.editor = explicitTarget as EditorView; });
         }
         const adapter = wrap(editor);
-        const page = this.addPage(adapter);
+        const page = this.addPage(adapter, undefined, options?.onPageCreated);
         if (options?.sessionHandle) {
             const sourceUrl = options.sourceLink?.url ?? filePath;
             if (sourceUrl) {

@@ -3,11 +3,9 @@ import {
     type CapabilityOutcome,
     type CapabilityRegistration,
     type CapabilityTransport,
-    type IntentEnvelope,
     type IntentRequest,
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError } from "./capability-bus";
-import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/board-access";
 import { pagesModel } from "./pages";
 import { boardPagesForRoot } from "./board-updates";
 import type { PageModel } from "./pages/PageModel";
@@ -20,7 +18,8 @@ export interface BoardCapabilityFrame {
     readonly generation: number;
     readonly iframe: HTMLIFrameElement;
     readonly contentWindow: Window;
-    dispatch(request: IntentRequest): Promise<unknown>;
+    ready: boolean;
+    dispatch(request: IntentRequest, initial?: boolean): Promise<unknown>;
     cancel(requestId: string): void;
 }
 
@@ -50,33 +49,48 @@ export function subscribeBoardCapabilityFrames(
     return () => frameListeners.delete(listener);
 }
 
-interface PendingDispatch {
+export function markBoardCapabilityFrameReady(pageId: string, generation: number): void {
+    boardCapabilityTransport.markFrameReady(pageId, generation);
+}
+
+export function failBoardCapabilityFrame(pageId: string, generation: number, error: CapabilityError): void {
+    boardCapabilityTransport.failFrame(pageId, generation, error);
+}
+
+type DispatchRoute = {
     readonly registration: CapabilityRegistration;
     readonly request: IntentRequest;
     readonly resolve: (value: unknown) => void;
     readonly reject: (error: CapabilityError) => void;
+    reservation?: PageReservation;
+    page?: PageModel;
+    pageUnsubscribe?: () => void;
+    active: boolean;
+};
+
+interface PageReservation {
+    readonly key: string;
+    readonly root: string;
+    readonly queue: DispatchRoute[];
     page?: PageModel;
     createdPage: boolean;
-    pageUnsubscribe?: () => void;
-    frame?: BoardCapabilityFrame;
-    settled: boolean;
-    /** Set on the request whose intent opens a new handler page; releases coalesced waiters. */
-    onSettled?: () => void;
+    opening: boolean;
+    initialRequestId?: string;
+    advanceQueued: boolean;
+}
+
+const reservationsByRoot = new Map<string, PageReservation>();
+const reservationsByPage = new Map<string, PageReservation>();
+const initialIntentByPage = new Map<string, IntentRequest>();
+
+export function takeInitialIntent(pageId: string): IntentRequest | undefined {
+    const intent = initialIntentByPage.get(pageId);
+    initialIntentByPage.delete(pageId);
+    return intent;
 }
 
 function boardRootOf(registration: CapabilityRegistration): string | undefined {
     return registration.origin === "board" ? registration.boardRoot : undefined;
-}
-
-function clearInitialIntent(page: PageModel | undefined, requestId: string): void {
-    const editor = page?.mainEditorInstance as unknown as {
-        clearInitialIntent?: (id: string) => void;
-    } | null;
-    editor?.clearInitialIntent?.(requestId);
-}
-
-function clearInitialIntentOnRoot(root: string, requestId: string): void {
-    for (const page of boardPagesForRoot(root)) clearInitialIntent(page, requestId);
 }
 
 function capabilityTitle(registration: CapabilityRegistration, request: IntentRequest): string {
@@ -103,263 +117,244 @@ function normalizeTransportError(error: unknown): CapabilityError {
 }
 
 class BoardCapabilityTransport implements CapabilityTransport {
-    private readonly pending = new Map<string, PendingDispatch>();
-    /**
-     * Handler roots whose page is being opened for a request, keyed by normalized root. The
-     * entry resolves only after both the opening request and lifecycle open settle. This keeps
-     * followers behind the initial-intent handshake, while a canceled request cannot release
-     * them before its still-running page open completes.
-     */
-    private readonly openingPages = new Map<string, Promise<void>>();
-    private readonly pageChains = new Map<
-        string,
-        Map<string, { chain: string[]; depth: number }>
-    >();
-    private readonly unsubscribeTrust: () => void;
-    private readonly unsubscribeFrames: () => void;
-
+    private readonly routes = new Map<string, DispatchRoute>();
+    private readonly pageChains = new Map<string, { requestId: string; chain: string[]; depth: number }>();
     constructor() {
-        this.unsubscribeTrust = subscribeBoardPermission(() => this.settleUntrusted());
-        this.unsubscribeFrames = subscribeBoardCapabilityFrames((frame) => this.onFrame(frame));
+        subscribeBoardCapabilityFrames((frame) => this.onFrame(frame));
     }
 
     dispatch(registration: CapabilityRegistration, request: IntentRequest): Promise<unknown> {
         const root = boardRootOf(registration);
-        if (!root || !isBoardPermitted(root)) {
+        if (!root) {
             return Promise.reject(new CapabilityError(
-                "untrusted",
-                "The capability handler board is not trusted.",
+                "no-handler",
+                "The capability handler board is unavailable.",
             ));
         }
-        if (this.pending.has(request.requestId)) {
-            return Promise.reject(new CapabilityError(
-                "rejected",
-                `Capability request ${request.requestId} was dispatched twice.`,
-            ));
-        }
-
-        return new Promise<unknown>((resolve, reject) => {
-            const pending: PendingDispatch = {
-                registration,
-                request,
-                resolve,
-                reject,
-                createdPage: false,
-                settled: false,
-            };
-            this.pending.set(request.requestId, pending);
-            void this.resolveHandler(pending, root);
+        const settlers: {
+            resolve: (value: unknown) => void;
+            reject: (error: CapabilityError) => void;
+        } = {
+            resolve: () => { throw new Error("Capability dispatch promise is not initialized."); },
+            reject: () => { throw new Error("Capability dispatch promise is not initialized."); },
+        };
+        const promise = new Promise<unknown>((resolve, reject) => {
+            settlers.resolve = resolve;
+            settlers.reject = reject;
         });
+        const route: DispatchRoute = {
+            registration,
+            request,
+            resolve: (value) => settlers.resolve(value),
+            reject: (error) => settlers.reject(error),
+            active: false,
+        };
+        this.routes.set(request.requestId, route);
+        const rootKey = fpNormalizeForCompare(root);
+        const producesPage = registration.alwaysOpensNewPage === true;
+        let reservation = producesPage ? undefined : reservationsByRoot.get(rootKey);
+        const existingPage = !producesPage && !reservation ? boardPagesForRoot(root)[0] : undefined;
+        if (!reservation) {
+            reservation = this.createReservation(rootKey, root);
+            if (!producesPage) reservationsByRoot.set(rootKey, reservation);
+            if (existingPage) {
+                this.bindPage(reservation, existingPage);
+                pagesModel.navigation.showPage(existingPage.id);
+            }
+            else this.openReservation(reservation, route);
+        }
+        route.reservation = reservation;
+        reservation.queue.push(route);
+        if (reservation.page) this.bindRouteToPage(reservation, route, reservation.page);
+        if (!reservation.opening) this.drain(reservation);
+        return promise;
     }
 
     cancel(registration: CapabilityRegistration, requestId: string): void {
-        const pending = this.pending.get(requestId);
-        if (!pending || pending.registration !== registration) return;
-        this.settle(pending, new CapabilityError(
-            "cancelled",
-            "The capability request was cancelled.",
-        ), true);
+        const route = this.routes.get(requestId);
+        if (!route || route.registration !== registration) return;
+        const reservation = this.reservationForRoute(route);
+        if (!reservation) return;
+        if (route.active) {
+            const frame = reservation.page ? boardCapabilityFrameForPage(reservation.page.id) : undefined;
+            try { frame?.cancel(requestId); } catch { /* best effort */ }
+            if (this.pageChains.get(reservation.page?.id ?? "")?.requestId === requestId) {
+                this.pageChains.delete(reservation.page?.id ?? "");
+            }
+        }
+        reservation.queue.splice(reservation.queue.indexOf(route), 1);
+        if (reservation.initialRequestId === requestId) {
+            reservation.initialRequestId = undefined;
+            if (reservation.page) initialIntentByPage.delete(reservation.page.id);
+        }
+        this.removeRoute(route);
+        if (route.active) this.scheduleAdvance(reservation);
     }
 
     chainForPage(pageId: string | undefined): { chain: readonly string[]; depth: number } {
-        const requests = pageId === undefined ? undefined : this.pageChains.get(pageId);
-        let current: { chain: string[]; depth: number } | undefined;
-        if (requests) {
-            for (const value of requests.values()) current = value;
-        }
+        const current = pageId === undefined ? undefined : this.pageChains.get(pageId);
         return current ? { chain: [...current.chain], depth: current.depth } : { chain: [], depth: 0 };
     }
 
-    private async resolveHandler(pending: PendingDispatch, root: string): Promise<void> {
-        const producesPage = pending.registration.alwaysOpensNewPage === true;
-        const rootKey = fpNormalizeForCompare(root);
-        if (!producesPage) {
-            // Another request is opening this handler's page: wait until it settles, then take
-            // the normal reuse path below (or open the page ourselves if that open failed).
-            let opening = this.openingPages.get(rootKey);
-            while (opening && !pending.settled) {
-                await opening;
-                opening = this.openingPages.get(rootKey);
+    private createReservation(key: string, root: string): PageReservation {
+        return { key, root, queue: [], opening: false, createdPage: false, advanceQueued: false };
+    }
+
+    private openReservation(reservation: PageReservation, opener: DispatchRoute): void {
+        reservation.opening = true;
+        void pagesModel.lifecycle.openBoardHandlerPage(
+            reservation.root,
+            capabilityTitle(opener.registration, opener.request),
+            (page) => {
+                reservation.createdPage = true;
+                this.bindPage(reservation, page);
+            },
+        ).then((page) => {
+            reservation.opening = false;
+            if (!page) throw new CapabilityError("handler-closed", "The capability handler page did not open.");
+            if (!reservation.page) this.bindPage(reservation, page);
+            this.drain(reservation);
+        }).catch((error: unknown) => {
+            reservation.opening = false;
+            const normalized = normalizeTransportError(error);
+            for (const route of [...reservation.queue]) {
+                this.removeRoute(route);
+                route.reject(normalized);
             }
-            if (pending.settled) return;
+            if (reservationsByRoot.get(reservation.key) === reservation) reservationsByRoot.delete(reservation.key);
+            if (reservation.page) {
+                reservationsByPage.delete(reservation.page.id);
+                initialIntentByPage.delete(reservation.page.id);
+            }
+        });
+    }
+
+    private bindPage(reservation: PageReservation, page: PageModel): void {
+        reservation.page = page;
+        reservationsByPage.set(page.id, reservation);
+        reservation.queue.forEach((route) => this.bindRouteToPage(reservation, route, page));
+        if (reservation.createdPage && reservation.queue[0]) {
+            reservation.initialRequestId = reservation.queue[0].request.requestId;
+            initialIntentByPage.set(page.id, reservation.queue[0].request);
         }
-        const page = producesPage ? undefined : boardPagesForRoot(root)[0];
-        if (page) {
-            this.attachPage(pending, page);
-            pagesModel.navigation.showPage(page.id);
-            const frame = boardCapabilityFrameForPage(page.id);
-            if (frame) this.dispatchToFrame(pending, frame);
-            return;
+        page.disposed.subscribe(() => this.closePage(reservation));
+        this.onFrame(boardCapabilityFrameForPage(page.id));
+    }
+
+    private bindRouteToPage(reservation: PageReservation, route: DispatchRoute, page: PageModel): void {
+        if (route.page === page) return;
+        route.pageUnsubscribe?.();
+        route.page = page;
+        route.pageUnsubscribe = page.disposed.subscribe(() => this.closePage(reservation));
+    }
+
+    private closePage(reservation: PageReservation): void {
+        const error = new CapabilityError("handler-closed", "The capability handler page was closed.");
+        for (const route of [...reservation.queue]) {
+            this.removeRoute(route);
+            route.reject(error);
         }
-        const intent: IntentEnvelope = {
-            id: pending.request.id,
-            ...(pending.request.version === undefined ? {} : { version: pending.request.version }),
-            requestId: pending.request.requestId,
-            payload: pending.request.payload,
-        };
-        let openingRequestSettled = false;
-        let openingOperationSettled = false;
-        let resolveOpening = (): void => {};
-        if (!producesPage) {
-            const opening = new Promise<void>((resolve) => { resolveOpening = resolve; });
-            const completeOpening = (): void => {
-                if (openingRequestSettled && openingOperationSettled) resolveOpening();
-            };
-            pending.onSettled = () => {
-                openingRequestSettled = true;
-                completeOpening();
-            };
-            this.openingPages.set(rootKey, opening);
-            void opening.then(() => {
-                if (this.openingPages.get(rootKey) === opening) this.openingPages.delete(rootKey);
+        if (reservation.page) {
+            reservationsByPage.delete(reservation.page.id);
+            initialIntentByPage.delete(reservation.page.id);
+            this.pageChains.delete(reservation.page.id);
+        }
+        if (reservationsByRoot.get(reservation.key) === reservation) {
+            reservationsByRoot.delete(reservation.key);
+        }
+    }
+
+    private onFrame(frame: BoardCapabilityFrame | undefined): void {
+        if (!frame) return;
+        const reservation = reservationsByPage.get(frame.pageId);
+        if (reservation) this.drain(reservation);
+    }
+
+    private drain(reservation: PageReservation): void {
+        const page = reservation.page;
+        const frame = page ? boardCapabilityFrameForPage(page.id) : undefined;
+        if (!page || !frame?.ready || reservation.queue.length === 0) return;
+        const route = reservation.queue[0];
+        if (route.active) return;
+        route.active = true;
+        const initial = route.request.requestId === reservation.initialRequestId;
+        this.setActiveChain(page.id, route);
+        void frame.dispatch(route.request, initial).then(
+            (value) => this.finishRoute(reservation, route, undefined, value),
+            (error: unknown) => this.finishRoute(reservation, route, normalizeTransportError(error)),
+        );
+        if (initial) reservation.initialRequestId = undefined;
+    }
+
+    markFrameReady(pageId: string, generation: number): void {
+        const frame = frames.get(pageId);
+        if (!frame || frame.generation !== generation) return;
+        const reservation = reservationsByPage.get(pageId);
+        if (reservation) this.drain(reservation);
+    }
+
+    failFrame(pageId: string, generation: number, error: CapabilityError): void {
+        const frame = frames.get(pageId);
+        if (!frame || frame.generation !== generation) return;
+        const reservation = reservationsByPage.get(pageId);
+        const route = reservation?.queue[0];
+        if (!reservation || !route || route.request.requestId !== reservation.initialRequestId) return;
+        reservation.initialRequestId = undefined;
+        initialIntentByPage.delete(pageId);
+        reservation.queue.shift();
+        this.removeRoute(route);
+        route.reject(error);
+    }
+
+    private setActiveChain(pageId: string, route: DispatchRoute): void {
+        this.pageChains.set(pageId, {
+            requestId: route.request.requestId,
+            chain: [...route.request.chain, route.registration.handlerKey],
+            depth: route.request.depth + 1,
+        });
+    }
+
+    private finishRoute(reservation: PageReservation, route: DispatchRoute, error?: CapabilityError, value?: unknown): void {
+        if (this.routes.get(route.request.requestId) !== route) return;
+        const pageId = reservation.page?.id;
+        if (pageId && this.pageChains.get(pageId)?.requestId === route.request.requestId) this.pageChains.delete(pageId);
+        reservation.queue.shift();
+        this.removeRoute(route);
+        if (error) route.reject(error);
+        else {
+            const outcome = value && typeof value === "object" ? value as CapabilityOutcome : { result: value };
+            if (outcome.discardPage && reservation.createdPage) void reservation.page?.close();
+            route.resolve({
+                ...(!outcome.discardPage || !reservation.createdPage
+                    ? outcome.pageId ? { pageId: outcome.pageId } : pageId ? { pageId } : {}
+                    : {}),
+                ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
+                ...(outcome.discardPage ? { discardPage: true } : {}),
             });
         }
-        try {
-            // Keep the pending map populated before this call: opening a board can synchronously
-            // mount its first frame and deliver the handshake before the promise resolves.
-            const openedPage = await pagesModel.lifecycle.openBoardHandlerPage(
-                root,
-                capabilityTitle(pending.registration, pending.request),
-                intent,
-            );
-            pending.createdPage = true;
-            if (openedPage) {
-                if (pending.settled) {
-                    clearInitialIntent(openedPage, pending.request.requestId);
-                } else {
-                    this.attachPage(pending, openedPage);
-                    const frame = boardCapabilityFrameForPage(openedPage.id);
-                    if (frame) this.dispatchToFrame(pending, frame);
-                }
-            } else if (!pending.settled) {
-                this.settle(pending, new CapabilityError(
-                    "handler-closed",
-                    "The capability handler page did not open.",
-                ), false);
-            }
-        } catch (error: unknown) {
-            this.settle(pending, normalizeTransportError(error), false);
-        } finally {
-            if (!producesPage) {
-                openingOperationSettled = true;
-                if (openingRequestSettled) resolveOpening();
-            }
-        }
+        this.drain(reservation);
     }
 
-    private attachPage(pending: PendingDispatch, page: PageModel): void {
-        if (pending.settled) return;
-        if (pending.page === page) return;
-        pending.pageUnsubscribe?.();
-        pending.page = page;
-        pending.pageUnsubscribe = page.disposed.subscribe(() => {
-            if (!pending.settled) {
-                this.settle(pending, new CapabilityError(
-                    "handler-closed",
-                    "The capability handler page was closed.",
-                ), false);
-            }
+    private reservationForRoute(route: DispatchRoute): PageReservation | undefined {
+        return route.reservation;
+    }
+
+    private removeRoute(route: DispatchRoute): void {
+        this.routes.delete(route.request.requestId);
+        route.pageUnsubscribe?.();
+        route.pageUnsubscribe = undefined;
+        if (route.page && this.pageChains.get(route.page.id)?.requestId === route.request.requestId) this.pageChains.delete(route.page.id);
+    }
+
+    private scheduleAdvance(reservation: PageReservation): void {
+        if (reservation.advanceQueued) return;
+        reservation.advanceQueued = true;
+        queueMicrotask(() => {
+            reservation.advanceQueued = false;
+            this.drain(reservation);
         });
     }
 
-    private onFrame(frame: BoardCapabilityFrame): void {
-        for (const pending of this.pending.values()) {
-            if (pending.settled || pending.frame || fpNormalizeForCompare(frame.boardRoot)
-                !== fpNormalizeForCompare(pending.registration.boardRoot ?? "")) continue;
-            // A newly-created page is attached only after its lifecycle open returns.
-            // Until then, a frame for another open page of the same board root must not steal
-            // the request while that page is being constructed.
-            if (!pending.page) continue;
-            if (pending.page && pending.page.id !== frame.pageId) continue;
-            this.dispatchToFrame(pending, frame);
-        }
-    }
-
-    private dispatchToFrame(pending: PendingDispatch, frame: BoardCapabilityFrame): void {
-        if (pending.settled || pending.frame) return;
-        if (!isBoardPermitted(frame.boardRoot)) {
-            this.settle(pending, new CapabilityError(
-                "untrusted",
-                "The capability handler board is not trusted.",
-            ), false);
-            return;
-        }
-        pending.frame = frame;
-        const requests = this.pageChains.get(frame.pageId) ?? new Map();
-        requests.set(pending.request.requestId, {
-            chain: [...pending.request.chain, pending.registration.handlerKey],
-            depth: pending.request.depth + 1,
-        });
-        this.pageChains.set(frame.pageId, requests);
-        void frame.dispatch(pending.request).then(
-            (reply) => {
-                const outcome = reply && typeof reply === "object"
-                    ? reply as CapabilityOutcome
-                    : { result: reply };
-                this.settle(pending, undefined, false, {
-                    ...(pending.createdPage && outcome.discardPage === true ? {} : { pageId: frame.pageId }),
-                    ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
-                    ...(outcome.discardPage === true ? { discardPage: true } : {}),
-                } satisfies CapabilityOutcome);
-            },
-            (error: unknown) => this.settle(pending, normalizeTransportError(error), false),
-        );
-    }
-
-    private settle(
-        pending: PendingDispatch,
-        error?: CapabilityError,
-        sendCancel = false,
-        result?: unknown,
-    ): void {
-        if (pending.settled) return;
-        pending.settled = true;
-        this.pending.delete(pending.request.requestId);
-        pending.pageUnsubscribe?.();
-        pending.pageUnsubscribe = undefined;
-        if (!error && pending.createdPage && (result as CapabilityOutcome | undefined)?.discardPage === true) {
-            void pending.page?.close();
-        }
-        if (sendCancel) {
-            try { pending.frame?.cancel(pending.request.requestId); } catch { /* best effort */ }
-        }
-        if (pending.frame) {
-            const requests = this.pageChains.get(pending.frame.pageId);
-            requests?.delete(pending.request.requestId);
-            if (requests?.size === 0) this.pageChains.delete(pending.frame.pageId);
-        }
-        clearInitialIntent(pending.page, pending.request.requestId);
-        if (pending.registration.boardRoot) {
-            clearInitialIntentOnRoot(pending.registration.boardRoot, pending.request.requestId);
-        }
-        pending.onSettled?.();
-        if (error) pending.reject(error);
-        else pending.resolve(result);
-    }
-
-    private settleUntrusted(): void {
-        for (const pending of [...this.pending.values()]) {
-            const root = pending.registration.boardRoot;
-            if (root && !isBoardPermitted(root)) {
-                this.settle(pending, new CapabilityError(
-                    "untrusted",
-                    "The capability handler board is no longer trusted.",
-                ), true);
-            }
-        }
-    }
-
-    dispose(): void {
-        this.unsubscribeTrust();
-        this.unsubscribeFrames();
-        for (const pending of [...this.pending.values()]) {
-            this.settle(pending, new CapabilityError(
-                "handler-closed",
-                "The capability transport was disposed.",
-            ), true);
-        }
-        this.pageChains.clear();
-    }
 }
 
 export const boardCapabilityTransport = new BoardCapabilityTransport();

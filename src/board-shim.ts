@@ -645,6 +645,7 @@ type BoardIntentInit = IntentEnvelope;
 interface BoardIntentContext extends BoardIntentInit {
     cancelled: boolean;
     settled: boolean;
+    delivered: boolean;
     resolve(value: unknown, options?: { discardPage?: boolean }): void;
     reject(reason?: unknown): void;
 }
@@ -660,9 +661,6 @@ class BoardCapabilityError extends Error {
 }
 
 let activeIntent: BoardIntentContext | undefined;
-/** Delivery is tracked per request, not once per frame: a board page is reused for
- *  every later request, so a single module-level flag would deliver only the first. */
-const deliveredIntentIds = new Set<string>();
 const intentHandlers: Array<(request: BoardIntentContext) => void> = [];
 
 function settleIntent(
@@ -701,6 +699,7 @@ function makeIntentContext(init: {
         payload: init.payload,
         cancelled: false,
         settled: false,
+        delivered: false,
         resolve: (value: unknown, options?: { discardPage?: boolean }) => {
             if (!context.cancelled) settleIntent(context, undefined, value, options?.discardPage);
         },
@@ -718,8 +717,8 @@ function makeIntentContext(init: {
 
 function deliverIntent(): void {
     const intent = activeIntent;
-    if (!intent || deliveredIntentIds.has(intent.requestId) || intentHandlers.length === 0) return;
-    deliveredIntentIds.add(intent.requestId);
+    if (!intent || intent.delivered || intentHandlers.length === 0) return;
+    intent.delivered = true;
     for (const handler of intentHandlers) {
         try {
             handler(intent);
@@ -1142,20 +1141,19 @@ onHostMessage((event) => {
         || typeof data.requestId !== "string" || typeof data.id !== "string") return;
     if (activeIntent && !activeIntent.settled && !activeIntent.cancelled
         && activeIntent.requestId !== data.requestId) {
-        // One request at a time per frame. The renderer's per-handler cap normally prevents
-        // this; refuse rather than silently replace the request a handler is still serving.
+        // The renderer serializes delivery; reject if an unexpected overlap reaches this frame.
         try {
             window.parent.postMessage({
                 __persephone: "capabilities:intent:result",
                 requestId: data.requestId,
-                error: { code: "busy", message: "The board is already serving a capability request." },
+                error: { code: "rejected", message: "The board is already serving a capability request." },
             } as BoardCapabilityIntentResultMsg, hostPostTarget);
         } catch {
             // The parent may disappear while the frame is refusing.
         }
         return;
     }
-    if (deliveredIntentIds.has(data.requestId)) return; // at-most-once: never re-deliver
+    if (activeIntent?.requestId === data.requestId && activeIntent.delivered) return;
     activeIntent = makeIntentContext({
         id: data.id,
         ...(typeof data.version === "number" ? { version: data.version } : {}),

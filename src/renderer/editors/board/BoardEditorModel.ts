@@ -28,7 +28,6 @@ import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export interface BoardToolbarElementDeclaration {
@@ -206,7 +205,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private readonly contentResources = new Map<string, ContentResource>();
-    private initialIntent: IntentEnvelope | undefined;
     private readonly pendingSourceUrls: string[] = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -241,30 +239,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  (BoardTargetModel.switchTab / ensureReady). Defaults to the main frame, so a
      *  single-frame board and the default automation path are unchanged (US-858). */
     activeTabId = BOARD_CDP_TAB;
-
-    /** Hold a capability request only for the first frame handshake; this never enters editor state. */
-    setInitialIntent(intent: IntentEnvelope): void {
-        this.initialIntent = intent;
-    }
-
-    /** Read the pending request without consuming it, so a failed post cannot lose the request. */
-    peekInitialIntent(): IntentEnvelope | undefined {
-        return this.initialIntent;
-    }
-
-    /** Consume the one-shot request after the host accepts the handshake post. */
-    consumeInitialIntent(): IntentEnvelope | undefined {
-        const intent = this.initialIntent;
-        this.initialIntent = undefined;
-        return intent;
-    }
-
-    /** Release a pending request when its caller or handler is torn down before the handshake. */
-    clearInitialIntent(requestId?: string): void {
-        if (requestId === undefined || this.initialIntent?.requestId === requestId) {
-            this.initialIntent = undefined;
-        }
-    }
 
     /** Remember the capability for a source while the board opens it. */
     registerSourceSessionHandle(sourceUrl: string, sessionHandle?: string): void {
@@ -1092,7 +1066,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  `reapBoardOwner` tree-kills every job this board owner kept alive while busy —
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
-        this.initialIntent = undefined;
         this.pendingSourceUrls.length = 0;
         for (const timer of this.sourceSessionHandleTimers.values()) clearTimeout(timer);
         this.sourceSessionHandles.clear();

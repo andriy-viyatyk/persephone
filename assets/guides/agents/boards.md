@@ -11,8 +11,10 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.19.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.19.0` adds
+The board bridge is version **1.20.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
+page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
+`Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
@@ -532,6 +534,12 @@ result is `{ pageId, result }`; `pageId` is optional when a handler resolves wit
 `result` preserves the handler's exact value, including primitives, arrays, and empty objects. The
 caller can receive these ten typed rejection codes:
 
+Requests to one handler page are delivered serially in FIFO order, with one active intent context
+in the frame. Additional requests wait for the active request to settle or be cancelled. `busy`
+means the bus has reached 32 outstanding requests for that handler, counting active and queued
+requests. A timeout rejects with `Capability invocation deadline elapsed.` and sends a best-effort
+cancel.
+
 | Code | Meaning |
 |---|---|
 | `no-handler` | No declaration matches the id, version, or filter; headless winners are out of scope. |
@@ -539,10 +547,10 @@ caller can receive these ten typed rejection codes:
 | `handler-closed` | The handler page/frame closed before settlement. |
 | `crashed` | The handler frame errored or reloaded. |
 | `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
-| `timeout` | The deadline elapsed; platform waiting stopped and best-effort cancel was sent. |
+| `timeout` | The caller receives `Capability invocation deadline elapsed.`; the platform sends best-effort cancel. |
 | `cycle` | The request would re-enter a handler in its chain or exceed the depth limit. |
 | `payload-too-large` | The board-bound inline payload is over 8 MiB. |
-| `busy` | The selected handler reached its outstanding-request limit. |
+| `busy` | The handler reached the bus limit of 32 outstanding requests, including queued work. |
 | `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or another unclassified transport failure occurred. |
 
 Timeout does not stop the handler. An agent can retry, so idempotent work must key on

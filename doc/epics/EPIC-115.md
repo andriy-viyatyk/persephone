@@ -54,7 +54,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1538 | [Main owns the board trust and URL-mask snapshots](../tasks/US-1538-main-owned-trust-snapshot/README.md) | 1 — defect | M | Done |
 | US-1547 | [Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](../tasks/US-1547-board-provider-acquire/README.md) | 1 — defect | M | Done |
 | US-1539 | [Capability contract single-sourced: error codes, intent envelope, outcome shape](../tasks/US-1539-capability-contract/README.md) | 2 — contracts | M | Done |
-| US-1540 | One owner for a capability request's lifecycle | 2 — contracts | L | Planned |
+| US-1540 | [One owner for a capability request's lifecycle](../tasks/US-1540-capability-request-lifecycle/README.md) | 2 — contracts | L | Done |
 | US-1541 | Built-in capability resolution runs the handler it resolved; one image-edit helper | 2 — contracts | S | Planned |
 | US-1542 | Host-frame request/reply channel: one table on each side, typed message union | 2 — contracts | L | Planned |
 | US-1543 | The service host owns the service lifecycle protocol | 2 — contracts | L | Planned |
@@ -405,6 +405,9 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   - Only settings and content-open also check `model.frames.get(tabId)`.
   - Four handlers post with no try/catch.
   - The main-frame gate is copied seven times (lines 561, 570, 582, 667, 687, 724, 793).
+  - *After US-1540:* `BoardWebview.pendingCapability` is now only a wire-reply correlation map (no
+    timer, no trust or settlement policy; the bus owns those), so folding it into the one table is
+    mechanical. Line numbers above have moved.
 - **Types:** `BoardToHostMsg` (`board-bridge-channels.ts:379-447`) is one flat type with every field
   optional, so `handleMessage` casts to a hand-written `legacy` type. `controls` and `names` are not
   in the type at all.

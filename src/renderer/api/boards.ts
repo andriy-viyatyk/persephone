@@ -290,8 +290,15 @@ export const boards: IBoards = {
         const { encodePersephoneBoardLink } = await import("../content/persephone-board-link");
         await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(boardRoot), {
             sourceId: "app-api",
-            intent: options?.intent,
         }));
+        if (options?.intent) {
+            const intent = options.intent;
+            void import("./capabilities")
+                .then(({ invokeLegacyBoardIntent }) => invokeLegacyBoardIntent(boardRoot, intent))
+                .catch((error: unknown) => {
+                    console.warn(`Legacy board intent failed: ${errMessage(error, "The capability request failed.")}`);
+                });
+        }
     },
 
     // ── Board lifecycle — trust / untrust / rename (EPIC-045 / US-868) ──────────

@@ -42,7 +42,6 @@ interface PendingIntent {
     timer?: ReturnType<typeof setTimeout>;
     pageUnsubscribe?: () => void;
     abortUnsubscribe?: () => void;
-    dispatched: boolean;
     cancellationSent: boolean;
     settled: boolean;
 }
@@ -295,7 +294,6 @@ class CapabilityBus {
                 pageId: options?.pageId,
                 resolve,
                 reject,
-                dispatched: false,
                 cancellationSent: false,
                 settled: false,
             };
@@ -335,7 +333,6 @@ class CapabilityBus {
                 return;
             }
 
-            pending.dispatched = true;
             let dispatchResult: Promise<unknown>;
             try {
                 dispatchResult = transport.dispatch(registration, request);

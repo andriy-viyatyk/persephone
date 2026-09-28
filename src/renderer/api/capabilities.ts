@@ -17,8 +17,10 @@ import type {
     CapabilityOutcome,
     CapabilityOrigin,
     CapabilityRegistration,
+    IntentEnvelope,
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError, capabilityBus } from "./capability-bus";
+import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
@@ -285,6 +287,23 @@ export function resolveCapability(
     const candidate = orderedCandidates(id, filter)
         .find((entry) => version === undefined || entry.registration.version === version);
     return candidate?.registration;
+}
+
+/** Compatibility adapter for legacy named-board intent inputs. This deliberately bypasses
+ *  global candidate precedence and requires the declaration to belong to the named board. */
+export function invokeLegacyBoardIntent(boardRoot: string, intent: IntentEnvelope): Promise<unknown> {
+    seedPlatformCandidates();
+    const normalizedRoot = fpNormalizeForCompare(boardRoot);
+    const registration = (candidates.get(intent.id) ?? [])
+        .filter((candidate) => candidate.registration.origin === "board"
+            && candidate.registration.boardRoot !== undefined
+            && fpNormalizeForCompare(candidate.registration.boardRoot) === normalizedRoot
+            && (intent.version === undefined || candidate.registration.version === intent.version))
+        .sort((left, right) => left.order - right.order)[0]?.registration;
+    if (!registration) throw noHandlerError(intent.id, intent.version);
+    return capabilityBus.invoke(registration, intent.payload, {
+        ...(intent.version === undefined ? {} : { version: intent.version }),
+    });
 }
 
 class Capabilities implements ICapabilities {

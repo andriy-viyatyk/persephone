@@ -64,8 +64,16 @@ bundled manifests, so untrust or disabling a bundled board cannot leave a stale 
 
 Resolution and service happen in the caller's renderer window. For a board handler, the transport
 first reuses an open page for that board in that window and activates it. If none exists, it opens
-the board there and carries the first request as transient `BoardPortInitMsg.intent`. A request is
-never routed to a live handler page in another window.
+the board there and carries the first request as transient `BoardPortInitMsg.intent`. Routes to a
+page are queued FIFO; only the head is sent, and only after the board's initial host handshake has
+completed and the frame is ready. The frame therefore has one active intent context at a time.
+Requests are never routed to a live handler page in another window.
+
+Deprecated `app.boards.openBoard(boardRoot, { intent })` and `ILinkData.intent` inputs remain
+compatibility entry points. They use a root-specific adapter into the capability bus: it selects a
+matching declaration on that board root, rather than applying global candidate precedence, then
+uses the normal request lifecycle, limits, routing, and typed settlement. New callers should use
+`app.capabilities.invoke()`.
 
 The page-open and reused-page paths converge on the same intent request:
 
@@ -124,29 +132,30 @@ host parent and the expected origin. `BoardWebview` checks the sender, origin, f
 generation before accepting a result. A board-originated result keeps `pageId` at the top level of
 the invoke reply contract; it is not nested inside `result`.
 
-The shim exposes `persephone.intent.get()`, `onRequest(callback)`,
-`resolve(value, { discardPage? })`, and `reject(reason)`. `value` is passed through as the opaque
-handler result; `discardPage` is a separate bridge field and never inferred from result properties.
-It discards only a page created for that request. `onRequest` returns an unsubscribe and immediately
-delivers an already-active request. A handler should key idempotency on `requestId`, settle every
-request, and treat
-`resolve`/`reject` as referring to the currently active request. The shim tracks delivered request
-ids, so a reused page receives each request at most once. A late settlement is ignored once that
-request is cancelled or settled; it cannot settle a newer request.
+The shim keeps one active intent context per frame. It exposes `persephone.intent.get()`,
+`onRequest(callback)`, `resolve(value, { discardPage? })`, and `reject(reason)`. `value` is passed
+through as the opaque handler result; `discardPage` is a separate bridge field and never inferred
+from result properties. It discards only a page created for that request. `onRequest` returns an
+unsubscribe and immediately delivers an already-active request. A handler should key idempotency
+on `requestId`, settle every request, and treat `resolve`/`reject` as referring to the currently
+active request. The shim tracks delivered request ids, so a reused page receives each request at
+most once. A late settlement is ignored once that request is cancelled or settled; it cannot settle
+a newer request.
 
 ## Lifecycle, revocation, and teardown
 
-The bus creates a request id, records the caller page when supplied, inherits that page's chain and
-depth, estimates board-bound clone size, checks the per-handler outstanding limit, and starts a
-deadline timer. Each pending record owns its timer, abort listener, and optional
-`PageModel.disposed` subscription. All are released on every terminal path. The bus also releases
-the per-handler concurrency slot when it settles.
+The bus owns each invocation's request id, deadline, abort and caller-page subscriptions, trust and
+renderer teardown behavior, typed settlement, and per-handler outstanding count. The count includes
+both active and queued requests and is released on every terminal path. Cancellation, timeout, and
+teardown settle the caller through the bus first, then ask the transport to cancel delivery on a
+best-effort basis.
 
-The board transport owns a separate pending map for dispatched requests. It subscribes to trust
-changes and frame registration, attaches a page-disposal subscriber only while the request is
-live, and removes it during settlement. Its page-scoped chain map is keyed by page id and then by
-request id, so concurrent requests cannot overwrite or delete one another's chain state. A chain
-entry is removed with its request; an empty page map is removed as well.
+The board transport owns route bookkeeping rather than a second request lifecycle: it keeps FIFO
+queues and root/page reservations, opens or reuses the page, waits for frame readiness, and sends
+the next request after the current frame dispatch settles or is cancelled. Its page-scoped chain
+entry records only the currently active request and is removed before the next queued route starts.
+`BoardWebview` tracks frame-generation-specific replies; the shim rejects unexpected overlapping
+delivery and ignores duplicate delivery of the active request id.
 
 `PageModel.disposed` fires exactly once at the start of true page disposal, before editor teardown.
 The bus and board transport unsubscribe there, while the transport also clears initial transient
@@ -175,10 +184,10 @@ The closed `CapabilityErrorCode` contract is defined once by `CAPABILITY_ERROR_C
 | `handler-closed` | The handler page or frame closes before settlement. |
 | `crashed` | The handler frame errors or reloads during the request. |
 | `cancelled` | The caller cancels, its page closes, or the renderer is closing. |
-| `timeout` | The deadline elapses; the platform stops waiting and sends best-effort cancel. |
+| `timeout` | The deadline elapses; the bus settles the caller and sends best-effort cancel. |
 | `cycle` | The handler is already in the inherited chain or the depth limit is exceeded. |
 | `payload-too-large` | The board-bound estimate exceeds 8 MiB. |
-| `busy` | The selected handler reaches its outstanding-request limit, or a frame is already serving another request. |
+| `busy` | The selected handler reaches the bus outstanding-request limit, counting active and queued requests. |
 | `rejected` | The handler calls `reject`, the payload cannot be cloned, or no more specific transport error applies. |
 
 ## Design consequences
@@ -205,12 +214,10 @@ architecture to a task history:
    window; cross-window handler routing requires a future main-side forwarding protocol.
    Board capabilities reuse any open page for the registered board root, regardless of editor kind,
    or open a handler page through the page lifecycle when none exists, unless the declaration sets
-   `alwaysOpensNewPage`. Concurrent
-   cold opens for one root are serialized: followers wait for both the opening request and page
-   lifecycle operation to settle before reusing the page or attempting their own open. This keeps
-   follower intents behind the initial-frame handshake and prevents a canceled opening request
-   from releasing them while page construction is still underway. Page-producing edit
-   page-producing capabilities keep their fresh-page behavior through that declaration field.
+   `alwaysOpensNewPage`. Requests routed to one page are held in a FIFO queue, and dispatch waits
+   until its initial host handshake marks the frame ready. The active request is removed before the
+   next one starts, including when cancellation or frame failure settles it. Page-producing edit
+   capabilities keep their fresh-page behavior through that declaration field.
 4. Registrations coexist and resolve by priority, platform tie-break, and board registration order;
    versions are major, pin-able, and separate from the stored id.
 5. The failure taxonomy is closed and each code has an observable trigger, including clone refusal

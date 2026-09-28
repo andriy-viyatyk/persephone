@@ -66,6 +66,9 @@ import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../script
 import {
     registerBoardCapabilityFrame,
     unregisterBoardCapabilityFrame,
+    markBoardCapabilityFrameReady,
+    failBoardCapabilityFrame,
+    takeInitialIntent,
     type BoardCapabilityFrame,
 } from "../../api/board-capability-transport";
 import { app } from "../../api/app";
@@ -141,12 +144,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private readonly pendingCapability = new Map<string, {
         resolve: (value: unknown) => void;
         reject: (error: CapabilityError) => void;
-        timer: ReturnType<typeof setTimeout>;
         generation: number;
         iframe: HTMLIFrameElement;
         contentWindow: Window;
     }>();
-    private readonly initialIntentIds = new Set<string>();
     private capabilityFrame: BoardCapabilityFrame | undefined;
     private readonly pendingContentOpen = new Set<AbortController>();
 
@@ -167,7 +168,6 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.ownSubscription(subscribeBoardPermission(() => {
             if (!isBoardPermitted(this.props.boardRoot)) {
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
-                this.rejectPendingCapability("untrusted", "The board is no longer trusted.", true);
                 this.unregisterCapabilityFrame();
             }
         }));
@@ -190,9 +190,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.abortPendingContentOpen();
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         this.rejectPendingAiVision(new Error("Board frame was replaced."));
-        this.rejectPendingCapability("handler-closed", "The board frame was replaced.", false);
+        this.rejectPendingCapability("handler-closed", "The board frame was replaced.");
         this.unregisterCapabilityFrame();
-        this.initialIntentIds.clear();
         if (this.focusTimer !== undefined) {
             clearTimeout(this.focusTimer);
             this.focusTimer = undefined;
@@ -371,6 +370,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const pageId = this.props.model.page?.id;
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
         if (pageId) void api.registerBoardPipePage(pageId, host);
+        const initialIntent = pageId ? takeInitialIntent(pageId) : undefined;
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
             busy: !!this.props.model.state.get().busy,
@@ -381,19 +381,24 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
             materialize: !!filePath && !isPlainLocalPath(filePath) && !this.props.model.isStreamHost,
-            intent: this.props.model.peekInitialIntent(),
+            ...(initialIntent ? { intent: initialIntent } : {}),
         };
         const contentWindow = frame.contentWindow;
         if (!contentWindow) return;
-        const intent = this.props.model.peekInitialIntent();
-        if (intent) this.initialIntentIds.add(intent.requestId);
         try {
             contentWindow.postMessage(init, `board://${host}`, [port]);
-            this.props.model.consumeInitialIntent();
             this.pendingPort = null;
+            if (this.capabilityFrame && this.capabilityFrame.generation === this.generation) {
+                this.capabilityFrame.ready = true;
+                markBoardCapabilityFrameReady(this.capabilityFrame.pageId, this.generation);
+            }
             this.flushPendingSourceUrls();
         } catch (error: unknown) {
-            this.rejectPendingCapability("crashed", errMessage(error, "The board handshake failed."), false);
+            failBoardCapabilityFrame(
+                pageId ?? "",
+                this.generation,
+                new CapabilityError("crashed", errMessage(error, "The board handshake failed.")),
+            );
             this.closePendingPort();
         }
     }
@@ -413,13 +418,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.installSettingsSubscription();
         this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
         if (this.capabilityFrame?.iframe === frame) {
-            this.rejectPendingCapability("crashed", "The board frame was reloaded.", false);
+            this.rejectPendingCapability("crashed", "The board frame was reloaded.");
             this.unregisterCapabilityFrame();
         }
         const generation = this.generation;
         const model = this.props.model;
-        const initialIntent = model.peekInitialIntent();
-        if (initialIntent) this.initialIntentIds.add(initialIntent.requestId);
         if (this.isMain && model.page?.id && frame.contentWindow) {
             this.capabilityFrame = {
                 boardRoot: this.props.boardRoot,
@@ -427,6 +430,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 generation,
                 iframe: frame,
                 contentWindow: frame.contentWindow,
+                ready: false,
                 dispatch: this.dispatchCapabilityIntent,
                 cancel: this.cancelCapabilityIntent,
             };
@@ -448,7 +452,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             }
         }).catch((error: unknown) => {
             if (this.live && generation === this.generation) {
-                this.rejectPendingCapability("crashed", errMessage(error, "The board frame failed to register."), false);
+                const message = errMessage(error, "The board frame failed to register.");
+                this.rejectPendingCapability("crashed", message);
+                if (model.page?.id) {
+                    failBoardCapabilityFrame(model.page.id, generation, new CapabilityError("crashed", message));
+                }
                 this.unregisterCapabilityFrame();
             }
         });
@@ -781,37 +789,22 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.pendingAiVision.clear();
     }
 
-    private readonly dispatchCapabilityIntent = (request: IntentRequest): Promise<unknown> => {
+    private readonly dispatchCapabilityIntent = (request: IntentRequest, initial = false): Promise<unknown> => {
         const host = this.host;
         const frame = this.iframe;
         const contentWindow = frame?.contentWindow;
         if (!this.live || !host || !frame || !contentWindow || !this.isMain
-            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame
-            || !isBoardPermitted(this.props.boardRoot)) {
+            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame) {
             return Promise.reject(new CapabilityError(
                 "handler-closed",
                 "The board frame is unavailable or untrusted.",
             ));
         }
-        if (this.pendingCapability.has(request.requestId)) {
-            return Promise.reject(new CapabilityError(
-                "rejected",
-                `Capability request ${request.requestId} was dispatched twice.`,
-            ));
-        }
         const generation = this.generation;
-        const initial = this.initialIntentIds.delete(request.requestId);
         return new Promise<unknown>((resolve, reject) => {
-            const timer = setTimeout(() => {
-                this.settleCapability(request.requestId, new CapabilityError(
-                    "timeout",
-                    "The capability request deadline elapsed.",
-                ), true);
-            }, Math.max(0, request.deadlineAt - Date.now()));
             this.pendingCapability.set(request.requestId, {
                 resolve,
                 reject,
-                timer,
                 generation,
                 iframe: frame,
                 contentWindow,
@@ -835,7 +828,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                             ? "The capability payload could not be cloned."
                             : "The board frame is unavailable.",
                     ),
-                ), false);
+                ));
             }
         });
     };
@@ -852,12 +845,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         } catch {
             // Cancellation is deliberately best-effort during teardown.
         }
-        if (pending) {
-            this.settleCapability(requestId, new CapabilityError(
-                "cancelled",
-                "The capability request was cancelled.",
-            ), false);
-        }
+        this.pendingCapability.delete(requestId);
     };
 
     private handleCapabilityResult(message: BoardCapabilityIntentResultMsg, frame: HTMLIFrameElement): void {
@@ -868,9 +856,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.settleCapability(message.requestId, new CapabilityError(
                 message.error.code,
                 message.error.message,
-            ), false);
+            ));
         } else {
-            this.settleCapability(message.requestId, undefined, false, {
+            this.settleCapability(message.requestId, undefined, {
                 ...(Object.prototype.hasOwnProperty.call(message, "result") ? { result: message.result } : {}),
                 ...(message.discardPage === undefined ? {} : { discardPage: message.discardPage }),
             });
@@ -880,23 +868,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private settleCapability(
         requestId: string,
         error: CapabilityError | undefined,
-        sendCancel: boolean,
         result?: unknown,
     ): void {
         const pending = this.pendingCapability.get(requestId);
         if (!pending) return;
         this.pendingCapability.delete(requestId);
-        clearTimeout(pending.timer);
-        if (sendCancel) {
-            try {
-                pending.contentWindow.postMessage(
-                    { __persephone: "capabilities:intent:cancel", requestId } as BoardCapabilityIntentCancelMsg,
-                    this.host ? `board://${this.host}` : "*",
-                );
-            } catch {
-                // Teardown may have already removed the content window.
-            }
-        }
         if (error) pending.reject(error);
         else pending.resolve(result);
     }
@@ -904,10 +880,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private rejectPendingCapability(
         code: CapabilityErrorCode,
         message: string,
-        sendCancel: boolean,
     ): void {
         for (const requestId of [...this.pendingCapability.keys()]) {
-            this.settleCapability(requestId, new CapabilityError(code, message), sendCancel);
+            this.settleCapability(requestId, new CapabilityError(code, message));
         }
     }
 
@@ -919,7 +894,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private readonly handleFrameError = (): void => {
         if (this.isMain) this.props.model.clearToolbarTextForFrame(this.generation);
-        this.rejectPendingCapability("crashed", "The board frame failed to load.", false);
+        this.rejectPendingCapability("crashed", "The board frame failed to load.");
+        const pageId = this.props.model.page?.id;
+        if (pageId) {
+            failBoardCapabilityFrame(pageId, this.generation, new CapabilityError("crashed", "The board frame failed to load."));
+        }
         this.unregisterCapabilityFrame();
     };
 

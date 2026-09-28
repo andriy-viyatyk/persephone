@@ -21,7 +21,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1547: Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](tasks/US-1547-board-provider-acquire/README.md)
   - *Phase 2 — contracts with one definition*
   - [x] [US-1539: Capability contract single-sourced — error codes, intent envelope, outcome shape](tasks/US-1539-capability-contract/README.md)
-  - [ ] US-1540: One owner for a capability request's lifecycle
+  - [x] [US-1540: One owner for a capability request's lifecycle](tasks/US-1540-capability-request-lifecycle/README.md)
   - [ ] US-1541: Built-in capability resolution runs the handler it resolved; one image-edit helper
   - [ ] US-1542: Host-frame request/reply channel — one table on each side, typed message union
   - [ ] US-1543: The service host owns the service lifecycle protocol

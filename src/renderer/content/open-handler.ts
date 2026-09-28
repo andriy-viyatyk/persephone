@@ -8,6 +8,16 @@ import {
     PERSEPHONE_BOARD_PREFIX,
 } from "./persephone-board-link";
 import { isBoardSingleInstance, readBoardManifest } from "../editors/board/board-manifest";
+import { errMessage } from "../../shared/utils";
+
+function invokeLegacyIntent(boardRoot: string | undefined, intent: import("../../ipc/capability-bus-channels").IntentEnvelope | undefined): void {
+    if (!boardRoot || !intent) return;
+    void import("../api/capabilities")
+        .then(({ invokeLegacyBoardIntent }) => invokeLegacyBoardIntent(boardRoot, intent))
+        .catch((error: unknown) => {
+            console.warn(`Legacy board intent failed: ${errMessage(error, "The capability request failed.")}`);
+        });
+}
 
 function resolveBoardRoot(target: string | undefined, filePath: string): string | undefined {
     const boardRoot = target ? parseBoardEditorId(target) : null;
@@ -58,6 +68,7 @@ export function registerOpenHandler(): void {
                 }
                 data.pipe.dispose();
                 data.handled = true;
+                invokeLegacyIntent(boardRoot, data.intent);
                 return;
             }
         }
@@ -72,7 +83,6 @@ export function registerOpenHandler(): void {
                     fragment: data.fragment,
                     title: data.title,
                     sourceLink,
-                    intent: data.intent,
                     pipe: data.pipe,
                     target: data.target,
                     folderPath: data.folderPath,
@@ -90,7 +100,6 @@ export function registerOpenHandler(): void {
             try {
                 const page = await pagesModel.lifecycle.openFile(filePath, data.pipe, {
                     sourceLink,
-                    intent: data.intent,
                     fragment: data.fragment,
                     target: data.target,
                     folderPath: data.folderPath,
@@ -111,5 +120,6 @@ export function registerOpenHandler(): void {
         }
 
         data.handled = true;
+        invokeLegacyIntent(resolveBoardRoot(data.target, filePath), data.intent);
     });
 }

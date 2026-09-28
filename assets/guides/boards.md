@@ -144,12 +144,14 @@ renderer and Node execution. A declared service is shown in Board Info and in th
 `app.boards.list()` status payload.
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.19.0**. It adds
-`persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
-`request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
-value under `result` for board callers, and supports the optional manifest capability field
-`alwaysOpensNewPage` to request a fresh handler page for every invocation. See
-[What's New](./whats-new.md) for the release notes.
+The current board bridge is **1.20.0**. Capability requests to the same handler page are delivered
+one at a time in FIFO order; up to 32 active and queued requests can be outstanding for a handler.
+An expired deadline rejects with `Capability invocation deadline elapsed.` and sends a best-effort
+cancel. Bridge `1.19.0` added `persephone.intent.resolve(value, { discardPage: true })` (also
+available on the request-bound `request.resolve`) for discarding a page created for a failed
+request, preserved the handler's exact value under `result` for board callers, and added the
+optional manifest capability field `alwaysOpensNewPage` to request a fresh handler page for every
+invocation. See [What's New](./whats-new.md) for the release notes.
 
 Boards can also declare service-backed content providers:
 
@@ -372,6 +374,12 @@ or set `deadlineMs`. A board result is `{ pageId, result }` (the page id is opti
 that resolve without a page); `result` preserves the handler's exact value, including primitives,
 arrays, and empty objects. Handle the ten typed rejection codes as follows:
 
+Invocations to the same handler page are delivered serially in FIFO order: only one request is
+active in a frame, and later requests wait for it to settle or be cancelled. `busy` means the
+handler has reached the bus limit of 32 outstanding requests across its active and queued work.
+When a deadline expires, callers receive `Capability invocation deadline elapsed.` and the
+platform sends a best-effort cancel.
+
 | Code | Meaning to the caller |
 |---|---|
 | `no-handler` | No registered declaration matches the id, version, or filter; headless winners are out of scope. |
@@ -379,10 +387,10 @@ arrays, and empty objects. Handle the ten typed rejection codes as follows:
 | `handler-closed` | The handler page or frame closed before it settled. |
 | `crashed` | The handler frame errored or reloaded during the request. |
 | `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
-| `timeout` | The deadline elapsed; waiting stopped and a best-effort cancel was sent. |
+| `timeout` | The deadline elapsed; the caller receives `Capability invocation deadline elapsed.` and a best-effort cancel is sent. |
 | `cycle` | The winning handler is already in the request chain or the depth limit was exceeded. |
 | `payload-too-large` | A board-bound inline payload exceeds 8 MiB. |
-| `busy` | The selected handler has reached its outstanding-request limit. |
+| `busy` | The handler has reached the bus limit of 32 outstanding requests, including queued work. |
 | `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or the transport failed without another code. |
 
 Timeout does not stop handler execution. An agent may retry, so a handler that needs idempotency
@@ -396,7 +404,9 @@ Scripts running in Persephone can discover or invoke the same indexed handlers t
 `persephone.capabilities` bridge documented above.
 
 Use `app.capabilities.invoke()` for capability calls from scripts. The optional `intent` argument
-to `app.boards.openBoard()` is a deprecated legacy route and does not return the handler's result.
+to `app.boards.openBoard()` and `ILinkData.intent` are deprecated legacy routes: they open the
+named board and dispatch through its matching declaration in the background, without returning a
+capability result. New callers should use `app.capabilities.invoke()`.
 
 ---
 

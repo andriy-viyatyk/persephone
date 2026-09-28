@@ -292,7 +292,7 @@ await app.boards.openBoard("C:/work/boards/Existing Board");
 |--------|---------|-------------|
 | `createBoard(name, dir)` | `Promise<string>` | Create a blank board named `name` inside container folder `dir` (created if needed). Returns the new board's absolute root path. Throws if a board named `name` already exists in `dir`. |
 | `createDemoBoard(name, dir)` | `Promise<string>` | Same as `createBoard`, but scaffolds from the bundled Demo board template — a full working example of the bridge API, theme contract, and multi-tab layout. Returns the board root. |
-| `openBoard(boardRoot, options?)` | `Promise<void>` | Open an existing board by its absolute root folder path (the folder containing `board-manifest.json`). Opens a new tab or reuses an existing one. Boards created by Persephone open immediately; foreign boards prompt for trust. The legacy `options.intent` capability route is deprecated; use [`app.capabilities.invoke()`](#capabilities) to invoke a registered handler and receive its result. Throws if `boardRoot` is missing or has no `board-manifest.json`. |
+| `openBoard(boardRoot, options?)` | `Promise<void>` | Open an existing board by its absolute root folder path (the folder containing `board-manifest.json`). Opens a new tab or reuses an existing one. Boards created by Persephone open immediately; foreign boards prompt for trust. The deprecated `options.intent` route opens the board, then dispatches to its matching declaration in the background; it does not return the capability result. Use [`app.capabilities.invoke()`](#capabilities) for new capability calls. Throws if `boardRoot` is missing or has no `board-manifest.json`. |
 | `list()` | `Promise<BoardListing[]>` | List local trusted, installed, and open boards. Read-only and does not contact the remote catalog. |
 | `requestService(boardRoot, message)` | `Promise<unknown>` | Send an opaque structured-clone message to the board's declared service, starting it lazily when needed. Rejects with a readable lifecycle reason such as `untrusted`, `service-not-declared`, `service-busy`, `service-timeout`, `service-exited`, or `service-failed`. |
 | `startService(boardRoot)` | `Promise<void>` | Explicitly start the board's declared service and reset its restart budget. |
@@ -376,8 +376,9 @@ capabilities normally return a page result; `diagram.edit` can instead return
 
 Failures reject with a typed capability error. Its `code` is one of `no-handler`, `untrusted`,
 `handler-closed`, `crashed`, `cancelled`, `timeout`, `cycle`, `payload-too-large`, `busy`, or
-`rejected`. A timeout or cancellation stops waiting and sends a best-effort cancellation to the
-handler; it cannot stop work that the handler has already started.
+`rejected`. A timeout rejects with `Capability invocation deadline elapsed.`. A timeout or
+cancellation stops waiting and sends a best-effort cancellation to the handler; it cannot stop work
+that the handler has already started.
 
 ---
 
