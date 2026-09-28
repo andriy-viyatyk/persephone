@@ -204,11 +204,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private readonly contentResources = new Map<string, ContentResource>();
-    private readonly pendingSourceUrls: string[] = [];
+    private readonly pendingSourceUrls: Array<{ sourceUrl: string; privateSession: boolean }> = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
     /** Sources that arrived with a private session. They are never fetched on the default one. */
     private readonly sessionBoundSources = new Set<string>();
+    private initialSourcePrivateSessionValue = false;
     private sourceRestoreBlockedOnRestore = false;
     private readonly pendingSourceListeners = new Set<() => void>();
     private toolbarFrameGeneration: number | undefined;
@@ -246,6 +247,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (previousTimer) clearTimeout(previousTimer);
         this.sourceSessionHandles.set(sourceUrl, sessionHandle);
         this.sessionBoundSources.add(sourceUrl);
+        if (sourceUrl === this.currentSourceUrl()) this.initialSourcePrivateSessionValue = true;
         this.state.update((state) => {
             state.sourceRestoreBlocked = true;
         });
@@ -269,7 +271,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     enqueueSourceUrl(sourceUrl: string, sessionHandle?: string): void {
         if (!sourceUrl) return;
         this.registerSourceSessionHandle(sourceUrl, sessionHandle);
-        this.pendingSourceUrls.push(sourceUrl);
+        this.pendingSourceUrls.push({ sourceUrl, privateSession: Boolean(sessionHandle) });
         // A live frame flushes immediately; a frame still loading flushes on load/handshake.
         for (const listener of this.pendingSourceListeners) listener();
     }
@@ -280,7 +282,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return () => { this.pendingSourceListeners.delete(listener); };
     }
 
-    peekPendingSourceUrl(): string | undefined {
+    isInitialSourcePrivateSession(): boolean {
+        const sourceUrl = this.currentSourceUrl();
+        return this.initialSourcePrivateSessionValue
+            || (sourceUrl !== undefined && this.sessionBoundSources.has(sourceUrl));
+    }
+
+    peekPendingSourceUrl(): { sourceUrl: string; privateSession: boolean } | undefined {
         return this.pendingSourceUrls[0];
     }
 

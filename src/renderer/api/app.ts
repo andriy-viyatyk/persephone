@@ -177,7 +177,7 @@ class App {
 
     /**
      * Initialize pages. Called in bootstrap (renderer.tsx) after initServices().
-     * Ensures filesystem is ready, then restores persisted pages and handles CLI arguments.
+     * Ensures filesystem is ready, then restores persisted pages.
      * Not exposed to scripts.
      */
     async initPages(): Promise<void> {

@@ -47,6 +47,7 @@ import {
     hostOwnsPipe,
     parseBoardManifest,
     readBoardManifest,
+    stableBoardIdentity,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
     type BoardEditorAssociation,
@@ -478,11 +479,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const makeSource = (root: string, raw: unknown, origin: BoardRefreshSource["origin"]): BoardRefreshSource => {
             const manifest = parseBoardManifest(raw);
             const boardName = manifest?.name?.trim() || fpBasename(root);
-            const settingsNamespace = manifest
-                && typeof manifest.author === "string" && manifest.author.trim()
-                && typeof manifest.name === "string" && manifest.name.trim()
-                ? `${manifest.author.trim()}/${manifest.name.trim()}`
-                : undefined;
+            const settingsNamespace = stableBoardIdentity(manifest);
             return { root, manifest, origin, boardName, settingsNamespace };
         };
         const [trustedSources, installedSources] = await Promise.all([

@@ -468,12 +468,14 @@ navigation. A live run confirmed that a match cancels the download, sends its so
 user with the board name.
 
 For a claim made by a Tor or Incognito page, the platform fetches the URL through the originating
-Electron session. The session handle is transient host-side context: it is not sent through the
-board bridge or stored in the provider descriptor, and the restored board source handshake is
-blocked for that private URL. The platform displays **“The metadata was fetched privately, but the
-swarm connection is not anonymous.”** The notice describes the boundary: only the claimed source
-fetch uses the page's session; tracker and peer connections are not routed through Tor, so swarm
-peers can see the user's real IP. Ordinary-session claims do not receive this private-session notice.
+Electron session. The session handle stays host-side and is never sent through the board bridge or
+stored in a provider descriptor. Bridge 1.24.0 exposes only a Boolean fact: the initial source is
+marked by `persephone.source.initialSourcePrivateSession` alongside `persephone.getSourceUrl()`,
+and later source events from `persephone.source.onOpen(callback)` carry `privateSession: true` when
+applicable. No event field is sent for ordinary sessions. A board that needs a source-specific
+explanation owns that UI; for example, a torrent board can explain that only the claimed source
+fetch uses the page's session, while tracker and peer connections are not routed through Tor and
+swarm peers can see the user's real IP.
 
 Only trusted boards and enabled bundled boards contribute claims. Trusted roots register before
 bundled boards; an exact normalized duplicate is refused and reported as a

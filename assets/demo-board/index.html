@@ -346,6 +346,24 @@
                 <li><code>service.mjs</code> — an ESM service entry with a board-root cwd, sanitized environment, standard Node built-ins, and board-root <code>node_modules</code> resolution. Its stdout/stderr diagnostics are captured in <code>ui.log</code>; use <code>persephone.service.request</code> and <code>persephone.storage</code> rather than inventing a persistence file.</li>
             </ul>
 
+            <h2>Source identity and session context</h2>
+            <p>
+                Bridge 1.24.0 exposes the initial source identity through
+                <code>persephone.getSourceUrl()</code> and its private-session status through
+                <code>persephone.source.initialSourcePrivateSession</code>. Later sources routed to a
+                board arrive through <code>persephone.source.onOpen()</code> with <code>url</code>,
+                <code>sourceUrl</code>, and optional <code>privateSession: true</code>. This Boolean
+                describes how the source was opened; it does not make the board's later network
+                traffic anonymous. Boards can use the metadata for their own source-specific UI:
+            </p>
+            <pre><code>const initialUrl = await persephone.getSourceUrl();
+if (initialUrl &amp;&amp; persephone.source.initialSourcePrivateSession === true) {
+  showPrivateSourceInfo(initialUrl);
+}
+persephone.source.onOpen(({ url, sourceUrl, privateSession }) =&gt; {
+  if (privateSession === true) showPrivateSourceInfo(sourceUrl || url);
+});</code></pre>
+
             <h2>Use Persephone's file icons</h2>
             <p>
                 File lists can use the same icons as Persephone's Explorer without opening the files.

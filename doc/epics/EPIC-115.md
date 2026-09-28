@@ -69,7 +69,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1552 | [Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](../tasks/US-1552-video-resource-pipe/README.md) | 3 — structure | L | Done |
 | US-1553 | [VideoEditor's source flow in one place; one provider-recovery helper for all editors](../tasks/US-1553-video-source-flow/README.md) | 3 — structure | M | Done |
 | US-1554 | [Board trust granting, bundled-board creation and Board Info each have one path](../tasks/US-1554-board-trust-bundled-info-paths/README.md) | 3 — structure | S | Done |
-| US-1555 | Small dead code, stale comments and a torrent-specific notice in core | 3 — structure | S | Planned |
+| US-1555 | [Small dead code, stale comments and a torrent-specific notice in core](../tasks/US-1555-small-cleanups/README.md) | 3 — structure | S | Done |
 
 Suggested order: all of Phase 1, then US-1544 (small, and the drift it removes has already caused
 one shipped bug), then the rest. US-1552 and US-1553 both touch `VideoEditor.ts`, so do them in
@@ -773,7 +773,7 @@ the task document.
 
 ### US-1555: Small dead code, stale comments and a torrent-specific notice in core
 
-*Code-verified.* Small.
+*Code-verified.* Small. **Done** — every item was still present and is fixed; see the [task document](../tasks/US-1555-small-cleanups/README.md).
 
 - **Torrent wording in core:** `main/download-service.ts:135-140` tells **every** board's
   private-session claimed download that "the swarm connection is not anonymous", which is

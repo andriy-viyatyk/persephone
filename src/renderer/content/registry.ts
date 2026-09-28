@@ -321,6 +321,12 @@ class MissingProvider implements IProvider {
     readonly restorable = true;
     private delegate: IProvider | undefined;
     private resolutionAttempt: Promise<IProvider> | undefined;
+    private readonly watchers = new Set<{
+        callback: (event: string) => void;
+        disposeRegistryWatch: () => void;
+        disposeDelegateWatch?: () => void;
+    }>();
+    private disposed = false;
 
     constructor(private readonly descriptor: IProviderDescriptor) {
         this.type = descriptor.type;
@@ -385,19 +391,36 @@ class MissingProvider implements IProvider {
         const delegate = tryCreateRegisteredProvider(this.descriptor);
         if (!delegate) throw new ProviderUnavailableError(this.descriptor.type, declaration);
         this.delegate = delegate;
+        if (this.disposed) {
+            delegate.dispose?.();
+            return delegate;
+        }
+        for (const watcher of this.watchers) {
+            watcher.disposeDelegateWatch = delegate.watch?.(watcher.callback);
+        }
         return delegate;
     }
 
     watch(callback: (event: string) => void): () => void {
+        if (this.disposed) return () => undefined;
         const disposeRegistryWatch = subscribeProviderAvailability(() => callback("available"));
         const disposeDelegateWatch = this.delegate?.watch?.(callback);
+        const watcher = { callback, disposeRegistryWatch, disposeDelegateWatch };
+        this.watchers.add(watcher);
         return () => {
-            disposeRegistryWatch();
-            disposeDelegateWatch?.();
+            if (!this.watchers.delete(watcher)) return;
+            watcher.disposeRegistryWatch();
+            watcher.disposeDelegateWatch?.();
         };
     }
 
     dispose(): void {
+        this.disposed = true;
+        for (const watcher of this.watchers) {
+            watcher.disposeRegistryWatch();
+            watcher.disposeDelegateWatch?.();
+        }
+        this.watchers.clear();
         this.delegate?.dispose?.();
     }
 

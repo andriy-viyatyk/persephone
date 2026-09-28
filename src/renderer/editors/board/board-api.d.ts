@@ -415,12 +415,16 @@ interface PersephoneSourceOpenEvent {
     readonly url: string;
     /** The raw source identity delivered by Persephone; no payload bytes are included. */
     readonly sourceUrl: string;
+    /** True when this source was opened with a private browser session. */
+    readonly privateSession?: boolean;
 }
 
 interface PersephoneSourceApi {
     /** Subscribe to runtime source opens for this board's main frame. Buffered events are
      * delivered FIFO. The initial source is delivered only through `getSourceUrl()`. */
     onOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void;
+    /** Whether the initial source from `getSourceUrl()` was opened with a private browser session. */
+    readonly initialSourcePrivateSession: boolean;
 }
 
 interface PersephoneBoardApi {
@@ -490,7 +494,8 @@ interface PersephoneBoardApi {
     getBoardBusy(): Promise<boolean>;
     /** The raw persisted source identity for this board, or `undefined` for a plain board.
      *  This never materializes a non-local source or returns a cache path. It is the initial
-     *  source only; runtime sources arrive through `source.onOpen()`. */
+     *  source only; runtime sources arrive through `source.onOpen()`. Pair it with
+     *  `source.initialSourcePrivateSession` when the board needs the initial privacy status. */
     getSourceUrl(): Promise<string | undefined>;
     /** Runtime source identities for this board's main frame. Persist accepted later hrefs
      *  yourself with `state.init(..., { restorableKeys })` if they must survive restart. */

@@ -22,68 +22,63 @@ type AppServiceDescriptorUnion = {
     [TKey in AppServiceKey]: AppServiceDescriptor<TKey, IApp[TKey]>;
 }[AppServiceKey];
 
+function defineService<const TKey extends AppServiceKey, TValue extends IApp[TKey]>(
+    descriptor: AppServiceDescriptor<TKey, TValue>,
+): AppServiceDescriptor<TKey, TValue> {
+    return descriptor;
+}
+
 export const appServiceDescriptors = [
-    {
+    defineService({
         key: "settings",
         load: async (): Promise<IApp["settings"]> => (await import("./settings")).settings,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "editors",
         load: async (): Promise<IApp["editors"]> => (await import("./editors")).editors,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "recent",
         load: async (): Promise<IApp["recent"]> => (await import("./recent")).recent,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "fs",
         load: async (): Promise<IApp["fs"]> => (await import("./fs")).fs,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "window",
         load: async (): Promise<Window> => (await import("./window")).appWindow,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "shell",
         load: async (): Promise<IApp["shell"]> => (await import("./shell")).shell,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "ui",
         load: async (): Promise<IApp["ui"]> => (await import("./ui")).ui,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "downloads",
         load: async (): Promise<IApp["downloads"]> => (await import("./downloads")).downloads,
         initialize: (downloads: IApp["downloads"]): Promise<void> => downloads.init(),
-    },
-    {
+    }),
+    defineService({
         key: "menuFolders",
         load: async (): Promise<IApp["menuFolders"]> => (await import("./menu-folders")).menuFolders,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "proc",
         load: async (): Promise<IApp["proc"]> => (await import("./proc")).proc,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "boards",
         load: async (): Promise<IApp["boards"]> => (await import("./boards")).boards,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "boardVars",
         load: async (): Promise<IApp["boardVars"]> => (await import("./board-vars/admin-api")).boardVarsAdmin,
-        initialize: undefined as undefined,
-    },
-    {
+    }),
+    defineService({
         key: "capabilities",
         load: async (): Promise<IApp["capabilities"]> => (await import("./capabilities")).capabilities,
         initialize: async (): Promise<void> => {
@@ -93,7 +88,7 @@ export const appServiceDescriptors = [
             ]);
             registerCapabilityTransport(boardCapabilityTransport);
         },
-    },
+    }),
 ] as const satisfies readonly AppServiceDescriptorUnion[];
 
 type RegisteredAppServiceKey = (typeof appServiceDescriptors)[number]["key"];

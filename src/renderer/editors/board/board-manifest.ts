@@ -250,6 +250,17 @@ export function hasStableBoardIdentity(
         && manifest.name.trim().length > 0;
 }
 
+/** Return the stable namespace identity shared by custom-editor and settings registration. */
+export function stableBoardIdentity(
+    manifest: { author?: unknown; name?: unknown } | null | undefined,
+): string | undefined {
+    const author = manifest?.author;
+    const name = manifest?.name;
+    if (typeof author !== "string" || typeof name !== "string"
+        || !author.trim() || !name.trim()) return undefined;
+    return `${author.trim()}/${name.trim()}`;
+}
+
 export type BoardEditorKind = "simple" | "content-host" | "stream-host";
 
 export function hostOwnsPipe(kind: BoardEditorKind): boolean {

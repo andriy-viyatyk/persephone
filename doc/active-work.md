@@ -37,7 +37,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](tasks/US-1552-video-resource-pipe/README.md)
   - [x] [US-1553: VideoEditor's source flow in one place; one provider-recovery helper](tasks/US-1553-video-source-flow/README.md)
   - [x] [US-1554: Board trust granting, bundled-board creation and Board Info each have one path](tasks/US-1554-board-trust-bundled-info-paths/README.md)
-  - [ ] US-1555: Small dead code, stale comments and a torrent-specific notice in core
+  - [x] [US-1555: Small dead code, stale comments and a torrent-specific notice in core](tasks/US-1555-small-cleanups/README.md)
 
 ## Planned
 

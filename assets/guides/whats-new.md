@@ -23,6 +23,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Bridge 1.23.0 unifies file MIME detection:** `board://` files and `__pipe` responses use the
   shared extension table, including explicit types for documents, archives, and fonts. Markdown,
   CSV, XML, and YAML board files are served as UTF-8.
+- **Bridge 1.24.0 reports private source sessions to boards:** `source.onOpen` events include
+  `privateSession: true` when the source was fetched through a Tor or Incognito session, and
+  `source.initialSourcePrivateSession` reports the initial source's status. The Torrent Viewer board
+  now displays the swarm privacy notice; Persephone no longer shows a torrent-specific toast.
 - **Agents can read Image Viewer pixels inline:** after narrowing an image page's editor to
   `image-view`, call `read()` to receive a bounded PNG image block with applied and original
   dimensions. It works for inactive pages and does not write a temporary file.
@@ -58,10 +62,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   viewer backed by bounded `readRange` pulls, with `torrent/viewer` descriptors carrying the full
   URL and embedded magnet needed for restore. The live-verified `browserUrlMasks` claim cancels a
   matching Browser download before saving it and opens its source in the board. A claim from a Tor
-  or Incognito page fetches the source through that page's session and shows a notice that tracker
-  and peer connections are not anonymous. Later sources, including opens targeted at another page,
-  are delivered to the existing Torrent Viewer page without replacing that page; private-session
-  claims retain the session used to fetch the source. The Torrent Viewer keeps one page per window;
+  or Incognito page fetches the source through that page's session; the Torrent Viewer board uses
+  bridge 1.24.0's private-session status to show that tracker and peer connections are not anonymous.
+  Later sources, including opens targeted at another page, are delivered to the existing Torrent
+  Viewer page without replacing that page; private-session claims retain the session used to fetch
+  the source. The Torrent Viewer keeps one page per window;
   its torrent list is shared across windows.
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
   scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;

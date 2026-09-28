@@ -158,12 +158,9 @@ of [`active-work.md`](../active-work.md) along with its task list.
 
 ### Platform roadmap — boards as modules, capability registry, external providers
 
-**Proposal, unscheduled.** [`doc/platform-roadmap.md`](../platform-roadmap.md) maps the current
-extension seams and lays out six phases in dependency order: refactor the pipeline/capability
-seams, bridge contract + module service process, open providers with ranged streaming, the
-capability bus + in-memory data channel, then two closing proofs — the torrent board + audio
-player, and the Excalidraw extraction. Video / REST extraction follow the roadmap as
-ordinary epics.
+**Completed historical roadmap.** [`doc/platform-roadmap.md`](../platform-roadmap.md) records the
+completed phases and their design history; the final phase is tracked in the
+[completed epic index](../epics/completed.md).
 
 ### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
 

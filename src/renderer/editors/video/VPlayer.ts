@@ -20,6 +20,7 @@ export interface VPlayerProps {
     muted?: boolean;
     parsedRequest?: ParsedHttpRequest | null;
     sourceUrl?: string;
+    reloadKey: number;
     onStateChange?: (state: PlayerState, error?: unknown) => void;
     onMutedChange?: (muted: boolean) => void;
     onEnded?: () => void;
@@ -40,6 +41,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
     private activeMode: ActiveMode = "none";
     private hlsSource = "";
     private hlsHeadersKey = "";
+    private lastReloadKey = 0;
     private inert = false;
 
     public constructor(props: VPlayerProps) {
@@ -119,6 +121,8 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
     }
 
     private syncMode(): void {
+        const reloadChanged = this.props.reloadKey !== this.lastReloadKey;
+        this.lastReloadKey = this.props.reloadKey;
         const source = this.props.src ?? "";
         const wantsAudio = this.props.format === "audio";
         const wantsHls = this.props.format === "m3u8" && Hls.isSupported();
@@ -145,7 +149,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         if (nextMode === "hls") {
             this.props.onMediaElementChange?.(this.video);
             this.ensureVideoJsPlayer();
-            this.syncHlsSource(source);
+            this.syncHlsSource(source, reloadChanged);
         } else if (nextMode === "native") {
             this.props.onMediaElementChange?.(this.video);
             this.video.className = "native";
@@ -153,6 +157,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
             this.video.autoplay = true;
             this.video.muted = this.props.muted ?? false;
             if (this.video.getAttribute("src") !== source) this.video.src = source;
+            else if (reloadChanged) this.video.load();
         } else {
             this.props.onMediaElementChange?.(null);
             this.video.removeAttribute("src");
@@ -184,10 +189,10 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         });
     }
 
-    private syncHlsSource(source: string): void {
+    private syncHlsSource(source: string, forceReload: boolean): void {
         const headers = this.props.parsedRequest?.headers;
         const headersKey = headers ? JSON.stringify(headers) : "";
-        if (this.hls && this.hlsSource === source && this.hlsHeadersKey === headersKey) return;
+        if (!forceReload && this.hls && this.hlsSource === source && this.hlsHeadersKey === headersKey) return;
 
         this.hls?.destroy();
         this.hls = null;

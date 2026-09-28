@@ -174,13 +174,15 @@ let filePathValue: string | undefined;
 const filePathResolvers: Array<(p: string | undefined) => void> = [];
 let sourceUrlSettled = false;
 let sourceUrlValue: string | undefined;
+let initialSourcePrivateSession = false;
 const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
 interface PersephoneSourceOpenEvent {
     readonly url: string;
     readonly sourceUrl: string;
+    readonly privateSession?: boolean;
 }
 const sourceOpenCallbacks = new Set<(event: PersephoneSourceOpenEvent) => void>();
-const pendingSourceOpenUrls: string[] = [];
+const pendingSourceOpenEvents: Array<{ sourceUrl: string; privateSession?: boolean }> = [];
 let folderPathValue: string | undefined;
 let pipePageId: string | undefined;
 let pipeUrlEnabled = false;
@@ -207,8 +209,12 @@ function settleSourceUrl(value: string | undefined): void {
     sourceUrlResolvers.length = 0;
 }
 
-function deliverSourceOpen(sourceUrl: string): void {
-    const event: PersephoneSourceOpenEvent = { url: sourceUrl, sourceUrl };
+function deliverSourceOpen(sourceUrl: string, privateSession?: boolean): void {
+    const event: PersephoneSourceOpenEvent = {
+        url: sourceUrl,
+        sourceUrl,
+        ...(privateSession ? { privateSession: true } : {}),
+    };
     for (const callback of [...sourceOpenCallbacks]) {
         try {
             callback(event);
@@ -220,9 +226,9 @@ function deliverSourceOpen(sourceUrl: string): void {
 
 function onSourceOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void {
     sourceOpenCallbacks.add(callback);
-    while (pendingSourceOpenUrls.length > 0) {
-        const sourceUrl = pendingSourceOpenUrls.shift();
-        if (sourceUrl !== undefined) deliverSourceOpen(sourceUrl);
+    while (pendingSourceOpenEvents.length > 0) {
+        const pending = pendingSourceOpenEvents.shift();
+        if (pending !== undefined) deliverSourceOpen(pending.sourceUrl, pending.privateSession);
     }
     return () => sourceOpenCallbacks.delete(callback);
 }
@@ -1014,6 +1020,7 @@ onHostMessage((event) => {
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
             sourceUrl?: string;
+            initialSourcePrivateSession?: boolean;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
             pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
         }
@@ -1033,7 +1040,10 @@ onHostMessage((event) => {
     }
     // sourceUrl carried at handshake (D11). Every handshake settles it — a plain board carries
     // `undefined`, so `getSourceUrl()` still resolves (to undefined).
-    if (!sourceUrlSettled) settleSourceUrl(data.sourceUrl);
+    if (!sourceUrlSettled) {
+        initialSourcePrivateSession = data.initialSourcePrivateSession === true;
+        settleSourceUrl(data.sourceUrl);
+    }
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
@@ -1058,8 +1068,12 @@ onHostMessage((event) => {
 onHostMessage((event) => {
     const data = event.data as BoardSourceOpenedMsg | undefined;
     if (!data || data.__persephone !== "source:opened" || typeof data.sourceUrl !== "string") return;
-    if (sourceOpenCallbacks.size === 0) pendingSourceOpenUrls.push(data.sourceUrl);
-    else deliverSourceOpen(data.sourceUrl);
+    const pending = {
+        sourceUrl: data.sourceUrl,
+        ...(data.privateSession === true ? { privateSession: true } : {}),
+    };
+    if (sourceOpenCallbacks.size === 0) pendingSourceOpenEvents.push(pending);
+    else deliverSourceOpen(pending.sourceUrl, pending.privateSession);
 });
 
 // A single listener settles all hostRequest replies by request id and expected reply type.
@@ -1547,7 +1561,7 @@ function createHandle(
         fire("notify", [message, type]);
     },
 
-    /** Main-owned per-board JSON storage. Every call crosses the bridge; there is no local cache. */
+    /** Board module service protocol. Calls cross the bridge to the main-owned service supervisor. */
     service: {
         /** Request the trusted board module service. The service starts lazily on first use. */
         request(message: unknown): Promise<unknown> {
@@ -1686,7 +1700,8 @@ function createHandle(
     },
 
     /** The raw persisted source identity for this board, or `undefined` for a plain board.
-     *  Unlike `getFilePath()`, this never materializes a non-local source or returns a cache path. */
+     *  Unlike `getFilePath()`, this never materializes a non-local source or returns a cache path.
+     *  Pair it with `source.initialSourcePrivateSession` for the initial privacy status. */
     getSourceUrl(): Promise<string | undefined> {
         if (sourceUrlSettled) return Promise.resolve(sourceUrlValue);
         return new Promise<string | undefined>((resolve) => sourceUrlResolvers.push(resolve));
@@ -1696,6 +1711,9 @@ function createHandle(
      * persists the initial source through `getSourceUrl()`; boards that need later sources after
      * restart must persist their accepted hrefs through `persephone.state.init`. */
     source: {
+        get initialSourcePrivateSession(): boolean {
+            return initialSourcePrivateSession;
+        },
         onOpen: onSourceOpen,
     },
 

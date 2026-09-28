@@ -103,12 +103,6 @@ export class PagesModel extends TModel<OpenFilesState> {
         };
     };
 
-    /** Kept as a no-op for callers from before . The new attachPage
-     *  reconciles editor subscriptions automatically when `editors[]` changes. */
-    resubscribeEditor = (_page: PageModel) => {
-        // No-op — see attachPage.
-    };
-
     detachPage = (page: PageModel) => {
         const pageId = page.id;
         void api.unregisterBoardPipePage(pageId);

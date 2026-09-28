@@ -300,9 +300,12 @@ download entry, and opens the source URL in the board that won the claim. Persep
 you with the board's name.
 
 When a matching download starts from a Tor or Incognito page, Persephone fetches the source through
-that page's browser session and shows this notice: **“The metadata was fetched privately, but the
-swarm connection is not anonymous.”** The private session applies to fetching the source only; the
-torrent's tracker and peer connections are not routed through Tor. Other peers can see your real IP.
+that page's browser session. With bridge 1.24.0, the board receives `privateSession: true` on
+`source.onOpen` for later source opens, and `source.initialSourcePrivateSession` reports the status
+of the page's initial source. The Torrent Viewer board uses this information to explain that the
+private session applies only to fetching the source; the torrent's tracker and peer connections are
+not routed through Tor, so other peers can see your real IP. Persephone no longer shows a
+torrent-specific privacy toast for this case.
 
 Only trusted boards and enabled bundled boards contribute claims. Registration order is trusted
 roots followed by bundled boards; an exact normalized duplicate is refused and reported as a

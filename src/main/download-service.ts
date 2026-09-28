@@ -126,12 +126,6 @@ class DownloadService {
                 boardRoot: claim.boardRoot,
                 ...(sessionHandle ? { sessionHandle } : {}),
             });
-            if (sessionHandle) {
-                sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
-                    message: "The metadata was fetched privately, but the swarm connection is not anonymous.",
-                    type: "info",
-                });
-            }
             sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
                 message: `${claim.boardName} claimed this download and opened its source URL.`,
                 type: "info",

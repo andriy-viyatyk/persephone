@@ -106,19 +106,11 @@ class BundledBoardRegistry {
 
         const candidateId = fpBasename(persistedRoot);
         const parentName = fpBasename(fpDirname(persistedRoot));
-        const parentMatchesBoards = process.platform === "win32"
-            ? parentName.toLowerCase() === "boards"
-            : parentName === "boards";
+        const parentMatchesBoards = fpNormalizeForCompare(parentName) === "boards";
         if (!candidateId || !parentMatchesBoards) return undefined;
 
-        const candidateKey = process.platform === "win32"
-            ? candidateId.toLowerCase()
-            : candidateId;
         return this.records.find((record) => {
-            const recordKey = process.platform === "win32"
-                ? record.id.toLowerCase()
-                : record.id;
-            return recordKey === candidateKey;
+            return fpNormalizeForCompare(record.id) === fpNormalizeForCompare(candidateId);
         })?.root;
     }
 

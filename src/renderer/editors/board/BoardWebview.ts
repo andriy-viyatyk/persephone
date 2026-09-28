@@ -562,6 +562,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             pipeUrlEnabled,
             filePath,
             sourceUrl,
+            ...(this.props.model.isInitialSourcePrivateSession() ? { initialSourcePrivateSession: true } : {}),
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
             materialize: !!filePath && !isPlainLocalPath(filePath) && !this.props.model.isStreamHost,
@@ -665,13 +666,14 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!frame?.contentWindow) return;
 
         while (true) {
-            const sourceUrl = this.props.model.peekPendingSourceUrl();
-            if (sourceUrl === undefined) return;
+            const pending = this.props.model.peekPendingSourceUrl();
+            if (pending === undefined) return;
             if (!this.live || this.generation !== generation || this.iframe !== frame
                 || this.props.model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
             const message: BoardSourceOpenedMsg = {
                 __persephone: "source:opened",
-                sourceUrl,
+                sourceUrl: pending.sourceUrl,
+                ...(pending.privateSession ? { privateSession: true } : {}),
             };
             try {
                 frame.contentWindow.postMessage(message, `board://${this.host}`);

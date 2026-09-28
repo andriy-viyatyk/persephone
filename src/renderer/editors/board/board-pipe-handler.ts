@@ -26,7 +26,6 @@ interface PipeMemo {
 interface PendingRead {
     pipeKind: BoardPipeKind;
     pipeId: string;
-    cancelled: boolean;
     /** US-1518: aborted on page close (`invalidateBoardPipePage()`) or on an explicit
      *  {requestId}-scoped cancel from main (`handleCancel()`, section 7a). Threaded into
      *  `createReadStream()`/`readBinary()` so the underlying module-service request is released
@@ -40,6 +39,12 @@ const pipeMemos = new Map<string, PipeMemo>();
 const contentResources = new Map<string, IContentPipe>();
 const pendingReads = new Map<string, PendingRead>();
 let initialized = false;
+
+function abortPendingRead(requestId: string, pending: PendingRead): void {
+    if (pendingReads.get(requestId) !== pending) return;
+    pending.controller.abort();
+    pendingReads.delete(requestId);
+}
 
 async function readBuffered(pipe: IContentPipe, memo: PipeMemo, signal?: AbortSignal): Promise<Buffer> {
     if (memo.buffer) return memo.buffer;
@@ -72,35 +77,29 @@ async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo, signal?: Abo
     if (memo.totalSize !== undefined) return memo.totalSize;
     if (!memo.totalSizePromise) {
         memo.totalSizePromise = (async () => {
-            if (!hasDirectStream(pipe)) {
-                if (pipe.transformers.length > 0) return (await readBuffered(pipe, memo, signal)).length;
-                if (typeof pipe.provider.stat !== "function") return (await readBuffered(pipe, memo, signal)).length;
-                const stat = await pipe.stat({ signal });
-                if (stat.exists && stat.size !== undefined) {
-                    if (typeof pipe.provider.createReadStream !== "function"
-                        && stat.size > MAX_BUFFERED_PIPE_BYTES) {
-                        throw new Error("The board pipe has no bounded streaming provider.");
-                    }
-                    if (typeof pipe.provider.createReadStream === "function") {
-                        // Deliberate re-read, not a redundant duplicate of the hasDirectStream()
-                        // check above: this runs AFTER pipe.stat() has round-tripped, by which
-                        // point the provider-capabilities announcement is guaranteed to have
-                        // arrived (see US-1474's task doc, "Timing was checked"). Reusing the
-                        // earlier hasDirectStream() result here would silently downgrade every
-                        // ranged-capable board provider to the buffered path on a cold start.
-                        memo.totalSize = stat.size;
-                        return stat.size;
-                    }
+            const canStreamBeforeStat = hasDirectStream(pipe);
+            if (pipe.transformers.length > 0) return (await readBuffered(pipe, memo, signal)).length;
+            if (typeof pipe.provider.stat !== "function") return (await readBuffered(pipe, memo, signal)).length;
+            const stat = await pipe.stat({ signal });
+            const sizeIsValid = stat.exists && stat.size !== undefined
+                && Number.isSafeInteger(stat.size) && stat.size >= 0;
+            if (!sizeIsValid) {
+                if (canStreamBeforeStat) {
+                    throw new Error("The board pipe provider did not report a usable resource size.");
                 }
                 return (await readBuffered(pipe, memo, signal)).length;
             }
 
-            const stat = await pipe.stat({ signal });
-            if (!stat.exists || stat.size === undefined || !Number.isSafeInteger(stat.size) || stat.size < 0) {
-                throw new Error("The board pipe provider did not report a usable resource size.");
+            // Provider capabilities can arrive while stat crosses the service bridge, so read
+            // createReadStream again after the await instead of trusting the earlier snapshot.
+            if (typeof pipe.provider.createReadStream === "function") {
+                memo.totalSize = stat.size;
+                return stat.size;
             }
-            memo.totalSize = stat.size;
-            return stat.size;
+            if (stat.size > MAX_BUFFERED_PIPE_BYTES) {
+                throw new Error("The board pipe has no bounded streaming provider.");
+            }
+            return (await readBuffered(pipe, memo, signal)).length;
         })().catch((error: unknown) => {
             memo.totalSizePromise = undefined;
             throw error;
@@ -208,16 +207,15 @@ function handleRequest(rawRequest: unknown): void {
     const pending: PendingRead = {
         pipeKind: request.pipeKind,
         pipeId: request.pipeId,
-        cancelled: false,
         controller: new AbortController(),
     };
     pendingReads.set(request.requestId, pending);
     void readChunk(request, pending.controller.signal)
         .then((result) => {
-            if (!pending.cancelled && pendingReads.get(request.requestId) === pending) reply(result);
+            if (!pending.controller.signal.aborted && pendingReads.get(request.requestId) === pending) reply(result);
         })
         .catch((error: unknown) => {
-            if (!pending.cancelled && pendingReads.get(request.requestId) === pending) {
+            if (!pending.controller.signal.aborted && pendingReads.get(request.requestId) === pending) {
                 reply({
                     requestId: request.requestId,
                     ok: false,
@@ -236,9 +234,7 @@ function handleCancel(rawMessage: unknown): void {
     if (!message || typeof message.requestId !== "string") return;
     const pending = pendingReads.get(message.requestId);
     if (!pending) return;
-    pending.cancelled = true;
-    pending.controller.abort();
-    pendingReads.delete(message.requestId);
+    abortPendingRead(message.requestId, pending);
 }
 
 export function initBoardPipeHandler(): void {
@@ -252,9 +248,7 @@ export function invalidateBoardPipePage(pageId: string): void {
     pipeMemos.delete(`page:${pageId}`);
     for (const [requestId, pending] of pendingReads) {
         if (pending.pipeKind !== "page" || pending.pipeId !== pageId) continue;
-        pending.cancelled = true;
-        pending.controller.abort();
-        pendingReads.delete(requestId);
+        abortPendingRead(requestId, pending);
     }
 }
 
@@ -276,8 +270,6 @@ export function invalidateBoardPipeResource(resourceId: string): void {
     pipeMemos.delete(`resource:${resourceId}`);
     for (const [requestId, pending] of pendingReads) {
         if (pending.pipeKind !== "resource" || pending.pipeId !== resourceId) continue;
-        pending.cancelled = true;
-        pending.controller.abort();
-        pendingReads.delete(requestId);
+        abortPendingRead(requestId, pending);
     }
 }

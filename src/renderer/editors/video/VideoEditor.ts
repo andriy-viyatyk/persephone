@@ -50,6 +50,8 @@ export interface VideoEditorState extends EditorStateBase {
      * Transient — not persisted across app restarts.
      */
     streamUrl: string;
+    /** Transient retry signal for reloading a source whose URL did not change. */
+    reloadKey: number;
 }
 
 /** Last mute state within this window session — remembered across video player
@@ -78,6 +80,7 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
     pageMuted: sessionMuted,
     parsedRequest: null,
     streamUrl: "",
+    reloadKey: 0,
 });
 
 // ── Model ────────────────────────────────────────────────────────────────────
@@ -291,6 +294,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             s.parsedRequest = parsed ?? null;
             s.playerState = "loading";
             s.streamUrl = format === "m3u8" ? resolvedUrl : "";
+            s.reloadKey++;
         });
         await this.startSource(resolvedUrl, parsed ?? null, { force: true, rebuildPipe: true });
     };
@@ -587,6 +591,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     getRestoreData(): EditorDescriptor {
         const s = this.state.get();
+        const { reloadKey: _reloadKey, ...persistedState } = s;
         // streamUrl is transient (ephemeral streaming session) — never persist.
         // Reset transient playback state so the descriptor never carries
         // "loading"/"playing" (mirrors applyRestoreData + the legacy
@@ -599,7 +604,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             editorId: this.editorId,
             id: s.id,
             state: {
-                ...s,
+                ...persistedState,
                 playerState,
                 streamUrl: "",
             } as unknown as Record<string, unknown>,

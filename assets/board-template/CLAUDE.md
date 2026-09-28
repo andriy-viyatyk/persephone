@@ -767,6 +767,24 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   Materialized files are **read-only**: writing to the cache path does not write back to the
   original source.
 
+- `persephone.getSourceUrl()` → `Promise<string | undefined>` — returns the identity URL of the
+  board's initial source without materializing it; `undefined` means there is no initial source.
+  Pair it with `persephone.source.initialSourcePrivateSession` to read whether that initial source
+  came from a private browser session. For later sources routed to this board, subscribe with
+  `persephone.source.onOpen(callback)`: each event contains `url` and `sourceUrl`, and includes
+  `privateSession: true` only for a private-session source. These fields describe the source
+  session; they do not mean later network activity is anonymous. A board can keep any
+  source-specific explanation in its own UI:
+  ```js
+  const initialUrl = await persephone.getSourceUrl();
+  if (initialUrl && persephone.source.initialSourcePrivateSession === true) {
+      showPrivateSourceInfo(initialUrl);
+  }
+  persephone.source.onOpen(({ url, sourceUrl, privateSession }) => {
+      if (privateSession === true) showPrivateSourceInfo(sourceUrl || url);
+  });
+  ```
+
 - `persephone.getFolderPath()` → `Promise<string | undefined>` — the absolute directory claimed by
   a direct-folder editor, or `undefined` for plain boards and file-only openings. It waits for the
   same host handshake as `getFilePath()`. This is separate from `boardRoot`, the folder containing

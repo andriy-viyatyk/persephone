@@ -24,6 +24,7 @@ interface VideoSurfaceState {
     muted: boolean;
     parsedRequest: ParsedHttpRequest | null;
     playerState: PlayerState;
+    reloadKey: number;
 }
 
 function requireVideoModel(model: EditorModel): VideoEditor {
@@ -113,6 +114,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
                 muted: current.pageMuted,
                 parsedRequest: current.parsedRequest,
                 playerState: current.playerState,
+                reloadKey: current.reloadKey,
             }),
             this.syncSurface,
         );
@@ -144,6 +146,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             muted: state.pageMuted,
             parsedRequest: state.parsedRequest,
             playerState: state.playerState,
+            reloadKey: state.reloadKey,
         };
     }
 
@@ -183,6 +186,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             muted: state.muted,
             parsedRequest: state.parsedRequest,
             sourceUrl: state.url,
+            reloadKey: state.reloadKey,
             onStateChange: this.model.onPlayerStateChange,
             onMutedChange: this.model.onMutedChange,
             onEnded: this.model.playNext,

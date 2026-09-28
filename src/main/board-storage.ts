@@ -30,7 +30,7 @@ interface CachedBoardStorage {
     state: BoardStorageState;
 }
 
-/** The operation contract consumed by the future service adapter (US-1468). */
+/** Storage operations used by the main-owned service adapter and board bridge. */
 export interface BoardStorageOperationContract {
     get(key: string): Promise<JsonValue | undefined>;
     set(key: string, value: JsonValue): Promise<void>;

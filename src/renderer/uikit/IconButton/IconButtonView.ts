@@ -46,7 +46,6 @@ export class IconButtonView extends VanillaView<IconButtonViewProps> {
     }
 
     protected onMount(): void {
-        this.applyConstructionRestProps(this.props);
         this.applyProps(this.props);
         this.root.append(this.iconHost);
         this.updateIcon(this.props.icon);
@@ -80,6 +79,7 @@ export class IconButtonView extends VanillaView<IconButtonViewProps> {
             children: _children,
             ..._rest
         } = props;
+        applyRestProps(this.root, _rest as Record<string, unknown>, this.restPropsState);
 
         const button = this.root as HTMLButtonElement;
         button.type = props.type ?? "button";
@@ -104,25 +104,6 @@ export class IconButtonView extends VanillaView<IconButtonViewProps> {
         else delete this.root.dataset.strikethrough;
         if (hideUntilParentHover) this.root.dataset.visibility = "parent-hover";
         else delete this.root.dataset.visibility;
-    }
-
-    private applyConstructionRestProps(props: IconButtonViewProps): void {
-        const {
-            name: _name,
-            size: _size,
-            variant: _variant,
-            active: _active,
-            warning: _warning,
-            disabled: _disabled,
-            title: _title,
-            onClick: _onClick,
-            icon: _icon,
-            hideUntilParentHover: _hideUntilParentHover,
-            strikethrough: _strikethrough,
-            children: _children,
-            ...rest
-        } = props;
-        applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
     /**

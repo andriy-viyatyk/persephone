@@ -1,4 +1,4 @@
-import { readBoardManifest, hasStableBoardIdentity } from "../editors/board/board-manifest";
+import { readBoardManifest, stableBoardIdentity } from "../editors/board/board-manifest";
 import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
 import { boardTrust } from "./board-trust";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
@@ -26,10 +26,9 @@ export async function resolveBoardNamespace(boardRoot: string): Promise<string> 
     const rootKey = fpNormalizeForCompare(boardRoot);
     const manifest = await readBoardManifest(boardRoot);
     let namespace: string;
-    if (hasStableBoardIdentity(manifest)) {
-        const author = typeof manifest?.author === "string" ? manifest.author.trim() : "";
-        const name = typeof manifest?.name === "string" ? manifest.name.trim() : "";
-        namespace = `${author}/${name}`;
+    const identity = stableBoardIdentity(manifest);
+    if (identity) {
+        namespace = identity;
     } else {
         await bundledBoardRegistry.ensureInitialized();
         const bundled = bundledBoardRegistry.list().find(
