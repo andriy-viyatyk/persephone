@@ -100,7 +100,10 @@ and `/src/renderer/guides/` resolves the corresponding mounts for the About brow
 
 The shared board-pipe helpers are deliberately process-neutral: `/src/shared/range-utils.ts` parses
 inclusive ranges and builds Content-Range values; `/src/shared/board-pipe-constants.ts` holds the
-board-pipe IPC chunk and fallback-buffer limits.
+board-pipe IPC chunk and fallback-buffer limits. `/src/shared/mime-types.ts` maps filename
+extensions to MIME types for main and renderer consumers. The main-process
+`/src/main/board-pipe-range-reader.ts` owns board-pipe range resolution, reply validation, and
+bounded continuation reads for both board protocol and video-stream responses.
 
 The renderer dev server ignores `snip-tool/target/`, `mneme/target/`, `launcher/target/`, and
 `release/` in its Vite watcher. These are build outputs rather than import sources; watching them
@@ -968,6 +971,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-protocol-service.ts # board:// scheme handler — host→board-root registry; serves board files + CSP; injects --p-* palette, boot context, and the bridge shim into served HTML
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
 ├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
+├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
 ├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, status, and teardown
@@ -986,7 +990,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── published-boards-service.ts # Published-boards catalog — net.fetch raw boards-manifest.json (24h-gated, cached, isSafeBoardId/isSafeAssetName-guarded), getBoardVersions(id) on demand, ePublishedBoardsUpdated broadcast; screenshotUrl derived on the way out (never cached); PERSEPHONE_BOARDS_BRANCH dev override
 ├── board-download-service.ts # Streamed board-archive download — net.fetch → temp file + incremental sha256 verify, throttled eBoardInstallProgress, digest check
-├── video-stream-server.ts  # Local HTTP streaming server (range requests, faststart MP4 relocation, session management)
+├── video-stream-server.ts  # Local HTTP streaming server (shared range handling, faststart MP4 relocation, session management)
 ├── vlc-launcher.ts         # VLC process launcher (spawn + auto-detect VLC path)
 ├── terminal-launcher.ts    # Terminal launcher — detectTerminal (pwsh→powershell→cmd via `where`) + openTerminalAt (cmd /c start, gives the console shell its own window) for "Open Terminal here"
 ├── tray-setup.ts           # System tray

@@ -4,15 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { BoardThemePalette } from "../ipc/board-bridge-channels";
-import { MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
-import {
-    contentLength,
-    contentRangeHeader,
-    parseRangeHeader,
-    unsatisfiableContentRangeHeader,
-} from "../shared/range-utils";
-import type { BoardPipeKind, BoardPipeReadReply } from "../ipc/board-pipe-channels";
-import { BoardPipeError, boardPipeService } from "./board-pipe-service";
+import type { BoardPipeKind } from "../ipc/board-pipe-channels";
+import { BoardPipeError } from "./board-pipe-service";
+import { readPipeRange, BoardPipeRangeError } from "./board-pipe-range-reader";
+import { mimeTypeForPath } from "../shared/mime-types";
 import { errMessage } from "../shared/utils";
 import * as boardLog from "./board-log";
 
@@ -174,82 +169,6 @@ function injectHead(html: string, fragment: string): string {
     return fragment + html;
 }
 
-function boardMimeType(file: string): string {
-    switch (path.extname(file).toLowerCase()) {
-        case ".html":
-        case ".htm":
-            return "text/html";
-        case ".js":
-        case ".mjs":
-            return "text/javascript";
-        case ".css":
-            return "text/css";
-        case ".json":
-        case ".map":
-            return "application/json";
-        case ".svg":
-            return "image/svg+xml";
-        case ".avif":
-            return "image/avif";
-        case ".png":
-            return "image/png";
-        case ".jpg":
-        case ".jpeg":
-            return "image/jpeg";
-        case ".gif":
-            return "image/gif";
-        case ".webp":
-            return "image/webp";
-        case ".ico":
-            return "image/x-icon";
-        case ".woff":
-            return "font/woff";
-        case ".woff2":
-            return "font/woff2";
-        case ".ttf":
-            return "font/ttf";
-        case ".otf":
-            return "font/otf";
-        case ".wasm":
-            return "application/wasm";
-        case ".txt":
-            return "text/plain";
-        case ".aac":
-            return "audio/aac";
-        case ".flac":
-            return "audio/flac";
-        case ".m4a":
-            return "audio/mp4";
-        case ".mp3":
-            return "audio/mpeg";
-        case ".oga":
-        case ".ogg":
-            return "audio/ogg";
-        case ".opus":
-            return "audio/opus";
-        case ".wav":
-            return "audio/wav";
-        case ".avi":
-            return "video/x-msvideo";
-        case ".mkv":
-            return "video/x-matroska";
-        case ".mov":
-            return "video/quicktime";
-        case ".mp4":
-            return "video/mp4";
-        case ".m3u8":
-            return "application/vnd.apple.mpegurl";
-        case ".ts":
-            return "video/mp2t";
-        case ".webm":
-            return "video/webm";
-        case ".ogv":
-            return "video/ogg";
-        default:
-            return "application/octet-stream";
-    }
-}
-
 /** Text MIME types served with an explicit `charset=utf-8`.
  *
  *  Board sources are read and re-encoded as UTF-8, but a bare `text/html` leaves the
@@ -264,6 +183,10 @@ const UTF8_MIME_TYPES = new Set([
     "text/javascript",
     "text/css",
     "application/json",
+    "text/markdown",
+    "text/csv",
+    "application/xml",
+    "application/yaml",
     "image/svg+xml",
     "text/plain",
 ]);
@@ -294,108 +217,40 @@ async function serveBoardPipe(
     // when the consumer (Chromium) abandons an in-flight response, e.g. a <video> seek that
     // supersedes the previous Range request without the page ever closing (US-1518 section 7a).
     const abort = new AbortController();
-    requestSignal?.addEventListener("abort", () => abort.abort(), { once: true });
+    if (requestSignal?.aborted) abort.abort();
+    else requestSignal?.addEventListener("abort", () => abort.abort(), { once: true });
 
-    let first: BoardPipeReadReply;
+    let result;
     try {
-        first = await boardPipeService.read(host, pipeKind, pipeId, rangeHeader, undefined, abort.signal);
+        result = await readPipeRange(pipeKind, pipeId, host, rangeHeader, abort.signal);
     } catch (error: unknown) {
         const status = error instanceof BoardPipeError ? error.status : 503;
-        return new Response(status === 404 ? "Not found" : errMessage(error, "Board pipe unavailable."), { status });
+        const body = error instanceof BoardPipeRangeError && error.source === "read" && status === 404
+            ? "Not found"
+            : errMessage(error, "Board pipe unavailable.");
+        return new Response(body, { status });
     }
-    if (first.ok === false) {
-        return new Response(first.error, { status: first.status });
-    }
-
-    const totalSize = first.totalSize;
-    const requestedRange = rangeHeader === undefined
-        ? totalSize > 0 ? { start: 0, end: totalSize - 1 } : null
-        : parseRangeHeader(rangeHeader, totalSize);
-    if (!requestedRange) {
-        if (rangeHeader !== undefined) {
-            return new Response(null, {
-                status: 416,
-                headers: {
-                    "Content-Range": unsatisfiableContentRangeHeader(totalSize),
-                    "Accept-Ranges": "bytes",
-                },
-            });
-        }
-        return new Response(null, {
-            status: 200,
-            headers: {
-                "Content-Type": first.contentType,
-                "Accept-Ranges": "bytes",
-                "Content-Length": "0",
-            },
-        });
-    }
-    if (!first.range
-        || first.range.start !== requestedRange.start
-        || first.range.end < first.range.start
-        || first.range.end > requestedRange.end
-        || first.range.end !== first.range.start + first.data.length - 1
-        || first.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
-        return new Response("Board pipe returned an invalid byte range.", { status: 503 });
-    }
-
-    const headers = new Headers({
-        "Content-Type": first.contentType || "application/octet-stream",
-        "Accept-Ranges": "bytes",
-        "Content-Length": String(contentLength(requestedRange)),
-    });
-    const status = rangeHeader === undefined ? 200 : 206;
-    if (status === 206) headers.set("Content-Range", contentRangeHeader(requestedRange, totalSize));
-
+    const iterator = result.chunks[Symbol.asyncIterator]();
+    const headers = new Headers(result.headers);
     const body = new ReadableStream<Uint8Array>({
-        start(controller) {
-            void (async () => {
-                try {
-                    controller.enqueue(first.data);
-                    // `first.range` is present for every successful read, but assert nothing:
-                    // a malformed reply would otherwise throw inside the stream start callback,
-                    // where it surfaces as a broken response body rather than a handled error.
-                    if (!first.range) throw new Error("board-pipe-missing-range");
-                    let nextStart = first.range.end + 1;
-                    while (nextStart <= requestedRange.end) {
-                        if (abort.signal.aborted) return; // consumer gone; stop asking for more
-                        const nextEnd = Math.min(
-                            requestedRange.end,
-                            nextStart + MAX_BOARD_PIPE_CHUNK_BYTES - 1,
-                        );
-                        const chunk = await boardPipeService.read(
-                            host,
-                            pipeKind,
-                            pipeId,
-                            undefined,
-                            { start: nextStart, end: nextEnd },
-                            abort.signal,
-                        );
-                        if (chunk.ok === false) throw new BoardPipeError(chunk.status, chunk.error);
-                        if (!chunk.range
-                            || chunk.totalSize !== totalSize
-                            || chunk.range.start !== nextStart
-                            || chunk.range.end < chunk.range.start
-                            || chunk.range.end > nextEnd
-                            || chunk.range.end !== chunk.range.start + chunk.data.length - 1
-                            || chunk.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
-                            throw new Error("Board pipe returned an invalid continuation range.");
-                        }
-                        controller.enqueue(chunk.data);
-                        nextStart = chunk.range.end + 1;
-                    }
-                    controller.close();
-                } catch (error: unknown) {
-                    if (abort.signal.aborted) return; // cancellation, not a real failure — nothing to report
-                    controller.error(new Error(errMessage(error, "Board pipe unavailable.")));
-                }
-            })();
+        async pull(controller) {
+            try {
+                if (abort.signal.aborted) { controller.close(); return; }
+                const next = await iterator.next();
+                if (abort.signal.aborted) { controller.close(); return; }
+                if (next.done) controller.close();
+                else controller.enqueue(next.value);
+            } catch (error: unknown) {
+                if (abort.signal.aborted) controller.close();
+                else controller.error(new Error(errMessage(error, "Board pipe unavailable.")));
+            }
         },
         cancel(reason: unknown) {
             abort.abort(reason);
+            void iterator.return?.();
         },
     });
-    return new Response(body, { status, headers });
+    return new Response(result.status === 416 ? null : body, { status: result.status, headers });
 }
 
 async function serveBoardFile(request: Request): Promise<Response> {
@@ -428,7 +283,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
     // Empty path → the board's entry point. No traversal guard (US-723 C1).
     const rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
     const resolved = path.resolve(root, rel);
-    const mime = boardMimeType(resolved);
+    const mime = mimeTypeForPath(resolved);
 
     let response: Response;
     try {

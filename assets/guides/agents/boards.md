@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.22.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.23.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -25,6 +25,8 @@ and set `minBridgeVersion: "1.21.0"`.
 Bridge `1.22.0` adds host-managed module-service lifecycle callbacks and structured service error
 codes; services using `persephone.service.onRequest()` or `onShutdown()` should set
 `minBridgeVersion: "1.22.0"`.
+Bridge `1.23.0` uses one extension-to-MIME table for `board://` files and `__pipe` responses;
+markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` for getting Persephone's file icons as
 image URLs. Bridge `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access

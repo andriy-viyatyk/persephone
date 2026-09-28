@@ -60,7 +60,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1543 | [The service host owns the service lifecycle protocol](../tasks/US-1543-service-lifecycle-protocol/README.md) | 2 — contracts | L | Done |
 | US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |
 | US-1545 | [Split the module-service supervisor; one state-transition helper](../tasks/US-1545-supervisor-split/README.md) | 3 — structure | L | Done |
-| US-1546 | One `__pipe` range reader in main; one MIME table | 3 — structure | M | Planned |
+| US-1546 | [One `__pipe` range reader in main; one MIME table](../tasks/US-1546-pipe-range-reader/README.md) | 3 — structure | M | Done |
 | US-1548 | One ownership registry for providers, schemes, capabilities and URL masks | 3 — structure | M | Planned |
 | US-1549 | Board manifest parsed once into a normalized model | 3 — structure | M | Planned |
 | US-1550 | Scheme hooks: a `handoff()` helper and shared URL helpers | 3 — structure | S | Planned |
@@ -650,6 +650,11 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
 ### US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters
 
 *Code-verified.* Large. Do before US-1553.
+
+- **After US-1546:** the video server no longer has its own pull loop. `servePipeRequest` calls
+  `readPipeRange("page", pageId, undefined, rangeHeader, signal)` in `src/main/board-pipe-range-reader.ts`,
+  so switching to the `resource` kind means changing that call and how the session registers its
+  resource id. The range and validation code does not need to change.
 
 - **Why the waiters exist:** EPIC-113 reused the board `page` pipe kind for the video server, so a
   video session can exist only once main knows the page. During restore, editors run before

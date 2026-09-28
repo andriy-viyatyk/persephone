@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.22.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.23.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -16,6 +16,8 @@ optional `representation` to capability discovery and manifest declarations. Boa
 `minBridgeVersion: "1.21.0"`. Bridge `1.22.0` adds host-managed module-service lifecycle callbacks
 and structured service errors; service entries using these APIs must set
 `minBridgeVersion: "1.22.0"`.
+Bridge `1.23.0` uses one extension-to-MIME table for `board://` files and `__pipe` responses;
+markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
 `data:` URLs and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your

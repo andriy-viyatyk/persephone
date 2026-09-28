@@ -5,6 +5,7 @@ import { fs } from "../../api/fs";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { prepareFileIconAsync, resolveFileIcon } from "../../components/icons/language-icon-resolver";
 import { getBoardIconPathSync, resolveBoardIcon } from "./board-icon-cache";
+import { mimeTypeForPath } from "../../../shared/mime-types";
 
 /**
  * `persephone.icons.forFiles()` host side (US-1533): resolve file names to the icon Persephone
@@ -22,11 +23,7 @@ export interface BoardFileIcons {
     icons: Record<string, number>;
 }
 
-const BOARD_ICON_MIME: Record<string, string> = {
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".ico": "image/x-icon",
-};
+const BOARD_ICON_EXTENSIONS = new Set([".svg", ".png", ".ico"]);
 
 /** Serialize a DOM-built icon. `currentColor` means nothing inside an `<img>`, so it becomes the
  *  theme's icon colour; the board re-requests on a theme change (the shim drops its cache). */
@@ -39,7 +36,8 @@ function svgIconUrl(icon: SvgIconComponent, iconColor: string): string {
 
 async function boardIconUrl(boardRoot: string, iconColor: string): Promise<string> {
     const path = getBoardIconPathSync(boardRoot) ?? await resolveBoardIcon(boardRoot);
-    const mime = path ? BOARD_ICON_MIME[fpExtname(path).toLowerCase()] : undefined;
+    const extension = path ? fpExtname(path).toLowerCase() : "";
+    const mime = path && BOARD_ICON_EXTENSIONS.has(extension) ? mimeTypeForPath(path) : undefined;
     if (path && mime) {
         try {
             const bytes = await fs.readBinary(path);

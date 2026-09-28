@@ -144,7 +144,9 @@ renderer and Node execution. A declared service is shown in Board Info and in th
 `app.boards.list()` status payload.
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.22.0**. Bridge `1.22.0` adds host-managed module-service lifecycle
+The current board bridge is **1.23.0**. Bridge `1.23.0` uses one extension-to-MIME table for
+`board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
+Bridge `1.22.0` adds host-managed module-service lifecycle
 and structured service errors. Bridge `1.21.0` adds optional `representation` to capability
 discovery and manifest declarations. A board declaring `content.view` must provide one non-empty
 representation per supported format and set `minBridgeVersion: "1.21.0"`. Capability requests to the same handler page are delivered

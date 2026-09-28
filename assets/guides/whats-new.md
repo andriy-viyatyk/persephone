@@ -14,6 +14,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Bridge 1.23.0 unifies file MIME detection:** `board://` files and `__pipe` responses use the
+  shared extension table, including explicit types for documents, archives, and fonts. Markdown,
+  CSV, XML, and YAML board files are served as UTF-8.
 - **Agents can read Image Viewer pixels inline:** after narrowing an image page's editor to
   `image-view`, call `read()` to receive a bounded PNG image block with applied and original
   dimensions. It works for inactive pages and does not write a temporary file.

@@ -16,19 +16,11 @@ import { rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
 import { filePathMenuItems } from "../shared/editor-menu-items";
 import { openImageForEdit } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
+import { mimeTypeForPath } from "../../../shared/mime-types";
 
 function extToMime(ext: string): string {
-    const mimeTypes: Record<string, string> = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-        ".ico": "image/x-icon",
-        ".svg": "image/svg+xml",
-    };
-    return mimeTypes[ext.toLowerCase()] || "image/png";
+    const mime = mimeTypeForPath(`file${ext.toLowerCase()}`);
+    return mime.startsWith("image/") ? mime : "image/png";
 }
 
 export interface ImageEditorState extends EditorStateBase {

@@ -1,12 +1,11 @@
 import http from "node:http";
 import https from "node:https";
 import fs from "node:fs";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { pipeline } from "node:stream/promises";
 import type { VideoStreamSessionConfig, VideoStreamSessionResult } from "../ipc/api-param-types";
-import type { BoardPipeReadReply } from "../ipc/board-pipe-channels";
-import { BoardPipeError, boardPipeService } from "./board-pipe-service";
-import { MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
+import { BoardPipeError } from "./board-pipe-service";
+import { readPipeRange } from "./board-pipe-range-reader";
 import {
     contentLength,
     contentRangeHeader,
@@ -15,6 +14,7 @@ import {
     type ByteRange,
 } from "../shared/range-utils";
 import { errMessage } from "../shared/utils";
+import { mimeTypeForPath } from "../shared/mime-types";
 
 const DEFAULT_PORT = 7866;
 const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
@@ -181,6 +181,7 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
     const { config } = session;
 
     const onError = (err: unknown) => {
+        if (res.destroyed) return;
         if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end(errMessage(err, "Internal Server Error"));
@@ -213,45 +214,43 @@ async function handleFileRequest(
     res: http.ServerResponse,
 ): Promise<void> {
     const stat = await fs.promises.stat(filePath);
-    const totalSize = stat.size;
-    const contentType = getContentTypeFromPath(filePath);
-
-    if (rangeHeader) {
-        const range = parseRangeHeader(rangeHeader, totalSize);
-        if (!range) {
-            res.writeHead(416, { "Content-Range": `bytes */${totalSize}` });
-            res.end();
-            return;
+    await serveRange(res, rangeHeader, stat.size, mimeTypeForPath(filePath), async (range) => {
+        const stream = fs.createReadStream(filePath, { start: range.start, end: range.end });
+        try {
+            await pipeline(stream, res);
+        } catch (error: unknown) {
+            if (isPrematureClose(error) && res.destroyed) return;
+            throw error;
         }
+    });
+}
 
-        const { start, end } = range;
-        const chunkSize = end - start + 1;
-
+async function serveRange(
+    res: http.ServerResponse,
+    rangeHeader: string | undefined,
+    totalSize: number,
+    contentType: string,
+    writeRange: (range: ByteRange) => Promise<void>,
+): Promise<void> {
+    const range = rangeHeader ? parseRangeHeader(rangeHeader, totalSize) : null;
+    if (rangeHeader && !range) {
+        res.writeHead(416, { "Content-Range": unsatisfiableContentRangeHeader(totalSize) });
+        res.end();
+        return;
+    }
+    if (range) {
         res.writeHead(206, {
             "Content-Type": contentType,
-            "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+            "Content-Range": contentRangeHeader(range, totalSize),
             "Accept-Ranges": "bytes",
-            "Content-Length": chunkSize,
+            "Content-Length": contentLength(range),
         });
-
-        const stream = fs.createReadStream(filePath, { start, end });
-        stream.on("error", (err) => {
-            if (!res.writableEnded) res.destroy(err);
-        });
-        stream.pipe(res);
-    } else {
-        res.writeHead(200, {
-            "Content-Type": contentType,
-            "Accept-Ranges": "bytes",
-            "Content-Length": totalSize,
-        });
-
-        const stream = fs.createReadStream(filePath);
-        stream.on("error", (err) => {
-            if (!res.writableEnded) res.destroy(err);
-        });
-        stream.pipe(res);
+        await writeRange(range);
+        return;
     }
+    res.writeHead(200, { "Content-Type": contentType, "Accept-Ranges": "bytes", "Content-Length": totalSize });
+    if (totalSize > 0) await writeRange({ start: 0, end: totalSize - 1 });
+    else res.end();
 }
 
 // ── Faststart file source (moov relocated before mdat) ─────────────
@@ -262,36 +261,8 @@ async function handleFaststartRequest(
     res: http.ServerResponse,
 ): Promise<void> {
     const { totalSize, filePath } = layout;
-    const contentType = getContentTypeFromPath(filePath);
-
-    if (rangeHeader) {
-        const range = parseRangeHeader(rangeHeader, totalSize);
-        if (!range) {
-            res.writeHead(416, { "Content-Range": `bytes */${totalSize}` });
-            res.end();
-            return;
-        }
-
-        const { start, end } = range;
-        const chunkSize = end - start + 1;
-
-        res.writeHead(206, {
-            "Content-Type": contentType,
-            "Content-Range": `bytes ${start}-${end}/${totalSize}`,
-            "Accept-Ranges": "bytes",
-            "Content-Length": chunkSize,
-        });
-
-        await streamVirtualRange(layout, start, end, res);
-    } else {
-        res.writeHead(200, {
-            "Content-Type": contentType,
-            "Accept-Ranges": "bytes",
-            "Content-Length": totalSize,
-        });
-
-        await streamVirtualRange(layout, 0, totalSize - 1, res);
-    }
+    await serveRange(res, rangeHeader, totalSize, mimeTypeForPath(filePath), (range) =>
+        streamVirtualRange(layout, range.start, range.end, res));
 }
 
 /** Serve a byte range from the virtual faststart layout. */
@@ -315,8 +286,7 @@ async function streamVirtualRange(
 
         if (seg.source === "buffer" && seg.buffer) {
             const slice = seg.buffer.subarray(segOffset, segOffset + segLength);
-            const ok = res.write(slice);
-            if (!ok) await new Promise<void>((r) => res.once("drain", r));
+            await writeResponseChunk(slice, res);
         } else {
             const fileStart = seg.fileOffset + segOffset;
             const fileEnd = fileStart + segLength - 1;
@@ -327,20 +297,42 @@ async function streamVirtualRange(
 }
 
 /** Pipe a byte range from a file to a writable stream (without ending it). */
-function pipeFileRange(
+async function pipeFileRange(
     filePath: string,
     start: number,
     end: number,
     dest: http.ServerResponse,
 ): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const stream = fs.createReadStream(filePath, { start, end });
-        stream.on("error", (err) => {
-            if (!dest.writableEnded) dest.destroy(err);
-            reject(err);
-        });
-        stream.on("end", resolve);
-        stream.pipe(dest, { end: false });
+    const stream = fs.createReadStream(filePath, { start, end });
+    try {
+        await pipeline(stream, dest, { end: false });
+    } catch (error: unknown) {
+        if (isPrematureClose(error) && dest.destroyed) return;
+        throw error;
+    }
+}
+
+function isPrematureClose(error: unknown): boolean {
+    return typeof error === "object" && error !== null && "code" in error
+        && (error as { code?: unknown }).code === "ERR_STREAM_PREMATURE_CLOSE";
+}
+
+function writeResponseChunk(chunk: Uint8Array, res: http.ServerResponse): Promise<void> {
+    if (res.destroyed || res.writableEnded) return Promise.resolve();
+    if (res.write(chunk)) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+        const cleanup = (): void => {
+            res.removeListener("drain", onDrain);
+            res.removeListener("close", onClose);
+            res.removeListener("error", onError);
+        };
+        const onDrain = (): void => { cleanup(); resolve(); };
+        const onClose = (): void => { cleanup(); resolve(); };
+        const onError = (error: Error): void => { cleanup(); reject(error); };
+        res.once("drain", onDrain);
+        res.once("close", onClose);
+        res.once("error", onError);
+        if (res.destroyed || res.writableEnded) onClose();
     });
 }
 
@@ -621,19 +613,6 @@ function makeHttpRequest(
 
 // ── Utilities ───────────────────────────────────────────────────────
 
-function getContentTypeFromPath(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
-    switch (ext) {
-        case ".mp4":  return "video/mp4";
-        case ".webm": return "video/webm";
-        case ".ogg":  return "video/ogg";
-        case ".mkv":  return "video/x-matroska";
-        case ".m3u8": return "application/vnd.apple.mpegurl";
-        case ".ts":   return "video/mp2t";
-        default:      return "application/octet-stream";
-    }
-}
-
 function abortPipeRequests(session: SessionData): void {
     for (const controller of session.activePipeRequests) controller.abort();
     session.activePipeRequests.clear();
@@ -652,7 +631,7 @@ function handlePipeRequest(
     res.once("close", abort);
     void servePipeRequest(session, rangeHeader, res, controller.signal)
         .catch((error: unknown) => {
-            if (controller.signal.aborted || res.destroyed) return;
+            if (controller.signal.aborted || res.destroyed || isPrematureClose(error)) return;
             const status = error instanceof BoardPipeError ? error.status : 503;
             if (!res.headersSent) {
                 res.writeHead(status, { "Content-Type": "text/plain" });
@@ -677,93 +656,16 @@ async function servePipeRequest(
     const pageId = session.config.pageId;
     if (!pageId) throw new Error("The pipe video stream session has no page owner.");
 
-    const first = await boardPipeService.read(undefined, "page", pageId, rangeHeader, undefined, signal);
-    if (first.ok === false) throw new BoardPipeError(first.status, first.error);
-    if (!Number.isSafeInteger(first.totalSize) || first.totalSize < 0) {
-        throw new Error("The board pipe returned an invalid total size.");
-    }
-
-    const requestedRange = rangeHeader === undefined
-        ? first.totalSize > 0 ? { start: 0, end: first.totalSize - 1 } : null
-        : parseRangeHeader(rangeHeader, first.totalSize);
-    if (!requestedRange) {
-        if (rangeHeader !== undefined) {
-            res.writeHead(416, {
-                "Content-Range": unsatisfiableContentRangeHeader(first.totalSize),
-                "Accept-Ranges": "bytes",
-            });
-        } else {
-            res.writeHead(200, {
-                "Content-Type": first.contentType || "application/octet-stream",
-                "Accept-Ranges": "bytes",
-                "Content-Length": "0",
-            });
-        }
+    const result = await readPipeRange("page", pageId, undefined, rangeHeader, signal);
+    res.writeHead(result.status, result.headers);
+    if (result.status === 416) {
         res.end();
         return;
     }
-
-    validatePipeReply(first, requestedRange, first.totalSize, requestedRange.start);
-    const status = rangeHeader === undefined ? 200 : 206;
-    res.writeHead(status, {
-        "Content-Type": first.contentType || "application/octet-stream",
-        "Accept-Ranges": "bytes",
-        "Content-Length": contentLength(requestedRange),
-        ...(status === 206 ? { "Content-Range": contentRangeHeader(requestedRange, first.totalSize) } : {}),
-    });
-    await writePipeChunk(first.data, res);
-
-    let nextStart = first.range!.end + 1;
-    while (nextStart <= requestedRange.end) {
+    for await (const chunk of result.chunks) {
         if (signal.aborted || res.destroyed) return;
-        const nextEnd = Math.min(
-            requestedRange.end,
-            nextStart + MAX_BOARD_PIPE_CHUNK_BYTES - 1,
-        );
-        const chunk = await boardPipeService.read(
-            undefined,
-            "page",
-            pageId,
-            undefined,
-            { start: nextStart, end: nextEnd },
-            signal,
-        );
-        if (chunk.ok === false) throw new BoardPipeError(chunk.status, chunk.error);
-        validatePipeReply(chunk, { start: nextStart, end: nextEnd }, first.totalSize, nextStart);
-        await writePipeChunk(chunk.data, res);
-        nextStart = chunk.range!.end + 1;
+        await writeResponseChunk(chunk, res);
+        if (res.destroyed) return;
     }
-    if (!res.destroyed) res.end();
-}
-
-function validatePipeReply(
-    reply: BoardPipeReadReply,
-    requestedRange: ByteRange,
-    totalSize: number,
-    expectedStart: number,
-): asserts reply is Extract<BoardPipeReadReply, { ok: true }> & { range: ByteRange } {
-    if (!reply.ok
-        || reply.totalSize !== totalSize
-        || !reply.range
-        || reply.range.start !== expectedStart
-        || reply.range.end < reply.range.start
-        || reply.range.end > requestedRange.end
-        || reply.range.end !== reply.range.start + reply.data.length - 1
-        || reply.data.length > MAX_BOARD_PIPE_CHUNK_BYTES) {
-        throw new Error("The board pipe returned an invalid byte range.");
-    }
-}
-
-function writePipeChunk(data: Uint8Array, res: http.ServerResponse): Promise<void> {
-    if (res.destroyed || res.writableEnded) return Promise.resolve();
-    if (res.write(data)) return Promise.resolve();
-    return new Promise<void>((resolve) => {
-        const done = (): void => {
-            res.removeListener("drain", done);
-            res.removeListener("close", done);
-            resolve();
-        };
-        res.once("drain", done);
-        res.once("close", done);
-    });
+    if (!res.destroyed && !res.writableEnded) res.end();
 }

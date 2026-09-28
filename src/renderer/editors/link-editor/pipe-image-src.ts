@@ -21,7 +21,7 @@
  * are actually released.
  */
 
-import { isArchivePath, fpExtname } from "../../core/utils/file-path";
+import { isArchivePath } from "../../core/utils/file-path";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import {
     isProviderResolutionError,
@@ -29,17 +29,7 @@ import {
 } from "../../content/registry";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
-
-const MIME_BY_EXT: Record<string, string> = {
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".bmp": "image/bmp",
-    ".ico": "image/x-icon",
-    ".svg": "image/svg+xml",
-};
+import { mimeTypeForPath } from "../../../shared/mime-types";
 
 /** Cap on retained blob URLs. A tile grid shows a few dozen at a time; this leaves room
  *  for scrollback without pinning a whole archive's media folder in memory. */
@@ -83,7 +73,8 @@ export async function resolvePipeImageSrc(src: string): Promise<string | null> {
         try {
             const pipe = await pipeFromSourcePath(src);
             const buffer = await pipe.readBinary();
-            const mime = MIME_BY_EXT[fpExtname(src).toLowerCase()] ?? "image/png";
+            const sharedMime = mimeTypeForPath(src);
+            const mime = sharedMime.startsWith("image/") ? sharedMime : "image/png";
             const url = URL.createObjectURL(
                 new Blob([new Uint8Array(buffer)], { type: mime }),
             );
