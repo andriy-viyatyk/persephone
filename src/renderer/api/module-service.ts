@@ -4,11 +4,12 @@ import {
 } from "../../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
+    LEASE_LOST_CODE,
     PROVIDER_OPERATION_POLICY,
     SERVICE_REQUEST_DEADLINE_MS,
+    STOP_REASON_CODE,
     type BoardServiceStatus,
     type ProviderRequest,
-    type RendererLeaseLostReason,
     type RendererServiceMessage,
 } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
@@ -64,10 +65,6 @@ function normalizeRoot(boardRoot: string): string {
     return fpNormalizeForCompare(boardRoot);
 }
 
-function watchKey(subscriptionId: string): string {
-    return subscriptionId;
-}
-
 function errorForCode(code: string, message = code): Error & { code: string } {
     const error = new Error(message) as Error & { code: string };
     error.code = code || "service-error";
@@ -86,19 +83,12 @@ function serviceError(error: unknown): Error & { code: string } {
     return errorForCode("service-error", errMessage(error, "Service request failed"));
 }
 
-function leaseLossCode(reason: RendererLeaseLostReason): string {
-    if (reason === "superseded") return "renderer-reloaded";
-    if (reason === "untrusted") return "untrusted";
-    if (reason === "quit") return "quit";
-    if (reason === "renderer-port-attach-failed") return "service-exited";
-    return "service-exited";
-}
-
 function statusFailureCode(status: BoardServiceStatus): string | undefined {
     if (status.state === "failed") return "service-failed";
     if (status.state !== "stopping" && status.state !== "stopped") return undefined;
-    if (status.reason === "untrusted") return "untrusted";
-    if (status.reason === "quit") return "quit";
+    if (status.reason === "untrusted" || status.reason === "quit" || status.reason === "explicit") {
+        return STOP_REASON_CODE[status.reason];
+    }
     if (status.reason === "not-started") return undefined;
     if (status.reason === "permission-denied") return "permission-denied";
     return "service-exited";
@@ -200,7 +190,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     }
     if (message.kind === "provider-event") {
         if (client.state !== "attached" || typeof message.subscriptionId !== "string") return;
-        const intent = client.watchIntents.get(watchKey(message.subscriptionId));
+        const intent = client.watchIntents.get(message.subscriptionId);
         if (!intent || !intent.acknowledged) return;
         try {
             intent.callback(message.event);
@@ -210,7 +200,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
         return;
     }
     if (message.kind === "lease-lost") {
-        loseLease(client, leaseLossCode(message.reason));
+        loseLease(client, LEASE_LOST_CODE[message.reason]);
         return;
     }
     if (message.kind === "content-read-count") {
@@ -413,7 +403,7 @@ function subscribeProvider(
     const client = getClient(boardRoot);
     const subscriptionId = requestMessage.subscriptionId;
     if (!subscriptionId) return (): void => undefined;
-    const key = watchKey(subscriptionId);
+    const key = subscriptionId;
     const intent: ProviderWatchIntent = {
         request: requestMessage,
         callback,

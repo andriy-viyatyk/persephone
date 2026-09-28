@@ -1,9 +1,6 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import {
-    MessageChannelMain,
-    type MessagePortMain,
     type UtilityProcess,
     type WebContents,
     utilityProcess,
@@ -11,16 +8,15 @@ import {
 import { EventEndpoint } from "../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
+    type BoardServiceState,
     SERVICE_HANDSHAKE_TIMEOUT_MS,
-    SERVICE_RENDERER_LEASE_TIMEOUT_MS,
     SERVICE_REQUEST_DEADLINE_MS,
     SERVICE_SHUTDOWN_TIMEOUT_MS,
     type BoardServiceStatus,
-    type BoardServiceState,
-    type RendererLeaseLostReason,
-    type ServiceMainMessage,
     type ServiceParentMessage,
     type ServiceStopReason,
+    STOP_REASON_CODE,
+    STOP_REASON_LEASE_REASON,
     PROVIDER_OPERATION_POLICY,
     type ProviderOperation,
     type ServiceHostConfig,
@@ -34,60 +30,10 @@ import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
 import { getAssetPath } from "./utils";
 import * as boardLog from "./board-log";
-
-const FAILURE_WINDOW_MS = 60_000;
-
-class ServiceError extends Error {
-    constructor(readonly code: string, message = code) {
-        super(message);
-        this.name = "ServiceError";
-    }
-}
-
-interface PendingRequest {
-    resolve: (value: unknown) => void;
-    reject: (reason: unknown) => void;
-    timer: ReturnType<typeof setTimeout>;
-}
-
-interface RendererLease {
-    state: "attaching" | "attached" | "lost";
-    ownerId: number;
-    owner: WebContents;
-    generation: number;
-    leaseNonce: string;
-    rendererPort: MessagePortMain;
-    transferred: boolean;
-    timer: ReturnType<typeof setTimeout>;
-    resolve: () => void;
-    reject: (reason: unknown) => void;
-    lifecycleListeners: Array<{ event: string; listener: () => void }>;
-}
-
-interface ServiceRecord {
-    key: string;
-    boardRoot: string;
-    serviceEntry?: string;
-    canStartService: boolean;
-    state: BoardServiceState;
-    reason?: string;
-    pid?: number;
-    startedAt?: number;
-    restartCount: number;
-    failureTimestamps: number[];
-    terminalFailure: boolean;
-    generation: number;
-    process?: UtilityProcess;
-    startPromise?: Promise<StartResult>;
-    stopPromise?: Promise<void>;
-    cancelAttempt?: (error: ServiceError) => void;
-    requests: Map<string, PendingRequest>;
-    pendingRequestSlots: number;
-    leases: Map<number, RendererLease>;
-    storageAdapter?: ModuleServiceStorageAdapter;
-    leaseCounter: number;
-    stopRequested: boolean;
-}
+import { ServiceError, type ServiceRecord, isCurrent, killUtilityProcessSync } from "./module-service-record";
+import { RestartBudget, RESTART_BUDGET } from "./module-service-restart-budget";
+import { Handshake, routeProcessMessage } from "./module-service-handshake";
+import { failLease, transferRendererLease, type LeaseCallbacks } from "./module-service-leases";
 
 function normalizeRoot(boardRoot: string): string {
     const normalized = path.resolve(boardRoot).replace(/\\/g, "/").replace(/\/+$/, "");
@@ -98,35 +44,16 @@ function pathCovers(ancestor: string, descendant: string): boolean {
     return descendant === ancestor || descendant.startsWith(`${ancestor}/`);
 }
 
-function isCurrent(record: ServiceRecord, process: UtilityProcess, generation: number): boolean {
-    return record.process === process && record.generation === generation;
-}
-
 function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function killUtilityProcessSync(child: UtilityProcess | undefined): void {
-    if (!child) return;
-    const pid = child.pid;
-    try {
-        child.kill();
-    } catch {
-        // The child may already have exited.
-    }
-    if (globalThis.process.platform !== "win32" || !pid) return;
-    try {
-        spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
-            stdio: "ignore",
-            windowsHide: true,
-        });
-    } catch (error) {
-        console.warn(`Failed to reap utility process ${pid}: ${errMessage(error)}`);
-    }
-}
-
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
+    private readonly leaseCallbacks: LeaseCallbacks = {
+        getProcess: (record) => record.process,
+        postMessage: (process, message, ports) => process.postMessage(message, ports),
+    };
     private trustedSnapshot: BoardServiceTrustSnapshot | undefined;
     private disposing = false;
 
@@ -154,8 +81,7 @@ class ModuleServiceSupervisor {
                 existing.serviceEntry = entry.service;
                 existing.canStartService = entry.canStartService;
                 if (existing.state === "stopped" && !entry.canStartService) {
-                    existing.reason = "permission-denied";
-                    this.emit(existing);
+                    this.transition(existing, "stopped", "permission-denied");
                 }
                 continue;
             }
@@ -166,8 +92,7 @@ class ModuleServiceSupervisor {
                 canStartService: entry.canStartService,
                 state: "stopped",
                 reason: entry.canStartService ? "not-started" : "permission-denied",
-                restartCount: 0,
-                failureTimestamps: [],
+                restartBudget: new RestartBudget(),
                 terminalFailure: false,
                 generation: 0,
                 requests: new Map(),
@@ -184,7 +109,7 @@ class ModuleServiceSupervisor {
                 isAvailable: () => this.isStorageAvailable(record),
                 postMessage: (message) => record.process?.postMessage(message),
             });
-            this.emit(record);
+            this.transition(record, record.state, record.reason);
         }
 
         // A board that STOPS declaring a service must lose its record entirely. Without this a
@@ -246,11 +171,9 @@ class ModuleServiceSupervisor {
             throw new ServiceError("service-failed", record.reason ?? "service-failed");
         }
         if (mode === "explicit") {
-            record.failureTimestamps = [];
-            record.restartCount = 0;
+            record.restartBudget.reset();
             record.terminalFailure = false;
-            record.reason = undefined;
-            this.emit(record);
+            this.transition(record, record.state, undefined);
         }
 
         record.stopRequested = false;
@@ -277,7 +200,6 @@ class ModuleServiceSupervisor {
         boardRoot: string,
         requestId: string,
         message: unknown,
-        deadlineMs: number,
     ): Promise<unknown> {
         await this.awaitTrustReady();
         const record = this.requireRecord(boardRoot);
@@ -294,12 +216,11 @@ class ModuleServiceSupervisor {
         if (!record.process || record.state !== "running") {
             throw new ServiceError(record.reason === "untrusted" ? "untrusted" : "service-exited");
         }
-        const timeout = Number.isFinite(deadlineMs) && deadlineMs > 0 ? deadlineMs : SERVICE_REQUEST_DEADLINE_MS;
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 record.requests.delete(requestId);
                 reject(new ServiceError("service-timeout"));
-            }, timeout);
+            }, SERVICE_REQUEST_DEADLINE_MS);
             record.requests.set(requestId, { resolve, reject, timer });
             try {
                 record.process?.postMessage({ kind: "request", requestId, message } satisfies ServiceParentMessage);
@@ -315,64 +236,7 @@ class ModuleServiceSupervisor {
         await this.awaitTrustReady();
         await this.start(boardRoot, "request");
         const record = this.requireRecord(boardRoot);
-        const process = record.process;
-        if (!process || record.state !== "running") throw new ServiceError("service-exited");
-
-        const oldLease = record.leases.get(target.id);
-        if (oldLease) {
-            this.failLease(record, oldLease, "superseded", process);
-        }
-
-        const { port1, port2 } = new MessageChannelMain();
-        const generation = record.generation;
-        const leaseNonce = `${generation}:${++record.leaseCounter}`;
-        let lease: RendererLease;
-        const leasePromise = new Promise<void>((resolve, reject) => {
-            const timer = setTimeout(() => {
-                if (record.leases.get(target.id) !== lease) return;
-                this.failLease(record, lease, "renderer-port-attach-failed");
-            }, SERVICE_RENDERER_LEASE_TIMEOUT_MS);
-            lease = {
-                state: "attaching",
-                ownerId: target.id,
-                owner: target,
-                generation,
-                leaseNonce,
-                rendererPort: port1,
-                transferred: false,
-                timer,
-                resolve,
-                reject,
-                lifecycleListeners: [],
-            };
-            record.leases.set(target.id, lease);
-            this.listenForLeaseLifecycle(record, lease);
-        });
-
-        try {
-            process.postMessage(
-                // The MessagePortMain travels ONLY in the transfer list. Putting it in the
-                // message body too makes Electron try to structured-clone it, which throws
-                // "object could not be cloned" and fails every lease attach. The service
-                // reads it from `event.ports[0]`, exactly as the renderer below does.
-                { kind: "attach-renderer", generation, leaseNonce } satisfies ServiceParentMessage,
-                [port2],
-            );
-            if (target.isDestroyed()) throw new ServiceError("renderer-port-attach-failed");
-            target.postMessage(
-                EventEndpoint.eModuleServicePort,
-                { boardRoot: record.boardRoot, generation, leaseNonce },
-                [port1],
-            );
-            if (record.leases.get(target.id) === lease) lease.transferred = true;
-        } catch (error) {
-            if (record.leases.get(target.id) === lease) {
-                this.failLease(record, lease, "renderer-port-attach-failed");
-            }
-            throw new ServiceError("renderer-port-attach-failed", errMessage(error));
-        }
-
-        return leasePromise;
+        return transferRendererLease(record, target, this.leaseCallbacks);
     }
 
     async disposeAll(): Promise<void> {
@@ -384,13 +248,7 @@ class ModuleServiceSupervisor {
         await Promise.all([...this.records.values()].map((record) => this.stopRecord(record, "quit")));
     }
 
-    /** Synchronous final backstop used by the whole-gate quit `finally` block. */
-    /**
-     * Last-resort teardown on app quit. Every step is individually guarded: this runs inside the
-     * quit gate's `finally`, and a throw escaping it would skip `app.quit()` and leave the app
-     * unquittable — strictly worse than the orphaned child it exists to prevent. One bad record
-     * must also never abort the kill loop, or the remaining services survive the app (EPIC-106).
-     */
+    /** Synchronously stops any process left during app quit. */
     forceKillAllSync(): void {
         for (const record of this.records.values()) {
             const process = record.process;
@@ -404,11 +262,12 @@ class ModuleServiceSupervisor {
             try {
                 this.rejectRequests(record, "quit");
                 record.storageAdapter?.settle("quit");
-                for (const lease of [...record.leases.values()]) this.failLease(record, lease, "quit", process);
-                record.state = "stopped";
-                record.reason = "quit";
+                for (const lease of [...record.leases.values()]) {
+                    failLease(record, lease, "quit", this.leaseCallbacks, process);
+                }
                 record.pid = undefined;
-                this.emit(record);
+                record.startedAt = undefined;
+                this.transition(record, "stopped", "quit");
             } catch {
                 // Bookkeeping and status broadcast are best-effort while windows are tearing down.
             }
@@ -432,16 +291,12 @@ class ModuleServiceSupervisor {
     private assertStartable(record: ServiceRecord): void {
         if (this.disposing) throw new ServiceError("quit");
         if (!this.isEffectivelyTrusted(record.boardRoot)) {
-            record.state = "stopped";
-            record.reason = "untrusted";
-            this.emit(record);
+            this.transition(record, "stopped", "untrusted");
             throw new ServiceError("untrusted");
         }
         if (!record.serviceEntry) throw new ServiceError("service-not-declared");
         if (!record.canStartService) {
-            record.state = "stopped";
-            record.reason = "permission-denied";
-            this.emit(record);
+            this.transition(record, "stopped", "permission-denied");
             throw new ServiceError("permission-denied");
         }
     }
@@ -484,41 +339,30 @@ class ModuleServiceSupervisor {
         let countFailure = !firstFailureAlreadyCounted;
         while (true) {
             if (record.stopRequested || this.disposing) {
-                throw new ServiceError(record.reason === "untrusted" ? "untrusted" : "quit");
+                throw new ServiceError(this.abortCode(record));
             }
             this.assertStartable(record);
-            record.state = "starting";
-            record.reason = undefined;
-            this.emit(record);
+            this.transition(record, "starting", undefined);
             try {
                 return await this.startOneAttempt(record);
             } catch (error) {
                 const failure = this.asServiceError(error, "spawn-error");
                 if (record.stopRequested) {
-                    const stopReason = record.reason === "untrusted" ? "untrusted" : "quit";
-                    record.state = "stopped";
-                    record.reason = stopReason;
-                    this.emit(record);
-                    throw new ServiceError(stopReason);
+                    throw new ServiceError(this.abortCode(record));
                 }
                 if (failure.code === "untrusted" || !this.isEffectivelyTrusted(record.boardRoot)) {
-                    record.state = "stopped";
-                    record.reason = "untrusted";
-                    this.emit(record);
+                    this.transition(record, "stopped", "untrusted");
                     throw new ServiceError("untrusted");
                 }
-                if (countFailure) this.countFailure(record, failure.code);
+                if (countFailure) this.countFailure(record);
                 countFailure = true;
-                if (record.restartCount >= 3) {
-                    record.state = "failed";
+                if (record.restartBudget.count() >= RESTART_BUDGET) {
+                    record.restartBudget.freeze();
                     record.terminalFailure = true;
-                    record.reason = failure.code;
-                    this.emit(record);
+                    this.transition(record, "failed", failure.code);
                     throw failure;
                 }
-                record.state = "stopped";
-                record.reason = failure.code;
-                this.emit(record);
+                this.transition(record, "stopped", failure.code);
             }
         }
     }
@@ -526,7 +370,7 @@ class ModuleServiceSupervisor {
     private async startOneAttempt(record: ServiceRecord): Promise<StartResult> {
         const absoluteEntry = await this.resolveEntry(record);
         if (record.stopRequested || this.disposing) {
-            throw new ServiceError(record.reason === "untrusted" ? "untrusted" : "quit");
+            throw new ServiceError(this.abortCode(record));
         }
         this.assertStartable(record);
         const generation = ++record.generation;
@@ -561,21 +405,15 @@ class ModuleServiceSupervisor {
             record.process = undefined;
             record.pid = undefined;
             killUtilityProcessSync(process);
-            throw new ServiceError(record.reason === "untrusted" ? "untrusted" : "quit");
+            throw new ServiceError(this.abortCode(record));
         }
 
         return new Promise<StartResult>((resolve, reject) => {
-            let settled = false;
-            let ready = false;
-            let probeSent = false;
-            const timer = setTimeout(() => {
-                fail(new ServiceError(ready ? "port-not-listening" : "handshake-timeout"));
-            }, SERVICE_HANDSHAKE_TIMEOUT_MS);
+            const handshake = new Handshake(generation);
 
             const fail = (error: ServiceError, kill = true): void => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timer);
+                if (handshake.settled) return;
+                handshake.settle();
                 if (record.cancelAttempt) record.cancelAttempt = undefined;
                 if (isCurrent(record, process, generation)) {
                     record.process = undefined;
@@ -586,89 +424,47 @@ class ModuleServiceSupervisor {
                 reject(error);
             };
 
+            handshake.timer = setTimeout(() => {
+                fail(new ServiceError(handshake.ready ? "port-not-listening" : "handshake-timeout"));
+            }, SERVICE_HANDSHAKE_TIMEOUT_MS);
+
             record.cancelAttempt = (error: ServiceError) => fail(error, false);
 
             process.on("message", (rawMessage: unknown) => {
-                if (!isCurrent(record, process, generation)) return;
-                const message = rawMessage as ServiceMainMessage;
-                if (message.kind === "storage-request") {
-                    record.storageAdapter?.handle(message);
-                    return;
-                }
-                if (message.kind === "renderer-attached") {
-                    const lease = [...record.leases.values()].find((candidate) =>
-                        candidate.state === "attaching"
-                        && candidate.generation === message.generation
-                        && candidate.leaseNonce === message.leaseNonce,
-                    );
-                    if (lease
-                        && lease.state === "attaching"
-                        && lease.generation === message.generation
-                        && lease.leaseNonce === message.leaseNonce) {
-                        clearTimeout(lease.timer);
-                        lease.state = "attached";
-                        lease.resolve();
-                    }
-                    return;
-                }
-                // Request responses are steady-state traffic and must be handled for the whole
-                // life of the process. `settled` marks only that the START ATTEMPT finished, so
-                // it must not gate this branch: with the guard above it, every reply after a
-                // successful handshake was dropped and every request died at its deadline, which
-                // made `requestService` impossible to use at all. Found by live verification.
-                if (message.kind === "response") {
-                    const request = record.requests.get(message.requestId);
-                    if (!request) return;
-                    clearTimeout(request.timer);
-                    record.requests.delete(message.requestId);
-                    if ("error" in message) {
-                        if (typeof message.error === "string") {
-                            request.reject(new ServiceError("service-error", message.error));
+                routeProcessMessage(record, process, generation, rawMessage, handshake, {
+                    isTrusted: (boardRoot) => this.isEffectivelyTrusted(boardRoot),
+                    onStorageRequest: (message) => record.storageAdapter?.handle(message),
+                    onResponse: (request, message) => {
+                        clearTimeout(request.timer);
+                        record.requests.delete(message.requestId);
+                        if ("error" in message) {
+                            if (typeof message.error === "string") {
+                                request.reject(new ServiceError("service-error", message.error));
+                            } else {
+                                request.reject(new ServiceError(
+                                    message.error.code,
+                                    errMessage(message.error.message, "Service request failed"),
+                                ));
+                            }
                         } else {
-                            request.reject(new ServiceError(
-                                message.error.code,
-                                errMessage(message.error.message, "Service request failed"),
-                            ));
+                            request.resolve(message.result);
                         }
-                    } else {
-                        request.resolve(message.result);
-                    }
-                    return;
-                }
-                // Handshake frames below are attempt-scoped and stay gated.
-                if (settled) return;
-                if (message.kind === "ready" && message.nonce === generation) {
-                    if (probeSent) return;
-                    ready = true;
-                    probeSent = true;
-                    try {
-                        process.postMessage({ kind: "probe", nonce: generation } satisfies ServiceParentMessage);
-                    } catch (error) {
-                        fail(new ServiceError("port-not-listening", errMessage(error)));
-                    }
-                    return;
-                }
-                if (message.kind === "probe-ack" && message.nonce === generation && ready) {
-                    if (!this.isEffectivelyTrusted(record.boardRoot)) {
-                        fail(new ServiceError("untrusted"));
-                        return;
-                    }
-                    settled = true;
-                    clearTimeout(timer);
-                    record.cancelAttempt = undefined;
-                    record.state = "running";
-                    record.reason = undefined;
-                    record.pid = process.pid;
-                    record.startedAt = Date.now();
-                    record.terminalFailure = false;
-                    this.emit(record);
-                    resolve({ boardRoot: record.boardRoot, pid: record.pid, startedAt: record.startedAt });
-                }
+                    },
+                    onReady: (readyProcess) => {
+                        record.cancelAttempt = undefined;
+                        record.pid = readyProcess.pid;
+                        record.startedAt = Date.now();
+                        record.terminalFailure = false;
+                        this.transition(record, "running", undefined);
+                        resolve({ boardRoot: record.boardRoot, pid: record.pid, startedAt: record.startedAt });
+                    },
+                    fail,
+                });
             });
 
             process.on("exit", (code: number) => {
                 if (!isCurrent(record, process, generation)) return;
-                if (!settled) {
+                if (!handshake.settled) {
                     fail(new ServiceError("process-exit-before-ready", `process-exit-before-ready:${code}`), false);
                 } else if (record.state === "running") {
                     this.handleUnexpectedExit(record, process, generation, code);
@@ -745,24 +541,18 @@ class ModuleServiceSupervisor {
         record.startedAt = undefined;
         this.rejectRequests(record, "service-exited");
         record.storageAdapter?.settle("service-exited");
-        for (const lease of [...record.leases.values()]) this.failLease(record, lease, "service-exited");
+        for (const lease of [...record.leases.values()]) {
+            failLease(record, lease, "service-exited", this.leaseCallbacks);
+        }
         const reason = `service-exited:${code}`;
-        this.countFailure(record, reason);
-        record.state = "stopped";
-        record.reason = reason;
-        this.emit(record);
-        if (record.stopRequested || this.disposing || !this.isEffectivelyTrusted(record.boardRoot)) {
-            record.state = "stopped";
-            record.reason = record.stopRequested ? (record.reason === "untrusted" ? "untrusted" : "quit") : "untrusted";
-            this.emit(record);
-            return;
-        }
-        if (record.restartCount >= 3) {
-            record.state = "failed";
+        this.countFailure(record);
+        if (record.restartBudget.count() >= RESTART_BUDGET) {
+            record.restartBudget.freeze();
             record.terminalFailure = true;
-            this.emit(record);
+            this.transition(record, "failed", reason);
             return;
         }
+        this.transition(record, "stopped", reason);
         const restart = this.runStartAttempts(record, true);
         record.startPromise = restart;
         restart.then(
@@ -782,21 +572,14 @@ class ModuleServiceSupervisor {
         const generation = record.generation;
         record.generation += 1;
         record.process = undefined;
-        record.state = "stopping";
-        record.reason = reason;
-        const stopCode = reason === "untrusted"
-            ? "untrusted"
-            : reason === "quit"
-                ? "quit"
-                : "service-exited";
-        const leaseReason: RendererLeaseLostReason = reason === "untrusted"
-            ? "untrusted"
-            : reason === "quit"
-                ? "quit"
-                : "stopping";
+        this.transition(record, "stopping", reason);
+        const stopCode = STOP_REASON_CODE[reason];
+        const leaseReason = STOP_REASON_LEASE_REASON[reason];
         this.rejectRequests(record, stopCode);
         record.storageAdapter?.settle(stopCode);
-        for (const lease of [...record.leases.values()]) this.failLease(record, lease, leaseReason, process);
+        for (const lease of [...record.leases.values()]) {
+            failLease(record, lease, leaseReason, this.leaseCallbacks, process);
+        }
         record.cancelAttempt?.(new ServiceError(stopCode));
         record.cancelAttempt = undefined;
 
@@ -820,11 +603,9 @@ class ModuleServiceSupervisor {
             if (record.startPromise) {
                 await record.startPromise.catch((): undefined => undefined);
             }
-            record.state = "stopped";
-            record.reason = reason;
             record.pid = undefined;
             record.startedAt = undefined;
-            this.emit(record);
+            this.transition(record, "stopped", reason);
         })();
         record.stopPromise = stopPromise;
         try {
@@ -842,77 +623,8 @@ class ModuleServiceSupervisor {
         }
     }
 
-    private failLease(
-        record: ServiceRecord,
-        lease: RendererLease,
-        reason: RendererLeaseLostReason,
-        process = record.process,
-    ): void {
-        if (record.leases.get(lease.ownerId) !== lease) return;
-        clearTimeout(lease.timer);
-        lease.state = "lost";
-        record.leases.delete(lease.ownerId);
-        this.removeLeaseLifecycleListeners(lease);
-        if (process) {
-            try {
-                process.postMessage({
-                    kind: "drop-renderer",
-                    generation: lease.generation,
-                    leaseNonce: lease.leaseNonce,
-                    reason,
-                } satisfies ServiceParentMessage);
-            } catch {
-                // The host may already have exited; its peer close notifies the renderer.
-            }
-        }
-        if (!lease.transferred) {
-            try {
-                lease.rendererPort.close();
-            } catch {
-                // Already closed locally.
-            }
-        }
-        const code = reason === "superseded"
-            ? "renderer-reloaded"
-            : reason === "untrusted"
-                ? "untrusted"
-                : reason === "quit"
-                    ? "quit"
-                    : reason === "renderer-port-attach-failed"
-                        ? reason
-                        : "service-exited";
-        lease.reject(new ServiceError(code));
-    }
-
-    private listenForLeaseLifecycle(record: ServiceRecord, lease: RendererLease): void {
-        const release = (reason: RendererLeaseLostReason): void => {
-            if (record.leases.get(lease.ownerId) === lease) this.failLease(record, lease, reason);
-        };
-        const listeners: Array<{ event: string; listener: () => void }> = [
-            { event: "destroyed", listener: () => release("service-exited") },
-            { event: "render-process-gone", listener: () => release("service-exited") },
-            { event: "did-navigate", listener: () => release("superseded") },
-        ];
-        for (const { event, listener } of listeners) {
-            lease.owner.on(event as "destroyed", listener);
-            lease.lifecycleListeners.push({ event, listener });
-        }
-    }
-
-    private removeLeaseLifecycleListeners(lease: RendererLease): void {
-        for (const { event, listener } of lease.lifecycleListeners) {
-            lease.owner.removeListener(event as "destroyed", listener);
-        }
-        lease.lifecycleListeners.length = 0;
-    }
-
-    private countFailure(record: ServiceRecord, reason: string): void {
-        const now = Date.now();
-        record.failureTimestamps = record.failureTimestamps.filter((timestamp) => now - timestamp < FAILURE_WINDOW_MS);
-        record.failureTimestamps.push(now);
-        record.restartCount = Math.min(3, record.failureTimestamps.length);
-        record.reason = reason;
-        this.emit(record);
+    private countFailure(record: ServiceRecord): void {
+        record.restartBudget.recordFailure();
     }
 
     private asServiceError(error: unknown, fallback: string): ServiceError {
@@ -921,19 +633,31 @@ class ModuleServiceSupervisor {
     }
 
     private statusOf(record: ServiceRecord): BoardServiceStatus {
-        if (!record.terminalFailure) {
-            const now = Date.now();
-            record.failureTimestamps = record.failureTimestamps.filter((timestamp) => now - timestamp < FAILURE_WINDOW_MS);
-            record.restartCount = record.failureTimestamps.length;
-        }
         return {
             boardRoot: record.boardRoot,
             state: record.state,
             ...(record.reason ? { reason: record.reason } : {}),
             ...(record.pid !== undefined ? { pid: record.pid } : {}),
             ...(record.startedAt !== undefined ? { startedAt: record.startedAt } : {}),
-            restartCount: record.restartCount,
+            restartCount: record.restartBudget.count(),
         };
+    }
+
+    private abortCode(record: ServiceRecord): string {
+        if (this.disposing) return STOP_REASON_CODE.quit;
+        if (record.stopRequested) {
+            const reason = record.reason;
+            if (reason === "untrusted" || reason === "explicit" || reason === "quit") {
+                return STOP_REASON_CODE[reason];
+            }
+        }
+        return "untrusted";
+    }
+
+    private transition(record: ServiceRecord, state: BoardServiceState, reason: string | undefined): void {
+        record.state = state;
+        record.reason = reason;
+        this.emit(record);
     }
 
     private emit(record: ServiceRecord): void {
@@ -942,8 +666,3 @@ class ModuleServiceSupervisor {
 }
 
 export const moduleServiceSupervisor = new ModuleServiceSupervisor();
-
-export type ModuleServiceSupervisorApi = Pick<
-    ModuleServiceSupervisor,
-    "applyBoardServiceTrustSnapshot" | "getStatus" | "getStatuses" | "start" | "stop" | "request" | "transferRendererPort" | "disposeAll"
->;

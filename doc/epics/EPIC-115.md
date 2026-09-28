@@ -59,7 +59,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1542 | [Host-frame request/reply channel: one table on each side, typed message union](../tasks/US-1542-host-frame-channel/README.md) | 2 — contracts | L | Done |
 | US-1543 | [The service host owns the service lifecycle protocol](../tasks/US-1543-service-lifecycle-protocol/README.md) | 2 — contracts | L | Done |
 | US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |
-| US-1545 | Split the module-service supervisor; one state-transition helper | 3 — structure | L | Planned |
+| US-1545 | [Split the module-service supervisor; one state-transition helper](../tasks/US-1545-supervisor-split/README.md) | 3 — structure | L | Done |
 | US-1546 | One `__pipe` range reader in main; one MIME table | 3 — structure | M | Planned |
 | US-1548 | One ownership registry for providers, schemes, capabilities and URL masks | 3 — structure | M | Planned |
 | US-1549 | Board manifest parsed once into a normalized model | 3 — structure | M | Planned |
@@ -482,6 +482,8 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
 ### US-1545: Split the module-service supervisor; one state-transition helper
 
 *Code-verified.* Large; each piece can be done on its own.
+
+- **Done (US-1545):** supervisor split into `module-service-record.ts` (record/lease types, `ServiceError`), `module-service-leases.ts`, `module-service-handshake.ts` (`Handshake`, `routeProcessMessage`) and `module-service-restart-budget.ts` (`RestartBudget`); one `transition()` helper; typed `STOP_REASON_CODE` / `LEASE_LOST_CODE` / `STOP_REASON_LEASE_REASON` tables in `module-service-channels.ts`. Observable changes: an explicit stop during a start stays `explicit` (no interim `stopped/quit`), and a `stopping` status is now published. The lease-lost `renderer-port-attach-failed` code stays `service-exited` for pending requests (unchanged, so no bridge bump). `request()` keeps its `requestId` (it is live); only `deadlineMs` was dropped.
 
 - **After US-1543:** line numbers above have moved. `init` now carries a `ServiceHostConfig` (limits + provider request classes; argv holds only the entry), the steady-state `response` branch decodes structured `{ code, message }` errors into `ServiceError`, and `requestModuleServicePort` resolves a result union instead of throwing. The renderer no longer parses codes from messages, so any reason→code unification here should produce codes, not strings to parse.
 

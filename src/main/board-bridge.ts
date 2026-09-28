@@ -46,7 +46,6 @@ import {
 } from "../ipc/board-bridge-channels";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
 import { EventEndpoint } from "../ipc/api-types";
-import { SERVICE_REQUEST_DEADLINE_MS } from "../ipc/module-service-channels";
 import {
     showOpenFileDialog,
     showOpenFolderDialog,
@@ -263,7 +262,6 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         entry.root,
         crypto.randomUUID(),
         args[0],
-        SERVICE_REQUEST_DEADLINE_MS,
     ),
     serviceStatus: (entry) => moduleServiceSupervisor.getStatus(entry.root),
     serviceStop: (entry) => moduleServiceSupervisor.stop(entry.root, "explicit"),

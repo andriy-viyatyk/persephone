@@ -141,9 +141,8 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.requestModuleService, async (_event, boardRoot: string, message: unknown): Promise<unknown> => {
         const { moduleServiceSupervisor } = await import("../../main/module-service-supervisor");
-        const { SERVICE_REQUEST_DEADLINE_MS } = await import("../module-service-channels");
         const requestId = `main-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-        return moduleServiceSupervisor.request(boardRoot, requestId, message, SERVICE_REQUEST_DEADLINE_MS);
+        return moduleServiceSupervisor.request(boardRoot, requestId, message);
     });
     bindEndpoint(Endpoint.startModuleService, async (_event, boardRoot: string): Promise<void> => {
         await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.start(boardRoot, "explicit");

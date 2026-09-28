@@ -13,7 +13,6 @@ export const MAX_OUTSTANDING_REQUESTS_PER_SERVICE = 32;
 export const SERVICE_REQUEST_DEADLINE_MS = 10_000;
 
 export type BoardServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
-export type RendererLeaseState = "none" | "attaching" | "attached" | "lost";
 export type ServiceStopReason = "untrusted" | "explicit" | "quit";
 export type RendererLeaseLostReason =
     | "superseded"
@@ -22,6 +21,27 @@ export type RendererLeaseLostReason =
     | "quit"
     | "service-exited"
     | "renderer-port-attach-failed";
+
+export const STOP_REASON_CODE: Readonly<Record<ServiceStopReason, string>> = {
+    untrusted: "untrusted",
+    explicit: "service-exited",
+    quit: "quit",
+};
+
+export const LEASE_LOST_CODE: Readonly<Record<RendererLeaseLostReason, string>> = {
+    superseded: "renderer-reloaded",
+    stopping: "service-exited",
+    untrusted: "untrusted",
+    quit: "quit",
+    "service-exited": "service-exited",
+    "renderer-port-attach-failed": "service-exited",
+};
+
+export const STOP_REASON_LEASE_REASON: Readonly<Record<ServiceStopReason, RendererLeaseLostReason>> = {
+    explicit: "stopping",
+    untrusted: "untrusted",
+    quit: "quit",
+};
 export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
 export interface ServiceErrorPayload { code: string; message: string }
 export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };

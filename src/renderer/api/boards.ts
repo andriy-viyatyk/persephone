@@ -417,15 +417,7 @@ export const boards: IBoards = {
     /** Return the merged local trust, install, and open-page inventory. */
     list: (): Promise<BoardListing[]> => enumerateBoardListings(),
 
-    /** Request a reply from the board's declared service, starting it lazily if needed. */
-    /**
-     * Routed through MAIN, not over the renderer MessagePort lease. The lease is reserved for
-     * high-volume provider traffic (Phase C's `ProxyProvider`) and a service is not obliged to
-     * implement that port at all — the demo fixture, like any service that only answers requests,
-     * speaks the parent channel alone. Routing a script/agent request over the lease made every
-     * such call fail, since the lease could never attach. This is also the exact path the board
-     * frame's `persephone.service.request()` already takes, so both callers behave identically.
-     */
+    /** Request a reply through main's parent channel, starting the declared service if needed. */
     requestService: (boardRoot: string, message: unknown): Promise<unknown> =>
         api.requestModuleService(boardRoot, message),
 

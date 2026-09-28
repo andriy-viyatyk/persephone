@@ -358,7 +358,10 @@ The platform hosts a declared service in an Electron `utilityProcess`, started l
 request or explicit start — never at application launch. A board can query
 `persephone.service.status()` without starting the process and explicitly stop it with
 `persephone.service.stop()`; main owns process start, the bounded restart budget, the ready/probe
-handshake deadline, and teardown on untrust and application quit. `board-trust-service.ts` loads
+handshake deadline, and teardown on untrust and application quit. The supervisor delegates
+per-service state and process cleanup to `module-service-record.ts`, ready/probe message routing to
+`module-service-handshake.ts`, per-window port lifecycle to `module-service-leases.ts`, and bounded
+failure accounting to `module-service-restart-budget.ts`. `board-trust-service.ts` loads
 the trust file before windows are restored, serializes trust mutations, and derives the service
 eligibility snapshot from trusted roots and bundled manifests. Service starts and port requests
 wait for this initial load. Main writes the trust file through a same-directory temporary file and

@@ -970,7 +970,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
-├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, derived-trust gating, handshake deadline, restart budget, request settlement, per-WebContents renderer leases, untrust and quit teardown
+├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, status, and teardown
+├── module-service-record.ts # Per-service state and request/lease records, generation checks, and utility-process cleanup
+├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing
+├── module-service-leases.ts # Per-WebContents renderer MessagePort lease transfer, acknowledgement, and lifecycle cleanup
+├── module-service-restart-budget.ts # Sliding-window service failure count and bounded restart policy
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
 ├── board-root-key.ts       # Canonical board-root normalization and SHA-256 storage key
 ├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store

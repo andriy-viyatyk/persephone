@@ -27,7 +27,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1543: The service host owns the service lifecycle protocol](tasks/US-1543-service-lifecycle-protocol/README.md)
   - [x] [US-1544: One provider-operation policy table (deadline, cap)](tasks/US-1544-provider-operation-policy/README.md)
   - *Phase 3 — structure*
-  - [ ] US-1545: Split the module-service supervisor; one state-transition helper
+  - [x] [US-1545: Split the module-service supervisor; one state-transition helper](tasks/US-1545-supervisor-split/README.md)
   - [ ] US-1546: One `__pipe` range reader in main; one MIME table
   - [ ] US-1548: One ownership registry for providers, schemes, capabilities and URL masks
   - [ ] US-1549: Board manifest parsed once into a normalized model

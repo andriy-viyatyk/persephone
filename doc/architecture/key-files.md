@@ -521,7 +521,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Toolset authoring guide (manifest, stdin/stdout contract, `.env`, requirements) | `/assets/tool-template/CLAUDE.md` |
 | Agent-facing tools resource | `/assets/guides/agents/tools.md` |
 | Main-owned board trust and claim service (loads and atomically persists trusted roots, derives service eligibility and browser URL-mask claims from board manifests, and broadcasts authoritative trust paths) | `/src/main/board-trust-service.ts` |
-| Module-service supervisor (main; lazy Electron `utilityProcess` host, main-derived trust-snapshot consumer, service-entry validation, ready/probe deadline, restart budget, ordinary request settlement, independent renderer leases keyed by `WebContents`, renderer lifecycle cleanup, untrust and quit teardown) | `/src/main/module-service-supervisor.ts` |
+| Module-service supervisor (main orchestration for lazy Electron `utilityProcess` services, derived-trust gating, ordinary requests, status publication, and teardown) | `/src/main/module-service-supervisor.ts` |
+| Module-service record and process cleanup primitives (per-service state, pending requests, renderer leases, generation checks, and synchronous utility-process tree cleanup) | `/src/main/module-service-record.ts` |
+| Module-service handshake and process-message routing (ready/probe deadline, generation-checked utility-process messages, and callbacks into supervisor-owned behavior) | `/src/main/module-service-handshake.ts` |
+| Module-service renderer leases (per-`WebContents` `MessagePort` transfer, attach acknowledgement, loss, and lifecycle cleanup) | `/src/main/module-service-leases.ts` |
+| Module-service restart policy (sliding failure window, bounded restart count, reset and freeze) | `/src/main/module-service-restart-budget.ts` |
 | Browser-download interception (main; consumes derived URL-mask claims at Electron's `will-download` boundary, before the save dialog) | `/src/main/download-service.ts` |
 | Module-service protocol and lifecycle types (main/utility-process parent messages, per-renderer lease messages, trust snapshots, status records, storage frames, and provider operation deadline/cap policy) | `/src/ipc/module-service-channels.ts` |
 | Per-board JSON storage owner (root-hash folder, `store.json`, `board.json` sidecar, JSON validation/limits, lazy cache and per-board mutation queue shared by frames and services) | `/src/main/board-storage.ts` |
