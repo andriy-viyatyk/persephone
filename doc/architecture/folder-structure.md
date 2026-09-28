@@ -277,7 +277,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
 │   ├── PipePair.ts         # Paired TextFile source/cache pipe ownership and disposal
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
-│   ├── board-provider-factory.ts # Trusted-board provider factory seam and availability signal
+│   ├── board-provider-factory.ts # Trusted-board ProxyProvider factory
 │   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)

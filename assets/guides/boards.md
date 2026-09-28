@@ -239,12 +239,11 @@ work early (close a socket, cancel a torrent piece request, abort a `fetch()`); 
 ignores it is not broken and not penalized — the platform stops waiting either way, it is only the
 underlying work that keeps running until your own code notices.
 
-The service starts when a page first needs its provider. A saved page keeps its provider descriptor
-while the board is absent or untrusted: it reports **Provider missing** and remains restorable. If
-the board is trusted but its service is still starting, the same page waits briefly for registration;
-if the service cannot attach or register the type, it reports **Provider unavailable** instead of
-hanging. Reinstall or trust the declaring board to make the page recover with its original descriptor;
-if the service itself was fixed, reload the page to retry the read.
+The service starts when a page first reads from its provider. A saved page keeps its provider
+descriptor while the board is absent or untrusted: it reports **Provider missing** and remains
+restorable. After you trust or reinstall the declaring board, retry the read in the same page. If the
+service is unavailable or does not register the provider, the read can fail; after correcting the
+service, retry the read from that page.
 
 ### Torrent-style self-contained provider links
 

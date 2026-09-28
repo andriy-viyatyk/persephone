@@ -93,7 +93,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
 | Content pipe registry and script-provider shape validation (first-construction validation, cached verdicts, and registration diagnostics) | `/src/renderer/content/registry.ts` |
-| Board provider factory seam (installs the renderer-side service delegate and signals provider availability) | `/src/renderer/content/board-provider-factory.ts` |
+| Board provider factory (constructs the renderer-side service delegate) | `/src/renderer/content/board-provider-factory.ts` |
 | URL scheme registry      | `/src/renderer/content/scheme-registry.ts`        |
 | Built-in URL-scheme hooks | `/src/renderer/content/builtin-schemes.ts`       |
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |

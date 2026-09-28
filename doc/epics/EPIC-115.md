@@ -52,7 +52,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1536 | [Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData](../tasks/US-1536-board-log-writer/README.md) | 1 — defect | S–M | Done |
 | US-1537 | [Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL](../tasks/US-1537-launch-arguments/README.md) | 1 — defect | S | Done |
 | US-1538 | [Main owns the board trust and URL-mask snapshots](../tasks/US-1538-main-owned-trust-snapshot/README.md) | 1 — defect | M | Done |
-| US-1547 | Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads | 1 — defect | M | Planned |
+| US-1547 | [Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](../tasks/US-1547-board-provider-acquire/README.md) | 1 — defect | M | Done |
 | US-1539 | Capability contract single-sourced: error codes, intent envelope, outcome shape | 2 — contracts | M | Planned |
 | US-1540 | One owner for a capability request's lifecycle | 2 — contracts | L | Planned |
 | US-1541 | Built-in capability resolution runs the handler it resolved; one image-edit helper | 2 — contracts | S | Planned |
@@ -689,6 +689,13 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   - Add a shared `watchSourceRecovery(pipe, onAvailable)` and `reportProviderError(error)`.
   - Add `pipeFromPersistedSource(sourceLink, fallbackPath)` in `rebuild-pipe.ts`.
   - Drop the page-wide sweep from `dispose()`.
+- **Finding from US-1547 (live):** a stream-host page restored while its board was untrusted came
+  back with `state.boardRoot` in backslash form, while the registry and trust list use forward
+  slashes. `BoardEditorModel.editorKind` compares roots with `===` (`BoardEditorModel.ts:650`), so
+  after re-trust the page stays `simple` and `persephone.host.streamUrl()` is refused until the root
+  matches. Compare board roots with `fpNormalizeForCompare` here and at the other exact comparisons
+  (`PagesLifecycleModel.ts:201, 316, 353`, `custom-editor-registry.ts:199`), and find where the
+  backslash form is introduced on restore.
 
 ### US-1554: Board trust granting, bundled-board creation and Board Info each have one path
 

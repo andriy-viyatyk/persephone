@@ -11,9 +11,6 @@ import { DataUrlProvider } from "./providers/DataUrlProvider";
 import { MnemeProvider } from "./providers/MnemeProvider";
 import { GuideProvider } from "./providers/GuideProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
-import { BoardProviderUnavailableError, subscribeBoardProviderAvailability } from "./board-provider-factory";
-import { moduleService } from "../api/module-service";
-import { SERVICE_REQUEST_DEADLINE_MS } from "../../ipc/module-service-channels";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 type ProviderFactory = (config: Record<string, unknown>) => IProvider;
@@ -52,7 +49,6 @@ const providerShapeValidationErrors = new Map<string, Error | null>();
 const providerDeclarations = new Map<string, ProviderDeclaration>();
 const providerAvailabilityListeners = new Set<() => void>();
 const boardRegistrationRefusalToasts = new Map<string, Set<string>>();
-const boardProviderAttempts = new Map<string, Promise<void>>();
 
 let providerDeclarationsReady = false;
 let resolveProviderDeclarationsReady: (() => void) | undefined;
@@ -295,14 +291,7 @@ function tryCreateRegisteredProvider(
 ): IProvider | undefined {
     const registration = providerFactories.get(descriptor.type);
     if (!registration) return undefined;
-    try {
-        return registration.factory(descriptor.config);
-    } catch (error: unknown) {
-        if (registration.origin !== "board" || !(error instanceof BoardProviderUnavailableError)) {
-            throw error;
-        }
-        return undefined;
-    }
+    return registration.factory(descriptor.config);
 }
 
 function providerErrorDetails(
@@ -395,86 +384,7 @@ export function whenProviderDeclarationsReady(): Promise<void> {
 
 export function subscribeProviderAvailability(listener: () => void): () => void {
     providerAvailabilityListeners.add(listener);
-    const boardProviderDisposer = subscribeBoardProviderAvailability(listener);
-    return () => {
-        providerAvailabilityListeners.delete(listener);
-        boardProviderDisposer();
-    };
-}
-
-function remainingDeadline(deadline: number): number {
-    return Math.max(0, deadline - Date.now());
-}
-
-async function withDeadline<T>(promise: Promise<T>, deadline: number): Promise<T> {
-    const remaining = remainingDeadline(deadline);
-    if (remaining <= 0) throw new ProviderUnavailableError("unknown");
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise<T>((_, reject) => {
-                timer = setTimeout(
-                    () => reject(new Error("provider-deadline")),
-                    remaining,
-                );
-            }),
-        ]);
-    } finally {
-        if (timer) clearTimeout(timer);
-    }
-}
-
-async function waitForProviderAvailability(
-    descriptor: IProviderDescriptor,
-    deadline: number,
-): Promise<void> {
-    while (!tryCreateRegisteredProvider(descriptor)) {
-        const remaining = remainingDeadline(deadline);
-        if (remaining <= 0) throw new Error("provider-deadline");
-        await new Promise<void>((resolve) => {
-            const check = () => {
-                clearTimeout(timer);
-                dispose();
-                resolve();
-            };
-            const dispose = subscribeProviderAvailability(check);
-            const timer = setTimeout(check, remaining);
-        });
-    }
-}
-
-async function acquireBoardProvider(
-    declaration: ProviderDeclaration,
-    descriptor: IProviderDescriptor,
-    deadline: number,
-): Promise<void> {
-    const boardRoot = declaration.boardRoot;
-    if (!boardRoot || !declaration.trusted) throw new MissingProviderError(descriptor.type, declaration);
-    const key = `${fpNormalizeForCompare(boardRoot)}\u0000${descriptor.type}`;
-    const existing = boardProviderAttempts.get(key);
-    if (existing) {
-        try {
-            await withDeadline(existing, deadline);
-        } catch {
-            throw new ProviderUnavailableError(descriptor.type, declaration);
-        }
-        return;
-    }
-    const attempt = (async () => {
-        try {
-            await withDeadline(moduleService.acquire(boardRoot), deadline);
-            await waitForProviderAvailability(descriptor, deadline);
-        } catch (error: unknown) {
-            throw new ProviderUnavailableError(descriptor.type, declaration);
-        }
-    })();
-    boardProviderAttempts.set(key, attempt);
-    try {
-        await withDeadline(attempt, deadline);
-    } finally {
-        if (boardProviderAttempts.get(key) === attempt) boardProviderAttempts.delete(key);
-    }
+    return () => providerAvailabilityListeners.delete(listener);
 }
 
 class MissingProvider implements IProvider {
@@ -482,9 +392,8 @@ class MissingProvider implements IProvider {
     readonly displayName: string;
     readonly sourceUrl: string;
     readonly restorable = true;
-    readonly writable = false;
-    private state: "missing" | "pending" = "missing";
-    private readAttempt: Promise<Buffer> | undefined;
+    private delegate: IProvider | undefined;
+    private resolutionAttempt: Promise<IProvider> | undefined;
 
     constructor(private readonly descriptor: IProviderDescriptor) {
         this.type = descriptor.type;
@@ -498,53 +407,71 @@ class MissingProvider implements IProvider {
             : descriptor.type;
     }
 
-    readBinary(): Promise<Buffer> {
-        if (!this.readAttempt) {
-            const attempt = this.readOnce();
-            this.readAttempt = attempt;
-            void attempt.catch(() => {
-                if (this.readAttempt === attempt) this.readAttempt = undefined;
-            });
-        }
-        return this.readAttempt;
+    get writable(): boolean {
+        return this.delegate?.writable ?? false;
     }
 
-    private async readOnce(): Promise<Buffer> {
-        const deadline = Date.now() + SERVICE_REQUEST_DEADLINE_MS;
-        try {
-            await withDeadline(whenProviderDeclarationsReady(), deadline);
-        } catch {
+    get createReadStream(): IProvider["createReadStream"] {
+        const delegate = this.delegate;
+        const createReadStream = delegate?.createReadStream;
+        if (!createReadStream) return undefined;
+        return (range, options) => createReadStream.call(delegate, range, options);
+    }
+
+    readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
+        return this.resolveDelegate().then((delegate) => delegate.readBinary(options));
+    }
+
+    async stat(options?: { signal?: AbortSignal }) {
+        const delegate = await this.resolveDelegate();
+        if (delegate.stat) return delegate.stat(options);
+        const buffer = await delegate.readBinary(options);
+        return { exists: true, size: buffer.length };
+    }
+
+    async writeBinary(data: Buffer): Promise<void> {
+        const delegate = await this.resolveDelegate();
+        if (!delegate.writeBinary) {
             throw new ProviderUnavailableError(this.descriptor.type, providerDeclarationFor(this.descriptor.type));
         }
+        await delegate.writeBinary(data);
+    }
 
+    private resolveDelegate(): Promise<IProvider> {
+        if (this.delegate) return Promise.resolve(this.delegate);
+        if (!this.resolutionAttempt) {
+            const attempt = this.resolveOnce();
+            this.resolutionAttempt = attempt;
+            void attempt.catch(() => {
+                if (this.resolutionAttempt === attempt) this.resolutionAttempt = undefined;
+            });
+        }
+        return this.resolutionAttempt;
+    }
+
+    private async resolveOnce(): Promise<IProvider> {
+        await whenProviderDeclarationsReady();
         const declaration = providerDeclarationFor(this.descriptor.type);
-        const immediate = tryCreateRegisteredProvider(this.descriptor);
-        if (immediate) return immediate.readBinary();
-        if (!declaration) throw new MissingProviderError(this.descriptor.type);
-        if (!declaration.trusted || !declaration.boardRoot) {
+        if (!declaration || !declaration.trusted || !declaration.boardRoot) {
             throw new MissingProviderError(this.descriptor.type, declaration);
         }
-
-        this.state = "pending";
-        await acquireBoardProvider(declaration, this.descriptor, deadline);
         const delegate = tryCreateRegisteredProvider(this.descriptor);
         if (!delegate) throw new ProviderUnavailableError(this.descriptor.type, declaration);
-        try {
-            return await delegate.readBinary();
-        } catch (error: unknown) {
-            if (error instanceof BoardProviderUnavailableError) {
-                throw new ProviderUnavailableError(this.descriptor.type, declaration);
-            }
-            throw error;
-        }
+        this.delegate = delegate;
+        return delegate;
     }
 
     watch(callback: (event: string) => void): () => void {
-        const listener = () => {
-            this.state = "missing";
-            callback("available");
+        const disposeRegistryWatch = subscribeProviderAvailability(() => callback("available"));
+        const disposeDelegateWatch = this.delegate?.watch?.(callback);
+        return () => {
+            disposeRegistryWatch();
+            disposeDelegateWatch?.();
         };
-        return subscribeProviderAvailability(listener);
+    }
+
+    dispose(): void {
+        this.delegate?.dispose?.();
     }
 
     toDescriptor(): IProviderDescriptor {

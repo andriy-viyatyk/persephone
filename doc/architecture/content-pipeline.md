@@ -160,22 +160,23 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 - `writable` -- true only if the provider is writable AND all transformers implement `write`.
 - `watch` -- delegates to `provider.watch()` if supported. Returns a `() => void` disposer.
 
-### Missing and pending providers
+### Missing providers and recovery
 
 `createProviderFromDescriptor()` preserves a valid descriptor even when its provider type is not
-currently registered. It returns a read-only, restorable `MissingProvider` whose `toDescriptor()`
-returns the original descriptor unchanged; the first read rejects with a typed error naming the
-provider and, when available, its declaring board. A malformed descriptor (not an object or
-without a string `type`) still throws immediately.
+currently registered. It returns a restorable `MissingProvider` whose `toDescriptor()` returns the
+original descriptor unchanged; an operation rejects with a typed error naming the provider and,
+when available, its declaring board. A malformed descriptor (not an object or without a string
+`type`) still throws immediately.
 
-When the descriptor belongs to a trusted or bundled board whose provider has not become available yet, the
-same placeholder enters its pending state on the first read. It acquires the board's module-service
-lease for its renderer window, waits for the service registration, then delegates the read to
-`ProxyProvider`.
-Service startup is lazy and bounded; a service that never attaches the lease produces a typed
-provider-unavailable error instead of leaving the page pending forever. The placeholder watches
-provider availability so a persisted page can recover while retaining its page identity, source
-link, and original pipe descriptor.
+The placeholder waits for provider declarations to finish their initial load, then resolves a
+trusted or bundled board's registered factory on demand and caches the resulting delegate. This
+lets a pipe restored while its board was untrusted recover on a later operation after registration
+is refreshed, without replacing the pipe or its descriptor. The delegate's optional capabilities
+are forwarded dynamically: `stat()` falls back to reading and measuring when needed, and ranged
+stream support appears only after the delegate exposes it. Registry availability notifications
+remain available to watchers so persisted pages can retry after declarations change. `ProxyProvider`
+owns lazy service acquisition; the registry does not acquire a service lease or impose an additional
+deadline on provider reads.
 
 ## Built-in Providers
 
