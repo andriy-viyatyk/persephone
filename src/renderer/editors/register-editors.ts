@@ -1,4 +1,5 @@
 import { editorRegistry } from "./base/editorRegistry";
+import { seedPlatformCapabilities } from "../api/capabilities";
 import type {
     EditorCapabilityDeclaration,
     EditorDefinition,
@@ -233,6 +234,8 @@ for (const e of EDITORS) {
         loadModule: e.load,
     });
 }
+
+seedPlatformCapabilities();
 
 // Warm the custom-editor registry (EPIC-042 / EPIC-109) while bootstrap joins this same
 // initialization before restoring pages. The fire-and-forget warm-up preserves the existing

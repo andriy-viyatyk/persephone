@@ -55,7 +55,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1547 | [Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](../tasks/US-1547-board-provider-acquire/README.md) | 1 — defect | M | Done |
 | US-1539 | [Capability contract single-sourced: error codes, intent envelope, outcome shape](../tasks/US-1539-capability-contract/README.md) | 2 — contracts | M | Done |
 | US-1540 | [One owner for a capability request's lifecycle](../tasks/US-1540-capability-request-lifecycle/README.md) | 2 — contracts | L | Done |
-| US-1541 | Built-in capability resolution runs the handler it resolved; one image-edit helper | 2 — contracts | S | Planned |
+| US-1541 | [Built-in capability resolution runs the handler it resolved; one image-edit helper](../tasks/US-1541-builtin-capability-resolution/README.md) | 2 — contracts | S | Done |
 | US-1542 | Host-frame request/reply channel: one table on each side, typed message union | 2 — contracts | L | Planned |
 | US-1543 | The service host owns the service lifecycle protocol | 2 — contracts | L | Planned |
 | US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |

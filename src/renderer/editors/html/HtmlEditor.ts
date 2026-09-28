@@ -8,7 +8,7 @@ import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
 import { blobToDataUrl, copyPngBlobToClipboard } from "../shared/image-export";
 import type { IImageExport } from "../base/IImageExport";
-import { getMissingEditCapabilityMessage, type EditCapabilityId } from "../../api/capability-feedback";
+import { openImageForEdit, notifyEditCapabilityFailure, type EditCapabilityId } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 export type HtmlQueueEvent = { type: "focus" };
@@ -109,8 +109,8 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
         try {
             await action(await this.exportPng());
         } catch (err) {
-            const message = capability ? getMissingEditCapabilityMessage(err, capability) : undefined;
-            ui.notify(message ?? `${failMessage}: ${errMessage(err)}`, message ? "warning" : "error");
+            if (capability) notifyEditCapabilityFailure(err, capability, failMessage);
+            else ui.notify(`${failMessage}: ${errMessage(err)}`, "error");
         } finally {
             this.state.update((s) => {
                 s.capturing = false;
@@ -137,7 +137,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
     editImage(): Promise<void> {
         return this.withCapture(async (blob) => {
             const dataUrl = await blobToDataUrl(blob);
-            await pagesModel.addDrawPage(dataUrl, `${this.suggestedImageName()}.excalidraw`);
+            await openImageForEdit({ dataUrl, mimeType: "image/png", title: this.suggestedImageName() });
         }, "Failed to open image for editing", "image.edit");
     }
 

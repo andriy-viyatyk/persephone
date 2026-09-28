@@ -59,6 +59,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   registry also provides built-in handoffs for opening and editing content. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
+- **Board capability bridge 1.21.0 scopes `content.view` by representation:** board manifests can
+  declare one `content.view` capability per representation, and capability discovery exposes that
+  representation so scripts can filter matching handlers. Boards using the field must set
+  `minBridgeVersion: "1.21.0"`. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
 - **Board capability bridge 1.20.0 serializes requests per handler page:** overlapping requests are
   delivered in FIFO order, up to the existing limit of 32 active and queued requests per handler.
   Expired deadlines reject with `Capability invocation deadline elapsed.` and send a best-effort

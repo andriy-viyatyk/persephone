@@ -41,16 +41,16 @@ export interface CapabilityRegistrationOptions {
     readonly origin: CapabilityOrigin;
 }
 
-const builtinHandlers = new Map<string, CapabilityHandler>();
+const builtinHandlers = new Map<string, Map<string, CapabilityHandler>>();
 const candidates = new Map<string, IndexedCapability[]>();
 let nextRegistrationOrder = 0;
 let platformCandidatesSeeded = false;
 
-function capabilityKey(id: CapabilityId, representation?: ContentRepresentation): string {
+function capabilityKey(id: CapabilityId, representation?: string): string {
     return `${id}:${representation ?? ""}`;
 }
 
-function reportDuplicate(id: CapabilityId, representation: ContentRepresentation | undefined): void {
+function reportDuplicate(id: CapabilityId, representation: string | undefined): void {
     const name = representation ? `${id}/${representation}` : id;
     void import("./ui")
         .then(({ ui }) => ui.notify(
@@ -116,7 +116,7 @@ function addCandidate(registration: CapabilityRegistration): void {
     candidates.set(registration.id, entries);
 }
 
-function seedPlatformCandidates(): void {
+export function seedPlatformCapabilities(): void {
     if (platformCandidatesSeeded) return;
     const definitions = editorRegistry.getAll();
     if (definitions.length === 0) return;
@@ -124,17 +124,22 @@ function seedPlatformCandidates(): void {
     for (const definition of definitions) {
         for (const declaration of definition.capabilities ?? []) {
             const key = capabilityKey(declaration.id, declaration.representation);
-            if (builtinHandlers.has(key)) {
+            const handlers = builtinHandlers.get(definition.id) ?? new Map<string, CapabilityHandler>();
+            if (handlers.has(key)) {
                 reportDuplicate(declaration.id, declaration.representation);
                 continue;
             }
-            builtinHandlers.set(key, createHandler(definition.id, declaration));
+            handlers.set(key, createHandler(definition.id, declaration));
+            builtinHandlers.set(definition.id, handlers);
             addCandidate({
                 id: declaration.id,
                 version: 1,
                 priority: 50,
                 origin: "platform",
                 handlerKey: definition.id,
+                ...(declaration.representation !== undefined
+                    ? { representation: declaration.representation }
+                    : {}),
             });
         }
     }
@@ -158,6 +163,12 @@ function registrationFromDeclaration(
     if (declaration.version !== undefined && !Number.isInteger(declaration.version)) {
         return { reason: `Capability "${id}" version must be an integer.` };
     }
+    if (id === "content.view" && (
+        typeof declaration.representation !== "string"
+        || !declaration.representation.trim()
+    )) {
+        return { reason: 'Capability "content.view" requires a non-empty string representation.' };
+    }
     if (declaration.alwaysOpensNewPage !== undefined && typeof declaration.alwaysOpensNewPage !== "boolean") {
         return { reason: `Capability "${id}" alwaysOpensNewPage must be a boolean.` };
     }
@@ -167,6 +178,9 @@ function registrationFromDeclaration(
             id,
             version: declaration.version ?? 1,
             priority: declaration.priority ?? 50,
+            ...(declaration.representation !== undefined
+                ? { representation: declaration.representation.trim() }
+                : {}),
             ...(declaration.accepts !== undefined ? { accepts: [...declaration.accepts] } : {}),
             ...(Object.prototype.hasOwnProperty.call(declaration, "payloadSchema")
                 ? { payloadSchema: declaration.payloadSchema }
@@ -185,6 +199,9 @@ function registrationFromDeclaration(
 }
 
 function matchesFilter(candidate: IndexedCapability, filter?: CapabilityHandlerFilter): boolean {
+    const representation = candidate.registration.representation;
+    if (filter?.representation !== undefined && representation !== undefined
+        && representation !== filter.representation) return false;
     if (!filter || filter.mime === undefined) return true;
     const accepts = candidate.registration.accepts;
     return accepts === undefined || accepts.includes(filter.mime);
@@ -211,6 +228,7 @@ function copyInfo(candidate: IndexedCapability): CapabilityInfo {
         id: registration.id,
         version: registration.version,
         priority: registration.priority,
+        ...(registration.representation !== undefined ? { representation: registration.representation } : {}),
         handlerKey: registration.handlerKey,
         origin: registration.origin,
         ...(registration.boardRoot !== undefined ? { boardRoot: registration.boardRoot } : {}),
@@ -259,7 +277,6 @@ export function registerCapability(
     declaration: BoardCapabilityDeclaration,
     options: CapabilityRegistrationOptions,
 ): CapabilityRegistrationResult {
-    seedPlatformCandidates();
     const result = registrationFromDeclaration(declaration, options);
     if (!result.registration) return { accepted: false, reason: result.reason };
     addCandidate(result.registration);
@@ -268,7 +285,6 @@ export function registerCapability(
 
 /** Remove every board-origin capability before a trusted-board rebuild. */
 export function unregisterBoardCapabilities(): void {
-    seedPlatformCandidates();
     for (const [id, entries] of candidates) {
         const retained = entries.filter((entry) => entry.registration.origin !== "board");
         if (retained.length > 0) candidates.set(id, retained);
@@ -282,7 +298,6 @@ export function resolveCapability(
     version?: number,
     filter?: CapabilityHandlerFilter,
 ): CapabilityRegistration | undefined {
-    seedPlatformCandidates();
     if (version !== undefined && !Number.isInteger(version)) return undefined;
     const candidate = orderedCandidates(id, filter)
         .find((entry) => version === undefined || entry.registration.version === version);
@@ -292,7 +307,6 @@ export function resolveCapability(
 /** Compatibility adapter for legacy named-board intent inputs. This deliberately bypasses
  *  global candidate precedence and requires the declaration to belong to the named board. */
 export function invokeLegacyBoardIntent(boardRoot: string, intent: IntentEnvelope): Promise<unknown> {
-    seedPlatformCandidates();
     const normalizedRoot = fpNormalizeForCompare(boardRoot);
     const registration = (candidates.get(intent.id) ?? [])
         .filter((candidate) => candidate.registration.origin === "board"
@@ -319,14 +333,12 @@ class Capabilities implements ICapabilities {
     }
 
     list(): readonly CapabilityInfo[] {
-        seedPlatformCandidates();
         return Object.freeze(
             [...candidates.values()].flat().sort((left, right) => left.order - right.order).map(copyInfo),
         );
     }
 
     handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[] {
-        seedPlatformCandidates();
         return Object.freeze(orderedCandidates(id, filter).map(copyInfo));
     }
 }
@@ -345,7 +357,6 @@ export async function invokeCapabilityOutcome(
     payload: unknown,
     opts?: CapabilityInvokeOptions,
 ): Promise<CapabilityInvocation> {
-    seedPlatformCandidates();
     const parsed = parseCapabilityId(id);
     if (!parsed.bareId) throw noHandlerError(id);
     if (opts?.version !== undefined && parsed.version !== undefined && opts.version !== parsed.version) {
@@ -358,17 +369,23 @@ export async function invokeCapabilityOutcome(
             ? asRecord(payload, parsed.bareId)
             : undefined;
         const representation = values?.representation;
-        if (parsed.bareId === "content.view" && typeof representation !== "string") {
-            throw new TypeError("content.view expects a string representation.");
+        if (parsed.bareId === "content.view" && (
+            typeof representation !== "string"
+            || !representation.trim()
+        )) {
+            throw new TypeError("content.view expects a non-empty string representation.");
         }
 
-        const registration = resolveCapability(parsed.bareId, version, opts?.filter);
+        const filter = parsed.bareId === "content.view"
+            ? { ...opts?.filter, representation: representation as string }
+            : opts?.filter;
+        const registration = resolveCapability(parsed.bareId, version, filter);
         if (!registration) throw noHandlerError(id, version);
         if (registration.headless) throw noHandlerError(id, version);
 
         if (registration.origin === "platform") {
-            const handler = builtinHandlers.get(
-                capabilityKey(parsed.bareId, representation as ContentRepresentation | undefined),
+            const handler = builtinHandlers.get(registration.handlerKey)?.get(
+                capabilityKey(registration.id, registration.representation),
             );
             if (!handler) throw noHandlerError(id, version);
             try {

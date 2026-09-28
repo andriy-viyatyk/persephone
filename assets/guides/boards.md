@@ -144,7 +144,9 @@ renderer and Node execution. A declared service is shown in Board Info and in th
 `app.boards.list()` status payload.
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.20.0**. Capability requests to the same handler page are delivered
+The current board bridge is **1.21.0**. Bridge `1.21.0` adds optional `representation` to capability
+discovery and manifest declarations. A board declaring `content.view` must provide one non-empty
+representation per supported format and set `minBridgeVersion: "1.21.0"`. Capability requests to the same handler page are delivered
 one at a time in FIFO order; up to 32 active and queued requests can be outstanding for a handler.
 An expired deadline rejects with `Capability invocation deadline elapsed.` and sends a best-effort
 cancel. Bridge `1.19.0` added `persephone.intent.resolve(value, { discardPage: true })` (also
@@ -313,10 +315,11 @@ permission values, this is lifecycle disclosure, not a security grant.
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
+  "minBridgeVersion": "1.21.0",
   "permissions": ["capabilities"],
   "capabilities": [
-    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
+    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" },
+    { "id": "content.view", "representation": "pdf", "priority": 70 }
   ]
 }
 ```
@@ -329,6 +332,8 @@ handler page. IDs cannot contain whitespace or `@`; vendor prefixes are recommen
 boards may declare the same id. The
 highest priority wins, platform handlers win exact ties, and trusted-board registration order
 breaks board-to-board ties. A caller may pin a major version with `invoke("demo.greet@1", payload)`.
+`representation` is an open string. `content.view` requires a non-empty value; use one declaration
+per supported format and set `minBridgeVersion: "1.21.0"`. Other capability ids may omit it.
 
 The winning board is served in the caller's window. Persephone reuses an already-open handler page
 there or opens one there and delivers the initial request in its handshake. Later requests to that

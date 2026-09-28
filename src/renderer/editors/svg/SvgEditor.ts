@@ -3,9 +3,8 @@ import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
-import { app } from "../../api/app";
-import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
+import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
+import { openImageForEdit, getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 export type SvgQueueEvent = { type: "focus" };
@@ -65,13 +64,10 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueu
         const content = this.requireSource("open in Drawing Editor");
         try {
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`;
-            const dimensions = await getImageDimensions(dataUrl);
-            const title = (this.host?.state.get().title || "SVG").replace(/\.svg$/i, "") + ".excalidraw";
-            await app.capabilities.invoke("image.edit", {
+            const title = (this.host?.state.get().title || "SVG").replace(/\.svg$/i, "");
+            await openImageForEdit({
                 dataUrl,
                 mimeType: "image/svg+xml",
-                naturalWidth: dimensions.width,
-                naturalHeight: dimensions.height,
                 title,
             });
         } catch (error) {

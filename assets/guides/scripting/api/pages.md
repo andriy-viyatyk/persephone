@@ -111,7 +111,9 @@ scene with the image element pre-inserted. This method is unchanged even though 
 `draw-view` editor id and drawing-editor facade were removed.
 
 - `dataUrl` — image as a data URL (e.g., `"data:image/png;base64,..."`)
-- `title` — optional page title (default: `"untitled.excalidraw"`)
+- `title` — optional suggested page title; `.excalidraw` is appended when it is missing. The
+  default final title is `"untitled.excalidraw"`, so a supplied title of `"foo"` opens as
+  `"foo.excalidraw"`.
 
 ```javascript
 // Capture something as a data URL, then open in Excalidraw

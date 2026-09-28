@@ -581,6 +581,7 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
                 !!capability && typeof capability.id === "string")
             .map((capability) => ({
                 id: capability.id,
+                ...(capability.representation !== undefined ? { representation: capability.representation } : {}),
                 ...(capability.version !== undefined ? { version: capability.version } : {}),
                 ...(capability.priority !== undefined ? { priority: capability.priority } : {}),
                 ...(capability.accepts !== undefined ? { accepts: [...capability.accepts] } : {}),

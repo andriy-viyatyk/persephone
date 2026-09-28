@@ -61,6 +61,7 @@ export interface BoardContentProviderDeclaration {
 
 export interface BoardCapabilityDeclaration {
     id: string;
+    representation?: string;
     version?: number;
     priority?: number;
     accepts?: string[];
@@ -448,6 +449,7 @@ export function normalizeCapabilities(
         if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
         const candidate = entry as {
             id?: unknown;
+            representation?: unknown;
             version?: unknown;
             priority?: unknown;
             accepts?: unknown;
@@ -466,6 +468,9 @@ export function normalizeCapabilities(
         }
         const declaration: BoardCapabilityDeclaration = {
             id: typeof candidate.id === "string" ? candidate.id.trim() : "",
+            ...(typeof candidate.representation === "string"
+                ? { representation: candidate.representation.trim() }
+                : {}),
             ...(typeof candidate.version === "number" ? { version: candidate.version } : {}),
             ...(typeof candidate.priority === "number" ? { priority: candidate.priority } : {}),
             ...(accepts.length > 0 ? { accepts } : {}),

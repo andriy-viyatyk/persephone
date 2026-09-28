@@ -12,9 +12,9 @@ import { ui } from "../../api/ui";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import type { IImageExport } from "../base/IImageExport";
 import type { MenuItem } from "../../uikit";
-import { getImageDimensions, rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
+import { rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
 import { filePathMenuItems } from "../shared/editor-menu-items";
-import { app } from "../../api/app";
+import { openImageForEdit } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 function extToMime(ext: string): string {
@@ -308,16 +308,13 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         } else {
             return;
         }
-        const dimensions = await getImageDimensions(dataUrl);
         const baseName = filePath
             ? fpBasename(filePath).replace(/\.\w+$/, "")
             : "image";
-        await app.capabilities.invoke("image.edit", {
+        await openImageForEdit({
             dataUrl,
             mimeType,
-            naturalWidth: dimensions.width,
-            naturalHeight: dimensions.height,
-            title: baseName + ".excalidraw",
+            title: baseName,
         });
     };
 

@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.20.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.21.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -19,6 +19,9 @@ page one at a time in FIFO order, allows up to 32 active and queued requests per
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
 `alwaysOpensNewPage` to request a fresh handler page for each invocation.
+Bridge `1.21.0` adds optional `representation` to capability discovery and board declarations.
+Boards declaring `content.view` must provide one non-empty `representation` per supported format
+and set `minBridgeVersion: "1.21.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` for getting Persephone's file icons as
 image URLs. Bridge `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access
@@ -474,10 +477,11 @@ not a security boundary.
 
 ```json
 {
-  "minBridgeVersion": "1.11.0",
+  "minBridgeVersion": "1.21.0",
   "permissions": ["capabilities"],
   "capabilities": [
-    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
+    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" },
+    { "id": "content.view", "representation": "pdf", "priority": 70 }
   ]
 }
 ```
@@ -489,6 +493,9 @@ is reused. IDs cannot contain whitespace or `@`; use a vendor
 prefix for board-owned ids. Multiple boards can compete for one id: strict priority wins, platform
 handlers win ties, and trusted-board registration order breaks board ties. Discovery never opens a
 handler page.
+`representation` is an open string. A `content.view` declaration requires a non-empty value; add
+one entry for every format the board supports and set `minBridgeVersion` to `1.21.0`. Other
+capability ids may omit it.
 
 The winning declaration is served in the caller's window. An existing handler page there is reused;
 otherwise the platform opens one there and sends the first request in the handshake. Later requests
@@ -525,8 +532,8 @@ id:
 
 ```js
 const entries = await persephone.capabilities.list();
-// [{ id: "demo.greet", version: 1, priority: 60,
-//    handlerKey: "board:/work/Demo", origin: "board", title: "Demo greeting" }]
+// [{ id: "content.view", representation: "pdf", version: 1, priority: 70,
+//    handlerKey: "board:/work/Demo", origin: "board" }]
 ```
 
 Invoke by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board

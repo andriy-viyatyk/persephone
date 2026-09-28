@@ -15,6 +15,7 @@ export interface CapabilityInfo {
      */
     readonly handlerKey: string;
     readonly origin: CapabilityOrigin;
+    readonly representation?: string;
     readonly boardRoot?: string;
     readonly alwaysOpensNewPage?: boolean;
     readonly accepts?: readonly string[];
@@ -25,6 +26,7 @@ export interface CapabilityInfo {
 
 export interface CapabilityHandlerFilter {
     readonly mime?: string;
+    readonly representation?: string;
 }
 
 export interface CapabilityInvokeOptions {

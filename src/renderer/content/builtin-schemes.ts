@@ -1,5 +1,5 @@
 import type { ILinkData } from "../../shared/link-data";
-import { getMissingEditCapabilityMessage } from "../api/capability-feedback";
+import { openImageForEdit, notifyEditCapabilityFailure } from "../api/capability-feedback";
 import { errMessage } from "../../shared/utils";
 import { parseGuideUrl } from "../../shared/guides/guide-links";
 import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
@@ -213,12 +213,9 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
     if (data.target === "image.edit" && data.url?.startsWith("data:image/")) {
         if (context.phase === "source-path") return;
         try {
-            const { pagesModel } = await import("../api/pages");
-            await pagesModel.addDrawPage(data.url, (data.title || "drawing") + ".excalidraw");
+            await openImageForEdit({ dataUrl: data.url, title: data.title || "drawing" });
         } catch (error) {
-            const { ui } = await import("../api/ui");
-            const message = getMissingEditCapabilityMessage(error, "image.edit");
-            ui.notify(message ?? `Failed to open image for editing: ${errMessage(error)}`, message ? "warning" : "error");
+            notifyEditCapabilityFailure(error, "image.edit", "Failed to open image for editing");
         }
         data.handled = true;
         return;

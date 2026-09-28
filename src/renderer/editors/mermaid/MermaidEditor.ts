@@ -6,9 +6,9 @@ import { TextFileModel } from "../text/TextEditorModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, getImageDimensions, rasterToPngBlob } from "../shared/image-export";
+import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
 import { app } from "../../api/app";
-import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
+import { getMissingEditCapabilityMessage, openImageForEdit } from "../../api/capability-feedback";
 import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
@@ -201,13 +201,10 @@ export class MermaidEditor
         try {
             const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`;
-            const dimensions = await getImageDimensions(dataUrl);
-            const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
-            await app.capabilities.invoke("image.edit", {
+            const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "");
+            await openImageForEdit({
                 dataUrl,
                 mimeType: "image/svg+xml",
-                naturalWidth: dimensions.width,
-                naturalHeight: dimensions.height,
                 title,
             });
         } catch (error) {

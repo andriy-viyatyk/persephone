@@ -30,7 +30,7 @@ board shim can share the same contracts.
 
 `handlerKey` is part of discovery because several registrations can share an id. The public index
 also preserves `version`, `priority`, `origin`, `accepts`, `payloadSchema`, `title`, `headless`, and
-`alwaysOpensNewPage` where present.
+`alwaysOpensNewPage` where present, plus optional `representation` for scoped content handlers.
 
 ## Registration and resolution
 
@@ -40,7 +40,7 @@ second gate or a security boundary. A malformed declaration is refused independe
 as a capability registration issue, without discarding the board's valid declarations.
 
 Declarations have a non-empty id with no whitespace or `@`, an integer major `version` (default
-1), numeric `priority` (default 50), and optional `accepts`, `payloadSchema`, `title`, `headless`,
+1), numeric `priority` (default 50), and optional `representation`, `accepts`, `payloadSchema`, `title`, `headless`,
 and `alwaysOpensNewPage`. The last field declares that each invocation needs a fresh page; it is
 used for capabilities such as edits that create a new result page. Vendor prefixes are recommended
 for board-owned ids. `payloadSchema` is descriptive;
@@ -50,7 +50,10 @@ winning headless handler is outside this channel and settles as `no-handler`.
 Resolution is deterministic:
 
 1. Parse an optional `@<major>` suffix at the bus boundary. The suffix is not stored in the id.
-2. Filter by requested version and optional `accepts` MIME filter.
+2. Filter by requested version, optional `accepts` MIME filter, and optional representation. A
+   candidate with no representation remains eligible under a representation filter; otherwise
+   only an exact representation match remains. `content.view` invocation supplies its requested
+   representation automatically, so priority is compared only among matching handlers.
 3. Sort by descending numeric priority.
 4. On an exact priority tie, a platform registration wins. Board registration order breaks
    board-to-board ties.
@@ -59,6 +62,12 @@ Built-in registrations cannot be removed by a board; a board can only outrank on
 may declare the same id and all candidates remain discoverable. A refresh removes board-origin
 entries over the complete board-origin set before rebuilding from the current trusted and enabled
 bundled manifests, so untrust or disabling a bundled board cannot leave a stale registration behind.
+
+For `content.view`, each board declaration must include a non-empty, open-string `representation`
+(for example `pdf`), with one declaration for every supported format. Representation-aware
+discovery is exposed in `CapabilityInfo`; renderer `handlers(id, { representation })` filters by
+that field. Board authors using this manifest field must set `minBridgeVersion: "1.21.0"`, the
+bridge version that introduced the additive manifest and discovery behavior.
 
 ## Request routing
 

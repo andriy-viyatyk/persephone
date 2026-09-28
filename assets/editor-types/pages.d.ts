@@ -78,7 +78,7 @@ export interface IPageCollection {
 
     /** Create a new drawing page with an embedded image.
      * @param dataUrl Image as data URL (e.g., `"data:image/png;base64,..."`)
-     * @param title Optional page title (default: `"untitled.excalidraw"`)
+     * @param title Optional page title; `.excalidraw` is appended when absent (default final title: `"untitled.excalidraw"`). A supplied `"foo"` therefore opens as `"foo.excalidraw"`.
      */
     addDrawPage(dataUrl: string, title?: string): Promise<IPage>;
 

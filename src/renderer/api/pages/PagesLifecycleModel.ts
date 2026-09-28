@@ -46,7 +46,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
-import { app } from "../app";
+import { openImageForEdit } from "../capability-feedback";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
 
@@ -509,10 +509,7 @@ export class PagesLifecycleModel {
     };
 
     addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
-        const { pageId } = await app.capabilities.invoke("image.edit", {
-            dataUrl,
-            title: title ?? "untitled.excalidraw",
-        });
+        const { pageId } = await openImageForEdit({ dataUrl, title: title ?? "untitled" });
         const page = this.model.query.findPage(pageId);
         if (!page) throw new Error(`Drawing page was not found after opening: ${pageId}`);
         return page;

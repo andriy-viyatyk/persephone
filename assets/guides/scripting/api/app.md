@@ -348,7 +348,7 @@ apply to script calls; see [Boards — capability handlers and in-memory intents
 for the manifest and handler-side contract.
 
 ```javascript
-const handlers = app.capabilities.handlers("content.view", { mime: "text/markdown" });
+const handlers = app.capabilities.handlers("content.view", { representation: "markdown" });
 const available = app.capabilities.list();
 
 const opened = await app.capabilities.invoke("text.open", {
@@ -364,10 +364,10 @@ console.log(opened.pageId);
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `list()` | `readonly CapabilityInfo[]` | List all indexed platform and trusted-Board capability candidates. |
-| `handlers(id, filter?)` | `readonly CapabilityInfo[]` | List candidates for one id; `filter` may specify a MIME type with `{ mime }`. |
+| `handlers(id, filter?)` | `readonly CapabilityInfo[]` | List candidates for one id; `filter` may specify a MIME type with `{ mime }` or a content representation with `{ representation }`. |
 | `invoke(id, payload, options?)` | `Promise<unknown>` | Select and invoke a handler. Use `id@major` or `options.version` to pin a major version. |
 
-`invoke()` options are `version`, `filter: { mime }`, `pageId`, `signal`, and `deadlineMs`.
+`invoke()` options are `version`, `filter: { mime, representation }`, `pageId`, `signal`, and `deadlineMs`.
 `pageId` preserves the originating page when an invocation is part of a page workflow;
 `signal` cancels it and `deadlineMs` bounds how long the caller waits. Built-in open/edit
 capabilities normally return a page result; `diagram.edit` can instead return

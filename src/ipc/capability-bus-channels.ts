@@ -35,6 +35,7 @@ export interface CapabilityDeclaration {
     id: string;
     version: number;
     priority: number;
+    representation?: string;
     accepts?: string[];
     payloadSchema?: unknown;
     title?: string;

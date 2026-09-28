@@ -265,9 +265,11 @@ explicit because it removes a notification the user may not have read. The imple
 handlers are seeded from editor declarations rather than editor-specific imports: `text.open`
 opens a text editor; `content.view` selects a built-in representation (`svg`, `html`, `markdown`,
 `mermaid`, `grid`, or `log`); `image.edit` opens the registered image-edit board for an image
-payload; and `diagram.edit` converts diagram source for the registered diagram-edit board. Trusted and enabled bundled board
-declarations are indexed beside those platform handlers, so `list()` and `handlers(id)` discover both origins
-without activation and `invoke(id, payload, options?)` can resolve a board handler by id.
+payload; and `diagram.edit` converts diagram source for the registered diagram-edit board. Trusted
+and enabled bundled board declarations are indexed beside those platform handlers, so `list()` and
+`handlers(id, filter?)` discover both origins without activation. The optional `handlers` filter can
+match MIME type or representation; `content.view` invocation resolves only candidates matching the
+payload's requested representation. `invoke(id, payload, options?)` can resolve a board handler by id.
 
 Platform handlers remain direct in-process calls. Board requests use the renderer-local capability
 bus, caller-window page routing, transient structured-clone intents, deadlines, typed failures,

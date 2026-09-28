@@ -20,6 +20,7 @@ export interface IBoardContentProviderDeclaration {
 
 export interface IBoardCapabilityDeclaration {
     readonly id: string;
+    readonly representation?: string;
     readonly version?: number;
     readonly priority?: number;
     readonly accepts?: readonly string[];

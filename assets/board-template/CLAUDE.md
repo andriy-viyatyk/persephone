@@ -5,12 +5,15 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.19.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.21.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
-`alwaysOpensNewPage` to request a fresh handler page for each invocation.
+`alwaysOpensNewPage` to request a fresh handler page for each invocation. Bridge `1.21.0` adds
+optional `representation` to capability discovery and manifest declarations. Boards declaring
+`content.view` must provide one non-empty representation per supported format and set
+`minBridgeVersion: "1.21.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
 `data:` URLs, and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
@@ -164,7 +167,7 @@ hygiene, not a security boundary or a grant.
 
 ```json
 {
-  "minBridgeVersion": "1.11.0",
+  "minBridgeVersion": "1.21.0",
   "permissions": ["capabilities"],
   "capabilities": [
     {
@@ -176,7 +179,8 @@ hygiene, not a security boundary or a grant.
       "payloadSchema": { "type": "object" },
       "headless": false,
       "alwaysOpensNewPage": false
-    }
+    },
+    { "id": "content.view", "representation": "pdf", "priority": 70 }
   ]
 }
 ```
@@ -191,7 +195,9 @@ handler page for every request. `headless` is preserved for discovery, but a win
 declaration is
 outside the page-backed intent channel and settles as `no-handler`. A capability is resolved in
 the caller's window: an already-open winning handler page is reused, otherwise Persephone opens
-that board there.
+that board there. `representation` is an open string; `content.view` requires a non-empty value.
+Declare one entry per supported representation and set `minBridgeVersion: "1.21.0"` when using
+it. Other capability ids may omit the field.
 
 ### In-memory intents: `persephone.intent.*`
 
@@ -237,8 +243,8 @@ a handler. Each entry includes `handlerKey`, which distinguishes handlers that s
 
 ```js
 const available = await persephone.capabilities.list();
-// [{ id: "acme.convert", version: 1, priority: 60,
-//    handlerKey: "board:/work/acme", origin: "board", title: "Convert a document" }]
+// [{ id: "content.view", representation: "pdf", version: 1, priority: 70,
+//    handlerKey: "board:/work/acme", origin: "board" }]
 ```
 
 Call `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
