@@ -2,22 +2,13 @@ import type { ILinkData } from "../../shared/link-data";
 import { openImageForEdit, notifyEditCapabilityFailure } from "../api/capability-feedback";
 import { errMessage } from "../../shared/utils";
 import { parseGuideUrl } from "../../shared/guides/guide-links";
-import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
-import { resolveUrlToPipeDescriptor, isHttpUrl } from "./link-utils";
+import {
+    effectivePathOf,
+    resolveUrlToPipeDescriptor,
+    splitUrlFragment,
+    virtualPipeDescriptor,
+} from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
-
-function splitUrlFragment(href: string): { url: string; fragment?: string } {
-    const hashIndex = href.indexOf("#");
-    if (hashIndex < 0) return { url: href };
-    const raw = href.slice(hashIndex + 1);
-    let fragment: string;
-    try {
-        fragment = decodeURIComponent(raw);
-    } catch {
-        fragment = raw;
-    }
-    return { url: href.slice(0, hashIndex), fragment: fragment || undefined };
-}
 
 function decodeFolderEditorLink(raw: string): { editorId: string; anchorFolder: string } | null {
     const prefix = "folder-editor://";
@@ -46,27 +37,16 @@ async function notifyUser(message: string, type: "error" | "warning"): Promise<v
     ui.notify(message, type);
 }
 
-async function parseHttp(data: ILinkData, context: SchemeHookContext): Promise<void> {
+async function parsePassThrough(data: ILinkData, context: SchemeHookContext): Promise<void> {
     data.url = data.href;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
-}
-
-async function parseData(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    data.url = data.href;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function parseMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const split = splitUrlFragment(data.href);
     data.url = split.url;
     if (split.fragment) data.fragment ??= split.fragment;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function parseVirtual(
@@ -76,9 +56,7 @@ async function parseVirtual(
 ): Promise<void> {
     data.url = data.href;
     data.target ??= target;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): Promise<void> {
@@ -91,9 +69,7 @@ async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): P
     data.url = data.href;
     data.target = parsed.editorId;
     data.folderPath = parsed.anchorFolder;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
@@ -109,22 +85,7 @@ async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<
     data.url = parsed.url;
     if (parsed.fragment) data.fragment ??= parsed.fragment;
     data.target ??= "md-view";
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
-}
-
-function extractEffectivePath(url: string): string {
-    if (isArchivePath(url)) return parseArchivePath(url).innerPath;
-    if (isHttpUrl(url)) {
-        try {
-            const parsed = new URL(url);
-            return parsed.pathname.split("/").pop() || "";
-        } catch {
-            return "";
-        }
-    }
-    return url;
+    await context.handoff();
 }
 
 export async function openLinkInBrowser(data: ILinkData): Promise<void> {
@@ -198,15 +159,9 @@ async function resolveVirtual(
         return;
     }
     data.target ||= "monaco";
-    data.pipeDescriptor = {
-        provider: { type: "file", config: { path: data.url } },
-        transformers: [],
-    };
+    data.pipeDescriptor = virtualPipeDescriptor(data.url);
     data.pipe = context.createPipe(data.pipeDescriptor);
-    if (context.phase === "source-path") return;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function resolveData(data: ILinkData, context: SchemeHookContext): Promise<void> {
@@ -232,10 +187,7 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
     data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
     if (!data.pipeDescriptor) return;
     data.pipe = context.createPipe(data.pipeDescriptor);
-    if (context.phase === "source-path") return;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
@@ -247,10 +199,7 @@ async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promis
         transformers: [],
     };
     data.pipe = context.createPipe(data.pipeDescriptor);
-    if (context.phase === "source-path") return;
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
+    await context.handoff();
 }
 
 async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
@@ -296,9 +245,7 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
             transformers: [],
         };
         data.pipe = context.createPipe(data.pipeDescriptor);
-        data.handled = false;
-        await context.delegate();
-        data.handled = true;
+        await context.handoff();
     } catch (error) {
         const { ui } = await import("../api/ui");
         ui.notify(`Failed to open guide ${parsed.path}: ${errMessage(error)}`, "error");
@@ -321,7 +268,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     }
 
     const openInBrowser = data.target === "browser";
-    const effectivePath = extractEffectivePath(data.url);
+    const effectivePath = effectivePathOf(data.url);
     const ext = effectivePath.includes(".")
         ? effectivePath.slice(effectivePath.lastIndexOf(".")).toLowerCase()
         : "";
@@ -380,47 +327,21 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
 
     data.pipeDescriptor = pipeDescriptor;
     data.pipe = context.createPipe(pipeDescriptor);
-    data.handled = false;
-    await context.delegate();
-    data.handled = true;
-}
-
-async function resolveFolderEditor(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
-}
-
-async function resolveBoard(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
-}
-
-async function resolveToolset(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
-}
-
-async function resolveMnemeFolder(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
-}
-
-async function resolveGitTree(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
-}
-
-async function resolveTreeCategory(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    await resolveVirtual(data, context);
+    await context.handoff();
 }
 
 // ── Built-in scheme declarations ────────────────────────────────────────────
 
 const platformRegistration = { origin: "platform" } as const;
 
-registerScheme("http", { parse: parseHttp, resolve: resolveHttp }, platformRegistration);
-registerScheme("https", { parse: parseHttp, resolve: resolveHttp }, platformRegistration);
-registerScheme("data", { parse: parseData, resolve: resolveData }, platformRegistration);
-registerScheme("folder-editor", { parse: parseFolderEditor, resolve: resolveFolderEditor }, platformRegistration);
-registerScheme("git-tree", { parse: (data, context) => parseVirtual(data, context, "git-tree"), resolve: resolveGitTree }, platformRegistration);
+registerScheme("http", { parse: parsePassThrough, resolve: resolveHttp }, platformRegistration);
+registerScheme("https", { parse: parsePassThrough, resolve: resolveHttp }, platformRegistration);
+registerScheme("data", { parse: parsePassThrough, resolve: resolveData }, platformRegistration);
+registerScheme("folder-editor", { parse: parseFolderEditor, resolve: resolveVirtual }, platformRegistration);
+registerScheme("git-tree", { parse: (data, context) => parseVirtual(data, context, "git-tree"), resolve: resolveVirtual }, platformRegistration);
 registerScheme("mneme", { parse: parseMneme, resolve: resolveMneme }, platformRegistration);
-registerScheme("mneme-folder", { parse: (data, context) => parseVirtual(data, context, "mneme-root"), resolve: resolveMnemeFolder }, platformRegistration);
-registerScheme("persephone-board", { parse: (data, context) => parseVirtual(data, context, "board-view"), resolve: resolveBoard }, platformRegistration);
+registerScheme("mneme-folder", { parse: (data, context) => parseVirtual(data, context, "mneme-root"), resolve: resolveVirtual }, platformRegistration);
+registerScheme("persephone-board", { parse: (data, context) => parseVirtual(data, context, "board-view"), resolve: resolveVirtual }, platformRegistration);
 registerScheme("persephone-guide", { parse: parseGuide, resolve: resolveGuide }, platformRegistration);
-registerScheme("persephone-toolset", { parse: (data, context) => parseVirtual(data, context, "toolset-view"), resolve: resolveToolset }, platformRegistration);
-registerScheme("tree-category", { parse: (data, context) => parseVirtual(data, context, "category-view"), resolve: resolveTreeCategory }, platformRegistration);
+registerScheme("persephone-toolset", { parse: (data, context) => parseVirtual(data, context, "toolset-view"), resolve: resolveVirtual }, platformRegistration);
+registerScheme("tree-category", { parse: (data, context) => parseVirtual(data, context, "category-view"), resolve: resolveVirtual }, platformRegistration);

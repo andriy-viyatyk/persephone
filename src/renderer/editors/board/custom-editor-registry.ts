@@ -26,6 +26,7 @@ import { settings } from "../../api/settings";
 import { bundledBoardRegistry } from "./bundled-board-registry";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
+import { urlPathFileName } from "../../content/link-utils";
 import {
     replaceProviderDeclarations,
     boardProviderTypeRefusal,
@@ -172,18 +173,6 @@ const defaultState: CustomEditorRegistryState = {
     registrationIssues: [],
 };
 
-/** Last path segment of a registered-scheme URL — decoded, without query or fragment. This is the
- *  file name `resolveEditorIdForFile` matches on; the ORIGINAL url stays its `filePath` argument so
- *  the locality gate still judges the real source. Mirrors `extractEffectivePath` in
- *  `content/resolvers.ts`, which does the same for http(s). */
-function schemeEffectivePath(url: string): string {
-    try {
-        return decodeURIComponent(new URL(url).pathname.split("/").pop() || "");
-    } catch {
-        return "";
-    }
-}
-
 /** The claiming board's display name, for titling a page opened on a link that carries none. */
 function boardDisplayName(boardRoot: string): string | undefined {
     return customEditorRegistry.entries.find((e) => e.boardRoot === boardRoot)?.name;
@@ -193,9 +182,7 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
     return {
         async parse(data, context) {
             data.url = data.href;
-            data.handled = false;
-            await context.delegate();
-            data.handled = true;
+            await context.handoff();
         },
         async resolve(data, context) {
             data.pipeDescriptor = {
@@ -209,7 +196,7 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
             if (context.phase === "source-path") return;
             // Target resolution is an OPEN-phase concern: `source-path` rebuilds a pipe for a page
             // that already exists and discards `data.target` (EPIC-113 D15).
-            const effectivePath = schemeEffectivePath(data.url);
+            const effectivePath = urlPathFileName(data.url);
             // Evaluate the empty-name branch BEFORE resolveEditorIdForFile: it substitutes the
             // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's
             // unconditional `acceptFile: () => 0` returns "monaco". Every arm after that call is
@@ -222,9 +209,7 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
             // a nameless one (a magnet) by the claiming board, since there is nothing else to say.
             data.title = data.title
                 || (effectivePath ? fpBasename(effectivePath) : boardDisplayName(boardRoot));
-            data.handled = false;
-            await context.delegate();
-            data.handled = true;
+            await context.handoff();
         },
     };
 }
@@ -660,8 +645,8 @@ export const customEditorRegistry = new CustomEditorRegistry();
  * registries stay separate data structures; this only READS both.
  *
  * `matchPath` exists because those two callers hold different strings for a non-local source. The
- * openRawLink path matches on the source's EFFECTIVE path (`extractEffectivePath` — the entry name
- * inside an archive, the last URL segment without its query), while locality — the capability gate —
+ * openRawLink path matches on the source's effective path (the archive entry name or the last URL
+ * segment without query/fragment), while locality — the capability gate —
  * must still be judged on the ORIGINAL url. Passing the effective path as `filePath` would read as
  * "plain local file" and hand every simple board a source it cannot read.
  */

@@ -1,30 +1,9 @@
 import { app } from "../api/app";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
-import { dispatchRegisteredSchemeParse } from "./scheme-registry";
+import { canonicalizeScheme, dispatchRegisteredSchemeParse } from "./scheme-registry";
 import "./builtin-schemes";
-import { normalizeFileUrl, isFileUrl, isPlausibleFilePath } from "./link-utils";
-
-/**
- * Split a trailing `#fragment` off a URL-shaped href (US-901).
- *
- * Safe ONLY for real URLs (`file://`, `mneme://`) where a literal "#" must be
- * percent-encoded as `%23` — `url.pathToFileURL` does encode it, so the split
- * is unambiguous. Never call this on a bare filesystem path: "#" is legal in
- * Windows file and folder names (`C:\notes\C#\readme.md`).
- */
-function splitUrlFragment(href: string): { url: string; fragment?: string } {
-    const hashIndex = href.indexOf("#");
-    if (hashIndex < 0) return { url: href };
-    const raw = href.slice(hashIndex + 1);
-    let fragment: string;
-    try {
-        fragment = decodeURIComponent(raw);
-    } catch {
-        fragment = raw;
-    }
-    return { url: href.slice(0, hashIndex), fragment: fragment || undefined };
-}
+import { normalizeFileUrl, isFileUrl, isPlausibleFilePath, splitUrlFragment } from "./link-utils";
 
 /** Register Layer 1 fallbacks and the registry-backed scheme dispatcher. */
 export function registerRawLinkParsers(): void {
@@ -65,6 +44,7 @@ export function registerRawLinkParsers(): void {
 
     // Registered schemes run before the file fallback but after the cURL/fetch auxiliary parser.
     app.events.openRawLink.subscribe(async (data) => {
+        data.href = canonicalizeScheme(data.href);
         await dispatchRegisteredSchemeParse(data, () => app.events.openLink.sendAsync(data));
     });
 

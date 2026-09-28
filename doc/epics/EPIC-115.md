@@ -63,7 +63,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1546 | [One `__pipe` range reader in main; one MIME table](../tasks/US-1546-pipe-range-reader/README.md) | 3 — structure | M | Done |
 | US-1548 | [One ownership registry for providers, schemes, capabilities and URL masks](../tasks/US-1548-ownership-registry/README.md) | 3 — structure | M | Done |
 | US-1549 | [Board manifest parsed once into a normalized model](../tasks/US-1549-normalized-board-manifest/README.md) | 3 — structure | M | Done |
-| US-1550 | Scheme hooks: a `handoff()` helper and shared URL helpers | 3 — structure | S | Planned |
+| US-1550 | [Scheme hooks: a `handoff()` helper and shared URL helpers](../tasks/US-1550-scheme-hooks-handoff/README.md) | 3 — structure | S | Done |
 | US-1551 | Single-instance board routing in one place; a typed open-context hook | 3 — structure | S | Planned |
 | US-1552 | Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters | 3 — structure | L | Planned |
 | US-1553 | VideoEditor's source flow in one place; one provider-recovery helper for all editors | 3 — structure | M | Planned |

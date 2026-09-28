@@ -398,6 +398,14 @@ verdict. A malformed script provider throws on construction and reports one erro
 alerts bar. Platform providers remain unwrapped, and this check validates member shape only—the
 pipeline still owns value and return-type validation.
 
+Scripts can also register URL schemes with `io.registerScheme(scheme, { parse, resolve })`. The
+hooks receive the pipeline's `ILinkData` and a context with `delegate()`, `handoff()`, and
+`createPipe()`. In the open phase, `handoff()` continues the normal pipeline and manages
+`handled`. During persisted source-path reconstruction, resolve-hook `handoff()` invokes its
+supplied no-op delegate and leaves `handled` unchanged; the parse-hook delegate still invokes the
+resolver to rebuild the pipe. See [Content Delivery Pipeline](content-pipeline.md) for the registry
+and dispatch flow.
+
 ### `ai` — AI Model Integrations
 
 Provides the `ClaudeSession` class for conversational AI scripting via `@anthropic-ai/sdk`.

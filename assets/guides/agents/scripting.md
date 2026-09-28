@@ -19,8 +19,10 @@ protocol from the examples below.
 
 Renderer scripts can call `io.registerProvider(type, factory)` and
 `io.registerScheme(scheme, hooks)` to add a provider and URL scheme for the current renderer
-session. Factories return the structural provider shape; scheme hooks should delegate through the
-normal pipeline. Open registered schemes with `app.events.openRawLink.sendAsync(io.createLinkData(url))`
+session. Factories return the structural provider shape; scheme hooks can use `context.handoff()`
+to continue through the normal pipeline. Scheme matching is case-insensitive, and the pipeline
+lowercases only the URL scheme prefix before dispatch while preserving the remainder. Open
+registered schemes with `app.events.openRawLink.sendAsync(io.createLinkData(url))`
 or the existing `app.openRawLink` helper. Script-owned re-registration replaces the previous entry
 with an info report, while platform-owned duplicates remain first-wins errors. Registrations are
 cleared by a renderer reload/restart, not by autoload re-execution; existing live pipes keep their

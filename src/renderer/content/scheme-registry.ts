@@ -12,6 +12,7 @@ export type SchemePhase = "open" | "source-path";
 export interface SchemeHookContext {
     readonly phase: SchemePhase;
     readonly delegate: () => Promise<boolean>;
+    readonly handoff: () => Promise<void>;
     readonly createPipe: (descriptor: IPipeDescriptor) => IContentPipe;
 }
 
@@ -45,10 +46,37 @@ function normalizeScheme(scheme: string): string {
     return scheme.trim().toLowerCase().replace(/:$/, "");
 }
 
-function schemeFromValue(value: string | undefined): string | undefined {
+export function schemeOf(value: string | undefined): string | undefined {
     if (!value) return undefined;
-    const scheme = /^([a-z][a-z\d+.-]*):/.exec(value)?.[1];
-    return scheme ? normalizeScheme(scheme) : undefined;
+    return /^([a-z][a-z\d+.-]*):/i.exec(value)?.[1].toLowerCase();
+}
+
+/** Lowercase only a multi-character scheme prefix, preserving the rest byte-for-byte. */
+export function canonicalizeScheme(value: string): string {
+    const match = /^([a-z][a-z\d+.-]*):/i.exec(value);
+    if (!match || match[1].length < 2) return value;
+    return `${match[1].toLowerCase()}${value.slice(match[0].length - 1)}`;
+}
+
+function createHookContext(
+    phase: SchemePhase,
+    data: ILinkData,
+    delegate: () => Promise<boolean>,
+): SchemeHookContext {
+    return {
+        phase,
+        delegate,
+        handoff: async () => {
+            if (phase === "source-path") {
+                await delegate();
+                return;
+            }
+            data.handled = false;
+            await delegate();
+            data.handled = true;
+        },
+        createPipe: createPipeFromDescriptor,
+    };
 }
 
 function duplicateResult(kind: string, name: string, existing: SchemeRegistration): RegistrationResult {
@@ -102,13 +130,9 @@ export async function dispatchRegisteredSchemeParse(
     data: ILinkData,
     delegate: () => Promise<boolean>,
 ): Promise<boolean> {
-    const registration = schemeOwnership.get(schemeFromValue(data.href) ?? "")?.value;
+    const registration = schemeOwnership.get(schemeOf(data.href) ?? "")?.value;
     if (!registration) return false;
-    await registration.hooks.parse(data, {
-        phase: "open",
-        delegate,
-        createPipe: createPipeFromDescriptor,
-    });
+    await registration.hooks.parse(data, createHookContext("open", data, delegate));
     return true;
 }
 
@@ -116,38 +140,27 @@ export async function dispatchRegisteredSchemeResolve(
     data: ILinkData,
     delegate: () => Promise<boolean>,
 ): Promise<boolean> {
-    const registration = schemeOwnership.get(schemeFromValue(data.url) ?? "")?.value;
+    const registration = schemeOwnership.get(schemeOf(data.url) ?? "")?.value;
     if (!registration) return false;
-    await registration.hooks.resolve(data, {
-        phase: "open",
-        delegate,
-        createPipe: createPipeFromDescriptor,
-    });
+    await registration.hooks.resolve(data, createHookContext("open", data, delegate));
     return true;
 }
 
 /** Resolve a registered source path without entering the page-opening event pipeline. */
 export async function resolveRegisteredSourcePath(path: string): Promise<IContentPipe | undefined> {
-    const registration = schemeOwnership.get(schemeFromValue(path) ?? "")?.value;
+    const registration = schemeOwnership.get(schemeOf(path) ?? "")?.value;
     if (!registration) return undefined;
     const hooks = registration.hooks;
 
-    const data: ILinkData = { href: path, handled: false };
+    const canonicalPath = canonicalizeScheme(path);
+    const data: ILinkData = { href: canonicalPath, handled: false };
     let resolved = false;
-    const resolveContext: SchemeHookContext = {
-        phase: "source-path",
-        delegate: async () => false,
-        createPipe: createPipeFromDescriptor,
-    };
-    const parseContext: SchemeHookContext = {
-        phase: "source-path",
-        delegate: async () => {
-            resolved = true;
-            await hooks.resolve(data, resolveContext);
-            return true;
-        },
-        createPipe: createPipeFromDescriptor,
-    };
+    const resolveContext = createHookContext("source-path", data, async () => false);
+    const parseContext = createHookContext("source-path", data, async () => {
+        resolved = true;
+        await hooks.resolve(data, resolveContext);
+        return true;
+    });
 
     await hooks.parse(data, parseContext);
     if (!resolved) return undefined;

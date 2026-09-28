@@ -1,23 +1,16 @@
 import { app } from "../api/app";
 import { resolveEditorIdForFile } from "../editors/board/custom-editor-registry";
-import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
+import { isArchivePath } from "../core/utils/file-path";
 import { createPipeFromDescriptor } from "./registry";
 import { dispatchRegisteredSchemeResolve } from "./scheme-registry";
 import { openLinkInBrowser } from "./builtin-schemes";
-import { resolveUrlToPipeDescriptor, isHttpUrl, toFileUrl } from "./link-utils";
-
-function extractEffectivePath(url: string): string {
-    if (isArchivePath(url)) return parseArchivePath(url).innerPath;
-    if (isHttpUrl(url)) {
-        try {
-            const parsed = new URL(url);
-            return parsed.pathname.split("/").pop() || "";
-        } catch {
-            return "";
-        }
-    }
-    return url;
-}
+import {
+    resolveUrlToPipeDescriptor,
+    isHttpUrl,
+    toFileUrl,
+    effectivePathOf,
+    virtualPipeDescriptor,
+} from "./link-utils";
 
 /** Register the Layer 2 file fallback and the registry-backed scheme dispatcher. */
 export function registerResolvers(): void {
@@ -52,10 +45,7 @@ export function registerResolvers(): void {
             // requested editor. The registry hooks use the same placeholder descriptor.
             if (data.url.includes("://")) {
                 data.target ||= "monaco";
-                data.pipeDescriptor = {
-                    provider: { type: "file", config: { path: data.url } },
-                    transformers: [],
-                };
+                data.pipeDescriptor = virtualPipeDescriptor(data.url);
                 data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
                 data.handled = false;
                 await app.events.openContent.sendAsync(data);
@@ -65,7 +55,7 @@ export function registerResolvers(): void {
         }
 
         data.target = data.target
-            || resolveEditorIdForFile(data.url, extractEffectivePath(data.url))
+            || resolveEditorIdForFile(data.url, effectivePathOf(data.url))
             || "monaco";
         data.pipeDescriptor = pipeDescriptor;
         data.pipe = createPipeFromDescriptor(pipeDescriptor);

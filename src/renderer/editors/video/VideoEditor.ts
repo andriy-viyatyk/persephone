@@ -23,7 +23,7 @@ import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
 import { pipeFromLink } from "../../content/rebuild-pipe";
-import { isSchemeRegistered } from "../../content/scheme-registry";
+import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -290,7 +290,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
                         // name: core must not know which board claims `torrent:`. A link whose
                         // scheme IS registered failed for some other reason and still throws.
                         const persistedLink = this.state.get().sourceLink?.href;
-                        const scheme = persistedLink?.match(/^([a-z][a-z\d+.-]*):/i)?.[1];
+                        const scheme = schemeOf(persistedLink);
                         if (scheme && !isSchemeRegistered(scheme)) {
                             this.state.update((s) => { s.playerState = "error"; });
                             ui.notify(

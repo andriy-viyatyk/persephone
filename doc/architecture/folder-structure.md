@@ -286,7 +286,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
 │   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
 │   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
-│   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
+│   ├── link-utils.ts       # URL → pipe descriptor resolution and shared URL path/fragment helpers
 │   ├── rebuild-pipe.ts     # pipeFromSourcePath() — rebuild a pipe from a persisted source path (plain, archive-bang, http); shared by the Image editor, board file materialization and page restore
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
 │   ├── folder-editor-link.ts # folder-editor:// UTF-8-safe board-folder link; maps built-in folder ids to their existing links

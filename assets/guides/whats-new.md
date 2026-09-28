@@ -28,8 +28,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   dimensions. It works for inactive pages and does not write a temporary file.
 - **Scripts can register custom content providers and URL schemes:** use `io.registerProvider()`
   and `io.registerScheme()` to make script-defined content readable through Persephone's normal
-  link-opening flow. Registrations remain available in the current window until it is reloaded or
-  restarted. See the [`io` API reference](./scripting/api/io.md#registering-providers-and-url-schemes).
+  link-opening flow. Scheme hooks can hand off to that flow with `context.handoff()`, and scheme
+  matching is case-insensitive. Registrations remain available in the current window until it is
+  reloaded or restarted. See the [`io` API reference](./scripting/api/io.md#registering-providers-and-url-schemes).
 - **Scripts and agents can inspect and dismiss toast alerts:** use `app.ui.alerts` in scripts or
   `ui.alerts` through the application object model to check alert severity, message, and creation
   time, then dismiss one or more alerts when that serves the user's intent. See the [`app.ui` API

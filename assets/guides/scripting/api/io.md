@@ -74,15 +74,17 @@ provider.
 ### `io.registerScheme(scheme, hooks)`
 
 The hooks object must provide `parse` and `resolve` functions. They receive the `ILinkData` object
-used by the link-opening events, plus a context containing `phase`, `delegate()`, and
+used by the link-opening events, plus a context containing `phase`, `delegate()`, `handoff()`, and
 `createPipe(descriptor)`. Scheme names are trimmed and matched case-insensitively; a trailing `:`
-is optional.
+is optional. URL scheme prefixes are also matched case-insensitively when opened. Before hooks run,
+the pipeline lowercases only a multi-character scheme prefix and preserves the rest of the URL.
 
-The parse hook should set `data.url`, set `data.handled = false`, call `context.delegate()`, and
-then set `data.handled = true`. The resolve hook should set `data.target`, provide a persistable
-`data.pipeDescriptor`, and create `data.pipe` with `context.createPipe()`. In the `open` phase,
-call `context.delegate()` after preparing the data. In the `source-path` phase, create the pipe
-and return without delegating.
+The parse hook should set `data.url` and call `context.handoff()`. The resolve hook should set
+`data.target`, provide a persistable `data.pipeDescriptor`, and create `data.pipe` with
+`context.createPipe()`. In the `open` phase, call `context.handoff()` after preparing the data. In
+the `source-path` phase, `handoff()` only calls the supplied delegate and leaves handled state
+unchanged, so resolve hooks can build the pipe and call it in either phase. `context.delegate()`
+remains available for custom handled-state logic.
 
 Registering a scheme already registered by your scripts replaces the hooks and reports an `info`
 notification. Built-in schemes cannot be replaced; trying to register one reports an error. The
@@ -121,9 +123,7 @@ io.registerProvider(providerType, (config) => {
 io.registerScheme(scheme, {
     async parse(data, context) {
         data.url = data.href;
-        data.handled = false;
-        await context.delegate();
-        data.handled = true;
+        await context.handoff();
     },
 
     async resolve(data, context) {
@@ -137,11 +137,7 @@ io.registerScheme(scheme, {
         };
         data.pipe = context.createPipe(data.pipeDescriptor);
 
-        if (context.phase === "source-path") return;
-
-        data.handled = false;
-        await context.delegate();
-        data.handled = true;
+        await context.handoff();
     },
 });
 

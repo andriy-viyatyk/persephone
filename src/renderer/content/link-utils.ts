@@ -64,6 +64,51 @@ export function isUrlOrCurl(href: string): boolean {
     return h.startsWith("http://") || h.startsWith("https://") || /^curl\s/i.test(h);
 }
 
+/**
+ * Split URL fragments; callers must keep bare Windows paths out because # is a legal filename
+ * character.
+ */
+export function splitUrlFragment(href: string): { url: string; fragment?: string } {
+    const hashIndex = href.indexOf("#");
+    if (hashIndex < 0) return { url: href };
+    const raw = href.slice(hashIndex + 1);
+    let fragment: string;
+    try {
+        fragment = decodeURIComponent(raw);
+    } catch {
+        fragment = raw;
+    }
+    return { url: href.slice(0, hashIndex), fragment: fragment || undefined };
+}
+
+/** Keep built-in semantics: archives use the entry path; HTTP uses its raw last segment. */
+export function effectivePathOf(url: string): string {
+    if (isArchivePath(url)) return parseArchivePath(url).innerPath;
+    if (isHttpUrl(url)) {
+        try {
+            const parsed = new URL(url);
+            return parsed.pathname.split("/").pop() || "";
+        } catch {
+            return "";
+        }
+    }
+    return url;
+}
+
+/** Board provider URLs encode the file path; the decoded filename feeds editor matching and tab title. */
+export function urlPathFileName(url: string): string {
+    try {
+        return decodeURIComponent(new URL(url).pathname.split("/").pop() || "");
+    } catch {
+        return "";
+    }
+}
+
+/** Placeholder source for virtual URLs that have no file-backed provider. */
+export function virtualPipeDescriptor(url: string): IPipeDescriptor {
+    return { provider: { type: "file", config: { path: url } }, transformers: [] };
+}
+
 // =============================================================================
 // Pipe descriptor resolution
 // =============================================================================

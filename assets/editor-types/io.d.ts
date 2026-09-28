@@ -55,6 +55,8 @@ export interface ISchemeHookContext {
     readonly phase: "open" | "source-path";
     /** Continue through the existing EventChannel pipeline. */
     readonly delegate: () => Promise<boolean>;
+    /** Reset handled state, delegate in open phase, and preserve source-path reconstruction. */
+    readonly handoff: () => Promise<void>;
     /** Reconstruct a content pipe from its persistable descriptor. */
     readonly createPipe: (descriptor: IPipeDescriptor) => IContentPipe;
 }
@@ -144,10 +146,12 @@ export interface IIoNamespace {
     registerProvider(type: string, factory: IProviderFactory): void;
     /**
      * Register parse and resolve hooks for a URL scheme in this renderer session.
-     * Hooks must use `context.delegate()` to enter the existing openRawLink → openLink →
-     * openContent pipeline. In `source-path` phase, resolve should build the pipe and return
-     * without delegating into page opening. Script-owned re-registration replaces the prior
-     * script entry with an info report; platform-owned schemes remain first-wins with an error.
+     * Hooks can use `context.handoff()` to enter the existing openRawLink → openLink →
+     * openContent pipeline in the open phase. In `source-path` phase, handoff only invokes the
+     * supplied delegate and does not change handled state; resolve should build the pipe first.
+     * `context.delegate()` remains available for custom handled-state behavior. Script-owned
+     * re-registration replaces the prior script entry with an info report; platform-owned schemes
+     * remain first-wins with an error.
      * Registrations are cleared by a renderer reload/restart, and replacements affect only
      * subsequent dispatches; existing live pipes are unchanged.
      *
@@ -155,18 +159,13 @@ export interface IIoNamespace {
      * io.registerScheme("memory", {
      *     async parse(data, context) {
      *         data.url = data.href;
-     *         data.handled = false;
-     *         await context.delegate();
-     *         data.handled = true;
+     *         await context.handoff();
      *     },
      *     async resolve(data, context) {
      *         data.target = "monaco";
      *         data.pipeDescriptor = { provider: { type: "memory", config: {} }, transformers: [] };
      *         data.pipe = context.createPipe(data.pipeDescriptor);
-     *         if (context.phase === "source-path") return;
-     *         data.handled = false;
-     *         await context.delegate();
-     *         data.handled = true;
+     *         await context.handoff();
      *     },
      * });
      */

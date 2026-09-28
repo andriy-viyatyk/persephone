@@ -16,7 +16,9 @@ The content registry is split by the kind of extension point it owns:
   `io.registerProvider()` API.
 - `scheme-registry.ts` maps URL schemes to paired parse and resolve hooks. It normalizes scheme
   names, dispatches both the normal open pipeline and the `source-path` reconstruction path, and
-  supplies hooks with `delegate()` and descriptor-based pipe creation. Platform and script
+  supplies hooks with `delegate()`, `handoff()`, and descriptor-based pipe creation. `handoff()`
+  owns the handled-state sequence for normal opens and preserves the pipe-reconstruction delegate
+  during source-path resolution. Platform and script
   registrations have separate duplicate/replacement rules; trusted and bundled-board registrations use the
   same hook contract and an existing live pipe is never changed by a later registration.
 - `builtin-schemes.ts` owns the platform scheme hooks and their scheme-specific parsing and
@@ -83,9 +85,18 @@ Opening content flows through three event-driven layers. Each layer is registere
 ### Layer 1 — Parsers and registered schemes
 
 `registerRawLinkParsers()` in `parsers.ts` installs the event-channel adapters. The generic
-registered-scheme adapter delegates to the hooks in `scheme-registry.ts`; the platform hook
-implementations are in `builtin-schemes.ts`. Each hook receives the same `ILinkData` object,
-enriches it, and delegates to `app.events.openLink`. Registration order is LIFO:
+registered-scheme adapter dispatches hooks from `scheme-registry.ts`; the platform hook
+implementations are in `builtin-schemes.ts`. Each hook receives the same `ILinkData` object and
+enriches it. During normal opens, its delegate continues through `app.events.openLink`; source-path
+reconstruction uses a dedicated parse delegate to invoke the resolver without opening a page.
+Registration order is LIFO:
+
+Before registered-scheme dispatch, the adapter lowercases only an RFC 3986 scheme prefix with at
+least two characters. The remainder of the href is preserved byte-for-byte, and one-letter drive
+paths are left untouched. Scheme matching and `pages.openUrl` validation are case-insensitive; the
+validation boundary returns the caller's original href, while the parser owns canonicalization.
+This means URL payloads and path/query casing retain their identity as hooks and providers receive
+the URL.
 
 | Adapter | Detects | Owner |
 |--------|---------|---------------|
@@ -100,6 +111,12 @@ any URL whose scheme is currently registered. Built-in schemes are loaded before
 script registrations are session-scoped and are therefore accepted by the same registry lookup.
 
 **Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive, `mneme://`, and `persephone-guide://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`, `persephone-guide://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
+
+Scheme hooks can use `context.handoff()` after preparing their data. In the open phase it resets
+`data.handled`, calls the existing delegate, then marks the data handled. During source-path
+reconstruction it only calls the supplied delegate, preserving the parse-to-resolver pipe-building
+path without entering page opening or changing `data.handled`. `context.delegate()` remains
+available for hooks that need custom handled-state behavior.
 
 ### Layer 2 — Resolvers
 
@@ -334,7 +351,7 @@ Key rules:
 | `/src/renderer/content/builtin-schemes.ts` | Built-in URL-scheme hooks and browser/content resolution |
 | `/src/renderer/content/parsers.ts` | Layer 1 -- scheme dispatch plus plain-file/archive and cURL/fetch adapters |
 | `/src/renderer/content/resolvers.ts` | Layer 2 -- fallback resolver and registered-scheme dispatch |
-| `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution (reusable by tree providers) |
+| `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution and shared URL path/fragment helpers |
 | `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
 | `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |
 | `/src/renderer/content/providers/FileProvider.ts` | Local file provider |

@@ -1,4 +1,4 @@
-import { isSchemeRegistered } from "../../content/scheme-registry";
+import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
 import "../../content/builtin-schemes";
 
 const PIPELINE_INPUT_FORMS =
@@ -28,7 +28,7 @@ function isWindowsOrUncPath(value: string): boolean {
 }
 
 function isValidHttpUrl(value: string): boolean {
-    if (!/^https?:\/\//.test(value)) return false;
+    if (!/^https?:\/\//i.test(value)) return false;
     try {
         const parsed = new URL(value);
         return parsed.hostname.length > 0;
@@ -38,7 +38,7 @@ function isValidHttpUrl(value: string): boolean {
 }
 
 function isValidFileUrl(value: string): boolean {
-    if (!value.startsWith("file://")) return false;
+    if (!/^file:\/\//i.test(value)) return false;
     try {
         const parsed = new URL(value);
         return parsed.protocol === "file:" && (parsed.hostname.length > 0 || parsed.pathname.length > 1);
@@ -48,7 +48,7 @@ function isValidFileUrl(value: string): boolean {
 }
 
 function isValidDataUrl(value: string): boolean {
-    if (!value.startsWith("data:") || !value.includes(",")) return false;
+    if (!/^data:/i.test(value) || !value.includes(",")) return false;
     try {
         return new URL(value).protocol === "data:";
     } catch {
@@ -57,11 +57,12 @@ function isValidDataUrl(value: string): boolean {
 }
 
 function isValidRegisteredScheme(value: string): boolean {
-    const match = /^([a-z][a-z\d+.-]*):\/\//.exec(value);
-    if (!match || !isSchemeRegistered(match[1])) return false;
+    const scheme = schemeOf(value);
+    const match = /^[a-z][a-z\d+.-]*:\/\//i.exec(value);
+    if (!scheme || !match || !isSchemeRegistered(scheme)) return false;
     if (/\s/.test(value) || value.slice(match[0].length).length === 0) return false;
     try {
-        return new URL(value).protocol === `${match[1]}:`;
+        return new URL(value).protocol === `${scheme}:`;
     } catch {
         return false;
     }
