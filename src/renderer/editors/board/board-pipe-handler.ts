@@ -35,8 +35,8 @@ interface PendingRead {
 }
 
 const pipeMemos = new Map<string, PipeMemo>();
-/** Link-built resources (US-1521), keyed by the opaque id their `board://…/__pipe/resource/<id>`
- *  URL carries. Separate from `pipeMemos`, which caches read state rather than owning a pipe. */
+/** Board content and video session resources, keyed by opaque resource id. Separate from
+ *  `pipeMemos`, which caches read state rather than owning a pipe. */
 const contentResources = new Map<string, IContentPipe>();
 const pendingReads = new Map<string, PendingRead>();
 let initialized = false;
@@ -133,28 +133,19 @@ function validContinuationRange(range: ByteRange | undefined, totalSize: number)
 async function readChunk(request: BoardPipeReadRequest, signal: AbortSignal): Promise<BoardPipeReadSuccess> {
     let pipe: IContentPipe | undefined;
     if (request.pipeKind === "resource") {
-        // Resolved by id, never by searching the open pages for whoever happens to hold it. The
-        // owning `BoardEditorModel` publishes the pipe here when it opens the resource and removes
-        // it in `releaseContentResource()`, so this map's lifetime IS the resource's lifetime.
+        // BoardEditorModel publishes board resources and VideoEditor publishes session resources.
         pipe = contentResources.get(request.pipeId);
     } else {
         const page = pages.findPage(request.pipeId);
         const editor = page?.mainEditorInstance as {
             pipeUrlEnabled?: boolean;
             resolveStreamPipe?: () => Promise<IContentPipe>;
-            pipe?: IContentPipe | null;
         } | null;
-        // A capability check, not `instanceof` — `BoardEditorModel` is imported as a type here and
-        // making it a value import would pull the editor graph into this chunk (US-1519).
-        // `resolveStreamPipe` is what marks a BOARD page, and a board page is still gated on
-        // `pipeUrlEnabled`: falling through to `.pipe` for a board that fails the gate would
-        // quietly delete it, since the open handler assigns every board page a pipe. Only a
-        // NON-board page (a video editor, say) is read straight off `editor.pipe`.
+        // A capability check keeps the lazy board editor graph out of this handler's chunk.
+        // Page ids resolve board page pipes only; video sessions use opaque resource ids.
         if (typeof editor?.resolveStreamPipe === "function") {
             if (editor.pipeUrlEnabled !== true) throw new Error("The board pipe page is unavailable.");
             pipe = await editor.resolveStreamPipe();
-        } else {
-            pipe = editor?.pipe ?? undefined;
         }
     }
     if (!pipe) throw new Error("The page content pipe is unavailable.");
@@ -267,9 +258,16 @@ export function invalidateBoardPipePage(pageId: string): void {
     }
 }
 
-/** Publish a link-built resource's pipe for the read path. Called by `BoardEditorModel`, which
- *  owns the resource and its disposal; this map holds no reference the model does not also hold. */
+/** Publish a BoardEditorModel content pipe or VideoEditor's session pipe for resource reads. */
 export function registerBoardContentResource(resourceId: string, pipe: IContentPipe): void {
+    contentResources.set(resourceId, pipe);
+}
+
+/** Publish a VideoEditor's session pipe without replacing an existing resource. */
+export function registerVideoSessionResource(resourceId: string, pipe: IContentPipe): void {
+    if (contentResources.has(resourceId)) {
+        throw new Error("The video pipe resource id is already registered.");
+    }
     contentResources.set(resourceId, pipe);
 }
 

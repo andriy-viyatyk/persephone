@@ -3,8 +3,9 @@ import https from "node:https";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { pipeline } from "node:stream/promises";
+import type { WebContents } from "electron";
 import type { VideoStreamSessionConfig, VideoStreamSessionResult } from "../ipc/api-param-types";
-import { BoardPipeError } from "./board-pipe-service";
+import { boardPipeService, BoardPipeError } from "./board-pipe-service";
 import { readPipeRange } from "./board-pipe-range-reader";
 import {
     contentLength,
@@ -48,6 +49,8 @@ interface SessionData {
     config: VideoStreamSessionConfig;
     lastAccessed: number;
     pageId: string | undefined;
+    pipeResourceId?: string;
+    owner?: WebContents;
     faststart?: FaststartLayout;
     activePipeRequests: Set<AbortController>;
 }
@@ -62,14 +65,15 @@ let cleanupInterval: ReturnType<typeof setInterval> | undefined;
 export async function createSession(
     config: VideoStreamSessionConfig,
     port = DEFAULT_PORT,
+    owner?: WebContents,
 ): Promise<VideoStreamSessionResult> {
     const sourceCount = [config.filePath !== undefined, config.url !== undefined, config.pipe === true]
         .filter(Boolean).length;
     if (sourceCount !== 1) {
         throw new Error("A video stream session must have exactly one source.");
     }
-    if (config.pipe === true && !config.pageId) {
-        throw new Error("A pipe video stream session requires a page owner.");
+    if (config.pipe === true && (!config.pipeResourceId || !owner)) {
+        throw new Error("A pipe video stream session requires a resource id and renderer owner.");
     }
     await ensureServerRunning(port);
     const sessionId = randomUUID();
@@ -80,34 +84,54 @@ export async function createSession(
         if (layout) faststart = layout;
     }
 
-    sessions.set(sessionId, {
-        config,
-        lastAccessed: Date.now(),
-        pageId: config.pageId,
-        faststart,
-        activePipeRequests: new Set(),
-    });
-    return {
-        sessionId,
-        streamingUrl: `http://127.0.0.1:${currentPort}/video-stream/${sessionId}`,
-    };
+    let resourceRegistered = false;
+    try {
+        if (config.pipe === true && owner) {
+            boardPipeService.registerResourceIfUnowned(config.pipeResourceId, owner);
+            resourceRegistered = true;
+        }
+        sessions.set(sessionId, {
+            config,
+            lastAccessed: Date.now(),
+            pageId: config.pageId,
+            pipeResourceId: config.pipeResourceId,
+            owner: config.pipe === true ? owner : undefined,
+            faststart,
+            activePipeRequests: new Set(),
+        });
+        return {
+            sessionId,
+            streamingUrl: `http://127.0.0.1:${currentPort}/video-stream/${sessionId}`,
+        };
+    } catch (error) {
+        sessions.delete(sessionId);
+        if (resourceRegistered && owner && config.pipeResourceId) {
+            boardPipeService.unregisterResource(config.pipeResourceId, owner);
+        }
+        throw error;
+    }
 }
 
 export function deleteSession(sessionId: string): void {
-    const session = sessions.get(sessionId);
-    if (!session) return;
-    abortPipeRequests(session);
-    sessions.delete(sessionId);
+    removeSession(sessionId);
 }
 
 export function deleteSessionsByPage(pageId: string): void {
     for (const [id, session] of sessions) {
-        if (session.pageId === pageId) {
-            abortPipeRequests(session);
-            sessions.delete(id);
-        }
+        if (session.pageId === pageId) removeSession(id);
     }
 }
+
+function removeSession(sessionId: string): void {
+    const session = sessions.get(sessionId);
+    if (!session) return;
+    abortPipeRequests(session);
+    if (session.pipeResourceId && session.owner) {
+        boardPipeService.unregisterResource(session.pipeResourceId, session.owner);
+    }
+    sessions.delete(sessionId);
+}
+
 export function stopVideoStreamServer(): void {
     if (cleanupInterval) {
         clearInterval(cleanupInterval);
@@ -115,8 +139,7 @@ export function stopVideoStreamServer(): void {
     }
     httpServer?.close();
     httpServer = undefined;
-    for (const session of sessions.values()) abortPipeRequests(session);
-    sessions.clear();
+    for (const sessionId of sessions.keys()) removeSession(sessionId);
 }
 
 // ── Server lifecycle ────────────────────────────────────────────────
@@ -134,7 +157,7 @@ async function ensureServerRunning(port: number): Promise<void> {
         for (const [id, session] of sessions) {
             if (now - session.lastAccessed > SESSION_EXPIRY_MS) {
                 if (session.activePipeRequests.size > 0) continue;
-                sessions.delete(id);
+                removeSession(id);
             }
         }
     }, 5 * 60 * 1000);
@@ -653,10 +676,10 @@ async function servePipeRequest(
     res: http.ServerResponse,
     signal: AbortSignal,
 ): Promise<void> {
-    const pageId = session.config.pageId;
-    if (!pageId) throw new Error("The pipe video stream session has no page owner.");
+    const resourceId = session.pipeResourceId;
+    if (!resourceId) throw new Error("The pipe video stream session has no resource owner.");
 
-    const result = await readPipeRange("page", pageId, undefined, rangeHeader, signal);
+    const result = await readPipeRange("resource", resourceId, undefined, rangeHeader, signal);
     res.writeHead(result.status, result.headers);
     if (result.status === 416) {
         res.end();

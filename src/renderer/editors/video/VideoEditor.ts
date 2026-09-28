@@ -24,6 +24,7 @@ import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
 import { pipeFromLink } from "../../content/rebuild-pipe";
 import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
+import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     private mediaElement: HTMLMediaElement | null = null;
     private activeSessionId: string | undefined;
     private activeSessionPageId: string | undefined;
+    private activeSessionResourceId: string | undefined;
     private sourceRequestId = 0;
 
     constructor(state: TComponentState<VideoEditorState>) {
@@ -179,9 +181,18 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     private deleteActiveSession = async (): Promise<void> => {
         const sessionId = this.activeSessionId;
+        const resourceId = this.activeSessionResourceId;
         this.activeSessionId = undefined;
         this.activeSessionPageId = undefined;
-        if (sessionId) await api.deleteVideoStreamSession(sessionId);
+        this.activeSessionResourceId = undefined;
+        try {
+            if (sessionId) await api.deleteVideoStreamSession(sessionId);
+        } finally {
+            if (resourceId) {
+                const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
+                invalidateBoardPipeResource(resourceId);
+            }
+        }
     };
 
     private resolveStreamUrl = async (
@@ -195,40 +206,46 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         if (format === "m3u8") return { streamingUrl: url };
         const isHttpUrl = /^https?:\/\//i.test(url);
         const isPlainLocalFile = isPlainLocalPath(url);
+        let pipeResourceId: string | undefined;
         try {
             const page = this.page;
             const pageId = page?.id;
-            const sessionConfig = isHttpUrl
+            let config: VideoStreamSessionConfig | null = isHttpUrl
                 ? { url, headers: parsedRequest?.headers, pageId }
                 : isPlainLocalFile
                     ? { filePath: url, pageId }
-                    : this.pipe && pageId
-                        ? { pipe: true as const, pageId }
-                        : null;
-            if (!sessionConfig) {
-                throw new Error("The video source has no live content pipe.");
+                    : null;
+            if (!isHttpUrl && !isPlainLocalFile) {
+                const pipe = this.pipe;
+                if (!pipe) throw new Error("The video source has no live content pipe.");
+                const resourceId = `video-${crypto.randomUUID()}`;
+                const { registerVideoSessionResource } = await import("../board/board-pipe-handler");
+                registerVideoSessionResource(resourceId, pipe);
+                pipeResourceId = resourceId;
+                config = { pipe: true, pipeResourceId, ...(pageId ? { pageId } : {}) };
             }
-            if ("pipe" in sessionConfig) {
-                // Main accepts a pipe session only from the page's owning renderer, and a
-                // restored page's editors run before the page is registered (US-1528).
-                if (!page?.ensurePipeOwner) {
-                    throw new Error("The video page cannot own a media pipe.");
-                }
-                await page.ensurePipeOwner();
-                if (sourceRequestId !== this.sourceRequestId) return { streamingUrl: "" };
-            }
+            if (!config) throw new Error("The video source has no live content pipe.");
             const session = await api.createVideoStreamSession(
-                sessionConfig,
+                config,
                 settings.get("video-stream.port"),
             );
             if (sourceRequestId !== this.sourceRequestId) {
                 await api.deleteVideoStreamSession(session.sessionId);
+                if (pipeResourceId) {
+                    const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
+                    invalidateBoardPipeResource(pipeResourceId);
+                }
                 return { streamingUrl: "" };
             }
             this.activeSessionId = session.sessionId;
             this.activeSessionPageId = pageId;
+            this.activeSessionResourceId = pipeResourceId;
             return { streamingUrl: session.streamingUrl };
         } catch (error: unknown) {
+            if (pipeResourceId) {
+                const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
+                invalidateBoardPipeResource(pipeResourceId);
+            }
             if (!isHttpUrl && !isPlainLocalFile) throw error;
             return { streamingUrl: url }; // fallback to direct URL for local/HTTP sources
         }
@@ -543,13 +560,20 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         this.sourceRequestId++;
         const sessionId = this.activeSessionId;
         const pageId = this.activeSessionPageId ?? this.page?.id;
+        const resourceId = this.activeSessionResourceId;
         this.activeSessionId = undefined;
         this.activeSessionPageId = undefined;
+        this.activeSessionResourceId = undefined;
         const pipe = this.pipe;
         this.pipe = null;
         await Promise.all([
             sessionId ? api.deleteVideoStreamSession(sessionId) : Promise.resolve(),
             pageId ? api.deleteVideoStreamSessionsByPage(pageId) : Promise.resolve(),
+            resourceId
+                ? import("../board/board-pipe-handler").then(({ invalidateBoardPipeResource }) => {
+                    invalidateBoardPipeResource(resourceId);
+                })
+                : Promise.resolve(),
         ]);
         if (pipe) {
             pipe.dispose();

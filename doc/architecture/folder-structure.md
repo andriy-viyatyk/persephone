@@ -659,7 +659,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake, settings change pushes, and appends the main-frame board-loaded separator
-│   │   ├── board-pipe-handler.ts      # Renderer side of board://<host>/__pipe/<pageId> range reads
+│   │   ├── board-pipe-handler.ts      # Renderer side of board:// page-pipe and opaque-resource range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
@@ -970,7 +970,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── command-runner.ts       # Streaming command runner — spawns child processes, streams stdout/stderr/exit over IPC by jobId; shared by app.proc.execute and the board bridge's execute(); whole-tree kill via taskkill; jobs carry an optional caller-chosen name + a getJobsBySinkIds query (board job re-association)
 ├── board-protocol-service.ts # board:// scheme handler — host→board-root registry; serves board files + CSP; injects --p-* palette, boot context, and the bridge shim into served HTML
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
-├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
+├── board-pipe-service.ts     # Main-side board pipe page/resource ownership and renderer range request correlation
 ├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts

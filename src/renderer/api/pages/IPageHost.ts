@@ -52,10 +52,6 @@ export interface IPageHost {
     // ── OPTIONAL — page-tab property (an embedded host isn't a pinnable tab) ──
     pinned?: boolean;
 
-    // ── OPTIONAL — media pipe ownership (US-1528). Resolves once main accepts this page as
-    //    owned by this renderer; a `{ pipe: true, pageId }` video session requires it. ──
-    ensurePipeOwner?(): Promise<void>;
-
     // ── OPTIONAL — main-editor navigation (a Browser host omits these).
     //    Membership FINAL as of US-600 (Link exercised the full surface): every
     //    member below has a live `editor.page?.…` caller. `setMainEditor`/`close`

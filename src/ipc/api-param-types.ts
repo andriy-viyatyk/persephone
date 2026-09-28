@@ -169,23 +169,35 @@ export interface BoardArchiveDownloadRequest {
     size: number;
 }
 
-export interface VideoStreamSessionConfig {
-    /** Local file path to stream. Mutually exclusive with url and pipe. */
-    filePath?: string;
-    /** HTTP/HTTPS URL to proxy. Mutually exclusive with filePath and pipe. */
-    url?: string;
-    /** Read from the owning page's current content pipe. Mutually exclusive with filePath and url. */
-    pipe?: true;
+interface VideoStreamSessionConfigOptions {
     /** Custom request headers forwarded to the source URL. */
     headers?: Record<string, string>;
     /** HTTP method for the source request. Defaults to "GET". */
     method?: string;
     /**
-     * Owner page ID. When provided, deleteVideoStreamSessionsByPage() will
-     * destroy all sessions for this page — call it from the editor's dispose().
+     * Page id used only as cleanup metadata by deleteVideoStreamSessionsByPage().
      */
     pageId?: string;
 }
+
+export type VideoStreamSessionConfig = VideoStreamSessionConfigOptions & (
+    {
+        /** Read from the session's opaque pipeResourceId. */
+        pipe: true;
+        /** Opaque resource id for this session's content pipe. */
+        pipeResourceId: string;
+        filePath?: never;
+        url?: never;
+    }
+    | {
+        /** Local file path to stream. Mutually exclusive with url and pipe. */
+        filePath?: string;
+        /** HTTP/HTTPS URL to proxy. Mutually exclusive with filePath and pipe. */
+        url?: string;
+        pipe?: false;
+        pipeResourceId?: never;
+    }
+);
 
 export interface VideoStreamSessionResult {
     sessionId: string;

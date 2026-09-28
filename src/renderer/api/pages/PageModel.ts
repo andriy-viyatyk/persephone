@@ -66,8 +66,6 @@ const defaultPageState: IPageState = {
     navBackCount: 0,
 };
 
-const PIPE_OWNER_RELEASED = "The page was released before its media pipe could be owned.";
-
 export class PageModel implements IPageHost {
     /** Stable page UUID — tab identity and cache key. Never changes. */
     readonly id: string;
@@ -90,52 +88,6 @@ export class PageModel implements IPageHost {
 
     /** Close callback — set by PagesModel.attachPage(). */
     onClose?: () => void;
-
-    // ── Media pipe ownership (US-1528) ────────────────────────────────
-
-    /** Registers this page as the renderer's media-pipe owner in main. Set by
-     *  `PagesModel.attachPage()`, cleared by `detachPage()`; null while a restore or a
-     *  move-in is still building the page. */
-    private pipeOwnerRegistrar: (() => Promise<void>) | null = null;
-    private pipeOwnerRegistration: Promise<void> | null = null;
-    private pipeOwnerWaiters: { resolve: () => void; reject: (error: Error) => void }[] = [];
-
-    /**
-     * Resolves once main accepts this page as owned by this renderer, which a
-     * `{ pipe: true, pageId }` video session requires. An editor can ask before the page is
-     * attached (restore attaches editors first), so the wait holds until `attachPage()`. A
-     * rejected registration is not cached: the next call retries it.
-     */
-    ensurePipeOwner(): Promise<void> {
-        if (this.pageDisposed) return Promise.reject(new Error(PIPE_OWNER_RELEASED));
-        const registrar = this.pipeOwnerRegistrar;
-        if (!registrar) {
-            return new Promise((resolve, reject) => this.pipeOwnerWaiters.push({ resolve, reject }));
-        }
-        if (!this.pipeOwnerRegistration) {
-            const registration = registrar();
-            this.pipeOwnerRegistration = registration;
-            registration.catch(() => {
-                if (this.pipeOwnerRegistration === registration) this.pipeOwnerRegistration = null;
-            });
-        }
-        return this.pipeOwnerRegistration;
-    }
-
-    /** `PagesModel` attaches (registrar) or releases (null) this page's pipe ownership.
-     *  Release rejects pending waiters, so a detached page is never re-registered by a
-     *  stale editor callback. */
-    setPipeOwnerRegistrar(registrar: (() => Promise<void>) | null): void {
-        this.pipeOwnerRegistrar = registrar;
-        this.pipeOwnerRegistration = null;
-        const waiters = this.pipeOwnerWaiters.splice(0);
-        if (!registrar) {
-            for (const waiter of waiters) waiter.reject(new Error(PIPE_OWNER_RELEASED));
-            return;
-        }
-        const registration = this.ensurePipeOwner();
-        for (const waiter of waiters) registration.then(waiter.resolve, waiter.reject);
-    }
 
     // ── Sidebar state ─────────────────────────────────────────────────
 
@@ -866,7 +818,6 @@ export class PageModel implements IPageHost {
 
     async dispose(): Promise<void> {
         this.pageDisposed = true;
-        this.setPipeOwnerRegistrar(null);
         // Notify before anything is torn down, so a subscriber can still read the page it is
         // releasing state for. Guarded because dispose() has no early return of its own.
         if (!this.disposedNotified) {

@@ -66,7 +66,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1549 | [Board manifest parsed once into a normalized model](../tasks/US-1549-normalized-board-manifest/README.md) | 3 — structure | M | Done |
 | US-1550 | [Scheme hooks: a `handoff()` helper and shared URL helpers](../tasks/US-1550-scheme-hooks-handoff/README.md) | 3 — structure | S | Done |
 | US-1551 | [Single-instance board routing in one place; a typed open-context hook](../tasks/US-1551-single-instance-routing/README.md) | 3 — structure | S | Done |
-| US-1552 | Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters | 3 — structure | L | Planned |
+| US-1552 | [Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](../tasks/US-1552-video-resource-pipe/README.md) | 3 — structure | L | Done |
 | US-1553 | VideoEditor's source flow in one place; one provider-recovery helper for all editors | 3 — structure | M | Planned |
 | US-1554 | Board trust granting, bundled-board creation and Board Info each have one path | 3 — structure | S | Planned |
 | US-1555 | Small dead code, stale comments and a torrent-specific notice in core | 3 — structure | S | Planned |
@@ -730,6 +730,11 @@ the task document.
   - Add a shared `watchSourceRecovery(pipe, onAvailable)` and `reportProviderError(error)`.
   - Add `pipeFromPersistedSource(sourceLink, fallbackPath)` in `rebuild-pipe.ts`.
   - Drop the page-wide sweep from `dispose()`.
+- **After US-1552:** each pipe session now carries its own `video-<uuid>` resource id
+  (`activeSessionResourceId`), published in `board-pipe-handler`'s resource map and released by main
+  when the session is deleted. `startSource(...)` must keep that publish/invalidate pairing on every
+  path (stale request, create failure, replacement, dispose). The page-wide sweep in `dispose()` now
+  also releases a newer editor's resource owner in main, one more reason to drop it.
 - **Finding from US-1547 (live):** a stream-host page restored while its board was untrusted came
   back with `state.boardRoot` in backslash form, while the registry and trust list use forward
   slashes. `BoardEditorModel.editorKind` compares roots with `===` (`BoardEditorModel.ts:650`), so

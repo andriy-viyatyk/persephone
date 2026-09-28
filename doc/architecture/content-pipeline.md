@@ -256,11 +256,14 @@ escape hatch; it aborts and disposes the pending resource.
 For pipe-backed sources, the video/audio editor keeps the page's `IContentPipe` as the source of
 truth. HLS (`.m3u8`) URLs remain direct player sources; local and HTTP sources use a main-side HTTP
 streaming session, while archive entries and other non-local sources use the same session backed by
-the owning renderer's pipe. The session serves byte ranges, including transformed/archive data, so
-the player does not need a materialized source file. Sessions are page-owned and transient:
-replacing the source or disposing the editor deletes the session and disposes the pipe, and the
-streaming URL is not persisted. VLC uses that session URL for non-HLS sources, keeping the in-app
-player and external player on the same source.
+the owning renderer's pipe. The editor publishes that pipe under a fresh opaque resource id in the
+renderer-local board-pipe handler; the main process claims the id for the requesting renderer when
+creating the session, rejecting ids already registered as resources. The session reads ranges by
+that id, including transformed/archive data, so the player does not need a materialized source
+file. Sessions are transient: replacing the source or disposing the editor deletes the session and
+unregisters its resource, and the streaming URL is not persisted. When a page id is available, it
+is retained only as cleanup metadata. VLC uses the session URL for non-HLS sources, keeping the
+in-app player and external player on the same source.
 
 ## Built-in Transformers
 

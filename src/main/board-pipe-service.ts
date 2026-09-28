@@ -43,8 +43,16 @@ class BoardPipeService {
         this.registerOwner("page", pageId, webContents, host);
     }
 
-    registerResource(resourceId: string, webContents: WebContents, host: string): void {
+    registerResource(resourceId: string, webContents: WebContents, host?: string): void {
         this.registerOwner("resource", resourceId, webContents, host);
+    }
+
+    registerResourceIfUnowned(resourceId: string, webContents: WebContents): void {
+        const key = this.ownerKey("resource", resourceId);
+        if (this.owners.has(key)) {
+            throw new BoardPipeError(404, "Board pipe resource id is already owned.");
+        }
+        this.registerOwner("resource", resourceId, webContents);
     }
 
     private registerOwner(pipeKind: BoardPipeKind, pipeId: string, webContents: WebContents, host?: string): void {
@@ -75,11 +83,6 @@ class BoardPipeService {
         const owner = this.owners.get(key);
         if (!owner || owner.webContents !== webContents) return;
         this.removeOwner(key, new BoardPipeError(404, "Board pipe resource is no longer available."));
-    }
-
-    ownsPage(pageId: string, webContents: WebContents): boolean {
-        const owner = this.owners.get(this.ownerKey("page", pageId));
-        return !!owner && owner.webContents === webContents && !webContents.isDestroyed();
     }
 
     read(
