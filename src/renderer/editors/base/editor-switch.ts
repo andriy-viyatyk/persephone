@@ -83,12 +83,10 @@ export async function switchMainEditor(
     //    folder page it would throw instead of opening. Same bug shape as the one above, one
     //    branch over, which is why the ordering is load-bearing rather than incidental.
     //
-    // Handling it here also merges three identical createEditor + switchFrom paths.
+    // Handling it here shares Board Info's release check and source transfer with the menu opener.
     if (newEditorId === BOARD_INFO_EDITOR_ID) {
-        const boardInfo = await editorRegistry.createEditor(newEditorId);
-        boardInfo.switchFrom(oldEditor);
-        await boardInfo.restore();
-        await page.setMainEditor(boardInfo);
+        const { transitionPageToBoardInfo } = await import("../board-info/open-board-info");
+        await transitionPageToBoardInfo(page);
         return;
     }
 

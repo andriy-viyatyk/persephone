@@ -234,10 +234,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addEditorPage(editor, language, title, content);
     addBundledBoardPage = (
         boardRoot: string,
-        language: string,
-        title: string,
-        onPageCreated?: (page: PageModel) => void,
-    ) => this.lifecycle.addBundledBoardPage(boardRoot, language, title, onPageCreated);
+        options?: { title?: string; onPageCreated?: (page: PageModel) => void },
+    ) => this.lifecycle.addBundledBoardPage(boardRoot, options);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
     openLinks = (links: (ILink | string)[], title?: string) =>

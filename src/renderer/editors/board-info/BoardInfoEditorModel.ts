@@ -13,7 +13,6 @@ import {
     type CustomEditorRegistrationIssue,
 } from "../board/custom-editor-registry";
 import {
-    boardTrustDisclosure,
     isBoardFolder,
     normalizeBoardVersionRequirement,
     readNormalizedBoardManifest,
@@ -28,6 +27,7 @@ import { publishedBoards } from "../../api/published-boards";
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { downloadBoard } from "../../api/board-install";
 import { boardTrust } from "../../api/board-trust";
+import { requestBoardTrust } from "../board/request-board-trust";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
@@ -659,15 +659,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const source = this.currentSource();
         const root = boardInstallRegistry.getById(entry.id)?.root;
         if (!root) return;
-        const { showTrustBoardDialog } = await import("../../ui/dialogs/TrustBoardDialog");
-        const manifest = await readNormalizedBoardManifest(root);
-        const ok = await showTrustBoardDialog(root, manifest
-            ? boardTrustDisclosure(manifest)
-            : { permissions: [], serviceDeclared: false, capabilities: [] });
-        if (!ok) return;
-        const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
-        if (!(await confirmNamespaceNotColliding(root))) return;
-        await boardTrust.trust(root);
+        if (!(await requestBoardTrust(root))) return;
         await customEditorRegistry.refresh();
         if (source.kind === "folder") {
             const trustedEntry = customEditorRegistry.entries.find((candidate) =>

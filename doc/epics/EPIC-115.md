@@ -68,7 +68,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1551 | [Single-instance board routing in one place; a typed open-context hook](../tasks/US-1551-single-instance-routing/README.md) | 3 — structure | S | Done |
 | US-1552 | [Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](../tasks/US-1552-video-resource-pipe/README.md) | 3 — structure | L | Done |
 | US-1553 | [VideoEditor's source flow in one place; one provider-recovery helper for all editors](../tasks/US-1553-video-source-flow/README.md) | 3 — structure | M | Done |
-| US-1554 | Board trust granting, bundled-board creation and Board Info each have one path | 3 — structure | S | Planned |
+| US-1554 | [Board trust granting, bundled-board creation and Board Info each have one path](../tasks/US-1554-board-trust-bundled-info-paths/README.md) | 3 — structure | S | Done |
 | US-1555 | Small dead code, stale comments and a torrent-specific notice in core | 3 — structure | S | Planned |
 
 Suggested order: all of Phase 1, then US-1544 (small, and the drift it removes has already caused

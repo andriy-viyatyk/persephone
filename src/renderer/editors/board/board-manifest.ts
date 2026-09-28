@@ -681,6 +681,15 @@ export function normalizeContentMasks(raw: unknown): string[] {
     });
 }
 
+/** Derive a safe untitled filename from the first normalized literal suffix mask. */
+export function untitledFileNameForMasks(fileMasks: readonly string[] | undefined): string {
+    for (const mask of fileMasks ?? []) {
+        const match = /^\*\.([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)$/.exec(mask);
+        if (match) return `untitled.${match[1]}`;
+    }
+    return "untitled";
+}
+
 /** Compiled-mask cache, keyed by the mask source. A board's masks are stable for the life of its
  *  trust, and the switch-options path runs on every toolbar render. `null` marks an uncompilable
  *  source so a bad mask is never re-attempted. */

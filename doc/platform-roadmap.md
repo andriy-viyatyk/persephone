@@ -454,14 +454,13 @@ state.
 >    `capabilities` will show the rows.
 >
 > 10. **Board Info's capability section and capability refusal rows were not observed on screen.**
->    This extends EPIC-107's item 6 with a sharper finding: switching an *open board page* to
->    `board-info` (`editors/base/editor-switch.ts`) lands the editor in **install** mode with
->    `properties` undefined, so the properties view — where the Capabilities section and the
->    `kind: "capability"` refusal rows live — is not reachable that way either. The refusal
->    *behaviour* was confirmed live (an empty id, an id containing `@`, and a non-integer version
->    were each refused while the same board's valid declarations registered); only their Board Info
->    presentation is unconfirmed. Worth a look, because it now blocks observing two epics' worth of
->    diagnostics.
+>    The BoardToolbar **Board properties** menu opens properties mode with the board root. The
+>    unverified attempt used the editor switch, which opens install mode by design; this is a
+>    verification-path correction, not a code defect. The capability section and its
+>    `kind: "capability"` refusal rows therefore remain unverified. The refusal *behaviour* was
+>    confirmed live (an empty id, an id containing `@`, and a non-integer version were each refused
+>    while the same board's valid declarations registered); only their Board Info presentation is
+>    unconfirmed.
 >
 > 11. **Three typed rejection codes have no recorded observation: `handler-closed`, `cancelled` and
 >    `busy`.** Each is implemented and reachable by construction, and the epic's other six codes were

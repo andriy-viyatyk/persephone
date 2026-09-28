@@ -1,7 +1,7 @@
 import { pagesModel } from "../../api/pages";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
-import { settings, type BrowserProfile } from "../../api/settings";
+import { type BrowserProfile } from "../../api/settings";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { createLinkData } from "../../../shared/link-data";
 import { guard } from "../../core/utils/guard";
@@ -209,9 +209,7 @@ export function getCreatableItems(
         category: "tool" as const,
     }));
 
-    const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
-    const bundledItems: CreatableItem[] = bundledBoardRegistry.list()
-        .filter((board) => !disabledBundledBoards.has(board.id))
+    const bundledItems: CreatableItem[] = bundledBoardRegistry.enabledEntries()
         .map((board) => {
             const label = board.manifest.name?.trim() || board.id;
             const association = getBoardEditorAssociation(board.manifest);
@@ -222,11 +220,7 @@ export function getCreatableItems(
                 create: () => {
                     void guard(`Failed to create ${label}`, async () => {
                         if (association?.editorKind === "content-host") {
-                            await pagesModel.addBundledBoardPage(
-                                board.root,
-                                "json",
-                                "untitled.excalidraw",
-                            );
+                            await pagesModel.addBundledBoardPage(board.root);
                             return;
                         }
                         await app.events.openRawLink.sendAsync(
@@ -244,15 +238,11 @@ export function getCreatableItems(
 }
 
 export function disableBundledBoard(id: string): void {
-    const disabled = settings.get("disabled-bundled-boards");
-    if (disabled.includes(id)) return;
-    settings.set("disabled-bundled-boards", [...disabled, id]);
+    bundledBoardRegistry.setDisabled(id, true);
 }
 
 export function enableBundledBoard(id: string): void {
-    const disabled = settings.get("disabled-bundled-boards");
-    if (!disabled.includes(id)) return;
-    settings.set("disabled-bundled-boards", disabled.filter((entry) => entry !== id));
+    bundledBoardRegistry.setDisabled(id, false);
 }
 
 /**
@@ -265,10 +255,8 @@ export function enableBundledBoard(id: string): void {
  * carry Enable.
  */
 export function getDisabledBundledBoardItems(): CreatableItem[] {
-    const disabled = new Set(settings.get("disabled-bundled-boards"));
-    if (disabled.size === 0) return [];
-    return bundledBoardRegistry.list()
-        .filter((board) => disabled.has(board.id))
+    const disabled = bundledBoardRegistry.list().filter((board) => bundledBoardRegistry.isDisabled(board.id));
+    return disabled
         .map((board) => ({
             id: `bundled-board:${board.id}`,
             label: board.manifest.name?.trim() || board.id,

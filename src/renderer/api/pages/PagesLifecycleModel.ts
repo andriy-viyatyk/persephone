@@ -30,13 +30,16 @@ import {
 } from "../../content/persephone-board-link";
 import {
     readNormalizedBoardManifest,
+    untitledFileNameForMasks,
+    type NormalizedBoardManifest,
 } from "../../editors/board/board-manifest";
 import type { BoardEditorModel } from "../../editors/board";
 import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
-import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpExtname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { getLanguageByExtension } from "../../core/utils/language-mapping";
 
 import type { ILink } from "../../api/types/io.tree";
 import { buildLinkEditorContent } from "../../editors/link-editor/link-open";
@@ -111,10 +114,6 @@ export class PagesLifecycleModel {
         return decodePersephoneBoardLink(filePath)?.boardRoot;
     }
 
-    private async isSingleInstanceBoard(boardRoot: string): Promise<boolean> {
-        return (await readNormalizedBoardManifest(boardRoot))?.singleInstance === true;
-    }
-
     private enqueueBoardSource(
         page: PageModel,
         filePath: string | undefined,
@@ -139,10 +138,14 @@ export class PagesLifecycleModel {
             sourceLink?: ILinkData;
             target?: string;
             sessionHandle?: string;
+            normalizedManifest?: NormalizedBoardManifest | null;
         },
     ): Promise<PageModel | undefined> {
         const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
-        if (!boardRoot || !(await this.isSingleInstanceBoard(boardRoot))) return undefined;
+        const normalizedManifest = options && Object.prototype.hasOwnProperty.call(options, "normalizedManifest")
+            ? options.normalizedManifest
+            : boardRoot ? await readNormalizedBoardManifest(boardRoot) : null;
+        if (!boardRoot || normalizedManifest?.singleInstance !== true) return undefined;
 
         const existingPage = this.model.query.findPageByBoardRoot(boardRoot);
         if (!existingPage) return undefined;
@@ -303,25 +306,25 @@ export class PagesLifecycleModel {
     /** Create a new untitled content-host page for an enabled bundled board. */
     addBundledBoardPage = async (
         boardRoot: string,
-        language: string,
-        title: string,
-        onPageCreated?: (page: PageModel) => void,
+        options?: { title?: string; onPageCreated?: (page: PageModel) => void },
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
+        const normalizedManifest = await readNormalizedBoardManifest(boardRoot);
         const match = customEditorRegistry.entries.find(
             (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
         );
         if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
             throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
         }
-        if (await this.isSingleInstanceBoard(boardRoot)) {
-            const existingPage = this.model.query.findPageByBoardRoot(boardRoot);
-            if (existingPage) {
-                this.model.navigation.showPage(existingPage.id);
-                return existingPage;
-            }
-        }
+        const existingPage = await this.openSingleInstanceBoard(undefined, undefined, {
+            target: editorId,
+            normalizedManifest,
+        });
+        if (existingPage) return existingPage;
 
+        const fileName = untitledFileNameForMasks(normalizedManifest?.fileMasks);
+        const language = getLanguageByExtension(fpExtname(fileName))?.id ?? "plaintext";
+        const title = options?.title ?? fileName;
         const editor = await this.buildEditorById(editorId);
         const host = (editor as EditorModel).contentHost as unknown as TextFileModel | null;
         if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
@@ -333,7 +336,7 @@ export class PagesLifecycleModel {
             state.title = title;
         });
         await editor.restore();
-        return this.addPage(editor as EditorModel, undefined, onPageCreated);
+        return this.addPage(editor as EditorModel, undefined, options?.onPageCreated);
     };
 
     /** Open the trusted capability handler board in this renderer and return its page. */
@@ -348,7 +351,7 @@ export class PagesLifecycleModel {
                 && entry.editorKind === "content-host",
         );
         if (bundledContentHost) {
-            return this.addBundledBoardPage(boardRoot, "json", title, onPageCreated);
+            return this.addBundledBoardPage(boardRoot, { title, onPageCreated });
         }
 
         const url = encodePersephoneBoardLink(boardRoot);

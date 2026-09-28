@@ -3,7 +3,6 @@ import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
 import { registerDialogView } from "./dialog-view-registry";
 import { TrustBoardDialogView } from "./TrustBoardDialogView";
-import { boardTrustDisclosure, readNormalizedBoardManifest } from "../../editors/board/board-manifest";
 
 export const trustBoardDialogId = Symbol("trustBoardDialog");
 
@@ -18,16 +17,10 @@ registerDialogView(trustBoardDialogId, TrustBoardDialogView);
 
 export async function showTrustBoardDialog(
     boardPath: string,
-    disclosure: Omit<TrustBoardDialogProps, "boardPath" | "capabilities">
-        & { capabilities?: readonly string[] },
+    disclosure: Omit<TrustBoardDialogProps, "boardPath">,
 ): Promise<boolean> {
-    let capabilities = disclosure.capabilities;
-    if (!capabilities) {
-        const manifest = await readNormalizedBoardManifest(boardPath);
-        capabilities = manifest ? boardTrustDisclosure(manifest).capabilities : [];
-    }
     const model = new TDialogModel<TrustBoardDialogProps, boolean>(
-        new TComponentState({ boardPath, ...disclosure, capabilities }),
+        new TComponentState({ boardPath, ...disclosure }),
     );
     return showDialog({
         viewId: trustBoardDialogId,

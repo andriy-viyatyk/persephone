@@ -10,11 +10,7 @@ import type {
 import type { EditorModel } from "../editors/base/EditorModel";
 import type { IntentEnvelope } from "../../ipc/capability-bus-channels";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
-import {
-    boardTrustDisclosure,
-    readBoardManifest,
-    readNormalizedBoardManifest,
-} from "../editors/board/board-manifest";
+import { readBoardManifest } from "../editors/board/board-manifest";
 import { boardTrust, pathCovers } from "./board-trust";
 import { boardInstallRegistry, InstalledBoardEntry } from "./board-install-registry";
 import { publishedBoards } from "./published-boards";
@@ -311,22 +307,8 @@ export const boards: IBoards = {
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
         }
-        const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
-        await bundledBoardRegistry.ensureInitialized();
-        if (bundledBoardRegistry.isBundled(boardRoot)) return true;
-        const { boardTrust } = await import("./board-trust");
-        await boardTrust.load();
-        if (boardTrust.isTrusted(boardRoot)) return true; // already trusted (incl. via ancestor)
-        const { showTrustBoardDialog } = await import("../ui/dialogs/TrustBoardDialog");
-        const manifest = await readNormalizedBoardManifest(boardRoot);
-        const ok = await showTrustBoardDialog(boardRoot, manifest
-            ? boardTrustDisclosure(manifest)
-            : { permissions: [], serviceDeclared: false, capabilities: [] });
-        if (!ok) return false;
-        const { confirmNamespaceNotColliding } = await import("./board-namespace");
-        if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
-        await boardTrust.trust(boardRoot);
-        return true;
+        const { requestBoardTrust } = await import("../editors/board/request-board-trust");
+        return requestBoardTrust(boardRoot);
     },
 
     unregisterBoard: async (boardRoot: string): Promise<void> => {

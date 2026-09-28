@@ -1,5 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
+import { settings } from "../../api/settings";
 import {
     fpBasename,
     fpDirname,
@@ -67,6 +68,25 @@ class BundledBoardRegistry {
 
     list(): readonly BundledBoard[] {
         return this.records;
+    }
+
+    enabledEntries(): readonly BundledBoard[] {
+        return this.records.filter((record) => !this.isDisabled(record.id));
+    }
+
+    isDisabled(id: string): boolean {
+        return settings.get("disabled-bundled-boards").includes(id);
+    }
+
+    setDisabled(id: string, disabled: boolean): void {
+        const current = settings.get("disabled-bundled-boards");
+        if (disabled) {
+            if (!current.includes(id)) settings.set("disabled-bundled-boards", [...current, id]);
+            return;
+        }
+        if (current.includes(id)) {
+            settings.set("disabled-bundled-boards", current.filter((entry) => entry !== id));
+        }
     }
 
     isBundled(root: string): boolean {

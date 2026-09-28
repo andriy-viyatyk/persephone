@@ -1,20 +1,15 @@
 import type { EditorModel } from "../base/EditorModel";
-import { boardTrust } from "../../api/board-trust";
-import { showTrustBoardDialog } from "../../ui/dialogs/TrustBoardDialog";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { BoardEditorModel } from "./BoardEditorModel";
-import {
-    boardTrustDisclosure,
-    readNormalizedBoardManifest,
-} from "./board-manifest";
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
 import { BoardWebview } from "./BoardWebview";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { requestBoardTrust } from "./request-board-trust";
 import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../text/ScriptPanelView";
 import { ContentHostFooterView } from "../base/ContentHostFooterView";
@@ -272,12 +267,6 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
     }
 
     private async trustBoard(boardRoot: string): Promise<void> {
-        const manifest = await readNormalizedBoardManifest(boardRoot);
-        if (await showTrustBoardDialog(boardRoot, manifest
-            ? boardTrustDisclosure(manifest)
-            : { permissions: [], serviceDeclared: false, capabilities: [] })) {
-            const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
-            if (await confirmNamespaceNotColliding(boardRoot)) await boardTrust.trust(boardRoot);
-        }
+        await requestBoardTrust(boardRoot);
     }
 }

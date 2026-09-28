@@ -473,7 +473,6 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const gen = ++this.refreshGen;
         await bundledBoardRegistry.ensureInitialized();
         const roots = boardTrust.listPaths();
-        const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
         const installedBoards = boardInstallRegistry.listInstalled()
             .filter((installed) => !boardTrust.isTrusted(installed.root));
         const makeSource = (root: string, raw: unknown, origin: BoardRefreshSource["origin"]): BoardRefreshSource => {
@@ -492,8 +491,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         ]);
         const sources: BoardRefreshSource[] = [
             ...trustedSources,
-            ...bundledBoardRegistry.list()
-                .filter((bundled) => !disabledBundledBoards.has(bundled.id))
+            ...bundledBoardRegistry.enabledEntries()
                 .map((bundled) => makeSource(bundled.root, bundled.manifest, "bundled")),
             ...installedSources,
         ];
