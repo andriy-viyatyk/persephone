@@ -140,10 +140,11 @@ provider.readBinary() → transformer[0].read() → transformer[1].read() → ..
 
 `readText()` adds encoding detection after the binary chain: `readBinary() → decodeBuffer()`.
 Binary/range pipe reads accept an optional `AbortSignal`; `ContentPipe` passes it to the provider
-and each transformer so cancellation reaches the underlying source. Board-provider `readBinary()` and
-`readRange()` calls intentionally have no platform deadline: teardown, superseded work, or an
-explicit higher-level timeout aborts the signal instead. Metadata and other service operations
-retain their ordinary bounded deadlines.
+and each transformer so cancellation reaches the underlying source. The renderer's provider-operation
+policy leaves board-provider `readBinary()`, `readRange()`, and `stat()` without a deadline; teardown,
+superseded work, or an explicit higher-level timeout aborts the signal instead. `stat()` still counts
+against the shared control-request cap, while reads do not. `writeBinary()` and watch subscription
+operations use the service request deadline. The service host does not add a second provider timer.
 
 ### Write flow
 
@@ -186,7 +187,7 @@ deadline on provider reads.
 | `HttpProvider` | `http` | No | No | HTTP/HTTPS fetch via `nodeFetch`; adds the content-pipe default User-Agent only when the caller supplied none. Supports method, headers, body. Re-fetches on each read (no internal caching). |
 | `CacheFileProvider` | `cache` | Yes | No | Cache directory file (`{userData}/cache/{pageId}.txt`). Used as provider for cache pipes. |
 | `GuideProvider` | `guide` | No | No | Read-only access to application-shipped Markdown guides through `persephone-guide://`; strips front matter and returns UTF-8 body bytes. |
-| `ProxyProvider` | board-declared type | Depends on service | Service-defined | Renderer-side delegate to a trusted board's module service over that window's optional `MessagePort` lease. Whole-resource fallback reads and writes are bounded by the buffered payload limit; providers may also expose bounded ranged reads. |
+| `ProxyProvider` | board-declared type | Depends on service | Service-defined | Renderer-side delegate to a trusted board's module service over that window's optional `MessagePort` lease. Whole-resource fallback reads and writes are bounded by the buffered payload limit; providers may also expose ranged reads. Provider-operation deadlines and control-request classification are defined by the renderer policy. |
 
 All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity. `HttpProvider` builds request headers at call time so its default `CONTENT_USER_AGENT` is not written into the descriptor; an explicitly supplied User-Agent, including one with different casing, wins. `nodeFetch` remains header-neutral because REST requests must send exactly the headers the user supplied. `GuideProvider` is the intentional encoding exception: its packaged corpus has a known UTF-8 encoding, so it decodes the source to remove front matter before returning body bytes.
 

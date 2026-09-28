@@ -7,8 +7,7 @@ import {
     type ProviderWireErrorCode,
 } from "../../../ipc/module-service-channels";
 import { MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
-import { errMessage } from "../../../shared/utils";
-import { ProviderUnavailableError } from "../registry";
+import { ProviderUnavailableError, providerDeclarationFor } from "../registry";
 
 // Node's `stream` module for `Readable.from`. `require` rather than `import` because Vite
 // externalizes Node builtins into broken browser stubs when statically imported — same pattern
@@ -27,22 +26,9 @@ function isUint8Array(value: unknown): value is Uint8Array {
         && value.byteLength === value.length;
 }
 
-function providerDeclaration(boardRoot: string, type: string) {
-    return {
-        type,
-        boardRoot,
-        trusted: true,
-        source: "trusted" as const,
-    };
-}
-
-function unavailableError(boardRoot: string, type: string, error: unknown): ProviderUnavailableError {
-    const unavailable = new ProviderUnavailableError(type, providerDeclaration(boardRoot, type));
+function unavailableError(type: string, error: unknown): ProviderUnavailableError {
+    const unavailable = new ProviderUnavailableError(type, providerDeclarationFor(type));
     unavailable.cause = error;
-    Object.defineProperty(unavailable, "serviceCode", {
-        value: errMessage(error, "service-error"),
-        enumerable: false,
-    });
     return unavailable;
 }
 
@@ -112,14 +98,12 @@ export class ProxyProvider implements IProvider {
     private async request(
         operation: ProviderOperation,
         extras: Partial<Pick<ProviderRequest, "subscriptionId" | "data" | "range">> = {},
-        deadlineMs?: number,
         signal?: AbortSignal,
     ): Promise<Extract<ProviderResult, { ok: true }>> {
         try {
             const result: unknown = await moduleService.request(
                 this.boardRoot,
                 this.requestMessage(operation, extras),
-                deadlineMs,
                 signal,
             );
             if (!isRecord(result) || result.kind !== "provider-result" || typeof result.ok !== "boolean") {
@@ -131,14 +115,12 @@ export class ProxyProvider implements IProvider {
             return providerResult as Extract<ProviderResult, { ok: true }>;
         } catch (error: unknown) {
             if (error instanceof ProviderOperationError) throw error;
-            throw unavailableError(this.boardRoot, this.type, error);
+            throw unavailableError(this.type, error);
         }
     }
 
     async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
-        // Infinity is the "no deadline" sentinel (US-1518 decision 2) — readBinary/readRange are
-        // the only two operations released this way; everything else keeps the 10s default.
-        const result = await this.request("readBinary", {}, Infinity, options?.signal);
+        const result = await this.request("readBinary", {}, options?.signal);
         if (result.operation !== "readBinary" || !isUint8Array(result.data)) {
             throw invalidResult("readBinary");
         }
@@ -208,7 +190,7 @@ export class ProxyProvider implements IProvider {
     }
 
     private async fetchRange(range: { start: number; end: number }, signal?: AbortSignal): Promise<Buffer> {
-        const result = await this.request("readRange", { range }, Infinity, signal);
+        const result = await this.request("readRange", { range }, signal);
         if (result.operation !== "readRange" || !isUint8Array(result.data)) {
             throw invalidResult("readRange");
         }
@@ -223,7 +205,7 @@ export class ProxyProvider implements IProvider {
     }
 
     async stat(options?: { signal?: AbortSignal }): Promise<IProviderStat> {
-        const result = await this.request("stat", {}, Infinity, options?.signal);
+        const result = await this.request("stat", {}, options?.signal);
         if (result.operation !== "stat" || !isRecord(result.stat)
             || typeof result.stat.exists !== "boolean"
             || (result.stat.size !== undefined

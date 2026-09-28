@@ -25,7 +25,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] US-1541: Built-in capability resolution runs the handler it resolved; one image-edit helper
   - [ ] US-1542: Host-frame request/reply channel — one table on each side, typed message union
   - [ ] US-1543: The service host owns the service lifecycle protocol
-  - [ ] US-1544: One provider-operation policy table (deadline, cap)
+  - [x] [US-1544: One provider-operation policy table (deadline, cap)](tasks/US-1544-provider-operation-policy/README.md)
   - *Phase 3 — structure*
   - [ ] US-1545: Split the module-service supervisor; one state-transition helper
   - [ ] US-1546: One `__pipe` range reader in main; one MIME table

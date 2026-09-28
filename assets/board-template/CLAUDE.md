@@ -531,11 +531,12 @@ the whole-resource `readBinary()` fallback, capped at 256 MiB. `writeBinary(conf
 receives bytes; `stat(config, options?)` returns `{ exists, size?, mtime? }`; and
 `watch(config, onChange)` returns a disposer. Omit unsupported optional methods.
 
-Content reads have no platform deadline. Persephone aborts the signal when it stops waiting (for
-example, page/frame teardown, a superseded range, or an explicit timeout supplied by a higher-level
-API). Honoring the signal is optional, but accepting the extra argument is required; older
-implementations that ignore it remain compatible. Other provider operations keep their ordinary
-deadlines.
+`readBinary`, `readRange`, and `stat` have no platform deadline. Persephone aborts the read signal
+when it stops waiting (for example, page/frame teardown, a superseded range, or an explicit timeout
+supplied by a higher-level API); `stat` also receives a signal. Honoring the signal is optional, but
+accepting the extra argument is required; older implementations that ignore it remain compatible.
+`writeBinary`, `watchSubscribe`, and `watchUnsubscribe` use the service request deadline. Only
+`readBinary` and `readRange` are exempt from the shared control-request cap; `stat` counts against it.
 
 ### Resident backend server (the key pattern)
 

@@ -4,6 +4,7 @@ import {
 } from "../../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
+    PROVIDER_OPERATION_POLICY,
     SERVICE_REQUEST_DEADLINE_MS,
     type BoardServiceStatus,
     type ProviderRequest,
@@ -19,9 +20,9 @@ interface PendingRequest {
     resolve: (value: unknown) => void;
     reject: (reason: Error) => void;
     timer?: ReturnType<typeof setTimeout>;
-    /** `readBinary`/`readRange` — excluded from the `MAX_OUTSTANDING_REQUESTS_PER_SERVICE` cap
-     *  (US-1518 decision 9); everything else (`writeBinary`/`stat`/`watch*`) counts against it. */
-    isContentRead: boolean;
+    removeAbortListener?: () => void;
+    /** `readBinary`/`readRange` are excluded from the shared control-request cap. */
+    requestClass: "content-read" | "control";
 }
 
 interface Acquisition {
@@ -228,8 +229,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     if (message.kind !== "response") return;
     const pending = client.pending.get(message.requestId);
     if (!pending) return;
-    if (pending.timer) clearTimeout(pending.timer);
-    client.pending.delete(message.requestId);
+    dropPending(client, message.requestId);
     if ("error" in message) {
         pending.reject(errorForCode(errorCode(message.error)));
     } else {
@@ -237,11 +237,30 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     }
 }
 
+function dropPending(
+    client: ServiceLeaseClient,
+    requestId: string,
+    notifyHost = false,
+): PendingRequest | undefined {
+    const pending = client.pending.get(requestId);
+    if (!pending) return undefined;
+    client.pending.delete(requestId);
+    if (pending.timer) clearTimeout(pending.timer);
+    pending.removeAbortListener?.();
+    if (notifyHost && client.port && client.state === "attached") {
+        try {
+            client.port.postMessage({ kind: "cancel", requestId } satisfies RendererServiceMessage);
+        } catch {
+            // The port may already be gone; lease cleanup will settle any remaining requests.
+        }
+    }
+    return pending;
+}
+
 function rejectPending(client: ServiceLeaseClient, code: string): void {
-    for (const [requestId, pending] of client.pending) {
-        if (pending.timer) clearTimeout(pending.timer);
-        client.pending.delete(requestId);
-        pending.reject(errorForCode(code));
+    for (const requestId of client.pending.keys()) {
+        const pending = dropPending(client, requestId);
+        pending?.reject(errorForCode(code));
     }
 }
 
@@ -299,16 +318,9 @@ function acquire(boardRoot: string): Promise<void> {
     return acquisition;
 }
 
-function isContentReadOperation(message: unknown): boolean {
-    if (!message || typeof message !== "object") return false;
-    const operation = (message as Partial<ProviderRequest>).operation;
-    return operation === "readBinary" || operation === "readRange";
-}
-
 function request(
     boardRoot: string,
-    message: unknown,
-    deadlineMs?: number,
+    message: ProviderRequest,
     signal?: AbortSignal,
 ): Promise<unknown> {
     if (typeof boardRoot !== "string" || boardRoot.length === 0) {
@@ -316,54 +328,38 @@ function request(
     }
     ensureInitialized();
     const client = getClient(boardRoot);
-    const isContentRead = isContentReadOperation(message);
-    if (!isContentRead) {
+    const policy = PROVIDER_OPERATION_POLICY[message.operation];
+    if (policy.requestClass === "control") {
         let controlCount = 0;
         for (const pending of client.pending.values()) {
-            if (!pending.isContentRead) controlCount++;
+            if (pending.requestClass === "control") controlCount++;
         }
         if (controlCount >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
             return Promise.reject(errorForCode("service-busy"));
         }
     }
     const requestId = `renderer-${++client.requestNumber}`;
-    // Infinity is the "no deadline" sentinel (US-1518 decision 2). It deliberately fails this
-    // guard's old shape (Number.isFinite(Infinity) === false), so a call site that forgets to
-    // pass it falls back to SERVICE_REQUEST_DEADLINE_MS — today's behavior — rather than hanging
-    // forever. Do not "simplify" this into a uniform branch.
-    const timeout = deadlineMs === Infinity
-        ? undefined
-        : Number.isFinite(deadlineMs) && (deadlineMs ?? 0) > 0
-            ? deadlineMs as number
-            : SERVICE_REQUEST_DEADLINE_MS;
     return new Promise<unknown>((resolve, reject) => {
-        const timer = timeout === undefined ? undefined : setTimeout(() => {
-            client.pending.delete(requestId);
-            reject(errorForCode("service-timeout"));
-        }, timeout);
+        const timer = policy.deadlineMs === undefined ? undefined : setTimeout(() => {
+            const pending = dropPending(client, requestId, true);
+            pending?.reject(errorForCode("service-timeout"));
+        }, policy.deadlineMs);
         const onAbort = (): void => {
-            if (!client.pending.delete(requestId)) return;
-            if (timer) clearTimeout(timer);
-            reject(errorForCode("provider-cancelled"));
-            if (client.port && client.state === "attached") {
-                try {
-                    client.port.postMessage({ kind: "cancel", requestId } satisfies RendererServiceMessage);
-                } catch {
-                    // The port may already be gone; loseLease() will have rejected this already.
-                }
-            }
+            const pending = dropPending(client, requestId, true);
+            pending?.reject(errorForCode("provider-cancelled"));
         };
         if (signal) signal.addEventListener("abort", onAbort, { once: true });
-        const settle = (fn: () => void): void => {
-            if (signal) signal.removeEventListener("abort", onAbort);
-            fn();
-        };
         client.pending.set(requestId, {
-            resolve: (value) => settle(() => resolve(value)),
-            reject: (reason) => settle(() => reject(reason)),
+            resolve,
+            reject,
             timer,
-            isContentRead,
+            requestClass: policy.requestClass,
+            removeAbortListener: signal ? () => signal.removeEventListener("abort", onAbort) : undefined,
         });
+        if (signal?.aborted) {
+            onAbort();
+            return;
+        }
         void acquire(boardRoot).then(() => {
             const pending = client.pending.get(requestId);
             if (!pending || !client.port || client.state !== "attached") return;
@@ -375,9 +371,8 @@ function request(
         }, (error: unknown) => {
             const pending = client.pending.get(requestId);
             if (!pending) return;
-            if (pending.timer) clearTimeout(pending.timer);
-            client.pending.delete(requestId);
-            pending.reject(errorForCode(errorCode(error)));
+            const dropped = dropPending(client, requestId);
+            dropped?.reject(errorForCode(errorCode(error)));
         });
     });
 }

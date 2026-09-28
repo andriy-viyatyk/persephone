@@ -125,7 +125,6 @@ function disposeLeaseSubscriptions(lease) {
 
 function settleLeasePending(lease, reason) {
     for (const [requestId, pending] of lease.pending) {
-        clearTimeout(pending.timer);
         pending.controller?.abort();
         postRenderer(lease.port, {
             kind: "response",
@@ -211,30 +210,12 @@ function providerFailure(code, message) {
     return { kind: "provider-result", ok: false, error: { kind: "provider-error", code, message } };
 }
 
-function withDeadline(promise) {
-    let timer;
-    return Promise.race([
-        promise,
-        new Promise((_, reject) => {
-            timer = setTimeout(() => reject(new Error("provider-timeout")), deadlineMs);
-        }),
-    ]).finally(() => {
-        if (timer) clearTimeout(timer);
-    });
-}
-
+// Mirrors PROVIDER_OPERATION_POLICY.requestClass in src/ipc/module-service-channels.ts.
 /** Exempt from the control-request cap, and counted as outstanding content reads. */
 const CONTENT_READ_OPERATIONS = new Set(["readBinary", "readRange"]);
-/** Released by cancellation rather than by a deadline. A superset: `stat` waits like a read
- *  (US-1521's eager sizing) but still competes for the capped control budget. */
-const UNBOUNDED_OPERATIONS = new Set(["readBinary", "readRange", "stat"]);
 
 function isContentReadOperation(operation) {
     return CONTENT_READ_OPERATIONS.has(operation);
-}
-
-function isUnboundedOperation(operation) {
-    return UNBOUNDED_OPERATIONS.has(operation);
 }
 
 /** US-1518 decision 10: pushes the live outstanding-content-read count to the renderer over the
@@ -267,10 +248,10 @@ async function executeProviderRequest(lease, request, controller) {
     if (!implementation) return providerFailure("provider-not-registered", `Provider "${request.type}" is not registered.`);
 
     if (request.operation === "readBinary") {
-        // No withDeadline() — content reads have no deadline (US-1518). `controller?.signal` is
+        // The renderer owns provider-operation deadlines. `controller.signal` is
         // offered so a cooperative implementation can stop real work early; nothing on the
         // release path depends on it being honored (see handleRendererRequest()/the cancel branch).
-        const data = await Promise.resolve(implementation.readBinary(request.config, { signal: controller?.signal }));
+        const data = await Promise.resolve(implementation.readBinary(request.config, { signal: controller.signal }));
         if (!isUint8Array(data)) return providerFailure("provider-invalid-result", "readBinary() must return a Uint8Array.");
         if (data.byteLength > MAX_BUFFERED_PIPE_BYTES) {
             return providerFailure("provider-payload-too-large", "readBinary() exceeded the buffered payload limit.");
@@ -286,7 +267,7 @@ async function executeProviderRequest(lease, request, controller) {
             );
         }
         const data = await Promise.resolve(
-            implementation.readRange(request.config, request.range, { signal: controller?.signal }),
+            implementation.readRange(request.config, request.range, { signal: controller.signal }),
         );
         if (!isUint8Array(data)) {
             return providerFailure("provider-invalid-result", "readRange() must return a Uint8Array.");
@@ -302,7 +283,7 @@ async function executeProviderRequest(lease, request, controller) {
         if (typeof implementation.writeBinary !== "function" || implementation.writable !== true) {
             return providerFailure("provider-read-only", `Provider "${request.type}" is read-only.`);
         }
-        await withDeadline(Promise.resolve(implementation.writeBinary(request.config, copyBytes(request.data))));
+        await Promise.resolve(implementation.writeBinary(request.config, copyBytes(request.data)));
         return { kind: "provider-result", operation: "writeBinary", ok: true };
     }
 
@@ -310,10 +291,9 @@ async function executeProviderRequest(lease, request, controller) {
         if (typeof implementation.stat !== "function") {
             return { kind: "provider-result", operation: "stat", ok: true, stat: { exists: true } };
         }
-        // Neither the outer timer nor withDeadline()'s race applies to `stat` any more — the same
-        // treatment readBinary/readRange already get. The signal is its ONLY release.
+        // The renderer owns provider-operation deadlines; stat has no deadline by policy.
         const stat = await Promise.resolve(
-            implementation.stat(request.config, { signal: controller?.signal }),
+            implementation.stat(request.config, { signal: controller.signal }),
         );
         if (!validStat(stat)) return providerFailure("provider-invalid-result", "stat() returned malformed metadata.");
         return { kind: "provider-result", operation: "stat", ok: true, stat };
@@ -359,7 +339,6 @@ async function executeProviderRequest(lease, request, controller) {
 function finishProviderRequest(lease, requestId, result) {
     const pending = lease.pending.get(requestId);
     if (!pending || rendererLeases.get(lease.leaseNonce) !== lease) return;
-    if (pending.timer) clearTimeout(pending.timer);
     lease.pending.delete(requestId);
     if (pending.isContentRead) decrementActiveContentReads(lease);
     postRenderer(lease.port, { kind: "response", requestId, result });
@@ -379,7 +358,6 @@ function handleRendererRequest(lease, message) {
         return;
     }
     const isContentRead = isContentReadOperation(request.operation);
-    const isUnbounded = isUnboundedOperation(request.operation);
     if (!isContentRead) {
         let controlCount = 0;
         for (const pending of lease.pending.values()) {
@@ -390,31 +368,8 @@ function handleRendererRequest(lease, message) {
             return;
         }
     }
-    // Two separate questions, deliberately no longer answered by one list (US-1521 follow-up).
-    //
-    // "Does this operation get an outer timer?" — no for every UNBOUNDED operation, which now
-    // includes `stat`. `content.open()` resolves size eagerly (US-1521), so its `stat()` sits on
-    // the same critical path as the reads that follow it. It used to die here at ~10s while
-    // `readBinary`/`readRange` waited forever: the renderer and main both already send `stat` the
-    // `Infinity` sentinel (ProxyProvider.stat), and this host timer was the last site still
-    // bounding it — which made `content.open()` without `timeoutMs` fail at 10s despite D6.
-    //
-    // "Does it bypass the control-request cap and count as an outstanding content read?" stays
-    // keyed on CONTENT_READ_OPERATIONS, and `stat` is deliberately NOT in it. The 32-slot budget
-    // is what guarantees a board's own control requests — `delete` above all — still get through
-    // while reads are outstanding (D6); exempting a metadata call would erode that.
-    const controller = isUnbounded ? new AbortController() : undefined;
-    const timer = isUnbounded ? undefined : setTimeout(() => {
-        if (!lease.pending.delete(message.requestId)) return;
-        if (isContentRead) decrementActiveContentReads(lease);
-        postRenderer(lease.port, {
-            kind: "response",
-            requestId: message.requestId,
-            result: providerFailure("provider-failed", "Provider operation timed out."),
-        });
-    }, deadlineMs);
+    const controller = new AbortController();
     lease.pending.set(message.requestId, {
-        timer,
         controller,
         operation: request.operation,
         isContentRead,
@@ -468,7 +423,6 @@ function attachRenderer(message, port) {
             if (nested.kind === "cancel" && typeof nested.requestId === "string") {
                 const pending = lease.pending.get(nested.requestId);
                 if (pending) {
-                    if (pending.timer) clearTimeout(pending.timer);
                     lease.pending.delete(nested.requestId);
                     if (pending.isContentRead) decrementActiveContentReads(lease);
                     pending.controller?.abort();

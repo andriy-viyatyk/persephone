@@ -58,7 +58,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1541 | Built-in capability resolution runs the handler it resolved; one image-edit helper | 2 — contracts | S | Planned |
 | US-1542 | Host-frame request/reply channel: one table on each side, typed message union | 2 — contracts | L | Planned |
 | US-1543 | The service host owns the service lifecycle protocol | 2 — contracts | L | Planned |
-| US-1544 | One provider-operation policy table (deadline, cap) | 2 — contracts | S | Planned |
+| US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |
 | US-1545 | Split the module-service supervisor; one state-transition helper | 3 — structure | L | Planned |
 | US-1546 | One `__pipe` range reader in main; one MIME table | 3 — structure | M | Planned |
 | US-1548 | One ownership registry for providers, schemes, capabilities and URL masks | 3 — structure | M | Planned |
@@ -439,6 +439,10 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   side that sends `lease-lost` to a renderer (main's copy went through an already-transferred port
   and never arrived). `drop-renderer` carries a `reason`. Keep both when the host takes over the
   lifecycle protocol.
+- **After US-1544:** the host no longer times out provider operations (the renderer owns the one
+  deadline, from `PROVIDER_OPERATION_POLICY` in `module-service-channels.ts`, and sends `cancel` on
+  timeout). The host's only mirror is `CONTENT_READ_OPERATIONS` (the `requestClass` column); carry
+  that in `init` too. The argv deadline is now used only for storage and renderer-port attach timers.
 
 ### US-1544: One provider-operation policy table (deadline, cap)
 

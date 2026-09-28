@@ -402,9 +402,12 @@ releases only that window's lease when its renderer navigates, crashes, closes, 
 host scopes pending provider requests and watch subscriptions to that lease. Process and service
 status remain service-scoped and continue to reach every open window. A request API must not assume
 that a lease is attached. When a board declares a content provider, `ProxyProvider` uses its window's
-renderer lease for bounded provider operations, including optional ranged reads; `readBinary` and
-`readRange` have no platform deadline and carry cancellation signals, while metadata and other
-service operations remain bounded. Unavailable leases surface as typed provider-unavailable errors.
+renderer lease for provider operations, including optional ranged reads. The renderer applies the
+single operation policy: `readBinary`, `readRange`, and `stat` have no deadline, while `writeBinary`
+and watch subscription changes use the service request deadline. Only `readBinary` and `readRange`
+are exempt from the shared control-request cap; `stat` remains a control request. The host owns no
+provider-operation timer and releases cancelled requests when it receives the renderer's cancel
+message. Unavailable leases surface as typed provider-unavailable errors.
 
 `persephone.storage` is a JSON key/value store in a per-board folder under
 `<userData>/data/board-storage/`, keyed by the SHA-256 hash of the canonical board root. The folder

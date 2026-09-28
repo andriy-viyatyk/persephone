@@ -99,7 +99,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
-| Board provider delegate (bounded reads/writes, optional ranged reads, stat and watch over the renderer service lease) | `/src/renderer/content/providers/ProxyProvider.ts` |
+| Board provider delegate (read/write, optional ranged read, stat and watch over the renderer service lease; operation deadlines and control cap are policy-driven) | `/src/renderer/content/providers/ProxyProvider.ts` |
 | Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
@@ -523,13 +523,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-owned board trust and claim service (loads and atomically persists trusted roots, derives service eligibility and browser URL-mask claims from board manifests, and broadcasts authoritative trust paths) | `/src/main/board-trust-service.ts` |
 | Module-service supervisor (main; lazy Electron `utilityProcess` host, main-derived trust-snapshot consumer, service-entry validation, ready/probe deadline, restart budget, ordinary request settlement, independent renderer leases keyed by `WebContents`, renderer lifecycle cleanup, untrust and quit teardown) | `/src/main/module-service-supervisor.ts` |
 | Browser-download interception (main; consumes derived URL-mask claims at Electron's `will-download` boundary, before the save dialog) | `/src/main/download-service.ts` |
-| Module-service protocol and lifecycle types (main/utility-process parent messages, per-renderer lease messages, trust snapshots, status records, storage frames and bounded request constants) | `/src/ipc/module-service-channels.ts` |
+| Module-service protocol and lifecycle types (main/utility-process parent messages, per-renderer lease messages, trust snapshots, status records, storage frames, and provider operation deadline/cap policy) | `/src/ipc/module-service-channels.ts` |
 | Per-board JSON storage owner (root-hash folder, `store.json`, `board.json` sidecar, JSON validation/limits, lazy cache and per-board mutation queue shared by frames and services) | `/src/main/board-storage.ts` |
 | Canonical board-root identity and full SHA-256 storage key | `/src/main/board-root-key.ts` |
 | Utility-process storage adapter (routes service storage requests through the main-owned board store and its mutation queue) | `/src/main/module-service-storage.ts` |
-| Renderer module-service client (main-routed ordinary requests plus the optional host-renderer `MessagePort` lease, reacquired after lease loss) | `/src/renderer/api/module-service.ts` |
+| Renderer module-service client (main-routed ordinary requests plus the optional host-renderer `MessagePort` lease; applies provider operation deadlines/caps and reacquires after lease loss) | `/src/renderer/api/module-service.ts` |
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Renderer trust bootstrap (subscribes to main trust broadcasts, hydrates authoritative paths, and pushes the disabled-bundled-board setting) | `/src/renderer/api/board-trust-sync.ts` |
 | Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
 | Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.17.0` adds runtime `persephone.source.onOpen()` source-identity events alongside read-only `persephone.service.status()`, explicit `persephone.service.stop()`, and non-materializing `persephone.getSourceUrl()`) | `/src/shared/board-bridge-version.ts` |
-| Static utility-process module-service host (injects `persephone.storage`, imports the board-relative ESM service entry, and isolates pending requests and watches per renderer lease) | `/assets/module-service-host.mjs` |
+| Static utility-process module-service host (injects `persephone.storage`, imports the board-relative ESM service entry, mirrors provider request classes, and isolates pending requests and watches per renderer lease) | `/assets/module-service-host.mjs` |

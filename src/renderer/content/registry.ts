@@ -282,7 +282,7 @@ function isProviderDescriptor(value: unknown): value is IProviderDescriptor {
         && typeof (value as { type?: unknown }).type === "string";
 }
 
-function providerDeclarationFor(type: string): ProviderDeclaration | undefined {
+export function providerDeclarationFor(type: string): ProviderDeclaration | undefined {
     return providerDeclarations.get(type);
 }
 

@@ -380,8 +380,10 @@ The implementation supplies `readBinary(config)` and may supply `readRange(confi
 `writeBinary(config, data)`, `stat(config)`, and `watch(config, onChange)`; `watch` returns a
 disposer. `readRange` is optional: when present, the provider receives bounded ranged pulls (at
 most 1 MiB per call) as `Uint8Array` results; when absent, the pipe falls back to whole-resource
-`readBinary()` buffering, capped at 256 MiB. Content reads have no platform deadline and are
-released by cancellation, such as page or frame teardown.
+`readBinary()` buffering, capped at 256 MiB. `readBinary()`, `readRange()`, and `stat()` have no
+platform deadline. Only reads are exempt from the shared control-request cap; `stat()` still counts
+against it. `writeBinary()`, `watchSubscribe()`, and `watchUnsubscribe()` use the service request
+deadline. Cancellation releases pending requests, such as on page or frame teardown.
 
 Provider types must contain `/` because un-namespaced types are reserved for the platform. The
 type is persisted in page state, so renaming it orphans old pages. Types and schemes are

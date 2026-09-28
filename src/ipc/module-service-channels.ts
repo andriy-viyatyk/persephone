@@ -88,6 +88,30 @@ export type ProviderOperation =
     | "watchSubscribe"
     | "watchUnsubscribe";
 
+export interface ProviderOperationPolicy {
+    /** End-to-end deadline, owned by the renderer client (`module-service.request`); absent =
+     *  unbounded, released only by cancellation (EPIC-113 D6). The host runs no provider timer. */
+    readonly deadlineMs?: number;
+    /** `content-read` is exempt from MAX_OUTSTANDING_REQUESTS_PER_SERVICE and counted as an
+     *  outstanding content read; `control` competes for that cap. */
+    readonly requestClass: "content-read" | "control";
+}
+
+/**
+ * The one provider-operation policy table (US-1544). `assets/module-service-host.mjs` cannot
+ * import TypeScript and mirrors `requestClass` as CONTENT_READ_OPERATIONS; US-1543 will deliver
+ * this table to the host in its `init` message instead. Note `stat` is unbounded but still a
+ * control request: it sits on content.open()'s eager-sizing path, but must not erode the cap.
+ */
+export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, ProviderOperationPolicy>> = {
+    readBinary: { requestClass: "content-read" },
+    readRange: { requestClass: "content-read" },
+    writeBinary: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
+    stat: { requestClass: "control" },
+    watchSubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
+    watchUnsubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
+};
+
 export interface ProviderRequest {
     kind: "provider";
     operation: ProviderOperation;
