@@ -11,9 +11,9 @@ import type { EditorModel } from "../editors/base/EditorModel";
 import type { IntentEnvelope } from "../../ipc/capability-bus-channels";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 import {
-    normalizeBoardServicePath,
-    normalizePermissions,
+    boardTrustDisclosure,
     readBoardManifest,
+    readNormalizedBoardManifest,
 } from "../editors/board/board-manifest";
 import { boardTrust, pathCovers } from "./board-trust";
 import { boardInstallRegistry, InstalledBoardEntry } from "./board-install-registry";
@@ -318,11 +318,10 @@ export const boards: IBoards = {
         await boardTrust.load();
         if (boardTrust.isTrusted(boardRoot)) return true; // already trusted (incl. via ancestor)
         const { showTrustBoardDialog } = await import("../ui/dialogs/TrustBoardDialog");
-        const manifest = await readBoardManifest(boardRoot);
-        const ok = await showTrustBoardDialog(boardRoot, {
-            permissions: normalizePermissions(manifest?.permissions),
-            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
-        });
+        const manifest = await readNormalizedBoardManifest(boardRoot);
+        const ok = await showTrustBoardDialog(boardRoot, manifest
+            ? boardTrustDisclosure(manifest)
+            : { permissions: [], serviceDeclared: false, capabilities: [] });
         if (!ok) return false;
         const { confirmNamespaceNotColliding } = await import("./board-namespace");
         if (!(await confirmNamespaceNotColliding(boardRoot))) return false;

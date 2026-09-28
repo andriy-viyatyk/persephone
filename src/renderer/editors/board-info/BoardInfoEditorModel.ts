@@ -13,16 +13,13 @@ import {
     type CustomEditorRegistrationIssue,
 } from "../board/custom-editor-registry";
 import {
-    normalizeContentProviders,
-    normalizeCapabilities,
-    getBoardEditorAssociation,
+    boardTrustDisclosure,
     isBoardFolder,
-    normalizeBoardServicePath,
     normalizeBoardVersionRequirement,
-    normalizePermissions,
-    readBoardManifest,
+    readNormalizedBoardManifest,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
+    type SecondaryViewDecl,
 } from "../board/board-manifest";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
@@ -42,6 +39,7 @@ import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
+import type { BoardSettingDeclaration } from "../../api/board-settings/types";
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
@@ -66,22 +64,32 @@ export interface BoardPropsInfo {
     /** `version` from the board's own manifest (may lag the registry after a rollback). */
     manifestVersion?: string;
     permissions?: string[];
+    standalone?: boolean;
+    singleInstance?: boolean;
+    minAppVersion?: string;
     minBridgeVersion?: string;
     service?: string;
     serviceStatus?: BoardServiceStatus;
     bridgeCompatibilityReason?: string;
     /** Editor association (masks / editorName / kind), if the board is a file editor. */
     fileMasks?: string[];
+    browserUrlMasks?: string[];
+    contentMasks?: string[];
     /** Folder globs narrowing `fileMasks` to certain locations (absent/empty = any folder). */
     folderMasks?: string[];
     /** Direct folder globs matching the folder itself. */
     folderEditorMasks?: string[];
     /** Direct folder resolution priority for `folderEditorMasks`. */
     folderEditorPriority?: number;
+    editorPriority?: number;
     editorName?: string;
     editorKind?: "simple" | "content-host" | "stream-host";
+    editorSources?: "local" | "any";
     contentProviders?: BoardContentProviderDeclaration[];
     capabilities?: BoardCapabilityDeclaration[];
+    settings?: BoardSettingDeclaration[];
+    secondaryViews?: SecondaryViewDecl[];
+    guides?: string;
     registrationIssues?: CustomEditorRegistrationIssue[];
     root: string;
     trusted: boolean;
@@ -372,8 +380,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         }
         await boardInstallRegistry.load();
         const reg = boardInstallRegistry.getByRoot(root);
-        const manifest = await readBoardManifest(root);
-        const assoc = getBoardEditorAssociation(manifest);
+        const manifest = await readNormalizedBoardManifest(root);
+        const assoc = manifest?.association ?? null;
         const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
         const bridgeCompatibility = getBoardCompatibility(
             { minBridgeVersion },
@@ -381,12 +389,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         );
         await moduleServiceStatus.refresh();
         const serviceStatus = moduleServiceStatus.getStatus(root);
-        const contentProviders = Array.isArray(manifest?.contentProviders)
-            ? normalizeContentProviders(manifest.contentProviders)
-            : undefined;
-        const capabilities = Array.isArray(manifest?.capabilities)
-            ? normalizeCapabilities(manifest.capabilities)
-            : undefined;
+        const contentProviders = manifest?.contentProviders;
+        const capabilities = manifest?.capabilities;
         const registrationIssues = customEditorRegistry.getRegistrationIssues(root);
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
@@ -394,19 +398,29 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             author: manifest?.author,
             repository: manifest?.repository,
             manifestVersion: manifest?.version,
-            permissions: normalizePermissions(manifest?.permissions),
+            permissions: manifest?.permissions,
+            standalone: manifest?.standalone,
+            singleInstance: manifest?.singleInstance,
+            minAppVersion: manifest?.minAppVersion,
             minBridgeVersion,
-            service: normalizeBoardServicePath(manifest?.service) ?? undefined,
+            service: manifest?.service,
             serviceStatus,
             bridgeCompatibilityReason: bridgeCompatibility.reason,
-            fileMasks: assoc?.fileMasks,
-            folderMasks: assoc?.folderMasks,
-            folderEditorMasks: assoc?.folderEditorMasks,
-            folderEditorPriority: assoc?.folderEditorPriority,
-            editorName: assoc?.editorName,
+            fileMasks: manifest?.fileMasks,
+            browserUrlMasks: manifest?.browserUrlMasks,
+            contentMasks: manifest?.contentMasks,
+            folderMasks: manifest?.folderMasks,
+            folderEditorMasks: manifest?.folderEditorMasks,
+            folderEditorPriority: manifest?.folderEditorPriority,
+            editorPriority: manifest?.editorPriority,
+            editorName: manifest?.editorName,
             editorKind: assoc?.editorKind,
+            editorSources: manifest?.editorSources,
             contentProviders,
             capabilities,
+            settings: manifest?.settings,
+            secondaryViews: manifest?.secondaryViews,
+            guides: manifest?.guides,
             registrationIssues: registrationIssues.length > 0 ? [...registrationIssues] : undefined,
             root,
             trusted: boardTrust.isTrusted(root),
@@ -646,12 +660,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = boardInstallRegistry.getById(entry.id)?.root;
         if (!root) return;
         const { showTrustBoardDialog } = await import("../../ui/dialogs/TrustBoardDialog");
-        const manifest = await readBoardManifest(root);
-        const ok = await showTrustBoardDialog(root, {
-            permissions: normalizePermissions(manifest?.permissions),
-            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
-            capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
-        });
+        const manifest = await readNormalizedBoardManifest(root);
+        const ok = await showTrustBoardDialog(root, manifest
+            ? boardTrustDisclosure(manifest)
+            : { permissions: [], serviceDeclared: false, capabilities: [] });
         if (!ok) return;
         const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
         if (!(await confirmNamespaceNotColliding(root))) return;

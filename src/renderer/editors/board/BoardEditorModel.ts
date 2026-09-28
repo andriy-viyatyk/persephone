@@ -17,7 +17,7 @@ import {
     PERSEPHONE_BOARD_PREFIX,
 } from "../../content/persephone-board-link";
 import { boardEditorId, customEditorRegistry } from "./custom-editor-registry";
-import { isBoardFolder, normalizeSecondaryViews, readBoardManifest, readBoardSecondaryViews, type BoardManifest, type SecondaryViewDecl } from "./board-manifest";
+import { hostOwnsPipe, isBoardFolder, normalizeSecondaryViews, readBoardManifest, readNormalizedBoardManifest, readBoardSecondaryViews, type NormalizedBoardManifest, type SecondaryViewDecl } from "./board-manifest";
 import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
@@ -627,7 +627,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Whether the board bridge may address this page's platform-owned pipe by URL. */
     get pipeUrlEnabled(): boolean {
-        return this.editorKind === "content-host" || this.editorKind === "stream-host";
+        return hostOwnsPipe(this.editorKind);
     }
 
     get isStreamHost(): boolean {
@@ -1048,9 +1048,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     /** Read the current board manifest through the board model's path authority. */
-    readManifestForFacade(): Promise<BoardManifest | null> {
+    readManifestForFacade(): Promise<NormalizedBoardManifest | null> {
         const boardRoot = this.state.get().boardRoot;
-        return boardRoot ? readBoardManifest(boardRoot) : Promise.resolve(null);
+        return boardRoot ? readNormalizedBoardManifest(boardRoot) : Promise.resolve(null);
     }
 
     /** Resolve the main-owned board log path, or undefined when no board is resolved. */

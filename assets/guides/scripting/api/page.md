@@ -174,6 +174,43 @@ if (editor.id === "mneme-root") {
 }
 ```
 
+On a board page, `getManifest()` reads the current `board-manifest.json` and returns a copied
+snapshot of the normalized values Persephone applies. For example:
+
+```javascript
+const editor = page.editor;
+if (editor.id === "board-view") {
+    const manifest = await editor.getManifest();
+    console.log(manifest?.browserUrlMasks, manifest?.settings, manifest?.guides);
+}
+```
+
+Boards acting as file editors use an id such as `board-editor:drawio` and expose the same method.
+
+The snapshot includes the manifest's supported fields, including `browserUrlMasks`, `contentMasks`,
+`singleInstance`, `settings`, `guides`, and capability `alwaysOpensNewPage`. List values and nested
+declarations are copied. Manifest fields are normalized before they are returned: for example,
+`permissions` are trimmed and deduplicated, URL and file masks are lowercased, and unsafe service
+paths are omitted. Optional fields stay absent when the manifest does not declare them; an absent
+manifest returns `undefined`.
+
+An open Board Info page exposes `properties` as a copied installed-board snapshot. It includes the
+same normalized manifest-backed fields where present, plus Board Info state such as `root`,
+`trusted`, install status, compatibility, and registration issues. Find that page through
+`app.pages.all`:
+
+```javascript
+const boardInfoPage = app.pages.all.find(candidate => candidate.editor.id === "board-info");
+if (boardInfoPage?.editor.id === "board-info") {
+    const properties = boardInfoPage.editor.properties;
+    console.log(properties?.fileMasks, properties?.contentMasks, properties?.capabilities);
+}
+```
+
+Arrays and capability payload schemas in this snapshot are copied. See [Boards — Inspecting board
+metadata from scripts](../../boards.md#inspecting-board-metadata-from-scripts) for the normalized
+field behavior.
+
 The board and toolset actions do not accept secrets and cannot grant board trust or toolset
 registration. `board-info` can prepare or cancel a download, but registering a downloaded board
 still requires the user's trust-dialog click. See [Boards](../../boards.md), [Agent Tools](../../agent-tools.md),

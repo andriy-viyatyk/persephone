@@ -36,12 +36,7 @@ import {
 import type { WaitMode } from "../../automation/operations";
 import { getBoardPermissionOrigin } from "../../editors/board/board-access";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
-import type {
-    BoardContentProviderDeclaration,
-    BoardCapabilityDeclaration,
-    BoardManifest,
-    SecondaryViewDecl,
-} from "../../editors/board/board-manifest";
+import { projectBoardManifest } from "./board-manifest-projection";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
 import { explicitBoardCallTimeoutMs } from "../../api/boards";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
@@ -284,7 +279,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     async getManifest(): Promise<IBoardManifest | undefined> {
         const manifest = await this.editor.readManifestForFacade();
-        return manifest ? copyManifest(manifest) : undefined;
+        return manifest ? projectBoardManifest(manifest) : undefined;
     }
 
     get secondaryViews(): readonly IBoardSecondaryView[] | undefined {
@@ -550,79 +545,6 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 }
 
 type BoardElementDeclaration = IAiElementDeclaration & { readonly view?: string };
-
-function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
-    if (typeof manifest.schemaVersion !== "number") return undefined;
-    const copy: Partial<MutableBoardManifest> = { schemaVersion: manifest.schemaVersion };
-    if (typeof manifest.name === "string") copy.name = manifest.name;
-    if (typeof manifest.description === "string") copy.description = manifest.description;
-    if (typeof manifest.author === "string") copy.author = manifest.author;
-    if (typeof manifest.repository === "string") copy.repository = manifest.repository;
-    if (typeof manifest.version === "string") copy.version = manifest.version;
-    if (typeof manifest.standalone === "boolean") copy.standalone = manifest.standalone;
-    if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
-    if (Array.isArray(manifest.permissions)) copy.permissions = manifest.permissions.filter(isString);
-    if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
-    if (typeof manifest.service === "string") copy.service = manifest.service;
-    if (Array.isArray(manifest.contentProviders)) {
-        copy.contentProviders = manifest.contentProviders
-            .filter((provider): provider is BoardContentProviderDeclaration =>
-                !!provider && typeof provider.type === "string" && provider.type.trim().length > 0)
-            .map((provider) => ({
-                type: provider.type,
-                schemes: Array.isArray(provider.schemes)
-                    ? provider.schemes.filter(isString)
-                    : [],
-            }));
-    }
-    if (Array.isArray(manifest.capabilities)) {
-        copy.capabilities = manifest.capabilities
-            .filter((capability): capability is BoardCapabilityDeclaration =>
-                !!capability && typeof capability.id === "string")
-            .map((capability) => ({
-                id: capability.id,
-                ...(capability.representation !== undefined ? { representation: capability.representation } : {}),
-                ...(capability.version !== undefined ? { version: capability.version } : {}),
-                ...(capability.priority !== undefined ? { priority: capability.priority } : {}),
-                ...(capability.accepts !== undefined ? { accepts: [...capability.accepts] } : {}),
-                ...(Object.prototype.hasOwnProperty.call(capability, "payloadSchema")
-                    ? { payloadSchema: capability.payloadSchema }
-                    : {}),
-                ...(capability.title !== undefined ? { title: capability.title } : {}),
-                ...(capability.headless !== undefined ? { headless: capability.headless } : {}),
-            }));
-    }
-    if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);
-    if (Array.isArray(manifest.folderMasks)) copy.folderMasks = manifest.folderMasks.filter(isString);
-    if (Array.isArray(manifest.folderEditorMasks)) copy.folderEditorMasks = manifest.folderEditorMasks.filter(isString);
-    if (typeof manifest.folderEditorPriority === "number") copy.folderEditorPriority = manifest.folderEditorPriority;
-    if (typeof manifest.editorPriority === "number") copy.editorPriority = manifest.editorPriority;
-    if (typeof manifest.editorName === "string") copy.editorName = manifest.editorName;
-    if (
-        manifest.editorKind === "simple"
-        || manifest.editorKind === "content-host"
-        || manifest.editorKind === "stream-host"
-    ) copy.editorKind = manifest.editorKind;
-    if (manifest.editorSources === "local" || manifest.editorSources === "any") copy.editorSources = manifest.editorSources;
-    if (Array.isArray(manifest.secondaryViews)) {
-        copy.secondaryViews = manifest.secondaryViews
-            .filter((view): view is SecondaryViewDecl => !!view && typeof view.id === "string")
-            .map((view) => ({
-                id: view.id,
-                ...(typeof view.html === "string" ? { html: view.html } : {}),
-                ...(typeof view.title === "string" ? { title: view.title } : {}),
-            }));
-    }
-    return copy as IBoardManifest;
-}
-
-type MutableBoardManifest = {
-    -readonly [Key in keyof IBoardManifest]: IBoardManifest[Key];
-};
-
-function isString(value: unknown): value is string {
-    return typeof value === "string";
-}
 
 interface TabOption {
     tabId?: string;

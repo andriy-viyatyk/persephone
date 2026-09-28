@@ -12,6 +12,7 @@ import {
     normalizeBoardServicePath,
     normalizeBrowserUrlMasks,
     normalizePermissions,
+    normalizeStringList,
 } from "../../../shared/board-manifest-utils";
 import type {
     BoardSettingDeclaration,
@@ -249,6 +250,44 @@ export function hasStableBoardIdentity(
         && manifest.name.trim().length > 0;
 }
 
+export type BoardEditorKind = "simple" | "content-host" | "stream-host";
+
+export function hostOwnsPipe(kind: BoardEditorKind): boolean {
+    return kind === "content-host" || kind === "stream-host";
+}
+
+export interface NormalizedBoardManifest {
+    schemaVersion: unknown;
+    name?: string;
+    description?: string;
+    author?: string;
+    repository?: string;
+    version?: string;
+    standalone?: boolean;
+    singleInstance?: boolean;
+    minAppVersion?: string;
+    minBridgeVersion?: string;
+    permissions?: string[];
+    service?: string;
+    contentProviders?: BoardContentProviderDeclaration[];
+    capabilities?: BoardCapabilityDeclaration[];
+    settings?: BoardSettingDeclaration[];
+    fileMasks?: string[];
+    browserUrlMasks?: string[];
+    folderMasks?: string[];
+    folderEditorMasks?: string[];
+    contentMasks?: string[];
+    editorPriority?: number;
+    folderEditorPriority?: number;
+    editorName?: string;
+    editorKind?: BoardEditorKind;
+    editorSources?: "local" | "any";
+    secondaryViews?: SecondaryViewDecl[];
+    guides?: string;
+    association: BoardEditorAssociation | null;
+    issues: { kind: "capability" | "settings"; name: string; reason: string }[];
+}
+
 export type BoardSettingsIssueReporter = (name: string, reason: string) => void;
 
 interface RawBoardSetting {
@@ -410,6 +449,10 @@ export async function readBoardManifest(boardRoot: string): Promise<BoardManifes
     }
 }
 
+export async function readNormalizedBoardManifest(root: string): Promise<NormalizedBoardManifest | null> {
+    return parseBoardManifest(await readBoardManifest(root));
+}
+
 /** Normalize a manifest version requirement. Invalid values are treated as absent. */
 export function normalizeBoardVersionRequirement(raw: unknown): string | undefined {
     return normalizeVersionRequirement(raw);
@@ -425,14 +468,9 @@ export function normalizeContentProviders(raw: unknown): BoardContentProviderDec
         const candidate = entry as { type?: unknown; schemes?: unknown };
         const type = typeof candidate.type === "string" ? candidate.type.trim() : "";
         if (!type) continue;
-        const schemes: string[] = [];
-        if (Array.isArray(candidate.schemes)) {
-            for (const schemeEntry of candidate.schemes) {
-                if (typeof schemeEntry !== "string") continue;
-                const scheme = schemeEntry.trim().toLowerCase().replace(/:$/, "");
-                if (scheme && !schemes.includes(scheme)) schemes.push(scheme);
-            }
-        }
+        const schemes = normalizeStringList(candidate.schemes, {
+            map: (entry) => entry.trim().toLowerCase().replace(/:$/, ""),
+        });
         out.push({ type, schemes });
     }
     return out;
@@ -458,14 +496,7 @@ export function normalizeCapabilities(
             headless?: unknown;
             alwaysOpensNewPage?: unknown;
         };
-        const accepts: string[] = [];
-        if (Array.isArray(candidate.accepts)) {
-            for (const acceptEntry of candidate.accepts) {
-                if (typeof acceptEntry !== "string") continue;
-                const value = acceptEntry.trim();
-                if (value && !accepts.includes(value)) accepts.push(value);
-            }
-        }
+        const accepts = normalizeStringList(candidate.accepts, { map: (entry) => entry.trim() });
         const declaration: BoardCapabilityDeclaration = {
             id: typeof candidate.id === "string" ? candidate.id.trim() : "",
             ...(typeof candidate.representation === "string"
@@ -516,23 +547,17 @@ export function normalizeCapabilities(
  * Non-string / empty entries are dropped. Non-array input → [].
  */
 export function normalizeFileMasks(raw: unknown): string[] {
-    if (!Array.isArray(raw)) return [];
-    const out: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== "string") continue;
-        let mask = entry.trim().toLowerCase();
-        if (!mask) continue;
-        if (!mask.includes("*") && !mask.includes("?")) {
-            if (mask.startsWith(".")) {
-                mask = "*" + mask;             // ".drawio" / ".grid.json" → extension
-            } else if (!mask.includes(".")) {
-                mask = "*." + mask;            // "drawio" → extension
+    return normalizeStringList(raw, {
+        map: (entry) => {
+            let mask = entry.trim().toLowerCase();
+            if (!mask) return "";
+            if (!mask.includes("*") && !mask.includes("?")) {
+                if (mask.startsWith(".")) mask = "*" + mask;
+                else if (!mask.includes(".")) mask = "*." + mask;
             }
-            // else: a dot inside a wildcard-free entry → an exact file name; keep as-is.
-        }
-        if (!out.includes(mask)) out.push(mask);
-    }
-    return out;
+            return mask;
+        },
+    });
 }
 
 /** Compile a single glob mask into a case-insensitive, whole-name RegExp.
@@ -558,21 +583,9 @@ export function matchesFileMask(fileName: string, mask: string): boolean {
  * empty entries are dropped. Non-array input → [].
  */
 export function normalizeFolderMasks(raw: unknown): string[] {
-    if (!Array.isArray(raw)) return [];
-    const out: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== "string") continue;
-        const mask = entry
-            .trim()
-            .toLowerCase()
-            .replace(/\\/g, "/")
-            .replace(/^\.\//, "")
-            .replace(/^\/+/, "")
-            .replace(/\/+$/, "");
-        if (!mask) continue;
-        if (!out.includes(mask)) out.push(mask);
-    }
-    return out;
+    return normalizeStringList(raw, {
+        map: (entry) => entry.trim().toLowerCase().replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "").replace(/\/+$/, ""),
+    });
 }
 
 /** Normalize direct folder-claim masks with the same separator and glob rules as `folderMasks`.
@@ -662,17 +675,10 @@ const CONTENT_MATCH_LIMIT = 64 * 1024;
  * registry). Non-array / absent → []. Never throws.
  */
 export function normalizeContentMasks(raw: unknown): string[] {
-    if (!Array.isArray(raw)) return [];
-    const out: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== "string") continue;
-        const mask = entry.trim();
-        if (!mask || mask.length > MAX_CONTENT_MASK_CHARS) continue;
-        if (out.includes(mask)) continue;
-        if (!compileContentMask(mask)) continue;
-        out.push(mask);
-    }
-    return out;
+    return normalizeStringList(raw, {
+        map: (entry) => entry.trim(),
+        accept: (value) => value.length <= MAX_CONTENT_MASK_CHARS && compileContentMask(value) !== null,
+    });
 }
 
 /** Compiled-mask cache, keyed by the mask source. A board's masks are stable for the life of its
@@ -721,7 +727,7 @@ export interface BoardEditorAssociation {
     /** Optional switch-widget display name (trimmed; empty → undefined). */
     editorName?: string;
     /** Normalized board editor kind. Unknown values → "simple". */
-    editorKind: "simple" | "content-host" | "stream-host";
+    editorKind: BoardEditorKind;
     /** Normalized accepted sources. Any value other than "any" → "local". */
     editorSources: "local" | "any";
 }
@@ -744,12 +750,18 @@ export function getBoardEditorAssociation(
     // `contentMasks` DO (US-1404): a board may detect its format by content alone and appear as a
     // switch option on untitled pages without claiming any file name. `matchesBoardMasks` still
     // requires a file-mask hit, so an empty `fileMasks` can never take a file from a built-in.
-    if (
-        fileMasks.length === 0
-        && contentMasks.length === 0
-        && folderEditorMasks.length === 0
-    ) return null;
     const folderMasks = normalizeFolderMasks(manifest.folderMasks);
+    return createBoardEditorAssociation(manifest, fileMasks, folderMasks, contentMasks, folderEditorMasks);
+}
+
+function createBoardEditorAssociation(
+    manifest: Pick<BoardManifest, "editorPriority" | "folderEditorPriority" | "editorName" | "editorKind" | "editorSources">,
+    fileMasks: string[],
+    folderMasks: string[],
+    contentMasks: string[],
+    folderEditorMasks: string[],
+): BoardEditorAssociation | null {
+    if (fileMasks.length === 0 && contentMasks.length === 0 && folderEditorMasks.length === 0) return null;
     const rawPriority = manifest.editorPriority;
     const editorPriority =
         typeof rawPriority === "number" && Number.isFinite(rawPriority) && rawPriority > 0
@@ -763,7 +775,7 @@ export function getBoardEditorAssociation(
             ? rawFolderEditorPriority
             : 0;
     const name = typeof manifest.editorName === "string" ? manifest.editorName.trim() : "";
-    const editorKind = manifest.editorKind === "content-host" || manifest.editorKind === "stream-host"
+    const editorKind: BoardEditorKind = manifest.editorKind === "content-host" || manifest.editorKind === "stream-host"
         ? manifest.editorKind
         : "simple";
     const editorSources = manifest.editorSources === "any" ? "any" : "local";
@@ -777,6 +789,79 @@ export function getBoardEditorAssociation(
         editorName: name || undefined,
         editorKind,
         editorSources,
+    };
+}
+
+export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const source = raw as Record<string, unknown>;
+    const has = (key: string) => Object.prototype.hasOwnProperty.call(source, key);
+    const issues: NormalizedBoardManifest["issues"] = [];
+    const normalized: NormalizedBoardManifest = {
+        schemaVersion: source.schemaVersion,
+        association: null,
+        issues,
+    };
+    const copyString = (key: keyof BoardManifest) => {
+        const value = source[key];
+        if (typeof value === "string") (normalized as unknown as Record<string, unknown>)[key] = value;
+    };
+    for (const key of ["name", "description", "author", "repository", "version", "minAppVersion", "minBridgeVersion"] as const) {
+        copyString(key);
+    }
+    if (typeof source.standalone === "boolean") normalized.standalone = source.standalone;
+    if (typeof source.singleInstance === "boolean") normalized.singleInstance = source.singleInstance;
+    if (has("permissions") && Array.isArray(source.permissions)) normalized.permissions = normalizePermissions(source.permissions);
+    if (typeof source.service === "string") {
+        const service = normalizeBoardServicePath(source.service);
+        if (service !== null) normalized.service = service;
+    }
+    if (has("contentProviders") && Array.isArray(source.contentProviders)) {
+        normalized.contentProviders = normalizeContentProviders(source.contentProviders);
+    }
+    if (has("capabilities") && Array.isArray(source.capabilities)) {
+        normalized.capabilities = normalizeCapabilities(source.capabilities, (name, reason) => {
+            issues.push({ kind: "capability", name, reason });
+        });
+    }
+    if (has("settings")) {
+        const declarations = normalizeBoardSettings(raw, (name, reason) => {
+            issues.push({ kind: "settings", name, reason });
+        });
+        if (Array.isArray(source.settings)) normalized.settings = declarations;
+    }
+    if (has("fileMasks") && Array.isArray(source.fileMasks)) normalized.fileMasks = normalizeFileMasks(source.fileMasks);
+    if (has("browserUrlMasks") && Array.isArray(source.browserUrlMasks)) normalized.browserUrlMasks = normalizeBrowserUrlMasks(source.browserUrlMasks);
+    if (has("folderMasks") && Array.isArray(source.folderMasks)) normalized.folderMasks = normalizeFolderMasks(source.folderMasks);
+    if (has("folderEditorMasks") && Array.isArray(source.folderEditorMasks)) normalized.folderEditorMasks = normalizeFolderEditorMasks(source.folderEditorMasks);
+    if (has("contentMasks") && Array.isArray(source.contentMasks)) normalized.contentMasks = normalizeContentMasks(source.contentMasks);
+    if (typeof source.editorPriority === "number") normalized.editorPriority = Number.isFinite(source.editorPriority) && source.editorPriority > 0 ? source.editorPriority : 0;
+    if (typeof source.folderEditorPriority === "number") normalized.folderEditorPriority = Number.isFinite(source.folderEditorPriority) && source.folderEditorPriority > 0 ? source.folderEditorPriority : 0;
+    if (typeof source.editorName === "string" && source.editorName.trim()) normalized.editorName = source.editorName.trim();
+    if (source.editorKind === "simple" || source.editorKind === "content-host" || source.editorKind === "stream-host") normalized.editorKind = source.editorKind;
+    if (source.editorSources === "local" || source.editorSources === "any") normalized.editorSources = source.editorSources;
+    if (has("secondaryViews") && Array.isArray(source.secondaryViews)) normalized.secondaryViews = normalizeSecondaryViews(source.secondaryViews);
+    if (typeof source.guides === "string") {
+        const guides = normalizeBoardGuidesFolder(source.guides);
+        if (guides !== null) normalized.guides = guides;
+    }
+    const fileMasks = normalized.fileMasks ?? [];
+    const folderMasks = normalized.folderMasks ?? [];
+    const contentMasks = normalized.contentMasks ?? [];
+    const folderEditorMasks = normalized.folderEditorMasks ?? [];
+    normalized.association = createBoardEditorAssociation(normalized, fileMasks, folderMasks, contentMasks, folderEditorMasks);
+    return normalized;
+}
+
+export function boardTrustDisclosure(manifest: NormalizedBoardManifest): {
+    permissions: readonly string[];
+    serviceDeclared: boolean;
+    capabilities: readonly string[];
+} {
+    return {
+        permissions: manifest.permissions ?? [],
+        serviceDeclared: manifest.service !== undefined,
+        capabilities: (manifest.capabilities ?? []).map((declaration) => declaration.id),
     };
 }
 

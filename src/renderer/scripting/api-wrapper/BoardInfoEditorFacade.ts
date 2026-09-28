@@ -15,6 +15,12 @@ import { compareVersions } from "../../../shared/version-utils";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
+import {
+    projectBoardCapability,
+    projectBoardContentProvider,
+    projectBoardSecondaryView,
+    projectBoardSetting,
+} from "./board-manifest-projection";
 
 const BOARD_INFO_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "board-info-browse", purpose: "Locate the install-location folder picker.", where: "install mode, beside the install-location field" },
@@ -137,12 +143,17 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.repository !== undefined ? { repository: properties.repository } : {}),
             ...(properties.manifestVersion !== undefined ? { manifestVersion: properties.manifestVersion } : {}),
             ...(properties.permissions !== undefined ? { permissions: [...properties.permissions] } : {}),
+            ...(properties.standalone !== undefined ? { standalone: properties.standalone } : {}),
+            ...(properties.singleInstance !== undefined ? { singleInstance: properties.singleInstance } : {}),
+            ...(properties.minAppVersion !== undefined ? { minAppVersion: properties.minAppVersion } : {}),
             ...(properties.minBridgeVersion !== undefined ? { minBridgeVersion: properties.minBridgeVersion } : {}),
             ...(properties.service !== undefined ? { service: properties.service } : {}),
             ...(properties.bridgeCompatibilityReason !== undefined
                 ? { bridgeCompatibilityReason: properties.bridgeCompatibilityReason }
                 : {}),
             ...(properties.fileMasks !== undefined ? { fileMasks: [...properties.fileMasks] } : {}),
+            ...(properties.browserUrlMasks !== undefined ? { browserUrlMasks: [...properties.browserUrlMasks] } : {}),
+            ...(properties.contentMasks !== undefined ? { contentMasks: [...properties.contentMasks] } : {}),
             ...(properties.folderMasks !== undefined ? { folderMasks: [...properties.folderMasks] } : {}),
             ...(properties.folderEditorMasks !== undefined
                 ? { folderEditorMasks: [...properties.folderEditorMasks] }
@@ -150,31 +161,27 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.folderEditorPriority !== undefined
                 ? { folderEditorPriority: properties.folderEditorPriority }
                 : {}),
+            ...(properties.editorPriority !== undefined ? { editorPriority: properties.editorPriority } : {}),
             ...(properties.editorName !== undefined ? { editorName: properties.editorName } : {}),
             ...(properties.editorKind !== undefined ? { editorKind: properties.editorKind } : {}),
+            ...(properties.editorSources !== undefined ? { editorSources: properties.editorSources } : {}),
             ...(properties.contentProviders !== undefined
                 ? {
-                    contentProviders: properties.contentProviders.map((provider) => ({
-                        type: provider.type,
-                        ...(provider.schemes !== undefined ? { schemes: [...provider.schemes] } : {}),
-                    })),
+                    contentProviders: properties.contentProviders.map(projectBoardContentProvider),
                 }
                 : {}),
             ...(properties.capabilities !== undefined
                 ? {
-                    capabilities: properties.capabilities.map((capability) => ({
-                        id: capability.id,
-                        ...(capability.version !== undefined ? { version: capability.version } : {}),
-                        ...(capability.priority !== undefined ? { priority: capability.priority } : {}),
-                        ...(capability.accepts !== undefined ? { accepts: [...capability.accepts] } : {}),
-                        ...(Object.prototype.hasOwnProperty.call(capability, "payloadSchema")
-                            ? { payloadSchema: capability.payloadSchema }
-                            : {}),
-                        ...(capability.title !== undefined ? { title: capability.title } : {}),
-                        ...(capability.headless !== undefined ? { headless: capability.headless } : {}),
-                    })),
+                    capabilities: properties.capabilities.map(projectBoardCapability),
                 }
                 : {}),
+            ...(properties.settings !== undefined
+                ? { settings: properties.settings.map(projectBoardSetting) }
+                : {}),
+            ...(properties.secondaryViews !== undefined
+                ? { secondaryViews: properties.secondaryViews.map(projectBoardSecondaryView) }
+                : {}),
+            ...(properties.guides !== undefined ? { guides: properties.guides } : {}),
             ...(properties.registrationIssues !== undefined
                 ? {
                     registrationIssues: properties.registrationIssues.map((issue) => ({

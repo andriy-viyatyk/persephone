@@ -8,10 +8,8 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { BoardEditorModel } from "./BoardEditorModel";
 import {
-    normalizeBoardServicePath,
-    normalizeCapabilities,
-    normalizePermissions,
-    readBoardManifest,
+    boardTrustDisclosure,
+    readNormalizedBoardManifest,
 } from "./board-manifest";
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
@@ -274,12 +272,10 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
     }
 
     private async trustBoard(boardRoot: string): Promise<void> {
-        const manifest = await readBoardManifest(boardRoot);
-        if (await showTrustBoardDialog(boardRoot, {
-            permissions: normalizePermissions(manifest?.permissions),
-            serviceDeclared: normalizeBoardServicePath(manifest?.service) !== null,
-            capabilities: normalizeCapabilities(manifest?.capabilities).map((declaration) => declaration.id),
-        })) {
+        const manifest = await readNormalizedBoardManifest(boardRoot);
+        if (await showTrustBoardDialog(boardRoot, manifest
+            ? boardTrustDisclosure(manifest)
+            : { permissions: [], serviceDeclared: false, capabilities: [] })) {
             const { confirmNamespaceNotColliding } = await import("../../api/board-namespace");
             if (await confirmNamespaceNotColliding(boardRoot)) await boardTrust.trust(boardRoot);
         }

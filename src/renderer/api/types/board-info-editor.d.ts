@@ -1,3 +1,10 @@
+import type {
+    IBoardCapabilityDeclaration,
+    IBoardContentProviderDeclaration,
+    IBoardSecondaryViewDeclaration,
+    IBoardSettingDeclaration,
+} from "./board-editor";
+
 export type BoardInfoMode = "install" | "properties";
 
 export type BoardInfoInstallState =
@@ -7,20 +14,8 @@ export type BoardInfoInstallState =
     | "downloaded"
     | "registered";
 
-export interface IBoardInfoContentProviderDeclaration {
-    readonly type: string;
-    readonly schemes?: readonly string[];
-}
-
-export interface IBoardInfoCapabilityDeclaration {
-    readonly id: string;
-    readonly version?: number;
-    readonly priority?: number;
-    readonly accepts?: readonly string[];
-    readonly payloadSchema?: unknown;
-    readonly title?: string;
-    readonly headless?: boolean;
-}
+export type IBoardInfoContentProviderDeclaration = IBoardContentProviderDeclaration;
+export type IBoardInfoCapabilityDeclaration = IBoardCapabilityDeclaration;
 
 export interface IBoardInfoRegistrationIssue {
     readonly kind: "provider" | "scheme" | "capability" | "settings" | "browser-url-mask";
@@ -62,19 +57,29 @@ export interface IBoardInfoProperties {
     readonly repository?: string;
     readonly manifestVersion?: string;
     readonly permissions?: readonly string[];
+    readonly standalone?: boolean;
+    readonly singleInstance?: boolean;
+    readonly minAppVersion?: string;
     readonly minBridgeVersion?: string;
     readonly service?: string;
     readonly bridgeCompatibilityReason?: string;
     readonly fileMasks?: readonly string[];
+    readonly browserUrlMasks?: readonly string[];
+    readonly contentMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
     readonly folderEditorMasks?: readonly string[];
     /** Direct folder resolution priority for `folderEditorMasks`. */
     readonly folderEditorPriority?: number;
+    readonly editorPriority?: number;
     readonly editorName?: string;
     readonly editorKind?: "simple" | "content-host" | "stream-host";
+    readonly editorSources?: "local" | "any";
     readonly contentProviders?: readonly IBoardInfoContentProviderDeclaration[];
     readonly capabilities?: readonly IBoardInfoCapabilityDeclaration[];
+    readonly settings?: readonly IBoardSettingDeclaration[];
+    readonly secondaryViews?: readonly IBoardSecondaryViewDeclaration[];
+    readonly guides?: string;
     readonly registrationIssues?: readonly IBoardInfoRegistrationIssue[];
     readonly root: string;
     readonly trusted: boolean;

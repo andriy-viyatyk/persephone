@@ -14,6 +14,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns
+  the values Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`,
+  `settings`, `guides`, and capability `alwaysOpensNewPage`. Board Info's script-visible
+  `page.editor.properties` exposes the same normalized manifest fields alongside install and trust
+  state. Lists and nested declarations are copied, and optional fields remain absent when not
+  declared. See [Boards — Inspecting board metadata from scripts](./boards.md#inspecting-board-metadata-from-scripts).
 - **Bridge 1.23.0 unifies file MIME detection:** `board://` files and `__pipe` responses use the
   shared extension table, including explicit types for documents, archives, and fonts. Markdown,
   CSV, XML, and YAML board files are served as UTF-8.

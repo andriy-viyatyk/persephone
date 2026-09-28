@@ -62,7 +62,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1545 | [Split the module-service supervisor; one state-transition helper](../tasks/US-1545-supervisor-split/README.md) | 3 — structure | L | Done |
 | US-1546 | [One `__pipe` range reader in main; one MIME table](../tasks/US-1546-pipe-range-reader/README.md) | 3 — structure | M | Done |
 | US-1548 | [One ownership registry for providers, schemes, capabilities and URL masks](../tasks/US-1548-ownership-registry/README.md) | 3 — structure | M | Done |
-| US-1549 | Board manifest parsed once into a normalized model | 3 — structure | M | Planned |
+| US-1549 | [Board manifest parsed once into a normalized model](../tasks/US-1549-normalized-board-manifest/README.md) | 3 — structure | M | Done |
 | US-1550 | Scheme hooks: a `handoff()` helper and shared URL helpers | 3 — structure | S | Planned |
 | US-1551 | Single-instance board routing in one place; a typed open-context hook | 3 — structure | S | Planned |
 | US-1552 | Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters | 3 — structure | L | Planned |
@@ -652,6 +652,9 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   - Replace the casts with one optional typed `EditorModel` hook, for example
     `acceptOpenContext?({ sourceUrl, sessionHandle })`, next to the existing `onReopen` and
     `revealFragment`. If US-1540 has landed, the intent part is already gone.
+- **After US-1549:** the single-instance reads (`open-handler.ts`, `PagesLifecycleModel.ts`) still
+  call `isBoardSingleInstance` on a raw `readBoardManifest`. `readNormalizedBoardManifest(root)`
+  now exists, and its `singleInstance` field is the normalized value; use it at the one routing point.
 
 ### US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters
 
@@ -745,6 +748,9 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   reachable from an open board through the board menu's **Board properties** item
   (`BoardToolbar.ts:185-208`); the verification attempt used an editor switch, which lands in install
   mode by design. Update that roadmap note when this story closes.
+- **After US-1549:** the trust *disclosure* is already single-sourced: `boardTrustDisclosure(manifest)`
+  in `board-manifest.ts` is used by `BoardEditorView.trustBoard`, `BoardInfoEditorModel.register` and
+  `boards.registerBoard`. The three trust-granting flows themselves are still separate.
 
 ### US-1555: Small dead code, stale comments and a torrent-specific notice in core
 

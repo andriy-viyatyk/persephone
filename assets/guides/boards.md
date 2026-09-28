@@ -1018,6 +1018,35 @@ Declare the association with fields in `board-manifest.json`:
 | `editorKind` | Optional — `"simple"` (default), `"content-host"`, or `"stream-host"`. A simple board reads/writes a path; a content-host board receives text through `persephone.host.*`; a stream-host board receives an origin-local pipe URL through `persephone.host.streamUrl()` without materialization. |
 | `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive or at an `http(s)` URL. Persephone copies those non-local sources into a local cache file first, so the board's own code can use `persephone.getFilePath()`. It is the copy-based alternative to `stream-host` and is ignored by content-host and stream-host boards. |
 
+### Inspecting board metadata from scripts
+
+Scripts running on an open board can call `page.editor.getManifest()` after narrowing the editor id
+to `board-view` or `board-editor:<id>`. It returns a copied snapshot of the normalized manifest
+values Persephone applies; it returns `undefined` if the manifest is missing or malformed. The
+snapshot includes the supported manifest fields, including `browserUrlMasks`, `contentMasks`,
+`singleInstance`, `settings`, `guides`, and capability `alwaysOpensNewPage`.
+
+Normalization is visible in the returned values. `permissions` are trimmed and deduplicated while
+preserving case; browser URL masks are lowercased, deduplicated, filtered, and capped at 64; file
+masks are lowercased and bare extensions become globs such as `*.drawio`; folder masks normalize
+slashes; content masks omit invalid or overlong expressions. Provider types are trimmed and blank
+types removed, while schemes are lowercased and deduplicated. Capability ids, representations, and
+titles are trimmed, accepted values are deduplicated, and malformed `alwaysOpensNewPage` values
+reject that declaration. Service paths are returned only when they pass the safe board-relative
+path check. Settings keep only valid declarations with supported types and defaults; duplicate ids
+are first-wins, and enum options are trimmed and deduplicated. Secondary views normalize their text
+and omit malformed or duplicate ids. Guides paths are normalized and rejected if unsafe. Empty
+`editorName` values are omitted; a declared numeric priority is returned as applied (invalid or
+non-positive values become `0`). Other descriptive strings and valid authored enum/boolean values
+keep their authored text. Optional fields remain absent when not declared. Nested declarations and
+arrays are copies, so changing a returned value does not change the board's manifest or Persephone's
+state.
+
+The same snapshots are available to scripts through an open Board Info page's `properties` facade.
+That snapshot combines normalized manifest values with Board Info state such as the board root,
+trust status, compatibility, and registration issues. See the [Page API reference](./scripting/api/page.md)
+for an example using `app.pages.all`.
+
 ### Direct-folder boards
 
 Use a manifest such as:

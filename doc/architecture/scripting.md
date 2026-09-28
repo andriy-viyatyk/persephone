@@ -571,8 +571,8 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
-| `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, shared frame automation operations, secondary-frame selection, and reload |
-| `page.editor` | `BoardInfoEditorFacade` | `BoardInfoEditorModel` | Install/properties state |
+| `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, `getManifest()` normalized manifest snapshot, shared frame automation operations, secondary-frame selection, and reload |
+| `page.editor` | `BoardInfoEditorFacade` | `BoardInfoEditorModel` | Install/properties state, including normalized manifest-backed properties |
 | `page.editor` | `ToolsetEditorFacade` | `ToolsetEditorModel` | Registered toolset state/actions |
 | `page.editor` | `ToolsHubEditorFacade` | `ToolsHubEditor` | Hub tab state |
 | `page.editor` | `MnemeConfigEditorFacade` | `MnemeConfigEditorModel` | Mneme configuration/status/actions |
@@ -592,6 +592,13 @@ The Board and Board Info facades expose observations and screen-local actions on
 accept secrets or trust decisions, and Board Info leaves lifecycle operations on `app.boards`, where
 trust and registration remain user-mediated. Toolset and Mneme facades expose copied state rather
 than live models; Agent Tool credentials remain outside the scripting surface.
+
+`page.editor.getManifest()` reads and parses the board's current manifest on each call, then returns
+a defensive projection of the normalized values Persephone applies. Optional fields remain absent
+when they were not authored validly; derived association defaults are not added to the snapshot.
+Board Info's `properties` uses the same normalized manifest values for its manifest-backed fields
+while retaining its own compatibility, registration, trust, and install state. This projection
+belongs to the Persephone script facade and does not change the board-frame `persephone` bridge.
 
 Browser and board automation facades, together with `app.window.screen`, share the target-neutral
 operations in `/src/renderer/automation/operations.ts`. Browser pages add navigation and inner-tab

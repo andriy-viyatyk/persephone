@@ -30,7 +30,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1545: Split the module-service supervisor; one state-transition helper](tasks/US-1545-supervisor-split/README.md)
   - [x] [US-1546: One `__pipe` range reader in main; one MIME table](tasks/US-1546-pipe-range-reader/README.md)
   - [x] [US-1548: One ownership registry for providers, schemes, capabilities and URL masks](tasks/US-1548-ownership-registry/README.md)
-  - [ ] US-1549: Board manifest parsed once into a normalized model
+  - [x] [US-1549: Board manifest parsed once into a normalized model](tasks/US-1549-normalized-board-manifest/README.md)
   - [ ] US-1550: Scheme hooks — a `handoff()` helper and shared URL helpers
   - [ ] US-1551: Single-instance board routing in one place; a typed open-context hook
   - [ ] US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters

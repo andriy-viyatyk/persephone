@@ -10,6 +10,7 @@ import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
+import { hostOwnsPipe } from "../board/board-manifest";
 
 export interface IEditorSwitchOption {
     readonly id: string;
@@ -84,7 +85,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const boardMatches = local
         ? boardMatchesAll
         : boardMatchesAll.filter(
-            (board) => board.editorKind === "content-host" || board.editorKind === "stream-host",
+            (board) => hostOwnsPipe(board.editorKind),
         );
     const catalogAll = publishedBoards.catalogBoardsForFile(fileName);
     const installed = boardInstallRegistry.listInstalled();
@@ -94,8 +95,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const catalogMatches = catalogAll.filter((catalogBoard) => {
         if (
             !local
-            && catalogBoard.editorKind !== "content-host"
-            && catalogBoard.editorKind !== "stream-host"
+            && !hostOwnsPipe(catalogBoard.editorKind)
         ) return false;
         const installedEntry = installed.find((entry) => entry.id === catalogBoard.id);
         return !installedEntry || !trustedRoots.has(fpNormalizeForCompare(installedEntry.root));

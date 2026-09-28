@@ -40,18 +40,16 @@ import {
 } from "../../content/scheme-registry";
 import { createBoardProvider } from "../../content/board-provider-factory";
 import {
-    normalizeContentProviders,
-    normalizeCapabilities,
-    normalizeBoardSettings,
-    getBoardEditorAssociation,
     matchesBoardMasks,
     matchesContentMasks,
     matchesFolderEditorMasks,
-    normalizeBrowserUrlMasks,
+    hostOwnsPipe,
+    parseBoardManifest,
     readBoardManifest,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
     type BoardEditorAssociation,
+    type NormalizedBoardManifest,
 } from "./board-manifest";
 import type { BoardSettingDeclaration } from "../../api/board-settings/types";
 import {
@@ -87,7 +85,7 @@ export async function resolveBoardEditorId(editorId: string): Promise<string> {
 
 /** A trusted or bundled board association resolved from its manifest. One per source board that declares
  *  usable file, content, or direct-folder claims; it may be file-only, folder-only, or both. */
-export interface CustomEditorMatch {
+export interface CustomEditorMatch extends Omit<BoardEditorAssociation, "editorName" | "editorPriority"> {
     /** Source provenance used by built-in presentation and later bundled-board controls. */
     origin: "trusted" | "bundled";
     /** Virtual editor id: `board-editor:<boardRoot>` (original-case root). */
@@ -98,26 +96,7 @@ export interface CustomEditorMatch {
     name: string;
     /** File resolution priority (>= 0) from the manifest (US-836 `editorPriority`). */
     priority: number;
-    /** The board's normalized glob masks (for file matching + introspection); empty for a
-     *  folder-only association. */
-    fileMasks: string[];
-    /** The board's normalized folder globs, narrowing `fileMasks` to certain locations.
-     *  Empty = any folder (the default for boards that declare no `folderMasks`). */
-    folderMasks: string[];
-    /** The board's normalized direct folder-claim globs, matching the folder itself. */
-    folderEditorMasks: string[];
-    /** Folder resolution priority from `folderEditorPriority`. */
-    folderEditorPriority: number;
-    /** The board's normalized content-detection regex sources (US-1404). Empty = none. Consumed
-     *  ONLY by `getBoardsForContent` (the editor-switch path); content never opens a file. */
-    contentMasks: string[];
-    /** Board editor kind (US-843): "simple", "content-host", or the declared "stream-host"
-     *  value. Consumed by the construction path (US-845 and later stream-host work). */
-    editorKind: "simple" | "content-host" | "stream-host";
-    /** Which sources the board accepts: "local" (plain local files only — the default) or "any"
-     *  (also archive entries and `http(s)` URLs, materialized by Persephone into a local cache
-     *  file). Consumed by the non-local branch of `resolveEditorIdForFile`. */
-    editorSources: "local" | "any";
+
 }
 
 /** A board source omitted from the editor registry because its bridge requirement is too new. */
@@ -149,8 +128,10 @@ interface CollectedProviderAxis {
 
 interface BoardRefreshSource {
     readonly root: string;
-    readonly manifest: Awaited<ReturnType<typeof readBoardManifest>>;
+    readonly manifest: NormalizedBoardManifest | null;
     readonly origin: "trusted" | "bundled" | "installed";
+    readonly boardName: string;
+    readonly settingsNamespace?: string;
 }
 
 interface BoardUrlMaskIntent {
@@ -272,8 +253,8 @@ function collectProviderAxis(sources: readonly BoardRefreshSource[]): CollectedP
     const declarations: ProviderDeclaration[] = [];
     for (const source of sources) {
         if (source.origin === "installed") continue;
-        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
-        for (const declaration of normalizeContentProviders(source.manifest?.contentProviders)) {
+        const boardName = source.boardName;
+        for (const declaration of source.manifest?.contentProviders ?? []) {
             const intent = { boardRoot: source.root, declaration };
             intents.push(intent);
             if (boardProviderTypeRefusal(declaration.type)) continue;
@@ -287,8 +268,8 @@ function collectProviderAxis(sources: readonly BoardRefreshSource[]): CollectedP
     }
     for (const source of sources) {
         if (source.origin !== "installed") continue;
-        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
-        for (const declaration of normalizeContentProviders(source.manifest?.contentProviders)) {
+        const boardName = source.boardName;
+        for (const declaration of source.manifest?.contentProviders ?? []) {
             if (boardProviderTypeRefusal(declaration.type)) continue;
             declarations.push({ type: declaration.type, boardRoot: source.root, boardName, trusted: false });
         }
@@ -357,12 +338,11 @@ function collectCapabilityAxis(
     const intents: BoardCapabilityRegistrationIntent[] = [];
     for (const source of sources) {
         if (source.origin === "installed") continue;
-        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
-        for (const declaration of normalizeCapabilities(source.manifest?.capabilities, (id, reason) => {
-            addRegistrationIssue(issues, source.root, "capability", id, reason, undefined);
-        })) {
-            intents.push({ boardRoot: source.root, boardName, declaration });
+        const boardName = source.boardName;
+        for (const issue of source.manifest?.issues ?? []) {
+            if (issue.kind === "capability") addRegistrationIssue(issues, source.root, issue.kind, issue.name, issue.reason, undefined);
         }
+        for (const declaration of source.manifest?.capabilities ?? []) intents.push({ boardRoot: source.root, boardName, declaration });
     }
     return intents;
 }
@@ -412,8 +392,8 @@ function collectUrlMaskAxis(sources: readonly BoardRefreshSource[]): BoardUrlMas
     const issues: BoardUrlMaskIssue[] = [];
     for (const source of sources) {
         if (source.origin === "installed") continue;
-        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
-        for (const mask of normalizeBrowserUrlMasks(source.manifest?.browserUrlMasks)) {
+        const boardName = source.boardName;
+        for (const mask of source.manifest?.browserUrlMasks ?? []) {
             const intent = { boardRoot: source.root, boardName, mask };
             const result = ownership.claim(mask, intent, { origin: "board", owner: source.root });
             if ("existing" in result) {
@@ -508,23 +488,25 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
         const installedBoards = boardInstallRegistry.listInstalled()
             .filter((installed) => !boardTrust.isTrusted(installed.root));
+        const makeSource = (root: string, raw: unknown, origin: BoardRefreshSource["origin"]): BoardRefreshSource => {
+            const manifest = parseBoardManifest(raw);
+            const boardName = manifest?.name?.trim() || fpBasename(root);
+            const settingsNamespace = manifest
+                && typeof manifest.author === "string" && manifest.author.trim()
+                && typeof manifest.name === "string" && manifest.name.trim()
+                ? `${manifest.author.trim()}/${manifest.name.trim()}`
+                : undefined;
+            return { root, manifest, origin, boardName, settingsNamespace };
+        };
         const [trustedSources, installedSources] = await Promise.all([
-            Promise.all(roots.map(async (root): Promise<BoardRefreshSource> => ({
-                root,
-                manifest: await readBoardManifest(root),
-                origin: "trusted",
-            }))),
-            Promise.all(installedBoards.map(async (installed): Promise<BoardRefreshSource> => ({
-                root: installed.root,
-                manifest: await readBoardManifest(installed.root),
-                origin: "installed",
-            }))),
+            Promise.all(roots.map(async (root) => makeSource(root, await readBoardManifest(root), "trusted"))),
+            Promise.all(installedBoards.map(async (installed) => makeSource(installed.root, await readBoardManifest(installed.root), "installed"))),
         ]);
         const sources: BoardRefreshSource[] = [
             ...trustedSources,
             ...bundledBoardRegistry.list()
                 .filter((bundled) => !disabledBundledBoards.has(bundled.id))
-                .map((bundled) => ({ ...bundled, origin: "bundled" as const })),
+                .map((bundled) => makeSource(bundled.root, bundled.manifest, "bundled")),
             ...installedSources,
         ];
         const compatibleSources = sources.filter((source) => getBoardCompatibility(
@@ -541,17 +523,17 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
 
         for (const source of boardSources) {
             const { root, manifest, origin } = source;
-            const boardName = (manifest?.name && manifest.name.trim()) || fpBasename(root);
-            const settingsDeclarations = normalizeBoardSettings(manifest, (name, reason) => {
-                addRegistrationIssue(registrationIssues, root, "settings", name, reason, undefined);
-            });
-            const assoc = getBoardEditorAssociation(manifest);
+            const boardName = source.boardName;
+            for (const issue of manifest?.issues ?? []) {
+                if (issue.kind === "settings") addRegistrationIssue(registrationIssues, root, issue.kind, issue.name, issue.reason, undefined);
+            }
+            const settingsDeclarations = manifest?.settings ?? [];
+            const assoc = manifest?.association ?? null;
             if (settingsDeclarations.length > 0) {
                 settingsBoards.push({
                     boardRoot: root,
                     name: boardName,
-                    // Reaching this branch means the normalized settings block has a portable identity.
-                    namespace: (manifest?.author ?? "").trim() + "/" + (manifest?.name ?? "").trim(),
+                    namespace: source.settingsNamespace ?? "",
                     origin,
                     declarations: settingsDeclarations,
                     editorAssociation: assoc,
@@ -705,8 +687,7 @@ export function resolveEditorIdForFile(
         // editor keeps the file — a clean fallback beats a board that opens and errors.
         if (
             !local
-            && b.editorKind !== "content-host"
-            && b.editorKind !== "stream-host"
+            && !hostOwnsPipe(b.editorKind)
             && b.editorSources !== "any"
         ) continue;
         // Strict `>` so the FIRST (earliest-trusted) board wins ties among boards.

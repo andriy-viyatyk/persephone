@@ -27,6 +27,17 @@ export interface IBoardCapabilityDeclaration {
     readonly payloadSchema?: unknown;
     readonly title?: string;
     readonly headless?: boolean;
+    readonly alwaysOpensNewPage?: boolean;
+}
+
+export interface IBoardSettingDeclaration {
+    readonly id: string;
+    readonly type: "string" | "boolean" | "number" | "enum";
+    readonly default: string | boolean | number;
+    readonly options?: readonly string[];
+    readonly format?: string;
+    readonly label?: string;
+    readonly description?: string;
 }
 
 export interface IBoardManifest {
@@ -37,16 +48,20 @@ export interface IBoardManifest {
     readonly repository?: string;
     readonly version?: string;
     readonly standalone?: boolean;
+    readonly singleInstance?: boolean;
     readonly minAppVersion?: string;
     readonly permissions?: readonly string[];
     readonly minBridgeVersion?: string;
     readonly service?: string;
     readonly contentProviders?: readonly IBoardContentProviderDeclaration[];
     readonly capabilities?: readonly IBoardCapabilityDeclaration[];
+    readonly settings?: readonly IBoardSettingDeclaration[];
     readonly fileMasks?: readonly string[];
+    readonly browserUrlMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
     /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
     readonly folderEditorMasks?: readonly string[];
+    readonly contentMasks?: readonly string[];
     /** Direct folder resolution priority for `folderEditorMasks`. */
     readonly folderEditorPriority?: number;
     readonly editorPriority?: number;
@@ -54,6 +69,7 @@ export interface IBoardManifest {
     readonly editorKind?: "simple" | "content-host" | "stream-host";
     readonly editorSources?: "local" | "any";
     readonly secondaryViews?: readonly IBoardSecondaryViewDeclaration[];
+    readonly guides?: string;
 }
 
 export interface IBoardSecondaryView {
