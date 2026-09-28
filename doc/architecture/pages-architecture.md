@@ -318,6 +318,11 @@ claim is rejected in favor of a usable Folder View path rather than deriving a f
 board installation root. The same folder identity is carried by a host-less Board Info install
 page so Download → Register can return to the folder context.
 
+Every persisted Board Info descriptor is restored through the registered `board-info` editor,
+whether or not it has a content host or a `folderPath`. The editor applies its durable install,
+properties, and file/folder source state, then restores an optional host when present; the generic
+host restore path does not own Board Info descriptors.
+
 Bundled-board descriptors use the same durable `boardRoot` field, and restore aliases a stale
 installed-resource path to the current bundled root by stable board id only when the old path no
 longer has a readable manifest. A readable manifest always wins, preventing a similarly named user

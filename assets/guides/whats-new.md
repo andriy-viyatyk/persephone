@@ -175,6 +175,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Board Info pages survive a restart:** a page opened with **Board properties** from a board is
+  no longer lost when Persephone restarts or its window reloads. It comes back showing the same
+  board, and when it was opened from a board on a file, **Open board** returns to that board with
+  its file loaded.
 - **Failed archive and provider media can be retried:** reopen the source link to start a fresh
   playback attempt in its existing page.
 - **Files and web links supplied when starting Persephone now open as expected.**

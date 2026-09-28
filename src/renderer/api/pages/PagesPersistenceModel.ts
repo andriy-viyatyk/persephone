@@ -29,6 +29,7 @@ import {
 } from "../../content/persephone-board-link";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
+import { BOARD_INFO_EDITOR_ID } from "../../editors/board-info/board-info-id";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -243,12 +244,7 @@ export class PagesPersistenceModel {
                         await model.restore();
                         return model;
                     }
-                    const persistedBoardInfoFolder =
-                        (d.state as { folderPath?: unknown }).folderPath;
-                    if (
-                        d.editorId === "board-info"
-                        && typeof persistedBoardInfoFolder === "string"
-                    ) {
+                    if (d.editorId === BOARD_INFO_EDITOR_ID) {
                         const { editorRegistry } = await import(
                             "../../editors/base"
                         );

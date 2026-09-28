@@ -53,6 +53,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1537 | [Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL](../tasks/US-1537-launch-arguments/README.md) | 1 — defect | S | Done |
 | US-1538 | [Main owns the board trust and URL-mask snapshots](../tasks/US-1538-main-owned-trust-snapshot/README.md) | 1 — defect | M | Done |
 | US-1547 | [Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](../tasks/US-1547-board-provider-acquire/README.md) | 1 — defect | M | Done |
+| US-1556 | [Board Info pages are dropped on restore](../tasks/US-1556-board-page-restore/README.md) | 1 — defect | S | Done |
 | US-1539 | [Capability contract single-sourced: error codes, intent envelope, outcome shape](../tasks/US-1539-capability-contract/README.md) | 2 — contracts | M | Done |
 | US-1540 | [One owner for a capability request's lifecycle](../tasks/US-1540-capability-request-lifecycle/README.md) | 2 — contracts | L | Done |
 | US-1541 | [Built-in capability resolution runs the handler it resolved; one image-edit helper](../tasks/US-1541-builtin-capability-resolution/README.md) | 2 — contracts | S | Done |
@@ -266,6 +267,15 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
 ---
 
 ## Phase 2 — contracts with one definition
+
+### US-1556: Board Info pages are dropped on restore
+
+Found during the overnight run (US-1549): after a renderer reload the dev log showed
+`[restore] unrecognized editor descriptor for "board-info"` and the Board Info page was gone.
+`restorePage()` restored a `board-info` descriptor only when it carried `folderPath` or a content
+host, so a Board Info opened from a plain, simple or stream-host board (or from the hub) was
+dropped. Pre-existing since Board Info was introduced, not a regression of this epic. Details in
+the task document.
 
 ### US-1539: Capability contract single-sourced — error codes, intent envelope, outcome shape
 
