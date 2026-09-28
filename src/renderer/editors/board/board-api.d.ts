@@ -360,24 +360,18 @@ interface PersephoneContentApi {
     open(link: string, options?: { timeoutMs?: number }): Promise<PersephoneContentOpenResult>;
 }
 
-type PersephoneCapabilityErrorCode =
-    | "no-handler" | "untrusted" | "handler-closed" | "crashed" | "cancelled"
-    | "timeout" | "cycle" | "payload-too-large" | "busy" | "rejected";
+type PersephoneCapabilityErrorCode = import("../../../ipc/capability-bus-channels").CapabilityErrorCode;
 
-interface PersephoneIntentRequest {
-    readonly id: string;
-    readonly version?: number;
-    readonly requestId: string;
-    readonly payload: unknown;
+type PersephoneIntentRequest = import("../../../ipc/capability-bus-channels").IntentEnvelope & {
     readonly cancelled: boolean;
-    resolve(value: unknown): void;
+    resolve(value: unknown, options?: { discardPage?: boolean }): void;
     reject(reason?: unknown): void;
-}
+};
 
 interface PersephoneIntentApi {
     get(): PersephoneIntentRequest | undefined;
     onRequest(callback: (request: PersephoneIntentRequest) => void): () => void;
-    resolve(value: unknown): void;
+    resolve(value: unknown, options?: { discardPage?: boolean }): void;
     reject(reason?: unknown): void;
 }
 
@@ -393,14 +387,10 @@ interface PersephoneCapabilityInfo {
     readonly payloadSchema?: unknown;
     readonly title?: string;
     readonly headless?: boolean;
+    readonly alwaysOpensNewPage?: boolean;
 }
 
-interface PersephoneCapabilityResult {
-    /** The handler's page, when the capability opened or reused one. Absent for a handler
-     *  that resolves without a page, such as `diagram.edit` reporting a failed conversion. */
-    readonly pageId?: string;
-    readonly result?: unknown;
-}
+type PersephoneCapabilityResult = Pick<import("../../../ipc/capability-bus-channels").CapabilityOutcome, "pageId" | "result">;
 
 interface PersephoneCapabilitiesApi {
     list(): Promise<readonly PersephoneCapabilityInfo[]>;

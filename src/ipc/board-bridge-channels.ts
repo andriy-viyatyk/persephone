@@ -32,6 +32,7 @@ import type {
     RunnerStartMsg,
     RunnerStdinMsg,
 } from "./runner-channels";
+import type { CapabilityErrorCode, IntentEnvelope } from "./capability-bus-channels";
 
 export type { BoardServiceStatus } from "./module-service-channels";
 
@@ -258,12 +259,7 @@ export interface BoardPortInitMsg {
     /** Stable page identity used by the host-local pipe URL. */
     pageId?: string;
     /** One-shot capability request delivered to a newly opened handler board. */
-    intent?: {
-        id: string;
-        version?: number;
-        requestId: string;
-        payload: unknown;
-    };
+    intent?: IntentEnvelope;
     /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
     pipeUrlEnabled?: boolean;
     /** The board's current busy flag (US-799) — carried at handshake so a re-created
@@ -574,12 +570,8 @@ export interface BoardNavigationReturnMsg {
 }
 
 /** Renderer → board: deliver one capability request to the board frame. */
-export interface BoardCapabilityIntentRequestMsg {
+export interface BoardCapabilityIntentRequestMsg extends IntentEnvelope {
     __persephone: "capabilities:intent";
-    requestId: string;
-    id: string;
-    version?: number;
-    payload: unknown;
 }
 
 /** Board → renderer: settle a capability request delivered to this frame. */
@@ -587,20 +579,8 @@ export interface BoardCapabilityIntentResultMsg {
     __persephone: "capabilities:intent:result";
     requestId: string;
     result?: unknown;
-    error?: {
-        code:
-            | "no-handler"
-            | "untrusted"
-            | "handler-closed"
-            | "crashed"
-            | "cancelled"
-            | "timeout"
-            | "cycle"
-            | "payload-too-large"
-            | "busy"
-            | "rejected";
-        message: string;
-    };
+    discardPage?: boolean;
+    error?: { code: CapabilityErrorCode; message: string };
 }
 
 /** Renderer → board: best-effort cancellation of an active capability request. */
@@ -620,7 +600,7 @@ export interface BoardCapabilityListResultMsg {
     __persephone: "capabilities:list:result";
     reqId: number;
     result?: unknown;
-    error?: { code: string; message: string };
+    error?: { code: CapabilityErrorCode; message: string };
 }
 
 /** Board → renderer: invoke a capability from this board frame. */
@@ -639,7 +619,7 @@ export interface BoardCapabilityInvokeResultMsg {
     reqId: number;
     pageId?: string;
     result?: unknown;
-    error?: { code: string; message: string };
+    error?: { code: CapabilityErrorCode; message: string };
 }
 
 /** All `__persephone:` envelopes exchanged between a board frame and its host renderer. */

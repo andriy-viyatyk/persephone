@@ -5,10 +5,14 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.18.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.18.0` adds
-`persephone.icons.forFiles(names)` to retrieve Persephone's file icons as `data:` URLs, and queues
-toolbar declarations made before the document's `load` event; `1.13.0` adds
+The board bridge is version **1.19.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.19.0` adds
+`persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
+`request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
+value under `result` for board callers, and adds the optional manifest capability field
+`alwaysOpensNewPage` to request a fresh handler page for each invocation.
+Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
+`data:` URLs, and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
 board declares in its manifest; `1.12.0` added `persephone.clipboard.writeImage(data)` and
 `persephone.clipboard.writeText(text)` for native OS clipboard writes; the preceding `1.11.0`
@@ -170,7 +174,8 @@ hygiene, not a security boundary or a grant.
       "title": "Convert a document",
       "accepts": ["text/markdown"],
       "payloadSchema": { "type": "object" },
-      "headless": false
+      "headless": false,
+      "alwaysOpensNewPage": false
     }
   ]
 }
@@ -181,7 +186,9 @@ names. `version` is an integer major version (default 1); `priority` is numeric 
 platform handlers winning exact ties. Multiple trusted boards may declare the same id and compete
 by priority; losing registrations remain visible through discovery. `accepts` is an optional MIME
 filter, `payloadSchema` is descriptive (the handler validates its own payload), and `title` is
-display metadata. `headless` is preserved for discovery, but a winning headless declaration is
+display metadata. `alwaysOpensNewPage` is an optional boolean that asks Persephone to open a fresh
+handler page for every request. `headless` is preserved for discovery, but a winning headless
+declaration is
 outside the page-backed intent channel and settles as `no-handler`. A capability is resolved in
 the caller's window: an already-open winning handler page is reused, otherwise Persephone opens
 that board there.
@@ -208,7 +215,10 @@ if (initial) handleRequest(initial); // page opened for this request
 `persephone.intent.onRequest(callback)` registers a callback and returns an unsubscribe function;
 `persephone.intent.resolve(value)` settles the current request successfully; and
 `persephone.intent.reject(reason)` settles it with the `rejected` failure code. Prefer the
-request-bound `request.resolve` and `request.reject` methods in callbacks. A handler **must**
+request-bound `request.resolve` and `request.reject` methods in callbacks. Use
+`request.resolve(value, { discardPage: true })` to discard a page opened for a failed request;
+the option is ignored when the request reused a page, and the result value remains opaque. A handler
+**must**
 settle every request. A handler that never
 settles hangs its caller until the deadline; Persephone then sends a best-effort cancel, but cannot
 stop work already running in the board.
@@ -233,7 +243,8 @@ const available = await persephone.capabilities.list();
 
 Call `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
 than naming a handler. A board-originated result has `{ pageId, result }`; `pageId` is optional for
-handlers that resolve without opening a page. The ten typed rejection codes are:
+handlers that resolve without opening a page, and `result` preserves the handler's exact value,
+including primitives, arrays, and empty objects. The ten typed rejection codes are:
 
 | Code | Meaning to the caller |
 |---|---|

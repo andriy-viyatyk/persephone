@@ -3,7 +3,8 @@ import type { PageModel } from "./PageModel";
 import type { EditorModel, EditorOrHost } from "../../editors/base";
 import type { EditorView } from "../../../shared/types";
 import type { ILinkData } from "../../../shared/link-data";
-import type { IBoardIntent, ILinkDiffRevision } from "../types/io.link-data";
+import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
+import type { ILinkDiffRevision } from "../types/io.link-data";
 import type { IContentPipe } from "../types/io.pipe";
 import { newTextFileModel, TextFileModel } from "../../editors/text";
 import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
@@ -39,7 +40,7 @@ export interface NavigatePageToOptions {
     title?: string;
     diffFrom?: ILinkDiffRevision;
     diffTo?: ILinkDiffRevision;
-    intent?: IBoardIntent;
+    intent?: IntentEnvelope;
 }
 
 /** Shared exit for every successful navigation path: repaint, focus (unless
@@ -254,7 +255,7 @@ export async function navigatePageTo(
     const { attachEditorToPage } = await import("./PagesLifecycleModel");
     const adapter = attachEditorToPage(legacy);
     if (options?.intent) {
-        (adapter as unknown as { setInitialIntent?: (value: IBoardIntent) => void })
+        (adapter as unknown as { setInitialIntent?: (value: IntentEnvelope) => void })
             .setInitialIntent?.(options.intent);
     }
     await page.setMainEditor(adapter);

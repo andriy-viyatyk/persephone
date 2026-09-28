@@ -1,26 +1,18 @@
-import type {
-    CapabilityErrorCode,
-    CapabilityRegistration,
-    CapabilityTransport,
-    IntentRequest,
+import {
+    isCapabilityErrorCode,
+    type CapabilityOutcome,
+    type CapabilityRegistration,
+    type CapabilityTransport,
+    type IntentEnvelope,
+    type IntentRequest,
 } from "../../ipc/capability-bus-channels";
+import { CapabilityError } from "./capability-bus";
 import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/board-access";
 import { pagesModel } from "./pages";
 import { boardPagesForRoot } from "./board-updates";
 import type { PageModel } from "./pages/PageModel";
-import type { IBoardIntent } from "./types/io.link-data";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 import { errMessage } from "../../shared/utils";
-
-export class BoardCapabilityTransportError extends Error {
-    readonly code: CapabilityErrorCode;
-
-    constructor(code: CapabilityErrorCode, message: string) {
-        super(message);
-        this.name = "BoardCapabilityTransportError";
-        this.code = code;
-    }
-}
 
 export interface BoardCapabilityFrame {
     readonly boardRoot: string;
@@ -62,7 +54,7 @@ interface PendingDispatch {
     readonly registration: CapabilityRegistration;
     readonly request: IntentRequest;
     readonly resolve: (value: unknown) => void;
-    readonly reject: (error: BoardCapabilityTransportError) => void;
+    readonly reject: (error: CapabilityError) => void;
     page?: PageModel;
     createdPage: boolean;
     pageUnsubscribe?: () => void;
@@ -87,40 +79,27 @@ function clearInitialIntentOnRoot(root: string, requestId: string): void {
     for (const page of boardPagesForRoot(root)) clearInitialIntent(page, requestId);
 }
 
-function capabilityTitle(request: IntentRequest): string {
+function capabilityTitle(registration: CapabilityRegistration, request: IntentRequest): string {
     const payload = request.payload;
     if (payload && typeof payload === "object" && !Array.isArray(payload)) {
         const title = (payload as { title?: unknown }).title;
         if (typeof title === "string" && title.trim()) return title;
     }
-    return "untitled.excalidraw";
+    return registration.boardName || "Untitled Board";
 }
 
-function isDiagramConversionFailure(result: unknown): boolean {
-    return !!result && typeof result === "object"
-        && (result as { status?: unknown }).status === "conversion-failed";
-}
-
-function isPageProducingEditCapability(id: string): boolean {
-    return id === "image.edit" || id === "diagram.edit";
-}
-
-function normalizeTransportError(error: unknown): BoardCapabilityTransportError {
-    if (error instanceof BoardCapabilityTransportError) return error;
+function normalizeTransportError(error: unknown): CapabilityError {
+    if (error instanceof CapabilityError) return error;
     if (error && typeof error === "object") {
         const value = error as { code?: unknown; message?: unknown };
-        const codes: readonly CapabilityErrorCode[] = [
-            "no-handler", "untrusted", "handler-closed", "crashed", "cancelled",
-            "timeout", "cycle", "payload-too-large", "busy", "rejected",
-        ];
-        if (typeof value.code === "string" && codes.includes(value.code as CapabilityErrorCode)) {
-            return new BoardCapabilityTransportError(
-                value.code as CapabilityErrorCode,
+        if (isCapabilityErrorCode(value.code)) {
+            return new CapabilityError(
+                value.code,
                 typeof value.message === "string" ? value.message : "The board request failed.",
             );
         }
     }
-    return new BoardCapabilityTransportError("rejected", errMessage(error, "The board request failed."));
+    return new CapabilityError("rejected", errMessage(error, "The board request failed."));
 }
 
 class BoardCapabilityTransport implements CapabilityTransport {
@@ -147,13 +126,13 @@ class BoardCapabilityTransport implements CapabilityTransport {
     dispatch(registration: CapabilityRegistration, request: IntentRequest): Promise<unknown> {
         const root = boardRootOf(registration);
         if (!root || !isBoardPermitted(root)) {
-            return Promise.reject(new BoardCapabilityTransportError(
+            return Promise.reject(new CapabilityError(
                 "untrusted",
                 "The capability handler board is not trusted.",
             ));
         }
         if (this.pending.has(request.requestId)) {
-            return Promise.reject(new BoardCapabilityTransportError(
+            return Promise.reject(new CapabilityError(
                 "rejected",
                 `Capability request ${request.requestId} was dispatched twice.`,
             ));
@@ -176,7 +155,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
     cancel(registration: CapabilityRegistration, requestId: string): void {
         const pending = this.pending.get(requestId);
         if (!pending || pending.registration !== registration) return;
-        this.settle(pending, new BoardCapabilityTransportError(
+        this.settle(pending, new CapabilityError(
             "cancelled",
             "The capability request was cancelled.",
         ), true);
@@ -192,7 +171,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
     }
 
     private async resolveHandler(pending: PendingDispatch, root: string): Promise<void> {
-        const producesPage = isPageProducingEditCapability(pending.request.id);
+        const producesPage = pending.registration.alwaysOpensNewPage === true;
         const rootKey = fpNormalizeForCompare(root);
         if (!producesPage) {
             // Another request is opening this handler's page: wait until it settles, then take
@@ -212,15 +191,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
             if (frame) this.dispatchToFrame(pending, frame);
             return;
         }
-        if (pending.registration.headless) {
-            this.settle(pending, new BoardCapabilityTransportError(
-                "no-handler",
-                `The winning handler for "${pending.request.id}" is headless and has no board frame.`,
-            ), false);
-            return;
-        }
-
-        const intent: IBoardIntent = {
+        const intent: IntentEnvelope = {
             id: pending.request.id,
             ...(pending.request.version === undefined ? {} : { version: pending.request.version }),
             requestId: pending.request.requestId,
@@ -248,7 +219,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
             // mount its first frame and deliver the handshake before the promise resolves.
             const openedPage = await pagesModel.lifecycle.openBoardHandlerPage(
                 root,
-                capabilityTitle(pending.request),
+                capabilityTitle(pending.registration, pending.request),
                 intent,
             );
             pending.createdPage = true;
@@ -261,7 +232,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
                     if (frame) this.dispatchToFrame(pending, frame);
                 }
             } else if (!pending.settled) {
-                this.settle(pending, new BoardCapabilityTransportError(
+                this.settle(pending, new CapabilityError(
                     "handler-closed",
                     "The capability handler page did not open.",
                 ), false);
@@ -283,7 +254,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         pending.page = page;
         pending.pageUnsubscribe = page.disposed.subscribe(() => {
             if (!pending.settled) {
-                this.settle(pending, new BoardCapabilityTransportError(
+                this.settle(pending, new CapabilityError(
                     "handler-closed",
                     "The capability handler page was closed.",
                 ), false);
@@ -307,7 +278,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
     private dispatchToFrame(pending: PendingDispatch, frame: BoardCapabilityFrame): void {
         if (pending.settled || pending.frame) return;
         if (!isBoardPermitted(frame.boardRoot)) {
-            this.settle(pending, new BoardCapabilityTransportError(
+            this.settle(pending, new CapabilityError(
                 "untrusted",
                 "The capability handler board is not trusted.",
             ), false);
@@ -321,19 +292,23 @@ class BoardCapabilityTransport implements CapabilityTransport {
         });
         this.pageChains.set(frame.pageId, requests);
         void frame.dispatch(pending.request).then(
-            (result) => this.settle(
-                pending,
-                undefined,
-                false,
-                isDiagramConversionFailure(result) ? result : { pageId: frame.pageId, result },
-            ),
+            (reply) => {
+                const outcome = reply && typeof reply === "object"
+                    ? reply as CapabilityOutcome
+                    : { result: reply };
+                this.settle(pending, undefined, false, {
+                    ...(pending.createdPage && outcome.discardPage === true ? {} : { pageId: frame.pageId }),
+                    ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
+                    ...(outcome.discardPage === true ? { discardPage: true } : {}),
+                } satisfies CapabilityOutcome);
+            },
             (error: unknown) => this.settle(pending, normalizeTransportError(error), false),
         );
     }
 
     private settle(
         pending: PendingDispatch,
-        error?: BoardCapabilityTransportError,
+        error?: CapabilityError,
         sendCancel = false,
         result?: unknown,
     ): void {
@@ -342,7 +317,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         this.pending.delete(pending.request.requestId);
         pending.pageUnsubscribe?.();
         pending.pageUnsubscribe = undefined;
-        if (!error && pending.createdPage && isDiagramConversionFailure(result)) {
+        if (!error && pending.createdPage && (result as CapabilityOutcome | undefined)?.discardPage === true) {
             void pending.page?.close();
         }
         if (sendCancel) {
@@ -366,7 +341,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         for (const pending of [...this.pending.values()]) {
             const root = pending.registration.boardRoot;
             if (root && !isBoardPermitted(root)) {
-                this.settle(pending, new BoardCapabilityTransportError(
+                this.settle(pending, new CapabilityError(
                     "untrusted",
                     "The capability handler board is no longer trusted.",
                 ), true);
@@ -378,7 +353,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         this.unsubscribeTrust();
         this.unsubscribeFrames();
         for (const pending of [...this.pending.values()]) {
-            this.settle(pending, new BoardCapabilityTransportError(
+            this.settle(pending, new CapabilityError(
                 "handler-closed",
                 "The capability transport was disposed.",
             ), true);

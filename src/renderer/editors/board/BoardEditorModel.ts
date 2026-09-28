@@ -28,7 +28,7 @@ import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import type { IBoardIntent } from "../../api/types/io.link-data";
+import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export interface BoardToolbarElementDeclaration {
@@ -206,7 +206,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private readonly contentResources = new Map<string, ContentResource>();
-    private initialIntent: IBoardIntent | undefined;
+    private initialIntent: IntentEnvelope | undefined;
     private readonly pendingSourceUrls: string[] = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -243,17 +243,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     activeTabId = BOARD_CDP_TAB;
 
     /** Hold a capability request only for the first frame handshake; this never enters editor state. */
-    setInitialIntent(intent: IBoardIntent): void {
+    setInitialIntent(intent: IntentEnvelope): void {
         this.initialIntent = intent;
     }
 
     /** Read the pending request without consuming it, so a failed post cannot lose the request. */
-    peekInitialIntent(): IBoardIntent | undefined {
+    peekInitialIntent(): IntentEnvelope | undefined {
         return this.initialIntent;
     }
 
     /** Consume the one-shot request after the host accepts the handshake post. */
-    consumeInitialIntent(): IBoardIntent | undefined {
+    consumeInitialIntent(): IntentEnvelope | undefined {
         const intent = this.initialIntent;
         this.initialIntent = undefined;
         return intent;

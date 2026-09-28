@@ -800,7 +800,7 @@
                     : error && typeof error === "object" && typeof error.message === "string"
                         ? error.message
                         : "Failed to convert Mermaid diagram.";
-                intent.resolve({ status: "conversion-failed", message });
+                intent.resolve({ status: "conversion-failed", message }, { discardPage: true });
                 return;
             }
             await editorReady;

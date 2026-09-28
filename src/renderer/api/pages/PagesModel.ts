@@ -9,7 +9,7 @@ import { createLinkData } from "../../../shared/link-data";
 import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
 import type { NavigatePageToOptions } from "./PageNavigator";
-import type { IBoardIntent } from "../types/io.link-data";
+import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -240,7 +240,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         boardRoot: string,
         language: string,
         title: string,
-        intent?: IBoardIntent,
+        intent?: IntentEnvelope,
     ) => this.lifecycle.addBundledBoardPage(boardRoot, language, title, intent);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);

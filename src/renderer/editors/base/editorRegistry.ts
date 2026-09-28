@@ -7,9 +7,7 @@ import type { ContentRepresentation } from "../../api/types/capabilities";
 
 export type EditorCapabilityDeclaration =
     | { readonly id: "text.open"; readonly representation?: never }
-    | { readonly id: "content.view"; readonly representation: ContentRepresentation }
-    | { readonly id: "image.edit"; readonly representation?: never }
-    | { readonly id: "diagram.edit"; readonly representation?: never };
+    | { readonly id: "content.view"; readonly representation: ContentRepresentation };
 
 export interface AcceptanceInput {
     fileName?: string;

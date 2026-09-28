@@ -8,6 +8,7 @@ import type {
     BoardUpdateInfo,
 } from "./types/boards";
 import type { EditorModel } from "../editors/base/EditorModel";
+import type { IntentEnvelope } from "../../ipc/capability-bus-channels";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 import {
     normalizeBoardServicePath,
@@ -279,7 +280,7 @@ export const boards: IBoards = {
     },
     createBoard: (name, dir) => create(name, dir, "board-template"),
     createDemoBoard: (name, dir) => create(name, dir, "demo-board"),
-    openBoard: async (boardRoot: string, options?: { intent?: { id: string; version?: number; requestId: string; payload: unknown } }) => {
+    openBoard: async (boardRoot: string, options?: { intent?: IntentEnvelope }) => {
         const { isBoardFolder } = await import("../editors/board/board-manifest");
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);

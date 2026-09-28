@@ -5,8 +5,8 @@ import type {
     CapabilityInfo,
     CapabilityInvokeOptions,
     CapabilityPageResult,
-    ContentRepresentation,
     DiagramEditResult,
+    ContentRepresentation,
     ICapabilities,
     ImageEditPayload,
 } from "./types/capabilities";
@@ -14,13 +14,13 @@ import { editorRegistry, type EditorCapabilityDeclaration } from "../editors/bas
 import type { EditorView } from "../../shared/types";
 import type { BoardCapabilityDeclaration } from "../editors/board/board-manifest";
 import type {
+    CapabilityOutcome,
     CapabilityOrigin,
     CapabilityRegistration,
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError, capabilityBus } from "./capability-bus";
 
-type CapabilityResult = CapabilityPageResult | DiagramEditResult;
-type CapabilityHandler = (payload: unknown) => Promise<CapabilityResult>;
+type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
 interface IndexedCapability {
     registration: CapabilityRegistration;
@@ -30,11 +30,11 @@ interface IndexedCapability {
 export interface CapabilityRegistrationResult {
     readonly accepted: boolean;
     readonly reason?: string;
-    readonly owner?: string;
 }
 
 export interface CapabilityRegistrationOptions {
     readonly boardRoot?: string;
+    readonly boardName?: string;
     readonly handlerKey: string;
     readonly origin: CapabilityOrigin;
 }
@@ -156,6 +156,9 @@ function registrationFromDeclaration(
     if (declaration.version !== undefined && !Number.isInteger(declaration.version)) {
         return { reason: `Capability "${id}" version must be an integer.` };
     }
+    if (declaration.alwaysOpensNewPage !== undefined && typeof declaration.alwaysOpensNewPage !== "boolean") {
+        return { reason: `Capability "${id}" alwaysOpensNewPage must be a boolean.` };
+    }
 
     return {
         registration: {
@@ -168,9 +171,13 @@ function registrationFromDeclaration(
                 : {}),
             ...(declaration.title !== undefined ? { title: declaration.title } : {}),
             ...(declaration.headless === true ? { headless: true } : {}),
+            ...(declaration.alwaysOpensNewPage !== undefined
+                ? { alwaysOpensNewPage: declaration.alwaysOpensNewPage }
+                : {}),
             handlerKey: options.handlerKey,
             origin: options.origin,
             ...(options.boardRoot !== undefined ? { boardRoot: options.boardRoot } : {}),
+            ...(options.boardName !== undefined ? { boardName: options.boardName } : {}),
         },
     };
 }
@@ -205,6 +212,9 @@ function copyInfo(candidate: IndexedCapability): CapabilityInfo {
         handlerKey: registration.handlerKey,
         origin: registration.origin,
         ...(registration.boardRoot !== undefined ? { boardRoot: registration.boardRoot } : {}),
+        ...(registration.alwaysOpensNewPage !== undefined
+            ? { alwaysOpensNewPage: registration.alwaysOpensNewPage }
+            : {}),
         ...(registration.accepts !== undefined ? { accepts: [...registration.accepts] } : {}),
         ...(Object.prototype.hasOwnProperty.call(registration, "payloadSchema")
             ? { payloadSchema: registration.payloadSchema }
@@ -233,16 +243,13 @@ function noHandlerError(id: string, version?: number): CapabilityError {
     return new CapabilityError("no-handler", `No capability handler matches "${id}"${suffix}.`);
 }
 
-function unwrapBoardCapabilityResult(value: unknown): unknown {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-    const envelope = value as { pageId?: unknown; result?: unknown };
-    if (typeof envelope.pageId !== "string") return value;
-    const result = envelope.result;
+function projectCapabilityOutcome(outcome: CapabilityOutcome): unknown {
+    if (typeof outcome.pageId !== "string") return outcome.result;
+    const result = outcome.result;
     if (result && typeof result === "object" && !Array.isArray(result)) {
-        if ((result as { status?: unknown }).status === "conversion-failed") return result;
-        return { ...(result as Record<string, unknown>), pageId: envelope.pageId };
+        return { ...(result as Record<string, unknown>), pageId: outcome.pageId };
     }
-    return { pageId: envelope.pageId };
+    return { pageId: outcome.pageId };
 }
 
 /** Register one board declaration, returning a readable refusal for Board Info diagnostics. */
@@ -257,10 +264,8 @@ export function registerCapability(
     return { accepted: true };
 }
 
-/** Remove every board-origin capability before a trusted-board rebuild.
- *  `activeBoardRoots` is retained for the registry bookkeeping shape only; the board-origin set,
- *  not the current trusted roots snapshot, is the authoritative revocation key. */
-export function unregisterBoardCapabilities(_activeBoardRoots?: readonly string[]): void {
+/** Remove every board-origin capability before a trusted-board rebuild. */
+export function unregisterBoardCapabilities(): void {
     seedPlatformCandidates();
     for (const [id, entries] of candidates) {
         const retained = entries.filter((entry) => entry.registration.origin !== "board");
@@ -289,59 +294,9 @@ class Capabilities implements ICapabilities {
     invoke(id: "diagram.edit", payload: { source: string; title: string }): Promise<DiagramEditResult>;
     invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
     async invoke(id: CapabilityId, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown> {
-        seedPlatformCandidates();
-        const parsed = parseCapabilityId(id);
-        if (!parsed.bareId) throw noHandlerError(id);
-        if (opts?.version !== undefined && parsed.version !== undefined && opts.version !== parsed.version) {
-            throw noHandlerError(id, parsed.version);
-        }
-        const version = parsed.version ?? opts?.version;
-
-        try {
-            const values = parsed.bareId === "content.view"
-                ? asRecord(payload, parsed.bareId)
-                : undefined;
-            const representation = values?.representation;
-            if (parsed.bareId === "content.view" && typeof representation !== "string") {
-                throw new TypeError("content.view expects a string representation.");
-            }
-
-            const registration = resolveCapability(parsed.bareId, version, opts?.filter);
-            if (!registration) throw noHandlerError(id, version);
-            if (registration.headless) throw noHandlerError(id, version);
-
-            if (registration.origin === "platform") {
-                const handler = builtinHandlers.get(
-                    capabilityKey(parsed.bareId, representation as ContentRepresentation | undefined),
-                );
-                if (!handler) throw noHandlerError(id, version);
-                try {
-                    return await handler(payload);
-                } catch (error) {
-                    throw new CapabilityError(
-                        "rejected",
-                        errMessage(error, `Capability "${id}" was rejected.`),
-                        undefined,
-                        error,
-                    );
-                }
-            }
-
-            const result = await capabilityBus.invoke(
-                registration,
-                payload,
-                parsed.version === undefined ? opts : { ...opts, version: parsed.version },
-            );
-            return unwrapBoardCapabilityResult(result);
-        } catch (error) {
-            if (error instanceof CapabilityError) throw error;
-            throw new CapabilityError(
-                "rejected",
-                errMessage(error, `Capability "${id}" was rejected.`),
-                undefined,
-                error,
-            );
-        }
+        const invocation = await invokeCapabilityOutcome(id, payload, opts);
+        // The one flattening: a board handler's outcome becomes the script-shaped result.
+        return invocation.origin === "board" ? projectCapabilityOutcome(invocation.value) : invocation.value;
     }
 
     list(): readonly CapabilityInfo[] {
@@ -358,3 +313,70 @@ class Capabilities implements ICapabilities {
 }
 
 export const capabilities = new Capabilities();
+
+export type CapabilityInvocation =
+    | { readonly origin: "board"; readonly value: CapabilityOutcome }
+    | { readonly origin: "platform"; readonly value: unknown };
+
+/** Resolve and run a capability, returning the handler's unflattened value. Board callers use
+ *  this directly (a board-origin outcome reaches them untouched); `capabilities.invoke` flattens
+ *  it once for scripts. */
+export async function invokeCapabilityOutcome(
+    id: string,
+    payload: unknown,
+    opts?: CapabilityInvokeOptions,
+): Promise<CapabilityInvocation> {
+    seedPlatformCandidates();
+    const parsed = parseCapabilityId(id);
+    if (!parsed.bareId) throw noHandlerError(id);
+    if (opts?.version !== undefined && parsed.version !== undefined && opts.version !== parsed.version) {
+        throw noHandlerError(id, parsed.version);
+    }
+    const version = parsed.version ?? opts?.version;
+
+    try {
+        const values = parsed.bareId === "content.view"
+            ? asRecord(payload, parsed.bareId)
+            : undefined;
+        const representation = values?.representation;
+        if (parsed.bareId === "content.view" && typeof representation !== "string") {
+            throw new TypeError("content.view expects a string representation.");
+        }
+
+        const registration = resolveCapability(parsed.bareId, version, opts?.filter);
+        if (!registration) throw noHandlerError(id, version);
+        if (registration.headless) throw noHandlerError(id, version);
+
+        if (registration.origin === "platform") {
+            const handler = builtinHandlers.get(
+                capabilityKey(parsed.bareId, representation as ContentRepresentation | undefined),
+            );
+            if (!handler) throw noHandlerError(id, version);
+            try {
+                return { origin: "platform", value: await handler(payload) };
+            } catch (error) {
+                throw new CapabilityError(
+                    "rejected",
+                    errMessage(error, `Capability "${id}" was rejected.`),
+                    undefined,
+                    error,
+                );
+            }
+        }
+
+        const outcome = await capabilityBus.invoke(
+            registration,
+            payload,
+            parsed.version === undefined ? opts : { ...opts, version: parsed.version },
+        );
+        return { origin: "board", value: outcome as CapabilityOutcome };
+    } catch (error) {
+        if (error instanceof CapabilityError) throw error;
+        throw new CapabilityError(
+            "rejected",
+            errMessage(error, `Capability "${id}" was rejected.`),
+            undefined,
+            error,
+        );
+    }
+}

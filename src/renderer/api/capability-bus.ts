@@ -1,4 +1,5 @@
 import {
+    isCapabilityErrorCode,
     INTENT_DEADLINE_MS,
     MAX_INTENT_DEPTH,
     MAX_INTENT_PAYLOAD_BYTES,
@@ -15,19 +16,6 @@ import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/boa
 import { pagesModel } from "./pages";
 import type { CapabilityInvokeOptions } from "./types/capabilities";
 import { windowClosing } from "../core/state/events";
-
-const capabilityErrorCodes = new Set<CapabilityErrorCode>([
-    "no-handler",
-    "untrusted",
-    "handler-closed",
-    "crashed",
-    "cancelled",
-    "timeout",
-    "cycle",
-    "payload-too-large",
-    "busy",
-    "rejected",
-]);
 
 /** A typed failure from a capability invocation. */
 export class CapabilityError extends Error {
@@ -172,10 +160,6 @@ function estimatePayloadSize(payload: unknown): number {
 
     visit(payload);
     return state.bytes;
-}
-
-function isCapabilityErrorCode(value: unknown): value is CapabilityErrorCode {
-    return typeof value === "string" && capabilityErrorCodes.has(value as CapabilityErrorCode);
 }
 
 function transportError(error: unknown, requestId: string): CapabilityError {

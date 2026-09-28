@@ -1,4 +1,4 @@
-import type { IBoardIntent } from "./io.link-data";
+import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
 
 /**
  * One published-catalog board, annotated with its install state on this machine
@@ -163,7 +163,7 @@ export interface IBoards {
      */
     openBoard(boardRoot: string, options?: {
         /** @deprecated Use `app.capabilities.invoke(...)` to invoke a registered board capability. */
-        intent?: IBoardIntent;
+        intent?: IntentEnvelope;
     }): Promise<void>;
 
     /**

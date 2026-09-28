@@ -17,8 +17,8 @@ The index is a derived view of two inputs in each renderer:
 The built-in direct-call handlers remain in `src/renderer/api/capabilities.ts`. The request
 lifecycle is in `src/renderer/api/capability-bus.ts`; board dispatch is in
 `src/renderer/api/board-capability-transport.ts`. The wire-only types and limits are in
-`src/ipc/capability-bus-channels.ts`. That module has no renderer or main imports because the
-board shim consumes the shared shapes.
+`src/ipc/capability-bus-channels.ts`. That module is dependency-free so main, renderer, and the
+board shim can share the same contracts.
 
 `app.capabilities` and the board `persephone.capabilities` surface provide:
 
@@ -29,8 +29,8 @@ board shim consumes the shared shapes.
   value without opening a page.
 
 `handlerKey` is part of discovery because several registrations can share an id. The public index
-also preserves `version`, `priority`, `origin`, `accepts`, `payloadSchema`, `title`, and
-`headless` where present.
+also preserves `version`, `priority`, `origin`, `accepts`, `payloadSchema`, `title`, `headless`, and
+`alwaysOpensNewPage` where present.
 
 ## Registration and resolution
 
@@ -40,8 +40,10 @@ second gate or a security boundary. A malformed declaration is refused independe
 as a capability registration issue, without discarding the board's valid declarations.
 
 Declarations have a non-empty id with no whitespace or `@`, an integer major `version` (default
-1), numeric `priority` (default 50), and optional `accepts`, `payloadSchema`, `title`, and
-`headless`. Vendor prefixes are recommended for board-owned ids. `payloadSchema` is descriptive;
+1), numeric `priority` (default 50), and optional `accepts`, `payloadSchema`, `title`, `headless`,
+and `alwaysOpensNewPage`. The last field declares that each invocation needs a fresh page; it is
+used for capabilities such as edits that create a new result page. Vendor prefixes are recommended
+for board-owned ids. `payloadSchema` is descriptive;
 the handler validates its own payload. A headless declaration is preserved in the index, but a
 winning headless handler is outside this channel and settles as `no-handler`.
 
@@ -91,10 +93,16 @@ There are two distinct board channels. The board-to-main `MessagePort` carries `
 `MainToBoard` RPC, runner, storage, service, theme, and AiVision traffic. Capability intent
 delivery is on the board-to-host-renderer `window.postMessage` channel, not on that port.
 
-`src/ipc/capability-bus-channels.ts` is the dependency-free lifecycle contract. It defines the
-ten error codes, declaration and registration records, `IntentRequest` (`requestId`, `id`, optional
-version, payload, chain, depth, and deadline), `IntentSettlement`, the four limits, and the narrow
-`CapabilityTransport` seam (`dispatch`, best-effort `cancel`, and `chainForPage`).
+`src/ipc/capability-bus-channels.ts` is the dependency-free contract source. It exports the
+`CAPABILITY_ERROR_CODES` tuple and derives `CapabilityErrorCode` and `isCapabilityErrorCode()` from
+it; it also owns `IntentEnvelope` (`id`, optional version, request id, and payload),
+`CapabilityOutcome` (optional page id, opaque result, and page-discard flag), declaration and
+registration records, `IntentRequest` (the envelope plus chain, depth, and deadline),
+`IntentSettlement`, the four limits, and the narrow `CapabilityTransport` seam (`dispatch`,
+best-effort `cancel`, and `chainForPage`). Bridge and renderer types reuse these definitions
+rather than maintaining separate unions or envelope shapes. The renderer has one `CapabilityError`
+class in `capability-bus.ts`; board transport and `BoardWebview` use it too. The board shim has a
+realm-local `BoardCapabilityError` for its own public promise rejections.
 
 `src/ipc/board-bridge-channels.ts` defines the host-frame messages. Every declared capability
 message has a sender and receiver with the same shape:
@@ -109,16 +117,19 @@ message has a sender and receiver with the same shape:
 | board → renderer | `board:capabilities:invoke` | Request an id, payload, optional version, and deadline. |
 | renderer → board | `capabilities:invoke:result` | Return top-level `pageId`/`result` or an error. |
 
-The initial request is instead the `intent` member of `BoardPortInitMsg`; it contains `id`,
-optional `version`, `requestId`, and `payload`. The renderer sends no initial host-frame intent
-for a page opened specifically for that request. The board shim accepts only messages from the
+The initial request is instead the `intent` member of `BoardPortInitMsg`, typed as
+`IntentEnvelope`. The renderer sends no initial host-frame intent for a page opened specifically
+for that request. The board shim accepts only messages from the
 host parent and the expected origin. `BoardWebview` checks the sender, origin, frame identity, and
 generation before accepting a result. A board-originated result keeps `pageId` at the top level of
 the invoke reply contract; it is not nested inside `result`.
 
-The shim exposes `persephone.intent.get()`, `onRequest(callback)`, `resolve(value)`, and
-`reject(reason)`. `onRequest` returns an unsubscribe and immediately delivers an already-active
-request. A handler should key idempotency on `requestId`, settle every request, and treat
+The shim exposes `persephone.intent.get()`, `onRequest(callback)`,
+`resolve(value, { discardPage? })`, and `reject(reason)`. `value` is passed through as the opaque
+handler result; `discardPage` is a separate bridge field and never inferred from result properties.
+It discards only a page created for that request. `onRequest` returns an unsubscribe and immediately
+delivers an already-active request. A handler should key idempotency on `requestId`, settle every
+request, and treat
 `resolve`/`reject` as referring to the currently active request. The shim tracks delivered request
 ids, so a reused page receives each request at most once. A late settlement is ignored once that
 request is cancelled or settled; it cannot settle a newer request.
@@ -154,7 +165,8 @@ transient broker data: they are not page state, persisted link data, or an appli
 file. This is a broker policy, not an operating-system guarantee about memory paging or browser
 caches.
 
-The closed `CapabilityErrorCode` contract is:
+The closed `CapabilityErrorCode` contract is defined once by `CAPABILITY_ERROR_CODES` in
+`capability-bus-channels.ts`:
 
 | Code | Raised when |
 |---|---|
@@ -171,6 +183,15 @@ The closed `CapabilityErrorCode` contract is:
 
 ## Design consequences
 
+Board handler values stay opaque through the board-facing invoke path. The transport combines the
+separate bridge `result` and `discardPage` fields with its own page identity into a
+`CapabilityOutcome`. `invokeCapabilityOutcome()` in `capabilities.ts` returns that outcome
+unflattened for board callers; the board-facing reply preserves the result exactly, including
+primitives, arrays, empty objects, and an object-owned `pageId`. Only `app.capabilities.invoke()`
+projects a board outcome for scripts: without a page id it returns the raw result; with a page id it
+adds that id to a non-array object result, or returns `{ pageId }` for a primitive, array, or absent
+result. Platform handlers keep their existing script-shaped result path.
+
 These are the ten binding consequences of the current design, stated without tying the
 architecture to a task history:
 
@@ -182,13 +203,14 @@ architecture to a task history:
    target before Layer 3 consumes it; ordinary content links still resolve through the normal pipe.
 3. Caller-window routing is the rule. Reuse or open the winning handler page in the caller's
    window; cross-window handler routing requires a future main-side forwarding protocol.
-   Ordinary board capabilities reuse any open page for the registered board root, regardless of
-   editor kind, or open a handler page through the page lifecycle when none exists. Concurrent
+   Board capabilities reuse any open page for the registered board root, regardless of editor kind,
+   or open a handler page through the page lifecycle when none exists, unless the declaration sets
+   `alwaysOpensNewPage`. Concurrent
    cold opens for one root are serialized: followers wait for both the opening request and page
    lifecycle operation to settle before reusing the page or attempting their own open. This keeps
    follower intents behind the initial-frame handshake and prevents a canceled opening request
    from releasing them while page construction is still underway. Page-producing edit
-   capabilities such as `image.edit` keep their fresh-page behavior.
+   page-producing capabilities keep their fresh-page behavior through that declaration field.
 4. Registrations coexist and resolve by priority, platform tie-break, and board registration order;
    versions are major, pin-able, and separate from the stored id.
 5. The failure taxonomy is closed and each code has an observable trigger, including clone refusal

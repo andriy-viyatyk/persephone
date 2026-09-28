@@ -1,6 +1,8 @@
 import type { IContentPipe, IPipeDescriptor } from "./io.pipe";
 import type { ILink } from "./io.tree";
 
+export type IBoardIntent = import("../../../ipc/capability-bus-channels").IntentEnvelope;
+
 /**
  * A single revision selector for the File Diff editor (target === "file-diff").
  * Structurally identical to the editor's `RevSel` (single source of truth):
@@ -17,12 +19,6 @@ export type ILinkDiffRevision =
     | { kind: "commit"; hash: string; shortHash: string };
 
 /** One-shot capability request metadata carried only through an in-memory open. */
-export interface IBoardIntent {
-    id: string;
-    version?: number;
-    requestId: string;
-    payload: unknown;
-}
 
 /**
  * Persistable link identity, link-item metadata, and HTTP request information.
@@ -103,7 +99,7 @@ export interface ILinkPipeline {
     /** Decoded claimed folder for one folder-board open; never persisted. */
     folderPath?: string;
     /** One-shot capability request for a newly opened board; never persisted. */
-    intent?: IBoardIntent;
+    intent?: import("../../../ipc/capability-bus-channels").IntentEnvelope;
     /** Main-issued private-session capability for one claimed download; never persisted. */
     sessionHandle?: string;
 }

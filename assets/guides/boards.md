@@ -144,6 +144,12 @@ renderer and Node execution. A declared service is shown in Board Info and in th
 `app.boards.list()` status payload.
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
+The current board bridge is **1.19.0**. It adds
+`persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
+`request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
+value under `result` for board callers, and supports the optional manifest capability field
+`alwaysOpensNewPage` to request a fresh handler page for every invocation. See
+[What's New](./whats-new.md) for the release notes.
 
 Boards can also declare service-backed content providers:
 
@@ -314,8 +320,11 @@ permission values, this is lifecycle disclosure, not a security grant.
 ```
 
 Declarations support `id`, integer major `version` (default `1`), numeric `priority` (default
-`50`), optional MIME `accepts`, descriptive `payloadSchema`, display `title`, and `headless`. IDs cannot contain
-whitespace or `@`; vendor prefixes are recommended. Multiple boards may declare the same id. The
+`50`), optional MIME `accepts`, descriptive `payloadSchema`, display `title`, `headless`, and the
+optional boolean `alwaysOpensNewPage`. Set that flag when each request must open a fresh handler
+page, even when another page for the board is already open. Without it, Persephone reuses an open
+handler page. IDs cannot contain whitespace or `@`; vendor prefixes are recommended. Multiple
+boards may declare the same id. The
 highest priority wins, platform handlers win exact ties, and trusted-board registration order
 breaks board-to-board ties. A caller may pin a major version with `invoke("demo.greet@1", payload)`.
 
@@ -343,7 +352,9 @@ if (initial) handleGreeting(initial); // the page was opened for this request
 `persephone.intent.onRequest(callback)` returns an unsubscribe function and also delivers an
 already-active request. `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)`
 settle the current request. Prefer the request-bound `request.resolve` and `request.reject`
-methods in callbacks. **Settlement is mandatory:** a handler that never
+methods in callbacks. Use `request.resolve(value, { discardPage: true })` when a failed request
+should discard the page it opened. The value remains opaque, and the option is ignored when
+Persephone reused an existing page. **Settlement is mandatory:** a handler that never
 calls either method leaves its caller waiting until the deadline. The platform then sends a
 best-effort cancel, but cannot stop the handler's work.
 
@@ -358,7 +369,8 @@ const handlers = await persephone.capabilities.list();
 
 `persephone.capabilities.invoke(id, payload, options?)` resolves by id; options may pin `version`
 or set `deadlineMs`. A board result is `{ pageId, result }` (the page id is optional for handlers
-that resolve without a page). Handle the ten typed rejection codes as follows:
+that resolve without a page); `result` preserves the handler's exact value, including primitives,
+arrays, and empty objects. Handle the ten typed rejection codes as follows:
 
 | Code | Meaning to the caller |
 |---|---|

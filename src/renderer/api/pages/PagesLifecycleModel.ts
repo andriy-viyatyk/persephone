@@ -4,7 +4,8 @@ import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { cleanForStorage, createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
-import type { IBoardIntent, ILinkDiffRevision } from "../types/io.link-data";
+import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
+import type { ILinkDiffRevision } from "../types/io.link-data";
 import {
     newTextFileModel,
     TextFileModel,
@@ -50,10 +51,10 @@ import { app } from "../app";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
 
-function setInitialBoardIntent(editor: EditorOrHost, intent: IBoardIntent | undefined): void {
+function setInitialBoardIntent(editor: EditorOrHost, intent: IntentEnvelope | undefined): void {
     if (!intent) return;
     const candidate = editor as unknown as {
-        setInitialIntent?: (value: IBoardIntent) => void;
+        setInitialIntent?: (value: IntentEnvelope) => void;
     };
     candidate.setInitialIntent?.(intent);
 }
@@ -309,7 +310,7 @@ export class PagesLifecycleModel {
         boardRoot: string,
         language: string,
         title: string,
-        intent?: IBoardIntent,
+        intent?: IntentEnvelope,
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const match = customEditorRegistry.entries.find(
@@ -345,7 +346,7 @@ export class PagesLifecycleModel {
     openBoardHandlerPage = async (
         boardRoot: string,
         title: string,
-        intent: IBoardIntent,
+        intent: IntentEnvelope,
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const bundledContentHost = customEditorRegistry.entries.some(
@@ -564,7 +565,7 @@ export class PagesLifecycleModel {
             diffFrom?: ILinkDiffRevision;
             diffTo?: ILinkDiffRevision;
             fragment?: string;
-            intent?: IBoardIntent;
+            intent?: IntentEnvelope;
             sessionHandle?: string;
         },
     ): Promise<PageModel | undefined> => {

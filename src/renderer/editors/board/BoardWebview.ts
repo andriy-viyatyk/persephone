@@ -36,7 +36,7 @@ import type {
     BoardToHostMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
-import type { CapabilityErrorCode, IntentRequest } from "../../../ipc/capability-bus-channels";
+import { isCapabilityErrorCode, type CapabilityErrorCode, type CapabilityOutcome, type IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace } from "../../api/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
 import {
@@ -54,6 +54,8 @@ import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { errMessage } from "../../../shared/utils";
+import { CapabilityError } from "../../api/capability-bus";
+import { invokeCapabilityOutcome } from "../../api/capabilities";
 import { ui } from "../../api/ui";
 import { isProviderResolutionError } from "../../content/registry";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -62,7 +64,6 @@ import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import "../../uikit/Panel/Panel.css";
 import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../scripting/ai-vision/event-log";
 import {
-    BoardCapabilityTransportError,
     registerBoardCapabilityFrame,
     unregisterBoardCapabilityFrame,
     type BoardCapabilityFrame,
@@ -139,7 +140,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private aiVisionRequestId = 0;
     private readonly pendingCapability = new Map<string, {
         resolve: (value: unknown) => void;
-        reject: (error: BoardCapabilityTransportError) => void;
+        reject: (error: CapabilityError) => void;
         timer: ReturnType<typeof setTimeout>;
         generation: number;
         iframe: HTMLIFrameElement;
@@ -787,13 +788,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !host || !frame || !contentWindow || !this.isMain
             || this.props.model.frames.get(BOARD_CDP_TAB) !== frame
             || !isBoardPermitted(this.props.boardRoot)) {
-            return Promise.reject(new BoardCapabilityTransportError(
+            return Promise.reject(new CapabilityError(
                 "handler-closed",
                 "The board frame is unavailable or untrusted.",
             ));
         }
         if (this.pendingCapability.has(request.requestId)) {
-            return Promise.reject(new BoardCapabilityTransportError(
+            return Promise.reject(new CapabilityError(
                 "rejected",
                 `Capability request ${request.requestId} was dispatched twice.`,
             ));
@@ -802,7 +803,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const initial = this.initialIntentIds.delete(request.requestId);
         return new Promise<unknown>((resolve, reject) => {
             const timer = setTimeout(() => {
-                this.settleCapability(request.requestId, new BoardCapabilityTransportError(
+                this.settleCapability(request.requestId, new CapabilityError(
                     "timeout",
                     "The capability request deadline elapsed.",
                 ), true);
@@ -826,7 +827,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             try {
                 contentWindow.postMessage(message, `board://${host}`);
             } catch (error: unknown) {
-                this.settleCapability(request.requestId, new BoardCapabilityTransportError(
+                this.settleCapability(request.requestId, new CapabilityError(
                     isDataCloneError(error) ? "rejected" : "crashed",
                     errMessage(
                         error,
@@ -852,7 +853,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             // Cancellation is deliberately best-effort during teardown.
         }
         if (pending) {
-            this.settleCapability(requestId, new BoardCapabilityTransportError(
+            this.settleCapability(requestId, new CapabilityError(
                 "cancelled",
                 "The capability request was cancelled.",
             ), false);
@@ -864,18 +865,21 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!pending || pending.generation !== this.generation || pending.iframe !== frame
             || pending.contentWindow !== frame.contentWindow) return;
         if (message.error) {
-            this.settleCapability(message.requestId, new BoardCapabilityTransportError(
-                isCapabilityErrorCode(message.error.code) ? message.error.code : "rejected",
+            this.settleCapability(message.requestId, new CapabilityError(
+                message.error.code,
                 message.error.message,
             ), false);
         } else {
-            this.settleCapability(message.requestId, undefined, false, message.result);
+            this.settleCapability(message.requestId, undefined, false, {
+                ...(Object.prototype.hasOwnProperty.call(message, "result") ? { result: message.result } : {}),
+                ...(message.discardPage === undefined ? {} : { discardPage: message.discardPage }),
+            });
         }
     }
 
     private settleCapability(
         requestId: string,
-        error: BoardCapabilityTransportError | undefined,
+        error: CapabilityError | undefined,
         sendCancel: boolean,
         result?: unknown,
     ): void {
@@ -903,7 +907,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         sendCancel: boolean,
     ): void {
         for (const requestId of [...this.pendingCapability.keys()]) {
-            this.settleCapability(requestId, new BoardCapabilityTransportError(code, message), sendCancel);
+            this.settleCapability(requestId, new CapabilityError(code, message), sendCancel);
         }
     }
 
@@ -932,7 +936,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: BoardCapabilityListResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new BoardCapabilityTransportError(
+                throw new CapabilityError(
                     "untrusted",
                     "The board is no longer trusted.",
                 );
@@ -958,33 +962,42 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: BoardCapabilityInvokeResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new BoardCapabilityTransportError(
+                throw new CapabilityError(
                     "untrusted",
                     "The board is no longer trusted.",
                 );
             }
-            const result = await app.capabilities.invoke(message.id, message.payload, {
+            const invocation = await invokeCapabilityOutcome(message.id, message.payload, {
                 ...(message.version === undefined ? {} : { version: message.version }),
                 pageId: model.page?.id,
                 deadlineMs: message.deadlineMs,
             });
-            // The public capability result carries its page id inside the declared result.
-            // Board-originated calls retain the bridge's top-level pageId/result envelope.
-            // Conversion failures have no page id, so they remain a plain public result.
-            const publicResult = result as { pageId?: unknown } | null | undefined;
-            const hasPageId = !!publicResult && typeof publicResult === "object"
-                && typeof publicResult.pageId === "string";
-            if (hasPageId) {
-                const { pageId, ...handlerResult } = publicResult as Record<string, unknown>;
-                const hasHandlerResult = Object.keys(handlerResult).length > 0;
+            const result = invocation.value;
+            if (invocation.origin === "board") {
+                const outcome = result as CapabilityOutcome;
                 reply = {
                     __persephone: "capabilities:invoke:result",
                     reqId: message.reqId,
-                    pageId: pageId as string,
-                    ...(hasHandlerResult ? { result: handlerResult } : {}),
+                    ...(typeof outcome.pageId === "string" ? { pageId: outcome.pageId } : {}),
+                    ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
                 };
             } else {
-                reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+                // Built-ins return the script-shaped projection; retain its established split.
+                const publicResult = result as { pageId?: unknown } | null | undefined;
+                const hasPageId = !!publicResult && typeof publicResult === "object"
+                    && typeof publicResult.pageId === "string";
+                if (hasPageId) {
+                    const { pageId, ...handlerResult } = publicResult as Record<string, unknown>;
+                    const hasHandlerResult = Object.keys(handlerResult).length > 0;
+                    reply = {
+                        __persephone: "capabilities:invoke:result",
+                        reqId: message.reqId,
+                        pageId: pageId as string,
+                        ...(hasHandlerResult ? { result: handlerResult } : {}),
+                    };
+                } else {
+                    reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
+                }
             }
         } catch (error: unknown) {
             reply = {
@@ -1289,15 +1302,8 @@ interface IAiElementWithView {
     readonly view?: unknown;
 }
 
-function isCapabilityErrorCode(value: string): value is CapabilityErrorCode {
-    return value === "no-handler" || value === "untrusted" || value === "handler-closed"
-        || value === "crashed" || value === "cancelled" || value === "timeout"
-        || value === "cycle" || value === "payload-too-large" || value === "busy"
-        || value === "rejected";
-}
-
-function capabilityError(error: unknown): { code: string; message: string } {
+function capabilityError(error: unknown): { code: CapabilityErrorCode; message: string } {
     const value = error as { code?: unknown } | null;
-    const code = typeof value?.code === "string" ? value.code : "rejected";
+    const code = isCapabilityErrorCode(value?.code) ? value.code : "rejected";
     return { code, message: errMessage(error, "The capability request failed.") };
 }

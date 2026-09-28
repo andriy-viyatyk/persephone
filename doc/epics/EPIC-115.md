@@ -53,7 +53,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1537 | [Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL](../tasks/US-1537-launch-arguments/README.md) | 1 — defect | S | Done |
 | US-1538 | [Main owns the board trust and URL-mask snapshots](../tasks/US-1538-main-owned-trust-snapshot/README.md) | 1 — defect | M | Done |
 | US-1547 | [Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads](../tasks/US-1547-board-provider-acquire/README.md) | 1 — defect | M | Done |
-| US-1539 | Capability contract single-sourced: error codes, intent envelope, outcome shape | 2 — contracts | M | Planned |
+| US-1539 | [Capability contract single-sourced: error codes, intent envelope, outcome shape](../tasks/US-1539-capability-contract/README.md) | 2 — contracts | M | Done |
 | US-1540 | One owner for a capability request's lifecycle | 2 — contracts | L | Planned |
 | US-1541 | Built-in capability resolution runs the handler it resolved; one image-edit helper | 2 — contracts | S | Planned |
 | US-1542 | Host-frame request/reply channel: one table on each side, typed message union | 2 — contracts | L | Planned |
@@ -341,6 +341,12 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   transport: `openingPages` makes requests that arrive during a cold open wait until the opening
   request settles. When the transport starts holding the initial intent per page, it should also
   queue non-initial dispatch until the handshake, and the `openingPages` wait can then go.
+- **Found in US-1539:** a board caller that times out gets one of two messages, "Capability
+  invocation deadline elapsed." (the bus) or "The capability request deadline elapsed."
+  (`BoardWebview`/shim). Which one it gets depends on which timer fires first. The code is
+  `timeout` either way. With one deadline owner, one message remains. US-1539 also added
+  `invokeCapabilityOutcome` in `capabilities.ts`: this is the single resolution path, and it
+  returns the unflattened `CapabilityOutcome` that board callers receive.
 - **`boards.openBoard({ intent })`:** US-1534 kept this route and marked `intent` `@deprecated`,
   pointing callers to `app.capabilities.invoke`. This story is where to remove it or turn it into
   an adapter. That is a public API change, so it is a user decision.

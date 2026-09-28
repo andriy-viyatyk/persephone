@@ -16,6 +16,7 @@ export interface CapabilityInfo {
     readonly handlerKey: string;
     readonly origin: CapabilityOrigin;
     readonly boardRoot?: string;
+    readonly alwaysOpensNewPage?: boolean;
     readonly accepts?: readonly string[];
     readonly payloadSchema?: unknown;
     readonly title?: string;

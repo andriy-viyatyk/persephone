@@ -140,6 +140,7 @@ interface BoardRegistrationIntent {
 
 interface BoardCapabilityRegistrationIntent {
     boardRoot: string;
+    boardName: string;
     declaration: BoardCapabilityDeclaration;
 }
 
@@ -362,8 +363,10 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             if (acceptedBrowserUrlMasks.length > 0) {
                 browserUrlMaskClaims.push({ boardRoot: root, name: boardName, masks: acceptedBrowserUrlMasks });
             }
-            for (const declaration of normalizeCapabilities(manifest?.capabilities)) {
-                capabilityRegistrationIntents.push({ boardRoot: root, declaration });
+            for (const declaration of normalizeCapabilities(manifest?.capabilities, (id, reason) => {
+                addRegistrationIssue(registrationIssues, root, "capability", id, reason, undefined);
+            })) {
+                capabilityRegistrationIntents.push({ boardRoot: root, boardName, declaration });
             }
             for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
                 if (!declaration.type.includes("/")) {
@@ -451,11 +454,12 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         unregisterBoardSchemes(activeBoardRoots);
         // `roots` is only the next rebuild snapshot. Release the complete board-origin set so an
         // already-untrusted board, absent from `roots`, cannot leave a stale capability behind.
-        unregisterBoardCapabilities(activeBoardRoots);
+        unregisterBoardCapabilities();
         replaceProviderDeclarations(providerDeclarations);
-        for (const { boardRoot, declaration } of capabilityRegistrationIntents) {
+        for (const { boardRoot, boardName, declaration } of capabilityRegistrationIntents) {
             const result = registerCapability(declaration, {
                 boardRoot,
+                boardName,
                 handlerKey: boardEditorId(boardRoot),
                 origin: "board",
             });
@@ -466,7 +470,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                     "capability",
                     declaration.id || "<empty id>",
                     result.reason,
-                    result.owner,
+                    undefined,
                 );
             }
         }

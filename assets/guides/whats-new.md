@@ -59,6 +59,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   registry also provides built-in handoffs for opening and editing content. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
+- **Board capability bridge 1.19.0 preserves handler results:** board callers receive the exact
+  handler value under `result`, including primitives, arrays, and empty objects. Handlers can pass
+  `{ discardPage: true }` to `persephone.intent.resolve(value, options)` (or the request-bound
+  `request.resolve`) to close a page opened for a failed
+  request, and a manifest capability can set `alwaysOpensNewPage: true` to open a fresh handler page
+  for each invocation. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
 - **Excalidraw ships as a bundled board:** `.excalidraw` files and image/diagram handoffs use the
   offline-capable bundled board by default. It appears under **Built-in** with a **Disable** action;
   disabling it removes those capabilities; if no replacement is installed, Persephone explains that

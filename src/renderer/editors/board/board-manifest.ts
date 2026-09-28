@@ -67,6 +67,7 @@ export interface BoardCapabilityDeclaration {
     payloadSchema?: unknown;
     title?: string;
     headless?: boolean;
+    alwaysOpensNewPage?: boolean;
 }
 
 export interface BoardManifest {
@@ -437,7 +438,10 @@ export function normalizeContentProviders(raw: unknown): BoardContentProviderDec
 }
 
 /** Normalize capability declaration shape while leaving registry validation to the consumer. */
-export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[] {
+export function normalizeCapabilities(
+    raw: unknown,
+    reportIssue?: (id: string, reason: string) => void,
+): BoardCapabilityDeclaration[] {
     if (!Array.isArray(raw)) return [];
     const out: BoardCapabilityDeclaration[] = [];
     for (const entry of raw) {
@@ -450,6 +454,7 @@ export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[
             payloadSchema?: unknown;
             title?: unknown;
             headless?: unknown;
+            alwaysOpensNewPage?: unknown;
         };
         const accepts: string[] = [];
         if (Array.isArray(candidate.accepts)) {
@@ -467,7 +472,17 @@ export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[
             ...("payloadSchema" in candidate ? { payloadSchema: candidate.payloadSchema } : {}),
             ...(typeof candidate.title === "string" ? { title: candidate.title.trim() } : {}),
             ...(typeof candidate.headless === "boolean" ? { headless: candidate.headless } : {}),
+            ...(typeof candidate.alwaysOpensNewPage === "boolean"
+                ? { alwaysOpensNewPage: candidate.alwaysOpensNewPage }
+                : {}),
         };
+        if ("alwaysOpensNewPage" in candidate && typeof candidate.alwaysOpensNewPage !== "boolean") {
+            reportIssue?.(
+                declaration.id || "<empty id>",
+                `Capability "${declaration.id || "<empty id>"}" alwaysOpensNewPage must be a boolean.`,
+            );
+            continue;
+        }
         out.push(declaration);
     }
     return out;

@@ -11,10 +11,14 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.18.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.18.0` adds
-`persephone.icons.forFiles(names)` for getting Persephone's file icons as image URLs. Bridge
-`1.13.0` adds
+The board bridge is version **1.19.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.19.0` adds
+`persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
+`request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
+value under `result` for board callers, and adds the optional manifest capability field
+`alwaysOpensNewPage` to request a fresh handler page for each invocation.
+Bridge `1.18.0` adds `persephone.icons.forFiles(names)` for getting Persephone's file icons as
+image URLs. Bridge `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access
 to settings declared by the board; bridge `1.12.0` added
 `persephone.clipboard.writeImage(data)` and `persephone.clipboard.writeText(text)` for native OS
@@ -477,7 +481,9 @@ not a security boundary.
 ```
 
 Each declaration may provide `id`, integer major `version` (default `1`), `priority` (default
-`50`), `accepts`, `payloadSchema`, `title`, and `headless`. IDs cannot contain whitespace or `@`; use a vendor
+`50`), `accepts`, `payloadSchema`, `title`, `headless`, and the optional boolean
+`alwaysOpensNewPage`. Set it when every request needs a fresh handler page; otherwise an open page
+is reused. IDs cannot contain whitespace or `@`; use a vendor
 prefix for board-owned ids. Multiple boards can compete for one id: strict priority wins, platform
 handlers win ties, and trusted-board registration order breaks board ties. Discovery never opens a
 handler page.
@@ -504,7 +510,10 @@ if (initial) handleRequest(initial); // consume a page-open initial request
 `persephone.intent.onRequest(callback)` returns an unsubscribe and also delivers an already-active
 request; `persephone.intent.resolve(value)` and `persephone.intent.reject(reason)` settle the
 current request. Prefer the request-bound `request.resolve` and `request.reject` methods in
-callbacks. **`resolve`/`reject` is mandatory.** If a handler never settles, its caller
+callbacks. Pass `{ discardPage: true }` as the second argument to `request.resolve(value, options)`
+when a failed request should discard the page it opened. The handler value remains opaque, and the
+option has no effect on a reused page. **`resolve`/`reject` is mandatory.** If a handler never
+settles, its caller
 waits until the deadline. The platform sends cancel after that deadline, but cannot stop the
 handler's work.
 
@@ -519,7 +528,8 @@ const entries = await persephone.capabilities.list();
 ```
 
 Invoke by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
-result is `{ pageId, result }`; `pageId` is optional when a handler resolves without a page. The
+result is `{ pageId, result }`; `pageId` is optional when a handler resolves without a page, and
+`result` preserves the handler's exact value, including primitives, arrays, and empty objects. The
 caller can receive these ten typed rejection codes:
 
 | Code | Meaning |

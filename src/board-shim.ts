@@ -64,7 +64,7 @@ import type {
     BoardServiceStatus,
     MainToBoard,
 } from "./ipc/board-bridge-channels";
-import type { CapabilityErrorCode } from "./ipc/capability-bus-channels";
+import { isCapabilityErrorCode, type CapabilityErrorCode, type IntentEnvelope } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
 import type {
@@ -640,17 +640,12 @@ function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void
     return () => toolbarActionCbs.delete(callback);
 }
 
-interface BoardIntentInit {
-    id: string;
-    version?: number;
-    requestId: string;
-    payload: unknown;
-}
+type BoardIntentInit = IntentEnvelope;
 
 interface BoardIntentContext extends BoardIntentInit {
     cancelled: boolean;
     settled: boolean;
-    resolve(value: unknown): void;
+    resolve(value: unknown, options?: { discardPage?: boolean }): void;
     reject(reason?: unknown): void;
 }
 
@@ -674,6 +669,7 @@ function settleIntent(
     intent: BoardIntentContext | undefined,
     error?: { code: CapabilityErrorCode; message: string },
     result?: unknown,
+    discardPage?: boolean,
 ): void {
     if (!intent || intent.cancelled || intent.settled) return;
     intent.settled = true;
@@ -682,6 +678,7 @@ function settleIntent(
             __persephone: "capabilities:intent:result",
             requestId: intent.requestId,
             ...(error ? { error } : { result }),
+            ...(discardPage === undefined ? {} : { discardPage }),
         } as BoardCapabilityIntentResultMsg, hostPostTarget);
     } catch {
         // The parent may disappear while a handler is settling.
@@ -704,8 +701,8 @@ function makeIntentContext(init: {
         payload: init.payload,
         cancelled: false,
         settled: false,
-        resolve: (value: unknown) => {
-            if (!context.cancelled) settleIntent(context, undefined, value);
+        resolve: (value: unknown, options?: { discardPage?: boolean }) => {
+            if (!context.cancelled) settleIntent(context, undefined, value, options?.discardPage);
         },
         reject: (reason?: unknown) => {
             if (!context.cancelled) {
@@ -746,13 +743,6 @@ function capabilityErrorFromReply(error: { code?: unknown; message?: unknown } |
         ? error
         : typeof error?.message === "string" ? error.message : "The capability request failed.";
     return new BoardCapabilityError(code, message);
-}
-
-function isCapabilityErrorCode(value: unknown): value is CapabilityErrorCode {
-    return value === "no-handler" || value === "untrusted" || value === "handler-closed"
-        || value === "crashed" || value === "cancelled" || value === "timeout"
-        || value === "cycle" || value === "payload-too-large" || value === "busy"
-        || value === "rejected";
 }
 
 function capabilityListRpc(): Promise<unknown> {
@@ -1208,8 +1198,8 @@ onHostMessage((event) => {
         pending.resolve({ pageId: data.pageId, result: data.result });
     } else {
         // A capability need not open a page: a built-in handler can resolve a plain value
-        // (`diagram.edit` resolves `{ status: "conversion-failed" }` with no page). Resolve with
-        // an absent pageId rather than calling a legitimate reply malformed.
+        // A capability may resolve without opening a page. Keep its result inside the documented
+        // result envelope rather than treating the reply as malformed.
         pending.resolve({ result: data.result });
     }
 });
@@ -1660,8 +1650,8 @@ function createHandle(
                 if (index >= 0) intentHandlers.splice(index, 1);
             };
         },
-        resolve(value: unknown): void {
-            activeIntent?.resolve(value);
+        resolve(value: unknown, options?: { discardPage?: boolean }): void {
+            activeIntent?.resolve(value, options);
         },
         reject(reason?: unknown): void {
             activeIntent?.reject(reason);
