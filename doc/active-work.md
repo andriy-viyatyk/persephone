@@ -23,7 +23,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1539: Capability contract single-sourced — error codes, intent envelope, outcome shape](tasks/US-1539-capability-contract/README.md)
   - [x] [US-1540: One owner for a capability request's lifecycle](tasks/US-1540-capability-request-lifecycle/README.md)
   - [x] [US-1541: Built-in capability resolution runs the handler it resolved; one image-edit helper](tasks/US-1541-builtin-capability-resolution/README.md)
-  - [ ] US-1542: Host-frame request/reply channel — one table on each side, typed message union
+  - [x] [US-1542: Host-frame request/reply channel — one table on each side, typed message union](tasks/US-1542-host-frame-channel/README.md)
   - [ ] US-1543: The service host owns the service lifecycle protocol
   - [x] [US-1544: One provider-operation policy table (deadline, cap)](tasks/US-1544-provider-operation-policy/README.md)
   - *Phase 3 — structure*

@@ -31,9 +31,8 @@ import type {
     BoardSettingsResultMsg,
     BoardToolbarControlEventMsg,
     BoardToolbarControlPatch,
-    BoardToolbarSetMsg,
-    BoardToolbarUpdateMsg,
     BoardToHostMsg,
+    BoardHostFrameMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import { isCapabilityErrorCode, type CapabilityErrorCode, type CapabilityOutcome, type IntentRequest } from "../../../ipc/capability-bus-channels";
@@ -89,6 +88,48 @@ export interface BoardWebviewProps {
     onToolbarUpdate?: (patches: readonly BoardToolbarControlPatch[], warning: (message: string) => void) => void;
     onToolbarClear?: (frameGeneration: number) => void;
 }
+
+type BoardToHostType = BoardToHostMsg["__persephone"];
+type BoardToHostVariant<Type extends BoardToHostType> = Extract<BoardToHostMsg, { __persephone: Type }>;
+
+type BoardMainFrameGate = {
+    readonly kind: "main" | "mainTrusted" | "mainTrustedText";
+    readonly rejectionLog?: string;
+};
+
+interface BoardMessageContext {
+    readonly model: BoardEditorModel;
+    readonly host: string;
+    readonly frame: HTMLIFrameElement;
+    readonly generation: number;
+}
+
+type BoardMessageHandlers = {
+    [Type in BoardToHostType]: {
+        readonly gate?: BoardMainFrameGate;
+        readonly handle: (message: BoardToHostVariant<Type>, context: BoardMessageContext) => void;
+    };
+};
+
+const BOARD_MESSAGE_GATES = {
+    toolbarControls: {
+        kind: "mainTrusted",
+        rejectionLog: "Ignored board toolbar controls from a non-main or unavailable frame.",
+    },
+    toolbarUpdate: {
+        kind: "mainTrusted",
+        rejectionLog: "Ignored board toolbar update from a non-main or unavailable frame.",
+    },
+    toolbarText: {
+        kind: "mainTrusted",
+        rejectionLog: "Ignored board toolbar text from a non-main or unavailable frame.",
+    },
+    aiVision: {
+        kind: "mainTrusted",
+        rejectionLog: "Ignored invalid or untrusted AiVision registration.",
+    },
+    aiNotify: { kind: "mainTrustedText" },
+} satisfies Record<string, BoardMainFrameGate>;
 
 const BOARD_NOTIFY_LIMIT = 5;
 const BOARD_NOTIFY_WINDOW_MS = 60_000;
@@ -150,6 +191,149 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }>();
     private capabilityFrame: BoardCapabilityFrame | undefined;
     private readonly pendingContentOpen = new Set<AbortController>();
+
+    private readonly boardMessageHandlers: BoardMessageHandlers = {
+        "board:interact": { handle: () => dismissOverlays() },
+        "board:error": { handle: (message) => { if (message.message) this.appendLog("error", message.message); } },
+        "board:log": {
+            handle: (message) => {
+                if (message.message) this.appendLog(message.level === "warn" ? "warn" : "error", message.message);
+            },
+        },
+        "board:busy": { handle: (message, current) => current.model.setBusy(!!message.busy) },
+        "board:setContent": {
+            handle: (message, current) => {
+                const content = typeof message.content === "string" ? message.content : "";
+                this.lastBoardContent = content;
+                (current.model as BoardContentEditorModel).hostChangeContent?.(content);
+            },
+        },
+        "board:save": { handle: (_message, current) => (current.model as BoardContentEditorModel).hostSave?.() },
+        "board:setState": { handle: (message, current) => current.model.setSharedState(message.state ?? {}) },
+        "board:mergeState": { handle: (message, current) => current.model.mergeSharedState(message.partial ?? {}) },
+        "board:stateInit": {
+            handle: (message, current) => current.model.initSharedState(message.defaults ?? {}, message.restorableKeys),
+        },
+        "board:setSecondaryViews": { handle: (message, current) => current.model.setSecondaryViews(message.views) },
+        "board:setStatusText": {
+            gate: { kind: "main" },
+            handle: (message, current) => current.model.setStatusText(typeof message.statusText === "string" ? message.statusText : ""),
+        },
+        "board:setToolbarText": {
+            gate: BOARD_MESSAGE_GATES.toolbarText,
+            handle: (message, current) => current.model.setToolbarTextForFrame(
+                current.generation,
+                typeof message.toolbarText === "string" ? message.toolbarText : "",
+            ),
+        },
+        "board:setToolbarControls": {
+            gate: BOARD_MESSAGE_GATES.toolbarControls,
+            handle: (message) => {
+                const controls = normalizeToolbarControlSet(message.controls, (warning) => this.appendLog("warn", warning));
+                this.props.onToolbarSet?.(controls, this.generation, (warning) => this.appendLog("warn", warning));
+            },
+        },
+        "board:updateToolbarControls": {
+            gate: BOARD_MESSAGE_GATES.toolbarUpdate,
+            handle: (message) => {
+                const patches = normalizeToolbarControlPatches(message.controls, (warning) => this.appendLog("warn", warning));
+                this.props.onToolbarUpdate?.(patches, (warning) => this.appendLog("warn", warning));
+            },
+        },
+        "board:cycleTheme": { handle: (message) => cycleAppTheme(message.direction === 1 ? 1 : -1) },
+        "board:aiVision": {
+            gate: BOARD_MESSAGE_GATES.aiVision,
+            handle: (message, current) => this.handleAiVisionRegistration(message, current.model, current.frame),
+        },
+        "board:aiNotify": {
+            gate: BOARD_MESSAGE_GATES.aiNotify,
+            handle: (message, current) => this.handleAiVisionNotify(message, current.model),
+        },
+        "board:aiResult": { handle: (message, current) => this.handleAiVisionResult(message, current.frame) },
+        "capabilities:intent:result": { handle: (message, current) => this.handleCapabilityResult(message, current.frame) },
+        "board:capabilities:list": { handle: (message, current) => { void this.resolveCapabilityList(message, current.frame); } },
+        "board:capabilities:invoke": {
+            handle: (message, current) => { void this.resolveCapabilityInvoke(message, current.model, current.frame); },
+        },
+        "board:filePath": {
+            handle: (message, current) => {
+                if (typeof message.reqId === "number") void this.resolveFilePath(message.reqId, current.model, current.frame);
+            },
+        },
+        "board:fileIcons": {
+            handle: (message, current) => {
+                if (typeof message.reqId === "number") {
+                    void this.resolveFileIcons(message.reqId, message.names, current.frame);
+                }
+            },
+        },
+        "board:openContent": {
+            handle: (message, current) => {
+                if (typeof message.reqId === "number") {
+                    this.resolveOpenContent(message.reqId, message.openContent, current.frame);
+                }
+            },
+        },
+        "board:contentOpen": {
+            handle: (message, current) => {
+                if (typeof message.reqId === "number") {
+                    void this.resolveContentOpen(message, current.model, current.host, current.frame);
+                }
+            },
+        },
+        "navigation:createReturnUrl": {
+            handle: (message, current) => {
+                if (typeof message.reqId === "number") {
+                    this.resolveNavigationReturnUrl(message, current.model, current.host, current.frame);
+                }
+            },
+        },
+        "board:var": {
+            handle: (message, current) => {
+                if (typeof message.reqId !== "number") return;
+                void this.resolveVariable(
+                    message.reqId,
+                    message.varMethod,
+                    Array.isArray(message.varArgs) ? message.varArgs : [],
+                    current.frame,
+                );
+            },
+        },
+        "board:settings": {
+            handle: (message, current) => {
+                if (typeof message.reqId !== "number") return;
+                void this.resolveSettings(
+                    message.reqId,
+                    message.settingsMethod ?? "get",
+                    Array.isArray(message.settingsArgs) ? message.settingsArgs : [],
+                    current.frame,
+                );
+            },
+        },
+    };
+
+    private dispatchBoardMessage<Type extends BoardToHostType>(
+        type: Type,
+        message: BoardToHostVariant<Type>,
+        context: BoardMessageContext,
+    ): void {
+        const entry = this.boardMessageHandlers[type];
+        if (entry.gate) {
+            const gate = entry.gate;
+            const gatePassed = gate.kind === "main"
+                ? this.isMain
+                : this.isMain
+                    && this.props.model.frames.get(BOARD_CDP_TAB) === context.frame
+                    && isBoardPermitted(this.props.boardRoot)
+                    && (gate.kind !== "mainTrustedText"
+                        || ("text" in message && typeof message.text === "string"));
+            if (!gatePassed) {
+                if (gate.rejectionLog) this.appendLog("warn", gate.rejectionLog);
+                return;
+            }
+        }
+        entry.handle(message, context);
+    }
 
     public constructor(props: BoardWebviewProps) {
         super(props, createPanelElement({
@@ -503,162 +687,22 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private readonly handleMessage = (event: MessageEvent): void => {
         const host = this.host;
         const frame = this.iframe;
-        if (!this.live || !host || !frame) return;
-        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg
-            | BoardAiVisionResultMsg | BoardCapabilityIntentResultMsg | BoardCapabilityListRequestMsg
-            | BoardCapabilityInvokeRequestMsg | BoardNavigationCreateReturnUrlMsg
-            | BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardContentOpenRequestMsg | undefined;
-        if (!data?.__persephone || event.origin !== `board://${host}`
+        if (!this.live || !host || !frame || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
-        const model = this.props.model;
-        const legacy = data as BoardToHostMsg & {
-            message?: string; level?: string; busy?: boolean; content?: string;
-            state?: Record<string, unknown>; partial?: Record<string, unknown>;
-            defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
-            statusText?: string; toolbarText?: string; direction?: 1 | -1; reqId?: number;
-            varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
-            settingsMethod?: "get"; settingsArgs?: unknown[];
-            openContent?: BoardOpenContentRequest;
-            controls?: unknown; names?: unknown;
+        const data = event.data as BoardHostFrameMsg | undefined;
+        if (!data || typeof data !== "object" || !("__persephone" in data)) return;
+        const discriminator = data.__persephone;
+        if (typeof discriminator !== "string"
+            || !Object.prototype.hasOwnProperty.call(this.boardMessageHandlers, discriminator)) return;
+
+        const context: BoardMessageContext = {
+            model: this.props.model,
+            host,
+            frame,
+            generation: this.generation,
         };
-        switch (data.__persephone) {
-            case "board:interact":
-                // The shim posts this on every capture-phase pointerdown inside the board.
-                // It must dismiss host overlays through the shared helper: dispatching a
-                // `mousedown` here stopped working when PopoverView moved to `pointerdown`
-                // (US-1286 converted the browser guest and the HTML iframe, and missed this
-                // third frame — the menu stayed open over the board being clicked).
-                dismissOverlays();
-                break;
-            case "board:error":
-                if (legacy.message) this.appendLog("error", legacy.message);
-                break;
-            case "board:log":
-                if (legacy.message) this.appendLog(legacy.level === "warn" ? "warn" : "error", legacy.message);
-                break;
-            case "board:busy":
-                model.setBusy(!!legacy.busy);
-                break;
-            case "board:setContent": {
-                const content = typeof legacy.content === "string" ? legacy.content : "";
-                this.lastBoardContent = content;
-                (model as BoardContentEditorModel).hostChangeContent?.(content);
-                break;
-            }
-            case "board:save":
-                (model as BoardContentEditorModel).hostSave?.();
-                break;
-            case "board:setState":
-                model.setSharedState(legacy.state ?? {});
-                break;
-            case "board:mergeState":
-                model.mergeSharedState(legacy.partial ?? {});
-                break;
-            case "board:stateInit":
-                model.initSharedState(legacy.defaults ?? {}, legacy.restorableKeys);
-                break;
-            case "board:setSecondaryViews":
-                model.setSecondaryViews(legacy.views);
-                break;
-            case "board:setToolbarControls": {
-                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
-                    this.appendLog("warn", "Ignored board toolbar controls from a non-main or unavailable frame.");
-                    break;
-                }
-                const controls = normalizeToolbarControlSet(legacy.controls, (message) => this.appendLog("warn", message));
-                this.props.onToolbarSet?.(controls, this.generation, (message) => this.appendLog("warn", message));
-                break;
-            }
-            case "board:updateToolbarControls": {
-                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
-                    this.appendLog("warn", "Ignored board toolbar update from a non-main or unavailable frame.");
-                    break;
-                }
-                const patches = normalizeToolbarControlPatches(legacy.controls, (message) => this.appendLog("warn", message));
-                this.props.onToolbarUpdate?.(patches, (message) => this.appendLog("warn", message));
-                break;
-            }
-            case "board:setStatusText":
-                if (this.isMain) model.setStatusText(typeof legacy.statusText === "string" ? legacy.statusText : "");
-                break;
-            case "board:setToolbarText":
-                if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) {
-                    this.appendLog("warn", "Ignored board toolbar text from a non-main or unavailable frame.");
-                    break;
-                }
-                model.setToolbarTextForFrame(
-                    this.generation,
-                    typeof legacy.toolbarText === "string" ? legacy.toolbarText : "",
-                );
-                break;
-            case "board:cycleTheme":
-                cycleAppTheme(legacy.direction === 1 ? 1 : -1);
-                break;
-            case "board:aiVision":
-                this.handleAiVisionRegistration(data as BoardAiVisionRegistrationMsg, model, frame);
-                break;
-            case "board:aiNotify":
-                this.handleAiVisionNotify(data as BoardAiVisionNotifyMsg, model, frame);
-                break;
-            case "board:aiResult":
-                this.handleAiVisionResult(data as BoardAiVisionResultMsg, frame);
-                break;
-            case "capabilities:intent:result":
-                this.handleCapabilityResult(data as BoardCapabilityIntentResultMsg, frame);
-                break;
-            case "board:capabilities:list":
-                void this.resolveCapabilityList(data as BoardCapabilityListRequestMsg, frame, host);
-                break;
-            case "board:capabilities:invoke":
-                void this.resolveCapabilityInvoke(data as BoardCapabilityInvokeRequestMsg, model, frame, host);
-                break;
-            case "board:filePath":
-                if (typeof legacy.reqId === "number") void this.resolveFilePath(legacy.reqId, model, host, frame);
-                break;
-            case "board:fileIcons":
-                if (typeof legacy.reqId === "number") void this.resolveFileIcons(legacy.reqId, legacy.names, host, frame);
-                break;
-            case "board:openContent":
-                if (typeof legacy.reqId === "number") {
-                    this.resolveOpenContent(legacy.reqId, legacy.openContent, host, frame);
-                }
-                break;
-            case "board:contentOpen":
-                if (typeof legacy.reqId === "number") {
-                    void this.resolveContentOpen(data as BoardContentOpenRequestMsg, model, host, frame);
-                }
-                break;
-            case "navigation:createReturnUrl":
-                if (typeof data.reqId === "number") {
-                    this.resolveNavigationReturnUrl(data as BoardNavigationCreateReturnUrlMsg, model, host, frame);
-                }
-                break;
-            case "board:var":
-                if (typeof legacy.reqId === "number") {
-                    void this.resolveVariable(
-                        legacy.reqId,
-                        legacy.varMethod as "get" | "set" | "list" | "show",
-                        Array.isArray(legacy.varArgs) ? legacy.varArgs : [],
-                        model,
-                        host,
-                        frame,
-                    );
-                }
-                break;
-            case "board:settings":
-                if (typeof legacy.reqId === "number") {
-                    void this.resolveSettings(
-                        legacy.reqId,
-                        legacy.settingsMethod ?? "get",
-                        Array.isArray(legacy.settingsArgs) ? legacy.settingsArgs : [],
-                        model,
-                        host,
-                        frame,
-                    );
-                }
-                break;
-        }
+        this.dispatchBoardMessage(discriminator as BoardToHostType, data as BoardToHostMsg, context);
     };
 
     /** Deliver one catalog interaction to the current main board frame. */
@@ -688,12 +732,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         model: BoardEditorModel,
         frame: HTMLIFrameElement,
     ): void {
-        if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
-            || !isBoardPermitted(this.props.boardRoot)
-            || !isAiVisionShape(message.shape)
+        if (!isAiVisionShape(message.shape)
             || !isSchemaMajorOne(message.schemaVersion)
             || !isSchemaMajorOne(message.shape.schemaVersion)) {
-            this.appendLog("warn", "Ignored invalid or untrusted AiVision registration.");
+            const rejectionLog = BOARD_MESSAGE_GATES.aiVision.rejectionLog;
+            if (rejectionLog) this.appendLog("warn", rejectionLog);
             return;
         }
         // A refresh is the SAME remote re-publishing its structure (the board added its first
@@ -723,11 +766,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private handleAiVisionNotify(
         message: BoardAiVisionNotifyMsg,
         model: BoardEditorModel,
-        frame: HTMLIFrameElement,
     ): void {
-        if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
-            || !isBoardPermitted(this.props.boardRoot)
-            || typeof message.text !== "string") return;
+        if (typeof message.text !== "string") return;
         const pageId = model.page?.id;
         if (!pageId) return;
         const normalizedText = message.text.replace(/\s+/g, " ").trim();
@@ -907,18 +947,28 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.pendingContentOpen.clear();
     }
 
+    private replyToFrame(frame: HTMLIFrameElement, generation: number, message: BoardHostFrameMsg): boolean {
+        const host = this.host;
+        const contentWindow = frame.contentWindow;
+        if (!this.live || generation !== this.generation || this.iframe !== frame
+            || this.props.model.frames.get(this.tabId) !== frame || !host || !contentWindow) return false;
+        try {
+            contentWindow.postMessage(message, `board://${host}`);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     private async resolveCapabilityList(
         message: BoardCapabilityListRequestMsg,
         frame: HTMLIFrameElement,
-        host: string,
     ): Promise<void> {
+        const generation = this.generation;
         let reply: BoardCapabilityListResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new CapabilityError(
-                    "untrusted",
-                    "The board is no longer trusted.",
-                );
+                throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
             reply = { __persephone: "capabilities:list:result", reqId: message.reqId, result: app.capabilities.list() };
         } catch (error: unknown) {
@@ -928,23 +978,19 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 error: capabilityError(error),
             };
         }
-        if (!this.live || frame !== this.iframe || !frame.contentWindow) return;
-        try { frame.contentWindow.postMessage(reply, `board://${host}`); } catch { /* frame teardown */ }
+        this.replyToFrame(frame, generation, reply);
     }
 
     private async resolveCapabilityInvoke(
         message: BoardCapabilityInvokeRequestMsg,
         model: BoardEditorModel,
         frame: HTMLIFrameElement,
-        host: string,
     ): Promise<void> {
+        const generation = this.generation;
         let reply: BoardCapabilityInvokeResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new CapabilityError(
-                    "untrusted",
-                    "The board is no longer trusted.",
-                );
+                throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
             const invocation = await invokeCapabilityOutcome(message.id, message.payload, {
                 ...(message.version === undefined ? {} : { version: message.version }),
@@ -961,7 +1007,6 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                     ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
                 };
             } else {
-                // Built-ins return the script-shaped projection; retain its established split.
                 const publicResult = result as { pageId?: unknown } | null | undefined;
                 const hasPageId = !!publicResult && typeof publicResult === "object"
                     && typeof publicResult.pageId === "string";
@@ -985,14 +1030,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 error: capabilityError(error),
             };
         }
-        if (!this.live || frame !== this.iframe || !frame.contentWindow) return;
-        try { frame.contentWindow.postMessage(reply, `board://${host}`); } catch { /* frame teardown */ }
+        this.replyToFrame(frame, generation, reply);
     }
 
     private async resolveFilePath(
         reqId: number,
         model: BoardEditorModel,
-        host: string,
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
@@ -1004,17 +1047,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (isProviderResolutionError(error)) ui.notify(message, "error");
             reply = { error: message };
         }
-        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardFilePathResultMsg = {
             __persephone: "filePath:result", reqId, path: reply.path, error: reply.error,
         };
-        frame.contentWindow.postMessage(message, `board://${host}`);
+        this.replyToFrame(frame, generation, message);
     }
 
     private async resolveFileIcons(
         reqId: number,
         names: unknown,
-        host: string,
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
@@ -1026,8 +1067,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         } catch (error: unknown) {
             message = { __persephone: "fileIcons:result", reqId, error: errMessage(error) };
         }
-        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
-        frame.contentWindow.postMessage(message, `board://${host}`);
+        this.replyToFrame(frame, generation, message);
     }
 
     private async resolveContentOpen(
@@ -1101,11 +1141,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (timer !== undefined) clearTimeout(timer);
             this.pendingContentOpen.delete(controller);
         }
-        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
-        try {
-            frame.contentWindow.postMessage(reply, `board://${host}`);
-        } catch {
-            if (openedResourceId) model.releaseContentResource(openedResourceId);
+        if (!this.replyToFrame(frame, generation, reply) && openedResourceId) {
+            model.releaseContentResource(openedResourceId);
         }
     }
 
@@ -1118,9 +1155,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const generation = this.generation;
         let reply: BoardNavigationReturnUrlResultMsg;
         try {
-            if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new Error("This board is not trusted.");
-            }
+            if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
             if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
                 throw new Error("The board frame is unavailable.");
             }
@@ -1142,43 +1177,28 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 error: errMessage(error, "The navigation return URL could not be created."),
             };
         }
-        if (!this.live || this.iframe !== frame || !frame.contentWindow) return;
-        try {
-            frame.contentWindow.postMessage(reply, `board://${host}`);
-        } catch {
-            // The frame may have been replaced while the reply was being posted.
-        }
+        this.replyToFrame(frame, generation, reply);
     }
 
-    /**
-     * `persephone.openContent(...)` (US-1404) — create an in-memory page in another editor and hand
-     * the board back its page id. Trust is re-checked here, like every board-initiated effect, so
-     * revoking trust blocks an already-mounted board. Synchronous work, but the reply is posted the
-     * same way as the other request/reply resolvers.
-     */
     private resolveOpenContent(
         reqId: number,
         request: BoardOpenContentRequest | undefined,
-        host: string,
         frame: HTMLIFrameElement,
     ): void {
         const generation = this.generation;
         const reply = isBoardPermitted(this.props.boardRoot)
             ? resolveBoardOpenContent(request)
             : { error: "This board is not trusted." };
-        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardOpenContentResultMsg = {
             __persephone: "openContent:result", reqId, pageId: reply.pageId, error: reply.error,
         };
-        frame.contentWindow.postMessage(message, `board://${host}`);
+        this.replyToFrame(frame, generation, message);
     }
 
     private async resolveVariable(
         reqId: number,
         method: "get" | "set" | "list" | "show",
         args: unknown[],
-        model: BoardEditorModel,
-        host: string,
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
@@ -1186,22 +1206,19 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         try {
             const namespace = await resolveBoardNamespace(this.props.boardRoot);
             reply = await resolveBoardVarRequest(namespace, method, args);
-        } catch (error) {
+        } catch (error: unknown) {
             reply = { error: errMessage(error) };
         }
-        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardVarResultMsg = {
             __persephone: "var:result", reqId, result: reply.result, error: reply.error,
         };
-        frame.contentWindow.postMessage(message, `board://${host}`);
+        this.replyToFrame(frame, generation, message);
     }
 
     private async resolveSettings(
         reqId: number,
         method: "get",
         args: unknown[],
-        model: BoardEditorModel,
-        host: string,
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
@@ -1211,19 +1228,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         } catch (error: unknown) {
             reply = { error: errMessage(error, "Failed to read board setting.") };
         }
-        if (!this.live || generation !== this.generation || this.iframe !== frame
-            || model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
         const message: BoardSettingsResultMsg = {
             __persephone: "settings:result",
             reqId,
             result: reply.result,
             error: reply.error,
         };
-        try {
-            frame.contentWindow.postMessage(message, `board://${host}`);
-        } catch {
-            // The frame may be replaced while the reply is posted.
-        }
+        this.replyToFrame(frame, generation, message);
     }
 
     private focusFrame(): void {

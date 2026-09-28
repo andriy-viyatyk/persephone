@@ -15,7 +15,7 @@ optional `representation` to capability discovery and manifest declarations. Boa
 `content.view` must provide one non-empty representation per supported format and set
 `minBridgeVersion: "1.21.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
-`data:` URLs, and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
+`data:` URLs and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
 board declares in its manifest; `1.12.0` added `persephone.clipboard.writeImage(data)` and
 `persephone.clipboard.writeText(text)` for native OS clipboard writes; the preceding `1.11.0`
@@ -64,8 +64,9 @@ replace the existing trust gate.
 
 The catalog is transient main-frame state: reload, navigation, disposal, or loss of trust clears
 the controls and their dynamic element declarations, and a new frame must call `set()` again.
-Calls made by top-level script code before the document's `load` event are queued and sent in call
-order once that event fires.
+Host-frame request/reply calls and toolbar calls made before the document's `load` event are queued
+and sent in call order once that event fires. This lets top-level board code request host data while
+the document is still loading.
 
 ## Board page-toolbar text
 

@@ -56,7 +56,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1539 | [Capability contract single-sourced: error codes, intent envelope, outcome shape](../tasks/US-1539-capability-contract/README.md) | 2 — contracts | M | Done |
 | US-1540 | [One owner for a capability request's lifecycle](../tasks/US-1540-capability-request-lifecycle/README.md) | 2 — contracts | L | Done |
 | US-1541 | [Built-in capability resolution runs the handler it resolved; one image-edit helper](../tasks/US-1541-builtin-capability-resolution/README.md) | 2 — contracts | S | Done |
-| US-1542 | Host-frame request/reply channel: one table on each side, typed message union | 2 — contracts | L | Planned |
+| US-1542 | [Host-frame request/reply channel: one table on each side, typed message union](../tasks/US-1542-host-frame-channel/README.md) | 2 — contracts | L | Done |
 | US-1543 | The service host owns the service lifecycle protocol | 2 — contracts | L | Planned |
 | US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |
 | US-1545 | Split the module-service supervisor; one state-transition helper | 3 — structure | L | Planned |
@@ -759,6 +759,10 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
   - `app.ts:178`: "handles CLI arguments".
 - **Stale backlog entry:** `doc/tasks/backlog.md` still lists the platform roadmap as an unscheduled
   proposal under "Recorded Epics".
+- **Found live in US-1542 (pre-existing, not yet investigated):** a board `toolbar.update([{ id, title }])`
+  patch does not change the rendered host button's `aria-label`. Excalidraw's theme button keeps
+  "Switch to Light Theme" after toggling. HEAD shows the same result. Look at
+  `BoardToolbarControls.updateCatalog` → `record.updateDescriptor`.
 
 ---
 

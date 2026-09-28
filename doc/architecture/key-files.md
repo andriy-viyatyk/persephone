@@ -471,7 +471,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board host-frame file-icon request/reply (`board:fileIcons` and `fileIcons:result`; the reply deduplicates `data:` URLs and maps exact names to URL indices) | `/src/ipc/board-bridge-channels.ts`, `/src/renderer/editors/board/BoardWebview.ts`, `/src/board-shim.ts` |
 | Board settings bridge messages (`board:settings` request/reply and `settings:changed` effective-value push) | `/src/ipc/board-bridge-channels.ts`, `/src/renderer/editors/board/BoardWebview.ts`, `/src/board-shim.ts` |
 | Board intent/capability shim surface (`persephone.intent.*` including `resolve(value, { discardPage })`, `persephone.capabilities.*`, shared `IntentEnvelope`/error-code guard, one-shot delivery, and realm-local typed board errors) | `/src/board-shim.ts` |
-| Board shim pre-load toolbar queue (holds `set`, `update`, and `setText` messages until the document `load` event, then posts them in call order) | `/src/board-shim.ts` |
+| Board shim pre-load queue (holds host-frame request/reply calls and toolbar `set`, `update`, and `setText` messages until the document `load` event, then posts them in call order) | `/src/board-shim.ts` |
 | Board-pipe request/reply wire types | `/src/ipc/board-pipe-channels.ts` |
 | Board-pipe page registration and renderer reply handlers | `/src/ipc/main/board-pipe-handlers.ts` |
 | Remote board AiVision protocol (main-frame `board:aiVision` shape registration, host-initiated `ai:request` / board `board:aiResult` correlation, and trusted `board:aiNotify` delivery) | `/src/ipc/board-bridge-channels.ts`, `/src/renderer/editors/board/BoardWebview.ts` |

@@ -116,8 +116,9 @@ content, not a replacement for the existing trust gate.
 The catalog exists only for the live trusted main frame. Reload, navigation away, frame disposal,
 or loss of trust clears controls, dynamic element declarations, menus, and pending input timers;
 the next frame must call `set()` again. Declaring from top-level script code is supported: the shim
-holds `set()`, `update()`, and `setText()` calls made before the document's `load` event and sends
-them, in call order, once it fires. The toolbar group is visually separated from Persephone's
+queues host-frame request/reply calls and `set()`, `update()`, and `setText()` calls made before the
+document's `load` event, then sends them in call order once it fires. The toolbar group is visually
+separated from Persephone's
 own **…** menu, which contains Reload board, Open board log, and Board properties; it does not add a
 permission or trust surface.
 

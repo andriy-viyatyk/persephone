@@ -36,11 +36,10 @@ import type {
     BoardCapabilityIntentCancelMsg,
     BoardCapabilityIntentRequestMsg,
     BoardCapabilityIntentResultMsg,
-    BoardCapabilityInvokeRequestMsg,
     BoardCapabilityInvokeResultMsg,
-    BoardCapabilityListRequestMsg,
     BoardCapabilityListResultMsg,
     BoardContentOpenResultMsg,
+    BoardFilePathResultMsg,
     BoardBootContext,
     BoardJsonValue,
     BoardFireMethod,
@@ -55,10 +54,14 @@ import type {
     BoardNavigationReturnMsg,
     BoardNavigationReturnUrlResultMsg,
     BoardOpenContentRequest,
+    BoardOpenContentResultMsg,
     BoardRpcMethod,
     BoardStateSyncMsg,
     BoardSettingsChangedMsg,
     BoardSettingsResultMsg,
+    BoardToHostMsg,
+    BoardToolbarTextMsg,
+    BoardVarResultMsg,
     BoardThemePalette,
     BoardToMain,
     BoardServiceStatus,
@@ -399,70 +402,161 @@ const runnerHandlers = new Map<
     (channel: RunnerInboundChannel, msg: RunnerInboundMsg) => void
 >();
 
-/** Pending var request/reply promises keyed by reqId (host-frame channel, EPIC-046). */
-const pendingVar = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
-let varReqId = 0;
+type BoardHostRequestReply =
+    | BoardFilePathResultMsg
+    | BoardFileIconsResultMsg
+    | BoardContentOpenResultMsg
+    | BoardOpenContentResultMsg
+    | BoardVarResultMsg
+    | BoardSettingsResultMsg
+    | BoardNavigationReturnUrlResultMsg
+    | BoardCapabilityListResultMsg
+    | BoardCapabilityInvokeResultMsg;
 
-/** Pending settings request/reply promises keyed by reqId (host-frame channel, EPIC-111). */
-const pendingSettings = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
-let settingsReqId = 0;
+type BoardHostRequestPayload =
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:var" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:settings" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:filePath" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:fileIcons" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:contentOpen" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:openContent" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "navigation:createReturnUrl" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:list" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">;
+
+const pendingHostRequests = new Map<number, {
+    requestType: BoardHostRequestPayload["__persephone"];
+    expectedReplyType: BoardHostRequestReply["__persephone"];
+    settle: (message: BoardHostRequestReply) => void;
+    reject: (error: Error) => void;
+    failPost: (error: unknown) => Error;
+}>();
+let hostRequestId = Math.floor(Math.random() * 0x80000000);
 const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
 
-/** Pending content-path request/reply promises keyed by reqId (host-frame channel). */
-const pendingFilePath = new Map<
-    number,
-    { resolve: (v: string | undefined) => void; reject: (e: Error) => void }
->();
-let filePathReqId = 0;
+let toolbarDocumentLoaded = document.readyState === "complete";
+const pendingDocumentMessages: Array<() => void> = [];
+if (!toolbarDocumentLoaded) {
+    window.addEventListener("load", () => {
+        toolbarDocumentLoaded = true;
+        for (const send of pendingDocumentMessages.splice(0)) send();
+    }, { once: true });
+}
 
-/** Pending content.open request/reply promises keyed by reqId. */
-const pendingContentOpen = new Map<
-    number,
-    { resolve: (value: { url: string; size: number; contentType: string }) => void; reject: (error: Error) => void }
->();
-let contentOpenReqId = 0;
+function postAfterDocumentLoad(send: () => void): void {
+    if (toolbarDocumentLoaded) send();
+    else pendingDocumentMessages.push(send);
+}
 
-/** Ask the renderer for a readable local path for this board's file. Used only when the source is
- *  non-local — the renderer materializes it (which for an `http(s)` source means downloading it),
- *  so this can take a while. */
-function filePathRpc(): Promise<string | undefined> {
-    return new Promise<string | undefined>((resolve, reject) => {
-        const reqId = ++filePathReqId;
-        pendingFilePath.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "board:filePath", reqId },
-                hostPostTarget,
-            );
-        } catch {
-            pendingFilePath.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
+function hostRequest<T>(
+    message: BoardHostRequestPayload,
+    expectedReplyType: BoardHostRequestReply["__persephone"],
+    decode: (reply: BoardHostRequestReply) => T,
+    failPost: (error: unknown) => Error = () => new Error("Persephone host is unavailable."),
+): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const reqId = ++hostRequestId;
+        pendingHostRequests.set(reqId, {
+            requestType: message.__persephone,
+            expectedReplyType,
+            settle: (reply) => {
+                try {
+                    resolve(decode(reply));
+                } catch (error: unknown) {
+                    reject(error);
+                }
+            },
+            reject,
+            failPost,
+        });
+        postAfterDocumentLoad(() => {
+            // A request queued before load may already have been rejected (bridge replaced).
+            if (!pendingHostRequests.has(reqId)) return;
+            try {
+                window.parent.postMessage({ ...message, reqId }, hostPostTarget);
+            } catch (error: unknown) {
+                const pending = pendingHostRequests.get(reqId);
+                if (!pending) return;
+                pendingHostRequests.delete(reqId);
+                pending.reject(pending.failPost(error));
+            }
+        });
     });
 }
 
-/** `icons.forFiles()` (US-1533): file name → icon `data:` URL. Dropped on a theme change, since
- *  single-colour icons are serialized in the theme's icon colour. */
+function rejectPendingCapabilityRequests(error: BoardCapabilityError): void {
+    for (const [reqId, pending] of pendingHostRequests) {
+        if (pending.requestType !== "board:capabilities:list"
+            && pending.requestType !== "board:capabilities:invoke") continue;
+        pendingHostRequests.delete(reqId);
+        pending.reject(error);
+    }
+}
+
+/** Pending content-path and content.open calls use the shared host request channel. */
+function filePathRpc(): Promise<string | undefined> {
+    return hostRequest({ __persephone: "board:filePath" }, "filePath:result", (reply) => {
+        const data = reply as BoardFilePathResultMsg;
+        if (data.error != null) throw new Error(data.error);
+        return data.path;
+    });
+}
+
 const fileIconCache = new Map<string, string>();
 let fileIconCacheGeneration = 0;
-const pendingFileIcons = new Map<
-    number,
-    { resolve: (value: { urls: string[]; icons: Record<string, number> }) => void; reject: (error: Error) => void }
->();
-let fileIconsReqId = 0;
 const FILE_ICONS_BATCH = 500;
 
 function fileIconsRpc(names: string[]): Promise<{ urls: string[]; icons: Record<string, number> }> {
-    return new Promise((resolve, reject) => {
-        const reqId = ++fileIconsReqId;
-        pendingFileIcons.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage({ __persephone: "board:fileIcons", reqId, names }, hostPostTarget);
-        } catch {
-            pendingFileIcons.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
+    return hostRequest({ __persephone: "board:fileIcons", names }, "fileIcons:result", (reply) => {
+        const data = reply as BoardFileIconsResultMsg;
+        if (data.error != null) throw new Error(data.error);
+        return { urls: data.urls ?? [], icons: data.icons ?? {} };
     });
+}
+
+function contentOpenRpc(
+    link: string,
+    timeoutMs?: number,
+): Promise<{ url: string; size: number; contentType: string }> {
+    return hostRequest(
+        { __persephone: "board:contentOpen", link, ...(timeoutMs === undefined ? {} : { timeoutMs }) },
+        "contentOpen:result",
+        (reply) => {
+            const data = reply as BoardContentOpenResultMsg;
+            if (data.error != null) throw new Error(data.error);
+            if (typeof data.url === "string" && typeof data.size === "number"
+                && Number.isFinite(data.size) && data.size >= 0 && typeof data.contentType === "string") {
+                return { url: data.url, size: data.size, contentType: data.contentType };
+            }
+            throw new Error("Malformed persephone.content.open() response.");
+        },
+    );
+}
+
+function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promise<unknown> {
+    return hostRequest({ __persephone: "board:var", varMethod: method, varArgs: args }, "var:result", (reply) => {
+        const data = reply as BoardVarResultMsg;
+        if (data.error != null) throw new Error(data.error);
+        return data.result;
+    });
+}
+
+function settingsRpc(id: string): Promise<string | number | boolean> {
+    return hostRequest(
+        { __persephone: "board:settings", settingsMethod: "get", settingsArgs: [id] },
+        "settings:result",
+        (reply) => {
+            const data = reply as BoardSettingsResultMsg;
+            if (data.error != null) throw new Error(data.error);
+            if (isBoardSettingValue(data.result)) return data.result;
+            throw new Error("Malformed persephone.settings.get() response.");
+        },
+    );
+}
+
+function isBoardSettingValue(value: unknown): value is string | number | boolean {
+    return typeof value === "string" || typeof value === "boolean"
+        || (typeof value === "number" && Number.isFinite(value));
 }
 
 async function iconsForFiles(names: unknown): Promise<Record<string, string>> {
@@ -493,83 +587,13 @@ async function iconsForFiles(names: unknown): Promise<Record<string, string>> {
     return result;
 }
 
-function contentOpenRpc(
-    link: string,
-    timeoutMs?: number,
-): Promise<{ url: string; size: number; contentType: string }> {
-    return new Promise((resolve, reject) => {
-        const reqId = ++contentOpenReqId;
-        pendingContentOpen.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "board:contentOpen", reqId, link, ...(timeoutMs === undefined ? {} : { timeoutMs }) },
-                hostPostTarget,
-            );
-        } catch {
-            pendingContentOpen.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
-    });
-}
-
-function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promise<unknown> {
-    return new Promise<unknown>((resolve, reject) => {
-        const reqId = ++varReqId;
-        pendingVar.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "board:var", reqId, varMethod: method, varArgs: args },
-                hostPostTarget,
-            );
-        } catch {
-            pendingVar.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
-    });
-}
-
-function settingsRpc(id: string): Promise<string | number | boolean> {
-    return new Promise<string | number | boolean>((resolve, reject) => {
-        const reqId = ++settingsReqId;
-        pendingSettings.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "board:settings", reqId, settingsMethod: "get", settingsArgs: [id] },
-                hostPostTarget,
-            );
-        } catch {
-            pendingSettings.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
-    });
-}
-
-function isBoardSettingValue(value: unknown): value is string | number | boolean {
-    return typeof value === "string"
-        || typeof value === "boolean"
-        || (typeof value === "number" && Number.isFinite(value));
-}
-
-/** Pending openContent request/reply promises keyed by reqId (host-frame channel, US-1404). */
-const pendingOpenContent = new Map<
-    number,
-    { resolve: (v: string) => void; reject: (e: Error) => void }
->();
-let openContentReqId = 0;
-
-/** The board-facing return event: the documented shape, with no wire discriminator. */
+/** The board-facing return event has no wire discriminator. */
 interface PersephoneNavigationReturnEvent {
     readonly url: string;
     readonly query: Readonly<Record<string, readonly string[]>>;
     readonly hash: Readonly<Record<string, readonly string[]>>;
 }
 
-/** Pending navigation-return URL request/reply promises keyed by request id. */
-const pendingNavigationReturnUrls = new Map<number, {
-    resolve: (url: string) => void;
-    reject: (error: Error) => void;
-}>();
-let navigationReturnReqId = 0;
 const navigationReturnCbs: Array<(event: PersephoneNavigationReturnEvent) => void> = [];
 interface PersephoneToolbarActionEvent {
     readonly id: string;
@@ -579,18 +603,11 @@ interface PersephoneToolbarActionEvent {
 const toolbarActionCbs = new Set<(event: PersephoneToolbarActionEvent) => void>();
 
 function navigationReturnUrlRpc(): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-        const reqId = ++navigationReturnReqId;
-        pendingNavigationReturnUrls.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "navigation:createReturnUrl", reqId },
-                hostPostTarget,
-            );
-        } catch {
-            pendingNavigationReturnUrls.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
+    return hostRequest({ __persephone: "navigation:createReturnUrl" }, "navigation:returnUrl", (reply) => {
+        const data = reply as BoardNavigationReturnUrlResultMsg;
+        if (typeof data.error === "string") throw new Error(data.error);
+        if (typeof data.url === "string") return data.url;
+        throw new Error("Malformed navigation return URL response.");
     });
 }
 
@@ -602,22 +619,7 @@ function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) =
     };
 }
 
-type BoardToolbarTextMsg = { __persephone: "board:setToolbarText"; toolbarText: string };
 type ToolbarMessage = BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardToolbarTextMsg;
-
-// Toolbar messages posted before this document's load event would be tagged with the frame
-// generation that `BoardWebview.handleLoad` retires when the iframe's load fires, and cleared.
-// Hold them until `load`, then flush in call order. A message posted from the child's own load
-// handler arrives as a later task, after the host has bumped the generation. A document that
-// never fires `load` never flushes; its toolbar stays empty, as it would have been anyway.
-let toolbarDocumentLoaded = document.readyState === "complete";
-const pendingToolbarMessages: ToolbarMessage[] = [];
-if (!toolbarDocumentLoaded) {
-    window.addEventListener("load", () => {
-        toolbarDocumentLoaded = true;
-        for (const message of pendingToolbarMessages.splice(0)) sendToolbarMessage(message);
-    }, { once: true });
-}
 
 function sendToolbarMessage(message: ToolbarMessage): void {
     try {
@@ -628,11 +630,7 @@ function sendToolbarMessage(message: ToolbarMessage): void {
 }
 
 function postToolbarMessage(message: ToolbarMessage): void {
-    if (!toolbarDocumentLoaded) {
-        pendingToolbarMessages.push(message);
-        return;
-    }
-    sendToolbarMessage(message);
+    postAfterDocumentLoad(() => sendToolbarMessage(message));
 }
 
 function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void): () => void {
@@ -728,12 +726,6 @@ function deliverIntent(): void {
     }
 }
 
-const pendingCapabilityCalls = new Map<number, {
-    resolve: (value: unknown) => void;
-    reject: (error: BoardCapabilityError) => void;
-}>();
-let capabilityReqId = 0;
-
 function capabilityErrorFromReply(error: { code?: unknown; message?: unknown } | string | undefined): BoardCapabilityError {
     const code = typeof error === "object" && error && isCapabilityErrorCode(error.code)
         ? error.code
@@ -745,16 +737,11 @@ function capabilityErrorFromReply(error: { code?: unknown; message?: unknown } |
 }
 
 function capabilityListRpc(): Promise<unknown> {
-    return new Promise<unknown>((resolve, reject) => {
-        const reqId = ++capabilityReqId;
-        pendingCapabilityCalls.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage({ __persephone: "board:capabilities:list", reqId } as BoardCapabilityListRequestMsg, hostPostTarget);
-        } catch (error: unknown) {
-            pendingCapabilityCalls.delete(reqId);
-            reject(new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
-        }
-    });
+    return hostRequest({ __persephone: "board:capabilities:list" }, "capabilities:list:result", (reply) => {
+        const data = reply as BoardCapabilityListResultMsg;
+        if (data.error) throw capabilityErrorFromReply(data.error);
+        return data.result;
+    }, (error) => new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
 }
 
 function capabilityInvokeRpc(
@@ -762,24 +749,23 @@ function capabilityInvokeRpc(
     payload: unknown,
     options?: { version?: number; deadlineMs?: number },
 ): Promise<unknown> {
-    return new Promise<unknown>((resolve, reject) => {
-        const reqId = ++capabilityReqId;
-        pendingCapabilityCalls.set(reqId, { resolve, reject });
-        const request: BoardCapabilityInvokeRequestMsg = {
+    return hostRequest(
+        {
             __persephone: "board:capabilities:invoke",
-            reqId,
             id,
             ...(options?.version === undefined ? {} : { version: options.version }),
             payload,
             ...(options?.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
-        };
-        try {
-            window.parent.postMessage(request, hostPostTarget);
-        } catch (error: unknown) {
-            pendingCapabilityCalls.delete(reqId);
-            reject(new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
-        }
-    });
+        },
+        "capabilities:invoke:result",
+        (reply) => {
+            const data = reply as BoardCapabilityInvokeResultMsg;
+            if (data.error) throw capabilityErrorFromReply(data.error);
+            if (typeof data.pageId === "string") return { pageId: data.pageId, result: data.result };
+            return { result: data.result };
+        },
+        (error) => new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")),
+    );
 }
 
 /**
@@ -793,18 +779,11 @@ function capabilityInvokeRpc(
  * exactly the scoping it has today — this adds one constructor, not a page-model escape hatch.
  */
 function openContentRpc(request: BoardOpenContentRequest): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-        const reqId = ++openContentReqId;
-        pendingOpenContent.set(reqId, { resolve, reject });
-        try {
-            window.parent.postMessage(
-                { __persephone: "board:openContent", reqId, openContent: request },
-                hostPostTarget,
-            );
-        } catch {
-            pendingOpenContent.delete(reqId);
-            reject(new Error("Persephone host is unavailable."));
-        }
+    return hostRequest({ __persephone: "board:openContent", openContent: request }, "openContent:result", (reply) => {
+        const data = reply as BoardOpenContentResultMsg;
+        if (data.error != null) throw new Error(data.error);
+        if (typeof data.pageId === "string") return data.pageId;
+        throw new Error("Malformed persephone.openContent() response.");
     });
 }
 
@@ -998,8 +977,7 @@ function attachPort(p: MessagePort): void {
             "handler-closed",
             "Persephone bridge was replaced.",
         );
-        for (const pending of pendingCapabilityCalls.values()) pending.reject(capabilityBridgeReplaced);
-        pendingCapabilityCalls.clear();
+        rejectPendingCapabilityRequests(capabilityBridgeReplaced);
     }
     port = p;
     p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data as MainToBoard);
@@ -1080,16 +1058,14 @@ onHostMessage((event) => {
     else deliverSourceOpen(data.sourceUrl);
 });
 
-// Board settings request reply (EPIC-111) — renderer → board over the host-frame channel.
+// A single listener settles all hostRequest replies by request id and expected reply type.
 onHostMessage((event) => {
-    const data = event.data as BoardSettingsResultMsg | undefined;
-    if (!data || data.__persephone !== "settings:result" || typeof data.reqId !== "number") return;
-    const pending = pendingSettings.get(data.reqId);
-    if (!pending) return;
-    pendingSettings.delete(data.reqId);
-    if (data.error != null) pending.reject(new Error(data.error));
-    else if (isBoardSettingValue(data.result)) pending.resolve(data.result);
-    else pending.reject(new Error("Malformed persephone.settings.get() response."));
+    const envelope = event.data as { __persephone?: unknown; reqId?: unknown } | undefined;
+    if (!envelope || typeof envelope.__persephone !== "string" || typeof envelope.reqId !== "number") return;
+    const pending = pendingHostRequests.get(envelope.reqId);
+    if (!pending || pending.expectedReplyType !== envelope.__persephone) return;
+    pendingHostRequests.delete(envelope.reqId);
+    pending.settle(event.data as BoardHostRequestReply);
 });
 
 // Board settings change push (EPIC-111) — effective values include the declaration default.
@@ -1172,36 +1148,6 @@ onHostMessage((event) => {
     if (activeIntent?.requestId === data.requestId) activeIntent.cancelled = true;
 });
 
-// Capability list result from the renderer.
-onHostMessage((event) => {
-    const data = event.data as BoardCapabilityListResultMsg | undefined;
-    if (!data || data.__persephone !== "capabilities:list:result" || typeof data.reqId !== "number") return;
-    const pending = pendingCapabilityCalls.get(data.reqId);
-    if (!pending) return;
-    pendingCapabilityCalls.delete(data.reqId);
-    if (data.error) pending.reject(capabilityErrorFromReply(data.error));
-    else pending.resolve(data.result);
-});
-
-// Capability invoke result from the renderer.
-onHostMessage((event) => {
-    const data = event.data as BoardCapabilityInvokeResultMsg | undefined;
-    if (!data || data.__persephone !== "capabilities:invoke:result" || typeof data.reqId !== "number") return;
-    const pending = pendingCapabilityCalls.get(data.reqId);
-    if (!pending) return;
-    pendingCapabilityCalls.delete(data.reqId);
-    if (data.error) {
-        pending.reject(capabilityErrorFromReply(data.error));
-    } else if (typeof data.pageId === "string") {
-        pending.resolve({ pageId: data.pageId, result: data.result });
-    } else {
-        // A capability need not open a page: a built-in handler can resolve a plain value
-        // A capability may resolve without opening a page. Keep its result inside the documented
-        // result envelope rather than treating the reply as malformed.
-        pending.resolve({ result: data.result });
-    }
-});
-
 // Host content push (EPIC-043) — renderer → board over window.postMessage. Same trust gate as the
 // handshake: source must be the host parent frame; origin enforced only for a strict http(s) host.
 // A SEPARATE listener because the handshake listener above early-returns non-`__persephoneInit`.
@@ -1262,87 +1208,6 @@ onHostMessage((event) => {
                 // The host frame may have gone away while the remote was handling the request.
             }
         });
-});
-
-// Content-path request reply — renderer → board. Same trust gate as host:content/state:sync.
-onHostMessage((event) => {
-    const data = event.data as
-        { __persephone?: string; reqId?: number; path?: string; error?: string }
-        | undefined;
-    if (!data || data.__persephone !== "filePath:result" || typeof data.reqId !== "number") return;
-    const p = pendingFilePath.get(data.reqId);
-    if (!p) return;
-    pendingFilePath.delete(data.reqId);
-    if (data.error != null) p.reject(new Error(data.error));
-    else p.resolve(data.path);
-});
-
-// icons.forFiles request reply — renderer -> board over the host-frame channel (US-1533).
-onHostMessage((event) => {
-    const data = event.data as BoardFileIconsResultMsg | undefined;
-    if (!data || data.__persephone !== "fileIcons:result" || typeof data.reqId !== "number") return;
-    const pending = pendingFileIcons.get(data.reqId);
-    if (!pending) return;
-    pendingFileIcons.delete(data.reqId);
-    if (data.error != null) pending.reject(new Error(data.error));
-    else pending.resolve({ urls: data.urls ?? [], icons: data.icons ?? {} });
-});
-
-// content.open request reply — renderer -> board over the host-frame channel.
-onHostMessage((event) => {
-    const data = event.data as BoardContentOpenResultMsg | undefined;
-    if (!data || data.__persephone !== "contentOpen:result" || typeof data.reqId !== "number") return;
-    const pending = pendingContentOpen.get(data.reqId);
-    if (!pending) return;
-    pendingContentOpen.delete(data.reqId);
-    if (data.error != null) {
-        pending.reject(new Error(data.error));
-    } else if (typeof data.url === "string" && typeof data.size === "number"
-        && Number.isFinite(data.size) && data.size >= 0 && typeof data.contentType === "string") {
-        pending.resolve({ url: data.url, size: data.size, contentType: data.contentType });
-    } else {
-        pending.reject(new Error("Malformed persephone.content.open() response."));
-    }
-});
-
-// Var request reply (EPIC-046) — renderer → board. Same trust gate as host:content/state:sync.
-onHostMessage((event) => {
-    const data = event.data as
-        { __persephone?: string; reqId?: number; result?: unknown; error?: string }
-        | undefined;
-    if (!data || data.__persephone !== "var:result" || typeof data.reqId !== "number") return;
-    const p = pendingVar.get(data.reqId);
-    if (!p) return;
-    pendingVar.delete(data.reqId);
-    if (data.error != null) p.reject(new Error(data.error));
-    else p.resolve(data.result);
-});
-
-// openContent request reply (US-1404) — renderer → board. Same trust gate as host:content/state:sync.
-onHostMessage((event) => {
-    const data = event.data as
-        { __persephone?: string; reqId?: number; pageId?: string; error?: string }
-        | undefined;
-    if (!data || data.__persephone !== "openContent:result" || typeof data.reqId !== "number") return;
-    const p = pendingOpenContent.get(data.reqId);
-    if (!p) return;
-    pendingOpenContent.delete(data.reqId);
-    if (data.error != null) p.reject(new Error(data.error));
-    else if (typeof data.pageId === "string") p.resolve(data.pageId);
-    else p.reject(new Error("Malformed persephone.openContent() response."));
-});
-
-// Navigation-return request replies and claimed return events. Both use the same
-// source/origin gate as every other host-frame message.
-onHostMessage((event) => {
-    const data = event.data as BoardNavigationReturnUrlResultMsg | undefined;
-    if (!data || data.__persephone !== "navigation:returnUrl" || typeof data.reqId !== "number") return;
-    const pending = pendingNavigationReturnUrls.get(data.reqId);
-    if (!pending) return;
-    pendingNavigationReturnUrls.delete(data.reqId);
-    if (typeof data.error === "string") pending.reject(new Error(data.error));
-    else if (typeof data.url === "string") pending.resolve(data.url);
-    else pending.reject(new Error("Malformed navigation return URL response."));
 });
 
 onHostMessage((event) => {

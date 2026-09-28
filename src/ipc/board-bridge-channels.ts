@@ -369,78 +369,82 @@ export interface BoardToolbarControlEventMsg {
     value?: boolean | string;
 }
 
-/** Messages the shim posts to the HOST FRAME via `window.parent.postMessage` (the
- *  board→host channel — NOT the board↔main port): overlay-dismiss pings, error
- *  breadcrumbs, and the busy flag (US-799). Handled in `BoardWebview.onMessage`. */
-export interface BoardToHostMsg {
-    __persephone:
-        | "board:interact"
-        | "board:error"
-        | "board:log"   // mirrored console.warn/error from the board frame → ui.log
-        | "board:busy"
-        | "board:setContent" // content-host board wrote content (EPIC-043)
-        | "board:save"       // content-host board / Ctrl+S requested a save (EPIC-043)
-        | "board:setState"   // persephone.state.set — replace shared state (EPIC-044)
-        | "board:mergeState" // persephone.state.merge — shallow-merge shared state
-        | "board:stateInit"  // persephone.state.init — seed defaults + declare restorable keys
-        | "board:setSecondaryViews" // persephone.setSecondaryViews — replace the board's views (EPIC-044)
-        | "board:setStatusText" // persephone.setStatusText — content-host footer status (US-892)
-        | "board:setToolbarText" // persephone.toolbar.setText — transient page-toolbar text (US-1494)
-        | "board:cycleTheme" // Ctrl+Alt+[ / ] pressed inside the frame — cycle the app theme
-        | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
-        | "board:settings" // board requested a settings.get — request/reply, needs a reqId
-        | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
-        | "board:fileIcons" // persephone.icons.forFiles — file names to icon image URLs; request/reply, needs a reqId (US-1533)
-        | "board:openContent" // persephone.openContent — create a page in another editor; request/reply, needs a reqId
-        | "board:contentOpen" // persephone.content.open — create a ranged in-frame resource
-        | "board:aiVision"
-        | "board:aiNotify"
-        | "board:aiResult";
-    /** `board:error` / `board:log` detail. */
-    message?: string;
-    /** `board:log` severity: `"warn"` or `"error"` (the mirrored console method). */
-    level?: string;
-    /** `board:busy` value. */
-    busy?: boolean;
-    /** `board:setContent` payload — the new UTF-8 content. */
-    content?: string;
-    /** `board:setState` full replacement. */
-    state?: Record<string, unknown>;
-    /** `board:mergeState` shallow-merge partial. */
-    partial?: Record<string, unknown>;
-    /** `board:stateInit` defaults (fill-missing). */
-    defaults?: Record<string, unknown>;
-    /** `board:stateInit` keys to persist (opt-in, D9). */
-    restorableKeys?: string[];
-    /** `board:setSecondaryViews` payload — the full replacement view set.
-     *  Structurally mirrors `SecondaryViewDecl` (this module stays dependency-free,
-     *  so it can't import that type); normalized renderer-side by `normalizeSecondaryViews`. */
-    views?: Array<{ id: string; html?: string; title?: string }>;
-    /** `board:setStatusText` payload — the footer status text (content-host boards). `""` clears. */
-    statusText?: string;
-    /** `board:setToolbarText` payload — transient page-toolbar text. `""` explicitly falls back to the board path. */
-    toolbarText?: string;
-    /** `board:cycleTheme` direction: `1` = next theme (Ctrl+Alt+]), `-1` = previous (Ctrl+Alt+[). */
-    direction?: 1 | -1;
-    /** `board:var` request id — echoed back in the `var:result` push. */
-    reqId?: number;
-    /** `board:var` method. */
-    varMethod?: "get" | "set" | "list" | "show";
-    /** `board:var` positional args (get: [name, env?]; set: [name, value, env?]; list: [env?];
-     *  show: []). */
-    varArgs?: unknown[];
-    /** `board:settings` request id — echoed back in the `settings:result` push. */
-    settingsMethod?: "get";
-    /** `board:settings` positional args (`get: [id]`). */
-    settingsArgs?: unknown[];
-    /** `board:aiNotify` remote-authored notification text. */
-    text?: string;
-    /** `board:openContent` payload — the requested editor/language/title/content. */
-    openContent?: BoardOpenContentRequest;
-    /** `board:contentOpen` link and optional positive timeout. */
-    link?: string;
-    timeoutMs?: number;
+/** The complete board-to-host window message union. */
+/** Text used by the board toolbar API on the board-to-host channel. */
+export interface BoardToolbarTextMsg {
+    __persephone: "board:setToolbarText";
+    toolbarText: string;
 }
+
+export interface BoardInteractMsg { __persephone: "board:interact" }
+export interface BoardErrorMsg { __persephone: "board:error"; message: string }
+export interface BoardLogMsg { __persephone: "board:log"; message: string; level: "warn" | "error" }
+export interface BoardBusyMsg { __persephone: "board:busy"; busy: boolean }
+export interface BoardSetContentMsg { __persephone: "board:setContent"; content: string }
+export interface BoardSaveMsg { __persephone: "board:save" }
+export interface BoardSetStateMsg { __persephone: "board:setState"; state: Record<string, unknown> }
+export interface BoardMergeStateMsg { __persephone: "board:mergeState"; partial: Record<string, unknown> }
+export interface BoardStateInitMsg {
+    __persephone: "board:stateInit";
+    defaults: Record<string, unknown>;
+    restorableKeys?: string[];
+}
+export interface BoardSetSecondaryViewsMsg {
+    __persephone: "board:setSecondaryViews";
+    views: Array<{ id: string; html?: string; title?: string }>;
+}
+export interface BoardStatusTextMsg { __persephone: "board:setStatusText"; statusText: string }
+export interface BoardCycleThemeMsg { __persephone: "board:cycleTheme"; direction: 1 | -1 }
+export interface BoardVarRequestMsg {
+    __persephone: "board:var";
+    reqId: number;
+    varMethod: "get" | "set" | "list" | "show";
+    varArgs: unknown[];
+}
+export interface BoardSettingsRequestMsg {
+    __persephone: "board:settings";
+    reqId: number;
+    settingsMethod: "get";
+    settingsArgs: unknown[];
+}
+export interface BoardFilePathRequestMsg { __persephone: "board:filePath"; reqId: number }
+export interface BoardFileIconsRequestMsg { __persephone: "board:fileIcons"; reqId: number; names: string[] }
+export interface BoardOpenContentRequestMsg {
+    __persephone: "board:openContent";
+    reqId: number;
+    openContent: BoardOpenContentRequest;
+}
+
+/** Board-to-host window messages. Each discriminator has its own exact payload. */
+export type BoardToHostMsg =
+    | BoardInteractMsg
+    | BoardErrorMsg
+    | BoardLogMsg
+    | BoardBusyMsg
+    | BoardSetContentMsg
+    | BoardSaveMsg
+    | BoardSetStateMsg
+    | BoardMergeStateMsg
+    | BoardStateInitMsg
+    | BoardSetSecondaryViewsMsg
+    | BoardStatusTextMsg
+    | BoardToolbarTextMsg
+    | BoardToolbarSetMsg
+    | BoardToolbarUpdateMsg
+    | BoardCycleThemeMsg
+    | BoardVarRequestMsg
+    | BoardSettingsRequestMsg
+    | BoardFilePathRequestMsg
+    | BoardFileIconsRequestMsg
+    | BoardOpenContentRequestMsg
+    | BoardContentOpenRequestMsg
+    | BoardAiVisionRegistrationMsg
+    | BoardAiVisionNotifyMsg
+    | BoardAiVisionResultMsg
+    | BoardCapabilityIntentResultMsg
+    | BoardCapabilityListRequestMsg
+    | BoardCapabilityInvokeRequestMsg
+    | BoardNavigationCreateReturnUrlMsg;
 
 /** Host content pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-043).
  *  Repeated: an initial snapshot after the frame loads, then on every host content/language
@@ -631,7 +635,9 @@ export type BoardHostFrameMsg =
     | BoardSourceOpenedMsg
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
+    | BoardFileIconsResultMsg
     | BoardContentOpenResultMsg
+    | BoardOpenContentResultMsg
     | BoardVarResultMsg
     | BoardSettingsResultMsg
     | BoardSettingsChangedMsg
