@@ -23,6 +23,15 @@ export type RendererLeaseLostReason =
     | "service-exited"
     | "renderer-port-attach-failed";
 export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
+export interface ServiceErrorPayload { code: string; message: string }
+export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };
+export interface ServiceHostConfig {
+    serviceRequestDeadlineMs: number;
+    maxOutstandingRequestsPerService: number;
+    maxBufferedPipeBytes: number;
+    maxBoardPipeChunkBytes: number;
+    providerRequestClasses: Record<ProviderOperation, "content-read" | "control">;
+}
 
 export interface BoardServiceStatus {
     boardRoot: string;
@@ -53,7 +62,7 @@ export interface BoardServiceTrustSnapshot {
 }
 
 export type ServiceParentMessage =
-    | { kind: "init"; nonce: number }
+    | { kind: "init"; nonce: number; config: ServiceHostConfig }
     | { kind: "probe"; nonce: number }
     | { kind: "request"; requestId: string; message: unknown }
     | {
@@ -72,7 +81,7 @@ export type ServiceMainMessage =
     | { kind: "probe-ack"; nonce: number }
     | { kind: "renderer-attached"; generation: number; leaseNonce: string }
     | { kind: "response"; requestId: string; result: unknown }
-    | { kind: "response"; requestId: string; error: unknown }
+    | { kind: "response"; requestId: string; error: ServiceErrorPayload | string }
     | {
         kind: "storage-request";
         requestId: string;
@@ -99,8 +108,8 @@ export interface ProviderOperationPolicy {
 
 /**
  * The one provider-operation policy table (US-1544). `assets/module-service-host.mjs` cannot
- * import TypeScript and mirrors `requestClass` as CONTENT_READ_OPERATIONS; US-1543 will deliver
- * this table to the host in its `init` message instead. Note `stat` is unbounded but still a
+ * import TypeScript; US-1543 delivers the request classes to the host in its `init` message.
+ * Note `stat` is unbounded but still a
  * control request: it sits on content.open()'s eager-sizing path, but must not erode the cap.
  */
 export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, ProviderOperationPolicy>> = {
@@ -179,7 +188,7 @@ export type RendererServiceMessage =
      *  request's slot and best-effort aborts the board's implementation (US-1518). Never sent for
      *  control operations (`writeBinary`/`stat`/`watch*`), which keep their 10s deadline instead. */
     | { kind: "cancel"; requestId: string }
-    | { kind: "response"; requestId: string; result?: unknown; error?: unknown }
+    | { kind: "response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
     | ProviderEvent
     | ProviderCapabilities
     | ProviderActiveContentReadCount

@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.21.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.22.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -13,7 +13,9 @@ value under `result` for board callers, and adds the optional manifest capabilit
 `alwaysOpensNewPage` to request a fresh handler page for each invocation. Bridge `1.21.0` adds
 optional `representation` to capability discovery and manifest declarations. Boards declaring
 `content.view` must provide one non-empty representation per supported format and set
-`minBridgeVersion: "1.21.0"`.
+`minBridgeVersion: "1.21.0"`. Bridge `1.22.0` adds host-managed module-service lifecycle callbacks
+and structured service errors; service entries using these APIs must set
+`minBridgeVersion: "1.22.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
 `data:` URLs and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
@@ -527,6 +529,30 @@ writes go through main's `src/main/board-log.ts`. The log is bounded at 256 KiB 
 the last ~128 KiB on overflow. Service status is visible in `app.boards.list()`
 as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The host starts, supervises,
 restart-budgets, and stops the process on untrust; the service must not restart itself.
+
+The host owns lifecycle messages for services using its API. Register APIs during top-level module
+evaluation, before asynchronous setup:
+
+```js
+persephone.service.onRequest(async (message) => handleRequest(message));
+persephone.service.onShutdown(async ({ reason }) => closeServiceResources(reason));
+```
+
+There may be one request handler. It receives the opaque message passed to
+`persephone.service.request(message)`, and its return value is the response. A request arriving
+without a registered handler receives `{ code: "service-handler-not-registered", message }`.
+Rejected handlers return a structured `{ code, message }`; a non-empty `error.code` is preserved,
+otherwise the code is `service-error`. The board receives an Error with `.message` and `.code`.
+If importing the entry fails, the host logs the failure and does not send `ready`.
+
+Register any number of shutdown callbacks. They receive `{ reason }`, run sequentially in
+registration order, and all are attempted even if one fails. The host exits nonzero if any callback
+fails. Cleanup must finish within the main process's 2-second shutdown deadline.
+
+Do not mix the host API with a raw `process.parentPort` message listener. Raw listeners select the
+legacy protocol; the host then leaves lifecycle and request replies to the entry. If both styles
+are present, raw mode wins and `onRequest` is ignored with a warning. Existing raw services remain
+compatible during the transition; new services should use the APIs shown above.
 
 ### Service-only provider registration
 

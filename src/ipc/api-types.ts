@@ -22,7 +22,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "./clipboard-ipc";
-import type { BoardServiceStatus } from "./module-service-channels";
+import type { BoardServiceStatus, ModuleServicePortResult } from "./module-service-channels";
 import type { LaunchInput } from "../shared/launch-input";
 
 export enum Endpoint {
@@ -314,7 +314,7 @@ export type Api = {
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
     [Endpoint.getModuleServiceStatuses]: () => Promise<BoardServiceStatus[]>;
     /** Request the renderer-only lease for a board module service. */
-    [Endpoint.requestModuleServicePort]: (boardRoot: string) => Promise<void>;
+    [Endpoint.requestModuleServicePort]: (boardRoot: string) => Promise<ModuleServicePortResult>;
     /**
      * Send one request to a board module service through MAIN, lazily starting it. This is the
      * path a script or agent uses; the renderer MessagePort lease is reserved for high-volume

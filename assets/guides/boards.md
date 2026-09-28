@@ -144,7 +144,8 @@ renderer and Node execution. A declared service is shown in Board Info and in th
 `app.boards.list()` status payload.
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.21.0**. Bridge `1.21.0` adds optional `representation` to capability
+The current board bridge is **1.22.0**. Bridge `1.22.0` adds host-managed module-service lifecycle
+and structured service errors. Bridge `1.21.0` adds optional `representation` to capability
 discovery and manifest declarations. A board declaring `content.view` must provide one non-empty
 representation per supported format and set `minBridgeVersion: "1.21.0"`. Capability requests to the same handler page are delivered
 one at a time in FIFO order; up to 32 active and queued requests can be outstanding for a handler.
@@ -658,6 +659,44 @@ use, and rejects with lifecycle errors such as `untrusted`, `permission-denied`,
 `app.boards.list()` as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The
 `permissions` field is disclosure and lifecycle hygiene, not a security boundary or privilege
 grant: trusting a board already permits arbitrary renderer and Node code.
+
+The host owns `init`, `ready`, `probe`, request replies, and shutdown for new-API entries. Register
+the request handler and any shutdown callbacks during top-level evaluation, before asynchronous
+startup work:
+
+```js
+persephone.service.onRequest(async (message) => handleRequest(message));
+persephone.service.onShutdown(async ({ reason }) => closeServiceResources(reason));
+```
+
+`onRequest(handler)` accepts one function. It receives the opaque structured-clone message sent to
+`persephone.service.request(message)`; the returned value becomes the caller's result. If a request
+arrives before a handler is registered, the host replies with
+`{ code: "service-handler-not-registered", message }`. A rejected handler becomes
+`{ code, message }`, using a non-empty `error.code` when supplied and otherwise `service-error`;
+the board receives an `Error` with both `.message` and `.code`. Import failures are logged and
+stop startup without sending `ready`.
+
+`onShutdown(fn)` accepts multiple callbacks. Each receives `{ reason }` (`"untrusted"`,
+`"explicit"`, or `"quit"`) and runs sequentially in registration order. The host attempts every
+callback, then exits with status 1 if any callback failed. Keep cleanup within the main process's
+2-second shutdown deadline.
+
+Do not combine `persephone.service.onRequest()` with a raw `process.parentPort` message listener.
+An entry with a raw listener selects the legacy protocol, so the host does not answer lifecycle or
+request messages; when both APIs are present, raw mode wins and `onRequest` is ignored. Existing
+raw-protocol entries remain supported during this transition. New entries should use the host API:
+
+```js
+persephone.service.onRequest(async ({ op, value }) => {
+    if (op !== "lookup") throw Object.assign(new Error("Unsupported operation."), { code: "invalid-operation" });
+    return await lookup(value);
+});
+persephone.service.onShutdown(async ({ reason }) => {
+    await closeDatabase();
+    console.info(`Stopped: ${reason}`);
+});
+```
 
 ### Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 

@@ -21,11 +21,15 @@ import {
     type ServiceMainMessage,
     type ServiceParentMessage,
     type ServiceStopReason,
+    PROVIDER_OPERATION_POLICY,
+    type ProviderOperation,
+    type ServiceHostConfig,
     type StartResult,
     type BoardServiceTrustSnapshot,
     type TrustedBoardSnapshotEntry,
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
+import { MAX_BUFFERED_PIPE_BYTES, MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
 import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
 import { getAssetPath } from "./utils";
@@ -528,11 +532,7 @@ class ModuleServiceSupervisor {
         const generation = ++record.generation;
         let process: UtilityProcess;
         try {
-            process = utilityProcess.fork(getAssetPath("module-service-host.mjs"), [
-                absoluteEntry,
-                String(SERVICE_REQUEST_DEADLINE_MS),
-                String(MAX_OUTSTANDING_REQUESTS_PER_SERVICE),
-            ], {
+            process = utilityProcess.fork(getAssetPath("module-service-host.mjs"), [absoluteEntry], {
                 cwd: record.boardRoot,
                 env: this.buildServiceEnvironment(record.boardRoot),
                 stdio: "pipe",
@@ -622,7 +622,14 @@ class ModuleServiceSupervisor {
                     clearTimeout(request.timer);
                     record.requests.delete(message.requestId);
                     if ("error" in message) {
-                        request.reject(new ServiceError("service-error", errMessage(message.error, "Service request failed")));
+                        if (typeof message.error === "string") {
+                            request.reject(new ServiceError("service-error", message.error));
+                        } else {
+                            request.reject(new ServiceError(
+                                message.error.code,
+                                errMessage(message.error.message, "Service request failed"),
+                            ));
+                        }
                     } else {
                         request.resolve(message.result);
                     }
@@ -669,7 +676,20 @@ class ModuleServiceSupervisor {
             });
 
             try {
-                process.postMessage({ kind: "init", nonce: generation } satisfies ServiceParentMessage);
+                const providerRequestClasses = Object.fromEntries(
+                    (Object.keys(PROVIDER_OPERATION_POLICY) as ProviderOperation[]).map((operation) => [
+                        operation,
+                        PROVIDER_OPERATION_POLICY[operation].requestClass,
+                    ]),
+                ) as ServiceHostConfig["providerRequestClasses"];
+                const config: ServiceHostConfig = {
+                    serviceRequestDeadlineMs: SERVICE_REQUEST_DEADLINE_MS,
+                    maxOutstandingRequestsPerService: MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
+                    maxBufferedPipeBytes: MAX_BUFFERED_PIPE_BYTES,
+                    maxBoardPipeChunkBytes: MAX_BOARD_PIPE_CHUNK_BYTES,
+                    providerRequestClasses,
+                };
+                process.postMessage({ kind: "init", nonce: generation, config } satisfies ServiceParentMessage);
             } catch (error) {
                 fail(new ServiceError("spawn-error", errMessage(error)));
             }

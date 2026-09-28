@@ -924,7 +924,11 @@ function onPortMessage(data: MainToBoard): void {
         const p = pendingRpc.get(data.id);
         if (!p) return;
         pendingRpc.delete(data.id);
-        if (data.error != null) p.reject(new Error(data.error));
+        if (data.error != null) {
+            const error = new Error(data.error) as Error & { code?: string };
+            if (typeof data.code === "string") error.code = data.code;
+            p.reject(error);
+        }
         else p.resolve(data.result);
         return;
     }

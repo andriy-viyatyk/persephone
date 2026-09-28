@@ -32,6 +32,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   counts, and process identity are visible through `boards.list()`; `permissions` is disclosure and
   lifecycle hygiene, not a privilege grant or sandbox. See [Boards — declared services](./boards.md#declared-services-storage-and-lifecycle)
   and the [canonical service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
+- **Bridge 1.22.0 moves service lifecycle handling into the host:** service entries register
+  `persephone.service.onRequest(handler)` and `onShutdown(fn)` at module load. The host owns ready,
+  probe, request replies, and shutdown; structured `{ code, message }` errors preserve `error.code`
+  in the board. Existing raw-protocol services remain supported during migration.
 - **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders`
   type in the manifest and register its provider from the service; implement optional `readRange`
   for bounded provider-side pulls, while providers without it retain the bounded whole-resource

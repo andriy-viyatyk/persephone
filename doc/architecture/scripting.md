@@ -337,6 +337,24 @@ provider traffic, and a service is not required to implement that port. `perseph
 board-side JSON store shared with the service through main; it remains available while the process
 is alive, including before the service's `ready` handshake.
 
+For the host-managed service protocol, register at most one request handler and any number of
+shutdown callbacks while the service entry is being evaluated, before asynchronous startup work:
+
+```js
+persephone.service.onRequest(async (message) => handleRequest(message));
+persephone.service.onShutdown(async ({ reason }) => closeResources(reason));
+```
+
+The request handler receives the caller's structured-clone message and returns its response. A
+missing handler produces `service-handler-not-registered`; rejected handlers preserve a non-empty
+`error.code` or use `service-error`, along with a readable message. On the board frame,
+`persephone.service.request()` rejects with an `Error` carrying both `.message` and `.code`.
+Shutdown callbacks run sequentially in registration order; the host attempts all callbacks and
+exits nonzero if any fail. The main process allows two seconds for shutdown. Do not combine these
+APIs with raw `process.parentPort` message listeners: a raw listener selects the legacy protocol
+and gives the entry ownership of lifecycle and request replies. If entry import fails, the host
+logs the error and does not send `ready`.
+
 ### `io` — Content Delivery API
 
 Provides access to content pipe providers, transformers, pipe assembly, and link events.

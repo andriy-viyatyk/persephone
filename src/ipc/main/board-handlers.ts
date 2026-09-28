@@ -6,7 +6,7 @@ import type {
     PublishedBoardVersions,
 } from "../api-param-types";
 import type { BoardThemePalette } from "../board-bridge-channels";
-import type { BoardServiceStatus } from "../module-service-channels";
+import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { errMessage } from "../../shared/utils";
 
@@ -118,11 +118,26 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.getModuleServiceStatuses, async (): Promise<BoardServiceStatus[]> => {
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.getStatuses();
     });
-    bindEndpoint(Endpoint.requestModuleServicePort, async (event: IpcMainEvent, boardRoot: string): Promise<void> => {
-        await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.transferRendererPort(
-            boardRoot,
-            event.sender,
-        );
+    bindEndpoint(Endpoint.requestModuleServicePort, async (event: IpcMainEvent, boardRoot: string): Promise<ModuleServicePortResult> => {
+        try {
+            await (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.transferRendererPort(
+                boardRoot,
+                event.sender,
+            );
+            return { ok: true };
+        } catch (error) {
+            const candidate = error as { code?: unknown };
+            const isServiceError = (error as { name?: unknown } | null)?.name === "ServiceError";
+            return {
+                ok: false,
+                error: {
+                    code: isServiceError && typeof candidate?.code === "string" && candidate.code.length > 0
+                        ? candidate.code
+                        : "service-error",
+                    message: errMessage(error, "Service port acquisition failed"),
+                },
+            };
+        }
     });
     bindEndpoint(Endpoint.requestModuleService, async (_event, boardRoot: string, message: unknown): Promise<unknown> => {
         const { moduleServiceSupervisor } = await import("../../main/module-service-supervisor");

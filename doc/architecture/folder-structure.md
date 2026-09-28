@@ -37,7 +37,7 @@ persephone/
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
-│   ├── module-service-host.mjs # Static utility-process host that injects persephone.storage and imports a board's ESM service entry
+│   ├── module-service-host.mjs # Utility-process host that injects persephone.storage, imports the service entry, and owns lifecycle/request protocol for host-API services
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
 │   ├── boards/             # Boards shipped inside the installer resources

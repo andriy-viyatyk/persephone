@@ -1,9 +1,8 @@
-const parentPort = process.parentPort;
 const handshakeHangKey = "demo-service-handshake-hang";
 const providerBytes = new TextEncoder().encode("hello from the demo board service\n");
 
-if (!parentPort) {
-    console.error("Demo service requires Persephone's module-service host.");
+if (!globalThis.persephone?.service || !globalThis.persephone?.providers || !globalThis.persephone?.storage) {
+    console.error("Demo service requires Persephone's module-service APIs.");
     process.exit(1);
 }
 
@@ -18,18 +17,6 @@ globalThis.persephone.providers.register("demo/mem", {
     stat() {
         return { exists: true, size: providerBytes.byteLength };
     },
-});
-
-const queuedMessages = [];
-let acceptingMessages = false;
-
-parentPort.on("message", (event) => {
-    const message = event?.data;
-    if (!acceptingMessages) {
-        queuedMessages.push(message);
-        return;
-    }
-    handleMessage(message);
 });
 
 const storage = globalThis.persephone?.storage;
@@ -52,13 +39,6 @@ if (handshakeHang) {
     await new Promise(() => {});
 }
 
-acceptingMessages = true;
-for (const message of queuedMessages) handleMessage(message);
-
-function postResponse(requestId, result) {
-    parentPort.postMessage({ kind: "response", requestId, result });
-}
-
 function requestValue(message) {
     return message && typeof message === "object" ? message : {};
 }
@@ -69,7 +49,7 @@ function boundedDelay(value) {
     return Math.min(Math.max(Math.trunc(milliseconds), 0), 8_000);
 }
 
-async function handleRequest(message, requestId) {
+async function handleRequest(message) {
     const request = requestValue(message);
     switch (request.op) {
         case "echo":
@@ -99,41 +79,16 @@ async function handleRequest(message, requestId) {
             return undefined;
         case "arm-handshake-hang":
             await storage.set(handshakeHangKey, true);
-            postResponse(requestId, { armed: true, oneShot: true });
-            await new Promise((resolve) => setImmediate(resolve));
-            process.exit(0);
-            return undefined;
+            setTimeout(() => process.exit(0), 50);
+            return { armed: true, oneShot: true };
         default:
-            throw new Error(`unknown-operation:${String(request.op)}`);
-    }
-}
-
-function handleMessage(message) {
-    if (!message || typeof message.kind !== "string") return;
-
-    if (message.kind === "init") {
-        parentPort.postMessage({ kind: "ready", nonce: message.nonce });
-        return;
-    }
-    if (message.kind === "probe") {
-        parentPort.postMessage({ kind: "probe-ack", nonce: message.nonce });
-        return;
-    }
-    if (message.kind === "shutdown") {
-        process.exit(0);
-        return;
-    }
-    if (message.kind !== "request" || typeof message.requestId !== "string") return;
-
-    void handleRequest(message.message, message.requestId).then(
-        (result) => postResponse(message.requestId, result),
-        (error) => {
-            console.error("Demo service request failed:", error);
-            parentPort.postMessage({
-                kind: "response",
-                requestId: message.requestId,
-                error: "service-request-failed",
+            throw Object.assign(new Error(`Unknown demo service operation: ${String(request.op)}`), {
+                code: "service-request-failed",
             });
-        },
-    );
+    }
 }
+
+persephone.service.onRequest(handleRequest);
+persephone.service.onShutdown(async ({ reason }) => {
+    console.info(`Demo service shutting down: ${reason}`);
+});

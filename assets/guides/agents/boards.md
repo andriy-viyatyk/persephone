@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.21.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.22.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -22,6 +22,9 @@ value under `result` for board callers, and adds the optional manifest capabilit
 Bridge `1.21.0` adds optional `representation` to capability discovery and board declarations.
 Boards declaring `content.view` must provide one non-empty `representation` per supported format
 and set `minBridgeVersion: "1.21.0"`.
+Bridge `1.22.0` adds host-managed module-service lifecycle callbacks and structured service error
+codes; services using `persephone.service.onRequest()` or `onShutdown()` should set
+`minBridgeVersion: "1.22.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` for getting Persephone's file icons as
 image URLs. Bridge `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(callback)` for read-only access
@@ -419,6 +422,24 @@ observation. For the Demo board, create it with `app.boards.createDemoBoard(name
 use `boards.list()` to confirm the result. A full renderer reload is script-driven with
 `script.execute("setTimeout(() => location.reload(), 50); return 'reloading'")`; the editor's
 `reload()` only reloads the board iframe.
+
+Register the new host-managed protocol at module top level:
+
+```js
+persephone.service.onRequest(async (message) => handleRequest(message));
+persephone.service.onShutdown(async ({ reason }) => closeResources(reason));
+```
+
+`onRequest` accepts one handler, passes through the caller's structured-clone message, and uses
+its return value as the response. An early request with no handler gets
+`{ code: "service-handler-not-registered", message }`. Rejections preserve a non-empty
+`error.code` and readable message; `persephone.service.request()` rejects with an Error whose
+`.code` is available to the board. Entry import failure is logged and does not send `ready`.
+Shutdown callbacks run sequentially in registration order, all are attempted, and any failure
+makes the host exit nonzero. The main process allows 2 seconds for shutdown. Do not register raw
+`process.parentPort` message listeners together with this API: raw mode takes ownership of
+lifecycle and request replies, and `onRequest` is ignored. Unmigrated raw services remain supported
+during the transition.
 
 ### Browser-download URL claims
 

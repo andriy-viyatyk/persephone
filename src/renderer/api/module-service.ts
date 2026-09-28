@@ -60,21 +60,6 @@ const clients = new Map<string, ServiceLeaseClient>();
 let portSubscription: (() => void) | undefined;
 let statusSubscription: (() => void) | undefined;
 
-const lifecycleCodes = new Set([
-    "untrusted",
-    "quit",
-    "service-failed",
-    "service-exited",
-    "service-timeout",
-    "renderer-reloaded",
-    "service-not-declared",
-    "trust-not-ready",
-    "permission-denied",
-    "service-busy",
-    "renderer-port-attach-failed",
-    "provider-cancelled",
-]);
-
 function normalizeRoot(boardRoot: string): string {
     return fpNormalizeForCompare(boardRoot);
 }
@@ -83,14 +68,22 @@ function watchKey(subscriptionId: string): string {
     return subscriptionId;
 }
 
-function errorForCode(code: string, fallback = "service-error"): Error {
-    return new Error(code || fallback);
+function errorForCode(code: string, message = code): Error & { code: string } {
+    const error = new Error(message) as Error & { code: string };
+    error.code = code || "service-error";
+    return error;
 }
 
-function errorCode(error: unknown): string {
-    const message = errMessage(error, "service-error");
-    const code = message.split(":", 1)[0];
-    return lifecycleCodes.has(code) ? code : "service-error";
+function serviceError(error: unknown): Error & { code: string } {
+    if (typeof error === "string") return errorForCode("service-error", error);
+    if (error !== null && typeof error === "object") {
+        const value = error as { code?: unknown; message?: unknown };
+        if (typeof value.code === "string" && typeof value.message === "string") {
+            return errorForCode(value.code, value.message);
+        }
+        if (typeof value.code === "string") return errorForCode(value.code, errMessage(error, "Service request failed"));
+    }
+    return errorForCode("service-error", errMessage(error, "Service request failed"));
 }
 
 function leaseLossCode(reason: RendererLeaseLostReason): string {
@@ -231,7 +224,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
     if (!pending) return;
     dropPending(client, message.requestId);
     if ("error" in message) {
-        pending.reject(errorForCode(errorCode(message.error)));
+        pending.reject(serviceError(message.error));
     } else {
         pending.resolve(message.result);
     }
@@ -312,8 +305,10 @@ function acquire(boardRoot: string): Promise<void> {
             if (client.acquisition === acquisition) client.acquisition = undefined;
         },
     );
-    void api.requestModuleServicePort(boardRoot).catch((error: unknown) => {
-        loseLease(client, errorCode(error));
+    void api.requestModuleServicePort(boardRoot).then((result) => {
+        if (result.ok === false) loseLease(client, result.error.code);
+    }, (error: unknown) => {
+        loseLease(client, serviceError(error).code);
     });
     return acquisition;
 }
@@ -372,7 +367,7 @@ function request(
             const pending = client.pending.get(requestId);
             if (!pending) return;
             const dropped = dropPending(client, requestId);
-            dropped?.reject(errorForCode(errorCode(error)));
+            dropped?.reject(serviceError(error));
         });
     });
 }

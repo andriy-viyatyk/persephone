@@ -246,7 +246,7 @@ export type BoardToMain =
 
 /** Everything main posts to the board over the port. */
 export type MainToBoard =
-    | { kind: "rpc-result"; id: number; result?: unknown; error?: string }
+    | { kind: "rpc-result"; id: number; result?: unknown; error?: string; code?: string }
     | BoardCallResultMsg
     | { kind: "theme"; palette: BoardThemePalette }
     | BoardRunnerInMsg;

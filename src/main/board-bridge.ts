@@ -416,13 +416,15 @@ function handleBoardMessage(boardId: string, data: BoardToMain): void {
         const { id, method, args } = data;
         void runRpc(entry, method, args)
             .then((result) => entry.port.postMessage({ kind: "rpc-result", id, result }))
-            .catch((e: unknown) =>
+            .catch((e: unknown) => {
+                const code = (e as { code?: unknown } | null)?.code;
                 entry.port.postMessage({
                     kind: "rpc-result",
                     id,
                     error: errMessage(e),
-                }),
-            );
+                    ...(typeof code === "string" ? { code } : {}),
+                });
+            });
         return;
     }
 

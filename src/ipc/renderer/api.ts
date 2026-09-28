@@ -31,7 +31,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "../clipboard-ipc";
-import type { BoardServiceStatus } from "../module-service-channels";
+import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -548,8 +548,8 @@ class ApiCalls implements Api {
         return executeOnce<BoardServiceStatus[]>(Endpoint.getModuleServiceStatuses);
     };
 
-    requestModuleServicePort = async (boardRoot: string) => {
-        return executeOnce<void>(Endpoint.requestModuleServicePort, boardRoot);
+    requestModuleServicePort = async (boardRoot: string): Promise<ModuleServicePortResult> => {
+        return executeOnce<ModuleServicePortResult>(Endpoint.requestModuleServicePort, boardRoot);
     };
 
     requestModuleService = async (boardRoot: string, message: unknown) => {

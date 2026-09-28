@@ -1,25 +1,18 @@
 import { pathToFileURL } from "node:url";
 
 const parentPort = process.parentPort;
-const [serviceEntry, deadlineText, capText] = process.argv.slice(-3);
-const deadlineMs = Number(deadlineText);
-const requestCap = Number(capText);
+const [serviceEntry] = process.argv.slice(-1);
 
-if (!parentPort || !serviceEntry || !Number.isFinite(deadlineMs) || deadlineMs <= 0
-    || !Number.isInteger(requestCap) || requestCap <= 0) {
+if (!parentPort || !serviceEntry) {
     console.error("Persephone module service host received invalid startup arguments.");
     process.exit(1);
 }
 
-// This is the shared MAX_BUFFERED_PIPE_BYTES ceiling. The utility-process host is deliberately
-// dependency-free, so it cannot import the TypeScript constant from src/shared.
-const MAX_BUFFERED_PIPE_BYTES = 256 * 1024 * 1024;
-
-// Mirrors src/shared/board-pipe-constants.ts MAX_BOARD_PIPE_CHUNK_BYTES.
-const MAX_BOARD_PIPE_CHUNK_BYTES = 1024 * 1024;
-
 const storagePending = new Map();
 let requestNumber = 0;
+let hostConfig;
+let resolveConfig;
+const configReady = new Promise((resolve) => { resolveConfig = resolve; });
 
 function eventData(event) {
     return event && typeof event === "object" && "data" in event ? event.data : event;
@@ -50,14 +43,17 @@ function copyBytes(value) {
     return result;
 }
 
-function storageRequest(operation, args) {
-    if (storagePending.size >= requestCap) return Promise.reject(new Error("service-busy"));
+async function storageRequest(operation, args) {
+    await configReady;
+    if (storagePending.size >= hostConfig.maxOutstandingRequestsPerService) {
+        return Promise.reject(Object.assign(new Error("Service is busy."), { code: "service-busy" }));
+    }
     const requestId = `storage-${process.pid}-${Date.now()}-${++requestNumber}`;
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
             storagePending.delete(requestId);
             reject(new Error("service-timeout"));
-        }, deadlineMs);
+        }, hostConfig.serviceRequestDeadlineMs);
         storagePending.set(requestId, { resolve, reject, timer });
         try {
             parentPort.postMessage({ kind: "storage-request", requestId, operation, args });
@@ -69,23 +65,14 @@ function storageRequest(operation, args) {
     });
 }
 
-parentPort.on("message", (event) => {
-    const message = eventData(event);
-    if (!message || message.kind !== "storage-response" || typeof message.requestId !== "string") return;
-    const request = storagePending.get(message.requestId);
-    if (!request) return;
-    clearTimeout(request.timer);
-    storagePending.delete(message.requestId);
-    if ("error" in message) {
-        request.reject(new Error(errorMessage(message.error, "service-error")));
-    } else {
-        request.resolve(message.result);
-    }
-});
-
 const providers = new Map();
 const rendererLeases = new Map();
 let serviceEntryLoaded = false;
+let serviceRequestHandler;
+const shutdownHandlers = [];
+let initNonce;
+let readySent = false;
+let shutdownStarted = false;
 
 function providerKey(type, subscriptionId) {
     return `${type}\u0000${subscriptionId}`;
@@ -129,7 +116,7 @@ function settleLeasePending(lease, reason) {
         postRenderer(lease.port, {
             kind: "response",
             requestId,
-            error: reason,
+            error: { code: reason, message: `The service renderer lease was lost: ${reason}.` },
         });
         lease.pending.delete(requestId);
     }
@@ -179,8 +166,7 @@ globalThis.persephone = persephone;
 
 function validProviderRequest(message) {
     if (!isRecord(message) || message.kind !== "provider") return "Expected a provider request.";
-    if (!["readBinary", "readRange", "writeBinary", "stat", "watchSubscribe", "watchUnsubscribe"]
-        .includes(message.operation)) {
+    if (typeof message.operation !== "string" || !Object.hasOwn(hostConfig.providerRequestClasses, message.operation)) {
         return "Unknown provider operation.";
     }
     if (typeof message.type !== "string" || message.type.length === 0 || !isRecord(message.config)) {
@@ -191,7 +177,7 @@ function validProviderRequest(message) {
         return "Malformed provider subscription request.";
     }
     if (message.operation === "writeBinary"
-        && (!isUint8Array(message.data) || message.data.byteLength > MAX_BUFFERED_PIPE_BYTES)) {
+        && (!isUint8Array(message.data) || message.data.byteLength > hostConfig.maxBufferedPipeBytes)) {
         return "Malformed or oversized provider payload.";
     }
     if (message.operation === "readRange") {
@@ -199,7 +185,7 @@ function validProviderRequest(message) {
         if (!isRecord(range)
             || !Number.isInteger(range.start) || range.start < 0
             || !Number.isInteger(range.end) || range.end < range.start
-            || (range.end - range.start + 1) > MAX_BOARD_PIPE_CHUNK_BYTES) {
+            || (range.end - range.start + 1) > hostConfig.maxBoardPipeChunkBytes) {
             return "Malformed or oversized provider range.";
         }
     }
@@ -210,12 +196,8 @@ function providerFailure(code, message) {
     return { kind: "provider-result", ok: false, error: { kind: "provider-error", code, message } };
 }
 
-// Mirrors PROVIDER_OPERATION_POLICY.requestClass in src/ipc/module-service-channels.ts.
-/** Exempt from the control-request cap, and counted as outstanding content reads. */
-const CONTENT_READ_OPERATIONS = new Set(["readBinary", "readRange"]);
-
 function isContentReadOperation(operation) {
-    return CONTENT_READ_OPERATIONS.has(operation);
+    return hostConfig.providerRequestClasses[operation] === "content-read";
 }
 
 /** US-1518 decision 10: pushes the live outstanding-content-read count to the renderer over the
@@ -253,7 +235,7 @@ async function executeProviderRequest(lease, request, controller) {
         // release path depends on it being honored (see handleRendererRequest()/the cancel branch).
         const data = await Promise.resolve(implementation.readBinary(request.config, { signal: controller.signal }));
         if (!isUint8Array(data)) return providerFailure("provider-invalid-result", "readBinary() must return a Uint8Array.");
-        if (data.byteLength > MAX_BUFFERED_PIPE_BYTES) {
+        if (data.byteLength > hostConfig.maxBufferedPipeBytes) {
             return providerFailure("provider-payload-too-large", "readBinary() exceeded the buffered payload limit.");
         }
         return { kind: "provider-result", operation: "readBinary", ok: true, data: copyBytes(data) };
@@ -363,8 +345,12 @@ function handleRendererRequest(lease, message) {
         for (const pending of lease.pending.values()) {
             if (!pending.isContentRead) controlCount++;
         }
-        if (controlCount >= requestCap) {
-            postRenderer(lease.port, { kind: "response", requestId: message.requestId, error: "service-busy" });
+        if (controlCount >= hostConfig.maxOutstandingRequestsPerService) {
+            postRenderer(lease.port, {
+                kind: "response",
+                requestId: message.requestId,
+                error: { code: "service-busy", message: "The service has too many outstanding requests." },
+            });
             return;
         }
     }
@@ -400,7 +386,7 @@ function attachRenderer(message, port) {
         activeContentReads: 0,
     };
     rendererLeases.set(lease.leaseNonce, lease);
-    lease.timer = setTimeout(() => closeRendererLease(lease, "renderer-port-attach-failed"), deadlineMs);
+    lease.timer = setTimeout(() => closeRendererLease(lease, "renderer-port-attach-failed"), hostConfig.serviceRequestDeadlineMs);
     try {
         port.on("message", (event) => {
             const nested = eventData(event);
@@ -445,16 +431,232 @@ function dropRenderer(message) {
     closeRendererLease(lease, message.reason);
 }
 
-parentPort.on("message", (event) => {
-    const message = eventData(event);
-    if (!message || typeof message !== "object") return;
-    if (message.kind === "attach-renderer") {
-        // The port is transferred, so it arrives on the event rather than in the message body.
-        attachRenderer(message, event?.ports?.[0]);
-    } else if (message.kind === "drop-renderer") {
-        dropRenderer(message);
+function serviceError(error) {
+    const candidate = error && typeof error === "object" ? error : undefined;
+    const code = typeof candidate?.code === "string" && candidate.code.length > 0
+        ? candidate.code
+        : "service-error";
+    return { code, message: errorMessage(error, "Service request failed.") };
+}
+
+function postResult(requestId, result) {
+    try {
+        parentPort.postMessage({ kind: "response", requestId, result });
+    } catch (error) {
+        console.error("Failed to post module service response:", errorMessage(error, "service-exited"));
     }
+}
+
+function postError(requestId, error) {
+    try {
+        parentPort.postMessage({ kind: "response", requestId, error });
+    } catch (postErrorValue) {
+        console.error("Failed to post module service error:", errorMessage(postErrorValue, "service-exited"));
+    }
+}
+
+async function runServiceRequest(message) {
+    if (typeof message.requestId !== "string") return;
+    if (typeof serviceRequestHandler !== "function") {
+        postError(message.requestId, {
+            code: "service-handler-not-registered",
+            message: "The service entry did not register an onRequest handler.",
+        });
+        return;
+    }
+    try {
+        postResult(message.requestId, await serviceRequestHandler(message.message));
+    } catch (error) {
+        postError(message.requestId, serviceError(error));
+    }
+}
+
+async function runShutdown(message) {
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    let failed = false;
+    for (const handler of shutdownHandlers) {
+        try {
+            await handler({ reason: message.reason });
+        } catch (error) {
+            failed = true;
+            console.error("Module service shutdown callback failed:", errorMessage(error, "service-error"));
+        }
+    }
+    process.exit(failed ? 1 : 0);
+}
+
+function handleHostLifecycle(message) {
+    if (message.kind === "init" && message.nonce === initNonce && serviceEntryLoaded && !readySent) {
+        readySent = true;
+        parentPort.postMessage({ kind: "ready", nonce: initNonce });
+    } else if (message.kind === "probe" && message.nonce === initNonce) {
+        parentPort.postMessage({ kind: "probe-ack", nonce: initNonce });
+    } else if (message.kind === "request") {
+        void runServiceRequest(message);
+    } else if (message.kind === "shutdown" && message.nonce === initNonce) {
+        void runShutdown(message);
+    }
+}
+
+function validateHostConfig(config) {
+    if (!isRecord(config)
+        || !Number.isFinite(config.serviceRequestDeadlineMs) || config.serviceRequestDeadlineMs <= 0
+        || !Number.isInteger(config.maxOutstandingRequestsPerService) || config.maxOutstandingRequestsPerService <= 0
+        || !Number.isInteger(config.maxBufferedPipeBytes) || config.maxBufferedPipeBytes <= 0
+        || !Number.isInteger(config.maxBoardPipeChunkBytes) || config.maxBoardPipeChunkBytes <= 0
+        || !isRecord(config.providerRequestClasses)) return false;
+    const entries = Object.entries(config.providerRequestClasses);
+    return entries.length > 0 && entries.every(([, requestClass]) =>
+        requestClass === "content-read" || requestClass === "control",
+    );
+}
+
+function isLifecycleMessage(message) {
+    return message.kind === "init" || message.kind === "probe"
+        || message.kind === "request" || message.kind === "shutdown";
+}
+
+const entryListeners = [];
+const queuedLifecycleEvents = [];
+let importSettled = false;
+let protocolMode;
+let rawProtocolDetected = false;
+
+function activeEntryListeners() {
+    return entryListeners.filter((entry) => entry.active);
+}
+
+function dispatchToEntry(event) {
+    for (const entry of activeEntryListeners()) {
+        if (!entry.active) continue;
+        if (entry.once) {
+            entry.active = false;
+            entryListeners.splice(entryListeners.indexOf(entry), 1);
+        }
+        try {
+            entry.listener.call(parentPort, event);
+        } catch (error) {
+            console.error("Raw module service message listener failed:", errorMessage(error, "service-error"));
+        }
+    }
+}
+
+function addEntryListener(listener, once = false) {
+    if (typeof listener !== "function") throw new TypeError("The listener must be a function.");
+    if (importSettled && protocolMode === "host") {
+        console.warn("Ignoring late raw module service message listener; host lifecycle mode is sealed.");
+        return parentPort;
+    }
+    const entry = { listener, once, active: true };
+    rawProtocolDetected = true;
+    entryListeners.push(entry);
+    if (queuedLifecycleEvents.length > 0) {
+        for (const event of queuedLifecycleEvents.splice(0)) dispatchToEntry(event);
+    }
+    return parentPort;
+}
+
+function removeEntryListener(listener) {
+    const index = entryListeners.map((entry) => entry.listener).lastIndexOf(listener);
+    if (index >= 0) entryListeners.splice(index, 1)[0].active = false;
+    return parentPort;
+}
+
+function removeAllEntryListeners() {
+    for (const entry of entryListeners) entry.active = false;
+    entryListeners.length = 0;
+    return parentPort;
+}
+
+const originalPortMethods = Object.fromEntries(
+    ["on", "addListener", "once", "off", "removeListener", "removeAllListeners"].map((name) => [name, parentPort[name].bind(parentPort)]),
+);
+const originalPortEventNames = parentPort.eventNames.bind(parentPort);
+const interceptMessageMethod = (name, callback) => function (eventName, ...args) {
+    if (eventName !== "message") return originalPortMethods[name](eventName, ...args);
+    return callback(...args);
+};
+Object.defineProperties(parentPort, {
+    on: { configurable: false, value: interceptMessageMethod("on", (listener) => addEntryListener(listener)) },
+    addListener: { configurable: false, value: interceptMessageMethod("addListener", (listener) => addEntryListener(listener)) },
+    once: { configurable: false, value: interceptMessageMethod("once", (listener) => addEntryListener(listener, true)) },
+    off: { configurable: false, value: interceptMessageMethod("off", (listener) => removeEntryListener(listener)) },
+    removeListener: { configurable: false, value: interceptMessageMethod("removeListener", (listener) => removeEntryListener(listener)) },
+    removeAllListeners: { configurable: false, value: function (eventName) {
+        if (eventName === undefined) {
+            removeAllEntryListeners();
+            for (const name of originalPortEventNames()) {
+                if (name !== "message") originalPortMethods.removeAllListeners(name);
+            }
+            return parentPort;
+        }
+        if (eventName === "message") return removeAllEntryListeners();
+        return originalPortMethods.removeAllListeners(eventName);
+    } },
 });
+
+function forwardEntryEvent(event, message) {
+    if (activeEntryListeners().length > 0) {
+        dispatchToEntry(event);
+    } else if (isLifecycleMessage(message) && !importSettled) {
+        queuedLifecycleEvents.push(event);
+    } else if (isLifecycleMessage(message) && protocolMode === "host") {
+        handleHostLifecycle(message);
+    }
+}
+
+originalPortMethods.on("message", (event) => {
+    const message = eventData(event);
+    if (!isRecord(message)) return;
+    if (message.kind === "storage-response" && typeof message.requestId === "string") {
+        const request = storagePending.get(message.requestId);
+        if (request) {
+            clearTimeout(request.timer);
+            storagePending.delete(message.requestId);
+            if ("error" in message) request.reject(Object.assign(
+                new Error(errorMessage(message.error, "Service storage request failed.")),
+                { code: typeof message.error === "string" ? "service-error" : message.error?.code ?? "service-error" },
+            ));
+            else request.resolve(message.result);
+        }
+        forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "attach-renderer") {
+        attachRenderer(message, event?.ports?.[0]);
+        forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "drop-renderer") {
+        dropRenderer(message);
+        forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "init") {
+        if (!validateHostConfig(message.config)) {
+            console.error("Persephone module service host received invalid init configuration.");
+            process.exit(1);
+            return;
+        }
+        hostConfig = message.config;
+        initNonce = message.nonce;
+        resolveConfig(hostConfig);
+    }
+    forwardEntryEvent(event, message);
+});
+
+persephone.service = {
+    onRequest(handler) {
+        if (typeof handler !== "function") throw new TypeError("onRequest(handler) requires a function.");
+        if (serviceRequestHandler) throw new Error("A service request handler is already registered.");
+        serviceRequestHandler = handler;
+    },
+    onShutdown(handler) {
+        if (typeof handler !== "function") throw new TypeError("onShutdown(fn) requires a function.");
+        shutdownHandlers.push(handler);
+    },
+};
 
 process.on("exit", () => {
     for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
@@ -465,6 +667,14 @@ process.on("exit", () => {
 try {
     await import(pathToFileURL(serviceEntry).href);
     serviceEntryLoaded = true;
+    importSettled = true;
+    protocolMode = rawProtocolDetected ? "raw" : "host";
+    if (protocolMode === "raw" && serviceRequestHandler) {
+        console.warn("Raw module service protocol detected; persephone.service.onRequest is ignored.");
+    }
+    if (protocolMode === "host") {
+        for (const event of queuedLifecycleEvents.splice(0)) handleHostLifecycle(eventData(event));
+    }
     for (const lease of rendererLeases.values()) announceCapabilities(lease);
 } catch (error) {
     console.error(`Failed to load module service entry ${serviceEntry}:`, errorMessage(error, "service-entry-failed"));
