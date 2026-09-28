@@ -1,3 +1,56 @@
+## EPIC-115 — Platform roadmap clean-up: fix what the adjustment rounds left behind
+
+Completed 2026-09-28. Post-roadmap review of EPIC-105 to EPIC-114. [Epic document](EPIC-115.md).
+
+- [x] US-1534: Capability handler pages open for any trusted board, not only bundled ones
+- [x] US-1535: One service renderer lease per window, not per service
+- [x] US-1536: Board `ui.log` — one main-owned writer; no truncation; bundled boards log to userData
+- [x] US-1537: Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL
+- [x] US-1538: Main owns the board trust and URL-mask snapshots
+- [x] US-1547: Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads
+- [x] US-1556: Board Info pages are dropped on restore
+- [x] US-1539: Capability contract single-sourced — error codes, intent envelope, outcome shape
+- [x] US-1540: One owner for a capability request's lifecycle
+- [x] US-1541: Built-in capability resolution runs the handler it resolved; one image-edit helper
+- [x] US-1542: Host-frame request/reply channel — one table on each side, typed message union
+- [x] US-1543: The service host owns the service lifecycle protocol
+- [x] US-1544: One provider-operation policy table (deadline, cap)
+- [x] US-1545: Split the module-service supervisor; one state-transition helper
+- [x] US-1546: One `__pipe` range reader in main; one MIME table
+- [x] US-1548: One ownership registry for providers, schemes, capabilities and URL masks
+- [x] US-1549: Board manifest parsed once into a normalized model
+- [x] US-1550: Scheme hooks — a `handoff()` helper and shared URL helpers
+- [x] US-1551: Single-instance board routing in one place; a typed open-context hook
+- [x] US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters
+- [x] US-1553: VideoEditor's source flow in one place; one provider-recovery helper
+- [x] US-1554: Board trust granting, bundled-board creation and Board Info each have one path
+- [x] US-1555: Small dead code, stale comments and a torrent-specific notice in core
+- [x] US-1558: Remove the deprecated `boards.openBoard({ intent })` API and `ILinkData.intent`
+
+The roadmap's ten epics each adjusted the one before; this epic fixed the defects those rounds
+introduced and gave each cross-process contract one definition. Seven defects came first (a
+capability handler that only opened for bundled boards, a second window evicting the first's
+service lease, truncated board logs, a cold-start URL on a different route, a renderer-owned trust
+snapshot, an unreachable provider-acquire path, Board Info pages dropped on restore). The capability
+bus is now the sole owner of a request's lifecycle; the host-frame channel and the service
+lifecycle protocol each have one typed message union; providers, schemes, capabilities and URL
+masks share one ownership registry; the board manifest is parsed once. By user decision the
+deprecated `app.boards.openBoard(root, { intent })` option and `ILinkData.intent` were removed
+(US-1558) — scripts call `app.capabilities.invoke()`. Board bridge **1.18.0 → 1.24.0**.
+
+**Review:** `/review`, `/document` and `/userdoc` ran per story through Codex, so no separate epic
+close pass was needed.
+
+**Unpublished by user decision:** persephone-boards `develop` commits `37809ea` (Torrent Viewer
+1.7.1, range-provider-test — US-1543) and `016a67e` (Torrent Viewer 1.7.2 — US-1555) are not
+merged to `main` or published.
+
+**Not verified:** anything needing a real torrent swarm; packaged-build behaviour (argv shape, OS
+default-browser loop, the interactive trust dialog); failure paths that cannot be triggered on
+demand (handshake post failure, frame load error, `render-process-gone` lease loss, window close
+with requests in flight); the main-process half of browser download claims; `mneme://` and other
+paths checked by code reading only. Each task document's "Not verified" section has the detail.
+
 ## EPIC-114 — The torrent board: a module contributes below the UI
 
 Completed 2026-09-27. Roadmap Phase E, part 2 — the last roadmap phase. [Epic document](EPIC-114.md).

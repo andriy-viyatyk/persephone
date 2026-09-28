@@ -2,8 +2,30 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Completed
 **Created:** 2026-09-27
+**Completed:** 2026-09-28
+
+**Completion summary.** All 23 stories are done: 7 defects (Phase 1), 6 single-sourced contracts
+(Phase 2), 11 structural clean-ups (Phase 3) and, by user decision, the removal of the deprecated
+`app.boards.openBoard(root, { intent })` option and `ILinkData.intent` (US-1558, Phase 4). The
+capability bus is now the sole owner of a request's lifecycle, the host-frame channel and service
+lifecycle protocol each have one typed definition, main owns the trust and URL-mask snapshots, and
+providers, schemes, capabilities and URL masks share one ownership registry. The board bridge went
+from **1.18.0 to 1.24.0**. `/review`, `/document` and `/userdoc` ran per story (through Codex).
+
+**Unpublished by user decision:** the persephone-boards `develop` commits `37809ea` (Torrent Viewer
+1.7.1, range-provider-test on the host-owned service API — US-1543) and `016a67e` (Torrent Viewer
+1.7.2, swarm-privacy notice from the board — US-1555) are not merged to `main` or published. US-1558
+needed no persephone-boards change.
+
+**Not verified (main themes; details in each task's "Not verified" section):** anything needing a
+real torrent swarm (torrent video ranged reads, two windows streaming one torrent); packaged-build
+behaviour (argv shape, OS default-browser loop, trust dialog in a packaged install); rare failure
+paths that cannot be triggered on demand (handshake post failure, frame load error, renderer-port
+attach failure, `render-process-gone` lease loss, window closing with requests in flight); the
+main-process half of browser download claims and URL-mask snapshots; `mneme://` links and other
+paths checked by code reading only to avoid the user's data.
 
 ## Overview
 
