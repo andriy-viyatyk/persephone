@@ -109,6 +109,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Board registration refusals are easier to spot:** provider, scheme, capability, settings, and
+  browser URL mask refusals now show a toast when they first appear and remain listed in Board Info.
 - **Command-line launches accept multiple inputs:** open several files or folders at once, pass an
   `http(s)` URL to open it in the built-in browser, or compare two files with
   `persephone.exe diff before.txt after.txt`. These inputs also open in the running Persephone

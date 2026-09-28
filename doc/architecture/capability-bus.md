@@ -38,6 +38,8 @@ The board manifest's `capabilities` array is the functional registration axis. T
 `"capabilities"` value in `permissions` discloses the surface in trust and Board Info; it is not a
 second gate or a security boundary. A malformed declaration is refused independently and reported
 as a capability registration issue, without discarding the board's valid declarations.
+The issue appears in Board Info; a new independent issue is toasted once, and unchanged refreshes
+do not repeat the toast.
 
 Declarations have a non-empty id with no whitespace or `@`, an integer major `version` (default
 1), numeric `priority` (default 50), and optional `representation`, `accepts`, `payloadSchema`, `title`, `headless`,

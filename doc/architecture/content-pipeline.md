@@ -45,6 +45,8 @@ Provider types and schemes have one owner. Platform registrations and the hard-r
 claimed by a board. Among board registrations, the first registration wins; a later collision is
 rejected and retained as a Board Info registration issue with the existing owner. A trust refresh
 rebuilds board-owned registrations, so untrusted, disabled, or removed boards no longer own their names.
+New independent registration issues produce a toast once and remain in Board Info; unchanged
+refreshes do not repeat the toast.
 `permissions: ["contentProviders"]` discloses the requested surface and participates in service
 lifecycle metadata; the `contentProviders` array is the functional provider-registration axis.
 

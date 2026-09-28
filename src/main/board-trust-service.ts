@@ -4,6 +4,7 @@ import path from "node:path";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
 import type { BoardServiceTrustSnapshot, TrustedBoardSnapshotEntry } from "../ipc/module-service-channels";
 import { BOARD_BRIDGE_VERSION } from "../shared/board-bridge-version";
+import { OwnershipRegistry } from "../shared/ownership-registry";
 import {
     BOARD_MANIFEST_FILE,
     normalizeBoardServicePath,
@@ -205,7 +206,7 @@ class BoardTrustService {
             });
         }
 
-        const browserUrlMaskOwners = new Set<string>();
+        const browserUrlMaskOwners = new OwnershipRegistry<BoardSource>();
         const claims: BrowserUrlMaskClaim[] = [];
         for (const source of [...trustedSources, ...bundledSources.filter((board) => !this.disabledBundledBoards.has(board.bundledId ?? ""))]) {
             const compatibility = getBoardCompatibility(
@@ -214,11 +215,11 @@ class BoardTrustService {
             );
             if (!compatibility.compatible) continue;
             const masks = normalizeBrowserUrlMasks(source.manifest?.browserUrlMasks);
-            const accepted = masks.filter((mask) => {
-                if (browserUrlMaskOwners.has(mask)) return false;
-                browserUrlMaskOwners.add(mask);
-                return true;
-            });
+            const accepted = masks.filter((mask) => browserUrlMaskOwners.claim(
+                mask,
+                source,
+                { origin: source.bundledId ? "bundled" : "trusted", owner: source.root },
+            ).accepted);
             if (accepted.length > 0) {
                 claims.push({ boardRoot: source.root, boardName: boardName(source), masks: accepted });
             }

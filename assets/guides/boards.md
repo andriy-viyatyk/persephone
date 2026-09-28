@@ -169,10 +169,12 @@ Boards can also declare service-backed content providers:
 The provider `type` must contain `/`; un-namespaced types are reserved for the platform. The type
 is persisted in page pipe state, so renaming it orphans pages carrying the old descriptor. Provider
 types and schemes use one-owner registration: the first trusted board wins, and a losing board is
-reported with its owner in Board Info. Boards may not claim `http`, `https`, `file`, `data`, `blob`,
-`mneme`, or any `persephone-*` scheme. Add `"contentProviders"` to `permissions` to disclose the
-surface; that list is not the functional gate, because the `contentProviders` declaration itself
-drives registration.
+reported with its owner in Board Info. When a board registration is refused, Persephone shows a
+toast the first time that issue appears and lists it in Board Info. This also applies to refused
+capability, settings, and browser URL mask registrations. Boards may not claim `http`, `https`,
+`file`, `data`, `blob`, `mneme`, or any `persephone-*` scheme. Add `"contentProviders"` to
+`permissions` to disclose the surface; that list is not the functional gate, because the
+`contentProviders` declaration itself drives registration.
 
 Register the implementation from the declared module service, not from the board page:
 
@@ -304,10 +306,11 @@ torrent's tracker and peer connections are not routed through Tor. Other peers c
 
 Only trusted boards and enabled bundled boards contribute claims. Registration order is trusted
 roots followed by bundled boards; an exact normalized duplicate is refused and reported as a
-`browser-url-mask` registration issue. Distinct overlapping masks remain ordered and the first
-matching claim wins. Trust and bundled eligibility protect registry correctness and user
-disclosure; trust is not a sandbox or a per-API permission gate, and a trusted board is a user
-application with the execution privileges described above.
+`browser-url-mask` registration issue, with a toast the first time it appears and an entry in Board
+Info. Distinct overlapping masks remain ordered and the first matching claim wins. Trust and
+bundled eligibility protect registry correctness and user disclosure; trust is not a sandbox or a
+per-API permission gate, and a trusted board is a user application with the execution privileges
+described above.
 
 ### Capability handlers and in-memory intents
 

@@ -61,7 +61,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1544 | [One provider-operation policy table (deadline, cap)](../tasks/US-1544-provider-operation-policy/README.md) | 2 — contracts | S | Done |
 | US-1545 | [Split the module-service supervisor; one state-transition helper](../tasks/US-1545-supervisor-split/README.md) | 3 — structure | L | Done |
 | US-1546 | [One `__pipe` range reader in main; one MIME table](../tasks/US-1546-pipe-range-reader/README.md) | 3 — structure | M | Done |
-| US-1548 | One ownership registry for providers, schemes, capabilities and URL masks | 3 — structure | M | Planned |
+| US-1548 | [One ownership registry for providers, schemes, capabilities and URL masks](../tasks/US-1548-ownership-registry/README.md) | 3 — structure | M | Done |
 | US-1549 | Board manifest parsed once into a normalized model | 3 — structure | M | Planned |
 | US-1550 | Scheme hooks: a `handoff()` helper and shared URL helpers | 3 — structure | S | Planned |
 | US-1551 | Single-instance board routing in one place; a typed open-context hook | 3 — structure | S | Planned |
@@ -602,6 +602,12 @@ read hung. See the [task document](../tasks/US-1535-service-lease-per-window/REA
     registry, and read by the registry, Board Info, the facade and the trust dialog. The facade then
     becomes a projection that cannot drift.
   - This does not reopen EPIC-106 D1 (`permissions` stays disclosure).
+- **After US-1548:** `custom-editor-registry.refresh()` now reads every source's manifest up front
+  into one `BoardRefreshSource[]` (trusted, bundled, installed) and passes it to per-axis
+  collect/commit functions, each re-deriving the board name and calling the `board-manifest.ts`
+  normalizers itself. `parseBoardManifest` belongs at that single read point, replacing
+  `BoardRefreshSource.manifest`. The `incompatibilities` state is gone; Board Info computes bridge
+  compatibility itself.
 
 ### US-1550: Scheme hooks — a `handoff()` helper and shared URL helpers
 

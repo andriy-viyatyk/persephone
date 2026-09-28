@@ -303,7 +303,8 @@ The provider `type` **must contain `/`**. Un-namespaced types are reserved for t
 state: renaming it does not migrate old descriptors and orphans pages that still name the old
 type. Provider types and schemes have one owner. Among trusted boards, the first registration
 wins; a later board loses and the refusal, including the current owner where applicable, is kept
-in Board Info. A board cannot claim the reserved schemes `http`, `https`, `file`, `data`, `blob`,
+in Board Info. New independent registration issues produce a toast once; unchanged issues do not
+toast again on refresh. A board cannot claim the reserved schemes `http`, `https`, `file`, `data`, `blob`,
 `mneme`, or any scheme beginning with `persephone-`. `contentProviders` in `permissions` is
 disclosure and lifecycle hygiene; the provider declaration itself is the functional registration
 axis, unlike the service declaration's service-permission gate.

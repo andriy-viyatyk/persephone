@@ -403,7 +403,8 @@ deadline. Cancellation releases pending requests, such as on page or frame teard
 Provider types must contain `/` because un-namespaced types are reserved for the platform. The
 type is persisted in page state, so renaming it orphans old pages. Types and schemes are
 one-owner, first-trusted-board-wins registrations; a loser and its owner are reported in Board
-Info. Reserved schemes are `http`, `https`, `file`, `data`, `blob`, `mneme`, and every
+Info. New independent registration issues produce a toast once; unchanged issues do not toast again
+on refresh. Reserved schemes are `http`, `https`, `file`, `data`, `blob`, `mneme`, and every
 `persephone-*` name. The `contentProviders` permission is disclosure, not the functional gate.
 
 From the frame, send structured-clone messages and handle lifecycle rejection:

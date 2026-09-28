@@ -1,4 +1,5 @@
 import { errMessage } from "../../shared/utils";
+import { OwnershipRegistry } from "../../shared/ownership-registry";
 import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 import type { IProvider, IProviderDescriptor } from "../api/types/io.provider";
 import type { ITransformer, ITransformerDescriptor } from "../api/types/io.transformer";
@@ -11,7 +12,6 @@ import { DataUrlProvider } from "./providers/DataUrlProvider";
 import { MnemeProvider } from "./providers/MnemeProvider";
 import { GuideProvider } from "./providers/GuideProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 type ProviderFactory = (config: Record<string, unknown>) => IProvider;
 type TransformerFactory = (config: Record<string, unknown>) => ITransformer;
@@ -27,6 +27,8 @@ export interface RegistrationResult {
     readonly accepted: boolean;
     readonly reason?: string;
     readonly owner?: string;
+    readonly replaced?: RegistrationOrigin;
+    readonly existingOrigin?: RegistrationOrigin;
 }
 
 export interface ProviderDeclaration {
@@ -34,7 +36,6 @@ export interface ProviderDeclaration {
     readonly boardRoot?: string;
     readonly boardName?: string;
     readonly trusted: boolean;
-    readonly source: "trusted" | "installed";
 }
 
 interface ProviderRegistration {
@@ -43,12 +44,11 @@ interface ProviderRegistration {
     readonly owner?: string;
 }
 
-const providerFactories = new Map<string, ProviderRegistration>();
+const providerOwnership = new OwnershipRegistry<ProviderRegistration>();
 const transformerFactories = new Map<string, TransformerFactory>();
 const providerShapeValidationErrors = new Map<string, Error | null>();
 const providerDeclarations = new Map<string, ProviderDeclaration>();
 const providerAvailabilityListeners = new Set<() => void>();
-const boardRegistrationRefusalToasts = new Map<string, Set<string>>();
 
 let providerDeclarationsReady = false;
 let resolveProviderDeclarationsReady: (() => void) | undefined;
@@ -139,39 +139,11 @@ function wrapScriptProviderFactory(type: string, factory: ProviderFactory): Prov
     };
 }
 
-function refusalToastKey(kind: string, name: string, reason: string): string {
-    return `${kind}\u0000${name}\u0000${reason}`;
-}
-
-function shouldReportBoardRefusal(
-    owner: string | undefined,
+function reportTransformerDuplicate(
     kind: string,
     name: string,
-    reason: string,
-): boolean {
-    if (!owner) return true;
-    let refusals = boardRegistrationRefusalToasts.get(fpNormalizeForCompare(owner));
-    if (!refusals) {
-        refusals = new Set<string>();
-        boardRegistrationRefusalToasts.set(fpNormalizeForCompare(owner), refusals);
-    }
-    const key = refusalToastKey(kind, name, reason);
-    if (refusals.has(key)) return false;
-    refusals.add(key);
-    return true;
-}
-
-function reportDuplicate(
-    kind: string,
-    name: string,
-    existingOrigin?: RegistrationOrigin,
-    owner?: string,
 ): void {
-    const ownerMessage = existingOrigin
-        ? ` The existing ${existingOrigin} registration remains active.`
-        : " The first registration remains active.";
-    const reason = `Duplicate ${kind} registration: "${name}".${ownerMessage}`;
-    if (!shouldReportBoardRefusal(owner, kind, name, reason)) return;
+    const reason = `Duplicate ${kind} registration: "${name}". The first registration remains active.`;
     void import("../api/ui")
         .then(({ ui }) => ui.notify(
             reason,
@@ -182,44 +154,18 @@ function reportDuplicate(
         });
 }
 
-function reportReplacement(
-    kind: string,
-    name: string,
-    previousOrigin: RegistrationOrigin,
-): void {
-    void import("../api/ui")
-        .then(({ ui }) => ui.notify(
-            `Replaced ${kind} registration: "${name}" (previous origin: ${previousOrigin}).`,
-            "info",
-        ))
-        .catch((error: unknown) => {
-            console.error(`Failed to report replaced ${kind} registration: ${errMessage(error)}`);
-        });
-}
-
-function reportRejected(kind: string, name: string, reason: string, owner?: string): void {
-    if (!shouldReportBoardRefusal(owner, kind, name, reason)) return;
-    void import("../api/ui")
-        .then(({ ui }) => ui.notify(
-            `Rejected ${kind} registration: "${name}". ${reason}`,
-            "error",
-        ))
-        .catch((error: unknown) => {
-            console.error(`Failed to report rejected ${kind} registration: ${errMessage(error)}`);
-        });
-}
-
-function duplicateResult(
-    kind: string,
-    name: string,
-    existing: ProviderRegistration,
-    owner?: string,
-): RegistrationResult {
+function duplicateResult(kind: string, name: string, existing: ProviderRegistration): RegistrationResult {
     const reason = existing.owner
         ? `${kind} "${name}" is already owned by board "${existing.owner}".`
         : `${kind} "${name}" is already registered by ${existing.origin}.`;
-    reportDuplicate(kind, name, existing.origin, owner);
-    return { accepted: false, reason, owner: existing.owner };
+    return { accepted: false, reason, owner: existing.owner, existingOrigin: existing.origin };
+}
+
+/** Return the single namespace refusal shared by registration and Board Info collection. */
+export function boardProviderTypeRefusal(type: string): string | undefined {
+    return type.includes("/")
+        ? undefined
+        : `Provider type "${type}" must contain "/"; un-namespaced provider types are reserved for the platform.`;
 }
 
 export function registerProvider(
@@ -227,49 +173,39 @@ export function registerProvider(
     factory: ProviderFactory,
     options: RegistrationOptions,
 ): RegistrationResult {
-    if (options.origin === "board" && !type.includes("/")) {
-        const reason = `Provider type "${type}" must contain "/"; un-namespaced provider types are reserved for the platform.`;
-        reportRejected("provider", type, reason, options.owner);
-        return { accepted: false, reason };
+    if (options.origin === "board") {
+        const reason = boardProviderTypeRefusal(type);
+        if (reason) return { accepted: false, reason };
     }
-    const existing = providerFactories.get(type);
+    const registration: ProviderRegistration = {
+        factory: options.origin === "script" ? wrapScriptProviderFactory(type, factory) : factory,
+        origin: options.origin,
+        owner: options.owner,
+    };
+    const existing = providerOwnership.get(type);
     if (existing) {
         if (existing.origin === "script" && options.origin === "script") {
             providerShapeValidationErrors.delete(type);
-            providerFactories.set(type, {
-                factory: wrapScriptProviderFactory(type, factory),
-                origin: options.origin,
-                owner: options.owner,
-            });
-            reportReplacement("provider", type, existing.origin);
+            providerOwnership.replace(type, registration, options);
             signalProviderAvailability();
-            return { accepted: true };
+            return { accepted: true, replaced: existing.origin };
         }
-        return duplicateResult("provider", type, existing, options.owner);
+        return duplicateResult("provider", type, existing.value);
     }
-    providerFactories.set(type, {
-        factory: options.origin === "script"
-            ? wrapScriptProviderFactory(type, factory)
-            : factory,
-        origin: options.origin,
-        owner: options.owner,
-    });
+    providerOwnership.claim(type, registration, options);
     signalProviderAvailability();
     return { accepted: true };
 }
 
 /** Remove every board-owned provider so a full trusted-board refresh can rebuild ownership. */
-export function unregisterBoardProviders(activeBoardRoots?: readonly string[]): void {
-    for (const [type, registration] of providerFactories) {
-        if (registration.origin === "board") providerFactories.delete(type);
-    }
-    clearReleasedBoardRefusalToasts(activeBoardRoots);
+export function unregisterBoardProviders(): void {
+    providerOwnership.clearOrigin("board");
     signalProviderAvailability();
 }
 
 export function registerTransformer(type: string, factory: TransformerFactory): void {
     if (transformerFactories.has(type)) {
-        reportDuplicate("transformer", type);
+        reportTransformerDuplicate("transformer", type);
         return;
     }
     transformerFactories.set(type, factory);
@@ -289,7 +225,7 @@ export function providerDeclarationFor(type: string): ProviderDeclaration | unde
 function tryCreateRegisteredProvider(
     descriptor: IProviderDescriptor,
 ): IProvider | undefined {
-    const registration = providerFactories.get(descriptor.type);
+    const registration = providerOwnership.get(descriptor.type)?.value;
     if (!registration) return undefined;
     return registration.factory(descriptor.config);
 }
@@ -351,17 +287,6 @@ export function isProviderResolutionError(error: unknown): error is MissingProvi
 
 function signalProviderAvailability(): void {
     for (const listener of providerAvailabilityListeners) listener();
-}
-
-function clearReleasedBoardRefusalToasts(activeBoardRoots?: readonly string[]): void {
-    if (!activeBoardRoots) {
-        boardRegistrationRefusalToasts.clear();
-        return;
-    }
-    const active = new Set(activeBoardRoots.map(fpNormalizeForCompare));
-    for (const root of boardRegistrationRefusalToasts.keys()) {
-        if (!active.has(root)) boardRegistrationRefusalToasts.delete(root);
-    }
 }
 
 export function replaceProviderDeclarations(declarations: readonly ProviderDeclaration[]): void {

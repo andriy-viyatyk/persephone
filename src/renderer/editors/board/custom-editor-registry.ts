@@ -16,7 +16,9 @@
  */
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { OwnershipRegistry } from "../../../shared/ownership-registry";
+import { errMessage } from "../../../shared/utils";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
@@ -26,6 +28,7 @@ import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import {
     replaceProviderDeclarations,
+    boardProviderTypeRefusal,
     registerProvider,
     unregisterBoardProviders,
     type ProviderDeclaration,
@@ -118,11 +121,6 @@ export interface CustomEditorMatch {
 }
 
 /** A board source omitted from the editor registry because its bridge requirement is too new. */
-export interface CustomEditorIncompatibility {
-    boardRoot: string;
-    reason: string;
-}
-
 export type CustomEditorRegistrationIssueKind = "provider" | "scheme" | "capability" | "settings" | "browser-url-mask";
 
 export interface CustomEditorRegistrationIssue {
@@ -144,6 +142,28 @@ interface BoardCapabilityRegistrationIntent {
     declaration: BoardCapabilityDeclaration;
 }
 
+interface CollectedProviderAxis {
+    readonly intents: BoardRegistrationIntent[];
+    readonly declarations: ProviderDeclaration[];
+}
+
+interface BoardRefreshSource {
+    readonly root: string;
+    readonly manifest: Awaited<ReturnType<typeof readBoardManifest>>;
+    readonly origin: "trusted" | "bundled" | "installed";
+}
+
+interface BoardUrlMaskIntent {
+    readonly boardRoot: string;
+    readonly boardName: string;
+    readonly mask: string;
+}
+
+interface BoardUrlMaskIssue {
+    readonly intent: BoardUrlMaskIntent;
+    readonly owner: string;
+}
+
 export interface BoardSettingsRegistration {
     boardRoot: string;
     name: string;
@@ -156,30 +176,18 @@ export interface BoardSettingsRegistration {
     editorAssociation: BoardEditorAssociation | null;
 }
 
-export interface BrowserUrlMaskClaim {
-    boardRoot: string;
-    name: string;
-    masks: string[];
-}
-
 interface CustomEditorRegistryState {
     /** Every trusted and bundled board association, in trusted-list then bundled order. */
     entries: CustomEditorMatch[];
-    /** Accepted whole-URL download claims, in trusted-list then bundled order. */
-    browserUrlMaskClaims: BrowserUrlMaskClaim[];
     /** Active trusted and bundled boards with normalized Settings declarations. */
     settingsBoards: BoardSettingsRegistration[];
-    /** Compatibility diagnostics retained for Board Info and future board listings. */
-    incompatibilities: CustomEditorIncompatibility[];
     /** Provider and scheme declarations refused during the latest board-source rebuild. */
     registrationIssues: CustomEditorRegistrationIssue[];
 }
 
 const defaultState: CustomEditorRegistryState = {
     entries: [],
-    browserUrlMaskClaims: [],
     settingsBoards: [],
-    incompatibilities: [],
     registrationIssues: [],
 };
 
@@ -247,14 +255,203 @@ function addRegistrationIssue(
     name: string,
     reason: string | undefined,
     owner: string | undefined,
-): void {
-    issues.push({
+): CustomEditorRegistrationIssue {
+    const issue: CustomEditorRegistrationIssue = {
         boardRoot,
         kind,
         name,
         reason: reason ?? `The ${kind} registration was refused.`,
         ...(owner !== undefined ? { owner } : {}),
-    });
+    };
+    issues.push(issue);
+    return issue;
+}
+
+function collectProviderAxis(sources: readonly BoardRefreshSource[]): CollectedProviderAxis {
+    const intents: BoardRegistrationIntent[] = [];
+    const declarations: ProviderDeclaration[] = [];
+    for (const source of sources) {
+        if (source.origin === "installed") continue;
+        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
+        for (const declaration of normalizeContentProviders(source.manifest?.contentProviders)) {
+            const intent = { boardRoot: source.root, declaration };
+            intents.push(intent);
+            if (boardProviderTypeRefusal(declaration.type)) continue;
+            declarations.push({
+                type: declaration.type,
+                boardRoot: source.root,
+                boardName,
+                trusted: true,
+            });
+        }
+    }
+    for (const source of sources) {
+        if (source.origin !== "installed") continue;
+        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
+        for (const declaration of normalizeContentProviders(source.manifest?.contentProviders)) {
+            if (boardProviderTypeRefusal(declaration.type)) continue;
+            declarations.push({ type: declaration.type, boardRoot: source.root, boardName, trusted: false });
+        }
+    }
+    return { intents, declarations };
+}
+
+function commitProviderAxis(
+    axis: CollectedProviderAxis,
+    issues: CustomEditorRegistrationIssue[],
+    dependentSchemeIssues: Set<CustomEditorRegistrationIssue>,
+): void {
+    for (const intent of axis.intents) {
+        const result = registerProvider(
+            intent.declaration.type,
+            (config) => createBoardProvider(intent.boardRoot, intent.declaration.type, config),
+            { origin: "board", owner: intent.boardRoot },
+        );
+        if (!result.accepted) {
+            addRegistrationIssue(
+                issues,
+                intent.boardRoot,
+                "provider",
+                intent.declaration.type,
+                result.reason,
+                result.owner,
+            );
+            for (const scheme of intent.declaration.schemes ?? []) {
+                const issue = addRegistrationIssue(
+                    issues,
+                    intent.boardRoot,
+                    "scheme",
+                    scheme,
+                    `Not registered because provider type "${intent.declaration.type}" was refused.`,
+                    result.owner,
+                );
+                dependentSchemeIssues.add(issue);
+            }
+            continue;
+        }
+
+        for (const scheme of intent.declaration.schemes ?? []) {
+            const schemeResult = registerScheme(
+                scheme,
+                createBoardSchemeHooks(intent.declaration.type, intent.boardRoot),
+                { origin: "board", owner: intent.boardRoot },
+            );
+            if (!schemeResult.accepted) {
+                addRegistrationIssue(
+                    issues,
+                    intent.boardRoot,
+                    "scheme",
+                    scheme,
+                    schemeResult.reason,
+                    schemeResult.owner,
+                );
+            }
+        }
+    }
+}
+
+function collectCapabilityAxis(
+    sources: readonly BoardRefreshSource[],
+    issues: CustomEditorRegistrationIssue[],
+): BoardCapabilityRegistrationIntent[] {
+    const intents: BoardCapabilityRegistrationIntent[] = [];
+    for (const source of sources) {
+        if (source.origin === "installed") continue;
+        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
+        for (const declaration of normalizeCapabilities(source.manifest?.capabilities, (id, reason) => {
+            addRegistrationIssue(issues, source.root, "capability", id, reason, undefined);
+        })) {
+            intents.push({ boardRoot: source.root, boardName, declaration });
+        }
+    }
+    return intents;
+}
+
+function commitCapabilityAxis(
+    intents: readonly BoardCapabilityRegistrationIntent[],
+    issues: CustomEditorRegistrationIssue[],
+): void {
+    for (const { boardRoot, boardName, declaration } of intents) {
+        const result = registerCapability(declaration, {
+            boardRoot,
+            boardName,
+            handlerKey: boardEditorId(boardRoot),
+            origin: "board",
+        });
+        if (!result.accepted) {
+            addRegistrationIssue(
+                issues,
+                boardRoot,
+                "capability",
+                declaration.id || "<empty id>",
+                result.reason,
+                undefined,
+            );
+        }
+    }
+}
+
+function commitUrlMaskAxis(
+    maskIssues: readonly BoardUrlMaskIssue[],
+    issues: CustomEditorRegistrationIssue[],
+): void {
+    for (const { intent, owner } of maskIssues) {
+        addRegistrationIssue(
+            issues,
+            intent.boardRoot,
+            "browser-url-mask",
+            intent.mask,
+            `Browser URL mask "${intent.mask}" is already owned by board "${owner}".`,
+            owner,
+        );
+    }
+}
+
+function collectUrlMaskAxis(sources: readonly BoardRefreshSource[]): BoardUrlMaskIssue[] {
+    const ownership = new OwnershipRegistry<BoardUrlMaskIntent>();
+    const issues: BoardUrlMaskIssue[] = [];
+    for (const source of sources) {
+        if (source.origin === "installed") continue;
+        const boardName = (source.manifest?.name && source.manifest.name.trim()) || fpBasename(source.root);
+        for (const mask of normalizeBrowserUrlMasks(source.manifest?.browserUrlMasks)) {
+            const intent = { boardRoot: source.root, boardName, mask };
+            const result = ownership.claim(mask, intent, { origin: "board", owner: source.root });
+            if ("existing" in result) {
+                issues.push({ intent, owner: result.existing.owner ?? result.existing.value.boardRoot });
+            }
+        }
+    }
+    return issues;
+}
+
+function registrationIssueKey(issue: CustomEditorRegistrationIssue): string {
+    return JSON.stringify([
+        fpNormalizeForCompare(issue.boardRoot),
+        issue.kind,
+        issue.name,
+        issue.reason,
+    ]);
+}
+
+function reportNewRegistrationIssues(
+    previous: readonly CustomEditorRegistrationIssue[],
+    current: readonly CustomEditorRegistrationIssue[],
+    dependentSchemeIssues: ReadonlySet<CustomEditorRegistrationIssue>,
+): void {
+    const previousKeys = new Set(previous.map(registrationIssueKey));
+    const reportedKeys = new Set<string>();
+    for (const issue of current) {
+        const key = registrationIssueKey(issue);
+        if (previousKeys.has(key) || reportedKeys.has(key)) continue;
+        reportedKeys.add(key);
+        if (dependentSchemeIssues.has(issue)) continue;
+        const message = `Rejected ${issue.kind} registration: "${issue.name}". ${issue.reason}`;
+        void import("../../api/ui")
+            .then(({ ui }) => ui.notify(message, "error"))
+            .catch((error: unknown) => {
+                console.error(`Failed to report board registration issue: ${errMessage(error)}`);
+            });
+    }
 }
 
 class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
@@ -309,86 +506,42 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         await bundledBoardRegistry.ensureInitialized();
         const roots = boardTrust.listPaths();
         const disabledBundledBoards = new Set(settings.get("disabled-bundled-boards"));
-        const sources: Array<{
-            root: string;
-            manifest: Awaited<ReturnType<typeof readBoardManifest>>;
-            origin: "trusted" | "bundled";
-        }> = [];
+        const installedBoards = boardInstallRegistry.listInstalled()
+            .filter((installed) => !boardTrust.isTrusted(installed.root));
+        const [trustedSources, installedSources] = await Promise.all([
+            Promise.all(roots.map(async (root): Promise<BoardRefreshSource> => ({
+                root,
+                manifest: await readBoardManifest(root),
+                origin: "trusted",
+            }))),
+            Promise.all(installedBoards.map(async (installed): Promise<BoardRefreshSource> => ({
+                root: installed.root,
+                manifest: await readBoardManifest(installed.root),
+                origin: "installed",
+            }))),
+        ]);
+        const sources: BoardRefreshSource[] = [
+            ...trustedSources,
+            ...bundledBoardRegistry.list()
+                .filter((bundled) => !disabledBundledBoards.has(bundled.id))
+                .map((bundled) => ({ ...bundled, origin: "bundled" as const })),
+            ...installedSources,
+        ];
+        const compatibleSources = sources.filter((source) => getBoardCompatibility(
+            { minBridgeVersion: source.manifest?.minBridgeVersion },
+            { bridgeVersion: BOARD_BRIDGE_VERSION },
+        ).compatible);
+        const boardSources = compatibleSources.filter(
+            (source): source is BoardRefreshSource & { origin: "trusted" | "bundled" } =>
+                source.origin !== "installed",
+        );
         const entries: CustomEditorMatch[] = [];
-        const browserUrlMaskClaims: BrowserUrlMaskClaim[] = [];
-        const browserUrlMaskOwners = new Map<string, string>();
         const settingsBoards: BoardSettingsRegistration[] = [];
-        const incompatibilities: CustomEditorIncompatibility[] = [];
-        const registrationIntents: BoardRegistrationIntent[] = [];
-        const capabilityRegistrationIntents: BoardCapabilityRegistrationIntent[] = [];
         const registrationIssues: CustomEditorRegistrationIssue[] = [];
-        const providerDeclarations: ProviderDeclaration[] = [];
-        for (const root of roots) {
-            sources.push({ root, manifest: await readBoardManifest(root), origin: "trusted" });
-        }
-        for (const bundled of bundledBoardRegistry.list()) {
-            if (disabledBundledBoards.has(bundled.id)) continue;
-            sources.push({ root: bundled.root, manifest: bundled.manifest, origin: bundled.origin });
-        }
-        for (const source of sources) {
+
+        for (const source of boardSources) {
             const { root, manifest, origin } = source;
-            const bridgeCompatibility = getBoardCompatibility(
-                { minBridgeVersion: manifest?.minBridgeVersion },
-                { bridgeVersion: BOARD_BRIDGE_VERSION },
-            );
-            if (!bridgeCompatibility.compatible) {
-                if (bridgeCompatibility.reason) {
-                    incompatibilities.push({ boardRoot: root, reason: bridgeCompatibility.reason });
-                }
-                continue;
-            }
             const boardName = (manifest?.name && manifest.name.trim()) || fpBasename(root);
-            const acceptedBrowserUrlMasks: string[] = [];
-            for (const mask of normalizeBrowserUrlMasks(manifest?.browserUrlMasks)) {
-                const owner = browserUrlMaskOwners.get(mask);
-                if (owner !== undefined) {
-                    addRegistrationIssue(
-                        registrationIssues,
-                        root,
-                        "browser-url-mask",
-                        mask,
-                        `Browser URL mask "${mask}" is already owned by board "${owner}".`,
-                        owner,
-                    );
-                    continue;
-                }
-                browserUrlMaskOwners.set(mask, root);
-                acceptedBrowserUrlMasks.push(mask);
-            }
-            if (acceptedBrowserUrlMasks.length > 0) {
-                browserUrlMaskClaims.push({ boardRoot: root, name: boardName, masks: acceptedBrowserUrlMasks });
-            }
-            for (const declaration of normalizeCapabilities(manifest?.capabilities, (id, reason) => {
-                addRegistrationIssue(registrationIssues, root, "capability", id, reason, undefined);
-            })) {
-                capabilityRegistrationIntents.push({ boardRoot: root, boardName, declaration });
-            }
-            for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
-                if (!declaration.type.includes("/")) {
-                    addRegistrationIssue(
-                        registrationIssues,
-                        root,
-                        "provider",
-                        declaration.type,
-                        `Provider type "${declaration.type}" must contain "/"; un-namespaced provider types are reserved for the platform.`,
-                        undefined,
-                    );
-                    continue;
-                }
-                registrationIntents.push({ boardRoot: root, declaration });
-                providerDeclarations.push({
-                    type: declaration.type,
-                    boardRoot: root,
-                    boardName,
-                    trusted: true,
-                    source: "trusted",
-                });
-            }
             const settingsDeclarations = normalizeBoardSettings(manifest, (name, reason) => {
                 addRegistrationIssue(registrationIssues, root, "settings", name, reason, undefined);
             });
@@ -397,24 +550,19 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 settingsBoards.push({
                     boardRoot: root,
                     name: boardName,
-                    // `normalizeBoardSettings` drops the block unless the manifest carries both
-                    // `author` and `name` (EPIC-111 S7), so reaching here means both are present
-                    // and the identity is the portable one — not the install-dependent root path.
-                    namespace: `${(manifest?.author ?? "").trim()}/${(manifest?.name ?? "").trim()}`,
+                    // Reaching this branch means the normalized settings block has a portable identity.
+                    namespace: (manifest?.author ?? "").trim() + "/" + (manifest?.name ?? "").trim(),
                     origin,
                     declarations: settingsDeclarations,
                     editorAssociation: assoc,
                 });
             }
-            if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
-            const name =
-                assoc.editorName ||
-                boardName;
+            if (!assoc) continue; // Neither fileMasks nor contentMasks means this is not a custom editor.
             entries.push({
                 origin,
                 editorId: boardEditorId(root),
                 boardRoot: root,
-                name,
+                name: assoc.editorName || boardName,
                 priority: assoc.editorPriority,
                 fileMasks: assoc.fileMasks,
                 folderMasks: assoc.folderMasks,
@@ -425,111 +573,28 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 editorSources: assoc.editorSources,
             });
         }
-        for (const installed of boardInstallRegistry.listInstalled()) {
-            if (boardTrust.isTrusted(installed.root)) continue;
-            const manifest = await readBoardManifest(installed.root);
-            const bridgeCompatibility = getBoardCompatibility(
-                { minBridgeVersion: manifest?.minBridgeVersion },
-                { bridgeVersion: BOARD_BRIDGE_VERSION },
-            );
-            if (!bridgeCompatibility.compatible) continue;
-            for (const declaration of normalizeContentProviders(manifest?.contentProviders)) {
-                if (!declaration.type.includes("/")) continue;
-                providerDeclarations.push({
-                    type: declaration.type,
-                    boardRoot: installed.root,
-                    boardName: (manifest?.name && manifest.name.trim()) || fpBasename(installed.root),
-                    trusted: false,
-                    source: "installed",
-                });
-            }
-        }
-        if (gen !== this.refreshGen) return; // superseded by a newer refresh — discard
 
-        // Registry maps and reactive state are committed synchronously as one rebuild. In
-        // particular, clear every board-origin registration, including boards no longer in the
-        // trust list after an untrust, uninstall, or folder rename.
-        const activeBoardRoots = sources.map((source) => source.root);
-        unregisterBoardProviders(activeBoardRoots);
-        unregisterBoardSchemes(activeBoardRoots);
-        // `roots` is only the next rebuild snapshot. Release the complete board-origin set so an
-        // already-untrusted board, absent from `roots`, cannot leave a stale capability behind.
+        const providerAxis = collectProviderAxis(compatibleSources);
+        const capabilityAxis = collectCapabilityAxis(compatibleSources, registrationIssues);
+        const urlMaskIssues = collectUrlMaskAxis(boardSources);
+        if (gen !== this.refreshGen) return;
+
+        const previousIssues = this.state.get().registrationIssues;
+        const dependentSchemeIssues = new Set<CustomEditorRegistrationIssue>();
+        unregisterBoardProviders();
+        unregisterBoardSchemes();
         unregisterBoardCapabilities();
-        replaceProviderDeclarations(providerDeclarations);
-        for (const { boardRoot, boardName, declaration } of capabilityRegistrationIntents) {
-            const result = registerCapability(declaration, {
-                boardRoot,
-                boardName,
-                handlerKey: boardEditorId(boardRoot),
-                origin: "board",
-            });
-            if (!result.accepted) {
-                addRegistrationIssue(
-                    registrationIssues,
-                    boardRoot,
-                    "capability",
-                    declaration.id || "<empty id>",
-                    result.reason,
-                    undefined,
-                );
-            }
-        }
-        for (const { boardRoot, declaration } of registrationIntents) {
-            const providerResult = registerProvider(
-                declaration.type,
-                (config) => createBoardProvider(boardRoot, declaration.type, config),
-                { origin: "board", owner: boardRoot },
-            );
-            if (!providerResult.accepted) {
-                addRegistrationIssue(
-                    registrationIssues,
-                    boardRoot,
-                    "provider",
-                    declaration.type,
-                    providerResult.reason,
-                    providerResult.owner,
-                );
-                // A declaration whose provider type was refused must NOT claim its schemes.
-                // Registering them anyway would point this board's scheme at a provider type it
-                // does not own — on a collision, at the WINNING board's provider — so a link in
-                // one board's scheme would silently read through another board's provider.
-                for (const scheme of declaration.schemes ?? []) {
-                    addRegistrationIssue(
-                        registrationIssues,
-                        boardRoot,
-                        "scheme",
-                        scheme,
-                        `Not registered because provider type "${declaration.type}" was refused.`,
-                        providerResult.owner,
-                    );
-                }
-                continue;
-            }
-            for (const scheme of declaration.schemes ?? []) {
-                const schemeResult = registerScheme(
-                    scheme,
-                    createBoardSchemeHooks(declaration.type, boardRoot),
-                    { origin: "board", owner: boardRoot },
-                );
-                if (!schemeResult.accepted) {
-                    addRegistrationIssue(
-                        registrationIssues,
-                        boardRoot,
-                        "scheme",
-                        scheme,
-                        schemeResult.reason,
-                        schemeResult.owner,
-                    );
-                }
-            }
-        }
-        this.state.update((s) => {
-            s.entries = entries;
-            s.browserUrlMaskClaims = browserUrlMaskClaims;
-            s.settingsBoards = settingsBoards;
-            s.incompatibilities = incompatibilities;
-            s.registrationIssues = registrationIssues;
+        replaceProviderDeclarations(providerAxis.declarations);
+        commitUrlMaskAxis(urlMaskIssues, registrationIssues);
+        commitCapabilityAxis(capabilityAxis, registrationIssues);
+        commitProviderAxis(providerAxis, registrationIssues, dependentSchemeIssues);
+
+        this.state.update((state) => {
+            state.entries = entries;
+            state.settingsBoards = settingsBoards;
+            state.registrationIssues = registrationIssues;
         });
+        reportNewRegistrationIssues(previousIssues, registrationIssues, dependentSchemeIssues);
     }
 
     /** All file-associated boards (sync, non-reactive). */
@@ -537,19 +602,9 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         return this.state.get().entries;
     }
 
-    /** Accepted whole-URL download claims in registration order. */
-    get browserUrlMaskClaims(): readonly BrowserUrlMaskClaim[] {
-        return this.state.get().browserUrlMaskClaims;
-    }
-
     /** Active trusted and bundled boards with normalized user-facing settings. */
     get settingsBoards(): readonly BoardSettingsRegistration[] {
         return this.state.get().settingsBoards;
-    }
-
-    /** Trusted boards excluded by the bridge compatibility gate, with a readable reason. */
-    get incompatibilities(): readonly CustomEditorIncompatibility[] {
-        return this.state.get().incompatibilities;
     }
 
     /** Registration refusals for one board, retained for the Board Info properties view. */
