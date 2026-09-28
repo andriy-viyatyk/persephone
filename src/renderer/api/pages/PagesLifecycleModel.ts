@@ -36,7 +36,7 @@ import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
-import { fpBasename } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 
 import type { ILink } from "../../api/types/io.tree";
 import { buildLinkEditorContent } from "../../editors/link-editor/link-open";
@@ -188,23 +188,27 @@ export class PagesLifecycleModel {
         // it edits (→ persephone.getFilePath()).
         const boardRoot = parseBoardEditorId(editorId);
         if (boardRoot !== null) {
+            const matchingEntry = customEditorRegistry.entries.find((entry) =>
+                fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
+            );
+            const resolvedBoardRoot = matchingEntry?.boardRoot ?? boardRoot;
             if (folderPath !== undefined) {
                 const match = customEditorRegistry.entries.find(
-                    (entry) => entry.editorId === editorId && entry.boardRoot === boardRoot,
+                    (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
                 );
                 const claimsFolder = customEditorRegistry
                     .getBoardsForFolder(folderPath)
-                    .some((entry) => entry.editorId === editorId);
+                    .some((entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot));
                 if (!match || !claimsFolder) {
                     throw new Error(`Board does not claim folder: ${folderPath}`);
                 }
                 const { createBoardEditorForFolder } = await import("../../editors/board");
-                return createBoardEditorForFolder(boardRoot, folderPath) as unknown as EditorOrHost;
+                return createBoardEditorForFolder(resolvedBoardRoot, folderPath) as unknown as EditorOrHost;
             }
             // Content-host board (EPIC-043): build the subclass WITH an adopted host so
             // Persephone owns the pipe/encoding/encryption/cache/dirty state. The host's
             // pipe is assigned by `createEditorFromFile` and restored below.
-            const match = customEditorRegistry.entries.find((e) => e.editorId === editorId);
+            const match = matchingEntry;
             if (match?.editorKind === "content-host") {
                 const { getDefaultBoardEditorState } = await import("../../editors/board");
                 const { BoardContentEditorModel } = await import(
@@ -213,7 +217,7 @@ export class PagesLifecycleModel {
                 const model = new BoardContentEditorModel(
                     new TComponentState(getDefaultBoardEditorState()),
                 );
-                model.initFromBoardRoot(boardRoot, filePath);
+                model.initFromBoardRoot(resolvedBoardRoot, filePath);
                 model.adoptHost(newTextFileModel(filePath));
                 return model as unknown as EditorOrHost;
             }
@@ -221,7 +225,7 @@ export class PagesLifecycleModel {
             // not a text host, autosave pair, or materialized content path.
             const { boardModule } = await import("../../editors/board");
             const model = boardModule.createEditor() as unknown as BoardEditorModel;
-            model.initFromBoardRoot(boardRoot, filePath);
+            model.initFromBoardRoot(resolvedBoardRoot, filePath);
             return model as unknown as EditorOrHost;
         }
         const def = editorRegistry.getById(editorId);
@@ -305,7 +309,7 @@ export class PagesLifecycleModel {
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const match = customEditorRegistry.entries.find(
-            (entry) => entry.editorId === editorId && entry.boardRoot === boardRoot,
+            (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
         );
         if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
             throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
@@ -338,10 +342,8 @@ export class PagesLifecycleModel {
         title: string,
         onPageCreated: (page: PageModel) => void,
     ): Promise<PageModel> => {
-        const editorId = boardEditorId(boardRoot);
         const bundledContentHost = customEditorRegistry.entries.some(
-            (entry) => entry.editorId === editorId
-                && entry.boardRoot === boardRoot
+            (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
                 && entry.origin === "bundled"
                 && entry.editorKind === "content-host",
         );
@@ -568,9 +570,9 @@ export class PagesLifecycleModel {
             ? this.model.query.findPageByFilePath(filePath)
             : undefined;
         if (existingPage) {
-            pipe?.dispose();
             this.model.navigation.showPage(existingPage.id);
-            existingPage.mainEditorInstance?.onReopen?.();
+            const adopted = existingPage.mainEditorInstance?.onReopen?.(pipe) === true;
+            if (!adopted) pipe?.dispose();
             // The document is already open — an anchor link into it is still a jump
             // request, so honor the fragment on the live editor (US-901).
             if (options?.fragment) {

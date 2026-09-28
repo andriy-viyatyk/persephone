@@ -35,7 +35,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1550: Scheme hooks — a `handoff()` helper and shared URL helpers](tasks/US-1550-scheme-hooks-handoff/README.md)
   - [x] [US-1551: Single-instance board routing in one place; a typed open-context hook](tasks/US-1551-single-instance-routing/README.md)
   - [x] [US-1552: Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](tasks/US-1552-video-resource-pipe/README.md)
-  - [ ] US-1553: VideoEditor's source flow in one place; one provider-recovery helper
+  - [x] [US-1553: VideoEditor's source flow in one place; one provider-recovery helper](tasks/US-1553-video-source-flow/README.md)
   - [ ] US-1554: Board trust granting, bundled-board creation and Board Info each have one path
   - [ ] US-1555: Small dead code, stale comments and a torrent-specific notice in core
 

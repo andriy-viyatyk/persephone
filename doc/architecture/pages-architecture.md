@@ -148,7 +148,7 @@ descriptors rather than restored sidebar state.
 - **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
 - **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
-- **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen()` hook; editors can use it to retry a failed source without replacing the page.
+- **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen(pipe?)` hook with the newly resolved pipe. The hook returns `true` to take ownership; otherwise the lifecycle disposes the pipe. Editors can use this to retry a failed source without replacing the page.
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
 An editorless page that has contributed panels is closed automatically when its composed panel set

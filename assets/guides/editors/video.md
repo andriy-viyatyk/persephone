@@ -90,4 +90,5 @@ and `visualizer-none`.
 Unsupported codecs may require VLC. Network streams can fail independently of the editor, and custom
 headers should be supplied through a cURL/fetch command when the source requires them. If media from
 an archive or content provider fails to open, reopen its source link to retry playback in the same
-page.
+page. A video backed by a board content provider also retries automatically if that provider becomes
+available while the page is open.

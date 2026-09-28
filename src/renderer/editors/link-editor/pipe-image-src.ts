@@ -23,12 +23,8 @@
 
 import { isArchivePath } from "../../core/utils/file-path";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
-import {
-    isProviderResolutionError,
-    subscribeProviderAvailability,
-} from "../../content/registry";
-import { ui } from "../../api/ui";
-import { errMessage } from "../../../shared/utils";
+import { subscribeProviderAvailability } from "../../content/registry";
+import { reportProviderError } from "../../content/source-recovery";
 import { mimeTypeForPath } from "../../../shared/mime-types";
 
 /** Cap on retained blob URLs. A tile grid shows a few dozen at a time; this leaves room
@@ -83,7 +79,7 @@ export async function resolvePipeImageSrc(src: string): Promise<string | null> {
             return url;
         } catch (error: unknown) {
             failed.add(src);
-            if (isProviderResolutionError(error)) ui.notify(errMessage(error), "error");
+            reportProviderError(error);
             return null;
         } finally {
             pending.delete(src);

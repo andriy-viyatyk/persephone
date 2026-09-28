@@ -9,8 +9,7 @@ import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { cleanForStorage } from "../../../shared/link-data";
-import { createPipeFromDescriptor } from "../../content/registry";
-import { pipeFromLink, pipeFromSourcePath } from "../../content/rebuild-pipe";
+import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
 import {
     decodePersephoneBoardLink,
@@ -629,7 +628,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Manifest editor kind for this board's trusted association. */
     get editorKind(): "simple" | "content-host" | "stream-host" {
         const boardRoot = this.state.get().boardRoot;
-        return customEditorRegistry.entries.find((entry) => entry.boardRoot === boardRoot)?.editorKind
+        return customEditorRegistry.entries.find((entry) =>
+            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot ?? "")
+        )?.editorKind
             ?? "simple";
     }
 
@@ -652,13 +653,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             throw new Error("The content-host board has no live content pipe.");
         }
 
-        const descriptor = this.state.get().sourceLink?.pipeDescriptor;
-        const pipe = descriptor
-            ? createPipeFromDescriptor(descriptor)
-            : this.currentFilePath()
-                ? await pipeFromSourcePath(this.currentFilePath() as string)
-                : null;
-        if (!pipe) throw new Error("The board has no content pipe to stream.");
+        const pipe = await pipeFromPersistedSource(
+            this.state.get().sourceLink,
+            this.currentFilePath(),
+            { unknownScheme: "file" },
+        );
         this.pipe = pipe;
         return pipe;
     }
@@ -759,12 +758,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             // Prefer the PERSISTED pipe descriptor: it carries the true provider (e.g. HttpProvider
             // with its method/headers), which a path-shape guess cannot reconstruct. Falls back to
             // the path-derived pipe for the switch path, which has no sourceLink.
-            const descriptor = this.state.get().sourceLink?.pipeDescriptor;
-            if (descriptor) {
-                this.pipe = createPipeFromDescriptor(descriptor);
-            } else {
-                this.pipe = await pipeFromSourcePath(source);
-            }
+            this.pipe = await pipeFromPersistedSource(
+                this.state.get().sourceLink,
+                source,
+                { unknownScheme: "file" },
+            );
         }
 
         // A plain file pipe already points at a real local file — hand over the source path
@@ -860,6 +858,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  MCP `openBoard` (US-750). `filePath` is passed only on the custom-editor SWITCH path
      *  (US-839); on the openRawLink path it rides `state.sourceLink` instead. */
     initFromBoardRoot(boardRoot: string, filePath?: string, folderPath?: string): void {
+        boardRoot = customEditorRegistry.entries.find((entry) =>
+            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
+        )?.boardRoot ?? boardRoot;
         const name = fpBasename(boardRoot);
         this.state.update((s) => {
             s.boardRoot = boardRoot;
@@ -920,10 +921,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
         void boardTrust.load();
         await this.refreshBoards();
+        const matchingEntry = customEditorRegistry.entries.find((entry) =>
+            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(s.boardRoot ?? "")
+        );
+        if (matchingEntry && matchingEntry.boardRoot !== s.boardRoot) {
+            this.state.update((state) => { state.boardRoot = matchingEntry.boardRoot; });
+        }
         // A plain board page persisted under its folder name (before pages took the manifest name,
         // or when the manifest was renamed) is retitled; a page carrying a file or folder is not.
         if (!this.currentFilePath() && !s.folderPath) {
-            void this.applyManifestTitle(s.boardRoot, fpBasename(s.boardRoot));
+            const currentRoot = this.state.get().boardRoot ?? s.boardRoot;
+            void this.applyManifestTitle(currentRoot, fpBasename(currentRoot));
         }
     }
 

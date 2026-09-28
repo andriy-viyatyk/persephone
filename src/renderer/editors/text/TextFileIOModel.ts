@@ -13,13 +13,13 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 import { PipePair } from "../../content/PipePair";
 import { DisposableStore } from "../../core/utils/DisposableStore";
-import { isProviderResolutionError } from "../../content/registry";
-import { ui } from "../../api/ui";
+import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
 
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
     private readonly pipes: PipePair;
     private watchSubscription: (() => void) | null = null;
+    private recoveryWatchSubscription: (() => void) | null = null;
     private readonly disposables = new DisposableStore();
     private modificationSaved = true;
     private isSavingModifications = false;
@@ -39,12 +39,7 @@ export class TextFileIOModel {
     }
 
     private recordProviderError(error: unknown): void {
-        if (!isProviderResolutionError(error)) return;
-        const message = errMessage(error, "The content provider is unavailable.");
-        if (this.lastProviderError !== message) {
-            this.lastProviderError = message;
-            ui.notify(message, "error");
-        }
+        this.lastProviderError = reportProviderError(error, this.lastProviderError);
     }
 
     private clearProviderError(): void {
@@ -79,6 +74,8 @@ export class TextFileIOModel {
     setPrimary(pipe: IContentPipe | null): void {
         this.watchSubscription?.();
         this.watchSubscription = null;
+        this.recoveryWatchSubscription?.();
+        this.recoveryWatchSubscription = null;
         this.pipes.setPrimary(pipe);
         // Assigning `pipe` publishes on `pipeState` — it is an accessor over that channel.
         this.model.pipe = this.pipes.primary;
@@ -89,9 +86,18 @@ export class TextFileIOModel {
     setupWatch(): void {
         this.watchSubscription?.();
         this.watchSubscription = null;
+        this.recoveryWatchSubscription?.();
+        this.recoveryWatchSubscription = null;
         const pipe = this.model.pipe;
         if (pipe?.watch) {
-            this.watchSubscription = this.disposables.add(pipe.watch(this.onFileChanged));
+            this.watchSubscription = this.disposables.add(pipe.watch((event) => {
+                if (event !== "available") void this.onFileChanged();
+            }));
+            this.recoveryWatchSubscription = this.disposables.add(
+                // Re-read through onFileChanged, not restore(): restore() re-runs setupWatch()
+                // synchronously, which would re-subscribe from inside this callback.
+                watchSourceRecovery(pipe, () => { void this.onFileChanged(); }),
+            );
         }
     }
 
@@ -395,6 +401,8 @@ export class TextFileIOModel {
     dispose() {
         this.watchSubscription?.();
         this.watchSubscription = null;
+        this.recoveryWatchSubscription?.();
+        this.recoveryWatchSubscription = null;
         this.disposables.dispose();
         this.pipes.dispose();
         this.model.pipe = null;

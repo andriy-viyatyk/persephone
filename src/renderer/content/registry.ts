@@ -286,7 +286,9 @@ export function isProviderResolutionError(error: unknown): error is MissingProvi
 }
 
 function signalProviderAvailability(): void {
-    for (const listener of providerAvailabilityListeners) listener();
+    // Iterate a snapshot: a listener may re-subscribe while it runs, and a live Set iteration
+    // would visit the new entry in the same pass and loop forever.
+    for (const listener of [...providerAvailabilityListeners]) listener();
 }
 
 export function replaceProviderDeclarations(declarations: readonly ProviderDeclaration[]): void {

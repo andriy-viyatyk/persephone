@@ -17,6 +17,7 @@ import { filePathMenuItems } from "../shared/editor-menu-items";
 import { openImageForEdit } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 import { mimeTypeForPath } from "../../../shared/mime-types";
+import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
 
 function extToMime(ext: string): string {
     const mime = mimeTypeForPath(`file${ext.toLowerCase()}`);
@@ -62,6 +63,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
      *  imports). Gates the dispose() cleanup. */
     private cacheFileCreated = false;
     private pipeWatch: (() => void) | undefined;
+    private recoveryWatch: (() => void) | undefined;
 
     constructor(state: TComponentState<ImageEditorState>) {
         super(state);
@@ -116,10 +118,16 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         await this.ensurePipe();
         if (this.pipe) {
             if (!this.pipeWatch && this.pipe.watch) {
-                this.pipeWatch = this.pipe.watch(() => {
-                    if (!this.hasImage) void this.restore();
+                this.pipeWatch = this.pipe.watch((event) => {
+                    if (event !== "available" && !this.hasImage) void this.restore();
                 });
                 this.own(() => this.pipeWatch?.());
+            }
+            if (!this.recoveryWatch) {
+                this.recoveryWatch = watchSourceRecovery(this.pipe, () => {
+                    if (!this.hasImage) void this.restore();
+                });
+                this.own(() => this.recoveryWatch?.());
             }
             if (!url) {
                 // No URL yet — read from pipe and create blob URL
@@ -145,6 +153,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
                 } catch (err) {
                     // Pipe read failed — try cache file fallback
                     await this.tryRestoreFromCache();
+                    reportProviderError(err);
                     // Swallowing this left the view showing its alt text and nothing else:
                     // a blank page that looks identical to an unsupported format, with no
                     // way to tell a 404 from a 403 from an offline machine. The editor is

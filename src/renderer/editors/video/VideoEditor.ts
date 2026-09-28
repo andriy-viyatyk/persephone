@@ -22,8 +22,9 @@ import type { ITreeProvider, ILink } from "../../api/types/io.tree";
 import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
-import { pipeFromLink } from "../../content/rebuild-pipe";
-import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
+import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
+import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
+import { isProviderResolutionError } from "../../content/registry";
 import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -55,6 +56,15 @@ export interface VideoEditorState extends EditorStateBase {
  *  instances. Module-scoped (preserved from legacy `VideoPlayerEditor.tsx:48`). */
 let sessionMuted = false;
 
+type VideoSourceKind = "hls" | "http" | "local-file" | "pipe";
+
+function sourceKind(url: string, format: VideoFormat): VideoSourceKind {
+    if (format === "m3u8") return "hls";
+    if (/^https?:\/\//i.test(url)) return "http";
+    if (isPlainLocalPath(url)) return "local-file";
+    return "pipe";
+}
+
 export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
     title: "Video Player",
@@ -80,9 +90,10 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     skipSave = true;
     private mediaElement: HTMLMediaElement | null = null;
     private activeSessionId: string | undefined;
-    private activeSessionPageId: string | undefined;
     private activeSessionResourceId: string | undefined;
     private sourceRequestId = 0;
+    private recoveryWatch: (() => void) | undefined;
+    private inFlightSource: { url: string; promise: Promise<void> } | undefined;
 
     constructor(state: TComponentState<VideoEditorState>) {
         super(state);
@@ -102,62 +113,23 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     override setPage(page: Parameters<EditorModel["setPage"]>[0]): void {
         super.setPage(page);
         if (!page) return;
-        const { url, format, parsedRequest, streamUrl } = this.state.get();
-        if (!url || streamUrl || format === "m3u8"
-            || /^https?:\/\//i.test(url) || isPlainLocalPath(url) || !this.pipe) return;
-
-        const sourceRequestId = ++this.sourceRequestId;
-        void this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId).then(
-            ({ streamingUrl }) => {
-                this.state.update((s) => {
-                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
-                        s.streamUrl = streamingUrl;
-                    }
-                });
-            },
-            () => {
-                this.state.update((s) => {
-                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
-                        s.playerState = "error";
-                    }
-                });
-            },
-        );
+        const { url, parsedRequest } = this.state.get();
+        if (url) void this.startSource(url, parsedRequest);
     }
 
     /** The same source was opened onto this page again. A pipe-backed source that failed gets
      *  a fresh pipe session, so reopening its link recovers the page (US-1528). A failed
      *  stream response reaches the media element as "unsupported format", so that state
      *  retries too. A playing page and HTTP/local sources are left as they are. */
-    override onReopen(): void {
-        const { url, format, parsedRequest, playerState } = this.state.get();
-        if ((playerState !== "error" && playerState !== "unsupported format") || !url || !this.page || format === "m3u8"
-            || /^https?:\/\//i.test(url) || isPlainLocalPath(url)) return;
-
-        const sourceRequestId = ++this.sourceRequestId;
-        this.state.update((s) => {
-            s.playerState = "loading";
-            s.streamUrl = "";
+    override onReopen(freshPipe?: IContentPipe): boolean {
+        const { url, format, playerState } = this.state.get();
+        if (!freshPipe || !this.page || sourceKind(url, format) !== "pipe"
+            || (playerState !== "error" && playerState !== "unsupported format")) return false;
+        void this.startSource(url, this.state.get().parsedRequest, {
+            freshPipe,
+            force: true,
         });
-        void (async () => {
-            await this.ensurePipeForSource(url);
-            return this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId);
-        })().then(
-            ({ streamingUrl }) => {
-                this.state.update((s) => {
-                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
-                        s.streamUrl = streamingUrl;
-                    }
-                });
-            },
-            () => {
-                this.state.update((s) => {
-                    if (s.url === url && sourceRequestId === this.sourceRequestId) {
-                        s.playerState = "error";
-                    }
-                });
-            },
-        );
+        return true;
     }
 
     /** Update raw input text as user types. */
@@ -165,25 +137,10 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         this.state.update((s) => { s.inputText = text; });
     };
 
-    /**
-     * Resolve a raw URL/path to a streaming server URL for smooth playback.
-     * M3U8 sources are returned as-is (hls.js handles them natively).
-     * All other sources (MP4, local files) are proxied through the local
-     * streaming server, which provides HTTP range request support.
-     */
-    private ensurePipeForSource = async (url: string): Promise<IContentPipe> => {
-        if (this.pipe) return this.pipe;
-        const sourceLink = this.state.get().sourceLink;
-        const pipe = await pipeFromLink(sourceLink?.href ?? url);
-        this.pipe = pipe;
-        return pipe;
-    };
-
     private deleteActiveSession = async (): Promise<void> => {
         const sessionId = this.activeSessionId;
         const resourceId = this.activeSessionResourceId;
         this.activeSessionId = undefined;
-        this.activeSessionPageId = undefined;
         this.activeSessionResourceId = undefined;
         try {
             if (sessionId) await api.deleteVideoStreamSession(sessionId);
@@ -195,72 +152,138 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         }
     };
 
-    private resolveStreamUrl = async (
+    private invalidateResource = async (resourceId: string | undefined): Promise<void> => {
+        if (!resourceId) return;
+        const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
+        invalidateBoardPipeResource(resourceId);
+    };
+
+    private ensurePipeForSource = async (
         url: string,
-        format: VideoFormat,
-        parsedRequest: ParsedHttpRequest | null,
-        sourceRequestId: number,
-    ): Promise<{ streamingUrl: string }> => {
-        if (sourceRequestId !== this.sourceRequestId) return { streamingUrl: "" };
-        await this.deleteActiveSession();
-        if (format === "m3u8") return { streamingUrl: url };
-        const isHttpUrl = /^https?:\/\//i.test(url);
-        const isPlainLocalFile = isPlainLocalPath(url);
-        let pipeResourceId: string | undefined;
-        try {
-            const page = this.page;
-            const pageId = page?.id;
-            let config: VideoStreamSessionConfig | null = isHttpUrl
-                ? { url, headers: parsedRequest?.headers, pageId }
-                : isPlainLocalFile
-                    ? { filePath: url, pageId }
-                    : null;
-            if (!isHttpUrl && !isPlainLocalFile) {
-                const pipe = this.pipe;
-                if (!pipe) throw new Error("The video source has no live content pipe.");
-                const resourceId = `video-${crypto.randomUUID()}`;
-                const { registerVideoSessionResource } = await import("../board/board-pipe-handler");
-                registerVideoSessionResource(resourceId, pipe);
-                pipeResourceId = resourceId;
-                config = { pipe: true, pipeResourceId, ...(pageId ? { pageId } : {}) };
-            }
-            if (!config) throw new Error("The video source has no live content pipe.");
-            const session = await api.createVideoStreamSession(
-                config,
-                settings.get("video-stream.port"),
-            );
-            if (sourceRequestId !== this.sourceRequestId) {
-                await api.deleteVideoStreamSession(session.sessionId);
-                if (pipeResourceId) {
-                    const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
-                    invalidateBoardPipeResource(pipeResourceId);
-                }
-                return { streamingUrl: "" };
-            }
-            this.activeSessionId = session.sessionId;
-            this.activeSessionPageId = pageId;
-            this.activeSessionResourceId = pipeResourceId;
-            return { streamingUrl: session.streamingUrl };
-        } catch (error: unknown) {
-            if (pipeResourceId) {
-                const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
-                invalidateBoardPipeResource(pipeResourceId);
-            }
-            if (!isHttpUrl && !isPlainLocalFile) throw error;
-            return { streamingUrl: url }; // fallback to direct URL for local/HTTP sources
+        requestId: number,
+        rebuild = false,
+    ): Promise<IContentPipe | undefined> => {
+        if (this.pipe) return this.pipe;
+        const pipe = rebuild
+            ? await pipeFromLink(url, { unknownScheme: "reject" })
+            : await pipeFromPersistedSource(this.state.get().sourceLink, url, { unknownScheme: "reject" });
+        if (requestId !== this.sourceRequestId) {
+            pipe.dispose();
+            return undefined;
         }
+        this.pipe = pipe;
+        return pipe;
+    };
+
+    private installRecoveryWatch(pipe: IContentPipe, requestId: number): void {
+        this.recoveryWatch?.();
+        this.recoveryWatch = watchSourceRecovery(pipe, () => {
+            const { url, format, playerState } = this.state.get();
+            if (requestId !== this.sourceRequestId || sourceKind(url, format) !== "pipe"
+                || (playerState !== "error" && playerState !== "unsupported format")) return;
+            void this.startSource(url, this.state.get().parsedRequest, { force: true });
+        });
+    }
+
+    private startSource = (
+        url: string,
+        parsedRequest: ParsedHttpRequest | null,
+        options: { freshPipe?: IContentPipe; force?: boolean; rebuildPipe?: boolean } = {},
+    ): Promise<void> => {
+        if (this.inFlightSource?.url === url && !options.freshPipe) return this.inFlightSource.promise;
+        const { format, streamUrl, playerState } = this.state.get();
+        if (!options.force && streamUrl
+            && playerState !== "error" && playerState !== "unsupported format") return Promise.resolve();
+        const kind = sourceKind(url, format);
+        const requestId = ++this.sourceRequestId;
+        this.recoveryWatch?.();
+        this.recoveryWatch = undefined;
+        this.state.update((state) => {
+            state.playerState = "loading";
+            state.streamUrl = kind === "hls" ? url : "";
+        });
+
+        const promise = (async () => {
+            let resourceId: string | undefined;
+            try {
+                await this.deleteActiveSession();
+                if (requestId !== this.sourceRequestId) {
+                    options.freshPipe?.dispose();
+                    return;
+                }
+                if (options.freshPipe) {
+                    const oldPipe = this.pipe;
+                    if (oldPipe && oldPipe !== options.freshPipe) oldPipe.dispose();
+                    this.pipe = options.freshPipe;
+                } else if (options.rebuildPipe) {
+                    this.pipe?.dispose();
+                    this.pipe = null;
+                }
+                if (kind === "hls") return;
+                let config: VideoStreamSessionConfig;
+                if (kind === "http") {
+                    config = { url, headers: parsedRequest?.headers, pageId: this.page?.id };
+                } else if (kind === "local-file") {
+                    config = { filePath: url, pageId: this.page?.id };
+                } else {
+                    const pipe = await this.ensurePipeForSource(url, requestId, options.rebuildPipe);
+                    if (!pipe || requestId !== this.sourceRequestId) return;
+                    await pipe.stat();
+                    if (requestId !== this.sourceRequestId) return;
+                    resourceId = `video-${crypto.randomUUID()}`;
+                    const { registerVideoSessionResource } = await import("../board/board-pipe-handler");
+                    registerVideoSessionResource(resourceId, pipe);
+                    config = { pipe: true, pipeResourceId: resourceId, pageId: this.page?.id };
+                    this.installRecoveryWatch(pipe, requestId);
+                }
+                const session = await api.createVideoStreamSession(config, settings.get("video-stream.port"));
+                if (requestId !== this.sourceRequestId) {
+                    await api.deleteVideoStreamSession(session.sessionId);
+                    await this.invalidateResource(resourceId);
+                    return;
+                }
+                this.activeSessionId = session.sessionId;
+                this.activeSessionResourceId = resourceId;
+                this.state.update((state) => {
+                    if (requestId === this.sourceRequestId && state.url === url) state.streamUrl = session.streamingUrl;
+                });
+            } catch (error: unknown) {
+                await this.invalidateResource(resourceId);
+                if (requestId !== this.sourceRequestId) return;
+                if (options.freshPipe && this.pipe !== options.freshPipe) {
+                    this.pipe?.dispose();
+                    this.pipe = options.freshPipe;
+                }
+                if (kind === "http" || kind === "local-file") {
+                    this.state.update((state) => { state.streamUrl = url; });
+                    return;
+                }
+                if (isProviderResolutionError(error)) {
+                    reportProviderError(error);
+                    if (this.pipe) this.installRecoveryWatch(this.pipe, requestId);
+                } else if (error instanceof UnresolvableLinkError && error.scheme && !error.registered) {
+                    ui.notify(
+                        `This page was opened from a "${error.scheme}:" link, and the board that `
+                        + "provides it is missing or untrusted. Reinstall or trust that board to restore it.",
+                        "error",
+                    );
+                }
+                this.state.update((state) => { state.playerState = "error"; });
+            }
+        })().finally(() => {
+            if (this.inFlightSource?.promise === promise) this.inFlightSource = undefined;
+        });
+        this.inFlightSource = { url, promise };
+        return promise;
     };
 
     /** Submit input text as a video URL. Resolves stream URL before VPlayer loads. */
     submitUrl = async (text: string) => {
         const trimmed = text.trim();
         if (!trimmed) return;
-        const sourceRequestId = ++this.sourceRequestId;
         const parsed = parseHttpRequest(trimmed);
         const resolvedUrl = parsed ? parsed.url : trimmed;
         const format = detectVideoFormat(resolvedUrl);
-        await this.deleteActiveSession();
-
         this.state.update((s) => {
             s.inputText = trimmed;
             s.url = resolvedUrl;
@@ -269,67 +292,14 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             s.playerState = "loading";
             s.streamUrl = format === "m3u8" ? resolvedUrl : "";
         });
-
-        if (format !== "m3u8") {
-            const { streamingUrl } = await this.resolveStreamUrl(
-                resolvedUrl,
-                format,
-                parsed ?? null,
-                sourceRequestId,
-            );
-            // Only update if URL hasn't changed while resolving
-            this.state.update((s) => {
-                if (s.url === resolvedUrl && sourceRequestId === this.sourceRequestId) {
-                    s.streamUrl = streamingUrl;
-                }
-            });
-        }
+        await this.startSource(resolvedUrl, parsed ?? null, { force: true, rebuildPipe: true });
     };
 
     /** Called after model creation when opening a file — resolves stream URL for immediate playback. */
     async restore(): Promise<void> {
         await super.restore();
-        const { url, format, parsedRequest } = this.state.get();
-        const sourceRequestId = ++this.sourceRequestId;
-        if (url) {
-            const isPipeSource = format !== "m3u8"
-                && !/^https?:\/\//i.test(url)
-                && !isPlainLocalPath(url);
-            if (isPipeSource) {
-                if (!this.pipe) {
-                    try {
-                        await this.ensurePipeForSource(url);
-                    } catch (error: unknown) {
-                        // A persisted link whose scheme is no longer REGISTERED means the board
-                        // that owned it is gone — uninstalled or untrusted — and no amount of
-                        // retrying rebuilds it. Keep the page with a legible state instead of
-                        // dropping it. Deliberately keyed on registration and not on the scheme's
-                        // name: core must not know which board claims `torrent:`. A link whose
-                        // scheme IS registered failed for some other reason and still throws.
-                        const persistedLink = this.state.get().sourceLink?.href;
-                        const scheme = schemeOf(persistedLink);
-                        if (scheme && !isSchemeRegistered(scheme)) {
-                            this.state.update((s) => { s.playerState = "error"; });
-                            ui.notify(
-                                `This page was opened from a "${scheme}:" link, and the board that `
-                                + "provides it is missing or untrusted. Reinstall or trust that "
-                                + "board to restore it.",
-                                "error",
-                            );
-                            return;
-                        }
-                        throw error;
-                    }
-                }
-                if (!this.page) return;
-            }
-            const { streamingUrl } = await this.resolveStreamUrl(url, format, parsedRequest, sourceRequestId);
-            this.state.update((s) => {
-                if (s.url === url && sourceRequestId === this.sourceRequestId) {
-                    s.streamUrl = streamingUrl;
-                }
-            });
-        }
+        const { url, parsedRequest } = this.state.get();
+        if (url) await this.startSource(url, parsedRequest);
     }
 
     /** Called by VPlayer when player state changes. (VPlayer's
@@ -557,29 +527,20 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Clean up streaming server sessions when the editor tab is closed. */
     async dispose(): Promise<void> {
         this.mediaElement = null;
+        // Invalidate in-flight starts before awaiting their IPC creation; each stale request
+        // will then delete and invalidate only the session/resource it created.
         this.sourceRequestId++;
-        const sessionId = this.activeSessionId;
-        const pageId = this.activeSessionPageId ?? this.page?.id;
-        const resourceId = this.activeSessionResourceId;
-        this.activeSessionId = undefined;
-        this.activeSessionPageId = undefined;
-        this.activeSessionResourceId = undefined;
+        this.recoveryWatch?.();
+        this.recoveryWatch = undefined;
         const pipe = this.pipe;
         this.pipe = null;
-        await Promise.all([
-            sessionId ? api.deleteVideoStreamSession(sessionId) : Promise.resolve(),
-            pageId ? api.deleteVideoStreamSessionsByPage(pageId) : Promise.resolve(),
-            resourceId
-                ? import("../board/board-pipe-handler").then(({ invalidateBoardPipeResource }) => {
-                    invalidateBoardPipeResource(resourceId);
-                })
-                : Promise.resolve(),
-        ]);
-        if (pipe) {
-            pipe.dispose();
+        try {
+            await this.deleteActiveSession();
+        } finally {
+            if (pipe) pipe.dispose();
+            this.state.update((s) => { s.streamUrl = ""; });
+            await super.dispose();
         }
-        this.state.update((s) => { s.streamUrl = ""; });
-        await super.dispose();
     }
 
     /** Open the current video in VLC. Uses the local streaming server for HTTP sources. */

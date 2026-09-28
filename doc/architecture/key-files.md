@@ -39,7 +39,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, and media-pipe owner readiness) | `/src/renderer/api/pages/PageModel.ts` |
 | Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
-| Page creation/opening (including capability-handler board opening, the fixed-ID Clipboard sidebar singleton, and existing-page reopen hook) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Page creation/opening (including capability-handler board opening, the fixed-ID Clipboard sidebar singleton, and existing-page reopen pipe ownership) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
 | Window session save/restore (`openFiles{windowIndex}.json`; restore save gate; legacy `draw-view` descriptors are normalized to the bundled board with renderable board-selection state; every `board-info` descriptor restores through its registered editor with optional host data; folder-board descriptors retain independent `boardRoot`/`folderPath` and revalidate the trusted claim before construction; bundled board roots are repaired by stable board id when an install path changes; persisted active panels are validated against composed composite keys and fall back to the first panel) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |
 | Page navigation (`navigatePageTo` as named steps: confirm-release-unless-survives, singleton-target reuse, same-file reuse, build with missing-file/error fallbacks, preview-vs-explicit-target selection, shared show/focus-unless-sidebar/save exit) | `/src/renderer/api/pages/PageNavigator.ts` |
 | Browser page opening (`showBrowserPage` — Tor gate + arm-before-mount fail-closed sequence; `openUrlInBrowserTab` — profile matching + nearest-tab reuse. Lives beside the browser editor so the startup-loaded pages model has no static import of the browser chunk; the lifecycle reaches it via dynamic import) | `/src/renderer/editors/browser/browser-pages.ts` |
@@ -105,7 +105,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
-| Pipe rebuild from a persisted source path (`pipeFromSourcePath` — plain / `archive.zip!entry` / `http(s)`; shared by the Image editor, board file materialization, media playback and page restore) | `/src/renderer/content/rebuild-pipe.ts` |
+| Pipe rebuild from persisted source data (`pipeFromSourcePath` and descriptor-first `pipeFromPersistedSource`) | `/src/renderer/content/rebuild-pipe.ts` |
+| Provider-availability recovery watches and shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
 | Pipe resolvers (Layer 2; the HTTP resolver's content-extension set decides browser-vs-content, then normal registry matching and eligible board resolution choose the editor; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution and URL path/fragment helpers | `/src/renderer/content/link-utils.ts` |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |

@@ -4,7 +4,18 @@ import { FileProvider } from "./providers/FileProvider";
 import "./builtin-schemes";
 import { createPipeFromDescriptor } from "./registry";
 import { resolveUrlToPipeDescriptor } from "./link-utils";
-import { resolveRegisteredSourcePath } from "./scheme-registry";
+import { isSchemeRegistered, resolveRegisteredSourcePath, schemeOf } from "./scheme-registry";
+import type { ILinkData } from "../../shared/link-data";
+
+export class UnresolvableLinkError extends Error {
+    constructor(
+        readonly scheme: string | undefined,
+        readonly registered: boolean,
+    ) {
+        super("The link cannot be resolved to content.");
+        this.name = "UnresolvableLinkError";
+    }
+}
 
 /**
  * Resolve a link to a content pipe — the canonical link→pipe route.
@@ -39,7 +50,8 @@ export async function pipeFromLink(
     if (descriptor) return createPipeFromDescriptor(descriptor);
 
     if (options.unknownScheme === "file") return new ContentPipe(new FileProvider(link));
-    throw new Error("The link cannot be resolved to content.");
+    const scheme = schemeOf(link);
+    throw new UnresolvableLinkError(scheme, scheme ? isSchemeRegistered(scheme) : false);
 }
 
 /**
@@ -57,4 +69,24 @@ export async function pipeFromLink(
  */
 export async function pipeFromSourcePath(path: string): Promise<IContentPipe> {
     return pipeFromLink(path, { unknownScheme: "file" });
+}
+
+export interface PersistedSourceLink {
+    href?: string;
+    pipeDescriptor?: ILinkData["pipeDescriptor"];
+}
+
+/** Rebuild a pipe from persisted source data, preserving provider configuration when present. */
+export async function pipeFromPersistedSource(
+    sourceLink: PersistedSourceLink | undefined,
+    fallbackPath: string | undefined,
+    options: { unknownScheme?: "reject" | "file"; sessionHandle?: string } = {},
+): Promise<IContentPipe> {
+    if (sourceLink?.pipeDescriptor) return createPipeFromDescriptor(sourceLink.pipeDescriptor);
+    const source = sourceLink?.href || fallbackPath;
+    if (!source) throw new Error("No persisted content source is available.");
+    return pipeFromLink(source, {
+        unknownScheme: options.unknownScheme ?? "reject",
+        sessionHandle: options.sessionHandle,
+    });
 }

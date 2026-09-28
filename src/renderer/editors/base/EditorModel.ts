@@ -328,9 +328,9 @@ export abstract class EditorModel<
     onNavigationReuse?(): void;
 
     /** Optional. Called by `PagesLifecycleModel.openFile` when the file or link being opened
-     *  is already this page's main editor, so the page is shown instead of rebuilt. An editor
-     *  in a failed state can retry its source here (US-1528). */
-    onReopen?(): void;
+     *  is already this page's main editor. Return true to take ownership of the fresh pipe;
+     *  return false to leave disposal to the page lifecycle. */
+    onReopen?(pipe?: IContentPipe): boolean;
 
     /** Optional. Receive transient context from a source open. Editors can
      *  register a private-session handle for a new page or enqueue a source

@@ -175,7 +175,10 @@ const defaultState: CustomEditorRegistryState = {
 
 /** The claiming board's display name, for titling a page opened on a link that carries none. */
 function boardDisplayName(boardRoot: string): string | undefined {
-    return customEditorRegistry.entries.find((e) => e.boardRoot === boardRoot)?.name;
+    const normalizedRoot = fpNormalizeForCompare(boardRoot);
+    return customEditorRegistry.entries.find((entry) =>
+        fpNormalizeForCompare(entry.boardRoot) === normalizedRoot
+    )?.name;
 }
 
 function createBoardSchemeHooks(providerType: string, boardRoot: string): SchemeHooks {
@@ -576,7 +579,10 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
 
     /** Registration refusals for one board, retained for the Board Info properties view. */
     getRegistrationIssues(boardRoot: string): readonly CustomEditorRegistrationIssue[] {
-        return this.state.get().registrationIssues.filter((issue) => issue.boardRoot === boardRoot);
+        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        return this.state.get().registrationIssues.filter((issue) =>
+            fpNormalizeForCompare(issue.boardRoot) === normalizedRoot
+        );
     }
 
     /**

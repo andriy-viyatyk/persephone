@@ -265,6 +265,14 @@ unregisters its resource, and the streaming URL is not persisted. When a page id
 is retained only as cleanup metadata. VLC uses the session URL for non-HLS sources, keeping the
 in-app player and external player on the same source.
 
+The video editor classifies HLS, HTTP, local-file and pipe-backed sources in one start flow. A
+reopen can transfer a newly resolved pipe to the existing editor only when its pipe-backed source
+is in a failed state; healthy sources leave the fresh pipe with the page lifecycle to dispose.
+Pipe-backed video, image and text editors use `source-recovery.ts` to watch for a provider becoming
+available and retry the source. Text and image editors keep their separate file-change handling;
+the recovery watch responds only to provider availability. The shared provider-error reporter
+deduplicates repeated notifications when its caller supplies the previous error message.
+
 ## Built-in Transformers
 
 | Transformer | Type | Persistent | Description |
@@ -356,6 +364,8 @@ Key rules:
 | `/src/renderer/content/builtin-schemes.ts` | Built-in URL-scheme hooks and browser/content resolution |
 | `/src/renderer/content/parsers.ts` | Layer 1 -- scheme dispatch plus plain-file/archive and cURL/fetch adapters |
 | `/src/renderer/content/resolvers.ts` | Layer 2 -- fallback resolver and registered-scheme dispatch |
+| `/src/renderer/content/rebuild-pipe.ts` | Rebuilds pipes from persisted source paths or source links, preferring saved pipe descriptors where available |
+| `/src/renderer/content/source-recovery.ts` | Provider-availability recovery watches and shared typed provider-error reporting |
 | `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution and shared URL path/fragment helpers |
 | `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
 | `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |

@@ -118,6 +118,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Video Player recovers when a board content provider becomes available:** a failed video page
+  retries playback automatically after the provider is registered, and reopening a failed source
+  link retries in the existing page.
 - **Board registration refusals are easier to spot:** provider, scheme, capability, settings, and
   browser URL mask refusals now show a toast when they first appear and remain listed in Board Info.
 - **Command-line launches accept multiple inputs:** open several files or folders at once, pass an

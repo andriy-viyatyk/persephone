@@ -67,7 +67,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1550 | [Scheme hooks: a `handoff()` helper and shared URL helpers](../tasks/US-1550-scheme-hooks-handoff/README.md) | 3 — structure | S | Done |
 | US-1551 | [Single-instance board routing in one place; a typed open-context hook](../tasks/US-1551-single-instance-routing/README.md) | 3 — structure | S | Done |
 | US-1552 | [Video pipe sessions use the `resource` pipe kind; delete the page-owner waiters](../tasks/US-1552-video-resource-pipe/README.md) | 3 — structure | L | Done |
-| US-1553 | VideoEditor's source flow in one place; one provider-recovery helper for all editors | 3 — structure | M | Planned |
+| US-1553 | [VideoEditor's source flow in one place; one provider-recovery helper for all editors](../tasks/US-1553-video-source-flow/README.md) | 3 — structure | M | Done |
 | US-1554 | Board trust granting, bundled-board creation and Board Info each have one path | 3 — structure | S | Planned |
 | US-1555 | Small dead code, stale comments and a torrent-specific notice in core | 3 — structure | S | Planned |
 
@@ -803,6 +803,13 @@ the task document.
   patch does not change the rendered host button's `aria-label`. Excalidraw's theme button keeps
   "Switch to Light Theme" after toggling. HEAD shows the same result. Look at
   `BoardToolbarControls.updateCatalog` → `record.updateDescriptor`.
+- **Found in US-1553 (pre-existing, small):**
+  - `MissingProvider.watch` (`content/registry.ts`) forwards delegate events only if the delegate
+    already existed when `watch()` was called. So a text page whose provider arrived later
+    recovers, but it stops receiving the provider's own change events on that pipe. Re-subscribe to
+    the delegate once it resolves.
+  - `VideoEditor.submitUrl` with the same HLS URL a second time leaves `playerState` at `loading`,
+    because `streamUrl` does not change and the player never reloads.
 
 ---
 
