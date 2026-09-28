@@ -381,7 +381,7 @@ list order, bundled roots sort by bundle id, and the first compatible source to 
 The main-owned claims feed `download-service.ts` synchronously at Electron's `will-download`
 boundary. On a match, Electron cancels the download before the save dialog and the renderer routes
 the claimed URL to `openRawLink` with the winning board target. For a private or non-persistent
-Browser session, main also issues a short-lived opaque `session-src://` handle bound to that URL and
+Browser session (Tor, incognito, or a proxied profile), main also issues a short-lived opaque `session-src://` handle bound to that URL and
 session; the provider can fetch through the originating session without exposing its partition
 identity to the renderer. This preserves the page's request session, but does not make later swarm
 connections anonymous. The Browser-download claim flow has been exercised end to end. This is a

@@ -349,7 +349,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── ConfirmationDialog.ts
 │   │   ├── InputDialog.ts
 │   │   ├── PasswordDialog.ts
-│   │   ├── TorInfoDialog.ts         # Tor connection info — exit IP, location, check.torproject.org verdict; Reconnect restarts tor.exe
+│   │   ├── TorInfoDialog.ts         # Routed-page connection info — Tor (exit IP, location, check.torproject.org verdict; Reconnect restarts tor.exe) or proxy mode (egress IP, location)
 │   │   ├── RegisterToolsetDialog.ts # Agent-initiated toolset registration confirmation (Allow/Deny; RCE gate)
 │   │   ├── CreateBoardVarsStorageDialog.ts # First-use "Create environment variables storage" prompt (default path, editable) — shown by both persephone.var.* and app.boardVars.*
 │   │   ├── NamespaceCollisionDialog.ts # Non-blocking advisory at board registration when the new board's author/name namespace collides with an already-registered board
@@ -430,6 +430,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserEditorModel.ts     # Browser state types, defaults, and partition helper
 │   │   ├── BrowserTabsModel.ts       # Internal tabs, URL/favicon caches, bookmarks resource
 │   │   ├── BrowserTorModel.ts         # Tor partition and daemon lifecycle
+│   │   ├── BrowserProfileNetworkModel.ts # Profile/Incognito proxy: apply before mount, follow settings edits, image route for app-drawn resources
 │   │   ├── BrowserView.ts             # Native browser UI and per-tab webview host
 │   │   ├── BrowserWebviewModel.ts    # Webview management
 │   │   ├── webview-context-menu.ts    # Webview context-menu construction
@@ -476,7 +477,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── LinkTreeProvider.ts       # ITreeProvider adapter over LinkEditor state; drag-drop import (files→links, links across windows)
 │   │   ├── linkTypes.ts
 │   │   ├── link-open.ts              # buildLinkEditorContent — links → .link.json content; dependency-light for the sync openLinks API
-│   │   ├── tor-src.ts                # Rewrites remote image src → tor-src:// when the editor is hosted by a Tor browser page (the app renderer is unproxied); local schemes pass through
+│   │   ├── routed-src.ts             # ImageRoute + resolveRoutedSrc — rewrites remote image src → tor-src:// or profile-src:// when the editor is hosted by a Tor or proxied browser page (the app renderer is unproxied); local schemes pass through
 │   │   ├── pipe-image-src.ts         # usePipeImageSrc — reads an archive-entry imgSrc through a content pipe into a cached blob URL; every other src shape passes through
 │   │   ├── panels/                   # Shared panel components (inline + secondary view)
 │   │   │   ├── LinkCategoryPanel.ts         # Categories tree panel
@@ -578,7 +579,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── settings.css               # Settings page and panel-stack styling
 │   │   ├── sections/                  # Focused settings views + component models
 │   │   │   ├── BrowserProfilesSection.ts
-│   │   │   ├── BrowserProfilesSectionModel.ts # Profile CRUD, bookmarks + partition cleanup
+│   │   │   ├── BrowserProfilesSectionModel.ts # Profile CRUD, bookmarks, network + partition cleanup
+│   │   │   ├── ProfileNetworkLineView.ts # Direct / SOCKS5 / HTTP proxy line for a profile, Default, or Incognito
 │   │   │   ├── DefaultBrowserSection.ts
 │   │   │   ├── DefaultBrowserSection.ts       # Registration status + actions
 │   │   │   ├── McpSection.ts
@@ -960,6 +962,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── browser-registration.ts # Default browser registration
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
+├── session-proxy.ts        # Shared session proxy primitives (one proxy, no direct fallback; set direct; geo lookup) for Tor and profile networks
+├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// handler (token-guarded), guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
 ├── download-service.ts     # Download management using main-derived Browser URL claims, and tracked synchronous save dialogs
@@ -1010,6 +1014,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── api-types.ts            # IPC channel definitions
 ├── api-param-types.ts      # IPC parameter types
 ├── browser-ipc.ts          # Browser-specific IPC channels
+├── browser-network-ipc.ts  # BrowserNetwork type, proxy endpoint validation, browser-network:* channels
 ├── tor-ipc.ts              # Tor service IPC channels (start, stop, log, check-ip, restart, status) + TorStatus/TorIpInfo types
 ├── git-ipc.ts              # Git service IPC channel names + request/response types
 ├── clipboard-ipc.ts        # Clipboard history/status DTOs plus file-clipboard DTOs (CF_HDROP paths + drop effect)

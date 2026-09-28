@@ -14,7 +14,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { LinkViewMode } from "./linkTypes";
 import type { LinksTilesProps } from "./LinksTiles";
 import { getPipeImageSrcSync, resolvePipeImageSrc } from "./pipe-image-src";
-import { resolveTorSrc, type TorProxyInfo } from "./tor-src";
+import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Panel/Panel.css";
 
@@ -51,7 +51,7 @@ interface CellRecord {
     isDragging: boolean;
     failedSrc?: string;
     imageSource: string | null;
-    imageProxy?: TorProxyInfo | null;
+    imageProxy?: ImageRoute | null;
     dragSourceId?: string;
     additionalIcon?: IconName;
     onDragStartOverride?: LinksTilesProps["onDragStartOverride"];
@@ -456,7 +456,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         const archive = !!rawSource && isArchivePath(rawSource);
         const pipedSource = getPipeImageSrcSync(rawSource);
         if (archive && !pipedSource && rawSource) this.ensureImageResolution(rawSource);
-        const source = resolveTorSrc(
+        const source = resolveRoutedSrc(
             pipedSource ?? (archive ? undefined : rawSource),
             record.imageProxy,
         );
@@ -547,9 +547,9 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         record.overlayHost.style.display = "none";
     }
 
-    private imageSource(src: string | undefined, proxy: TorProxyInfo | null | undefined): string | null {
+    private imageSource(src: string | undefined, proxy: ImageRoute | null | undefined): string | null {
         if (!src || isArchivePath(src)) return null;
-        return resolveTorSrc(src, proxy);
+        return resolveRoutedSrc(src, proxy);
     }
 
     private installCellListeners(record: CellRecord): void {

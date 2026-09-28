@@ -235,7 +235,9 @@ export class BrowserBookmarksUIModel {
             if (activeTab?.favicon) {
                 const { getHostname, saveFavicon } = await import("../../components/icons/favicon-cache");
                 const hostname = getHostname(urlInput);
-                if (hostname) saveFavicon(hostname, activeTab.favicon);
+                // A proxied profile downloads it through its own session (US-1557).
+                const routedUrl = this.model.network.routedFetchUrl(activeTab.favicon);
+                if (hostname && routedUrl !== null) saveFavicon(hostname, activeTab.favicon, routedUrl);
             }
         }
         const existingLink = bm.findByUrl(urlInput);

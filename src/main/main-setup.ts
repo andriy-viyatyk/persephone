@@ -13,6 +13,8 @@ import { initBrowserHandlers } from "./browser-service";
 import { initTorHandlers, torService } from "./tor-service";
 import { registerTorSrcProtocol } from "./tor-src-protocol";
 import { registerSessionSrcProtocol } from "./session-src-protocol";
+import { initBrowserNetworkHandlers, registerProfileSrcProtocol } from "./browser-network-service";
+import { PROFILE_SRC_SCHEME } from "../ipc/browser-network-ipc";
 import { initWorkerHost } from "./worker-host";
 import { initCommandRunner, killAllCommands } from "./command-runner";
 import { disposeAllBoardPorts } from "./board-bridge";
@@ -66,6 +68,18 @@ export function setupMainProcess() {
             },
         },
         {
+            // Proxied-profile routed remote resources for renderer-drawn content (US-1557):
+            // the `tor-src` counterpart for browser profiles behind a proxy.
+            scheme: PROFILE_SRC_SCHEME,
+            privileges: {
+                standard: true,
+                secure: true,
+                supportFetchAPI: true,
+                // The favicon cache reads routed bytes with renderer fetch(), cross-origin.
+                corsEnabled: true,
+            },
+        },
+        {
             // Short-lived private-session capabilities for claimed browser downloads (US-1531).
             scheme: "session-src",
             privileges: {
@@ -92,6 +106,7 @@ export function setupMainProcess() {
     initSearchHandlers();
     initBrowserHandlers();
     initTorHandlers();
+    initBrowserNetworkHandlers();
     initWorkerHost();
     initCommandRunner();
     downloadService.init();
@@ -134,6 +149,7 @@ export function setupMainProcess() {
         // Only the app window's session needs it — do not widen to other partitions.
         registerTorSrcProtocol(appPartition);
         registerSessionSrcProtocol(appPartition);
+        registerProfileSrcProtocol(appPartition);
         // Single host-routed board:// handler on the main window's session (EPIC-037 /
         // US-770) — boards load board://<host> iframes in this session, routed by host.
         const { initBoardProtocol } = await import("./board-protocol-service");

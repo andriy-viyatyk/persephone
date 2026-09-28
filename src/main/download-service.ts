@@ -11,6 +11,7 @@ import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory"
 import { withNativeDialogSync } from "./native-dialog-tracker";
 import { isRegisteredBrowserWebContents } from "./browser-service";
 import { registerSessionSource } from "./session-src-protocol";
+import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
 
 const PERSIST_FILE = "recentDownloads.json";
@@ -118,7 +119,10 @@ class DownloadService {
         if (claim) {
             item.cancel();
             const torPartition = torService.findActivePartitionForSession(webContents.session);
-            const sessionHandle = torPartition || !webContents.session.isPersistent()
+            // A proxied profile is persistent but must not hand the board a direct fetch (US-1557).
+            const sessionHandle = torPartition
+                || !webContents.session.isPersistent()
+                || browserNetworkService.isProxiedSession(webContents.session)
                 ? registerSessionSource(webContents.session, url, torPartition)
                 : undefined;
             sendToBrowserHost(webContents, EventEndpoint.eOpenClaimedBrowserDownload, {

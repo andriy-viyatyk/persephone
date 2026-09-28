@@ -19,8 +19,9 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [ address box            ] [→]        [★][⋮][</>][×]  |  toolbar: navigation at left, address box across middle,
-|                                                                     |  Go at its right edge, bookmarks/more/devtools/close at the right
+| [⌂][←][→][⟳]  [Proxy][ address box      ] [→]        [★][⋮][</>][×]  |  toolbar: navigation at left, address box across middle
+|                                                                     |  (proxy chip inside it when routed), Go at its right edge,
+|                                                                     |  bookmarks/more/devtools/close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
 | [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar at the top of browser content when present
@@ -34,10 +35,11 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Forward → `toolbar-forward`
 - Reload → `toolbar-reload`
 - Address box → `url-input`
+- Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
 - Go → `url-navigate`
 - Bookmark → `url-bookmark-toggle`
 - Bookmarks → `toolbar-bookmarks`
-- Tor info → `toolbar-tor-info`
+- Tor info (shown only on Tor pages) → `toolbar-tor-info`
 - Downloads → `toolbar-downloads`
 - More → `toolbar-more`
 - DevTools → `toolbar-devtools`
@@ -131,6 +133,39 @@ When a page link uses a scheme registered by a trusted board, clicking it leaves
 opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
 blocked rather than being sent to Chromium.
 
+## Profile network (proxy)
+
+Every browser profile — a named profile, the built-in Default profile, and Incognito — can be set to
+route its traffic through a proxy instead of your normal direct connection. Set it in
+**Settings → Browser Profiles**: each profile row, the Default row, and the Incognito row have a
+**Network:** control with **Direct**, **SOCKS5 proxy**, or **HTTP proxy**, plus a host and port field
+when a proxy is selected. Proxy credentials are not supported — use an unauthenticated local endpoint,
+such as a SOCKS5 listener exposed by a VPN client running in WSL2.
+
+A proxied page shows a small chip next to the address box, with a tooltip naming the protocol and
+endpoint (for example `Proxy: SOCKS5 127.0.0.1:1080`). Click it to open a connection-info dialog
+reporting the egress IP address and its approximate location, looked up through that same proxy —
+the same dialog Tor uses, minus the Tor-only exit-node verdict and Reconnect button. This is distinct
+from the separate **Tor info** button and Tor overlay, which only appear on **Browser (Tor)** pages;
+a profile's proxy setting and Tor mode do not mix.
+
+A proxied page never falls back to your normal connection. If the proxy is not running or cannot be
+reached, pages fail to load with the browser's own connection error (for example
+`ERR_SOCKS_CONNECTION_FAILED`) — start the proxy and reload. If the proxy setting itself is invalid
+(for example a host name with a space, typed straight into the settings file), the page shows an
+error panel with a **Retry** button instead of any content until the setting is fixed. Editing a profile's network while its pages are open reapplies the
+change immediately and closes existing connections; already-loaded pages keep showing their old
+content until reloaded. Everything the proxied profile requests — page loads, downloads, tab and
+bookmark-drawer favicons, and Link editor preview images — is routed through the same proxy. The one
+exception is the resources list opened by **Show Resources** (in the page menu or a right-click): it
+is a separate Link page outside the profile's session, so on a Tor or proxied page its tiles show no
+thumbnails rather than loading them directly, and opening an entry from it uses your normal connection.
+
+Local addresses (`localhost` and link-local addresses) are never sent through the proxy, matching
+ordinary browser behavior; routing them to a remote proxy would only break local development without
+adding privacy. WebRTC on a proxied or Tor page is restricted to the proxy connection, so it cannot
+reveal your local or public IP address outside it.
+
 ## Agent API
 
 After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` facade exposes browser
@@ -138,7 +173,8 @@ tabs and the automation surface: snapshots, clicks, typing, key presses, evaluat
 screenshots, network requests, and tab selection. The verified chrome elements include `url-input`,
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
 `toolbar-home`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
-`toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, and `popup-blocked-bar`.
+`toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, `popup-blocked-bar`, and, on a proxied page,
+`url-proxy-indicator`.
 Participating web pages may additionally publish a page-authored model at `page.editor.app`; it
 offers the page's help, hints, state, methods, elements, and in-frame `highlight(...)`. Its kinds
 are prefixed `page:` and its content remains confined to `.app`. User-opened private pages are
@@ -149,4 +185,5 @@ refused before this model is probed. See [Browser automation](../agents/browser.
 Use `pages.openUrlInBrowserTab` rather than `pages.addEditorPage` for Browser. Network failures,
 blocked popups, certificate errors, and pages requiring browser permissions remain browser states;
 they are not editor-format errors. The browser's page automation is available only after its tab is
-ready.
+ready. A proxied page whose proxy is down fails with the browser's connection error; one whose proxy
+setting is invalid shows an error panel instead of any webview — fix the setting, then use **Retry**.

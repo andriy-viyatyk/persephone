@@ -1,4 +1,5 @@
 import { settings, type BrowserProfile } from "../../../api/settings";
+import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { fpBasename } from "../../../core/utils/file-path";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../../theme/palette-colors";
@@ -12,6 +13,7 @@ import { KeyedList } from "../../../uikit/shared/keyed-list";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { openMenu, type MenuHandle } from "../../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../../uikit/Menu/types";
+import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
@@ -205,6 +207,7 @@ interface ProfileRowProps {
 class ProfileRowView extends VanillaView<ProfileRowProps> {
     private readonly header: ProfileHeaderView;
     private readonly bookmarks: BookmarksFileLineView;
+    private readonly network: ProfileNetworkLineView;
 
     public constructor(props: ProfileRowProps) {
         const root = panel({ direction: "column", rounded: "sm", background: "dark" });
@@ -221,12 +224,18 @@ class ProfileRowView extends VanillaView<ProfileRowProps> {
             onBrowse: () => void props.model.handleBrowseProfileBookmarks(props.profile.name),
             onClear: () => props.model.handleClearProfileBookmarks(props.profile.name),
         }));
+        this.network = this.child(new ProfileNetworkLineView(this.networkProps(props)));
     }
 
     protected onMount(): void {
-        this.root.append(this.header.root, this.bookmarks.root);
+        this.root.append(this.header.root, this.bookmarks.root, this.network.root);
         this.header.mount();
         this.bookmarks.mount();
+        this.network.mount();
+    }
+
+    private networkProps(props: ProfileRowProps) {
+        return { network: props.profile.network, onChange: (network: BrowserNetwork) => props.model.handleProfileNetworkChange(props.profile.name, network) };
     }
 
     protected onUpdate(props: ProfileRowProps): void {
@@ -242,6 +251,7 @@ class ProfileRowView extends VanillaView<ProfileRowProps> {
             onBrowse: () => void props.model.handleBrowseProfileBookmarks(props.profile.name),
             onClear: () => props.model.handleClearProfileBookmarks(props.profile.name),
         });
+        this.network.update(this.networkProps(props));
     }
 }
 
@@ -350,7 +360,9 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
     private profileListHost: HTMLDivElement | undefined;
     private defaultHeader: ProfileHeaderView | undefined;
     private defaultBookmarks: BookmarksFileLineView | undefined;
+    private defaultNetwork: ProfileNetworkLineView | undefined;
     private incognitoBookmarks: BookmarksFileLineView | undefined;
+    private incognitoNetwork: ProfileNetworkLineView | undefined;
     private torRow: TorProfileRowView | undefined;
     private newNameInput: InputView | undefined;
     private addButton: ButtonView | undefined;
@@ -383,9 +395,11 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
             onBrowse: () => void model.handleBrowseDefaultBookmarks(),
             onClear: () => settings.set("browser-default-bookmarks-file", ""),
         }));
-        defaultPanel.append(this.defaultHeader.root, this.defaultBookmarks.root);
+        this.defaultNetwork = this.child(new ProfileNetworkLineView({ network: settings.get("browser-default-network"), onChange: model.handleDefaultNetworkChange }));
+        defaultPanel.append(this.defaultHeader.root, this.defaultBookmarks.root, this.defaultNetwork.root);
         this.defaultHeader.mount();
         this.defaultBookmarks.mount();
+        this.defaultNetwork.mount();
         profilePanel.append(defaultPanel);
 
         this.profileListHost = document.createElement("div");
@@ -422,8 +436,10 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
             onBrowse: () => void model.handleBrowseIncognitoBookmarks(),
             onClear: () => settings.set("browser-incognito-bookmarks-file", ""),
         }));
-        incognitoPanel.append(this.incognitoBookmarks.root);
+        this.incognitoNetwork = this.child(new ProfileNetworkLineView({ network: settings.get("browser-incognito-network"), onChange: model.handleIncognitoNetworkChange }));
+        incognitoPanel.append(this.incognitoBookmarks.root, this.incognitoNetwork.root);
         this.incognitoBookmarks.mount();
+        this.incognitoNetwork.mount();
         profilePanel.append(incognitoPanel);
 
         this.torRow = this.child(new TorProfileRowView({ model, torPortValue: model.state.get().torPortValue }));
@@ -472,7 +488,9 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.profileListHost = undefined;
         this.defaultHeader = undefined;
         this.defaultBookmarks = undefined;
+        this.defaultNetwork = undefined;
         this.incognitoBookmarks = undefined;
+        this.incognitoNetwork = undefined;
         this.torRow = undefined;
         this.newNameInput = undefined;
         this.addButton = undefined;
@@ -491,7 +509,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
 
     private isRelevantSetting(key: string): boolean {
         return [
-            "browser-profiles", "browser-default-profile", "browser-default-bookmarks-file",
+            "browser-profiles", "browser-default-profile", "browser-default-bookmarks-file", "browser-default-network", "browser-incognito-network",
             "browser-incognito-bookmarks-file", "tor.exe-path", "tor.socks-port", "tor.bookmarks-file",
         ].includes(key);
     }
@@ -501,6 +519,8 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         if (!model) return;
         this.defaultHeader?.update({ name: "", color: DEFAULT_BROWSER_COLOR, isDefault: model.props.defaultProfile === "", cleared: state.clearedProfile === "", model });
         this.defaultBookmarks?.update({ filePath: settings.get("browser-default-bookmarks-file"), onBrowse: () => void model.handleBrowseDefaultBookmarks(), onClear: () => settings.set("browser-default-bookmarks-file", "") });
+        this.defaultNetwork?.update({ network: settings.get("browser-default-network"), onChange: model.handleDefaultNetworkChange });
+        this.incognitoNetwork?.update({ network: settings.get("browser-incognito-network"), onChange: model.handleIncognitoNetworkChange });
         this.incognitoBookmarks?.update({ filePath: settings.get("browser-incognito-bookmarks-file"), onBrowse: () => void model.handleBrowseIncognitoBookmarks(), onClear: () => settings.set("browser-incognito-bookmarks-file", "") });
         this.profilesList?.update(model.props.profiles);
         this.torRow?.update({ model, torPortValue: state.torPortValue });

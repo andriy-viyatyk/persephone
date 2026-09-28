@@ -56,7 +56,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Window Behavior → `window.close-to-tray`
 - Editor Behavior → `editor.word-wrap`
-- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
+- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
 - Links → `link-open-behavior`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`

@@ -3,7 +3,7 @@ import { TComponentState } from "../../core/state/state";
 import { showDialog } from "../../ui/dialogs/Dialogs";
 import { registerDialogView } from "../../ui/dialogs/dialog-view-registry";
 import type { LinkItem } from "./linkTypes";
-import type { TorProxyInfo } from "./tor-src";
+import type { ImageRoute } from "./routed-src";
 import { EditLinkDialogView } from "./EditLinkDialogView";
 
 // =============================================================================
@@ -21,8 +21,8 @@ interface EditLinkDialogState {
     categories: string[];
     availableTags: string[];
     discoveredImages: string[];
-    /** US-896 — Tor session to fetch preview/discovered images through. */
-    imageProxy: TorProxyInfo | null;
+    /** US-896 / US-1557 — route (Tor or proxied profile) to fetch preview/discovered images through. */
+    imageProxy: ImageRoute | null;
 }
 
 export type EditLinkResult = Omit<LinkItem, "id"> | undefined;
@@ -107,9 +107,9 @@ export interface ShowEditLinkDialogOptions {
     tags?: string[];
     /** Discovered images from browser (for future integration) */
     discoveredImages?: string[];
-    /** US-896 — Tor session to fetch preview/discovered images through. Pass the
-     *  owning LinkEditor's `imageProxy`; omit outside Tor pages. */
-    imageProxy?: TorProxyInfo | null;
+    /** US-896 / US-1557 — route to fetch preview/discovered images through. Pass the
+     *  owning LinkEditor's `imageProxy`; omit on direct pages. */
+    imageProxy?: ImageRoute | null;
 }
 
 export function showEditLinkDialog(options: ShowEditLinkDialogOptions = {}): Promise<EditLinkResult> {

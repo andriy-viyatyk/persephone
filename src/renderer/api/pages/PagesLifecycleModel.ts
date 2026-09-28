@@ -1077,17 +1077,24 @@ export class PagesLifecycleModel {
         await this.showEditorPage("video-view");
     };
 
-    openImageInNewTab = async (imageUrl: string, title?: string): Promise<void> => {
+    /**
+     * `sessionHandle` (US-1557) comes from a Tor or proxied browser page: the image
+     * is then read only through that page's session, so it is not shown by URL
+     * (an `<img src>` in this renderer would fetch it direct) but from the bytes.
+     */
+    openImageInNewTab = async (imageUrl: string, title?: string, sessionHandle?: string): Promise<void> => {
         const imgModule = await import("../../editors/image");
         const imgModel = await editorRegistry.createEditor("image-view");
         imgModel.state.update((s) => {
             const is = s as unknown as { title: string; url?: string };
             is.title =
                 title || imageUrl.split("/").pop()?.split("?")[0] || "Image";
-            is.url = imageUrl;
+            if (!sessionHandle) is.url = imageUrl;
         });
         if (/^https?:\/\//i.test(imageUrl)) {
-            imgModel.pipe = new ContentPipe(new HttpProvider(imageUrl));
+            imgModel.pipe = new ContentPipe(
+                new HttpProvider(imageUrl, sessionHandle ? { sessionHandle } : undefined),
+            );
         }
         await imgModel.restore();
         this.addPage(imgModel);

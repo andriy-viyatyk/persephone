@@ -49,7 +49,7 @@ export class TabItemView extends VanillaView<TabItemProps> {
     protected onDispose(): void { if (this.mute) this.releaseChild(this.mute); if (this.close) this.releaseChild(this.close); this.mute = undefined; this.close = undefined; }
     private sync(props: TabItemProps): void {
         this.toggle("data-active", props.isActive); this.toggle("data-compact", props.compact); this.toggle("data-dragging", this.dragging); this.toggle("data-drop-target", this.dropTarget); this.toggle("data-hover-extended", props.isHovered); this.root.dataset.groupColor = String(props.groupColorIndex % 2);
-        this.renderFavicon(props.tab.favicon); this.title.textContent = props.tab.pageTitle || props.tab.url || "New Tab"; this.title.hidden = props.compact;
+        this.renderFavicon(props.model.network.routeSrc(props.tab.favicon) ?? ""); this.title.textContent = props.tab.pageTitle || props.tab.url || "New Tab"; this.title.hidden = props.compact;
         const needMute = !props.compact && (props.tab.audible || props.tab.muted);
         if (needMute && !this.mute) { this.mute = this.child(new IconButtonView({ name: "tab-mute", size: "sm", icon: props.tab.muted ? "volume-muted" : "volume", title: props.tab.muted ? "Unmute Tab" : "Mute Tab", onClick: (event) => { event.stopPropagation(); props.model.tabs.toggleMute(props.tab.id); } })); this.root.append(this.mute.root); this.mute.mount(); }
         else if (!needMute && this.mute) { this.releaseChild(this.mute); this.mute = undefined; }
@@ -58,6 +58,11 @@ export class TabItemView extends VanillaView<TabItemProps> {
         else if (!props.showClose && this.close) { this.releaseChild(this.close); this.close = undefined; }
         this.close?.update({ name: "tab-close", size: "sm", icon: "close", title: "Close Tab", onClick: (event) => { event.stopPropagation(); props.model.tabs.closeTab(props.tab.id); } });
     }
+    /**
+     * `url` is already routed: the favicon is drawn by the host renderer, outside the
+     * page's session, so a Tor or proxied page must fetch it through that session
+     * (US-1557) — and shows the globe while its route is not up.
+     */
     private renderFavicon(url: string): void {
         if (!url) {
             this.removeFaviconImage();

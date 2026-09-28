@@ -8,6 +8,7 @@ import { FileWatcher } from "../core/utils/file-watcher";
 import { applyTheme } from "../theme/themes";
 import { defaultSearchableExtensions, defaultMaxFileSize, defaultExcludePatterns } from "../../ipc/search-ipc";
 import { wrapSubscription } from "./internal";
+import type { BrowserNetwork } from "../../ipc/browser-network-ipc";
 import type { ISettings } from "./types/settings";
 
 // =============================================================================
@@ -18,6 +19,8 @@ export interface BrowserProfile {
     name: string;
     color: string;
     bookmarksFile?: string;
+    /** Network route for this profile's session (US-1557). Missing = direct. */
+    network?: BrowserNetwork;
 }
 
 export type AppSettingsKey =
@@ -29,6 +32,8 @@ export type AppSettingsKey =
     | "browser-profiles"
     | "browser-default-profile"
     | "browser-default-bookmarks-file"
+    | "browser-default-network"
+    | "browser-incognito-network"
     | "browser-incognito-bookmarks-file"
     | "link-open-behavior"
     | "mcp.enabled"
@@ -101,9 +106,11 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "search-extensions": "File extensions to include in file content search.\nAdd or remove extensions to customize which files are searchable.",
     "search-exclude": "Folders and globs always skipped by file content search.\nA plain name skips any folder with that name; a glob (with / * ?) is matched against the path relative to the search root.\nNever applied to the search root itself — searching inside node_modules works, while nested ones are still skipped.",
     "search-max-file-size": "Maximum file size (in bytes) for file content search.\nFiles larger than this are skipped. Default: 1048576 (1 MB).",
-    "browser-profiles": "Browser profiles — isolated sessions, each with its own cookies, storage, and cache.\nArray of profile objects. Use separate profiles to stay signed into several accounts\non the same site at once.",
+    "browser-profiles": "Browser profiles — isolated sessions, each with its own cookies, storage, and cache.\nArray of profile objects. Use separate profiles to stay signed into several accounts\non the same site at once. A profile may carry \"network\" — same shape as \"browser-default-network\".",
     "browser-default-profile": "Profile name used when opening a new browser tab.\nMust match a name in \"browser-profiles\". Empty string = the built-in default profile.",
     "browser-default-bookmarks-file": "Absolute path to the .link.json file holding bookmarks for the default browser profile.\nIt is an ordinary Links-editor file and can be opened as a tab.",
+    "browser-default-network": "Network route for the built-in default browser profile (named profiles carry their own \"network\").\n{ \"kind\": \"direct\" } (default), or { \"kind\": \"proxy\", \"protocol\": \"socks5\" | \"http\", \"host\": \"127.0.0.1\", \"port\": 1080 }.\nA proxied profile never falls back to direct: when the proxy is unreachable its pages fail to load.\nWith SOCKS5 the proxy also resolves host names. localhost and link-local addresses always go direct.",
+    "browser-incognito-network": "Network route for Incognito browser pages — same shape as \"browser-default-network\".\nEach Incognito page has its own in-memory session; this route applies to every one of them.",
     "browser-incognito-bookmarks-file": "Absolute path to the .link.json bookmarks file used in incognito mode.\nKept separate so incognito bookmarks never mix with the normal profile's.",
     "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
     "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
@@ -142,6 +149,8 @@ const defaultAppSettingsState = {
         "browser-profiles": [] as BrowserProfile[],
         "browser-default-profile": "",
         "browser-default-bookmarks-file": "",
+        "browser-default-network": { kind: "direct" } as BrowserNetwork,
+        "browser-incognito-network": { kind: "direct" } as BrowserNetwork,
         "browser-incognito-bookmarks-file": "",
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,

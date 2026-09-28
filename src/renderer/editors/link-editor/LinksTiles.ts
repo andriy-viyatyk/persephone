@@ -1,7 +1,7 @@
 import type { ILink } from "../../api/types/io.tree";
 import type { IconName } from "../../theme/icon-registry";
 import type { GridModelCapability } from "../../uikit/DataGrid";
-import type { TorProxyInfo } from "./tor-src";
+import type { ImageRoute } from "./routed-src";
 import type { LinkViewMode } from "./linkTypes";
 
 export interface LinksTilesProps {
@@ -18,7 +18,7 @@ export interface LinksTilesProps {
     getAdditionalIcon?: (link: ILink) => IconName | undefined;
     dragSourceId?: string;
     onDragStartOverride?: (link: ILink, event: DragEvent) => boolean;
-    imageProxy?: TorProxyInfo | null;
+    imageProxy?: ImageRoute | null;
     onGridModel?: (model: GridModelCapability | null) => void;
     onItemDragEnter?: (link: ILink, event: DragEvent) => void;
     onItemDragOver?: (link: ILink, event: DragEvent) => void;

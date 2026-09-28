@@ -557,6 +557,11 @@ export class BrowserWebviewModel {
         const domLinks = extractHtmlResources(html, { baseUrl: pageUrl });
         const networkLinks = networkLogToLinks(networkLog);
         const links = [...domLinks, ...networkLinks];
+        // The list opens as a standalone page outside this page's session, so on a
+        // Tor or proxied page its image thumbnails would load direct (US-1557).
+        if (this.model.network.imageRoute) {
+            for (const link of links) delete link.imgSrc;
+        }
 
         if (links.length === 0) {
             ui.notify("No resources found on this page.", "info");

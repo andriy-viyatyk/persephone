@@ -183,14 +183,17 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.model.updateTab(this.tabId, { favicon: faviconUrl });
         const state = this.model.state.get();
         if (state.isIncognito || state.isTor) return;
+        // A proxied profile downloads it through its own session (US-1557).
+        const routedUrl = this.model.network.routedFetchUrl(faviconUrl);
+        if (routedUrl === null) return;
         void import("../../components/icons/favicon-cache").then((cache) => {
             if (this.model.webview.webviewRefs.get(this.tabId) !== webview) return;
             const hostname = cache.getHostname(currentUrl);
             if (!hostname) return;
-            if (cache.consumeFaviconSaveRequest(hostname)) { cache.saveFavicon(hostname, faviconUrl); return; }
+            if (cache.consumeFaviconSaveRequest(hostname)) { cache.saveFavicon(hostname, faviconUrl, routedUrl); return; }
             const bookmarks = this.model.tabs.bookmarks;
             if (bookmarks && bookmarks.linkEditor.state.get().data.links.some((link: { href: string }) => cache.getHostname(link.href) === hostname)) {
-                cache.saveFavicon(hostname, faviconUrl);
+                cache.saveFavicon(hostname, faviconUrl, routedUrl);
             }
         });
     }
@@ -261,6 +264,23 @@ export class BrowserTabPageView extends VanillaView<{ model: BrowserEditor; tabI
     };
 }
 
+interface ProfileNetworkErrorProps { model: BrowserEditor; error: string; }
+
+/** Shown instead of the page's webviews when its profile proxy could not be applied (US-1557). */
+class ProfileNetworkErrorView extends VanillaView<ProfileNetworkErrorProps> {
+    private readonly message = createTextElement("", { size: "sm", color: "light" });
+    private readonly retry: ButtonView;
+
+    public constructor(props: ProfileNetworkErrorProps) {
+        super(props, createPanelElement({ name: "profile-network-error", position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 5, background: "dark", direction: "column", align: "center", gap: "lg", paddingTop: "xxxl" }));
+        this.retry = this.child(new ButtonView({ name: "profile-network-retry", children: "Retry", onClick: () => { void props.model.retryProfileNetwork(); } }));
+        this.root.append(createTextElement("The profile's proxy could not be applied, so no page is loaded.", { size: "md" }), this.message, this.retry.root);
+    }
+    protected onMount(): void { this.retry.mount(); this.sync(this.props); }
+    protected onUpdate(props: ProfileNetworkErrorProps): void { this.sync(props); }
+    private sync(props: ProfileNetworkErrorProps): void { this.message.textContent = `${props.error} Fix the profile's network in Settings → Browser Profiles, then retry.`; }
+}
+
 interface BrowserToolbarProps { model: BrowserEditor; state: BrowserEditorState; }
 
 class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
@@ -274,6 +294,8 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private readonly endSlot: HTMLSpanElement;
     private readonly torIndicator = document.createElement("span");
     private readonly searchEngineButton = document.createElement("button");
+    /** Proxied-profile marker (US-1557); opens the network info dialog. */
+    private readonly proxyChip = document.createElement("button");
     private pageMenu: MenuHandle | undefined;
     private searchMenu: MenuHandle | undefined;
     private spinner: SpinnerView | undefined;
@@ -286,6 +308,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.endSlot = document.createElement("span"); this.endSlot.style.display = "contents";
         this.torIndicator.dataset.torIndicator = "";
         this.searchEngineButton.type = "button"; this.searchEngineButton.dataset.searchEngineChip = "";
+        this.proxyChip.type = "button"; this.proxyChip.dataset.proxyChip = ""; this.proxyChip.dataset.name = "url-proxy-indicator"; this.proxyChip.textContent = "Proxy";
         this.inputPanel = createPanelElement({ name: "url-bar", flex: true }); this.inputPanel.dataset.urlBar = "";
         const make = (name: string, icon: IconRef, title: string, onClick: () => void): IconButtonView => this.child(new IconButtonView({ name, size: "sm", icon, title, onClick }));
         const home = make("toolbar-home", "home", "Home", this.model.goHome);
@@ -321,7 +344,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.controls.forEach((view) => view.mount()); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
     protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; }
 
@@ -364,6 +387,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             if (this.dot) { this.releaseChild(this.dot); this.dot = undefined; }
         }
         if (state.isIncognito) this.startSlot.append(IncognitoIcon.createElement({ color: color.icon.light }));
+        if (state.networkLabel) { this.proxyChip.title = `Proxy: ${state.networkLabel} — click for connection info`; this.startSlot.append(this.proxyChip); }
         if (this.model.urlBar.showSearchEngineSelector) { this.searchEngineButton.textContent = `${this.model.urlBar.currentEngineName} ▾`; this.startSlot.append(this.searchEngineButton); }
     }
 
@@ -397,6 +421,8 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     private readonly pageViewCtor: VanillaViewCtor<PageSlotViewProps>;
     private readonly popupSwap: SubtreeSwap<"blocked">;
     private readonly torSwap: SubtreeSwap<"tor">;
+    private readonly networkSwap: SubtreeSwap<"network">;
+    private networkView: ProfileNetworkErrorView | undefined;
     private readonly clickSwap: SubtreeSwap<"click">;
     private readonly findSwap: SubtreeSwap<"find">;
     private readonly drawerSwap: SubtreeSwap<"drawer">;
@@ -428,8 +454,8 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         this.browserBody = createPanelElement({ name: "browser-body", direction: "row", flex: true, overflow: "hidden", position: "relative" });
         this.pageManager = this.child(new PageManagerView({ pageIds: [], activeId: "", renderPage: () => this.pageViewCtor }));
         this.splitter = this.child(new SplitterView({ name: "tabs-webview-splitter", orientation: "vertical", value: this.model.state.get().tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" }));
-        this.popupSwap = new SubtreeSwap(this.popupHost); this.torSwap = new SubtreeSwap(this.webviewArea); this.clickSwap = new SubtreeSwap(this.webviewArea); this.findSwap = new SubtreeSwap(this.webviewArea); this.drawerSwap = new SubtreeSwap(this.browserBody); this.suggestionsSwap = new SubtreeSwap(this.root);
-        this.own(() => { this.popupSwap.dispose(); this.torSwap.dispose(); this.clickSwap.dispose(); this.findSwap.dispose(); this.drawerSwap.dispose(); this.suggestionsSwap.dispose(); });
+        this.popupSwap = new SubtreeSwap(this.popupHost); this.torSwap = new SubtreeSwap(this.webviewArea); this.networkSwap = new SubtreeSwap(this.webviewArea); this.clickSwap = new SubtreeSwap(this.webviewArea); this.findSwap = new SubtreeSwap(this.webviewArea); this.drawerSwap = new SubtreeSwap(this.browserBody); this.suggestionsSwap = new SubtreeSwap(this.root);
+        this.own(() => { this.popupSwap.dispose(); this.torSwap.dispose(); this.networkSwap.dispose(); this.clickSwap.dispose(); this.findSwap.dispose(); this.drawerSwap.dispose(); this.suggestionsSwap.dispose(); });
         this.buildTree();
     }
 
@@ -465,7 +491,9 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
 
     private readonly sync = (state: BrowserEditorState): void => {
         this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", state.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
-        this.pageManager.update({ pageIds: state.tabs.map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
+        // No webview mounts while the profile's proxy could not be applied (US-1557):
+        // its session route is unknown, and a mounted webview would start loading.
+        this.pageManager.update({ pageIds: state.networkError ? [] : state.tabs.map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
         const active = state.tabs.find((tab) => tab.id === state.activeTabId); const navigationKey = `${state.activeTabId}\u0000${active?.url ?? ""}`;
         if (navigationKey !== this.lastNavigationKey) { this.lastNavigationKey = navigationKey; if (active) this.model.webview.navigateWebview(state.activeTabId, active.url); }
         if (state.url !== this.lastUrl) { this.lastUrl = state.url; this.model.urlBar.syncFromUrl(state.url); }
@@ -476,7 +504,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
                 this.focusTimer = setTimeout(() => this.model.urlBar.focusUrlInput(), 100);
             }
         }
-        this.syncPopup(state); this.syncTor(state); this.syncClick(state); this.syncFind(state); this.syncDrawer(state); this.syncSuggestions(state);
+        this.syncPopup(state); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncFind(state); this.syncDrawer(state); this.syncSuggestions(state);
     };
 
     private syncPopup(state: BrowserEditorState): void {
@@ -486,6 +514,10 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     private syncTor(state: BrowserEditorState): void {
         if (!state.isTor || !state.torOverlayVisible) { this.torView = undefined; this.torSwap.clear(); return; }
         let created: TorStatusOverlayView | undefined; this.torSwap.set("tor", () => { created = new TorStatusOverlayView({ model: this.model, torStatus: state.torStatus, torLog: state.torLog }); this.torView = created; return created; }); created?.mount(); this.torView?.update({ model: this.model, torStatus: state.torStatus, torLog: state.torLog });
+    }
+    private syncNetworkError(state: BrowserEditorState): void {
+        if (!state.networkError) { this.networkView = undefined; this.networkSwap.clear(); return; }
+        let created: ProfileNetworkErrorView | undefined; this.networkSwap.set("network", () => { created = new ProfileNetworkErrorView({ model: this.model, error: state.networkError }); this.networkView = created; return created; }); created?.mount(); this.networkView?.update({ model: this.model, error: state.networkError });
     }
     private syncClick(state: BrowserEditorState): void {
         if (!state.popupOpen) { this.clickSwap.clear(); return; }

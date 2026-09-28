@@ -293,8 +293,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     showStorybookPage = () => this.lifecycle.showStorybookPage();
     showToolsHubPage = (opts?: { tab?: HubTab }) => this.lifecycle.showToolsHubPage(opts);
     showVideoPlayerPage = () => this.lifecycle.showVideoPlayerPage();
-    openImageInNewTab = (imageUrl: string, title?: string) =>
-        this.lifecycle.openImageInNewTab(imageUrl, title);
+    openImageInNewTab = (imageUrl: string, title?: string, sessionHandle?: string) =>
+        this.lifecycle.openImageInNewTab(imageUrl, title, sessionHandle);
     openUrlInBrowserTab = (
         url: string,
         options?: {

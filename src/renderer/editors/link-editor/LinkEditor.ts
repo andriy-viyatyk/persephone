@@ -16,7 +16,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { LinkTreeProvider } from "./LinkTreeProvider";
 import type { ILinkSource, LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
-import type { TorProxyInfo } from "./tor-src";
+import type { ImageRoute } from "./routed-src";
 
 export type ExpandedPanel = "tags" | "categories" | "hostnames";
 
@@ -116,26 +116,26 @@ export class LinkEditor
     onGetLinkMenuItems?: (link: LinkItem) => MenuItem[];
 
     /**
-     * US-896 — set by an embedder whose page has a Tor session (the browser's
-     * bookmarks editor) so remote link images are fetched through it instead of
-     * leaking direct. A function, not a value: `torStatus` changes after this
-     * editor is wired up, and this model outlives every blank tab in the page.
-     * Left null for standalone `.links.json` editors and non-Tor pages.
+     * US-896 / US-1557 — set by an embedder whose page is routed (the browser's
+     * bookmarks editor on a Tor page or a proxied profile) so remote link images
+     * are fetched through that page's session instead of leaking direct. A
+     * function, not a value: `torStatus` and the profile's network change after
+     * this editor is wired up, and this model outlives every blank tab in the page.
+     * Left null for standalone `.links.json` editors and direct pages.
      */
-    imageProxySource?: () => TorProxyInfo | null;
+    imageProxySource?: () => ImageRoute | null;
 
-    /** Current Tor routing for remote images, read fresh at render time. */
-    get imageProxy(): TorProxyInfo | null {
+    /** Current routing for remote images, read fresh at render time. */
+    get imageProxy(): ImageRoute | null {
         return this.imageProxySource?.() ?? null;
     }
 
     /**
      * True when this editor is embedded in a Tor browser page. Gates anything
-     * that would touch the network un-proxied or leave a trace on disk — e.g.
-     * arming a favicon download (US-896).
+     * that would leave a trace on disk — e.g. arming a favicon download (US-896).
      */
-    get isTorPage(): boolean {
-        return !!this.imageProxy;
+    get isPrivatePage(): boolean {
+        return !!this.imageProxy?.private;
     }
 
     // Save debounce — today's pattern:

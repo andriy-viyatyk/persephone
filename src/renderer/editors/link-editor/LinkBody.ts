@@ -414,7 +414,7 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
 
     private openLink(link: ILink): void {
         if (!link.href) return;
-        if (!this.model.isTorPage) requestFaviconSave(getHostname(link.href));
+        if (!this.model.isPrivatePage) requestFaviconSave(getHostname(link.href));
         void this.model.openLink(link);
     }
 

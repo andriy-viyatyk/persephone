@@ -22,6 +22,7 @@ import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
 import { BrowserTargetModel } from "./BrowserTargetModel";
 import { BrowserTabsModel } from "./BrowserTabsModel";
 import { BrowserTorModel } from "./BrowserTorModel";
+import { BrowserProfileNetworkModel } from "./BrowserProfileNetworkModel";
 import type { IAiVisionShape } from "ai-vision";
 import {
     BrowserEditorState,
@@ -67,6 +68,8 @@ export class BrowserEditor extends EditorModel<
     readonly tabs: BrowserTabsModel;
     /** Sub-model: Tor partition and daemon lifecycle. */
     readonly tor: BrowserTorModel;
+    /** Sub-model: the profile's proxy route (US-1557); inert on Tor/incognito pages. */
+    readonly network: BrowserProfileNetworkModel;
 
     readonly typedQueue: ComponentQueue<BrowserQueueEvent, BrowserQueueRequest>;
 
@@ -86,6 +89,7 @@ export class BrowserEditor extends EditorModel<
         >;
         this.tabs = new BrowserTabsModel(this);
         this.tor = new BrowserTorModel(this);
+        this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
@@ -105,6 +109,17 @@ export class BrowserEditor extends EditorModel<
     reconnectTor = async (): Promise<void> => this.tor.reconnect();
     showTorInfoDialog = async (): Promise<void> => this.tor.showInfoDialog();
     toggleTorOverlay = () => this.tor.toggleOverlay();
+    /** Put the profile session on its configured route before the first navigation. */
+    armProfileNetwork = async (): Promise<void> => this.network.armProxy();
+    showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
+    /** Retry a profile network that could not be applied; its webviews stay unmounted until then. */
+    retryProfileNetwork = async (): Promise<void> => {
+        try {
+            await this.network.armProxy();
+        } catch {
+            // `networkError` already carries the reason for the error panel.
+        }
+    };
 
     getAiVisionRegistration = (
         internalTabId = this.state.get().activeTabId,
@@ -172,6 +187,7 @@ export class BrowserEditor extends EditorModel<
         const s = this.state.get();
         await this.tabs.dispose();
         this.tor.dispose();
+        this.network.dispose();
 
         await super.dispose();
 
@@ -266,6 +282,18 @@ export class BrowserEditor extends EditorModel<
                     st.torLog += (st.torLog ? "\n" : "")
                         + `Could not secure the session: ${errMessage(err)}`;
                 });
+            }
+        }
+
+        // Same ordering for a proxied profile (US-1557): Electron does not persist
+        // `setProxy`, so a restored page re-applies it before any webview mounts. On
+        // failure the page keeps its tabs but mounts no webview (see `networkError`)
+        // rather than browse a session whose route is unknown.
+        if (!s.isTor) {
+            try {
+                await this.armProfileNetwork();
+            } catch {
+                // Recorded in `networkError` by the sub-model.
             }
         }
 

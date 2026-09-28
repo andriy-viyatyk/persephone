@@ -2,6 +2,7 @@ const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
+import { ui } from "../../api/ui";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard, withTimeout } from "../../core/utils/utils";
@@ -137,7 +138,13 @@ export async function showBrowserContextMenu({
                 label: "Open Image in New Tab",
                 startGroup: items.length > 0,
                 onClick: async () => {
-                    pagesModel.openImageInNewTab(srcURL);
+                    // A Tor/proxied page's image is read through its session (US-1557).
+                    const sessionHandle = await model.network.sessionSource(srcURL);
+                    if (sessionHandle === null) {
+                        ui.notify("The page's secure route is not connected — the image was not opened.", "warning");
+                        return;
+                    }
+                    pagesModel.openImageInNewTab(srcURL, undefined, sessionHandle);
                 },
             });
             items.push({

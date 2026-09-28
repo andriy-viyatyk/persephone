@@ -12,7 +12,7 @@
  * `FileProvider` + `ArchiveTransformer` pipe for exactly this path shape. This module
  * reads through that pipe once per source and hands back a blob URL the `<img>` can use.
  *
- * Lives beside `tor-src.ts` because it solves the same class of problem: an `imgSrc` that
+ * Lives beside `routed-src.ts` because it solves the same class of problem: an `imgSrc` that
  * needs rewriting before it reaches the DOM.
  *
  * Caching is deliberate, not incidental. Tiles are virtualized, so scrolling unmounts and

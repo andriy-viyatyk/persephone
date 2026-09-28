@@ -16,8 +16,8 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
-import type { TorProxyInfo } from "./tor-src";
-import { resolveTorSrc } from "./tor-src";
+import type { ImageRoute } from "./routed-src";
+import { resolveRoutedSrc } from "./routed-src";
 import type { EditLinkDialogModel } from "./EditLinkDialog";
 import type { DialogViewProps } from "../../ui/dialogs/dialog-view-registry";
 import "../../uikit/Button/Button.css";
@@ -57,7 +57,7 @@ interface PreviewProps {
 interface DiscoveredImagesProps {
     readonly images: string[];
     readonly selectedUrl: string;
-    readonly imageProxy: TorProxyInfo | null;
+    readonly imageProxy: ImageRoute | null;
     readonly onSelect: (url: string) => void;
 }
 
@@ -192,7 +192,7 @@ class DiscoveredImagesView extends VanillaView<DiscoveredImagesProps> {
 
         // US-896 — null suppresses the thumbnail on a Tor page whose circuit isn't up. The tile
         // stays clickable: the URL is still a valid choice even when it can't be previewed.
-        const thumbSrc = resolveTorSrc(record.url, this.props.imageProxy);
+        const thumbSrc = resolveRoutedSrc(record.url, this.props.imageProxy);
         if (!thumbSrc) return;
 
         const image = document.createElement("img");
@@ -421,7 +421,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             this.imageView.update(this.imageProps(state, this.clearImageButton?.root));
         }
 
-        const previewSrc = resolveTorSrc(state.imgSrc, state.imageProxy);
+        const previewSrc = resolveRoutedSrc(state.imgSrc, state.imageProxy);
         this.syncPreview(previewSrc);
         this.syncDiscoveredImages(state);
     }

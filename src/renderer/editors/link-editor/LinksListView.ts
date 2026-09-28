@@ -25,7 +25,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IconName } from "../../theme/icon-registry";
 import { createLinkTooltipContent } from "./LinkTooltipView";
 import type { LinksListProps } from "./LinksList";
-import type { TorProxyInfo } from "./tor-src";
+import type { ImageRoute } from "./routed-src";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/ListBox/ListItem.css";
 import "../../uikit/Panel/Panel.css";
@@ -55,7 +55,7 @@ interface CellParts {
     dragSourceId?: string;
     onDragStartOverride?: LinksListProps["onDragStartOverride"];
     allTags?: string[];
-    imageProxy?: TorProxyInfo | null;
+    imageProxy?: ImageRoute | null;
     onSelect?: LinksListProps["onSelect"];
     onEdit?: LinksListProps["onEdit"];
     onDelete?: LinksListProps["onDelete"];

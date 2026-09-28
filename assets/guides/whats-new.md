@@ -45,6 +45,16 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `ui.alerts` through the application object model to check alert severity, message, and creation
   time, then dismiss one or more alerts when that serves the user's intent. See the [`app.ui` API
   reference](./scripting/api/ui.md#alerts).
+- **Browser profiles can route through a proxy:** every browser profile — a named profile, the
+  built-in Default profile, and Incognito — can be set to **Direct** or an unauthenticated
+  SOCKS5/HTTP proxy endpoint in **Settings → Browser Profiles** (a **Network:** row per profile,
+  plus one for Default and one for Incognito). A proxied page shows a chip next to the address box;
+  click it for a connection-info dialog reporting the egress IP and location. A proxied page
+  never falls back to a direct connection — with the proxy down its pages simply fail to load — and page loads, downloads, tab/bookmark favicons, and Link editor preview images
+  all route through the same proxy. This also closes four privacy leaks Tor mode had: the tab-strip
+  favicon, "Open Image in New Tab," board-claimed downloads, and WebRTC could each reveal your real
+  IP outside the Tor connection; all four are now routed the same way for both Tor and proxied
+  profiles. See [Browser — Profile network (proxy)](./editors/browser.md#profile-network-proxy).
 - **Boards can declare supervised module services:** a trusted board can name an ESM service entry
   that starts lazily under main-process supervision, answers requests with no board page open, and
   shares the board frame's `persephone.storage`. One service handles activity from multiple windows

@@ -1,4 +1,5 @@
 import { settings, type BrowserProfile } from "../../../api/settings";
+import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { ui } from "../../../api/ui";
 import { TComponentModel } from "../../../core/state/model";
 import { getPartitionString } from "../../browser/BrowserEditorModel";
@@ -111,6 +112,9 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         if (filePath) settings.set("browser-incognito-bookmarks-file", filePath);
     };
 
+    handleProfileNetworkChange = (name: string, network: BrowserNetwork) => settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, network } : profile));
+    handleDefaultNetworkChange = (network: BrowserNetwork) => settings.set("browser-default-network", network);
+    handleIncognitoNetworkChange = (network: BrowserNetwork) => settings.set("browser-incognito-network", network);
     handleClearProfileBookmarks = (name: string) => settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, bookmarksFile: undefined } : profile));
     handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Enter") this.handleAddProfile(); };
 

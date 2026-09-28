@@ -12,18 +12,12 @@ import { app, BrowserWindow, ipcMain, session, Session } from "electron";
 import { TorChannel, TorIpInfo, TorStatus } from "../ipc/tor-ipc";
 import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
+import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
 
 /** Cap on the exit-IP lookup. Tor is slow, but a hung request must not hang the dialog. */
 const LOOKUP_TIMEOUT_MS = 20_000;
-
-/**
- * Tighter cap per geo provider. They are tried in sequence, so sharing the
- * 20 s budget would let two slow providers alone leave the dialog spinning for
- * 40 s. Location is optional — failing fast is better than blocking on it.
- */
-const GEO_TIMEOUT_MS = 8_000;
 
 /** How long to wait for a killed tor.exe to be reaped before spawning its replacement. */
 const PROCESS_EXIT_TIMEOUT_MS = 5_000;
@@ -34,14 +28,14 @@ const PROCESS_EXIT_TIMEOUT_MS = 5_000;
  */
 const TOR_CHECK_URL = "https://check.torproject.org/api/ip";
 
-/** Geo providers, tried in order. Both are keyless and HTTPS-only. */
-const GEO_URLS = [
-    "https://ipinfo.io/json",
-    "https://freeipapi.com/api/json",
-];
-
 class TorService {
     private activePartitions = new Set<string>();
+    /**
+     * Every partition currently carrying the Tor SOCKS proxy, bootstrapped or not.
+     * Answers "is this a Tor session?" for the guest WebRTC policy (US-1557), which
+     * must hold from the first navigation — before `activePartitions` includes it.
+     */
+    private proxiedPartitions = new Set<string>();
     /**
      * Shared by every partition, and written by both `armPartition` and
      * `startForPartition`. That is sound only because `tor.socks-port` is a single
@@ -147,6 +141,7 @@ class TorService {
     async stopForPartition(partition: string): Promise<void> {
         await this.clearProxyForPartition(partition);
         this.activePartitions.delete(partition);
+        this.proxiedPartitions.delete(partition);
 
         if (this.activePartitions.size === 0) {
             this.sidecar.stop();
@@ -156,6 +151,7 @@ class TorService {
     shutdown(): void {
         this.sidecar.stop();
         this.activePartitions.clear();
+        this.proxiedPartitions.clear();
     }
 
     /**
@@ -165,6 +161,14 @@ class TorService {
      */
     isActiveTorPartition(partition: string): boolean {
         return this.sidecar.isRunning && this.activePartitions.has(partition);
+    }
+
+    /** True when `ses` belongs to a Tor page, armed or live. */
+    isTorSession(ses: Session): boolean {
+        for (const partition of this.proxiedPartitions) {
+            if (session.fromPartition(partition) === ses) return true;
+        }
+        return false;
     }
 
     /** Find the live Tor partition that owns an originating browser Session. */
@@ -289,23 +293,11 @@ class TorService {
 
         // Geo is a bonus — a dead or rate-limiting provider must still leave the
         // IP visible, so failures here never touch `info.error`.
-        for (const url of GEO_URLS) {
-            try {
-                const res = await ses.fetch(url, {
-                    cache: "no-store",
-                    signal: AbortSignal.timeout(GEO_TIMEOUT_MS),
-                });
-                if (!res.ok) continue;
-                const data = await res.json() as Record<string, unknown>;
-                const geo = normalizeGeo(data);
-                if (!geo) continue;
-                Object.assign(info, geo);
-                info.geoSource = new URL(url).hostname;
-                if (!info.ip && geo.ip) info.ip = geo.ip;
-                break;
-            } catch {
-                // Try the next provider.
-            }
+        const geo = await lookupGeo(ses);
+        if (geo) {
+            const { ip, ...location } = geo;
+            Object.assign(info, location);
+            if (!info.ip && ip) info.ip = ip;
         }
 
         if (!info.ip && !info.error) {
@@ -347,19 +339,16 @@ class TorService {
     // -------------------------------------------------------------------------
 
     private async setProxyForPartition(partition: string): Promise<void> {
-        const ses = session.fromPartition(partition);
-        await ses.setProxy({
-            proxyRules: `socks5://127.0.0.1:${this.socksPort}`,
-            proxyBypassRules: "",
-        });
-        await ses.closeAllConnections();
+        this.proxiedPartitions.add(partition);
+        await applySessionProxy(
+            session.fromPartition(partition),
+            `socks5://127.0.0.1:${this.socksPort}`,
+        );
     }
 
     private async clearProxyForPartition(partition: string): Promise<void> {
         try {
-            const ses = session.fromPartition(partition);
-            await ses.setProxy({ proxyRules: "" });
-            await ses.closeAllConnections();
+            await setSessionDirect(session.fromPartition(partition));
         } catch {
             // Partition session may already be destroyed
         }
@@ -397,35 +386,6 @@ class TorService {
             }
         }
     }
-}
-
-// ── Geo response normalization ──────────────────────────────────────────────
-
-/** Read `key` from an untrusted JSON object, but only when it is a non-empty string. */
-function str(data: Record<string, unknown>, key: string): string | undefined {
-    const value = data[key];
-    return typeof value === "string" && value ? value : undefined;
-}
-
-/**
- * Fold one geo provider's response into `TorIpInfo` fields. Handles the two
- * shapes we call: ipinfo.io (`ip`/`city`/`region`/`country`/`org`, country as a
- * 2-letter code) and freeipapi.com (`ipAddress`/`cityName`/`regionName`/
- * `countryName`, country as a full name).
- *
- * Returns null when the payload carries no location at all, so the caller falls
- * through to the next provider instead of stopping on an empty answer.
- */
-function normalizeGeo(data: Record<string, unknown>): Partial<TorIpInfo> | null {
-    const geo: Partial<TorIpInfo> = {
-        ip: str(data, "ip") ?? str(data, "ipAddress"),
-        city: str(data, "city") ?? str(data, "cityName"),
-        region: str(data, "region") ?? str(data, "regionName"),
-        country: str(data, "country") ?? str(data, "countryName"),
-        org: str(data, "org"),
-    };
-    if (!geo.city && !geo.region && !geo.country) return null;
-    return geo;
 }
 
 // ── Singleton & IPC Registration ────────────────────────────────────────────

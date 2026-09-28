@@ -188,6 +188,12 @@ export interface BrowserEditorState extends IEditorState {
      * read and drive. Deliberately not persisted: after a restart the page counts as the user's.
      */
     openedByAgent: boolean;
+    /** `profile-src` token while this page's profile is proxied, else "" (US-1557). */
+    networkToken: string;
+    /** Proxy shown in the URL bar, e.g. "SOCKS5 127.0.0.1:1080"; "" when direct. */
+    networkLabel: string;
+    /** Why the profile network could not be applied; "" when it was. */
+    networkError: string;
     /** Current text in URL input (managed by BrowserUrlBarModel). */
     urlInput: string;
     /** Whether the URL suggestions dropdown is visible. */
@@ -283,6 +289,9 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         lastSearchQuery: "",
         // Ephemeral state (managed by sub-models)
         openedByAgent: false,
+        networkToken: "",
+        networkLabel: "",
+        networkError: "",
         urlInput: DEFAULT_URL,
         suggestionsOpen: false,
         userHasTyped: false,

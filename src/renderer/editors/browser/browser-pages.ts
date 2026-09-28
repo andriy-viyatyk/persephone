@@ -93,6 +93,16 @@ export async function showBrowserPage(
         }
     }
 
+    // A proxied profile (US-1557): `restore()` above already applied the route
+    // and records a failure instead of throwing, so a restore never drops a page.
+    // A NEW page is refused instead — it has no tabs worth keeping.
+    const networkError = editor.state.get().networkError;
+    if (networkError) {
+        ui.notify(`Could not apply the profile's proxy — the page was not opened: ${networkError}`, "error");
+        editor.network.dispose();
+        return;
+    }
+
     const page = model.lifecycle.addPage(editor);
 
     // Bootstrapping stays un-awaited: it can take tens of seconds, and the

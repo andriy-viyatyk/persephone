@@ -6,6 +6,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { TorIcon } from "../../theme/language-icons";
+import { GlobeIcon } from "../../theme/icons";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { TorInfoDialogModel } from "./TorInfoDialog";
 import "../../uikit/Button/Button.css";
@@ -31,6 +32,8 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
     private readonly orgRow: HTMLDivElement;
     private readonly orgValue: HTMLSpanElement;
     private readonly torValue: HTMLSpanElement;
+    /** Proxy mode (US-1557): no Tor verdict, no Reconnect, and "through the proxy" wording. */
+    private readonly isTor: boolean;
     private readonly errorElement: HTMLSpanElement;
     private readonly warningElement: HTMLSpanElement;
     private readonly noteElement: HTMLSpanElement;
@@ -39,8 +42,10 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
 
     public constructor(props: DialogViewProps) {
         const model = props.model as TorInfoDialogModel;
+        const { mode, proxyLabel } = model.state.get();
+        const isTor = mode === "tor";
         const spinnerView = new SpinnerView({ size: 16 });
-        const busyText = createTextElement("Looking up the exit address through Tor...", {
+        const busyText = createTextElement(isTor ? "Looking up the exit address through Tor..." : "Looking up the egress address through the proxy...", {
             size: "sm",
             color: "light",
         });
@@ -52,18 +57,39 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
         const locationValue = createTextElement("");
         const orgValue = createTextElement("");
         const torValue = createTextElement("");
+        const torRow = createPanelElement(
+            { direction: "row", gap: "md", align: "baseline" },
+            [
+                createPanelElement({ width: 130, shrink: false }, [
+                    createTextElement("Exiting through Tor", { size: "sm", color: "light" }),
+                ]),
+                torValue,
+            ],
+        );
+        torRow.hidden = !isTor;
         const orgRow = createPanelElement(
             { direction: "row", gap: "md", align: "baseline" },
             [
                 createPanelElement({ width: 130, shrink: false }, [
-                    createTextElement("Exit node", { size: "sm", color: "light" }),
+                    createTextElement(isTor ? "Exit node" : "Network", { size: "sm", color: "light" }),
                 ]),
                 orgValue,
             ],
         );
+        const proxyRow = createPanelElement(
+            { direction: "row", gap: "md", align: "baseline" },
+            [
+                createPanelElement({ width: 130, shrink: false }, [
+                    createTextElement("Proxy", { size: "sm", color: "light" }),
+                ]),
+                createTextElement(proxyLabel),
+            ],
+        );
+        proxyRow.hidden = isTor;
         const infoPanel = createPanelElement(
             { direction: "column", gap: "sm" },
             [
+                proxyRow,
                 createPanelElement(
                     { direction: "row", gap: "md", align: "baseline" },
                     [
@@ -83,15 +109,7 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
                     ],
                 ),
                 orgRow,
-                createPanelElement(
-                    { direction: "row", gap: "md", align: "baseline" },
-                    [
-                        createPanelElement({ width: 130, shrink: false }, [
-                            createTextElement("Exiting through Tor", { size: "sm", color: "light" }),
-                        ]),
-                        torValue,
-                    ],
-                ),
+                torRow,
             ],
         );
         const errorElement = createTextElement("", { size: "sm", color: "error" });
@@ -105,6 +123,7 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
             "Reconnecting restarts Tor for every open Tor page. A new circuit does not always mean a different exit node.",
             { size: "xs", color: "light" },
         );
+        explanationElement.hidden = !isTor;
         const bodyPanel = createPanelElement(
             { direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" },
             [busyPanel, infoPanel, errorElement, warningElement, noteElement, geoElement, explanationElement],
@@ -112,6 +131,7 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
         const reconnectButton = new ButtonView({
             variant: "primary",
             disabled: true,
+            hidden: !isTor,
             onClick: () => { void model.reconnect(); },
             children: "Reconnect",
         });
@@ -125,9 +145,9 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
         );
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
-        const icon = TorIcon.createElement();
+        const icon = isTor ? TorIcon.createElement() : GlobeIcon.createElement();
         const contentView = new DialogContentView({
-            title: "Tor connection",
+            title: isTor ? "Tor connection" : "Proxy connection",
             icon,
             onClose: () => { void model.close(undefined); },
             minWidth: 460,
@@ -142,6 +162,7 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
 
         super(props, dialogView.root);
         this.model = model;
+        this.isTor = isTor;
         this.dialogView = this.child(dialogView);
         this.contentView = this.child(contentView);
         this.spinnerView = this.child(spinnerView);
@@ -179,7 +200,9 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
         this.busyPanel.hidden = !busy;
         this.busyText.textContent = state.reconnecting
             ? "Restarting Tor \u2014 this can take up to a minute..."
-            : "Looking up the exit address through Tor...";
+            : this.isTor
+                ? "Looking up the exit address through Tor..."
+                : "Looking up the egress address through the proxy...";
         this.infoPanel.hidden = busy || !info;
         if (info) {
             this.ipValue.textContent = info.ip || "Unknown";
@@ -195,11 +218,12 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
         this.noteElement.textContent = state.note;
         this.geoElement.hidden = busy || !info?.geoSource;
         this.geoElement.textContent = info?.geoSource
-            ? `Location reported by ${info.geoSource}, queried through Tor.`
+            ? `Location reported by ${info.geoSource}, queried through ${this.isTor ? "Tor" : "the proxy"}.`
             : "";
         this.reconnectButton.update({
             variant: "primary",
             disabled: busy,
+            hidden: !this.isTor,
             onClick: () => { void this.model.reconnect(); },
             children: "Reconnect",
         });

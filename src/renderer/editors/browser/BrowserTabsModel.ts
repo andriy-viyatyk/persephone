@@ -305,11 +305,7 @@ export class BrowserTabsModel {
             icon: createIconElement("open-link"),
             onClick: () => this.addTab(link.href),
         }] : [];
-        bm.linkEditor.imageProxySource = () => {
-            const s = this.model.state.get();
-            if (!s.isTor) return null;
-            return { partition: this.model.partition, ready: s.torStatus === "connected" };
-        };
+        bm.linkEditor.imageProxySource = () => this.model.network.imageRoute;
         bm.panelHost.setInitialWidth(this.model.state.get().bookmarksSidebarWidth);
         bm.panelHost.onWidthChange = (w) => this.model.state.update((s) => { s.bookmarksSidebarWidth = w; });
     };

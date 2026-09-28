@@ -4,7 +4,7 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { spacing } from "../../uikit/tokens";
 import { toClipboard } from "../../core/utils/utils";
 import type { ILink } from "../../api/types/io.tree";
-import { resolveTorSrc, type TorProxyInfo } from "./tor-src";
+import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Tag/Tag.css";
 import "../../uikit/Input/Input.css";
@@ -15,8 +15,8 @@ export interface LinkTooltipContentProps {
     onToggleTag?: (link: ILink, tag: string) => void;
     /** Show "Copy link as JSON" affordance next to the title. Default: false. */
     showCopyJson?: boolean;
-    /** US-896 — Tor session to fetch the preview image through, on a Tor page. */
-    imageProxy?: TorProxyInfo | null;
+    /** US-896 / US-1557 — route to fetch the preview image through, on a Tor or proxied page. */
+    imageProxy?: ImageRoute | null;
 }
 
 /**
@@ -74,7 +74,7 @@ export function createLinkTooltipContent({
         root.append(href);
     }
 
-    const imageSrc = resolveTorSrc(link.imgSrc, imageProxy);
+    const imageSrc = resolveRoutedSrc(link.imgSrc, imageProxy);
     if (imageSrc) {
         const image = document.createElement("img");
         image.style.marginTop = `${spacing.sm}px`;

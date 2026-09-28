@@ -344,7 +344,7 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
 
     private readonly openLink = (link: LinkItem): void => {
         if (!link.href) return;
-        if (!this.props.model.isTorPage) requestFaviconSave(getHostname(link.href));
+        if (!this.props.model.isPrivatePage) requestFaviconSave(getHostname(link.href));
         void this.props.model.openLink(link);
     };
 

@@ -329,8 +329,12 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
 | `src/main/tor-src-protocol.ts` | Main | `tor-src://` handler — fetches an `http(s)` URL through a Tor partition's session |
-| `src/renderer/editors/link-editor/tor-src.ts` | Renderer | Rewrites remote image `src` values to `tor-src://` for a Tor page's Link editor |
-| `src/renderer/ui/dialogs/TorInfoDialog.ts` | Renderer | Tor connection info: exit IP, location, Reconnect |
+| `src/main/session-proxy.ts` | Main | Shared session proxy primitives (apply one proxy with no fallback, set direct, geo lookup) used by Tor and profile networks |
+| `src/main/browser-network-service.ts` | Main | Profile/Incognito proxy state, `profile-src://` handler, guest WebRTC policy, egress check, `session-src` hand-off |
+| `src/ipc/browser-network-ipc.ts` | Shared | `BrowserNetwork` type, endpoint validation, `browser-network:*` channels |
+| `src/renderer/editors/browser/BrowserProfileNetworkModel.ts` | Renderer | Per-page profile network: apply before mount, follow settings edits, image route for app-drawn resources |
+| `src/renderer/editors/link-editor/routed-src.ts` | Renderer | `ImageRoute` + `resolveRoutedSrc` — rewrites remote `src` values to `tor-src://` or `profile-src://` for a routed page |
+| `src/renderer/ui/dialogs/TorInfoDialog.ts` | Renderer | Connection info for a routed page: Tor (exit IP, location, Reconnect) or proxy (egress IP, location) |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks, cinema mode (expand `<video>` to full page), `window.chrome` compatibility shim |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 | `src/ipc/tor-ipc.ts` | Shared | Tor IPC channels + `TorStatus`/`TorIpInfo` types: arm, start, stop, log, check-ip, restart, status |
@@ -472,7 +476,7 @@ Incognito pages show an `IncognitoIcon` inside the URL bar's left edge, using th
 Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. Like incognito, Tor partitions are ephemeral (no `persist:` prefix). The Tor process is managed lazily — started on first Tor page open, stopped when the last Tor page closes.
 
 **Architecture:**
-- `src/main/tor-service.ts` — manages `tor.exe` child process lifecycle, generates minimal torrc, sets `socks5://` proxy per partition via `session.fromPartition().setProxy()`
+- `src/main/tor-service.ts` — manages `tor.exe` child process lifecycle, generates minimal torrc, sets the `socks5://` proxy per partition through the shared `session-proxy.ts` helper
 - `src/ipc/tor-ipc.ts` — IPC channels: `tor:arm`, `tor:start`, `tor:stop`, `tor:log`, `tor:check-ip`, `tor:restart`, `tor:status`
 - `src/renderer/editors/browser/TorStatusOverlay.ts` — native overlay shown during connection with live log, spinner, and reconnect button
 - `src/renderer/ui/dialogs/TorInfoDialog.ts` — connection info dialog (exit IP, location, Reconnect)
@@ -531,27 +535,44 @@ gap, not a leak — such requests already fail closed.
 
 #### The proxy covers the webview, not the renderer
 
-The SOCKS proxy is attached to the **page's session partition**, so it covers only what the
-`<webview>` loads. Renderer-side code runs in the app window's own session (`nopersist`),
-which is unproxied. Any feature that fetches a remote URL from the renderer on behalf of a Tor page
-therefore bypasses Tor unless it is routed deliberately.
+The proxy — Tor's, or a proxied profile's (see [Profile network](#profile-network)) — is attached
+to the **page's session partition**, so it covers only what the `<webview>` loads. Renderer-side
+code runs in the app window's own session (`nopersist`), which is unproxied. Any feature that
+fetches a remote URL from the renderer on behalf of a routed page therefore bypasses the route
+unless it is routed deliberately. `BrowserProfileNetworkModel.imageRoute` is the one place that
+answers "how does app-drawn content of this page reach the network": a Tor route, a profile route,
+or `null` for a direct page.
 
-Two consequences are handled explicitly:
+The consequences handled explicitly:
 
-- **Link-editor images.** A Tor page's blank tab renders the bookmarks `LinkEditor`, whose tile and
+- **Link-editor images.** The page's blank tab renders the bookmarks `LinkEditor`, whose tile and
   tooltip images are plain `<img>` tags in the app renderer. `LinkEditor.imageProxySource` (wired by
-  `BrowserTabsModel.configureBookmarks`) hands it the page's partition, and
-  `resolveTorSrc()` (`src/renderer/editors/link-editor/tor-src.ts`) rewrites remote `src` values to
-  `tor-src://<partition>/?u=<encoded url>`. Local schemes (`data:`, `blob:`, `file:`,
-  `app-asset:`) pass through untouched, and when the circuit is not connected the image is not
-  rendered at all rather than fetched direct.
-- **Favicon persistence.** Favicons are normally written to the app data folder. `LinkEditor.isTorPage`
-  gates the `requestFaviconSave` call sites, and `BrowserBookmarksUIModel` skips the save for Tor as
-  it already did for incognito. The marker set behind `requestFaviconSave` is module-level and shared
-  by every browser page, so a marker armed from a Tor page would otherwise be honoured later by a
-  non-Tor one.
+  `BrowserTabsModel.configureBookmarks`) returns the page's `ImageRoute`, and `resolveRoutedSrc()`
+  (`src/renderer/editors/link-editor/routed-src.ts`) rewrites remote `src` values to
+  `tor-src://<partition>/?u=<encoded url>` or `profile-src://<token>/?u=<encoded url>`. Local
+  schemes (`data:`, `blob:`, `file:`, `app-asset:`) pass through untouched, and while a Tor circuit
+  is not connected the image is not rendered at all rather than fetched direct.
+- **Tab-strip favicons.** `BrowserTabsPanel` draws each tab's favicon with an `<img>` in the app
+  renderer, so it resolves the URL through the same route (`routeSrc`).
+- **Favicon persistence.** Favicons are normally written to the app data folder.
+  `LinkEditor.isPrivatePage` (true for a route marked `private` — Tor, and a proxied Incognito page)
+  gates the `requestFaviconSave` call sites, and `BrowserView`/`BrowserBookmarksUIModel` skip the
+  save for Tor and incognito. The marker set behind `requestFaviconSave` is module-level and shared
+  by every browser page, so a marker armed from a private page would otherwise be honoured later by
+  another one. A proxied profile is persistent, so it does save favicons, but downloads them with
+  renderer `fetch()` through its `profile-src://` route (`routedFetchUrl`) instead of Node `https`.
+- **Opening a resource out of the page.** "Open Image in New Tab" asks main for a one-URL
+  `session-src` handle (`browser-network:session-source`) and opens the image through it; the image
+  editor then shows the bytes, not the URL. A routed page whose route is down opens nothing.
+  Board-claimed downloads get a `session-src` handle for proxied persistent sessions as they do for
+  Tor and incognito ones.
+- **Resources list.** "Show Resources" opens a standalone Link page that outlives the browser page,
+  so on a routed page it is opened without image thumbnails.
+- **WebRTC.** An `app.on("web-contents-created")` hook in `browser-network-service.ts` sets
+  `disable_non_proxied_udp` on every webview guest whose session is a Tor or proxied one, before its
+  first navigation — which works because the proxy is applied before the page mounts.
 
-The proxy resolver lives in `link-editor/`, not `browser/`, to keep the dependency arrow one-way —
+The route resolver lives in `link-editor/`, not `browser/`, to keep the dependency arrow one-way —
 `browser` already imports `link-editor`.
 
 #### `tor-src://` scheme
@@ -573,7 +594,9 @@ session can read arbitrary cross-origin content through Tor".
 
 #### Connection info dialog
 
-A `QuestionIcon` toolbar button, rendered only for Tor pages, opens `TorInfoDialog`. It reports the
+A `QuestionIcon` toolbar button, rendered only for Tor pages, opens `TorInfoDialog`. (The same
+dialog in proxy mode, opened from a proxied page's "Proxy" chip, shows the egress IP and location
+only.) It reports the
 exit IP, an approximate location, and whether `check.torproject.org` confirms the request arrived
 over Tor. Lookups run in main (`TorService.checkIp`) via `session.fromPartition(partition).fetch()` —
 a renderer-side fetch would go out unproxied and hand the checker the user's real IP. The exit-IP call
@@ -595,6 +618,49 @@ renderer state that main cannot see, so `TorService` broadcasts `tor:status` and
 `torStatusListener` follows it — otherwise the other pages would keep showing a green dot while Tor
 is down. A new circuit may legitimately reuse the same exit node, so the dialog reports an unchanged
 IP as such instead of implying the reconnect failed.
+
+### Profile network
+
+Each browser profile, the built-in Default profile, and Incognito can use a SOCKS5 or HTTP proxy
+instead of a direct connection: `BrowserProfile.network`, `browser-default-network`, and
+`browser-incognito-network` hold a `BrowserNetwork` (`{ kind: "direct" }` or
+`{ kind: "proxy", protocol, host, port }`), with no credentials.
+
+At the Chromium level a proxied page is the same as a Tor page: its session gets exactly one proxy
+through `applySessionProxy` (`src/main/session-proxy.ts`) — `mode: "fixed_servers"`, empty bypass
+rules, no `direct://` fallback, then `closeAllConnections()` — so an unreachable proxy fails with
+`ERR_PROXY_CONNECTION_FAILED` / `ERR_SOCKS_CONNECTION_FAILED` rather than browsing direct. Chromium's
+implicit loopback/link-local bypass is kept: routing `localhost` into a remote proxy would only
+break local development. With SOCKS5, host names are resolved by the proxy.
+
+The difference is lifetime. A profile partition (`persist:browser-<name>`) is shared by every page
+of the profile in every window for the whole run, and Electron does not persist `setProxy`, so it
+must be applied again before the first page of each run mounts. An Incognito page has its own
+in-memory partition, released when the page closes.
+
+- **Apply before mount.** `BrowserProfileNetworkModel.armProxy()` invokes `browser-network:apply`
+  from `BrowserEditor.restore()` — the same ordering Tor relies on. `BrowserNetworkService.apply` is
+  idempotent per partition: an unchanged network joins the pending or finished apply, so the Nth
+  page of a profile neither resets its connections nor mounts before the first apply settles.
+- **Fail closed.** If main cannot apply the proxy (a hand-edited invalid host), `networkError` is
+  set: `showBrowserPage` refuses a new page, and an existing or restored page keeps its tabs but
+  mounts **no webview** — `BrowserView` passes an empty page list to the page manager and shows
+  `ProfileNetworkErrorView` with Retry. Fixing the setting re-applies it.
+- **Follow edits.** The model subscribes to the three settings and re-applies on change; main
+  closes connections, re-issues the `profile-src` token, and re-applies the guest WebRTC policy to
+  existing guests. Documents already loaded keep their route until reloaded, so a notice says so.
+- **`profile-src://`.** The `tor-src` counterpart for proxied sessions, registered on the app
+  session. Its host is an opaque token main issues per proxied partition (a partition name such as
+  `persist:browser-My Profile` is not a valid URL host); an unknown or revoked token is refused, and
+  only `http(s)` targets are fetched. Unlike `tor-src`, it is `corsEnabled` so the favicon cache can
+  read the bytes. That is safe here because the host is an unguessable random token that only the
+  browser page's own renderer code holds (never a board frame), whereas a `tor-src` host is a
+  guessable partition name.
+- **Incognito release.** Disposing an Incognito page calls `browser-network:release`, so main
+  forgets its partition and token.
+
+A proxied page shows a "Proxy" chip in the URL bar (`url-proxy-indicator`) that opens the
+connection dialog in proxy mode (`browser-network:check-ip`, through the page's session).
 
 ### Clear Profile Data
 

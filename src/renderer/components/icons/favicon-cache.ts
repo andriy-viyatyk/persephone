@@ -96,8 +96,13 @@ export function getFaviconPathSync(hostname: string): string | null {
  * Save a favicon from its URL to the cache.
  * Downloads the image and saves it as a binary file.
  * No-op if already cached for this hostname.
+ *
+ * `routedUrl` (US-1557) is the same favicon wrapped in a route scheme such as
+ * `profile-src://` — set for a proxied browser profile, whose favicon must be
+ * fetched through the profile session. It is read with Chromium `fetch()`; with
+ * no route the download uses Node https directly.
  */
-export async function saveFavicon(hostname: string, faviconUrl: string): Promise<void> {
+export async function saveFavicon(hostname: string, faviconUrl: string, routedUrl?: string): Promise<void> {
     if (!hostname || !faviconUrl) return;
 
     // Already cached or known miss
@@ -118,7 +123,9 @@ export async function saveFavicon(hostname: string, faviconUrl: string): Promise
 
     pendingFetches.add(hostname);
     try {
-        const buffer = await downloadToBuffer(faviconUrl);
+        const buffer = routedUrl
+            ? await fetchToBuffer(routedUrl)
+            : await downloadToBuffer(faviconUrl);
         if (buffer && buffer.length > 0) {
             const ext = detectImageExtension(buffer);
             const filePath = basePath + ext;
@@ -192,6 +199,16 @@ function detectImageExtension(buffer: Buffer): string {
     }
     // Default to .png (most common favicon format)
     return ".png";
+}
+
+async function fetchToBuffer(url: string): Promise<Buffer | null> {
+    try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (!response.ok) return null;
+        return Buffer.from(await response.arrayBuffer());
+    } catch {
+        return null;
+    }
 }
 
 function downloadToBuffer(url: string): Promise<Buffer | null> {
