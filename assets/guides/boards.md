@@ -417,10 +417,7 @@ Scripts running in Persephone can discover or invoke the same indexed handlers t
 [`app.capabilities`](./scripting/api/app.md#capabilities). Board pages use the asynchronous
 `persephone.capabilities` bridge documented above.
 
-Use `app.capabilities.invoke()` for capability calls from scripts. The optional `intent` argument
-to `app.boards.openBoard()` and `ILinkData.intent` are deprecated legacy routes: they open the
-named board and dispatch through its matching declaration in the background, without returning a
-capability result. New callers should use `app.capabilities.invoke()`.
+Scripts should use `app.capabilities.invoke()` for capability calls.
 
 ---
 

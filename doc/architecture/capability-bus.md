@@ -80,11 +80,9 @@ page are queued FIFO; only the head is sent, and only after the board's initial 
 completed and the frame is ready. The frame therefore has one active intent context at a time.
 Requests are never routed to a live handler page in another window.
 
-Deprecated `app.boards.openBoard(boardRoot, { intent })` and `ILinkData.intent` inputs remain
-compatibility entry points. They use a root-specific adapter into the capability bus: it selects a
-matching declaration on that board root, rather than applying global candidate precedence, then
-uses the normal request lifecycle, limits, routing, and typed settlement. New callers should use
-`app.capabilities.invoke()`.
+Scripts call `app.capabilities.invoke()` to use the capability bus. The legacy `openBoard` intent
+option and `ILinkData.intent` input have been removed; `IntentEnvelope` remains the capability bus
+request contract.
 
 The page-open and reused-page paths converge on the same intent request:
 

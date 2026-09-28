@@ -108,7 +108,7 @@ The epic and dashboard checklist item remains unchecked because this implementat
 
 ## Needs user decision
 
-- Decide in a later release whether to delete the deprecated app.boards.openBoard(boardRoot, { intent }) option and ILinkData.intent input. This story keeps both and routes them through the bus-backed, root-specific adapter.
+- [x] Resolved: the user decided to remove the deprecated `app.boards.openBoard(boardRoot, { intent })` option and `ILinkData.intent` input; US-1558 removed them.
 
 ## Acceptance criteria
 

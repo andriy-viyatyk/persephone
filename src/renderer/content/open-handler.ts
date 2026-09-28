@@ -2,16 +2,6 @@ import { app } from "../api/app";
 import { pagesModel } from "../api/pages";
 import { buildArchivePath } from "../core/utils/file-path";
 import { cleanForStorage } from "../../shared/link-data";
-import { errMessage } from "../../shared/utils";
-
-function invokeLegacyIntent(boardRoot: string | undefined, intent: import("../../ipc/capability-bus-channels").IntentEnvelope | undefined): void {
-    if (!boardRoot || !intent) return;
-    void import("../api/capabilities")
-        .then(({ invokeLegacyBoardIntent }) => invokeLegacyBoardIntent(boardRoot, intent))
-        .catch((error: unknown) => {
-            console.warn(`Legacy board intent failed: ${errMessage(error, "The capability request failed.")}`);
-        });
-}
 
 /**
  * Register Layer 3 handler on openContent.
@@ -87,9 +77,5 @@ export function registerOpenHandler(): void {
         }
 
         data.handled = true;
-        invokeLegacyIntent(
-            pagesModel.lifecycle.resolveBoardRootForOpen(data.target, filePath),
-            data.intent,
-        );
     });
 }

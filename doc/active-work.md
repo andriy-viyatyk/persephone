@@ -38,6 +38,8 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [x] [US-1553: VideoEditor's source flow in one place; one provider-recovery helper](tasks/US-1553-video-source-flow/README.md)
   - [x] [US-1554: Board trust granting, bundled-board creation and Board Info each have one path](tasks/US-1554-board-trust-bundled-info-paths/README.md)
   - [x] [US-1555: Small dead code, stale comments and a torrent-specific notice in core](tasks/US-1555-small-cleanups/README.md)
+  - *Phase 4 — deprecated API removal*
+  - [x] [US-1558: Remove the deprecated `boards.openBoard({ intent })` API and `ILinkData.intent`](tasks/US-1558-remove-openboard-intent/README.md)
 
 ## Planned
 

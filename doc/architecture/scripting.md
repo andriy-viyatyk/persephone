@@ -292,9 +292,9 @@ open page ids. Listing is read-only and local: it makes no network request and d
 `app.boards.registerBoard(root)` remains the consent path through the user trust dialog. Use a
 returned `root` with `app.boards.openBoard(root)`.
 
-The legacy `app.boards.openBoard(root, { intent })` option is deprecated for capability dispatch;
-use `app.capabilities.invoke(id, payload)` so the request follows the capability bus lifecycle and
-returns its result.
+Scripts call `app.capabilities.invoke(id, payload)` for capability dispatch so the request follows
+the capability bus lifecycle and returns its result. The legacy `openBoard` intent option and
+`ILinkData.intent` input have been removed.
 
 The `boards` AiVision node exposes the same currently known roots as synchronous indexed `[i]`
 children for hints and `index()` reads. Those hints perform no disk, manifest, network, or async

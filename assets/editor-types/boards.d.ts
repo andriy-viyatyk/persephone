@@ -1,5 +1,3 @@
-import type { IntentEnvelope } from "../../../ipc/capability-bus-channels";
-
 /**
  * One published-catalog board, annotated with its install state on this machine
  * ({@link IBoards.searchPublished}).
@@ -161,10 +159,7 @@ export interface IBoards {
      *
      * @param boardRoot - Absolute path of the board's root folder.
      */
-    openBoard(boardRoot: string, options?: {
-        /** @deprecated Use `app.capabilities.invoke(...)` to invoke a registered board capability. */
-        intent?: IntentEnvelope;
-    }): Promise<void>;
+    openBoard(boardRoot: string): Promise<void>;
 
     /**
      * Register (trust) an existing board so it renders and runs. Shows the **user** a

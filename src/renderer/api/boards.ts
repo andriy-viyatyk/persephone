@@ -8,7 +8,6 @@ import type {
     BoardUpdateInfo,
 } from "./types/boards";
 import type { EditorModel } from "../editors/base/EditorModel";
-import type { IntentEnvelope } from "../../ipc/capability-bus-channels";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 import { readBoardManifest } from "../editors/board/board-manifest";
 import { boardTrust, pathCovers } from "./board-trust";
@@ -276,7 +275,7 @@ export const boards: IBoards = {
     },
     createBoard: (name, dir) => create(name, dir, "board-template"),
     createDemoBoard: (name, dir) => create(name, dir, "demo-board"),
-    openBoard: async (boardRoot: string, options?: { intent?: IntentEnvelope }) => {
+    openBoard: async (boardRoot: string) => {
         const { isBoardFolder } = await import("../editors/board/board-manifest");
         if (!(await isBoardFolder(boardRoot))) {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
@@ -287,14 +286,6 @@ export const boards: IBoards = {
         await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(boardRoot), {
             sourceId: "app-api",
         }));
-        if (options?.intent) {
-            const intent = options.intent;
-            void import("./capabilities")
-                .then(({ invokeLegacyBoardIntent }) => invokeLegacyBoardIntent(boardRoot, intent))
-                .catch((error: unknown) => {
-                    console.warn(`Legacy board intent failed: ${errMessage(error, "The capability request failed.")}`);
-                });
-        }
     },
 
     // ── Board lifecycle — trust / untrust / rename (EPIC-045 / US-868) ──────────

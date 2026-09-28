@@ -12,6 +12,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.4 (Upcoming)
 
+### Breaking Changes
+
+- **Removed legacy board intent inputs:** `app.boards.openBoard()` accepts only `boardRoot`, and
+  `ILinkData.intent` has been removed. Scripts should call `app.capabilities.invoke()` for
+  capability requests.
+
 ### New Features
 
 - **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns

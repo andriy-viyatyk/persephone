@@ -76,7 +76,7 @@ const openedPage = await pagesModel.lifecycle.openBoardHandlerPage(root, title, 
 
 ### Decided for this story
 
-- **Public intent overload on `app.boards.openBoard`:** Keep its current runtime behavior for compatibility. Add `@deprecated` JSDoc to the `intent` property in `src/renderer/api/types/boards.d.ts`, pointing callers to `app.capabilities.invoke`. Update the ai-vision `boards.openBoard` help because its current signature and summary explicitly describe `intent` (`src/renderer/scripting/ai-vision/namespaces/boards.ts:13`). This preserves the public API while steering new callers to the lifecycle that returns capability results and applies deadline, trust, cycle, and cancellation checks.
+- **Public intent overload on `app.boards.openBoard`:** Keep its current runtime behavior for compatibility. Add `@deprecated` JSDoc to the `intent` property in `src/renderer/api/types/boards.d.ts`, pointing callers to `app.capabilities.invoke`. Update the ai-vision `boards.openBoard` help because its current signature and summary explicitly describe `intent` (`src/renderer/scripting/ai-vision/namespaces/boards.ts:13`). This preserves the public API while steering new callers to the lifecycle that returns capability results and applies deadline, trust, cycle, and cancellation checks. Later removed by user decision in US-1558.
 
 ### Files that need no changes
 

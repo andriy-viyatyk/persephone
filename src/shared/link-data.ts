@@ -69,7 +69,6 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
         browserTabMode,
         fallbackTarget,
         folderPath,
-        intent,
         sessionHandle,
         ...stored
     } = data;
