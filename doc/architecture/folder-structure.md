@@ -157,8 +157,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
-│   ├── board-trust.ts      # Per-board trust registry — persists user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
-│   ├── board-trust-sync.ts # Complete generation-numbered trust/service snapshot mirror from renderer to main
+│   ├── board-trust.ts      # Reactive mirror of main-owned user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
+│   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
 │   ├── module-service.ts   # Renderer client for main-routed service requests and the optional per-window host-renderer lease
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
@@ -958,7 +958,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Download management, Browser URL claims, and tracked synchronous save dialogs
+├── download-service.ts     # Download management using main-derived Browser URL claims, and tracked synchronous save dialogs
 ├── session-src-protocol.ts # Short-lived URL-bound capability for fetching one source through its private Browser session
 ├── native-dialog-tracker.ts # Per-window tracking and non-actionable attention for native dialogs
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
@@ -969,7 +969,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
 ├── board-pipe-service.ts     # Main-side board pipe page ownership and renderer range request correlation
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
-├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, trust gating, handshake deadline, restart budget, request settlement, per-WebContents renderer leases, untrust and quit teardown
+├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
+├── module-service-supervisor.ts # Main owner of lazy utilityProcess services, derived-trust gating, handshake deadline, restart budget, request settlement, per-WebContents renderer leases, untrust and quit teardown
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
 ├── board-root-key.ts       # Canonical board-root normalization and SHA-256 storage key
 ├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store
@@ -1006,7 +1007,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
-├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshots, per-renderer lease and storage wire types
+├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, main-derived trust snapshot, per-renderer lease and storage wire types
 ├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
@@ -1024,10 +1025,13 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
     └── renderer-events.ts  # Events received FROM main
 ```
 
-Module services cross these boundaries intentionally: the renderer owns the complete trust snapshot,
-main owns the `utilityProcess` lifecycle and ordinary request path, and the static asset host is the
-utility-process entry that imports the board-relative ESM module. The optional renderer lease is a
-separate channel for future high-volume provider traffic, not a requirement of every service.
+Module services cross these boundaries intentionally: main owns persisted trust and derives the
+service snapshot from trusted roots and bundled manifests before restored windows can request a
+service. The renderer mirrors authoritative trust paths and owns only the disabled-bundled-board
+setting input. Main owns the `utilityProcess` lifecycle and ordinary request path, and the static
+asset host is the utility-process entry that imports the board-relative ESM module. The optional
+renderer lease is a separate channel for high-volume provider traffic, not a requirement of every
+service.
 
 ## When to Create New Folders
 

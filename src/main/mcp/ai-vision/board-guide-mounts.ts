@@ -2,8 +2,7 @@
  * Resolves the board corpora mounted into the MAIN-process guide index (US-1406 / EPIC-100 D7),
  * the one `guides.*` over MCP is served from.
  *
- * The trusted-board list is renderer-owned state, but it is persisted as a plain line-delimited
- * file (`<userData>/data/trustedBoards.txt`, see `renderer/api/board-trust.ts`), so the main
+ * Main owns the plain line-delimited trust file at `<userData>/data/trustedBoards.txt`, so this
  * process reads it directly rather than round-tripping to a window that may not be open. Only
  * TRUSTED boards are mounted — an untrusted board contributes no documentation, exactly as it
  * contributes no editor association.

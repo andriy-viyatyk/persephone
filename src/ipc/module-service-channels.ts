@@ -47,8 +47,8 @@ export interface TrustedBoardSnapshotEntry {
     canStartService: boolean;
 }
 
-export interface TrustedBoardSnapshot {
-    generation: number;
+export interface BoardServiceTrustSnapshot {
+    trustedPaths: string[];
     boards: TrustedBoardSnapshotEntry[];
 }
 

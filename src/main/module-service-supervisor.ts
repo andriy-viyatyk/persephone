@@ -22,7 +22,7 @@ import {
     type ServiceParentMessage,
     type ServiceStopReason,
     type StartResult,
-    type TrustedBoardSnapshot,
+    type BoardServiceTrustSnapshot,
     type TrustedBoardSnapshotEntry,
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
@@ -123,19 +123,18 @@ function killUtilityProcessSync(child: UtilityProcess | undefined): void {
 
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
-    private trustedSnapshot: TrustedBoardSnapshot | undefined;
-    private trustedSnapshotGeneration = -1;
+    private trustedSnapshot: BoardServiceTrustSnapshot | undefined;
     private disposing = false;
 
-    syncTrustedBoardSnapshot(snapshot: TrustedBoardSnapshot): void {
-        if (this.disposing || snapshot.generation < this.trustedSnapshotGeneration) return;
+    async applyBoardServiceTrustSnapshot(snapshot: BoardServiceTrustSnapshot): Promise<void> {
+        if (this.disposing) return;
         const previouslyUntrusted = new Set(
             [...this.records.values()]
                 .filter((record) => !this.isEffectivelyTrusted(record.boardRoot))
                 .map((record) => record.key),
         );
-        this.trustedSnapshotGeneration = snapshot.generation;
         this.trustedSnapshot = snapshot;
+        const stopPromises: Promise<void>[] = [];
 
         const serviceEntries = new Map<string, TrustedBoardSnapshotEntry>();
         for (const entry of snapshot.boards) {
@@ -192,7 +191,10 @@ class ModuleServiceSupervisor {
         // while its `utilityProcess` keeps running.
         for (const [key, record] of [...this.records]) {
             if (serviceEntries.has(key)) continue;
-            void this.stopRecord(record, "explicit");
+            stopPromises.push(this.stopRecord(
+                record,
+                this.isEffectivelyTrusted(record.boardRoot) ? "explicit" : "untrusted",
+            ));
             this.records.delete(key);
         }
 
@@ -204,9 +206,10 @@ class ModuleServiceSupervisor {
                     record.stopRequested = false;
                 }
             } else {
-                void this.stopRecord(record, "untrusted");
+                stopPromises.push(this.stopRecord(record, "untrusted"));
             }
         }
+        await Promise.all(stopPromises);
     }
 
     getStatus(boardRoot: string): BoardServiceStatus | undefined {
@@ -219,6 +222,7 @@ class ModuleServiceSupervisor {
     }
 
     async start(boardRoot: string, mode: "explicit" | "request"): Promise<StartResult> {
+        await this.awaitTrustReady();
         const record = this.requireRecord(boardRoot);
         if (record.state === "running" && record.process) {
             return {
@@ -271,6 +275,7 @@ class ModuleServiceSupervisor {
         message: unknown,
         deadlineMs: number,
     ): Promise<unknown> {
+        await this.awaitTrustReady();
         const record = this.requireRecord(boardRoot);
         if (record.requests.has(requestId) || record.pendingRequestSlots + record.requests.size >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
             throw new ServiceError("service-busy");
@@ -303,6 +308,7 @@ class ModuleServiceSupervisor {
     }
 
     async transferRendererPort(boardRoot: string, target: WebContents): Promise<void> {
+        await this.awaitTrustReady();
         await this.start(boardRoot, "request");
         const record = this.requireRecord(boardRoot);
         const process = record.process;
@@ -405,6 +411,11 @@ class ModuleServiceSupervisor {
         }
     }
 
+    private async awaitTrustReady(): Promise<void> {
+        const { boardTrustService } = await import("./board-trust-service");
+        await boardTrustService.ready();
+    }
+
     private requireRecord(boardRoot: string): ServiceRecord {
         if (!this.trustedSnapshot) throw new ServiceError("trust-not-ready");
         const key = normalizeRoot(boardRoot);
@@ -460,8 +471,8 @@ class ModuleServiceSupervisor {
     private isEffectivelyTrusted(boardRoot: string): boolean {
         if (!this.trustedSnapshot) return false;
         const key = normalizeRoot(boardRoot);
-        return this.trustedSnapshot.boards.some((entry) =>
-            typeof entry.boardRoot === "string" && pathCovers(normalizeRoot(entry.boardRoot), key),
+        return this.trustedSnapshot.trustedPaths.some((trustedPath) =>
+            pathCovers(normalizeRoot(trustedPath), key),
         );
     }
 
@@ -914,5 +925,5 @@ export const moduleServiceSupervisor = new ModuleServiceSupervisor();
 
 export type ModuleServiceSupervisorApi = Pick<
     ModuleServiceSupervisor,
-    "syncTrustedBoardSnapshot" | "getStatus" | "getStatuses" | "start" | "stop" | "request" | "transferRendererPort" | "disposeAll"
+    "applyBoardServiceTrustSnapshot" | "getStatus" | "getStatuses" | "start" | "stop" | "request" | "transferRendererPort" | "disposeAll"
 >;

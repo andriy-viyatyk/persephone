@@ -159,6 +159,10 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eModuleServiceStatusChanged] = new RendererEventObject<BoardServiceStatus>(
         EventEndpoint.eModuleServiceStatusChanged,
     );
+
+    [EventEndpoint.eBoardTrustChanged] = new RendererEventObject<string[]>(
+        EventEndpoint.eBoardTrustChanged,
+    );
 }
 
 const rendererEvents = new RendererEvents();

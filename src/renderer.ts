@@ -3,6 +3,7 @@ import "./renderer/theme/style-layers.css";
 import "./renderer/theme/root.css";
 import { app } from "./renderer/api/app";
 import { api } from "./ipc/renderer/api";
+import { settings } from "./renderer/api/settings";
 
 async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     const [cont] = await Promise.all([
@@ -11,6 +12,9 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
         app.initSetup(),
     ]);
     await app.initServices();
+    await settings.wait();
+    const { initBoardTrustSync } = await import("./renderer/api/board-trust-sync");
+    await initBoardTrustSync();
     const { customEditorRegistry } = await import("./renderer/editors/board/custom-editor-registry");
     await customEditorRegistry.ensureInitialized();
     await app.initPages();

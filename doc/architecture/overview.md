@@ -348,7 +348,7 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 - The `board://` handler adds `charset=utf-8` to every text MIME response (HTML, JavaScript, CSS, JSON, SVG, and plain text). This is explicit because the injected head fragment can precede an author's `<meta charset>` by more than the encoding-sniffing window.
 - The board loads in a plain `<iframe src="board://<host>/index.html">` rendered in the host renderer's DOM — no `sandbox` attribute (a bare `sandbox` forces an opaque origin with no stable per-board storage). Each board gets a **distinct cross-origin** `board://<host>` origin, where `host` is a stable hash of the normalized board root minted by `registerBoard` in the main process. Isolation from the Node-privileged host comes from the Same-Origin Policy (a cross-origin child cannot reach `window.parent`), `nodeIntegrationInSubFrames: false`, and the served CSP — adequate for trusted, user-authorized local code. Because the iframe lives in the DOM, all host overlays (page-tab context menu, dropdowns, dialogs, command palette, tooltips) compose over it naturally. This mirrors VS Code's editor-webview model.
 - The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks all remote network access — CDNs, fetch, XHR to external hosts are all forbidden. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the trade-off is accepted because a board is the user's own trusted code (it can already run arbitrary processes via `execute()`).
-- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. The external decision is persisted by `board-trust.ts` (a path-keyed registry, `trustedBoards.txt` under `<userData>/persephone/data/`) and never read from the manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
+- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. Main owns the persisted decision in `trustedBoards.txt` under `<userData>/data/`; the renderer's `board-trust.ts` is a reactive mirror, and trust is never read from a manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
 
 **Module services and trust synchronization:** A board manifest may declare `service` as a Node ESM
 entry resolved from the board root. The related manifest axes are `permissions` and
@@ -358,17 +358,16 @@ The platform hosts a declared service in an Electron `utilityProcess`, started l
 request or explicit start — never at application launch. A board can query
 `persephone.service.status()` without starting the process and explicitly stop it with
 `persephone.service.stop()`; main owns process start, the bounded restart budget, the ready/probe
-handshake deadline, and teardown on untrust and application quit.
+handshake deadline, and teardown on untrust and application quit. `board-trust-service.ts` loads
+the trust file before windows are restored, serializes trust mutations, and derives the service
+eligibility snapshot from trusted roots and bundled manifests. Service starts and port requests
+wait for this initial load. Main writes the trust file through a same-directory temporary file and
+rename; each renderer receives the resulting trusted paths as a reactive mirror.
 
-The renderer mirrors complete, generation-numbered trust snapshots to main, including normalized
-service declarations and the service-permission decision. The generation is clock-seeded rather
-than reset to a renderer-local counter: a counter that restarted at zero after reload made main drop
-later snapshots as stale, silently preventing trust changes (including untrust) from reaching the
-supervisor.
-
-**Browser-download claims:** `CustomEditorRegistry.refresh()` also produces a generation-numbered
-snapshot of accepted, normalized `browserUrlMasks` claims from trusted and enabled bundled boards.
-Main consumes that snapshot synchronously in `download-service.ts` at Electron's `will-download`
+**Browser-download claims:** Main derives accepted, normalized `browserUrlMasks` claims from
+trusted and enabled bundled boards alongside the service snapshot. Trusted roots retain persisted
+list order, bundled roots sort by bundle id, and the first compatible source to claim a mask wins.
+The main-owned claims feed `download-service.ts` synchronously at Electron's `will-download`
 boundary. On a match, Electron cancels the download before the save dialog and the renderer routes
 the claimed URL to `openRawLink` with the winning board target. For a private or non-persistent
 Browser session, main also issues a short-lived opaque `session-src://` handle bound to that URL and

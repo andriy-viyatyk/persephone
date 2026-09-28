@@ -51,7 +51,7 @@ in the running app, and should be reproduced over MCP before they are fixed.
 | US-1535 | [One service renderer lease per window, not per service](../tasks/US-1535-service-lease-per-window/README.md) | 1 — defect | M | Done |
 | US-1536 | [Board `ui.log`: one main-owned writer; no truncation; bundled boards log to userData](../tasks/US-1536-board-log-writer/README.md) | 1 — defect | S–M | Done |
 | US-1537 | [Launch arguments parsed once; a cold-start URL takes the same route as a running-instance URL](../tasks/US-1537-launch-arguments/README.md) | 1 — defect | S | Done |
-| US-1538 | Main owns the board trust and URL-mask snapshots | 1 — defect | M | Planned |
+| US-1538 | [Main owns the board trust and URL-mask snapshots](../tasks/US-1538-main-owned-trust-snapshot/README.md) | 1 — defect | M | Done |
 | US-1547 | Remove the unreachable board-provider acquire path; a recovered pipe regains ranged reads | 1 — defect | M | Planned |
 | US-1539 | Capability contract single-sourced: error codes, intent envelope, outcome shape | 2 — contracts | M | Planned |
 | US-1540 | One owner for a capability request's lifecycle | 2 — contracts | L | Planned |

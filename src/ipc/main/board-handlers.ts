@@ -2,12 +2,11 @@ import type { IpcMainEvent } from "electron";
 import { BOARD_CDP_TAB, Endpoint, type BoardLogLevel } from "../api-types";
 import type {
     BoardArchiveDownloadRequest,
-    BrowserUrlMaskSnapshot,
     PublishedBoardsResult,
     PublishedBoardVersions,
 } from "../api-param-types";
 import type { BoardThemePalette } from "../board-bridge-channels";
-import type { BoardServiceStatus, TrustedBoardSnapshot } from "../module-service-channels";
+import type { BoardServiceStatus } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { errMessage } from "../../shared/utils";
 
@@ -32,29 +31,14 @@ export type BoardEndpoint =
     | Endpoint.getBoardVersions
     | Endpoint.downloadBoardArchive
     | Endpoint.cancelBoardDownload
-    | Endpoint.syncTrustedBoardSnapshot
-    | Endpoint.syncBrowserUrlMaskSnapshot
+    | Endpoint.setBoardTrust
+    | Endpoint.getBoardTrustPaths
+    | Endpoint.setDisabledBundledBoards
     | Endpoint.getModuleServiceStatuses
     | Endpoint.requestModuleServicePort
     | Endpoint.requestModuleService
     | Endpoint.startModuleService
     | Endpoint.stopModuleService;
-
-function isBrowserUrlMaskSnapshot(value: unknown): value is BrowserUrlMaskSnapshot {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-    const snapshot = value as Partial<BrowserUrlMaskSnapshot>;
-    if (!Number.isInteger(snapshot.generation) || snapshot.generation < 0) return false;
-    if (!Array.isArray(snapshot.claims) || snapshot.claims.length > 1024) return false;
-    return snapshot.claims.every((claim) => {
-        if (typeof claim !== "object" || claim === null || Array.isArray(claim)) return false;
-        const candidate = claim as Partial<BrowserUrlMaskSnapshot["claims"][number]>;
-        return typeof candidate.boardRoot === "string" && candidate.boardRoot.length > 0
-            && typeof candidate.boardName === "string" && candidate.boardName.length > 0
-            && Array.isArray(candidate.masks)
-            && candidate.masks.length <= 64
-            && candidate.masks.every((mask) => typeof mask === "string" && mask.length > 0 && mask.length <= 512);
-    });
-}
 
 /** Register Board lifecycle, bridge, automation, and catalog endpoints. Each
  * handler keeps its service dynamic import so Board infrastructure stays lazy. */
@@ -122,19 +106,14 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
     });
-    bindEndpoint(Endpoint.syncTrustedBoardSnapshot, async (_event, snapshot: TrustedBoardSnapshot): Promise<void> => {
-        (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.syncTrustedBoardSnapshot(snapshot);
+    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean): Promise<string[]> => {
+        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted);
     });
-    bindEndpoint(Endpoint.syncBrowserUrlMaskSnapshot, async (_event, snapshot: BrowserUrlMaskSnapshot): Promise<void> => {
-        if (!isBrowserUrlMaskSnapshot(snapshot)) return;
-        (await import("../../main/download-service")).downloadService.syncBrowserUrlMaskSnapshot({
-            generation: snapshot.generation,
-            claims: snapshot.claims.map((claim) => ({
-                boardRoot: claim.boardRoot,
-                boardName: claim.boardName,
-                masks: [...claim.masks],
-            })),
-        });
+    bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
+        return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
+    });
+    bindEndpoint(Endpoint.setDisabledBundledBoards, async (_event, ids: string[]): Promise<void> => {
+        await (await import("../../main/board-trust-service")).boardTrustService.setDisabledBundledBoards(ids);
     });
     bindEndpoint(Endpoint.getModuleServiceStatuses, async (): Promise<BoardServiceStatus[]> => {
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.getStatuses();

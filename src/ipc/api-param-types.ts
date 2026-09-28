@@ -85,11 +85,6 @@ export interface BrowserUrlMaskClaim {
     masks: string[];
 }
 
-export interface BrowserUrlMaskSnapshot {
-    generation: number;
-    claims: BrowserUrlMaskClaim[];
-}
-
 export interface PublishedBoardArchive {
     url: string;
     size: number;

@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents } from "electron";
 import { DownloadEntry } from "../ipc/api-param-types";
-import type { BrowserUrlMaskSnapshot } from "../ipc/api-param-types";
+import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
 import { EventEndpoint } from "../ipc/api-types";
 import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
@@ -32,8 +32,7 @@ class DownloadService {
     private downloads = new Map<string, { entry: DownloadEntry; item?: DownloadItem }>();
     private hookedSessions = new WeakSet<Session>();
     private idCounter = 0;
-    private browserUrlMaskSnapshot: BrowserUrlMaskSnapshot | undefined;
-    private browserUrlMaskSnapshotGeneration = -1;
+    private browserUrlMaskClaims: BrowserUrlMaskClaim[] = [];
 
     init(): void {
         this.loadPersisted();
@@ -51,17 +50,12 @@ class DownloadService {
         });
     }
 
-    syncBrowserUrlMaskSnapshot(snapshot: BrowserUrlMaskSnapshot): void {
-        if (snapshot.generation < this.browserUrlMaskSnapshotGeneration) return;
-        this.browserUrlMaskSnapshotGeneration = snapshot.generation;
-        this.browserUrlMaskSnapshot = {
-            generation: snapshot.generation,
-            claims: snapshot.claims.map((claim) => ({
-                boardRoot: claim.boardRoot,
-                boardName: claim.boardName,
-                masks: [...claim.masks],
-            })),
-        };
+    setBrowserUrlMaskClaims(claims: BrowserUrlMaskClaim[]): void {
+        this.browserUrlMaskClaims = claims.map((claim) => ({
+            boardRoot: claim.boardRoot,
+            boardName: claim.boardName,
+            masks: [...claim.masks],
+        }));
     }
 
     getDownloads(): DownloadEntry[] {
@@ -148,8 +142,8 @@ class DownloadService {
         return this.handleOrdinaryDownload(item, webContents);
     }
 
-    private findBrowserUrlClaim(url: string): BrowserUrlMaskSnapshot["claims"][number] | undefined {
-        for (const claim of this.browserUrlMaskSnapshot?.claims ?? []) {
+    private findBrowserUrlClaim(url: string): BrowserUrlMaskClaim | undefined {
+        for (const claim of this.browserUrlMaskClaims) {
             if (claim.masks.some((mask) => matchesBrowserUrlMask(url, mask))) return claim;
         }
         return undefined;

@@ -1,7 +1,6 @@
 import { PageDragData, PageDescriptor, WindowPages } from "../shared/types";
 import {
     BoardArchiveDownloadRequest,
-    BrowserUrlMaskSnapshot,
     CommonFolder,
     DownloadEntry,
     OpenFileDialogParams,
@@ -23,7 +22,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "./clipboard-ipc";
-import type { BoardServiceStatus, TrustedBoardSnapshot } from "./module-service-channels";
+import type { BoardServiceStatus } from "./module-service-channels";
 import type { LaunchInput } from "../shared/launch-input";
 
 export enum Endpoint {
@@ -133,8 +132,9 @@ export enum Endpoint {
     getBoardVersions = "getBoardVersions",
     downloadBoardArchive = "downloadBoardArchive",
     cancelBoardDownload = "cancelBoardDownload",
-    syncTrustedBoardSnapshot = "syncTrustedBoardSnapshot",
-    syncBrowserUrlMaskSnapshot = "syncBrowserUrlMaskSnapshot",
+    setBoardTrust = "setBoardTrust",
+    getBoardTrustPaths = "getBoardTrustPaths",
+    setDisabledBundledBoards = "setDisabledBundledBoards",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
     requestModuleService = "requestModuleService",
@@ -305,10 +305,12 @@ export type Api = {
     [Endpoint.getBoardVersions]: (id: string) => Promise<PublishedBoardVersions | null>;
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
-    /** Private renderer-bootstrap snapshot; not a script-facing service API. */
-    [Endpoint.syncTrustedBoardSnapshot]: (snapshot: TrustedBoardSnapshot) => Promise<void>;
-    /** Private renderer-bootstrap snapshot for synchronous Browser-download routing. */
-    [Endpoint.syncBrowserUrlMaskSnapshot]: (snapshot: BrowserUrlMaskSnapshot) => Promise<void>;
+    /** Request a main-owned trust mutation and return its authoritative path list. */
+    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean) => Promise<string[]>;
+    /** Read the main-owned trusted path list. */
+    [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
+    /** Push the renderer's setting value used to filter bundled URL-mask sources. */
+    [Endpoint.setDisabledBundledBoards]: (ids: string[]) => Promise<void>;
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
     [Endpoint.getModuleServiceStatuses]: () => Promise<BoardServiceStatus[]>;
     /** Request the renderer-only lease for a board module service. */
@@ -369,6 +371,7 @@ export enum EventEndpoint {
     // Board-archive download progress (US-863) — throttled byte progress per installId.
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
+    eBoardTrustChanged = "eBoardTrustChanged",
 }
 
 export interface EventObject<T> {
@@ -420,6 +423,7 @@ export type EventApi = {
     // throttled byte progress; the install UI (US-864) renders it from editor state.
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
+    [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
 };
 
 export enum RendererEvent {

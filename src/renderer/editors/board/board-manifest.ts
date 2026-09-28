@@ -7,6 +7,12 @@ import {
 } from "../../../shared/guides/mounted-source";
 import { normalizeVersionRequirement } from "../../../shared/version-utils";
 import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
+import {
+    BOARD_MANIFEST_FILE,
+    normalizeBoardServicePath,
+    normalizeBrowserUrlMasks,
+    normalizePermissions,
+} from "../../../shared/board-manifest-utils";
 import type {
     BoardSettingDeclaration,
     BoardSettingType,
@@ -17,7 +23,7 @@ export { normalizeBoardGuidesFolder, normalizeBoardRelativePath };
 export { matchesBrowserUrlMask };
 
 /** File name of the board-identity manifest, at the board folder root. */
-export const BOARD_MANIFEST_FILE = "board-manifest.json";
+export { BOARD_MANIFEST_FILE, normalizeBoardServicePath, normalizeBrowserUrlMasks, normalizePermissions };
 
 /** Current manifest schema version. Bump on a breaking shape change. */
 export const BOARD_MANIFEST_SCHEMA_VERSION = 1;
@@ -407,19 +413,6 @@ export function normalizeBoardVersionRequirement(raw: unknown): string | undefin
     return normalizeVersionRequirement(raw);
 }
 
-/** Normalize a raw permissions declaration into ordered, unique strings. */
-export function normalizePermissions(raw: unknown): string[] {
-    if (!Array.isArray(raw)) return [];
-    const out: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== "string") continue;
-        const permission = entry.trim();
-        if (!permission || out.includes(permission)) continue;
-        out.push(permission);
-    }
-    return out;
-}
-
 /** Normalize provider declarations while retaining non-empty, un-namespaced types for refusal
  * diagnostics. Blank declarations and blank schemes are unusable and are omitted. */
 export function normalizeContentProviders(raw: unknown): BoardContentProviderDeclaration[] {
@@ -481,9 +474,6 @@ export function normalizeCapabilities(raw: unknown): BoardCapabilityDeclaration[
 }
 
 /** Normalize the board-relative service entry path, or return null for an unsafe declaration. */
-export function normalizeBoardServicePath(raw: unknown): string | null {
-    return normalizeBoardRelativePath(raw);
-}
 
 /**
  * Normalize a raw `fileMasks` value into lowercase, trimmed, de-duplicated glob masks.
@@ -848,19 +838,4 @@ export function isBoardSingleInstance(manifest: BoardManifest | null | undefined
     return manifest?.singleInstance === true;
 }
 
-export const MAX_BROWSER_URL_MASK_CHARS = 512;
-export const MAX_BROWSER_URL_MASKS = 64;
-
 /** Normalize whole-URL download claims without applying file-mask extension coercion. */
-export function normalizeBrowserUrlMasks(raw: unknown): string[] {
-    if (!Array.isArray(raw)) return [];
-    const out: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== "string") continue;
-        const mask = entry.trim().toLowerCase();
-        if (!mask || mask.length > MAX_BROWSER_URL_MASK_CHARS) continue;
-        if (!out.includes(mask)) out.push(mask);
-        if (out.length >= MAX_BROWSER_URL_MASKS) break;
-    }
-    return out;
-}

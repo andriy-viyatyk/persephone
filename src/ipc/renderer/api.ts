@@ -2,7 +2,6 @@ import { PageDragData, WindowPages } from "../../shared/types";
 import type { LaunchInput } from "../../shared/launch-input";
 import {
     BoardArchiveDownloadRequest,
-    BrowserUrlMaskSnapshot,
     CommonFolder,
     DownloadEntry,
     OpenFileDialogParams,
@@ -32,7 +31,7 @@ import type {
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "../clipboard-ipc";
-import type { BoardServiceStatus, TrustedBoardSnapshot } from "../module-service-channels";
+import type { BoardServiceStatus } from "../module-service-channels";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -533,12 +532,16 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
     };
 
-    syncTrustedBoardSnapshot = async (snapshot: TrustedBoardSnapshot) => {
-        return executeOnce<void>(Endpoint.syncTrustedBoardSnapshot, snapshot);
+    setBoardTrust = async (boardRoot: string, trusted: boolean) => {
+        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted);
     };
 
-    syncBrowserUrlMaskSnapshot = async (snapshot: BrowserUrlMaskSnapshot) => {
-        return executeOnce<void>(Endpoint.syncBrowserUrlMaskSnapshot, snapshot);
+    getBoardTrustPaths = async () => {
+        return executeOnce<string[]>(Endpoint.getBoardTrustPaths);
+    };
+
+    setDisabledBundledBoards = async (ids: string[]) => {
+        return executeOnce<void>(Endpoint.setDisabledBundledBoards, ids);
     };
 
     getModuleServiceStatuses = async () => {

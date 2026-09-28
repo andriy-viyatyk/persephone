@@ -17,9 +17,6 @@
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
-import { api } from "../../../ipc/renderer/api";
-import type { BrowserUrlMaskClaim as BrowserUrlMaskSnapshotClaim } from "../../../ipc/api-param-types";
-import { errMessage } from "../../../shared/utils";
 import { editorRegistry } from "../base/editorRegistry";
 import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
@@ -270,9 +267,6 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
      *  finish out of order, and an earlier refresh landing last would clobber the newer entry
      *  list — leaving a just-trusted board unregistered. Only the newest generation may write. */
     private refreshGen = 0;
-
-    /** Main keeps the highest generation across renderer reloads; seed from the clock accordingly. */
-    private browserUrlMaskSnapshotGeneration = Date.now();
 
     constructor() {
         super(new TGlobalState(defaultState));
@@ -531,17 +525,6 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             s.settingsBoards = settingsBoards;
             s.incompatibilities = incompatibilities;
             s.registrationIssues = registrationIssues;
-        });
-        const snapshot: BrowserUrlMaskSnapshotClaim[] = browserUrlMaskClaims.map((claim) => ({
-            boardRoot: claim.boardRoot,
-            boardName: claim.name,
-            masks: [...claim.masks],
-        }));
-        void api.syncBrowserUrlMaskSnapshot({
-            generation: ++this.browserUrlMaskSnapshotGeneration,
-            claims: snapshot,
-        }).catch((error: unknown) => {
-            console.error(`Browser URL mask snapshot sync failed: ${errMessage(error)}`);
         });
     }
 
