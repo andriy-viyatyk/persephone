@@ -409,6 +409,19 @@ export interface BoardSettingsRequestMsg {
     settingsMethod: "get";
     settingsArgs: unknown[];
 }
+export interface BoardFetchInit {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string | ArrayBuffer;
+    timeout?: number;
+    maxRedirects?: number;
+    rejectUnauthorized?: boolean;
+    tor?: boolean;
+    proxy?: string;
+}
+export interface BoardFetchRequestMsg { __persephone: "board:fetch"; reqId: number; url: string; init: BoardFetchInit }
+export interface BoardFetchPullMsg { __persephone: "board:fetch:pull"; reqId: number }
+export interface BoardFetchAbortMsg { __persephone: "board:fetch:abort"; reqId: number }
 export interface BoardFilePathRequestMsg { __persephone: "board:filePath"; reqId: number }
 export interface BoardFileIconsRequestMsg { __persephone: "board:fileIcons"; reqId: number; names: string[] }
 export interface BoardOpenContentRequestMsg {
@@ -436,6 +449,9 @@ export type BoardToHostMsg =
     | BoardCycleThemeMsg
     | BoardVarRequestMsg
     | BoardSettingsRequestMsg
+    | BoardFetchRequestMsg
+    | BoardFetchPullMsg
+    | BoardFetchAbortMsg
     | BoardFilePathRequestMsg
     | BoardFileIconsRequestMsg
     | BoardOpenContentRequestMsg
@@ -516,6 +532,16 @@ export interface BoardSettingsResultMsg {
     result?: string | number | boolean;
     error?: string;
 }
+export interface BoardFetchHeadMsg {
+    __persephone: "fetch:head";
+    reqId: number;
+    status: number;
+    statusText: string;
+    headers: [string, string][];
+    hasBody: boolean;
+}
+export interface BoardFetchChunkMsg { __persephone: "fetch:chunk"; reqId: number; chunk?: ArrayBuffer; done: boolean }
+export interface BoardFetchErrorMsg { __persephone: "fetch:error"; reqId: number; error: string }
 
 /** Renderer-to-board push for one effective board setting value. */
 export interface BoardSettingsChangedMsg {
@@ -644,6 +670,9 @@ export type BoardHostFrameMsg =
     | BoardOpenContentResultMsg
     | BoardVarResultMsg
     | BoardSettingsResultMsg
+    | BoardFetchHeadMsg
+    | BoardFetchChunkMsg
+    | BoardFetchErrorMsg
     | BoardSettingsChangedMsg
     | BoardAiVisionRegistrationMsg
     | BoardAiVisionNotifyMsg

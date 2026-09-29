@@ -49,6 +49,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP/RAR/7z/TAR) | `/src/renderer/api/archive-service.ts`          |
 | Node.js HTTP client      | `/src/renderer/api/node-fetch.ts`                 |
+| Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
 | Renderer-native clipboard writes (text and PNG; required for app-owned writes to remain visible to clipboard history) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts` |
@@ -484,6 +485,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board-pipe request/reply wire types | `/src/ipc/board-pipe-channels.ts` |
 | Board-pipe page registration and renderer reply handlers | `/src/ipc/main/board-pipe-handlers.ts` |
 | Remote board AiVision protocol (main-frame `board:aiVision` shape registration, host-initiated `ai:request` / board `board:aiResult` correlation, and trusted `board:aiNotify` delivery) | `/src/ipc/board-bridge-channels.ts`, `/src/renderer/editors/board/BoardWebview.ts` |
+| Board fetch bridge (trusted-board request validation, routed `nodeFetch` calls, pull-based response chunks, abort and frame lifecycle cleanup) | `/src/renderer/editors/board/board-fetch.ts`, `/src/renderer/editors/board/BoardWebview.ts` |
 | Board AiVision registration lifecycle (`reason: "register" | "refresh"`; `token` for proxy-cache/shape generation; `incarnation` for in-flight request validation) | `/src/ipc/board-bridge-channels.ts`, `/src/renderer/editors/board/BoardEditorModel.ts`, `/src/renderer/editors/board/BoardWebview.ts`, `/src/renderer/scripting/api-wrapper/BoardEditorFacade.ts` |
 | Board protocol response encoding (shared MIME lookup and explicit UTF-8 charset for text responses, including injected HTML) | `/src/main/board-protocol-service.ts` |
 | Board automation adapter (`IBrowserTarget` for `pages[i].editor` call paths; **frames-as-tabs** — each board frame (main + each secondary view) is a tab enumerated by `tabs`, `switchTab` opens+activates the sidebar panel so the frame mounts; CDP targets the board **frame** of the host webContents via `cdp-service` `registerBoardFrame`/`unregisterBoardFrame` keyed `${model.id}/${tab}` — not a separate webContents; the frame is resolved by the iframe's `?v=<boardId>` nonce, disambiguating multiple tabs of the same board and the lingering pre-reload frame after a remount) | `/src/renderer/editors/board/BoardTargetModel.ts` |

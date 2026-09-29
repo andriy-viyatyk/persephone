@@ -222,4 +222,17 @@ export interface IFetchOptions {
     signal?: AbortSignal;
     /** Set to false to skip SSL certificate validation (e.g. self-signed certs). Default: true. */
     rejectUnauthorized?: boolean;
+    /**
+     * Send through Persephone's Tor daemon, which is started on demand (requires `tor.exe-path`).
+     * Host names are resolved by Tor, so `.onion` addresses work. Never falls back to direct.
+     */
+    tor?: boolean;
+    /**
+     * Send through a proxy. Never falls back to direct.
+     * - `socks5://host:port` and `socks5h://host:port`: SOCKS5, with the target name resolved remotely.
+     * - `http://host:port`: HTTP CONNECT for both HTTP and HTTPS targets.
+     * - `host:port`: shorthand for `socks5://host:port`.
+     * Credentials may be included in the URL and are used for this call only.
+     */
+    proxy?: string;
 }

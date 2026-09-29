@@ -128,6 +128,35 @@ const result = await res.json();
 | `timeout` | `number` | `30000` | Request timeout in milliseconds. |
 | `maxRedirects` | `number` | `10` | Maximum number of redirects to follow. |
 | `rejectUnauthorized` | `boolean` | `true` | Set to `false` to skip SSL certificate validation (e.g. self-signed certs). |
+| `tor` | `boolean` | `false` | Route the request through Persephone's Tor daemon. Cannot be combined with `proxy`. |
+| `proxy` | `string` | — | Route through a SOCKS5 or HTTP proxy. Cannot be combined with `tor`. |
+
+#### Routing
+
+Choose a route for each request. A routed request never falls back to a direct connection; it
+rejects if the route cannot be used. SOCKS5 sends the target host name to the proxy for DNS
+resolution, so host names are not looked up locally and `.onion` addresses work through Tor.
+The first Tor request can wait for the daemon to start and bootstrap (up to 90 seconds).
+
+```javascript
+// Use Persephone's Tor daemon; requires the tor.exe-path setting
+const throughTor = await app.fetch("https://check.torproject.org/api/ip", { tor: true });
+
+// Use an explicit SOCKS5 proxy (socks5h:// is also accepted)
+const throughSocks = await app.fetch("https://api.example.com/data", {
+    proxy: "socks5://192.168.1.1:1080",
+});
+
+// A bare host:port is shorthand for SOCKS5
+const throughSocksShorthand = await app.fetch("https://api.example.com/data", {
+    proxy: "192.168.1.1:1080",
+});
+```
+
+An HTTP proxy can be specified as `http://host:port`; it uses CONNECT for both HTTP and HTTPS
+targets. Proxy credentials can be included in the URL, for example
+`socks5://user:pass@host:1080` or `http://user:pass@host:8080`. Credentials are used for that
+call only and are not stored.
 
 ### openRawLink(href, options?)
 

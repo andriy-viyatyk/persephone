@@ -16,7 +16,6 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1559: Global app proxy — route all of Persephone's own network traffic through one proxy](tasks/US-1559-global-app-proxy/README.md)
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

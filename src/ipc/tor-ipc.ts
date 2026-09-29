@@ -45,6 +45,11 @@ export const TorChannel = {
      */
     start: "tor:start",
 
+    /** Acquire a sender-owned Tor daemon lease for a routed fetch. */
+    fetchAcquire: "tor:fetch-acquire",
+    /** Release one sender-owned Tor daemon lease. */
+    fetchRelease: "tor:fetch-release",
+
     /**
      * Stop Tor for a browser partition (decrements consumer counter).
      * Renderer → Main (invoke).

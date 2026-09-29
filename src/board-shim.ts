@@ -29,6 +29,10 @@ import {
 import { createExecuteHandle } from "./shared/execute-handle";
 import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
 import type {
+    BoardFetchErrorMsg,
+    BoardFetchHeadMsg,
+    BoardFetchInit,
+    BoardFetchChunkMsg,
     BoardAiVisionRegistrationMsg,
     BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
@@ -439,6 +443,87 @@ const pendingHostRequests = new Map<number, {
 }>();
 let hostRequestId = Math.floor(Math.random() * 0x80000000);
 const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
+
+interface BoardFetchInitInput extends Omit<BoardFetchInit, "body"> {
+    body?: string | ArrayBuffer | ArrayBufferView | Blob;
+    signal?: AbortSignal;
+}
+interface PendingBoardFetch {
+    resolve: (response: Response) => void;
+    reject: (error: Error) => void;
+    controller?: ReadableStreamDefaultController<Uint8Array>;
+    pullResolve?: (chunk: BoardFetchChunkMsg) => void;
+    signal?: AbortSignal;
+    abortListener?: () => void;
+    headResolved?: boolean;
+}
+const pendingBoardFetches = new Map<number, PendingBoardFetch>();
+
+function abortError(): DOMException { return new DOMException("The fetch was aborted.", "AbortError"); }
+
+function removeBoardFetchAbortListener(pending: PendingBoardFetch): void {
+    if (pending.signal && pending.abortListener) pending.signal.removeEventListener("abort", pending.abortListener);
+}
+
+function failPendingBoardFetches(error: Error): void {
+    for (const [reqId, pending] of pendingBoardFetches) {
+        pendingBoardFetches.delete(reqId);
+        removeBoardFetchAbortListener(pending);
+        pending.reject(error);
+        try { pending.controller?.error(error); } catch { /* stream already closed */ }
+        pending.pullResolve?.({ __persephone: "fetch:chunk", reqId, done: true });
+    }
+}
+
+function boardFetch(url: string, init: BoardFetchInitInput = {}): Promise<Response> {
+    if (typeof url !== "string") return Promise.reject(new TypeError("persephone.fetch() requires a URL string."));
+    const { signal, body, ...options } = init;
+    if (signal?.aborted) return Promise.reject(abortError());
+    let normalizedBody: string | ArrayBuffer | undefined;
+    if (typeof body === "string") normalizedBody = body;
+    else if (body instanceof Blob) normalizedBody = undefined;
+    else if (body instanceof ArrayBuffer) normalizedBody = body;
+    else if (ArrayBuffer.isView(body)) normalizedBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+    const reqId = ++hostRequestId;
+    return new Promise<Response>((resolve, reject) => {
+        const pending: PendingBoardFetch = { resolve, reject, signal };
+        pendingBoardFetches.set(reqId, pending);
+        const abort = (): void => {
+            window.parent.postMessage({ __persephone: "board:fetch:abort", reqId }, hostPostTarget);
+            pendingBoardFetches.delete(reqId);
+            removeBoardFetchAbortListener(pending);
+            const error = abortError();
+            pending.reject(error);
+            try { pending.controller?.error(error); } catch { /* stream already closed */ }
+        };
+        pending.abortListener = abort;
+        signal?.addEventListener("abort", abort, { once: true });
+        const post = (): void => {
+            if (!pendingBoardFetches.has(reqId)) return;
+            try {
+                if (body instanceof Blob) {
+                    void body.arrayBuffer().then((arrayBuffer) => {
+                        if (pendingBoardFetches.has(reqId)) window.parent.postMessage({
+                            __persephone: "board:fetch", reqId, url, init: { ...options, body: arrayBuffer },
+                        }, hostPostTarget);
+                    }, (error: unknown) => {
+                        pendingBoardFetches.delete(reqId);
+                        pending.reject(new Error(errMessage(error)));
+                    });
+                } else {
+                    window.parent.postMessage({ __persephone: "board:fetch", reqId, url,
+                        init: { ...options, ...(normalizedBody === undefined ? {} : { body: normalizedBody }) },
+                    }, hostPostTarget);
+                }
+            } catch (error: unknown) {
+                pendingBoardFetches.delete(reqId);
+                removeBoardFetchAbortListener(pending);
+                pending.reject(new Error(errMessage(error, "Persephone host is unavailable.")));
+            }
+        };
+        postAfterDocumentLoad(post);
+    });
+}
 
 let toolbarDocumentLoaded = document.readyState === "complete";
 const pendingDocumentMessages: Array<() => void> = [];
@@ -977,6 +1062,7 @@ function attachPort(p: MessagePort): void {
     if (port === p) return; // already connected (ignore a duplicate handshake)
     if (port) {
         port.close();
+        failPendingBoardFetches(new Error("Persephone bridge was replaced."));
         const bridgeReplaced = new Error("Persephone bridge was replaced.");
         for (const pending of pendingCalls.values()) {
             clearTimeout(pending.timer);
@@ -991,6 +1077,7 @@ function attachPort(p: MessagePort): void {
     }
     port = p;
     p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data as MainToBoard);
+    p.onmessageerror = () => failPendingBoardFetches(new Error("Persephone bridge is unavailable."));
     // Flush queued outgoing messages in order.
     for (const msg of sendQueue) p.postMessage(msg);
     sendQueue.length = 0;
@@ -1060,6 +1147,57 @@ onHostMessage((event) => {
     }
     const p = event.ports && event.ports[0];
     if (p) attachPort(p);
+});
+
+onHostMessage((event) => {
+    const data = event.data as BoardFetchHeadMsg | BoardFetchChunkMsg | BoardFetchErrorMsg | undefined;
+    if (!data || typeof data.reqId !== "number") return;
+    const pending = pendingBoardFetches.get(data.reqId);
+    if (!pending) return;
+    if (data.__persephone === "fetch:error") {
+        const error = new Error(data.error);
+        pendingBoardFetches.delete(data.reqId);
+        removeBoardFetchAbortListener(pending);
+        if (!pending.headResolved) pending.reject(error);
+        try { pending.controller?.error(error); } catch { /* stream already closed */ }
+        pending.pullResolve?.({ __persephone: "fetch:chunk", reqId: data.reqId, done: true });
+        return;
+    }
+    if (data.__persephone === "fetch:head") {
+        if (pending.headResolved) return;
+        pending.headResolved = true;
+        const stream = data.hasBody ? new ReadableStream<Uint8Array>({
+            start(controller) { pending.controller = controller; },
+            async pull() {
+                if (!pendingBoardFetches.has(data.reqId)) return;
+                const chunk = await new Promise<BoardFetchChunkMsg>((resolve) => { pending.pullResolve = resolve; });
+                pending.pullResolve = undefined;
+                if (chunk.done) {
+                    pendingBoardFetches.delete(data.reqId);
+                    removeBoardFetchAbortListener(pending);
+                    pending.controller?.close();
+                } else if (chunk.chunk) {
+                    pending.controller?.enqueue(new Uint8Array(chunk.chunk));
+                }
+            },
+            cancel() {
+                window.parent.postMessage({ __persephone: "board:fetch:abort", reqId: data.reqId }, hostPostTarget);
+                pendingBoardFetches.delete(data.reqId);
+                removeBoardFetchAbortListener(pending);
+            },
+        }) : null;
+        if (!data.hasBody) {
+            pendingBoardFetches.delete(data.reqId);
+            removeBoardFetchAbortListener(pending);
+        }
+        pending.resolve(new Response(stream, {
+            status: data.status,
+            statusText: data.statusText,
+            headers: data.headers,
+        }));
+        return;
+    }
+    if (data.__persephone === "fetch:chunk") pending.pullResolve?.(data);
 });
 
 // Runtime source identities arrive independently of the initial source handshake. This listener
@@ -1898,6 +2036,11 @@ function createHandle(
             settingsChangeCbs.add(callback);
             return () => settingsChangeCbs.delete(callback);
         },
+    },
+
+    /** Fetch through the host renderer, optionally using its Tor daemon or a named proxy. */
+    fetch(url: string, init?: BoardFetchInitInput): Promise<Response> {
+        return boardFetch(url, init);
     },
 
     /** List this board's LIVE jobs — including ones that survived a previous

@@ -473,14 +473,14 @@ Incognito pages show an `IncognitoIcon` inside the URL bar's left edge, using th
 
 ### Tor Mode
 
-Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. Like incognito, Tor partitions are ephemeral (no `persist:` prefix). The Tor process is managed lazily — started on first Tor page open, stopped when the last Tor page closes.
+Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. Like incognito, Tor partitions are ephemeral (no `persist:` prefix). The Tor process is managed lazily — started on first Tor page open, stopped when the last Tor page closes. Script `app.fetch()` and board `persephone.fetch()` calls can also acquire fetch leases: Tor starts on demand and remains available while a routed response body is consumed, then has a 60-second idle grace period before stopping.
 
 **Architecture:**
-- `src/main/tor-service.ts` — manages `tor.exe` child process lifecycle, generates minimal torrc, sets the `socks5://` proxy per partition through the shared `session-proxy.ts` helper
-- `src/ipc/tor-ipc.ts` — IPC channels: `tor:arm`, `tor:start`, `tor:stop`, `tor:log`, `tor:check-ip`, `tor:restart`, `tor:status`
+- `src/main/tor-service.ts` — manages `tor.exe` child process lifecycle, generates minimal torrc, sets the `socks5://` proxy per partition through the shared `session-proxy.ts` helper, and tracks page and fetch leases
+- `src/ipc/tor-ipc.ts` — IPC channels for partition lifecycle and status, plus fetch lease acquire/release
 - `src/renderer/editors/browser/TorStatusOverlay.ts` — native overlay shown during connection with live log, spinner, and reconnect button
 - `src/renderer/ui/dialogs/TorInfoDialog.ts` — connection info dialog (exit IP, location, Reconnect)
-- `activePartitions: Set<string>` acts as consumer counter — Tor stops only when all partitions are released
+- `activePartitions: Set<string>` and renderer fetch-lease counts act as consumer counters — Tor stops only when all consumers are released and the fetch idle grace period expires
 
 **Tor indicator in URL bar:** A clickable TorIcon with a small status dot (green=connected, red=error, yellow=disconnected). Clicking toggles the `TorStatusOverlay`.
 

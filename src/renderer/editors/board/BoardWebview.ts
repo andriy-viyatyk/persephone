@@ -4,6 +4,7 @@ import { isPlainLocalPath } from "../../core/utils/file-path";
 import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
+    BoardFetchRequestMsg,
     BoardAiVisionRegistrationMsg,
     BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
@@ -43,6 +44,7 @@ import {
     subscribeBoardSettings,
 } from "../../api/board-settings/board-settings-bridge";
 import { resolveBoardOpenContent } from "./board-open-content";
+import { BoardFetchBridge } from "./board-fetch";
 import { resolveBoardFileIcons } from "./board-file-icons";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
 import { BOARD_CDP_TAB, type BoardLogLevel } from "../../../ipc/api-types";
@@ -93,7 +95,7 @@ type BoardToHostType = BoardToHostMsg["__persephone"];
 type BoardToHostVariant<Type extends BoardToHostType> = Extract<BoardToHostMsg, { __persephone: Type }>;
 
 type BoardMainFrameGate = {
-    readonly kind: "main" | "mainTrusted" | "mainTrustedText";
+    readonly kind: "main" | "mainTrusted" | "mainTrustedText" | "trusted";
     readonly rejectionLog?: string;
 };
 
@@ -158,6 +160,7 @@ function isDataCloneError(error: unknown): boolean {
  */
 export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private readonly boardId = `board_${Math.random().toString(36).slice(2)}`;
+    private readonly fetchBridge = new BoardFetchBridge();
     private readonly tabId: string;
     private readonly isMain: boolean;
     private host: string | null = null;
@@ -310,6 +313,23 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 );
             },
         },
+        "board:fetch": {
+            gate: { kind: "trusted", rejectionLog: "persephone.fetch requires a trusted board" },
+            handle: (message, current) => this.fetchBridge.start(
+                message as BoardFetchRequestMsg,
+                current.frame,
+                current.generation,
+                (frame, generation, reply, transfer) => this.replyToFrame(frame, generation, reply, transfer),
+            ),
+        },
+        "board:fetch:pull": {
+            gate: { kind: "trusted", rejectionLog: "persephone.fetch requires a trusted board" },
+            handle: (message) => { if (typeof message.reqId === "number") void this.fetchBridge.pull(message.reqId); },
+        },
+        "board:fetch:abort": {
+            gate: { kind: "trusted", rejectionLog: "persephone.fetch requires a trusted board" },
+            handle: (message) => { if (typeof message.reqId === "number") this.fetchBridge.abort(message.reqId); },
+        },
     };
 
     private dispatchBoardMessage<Type extends BoardToHostType>(
@@ -320,7 +340,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const entry = this.boardMessageHandlers[type];
         if (entry.gate) {
             const gate = entry.gate;
-            const gatePassed = gate.kind === "main"
+            const gatePassed = gate.kind === "trusted"
+                ? isBoardPermitted(this.props.boardRoot)
+                : gate.kind === "main"
                 ? this.isMain
                 : this.isMain
                     && this.props.model.frames.get(BOARD_CDP_TAB) === context.frame
@@ -351,6 +373,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.live = true;
         this.ownSubscription(subscribeBoardPermission(() => {
             if (!isBoardPermitted(this.props.boardRoot)) {
+                this.fetchBridge.dispose();
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
                 this.unregisterCapabilityFrame();
             }
@@ -371,6 +394,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
         this.generation++;
+        this.fetchBridge.dispose();
         this.abortPendingContentOpen();
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         this.rejectPendingAiVision(new Error("Board frame was replaced."));
@@ -596,6 +620,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
+        // The reloaded frame restarts its request ids, so its old fetches must not survive.
+        this.fetchBridge.dispose();
         this.abortPendingContentOpen();
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
@@ -949,13 +975,14 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.pendingContentOpen.clear();
     }
 
-    private replyToFrame(frame: HTMLIFrameElement, generation: number, message: BoardHostFrameMsg): boolean {
+    private replyToFrame(frame: HTMLIFrameElement, generation: number, message: BoardHostFrameMsg,
+        transfer?: Transferable[]): boolean {
         const host = this.host;
         const contentWindow = frame.contentWindow;
         if (!this.live || generation !== this.generation || this.iframe !== frame
             || this.props.model.frames.get(this.tabId) !== frame || !host || !contentWindow) return false;
         try {
-            contentWindow.postMessage(message, `board://${host}`);
+            contentWindow.postMessage(message, `board://${host}`, transfer ?? []);
             return true;
         } catch {
             return false;

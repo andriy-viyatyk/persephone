@@ -15,6 +15,7 @@ import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
+const FETCH_IDLE_GRACE_MS = 60_000;
 
 /** Cap on the exit-IP lookup. Tor is slow, but a hung request must not hang the dialog. */
 const LOOKUP_TIMEOUT_MS = 20_000;
@@ -30,6 +31,9 @@ const TOR_CHECK_URL = "https://check.torproject.org/api/ip";
 
 class TorService {
     private activePartitions = new Set<string>();
+    /** Fetches hold the shared daemon independently of browser partitions. */
+    private fetchLeases = new Map<number, number>();
+    private fetchIdleTimer: ReturnType<typeof setTimeout> | undefined;
     /**
      * Every partition currently carrying the Tor SOCKS proxy, bootstrapped or not.
      * Answers "is this a Tor session?" for the guest WebRTC policy (US-1557), which
@@ -88,6 +92,7 @@ class TorService {
         socksPort: number,
         partition: string,
     ): Promise<{ success: boolean; error?: string }> {
+        this.clearFetchIdleTimer();
         this.activePartitions.add(partition);
         this.socksPort = socksPort;
         this.torExePath = torExePath;
@@ -143,15 +148,82 @@ class TorService {
         this.activePartitions.delete(partition);
         this.proxiedPartitions.delete(partition);
 
-        if (this.activePartitions.size === 0) {
+        this.stopIfIdle();
+    }
+
+    async acquireFetch(senderId: number, torExePath: string, socksPort: number): Promise<
+        { success: true; socksPort: number } | { success: false; error: string }
+    > {
+        if (!torExePath) return { success: false, error: "Tor is not configured: set tor.exe-path in Settings." };
+        this.clearFetchIdleTimer();
+        this.bumpLease(senderId, 1);
+        if (this.sidecar.isRunning) return { success: true, socksPort: this.socksPort };
+        if (this.sidecar.pending) {
+            const runningPort = this.socksPort;
+            const result = await this.sidecar.pending;
+            if (!result.success) {
+                this.bumpLease(senderId, -1);
+                return { success: false, error: result.error ?? "Tor failed to start." };
+            }
+            return { success: true, socksPort: runningPort };
+        }
+        this.socksPort = socksPort;
+        this.torExePath = torExePath;
+        let result: { success: boolean; error?: string };
+        try {
+            result = await this.sidecar.start(torExePath, ["-f", this.ensureTorrc(socksPort)]);
+        } catch (error: unknown) {
+            this.bumpLease(senderId, -1);
+            return { success: false, error: errMessage(error, "Tor failed to start.") };
+        }
+        if (!result.success) {
+            this.bumpLease(senderId, -1);
+            return { success: false, error: result.error ?? "Tor failed to start." };
+        }
+        return { success: true, socksPort: this.socksPort };
+    }
+
+    releaseFetch(senderId: number): void {
+        this.bumpLease(senderId, -1);
+        this.stopIfIdle(true);
+    }
+
+    releaseAllFetch(senderId: number): void {
+        const held = this.fetchLeases.has(senderId);
+        this.fetchLeases.delete(senderId);
+        this.stopIfIdle(held);
+    }
+
+    private bumpLease(senderId: number, delta: number): void {
+        const next = Math.max(0, (this.fetchLeases.get(senderId) ?? 0) + delta);
+        if (next === 0) this.fetchLeases.delete(senderId);
+        else this.fetchLeases.set(senderId, next);
+    }
+
+    private clearFetchIdleTimer(): void {
+        if (this.fetchIdleTimer !== undefined) clearTimeout(this.fetchIdleTimer);
+        this.fetchIdleTimer = undefined;
+    }
+
+    private stopIfIdle(afterFetch = false): void {
+        if (this.activePartitions.size !== 0 || this.fetchLeases.size !== 0) return;
+        this.clearFetchIdleTimer();
+        if (afterFetch) {
+            this.fetchIdleTimer = setTimeout(() => {
+                this.fetchIdleTimer = undefined;
+                if (this.activePartitions.size === 0 && this.fetchLeases.size === 0) this.sidecar.stop();
+            }, FETCH_IDLE_GRACE_MS);
+        } else {
             this.sidecar.stop();
         }
     }
 
     shutdown(): void {
+        this.clearFetchIdleTimer();
         this.sidecar.stop();
         this.activePartitions.clear();
         this.proxiedPartitions.clear();
+        this.fetchLeases.clear();
     }
 
     /**
@@ -411,6 +483,22 @@ export function initTorHandlers(): void {
             return torService.startForPartition(torExePath, socksPort, partition);
         },
     );
+
+    const fetchLeaseSenders = new Set<number>();
+    ipcMain.handle(TorChannel.fetchAcquire, async (event, torExePath: string, socksPort: number) => {
+        const senderId = event.sender.id;
+        if (!fetchLeaseSenders.has(senderId)) {
+            fetchLeaseSenders.add(senderId);
+            const releaseSender = () => {
+                fetchLeaseSenders.delete(senderId);
+                torService.releaseAllFetch(senderId);
+            };
+            event.sender.once("destroyed", releaseSender);
+            event.sender.once("render-process-gone", releaseSender);
+        }
+        return torService.acquireFetch(senderId, torExePath, socksPort);
+    });
+    ipcMain.on(TorChannel.fetchRelease, (event) => torService.releaseFetch(event.sender.id));
 
     ipcMain.handle(TorChannel.stop, async (_event, partition: string) => {
         return torService.stopForPartition(partition);

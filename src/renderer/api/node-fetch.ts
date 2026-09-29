@@ -13,10 +13,14 @@
  */
 
 import type { IFetchOptions } from "./types/app";
+import { TorChannel } from "../../ipc/tor-ipc";
+import { settings } from "./settings";
+import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
 
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
 const zlib = require("zlib") as typeof import("zlib");
+const { ipcRenderer } = require("electron") as typeof import("electron");
 
 /** Default HTTPS agent with keep-alive for connection reuse. */
 const defaultHttpsAgent = new https.Agent({
@@ -47,7 +51,89 @@ export function nodeFetch(
     const maxRedirects = options?.maxRedirects ?? 10;
     const rejectUnauthorized = options?.rejectUnauthorized !== false;
 
-    return doFetch(url, method, headers, body, timeout, maxRedirects, rejectUnauthorized, options?.signal);
+    return (async () => {
+        if (options?.tor && options.proxy) throw new TypeError("fetch: use either `tor` or `proxy`, not both.");
+        const lease = options?.tor ? await acquireTorRoute(options.signal) : undefined;
+        const route = lease?.route ?? (options?.proxy ? parseProxy(options.proxy) : undefined);
+        try {
+            const response = await doFetch(url, method, headers, body, timeout, maxRedirects,
+                rejectUnauthorized, options?.signal, route);
+            return lease ? releaseWithBody(response, lease.release, options?.signal) : response;
+        } catch (error: unknown) {
+            lease?.release();
+            throw error;
+        }
+    })();
+}
+
+interface TorRouteLease {
+    route: ProxyRoute;
+    release(): void;
+}
+
+async function acquireTorRoute(signal?: AbortSignal): Promise<TorRouteLease> {
+    if (signal?.aborted) throw new Error("The HTTP request was aborted.");
+    await settings.wait();
+    if (signal?.aborted) throw new Error("The HTTP request was aborted.");
+    const torExePath = settings.get<string>("tor.exe-path");
+    const socksPort = settings.get<number>("tor.socks-port");
+    const acquire = ipcRenderer.invoke(
+        TorChannel.fetchAcquire, torExePath, socksPort,
+    ) as Promise<{ success: true; socksPort: number } | { success: false; error: string }>;
+    let released = false;
+    const release = (): void => {
+        if (released) return;
+        released = true;
+        ipcRenderer.send(TorChannel.fetchRelease);
+    };
+    if (!signal) {
+        const result = await acquire;
+        if (result.success === false) throw new Error(result.error);
+        return { route: { kind: "socks5", host: "127.0.0.1", port: result.socksPort }, release };
+    }
+    let abortListener: (() => void) | undefined;
+    const aborted = new Promise<never>((_resolve, reject) => {
+        abortListener = () => reject(new Error("The HTTP request was aborted."));
+        signal.addEventListener("abort", abortListener, { once: true });
+    });
+    try {
+        const result = await Promise.race([acquire, aborted]);
+        if (result.success === false) throw new Error(result.error);
+        return { route: { kind: "socks5", host: "127.0.0.1", port: result.socksPort }, release };
+    } catch (error: unknown) {
+        void acquire.then((result) => { if (result.success) release(); }, () => {});
+        throw error;
+    } finally {
+        if (abortListener) signal.removeEventListener("abort", abortListener);
+    }
+}
+
+function releaseWithBody(response: Response, release: () => void, signal?: AbortSignal): Response {
+    const body = response.body;
+    if (!body) { release(); return response; }
+    const reader = body.getReader();
+    let finished = false;
+    const finish = (): void => {
+        if (finished) return;
+        finished = true;
+        signal?.removeEventListener("abort", finish);
+        release();
+    };
+    if (signal?.aborted) finish();
+    else signal?.addEventListener("abort", finish, { once: true });
+    const wrapped = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+            try {
+                const result = await reader.read();
+                if (result.done) { finish(); controller.close(); }
+                else controller.enqueue(result.value);
+            } catch (error: unknown) { finish(); controller.error(error); }
+        },
+        async cancel(reason) {
+            try { await reader.cancel(reason); } finally { finish(); }
+        },
+    });
+    return new Response(wrapped, { status: response.status, statusText: response.statusText, headers: response.headers });
 }
 
 function doFetch(
@@ -59,14 +145,19 @@ function doFetch(
     maxRedirects: number,
     rejectUnauthorized: boolean,
     signal?: AbortSignal,
+    route?: ProxyRoute,
 ): Promise<Response> {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
         const isHttps = urlObj.protocol === "https:";
 
-        const agent = isHttps
-            ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent)
-            : undefined;
+        if (route && !isHttps && urlObj.protocol !== "http:") {
+            reject(new TypeError(`Unsupported protocol: ${urlObj.protocol}`));
+            return;
+        }
+        const agent = route
+            ? agentFor(route, isHttps, rejectUnauthorized)
+            : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
 
         const reqOptions = {
             hostname: urlObj.hostname,
@@ -151,6 +242,7 @@ function doFetch(
                     maxRedirects - 1,
                     rejectUnauthorized,
                     signal,
+                    route,
                 ).then(resolve, reject);
 
                 return;
@@ -198,6 +290,9 @@ function doFetch(
                         if (!isCancelled) {
                             try {
                                 controller.enqueue(new Uint8Array(chunk));
+                                if (controller.desiredSize !== null && controller.desiredSize <= 0) {
+                                    (responseStream as NodeJS.ReadableStream & { pause?(): void }).pause?.();
+                                }
                             } catch {
                                 // Stream likely cancelled
                             }
@@ -224,6 +319,9 @@ function doFetch(
                         }
                     });
                 },
+                pull() {
+                    (responseStream as NodeJS.ReadableStream & { resume?(): void }).resume?.();
+                },
                 cancel() {
                     isCancelled = true;
                     if (responseStream !== res) {
@@ -241,7 +339,7 @@ function doFetch(
             }, { once: true });
 
             // Some status codes have no body
-            const hasBody =
+            const hasBody = method !== "HEAD" &&
                 res.statusCode &&
                 res.statusCode !== 101 &&
                 res.statusCode !== 103 &&

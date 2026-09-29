@@ -224,8 +224,11 @@ author), **review it before `registerBoard`**:
 
 1. `const root = await app.boards.downloadPublished(id)` (or use a folder the user points you at).
 2. Read **every** file in the folder — `index.html`, `app.js`, all of `scripts/`, any bundled JS.
-   The board's iframe CSP blocks remote network at runtime, **but backend `scripts/` run as full
-   OS processes with the user's privileges and are NOT sandboxed** — that is where risk lives.
+   The iframe CSP blocks remote network from the board page; trusted boards can also use
+   `persephone.fetch(url, init)` to make remote requests through Persephone, optionally with
+   `{ tor: true }` or `{ proxy: "host:port" }`. That API sends only the supplied headers, is not
+   subject to browser CORS, and returns a standard `Response`. Backend `scripts/` run as full OS
+   processes with the user's privileges and are NOT sandboxed — that is where risk lives.
 3. Flag: data exfiltration (unexpected network hosts / uploads), credential or filesystem access
    beyond the board's stated purpose, destructive `persephone.execute` usage (deletes, overwrites,
    shelling out to dangerous commands), obfuscated/minified logic that hides intent, and above all
@@ -849,7 +852,8 @@ Windows shell icon, or the default), as a `data:` URL for `<img src>`. Only the 
 file need not exist. The shim caches per name, so a re-render does not round-trip. Single-colour
 icons are drawn in the current theme's icon colour: request again from `persephone.onThemeChange`
 (the shim drops its cache on a theme change). Bridge 1.18.0.
-Only remote *network* is blocked by the CSP.
+The CSP blocks remote requests made directly from the board frame; use `persephone.fetch()` for
+intentional remote HTTP requests.
 
 ### Secondary views & shared state
 
@@ -998,9 +1002,12 @@ compact board and a bloated one:
 
 ### Libraries & assets — vendor them locally
 
-A board is **offline-first** and its CSP **forbids remote network** (`connect-src
-'self'` blocks CDN scripts, stylesheets, fonts, and cross-host `fetch`). Download each library
-into the board folder and reference it with a **relative** path:
+A board is **offline-first**. Its CSP (`connect-src 'self'`) blocks remote resources such as CDN
+scripts, stylesheets, fonts, and cross-host browser `fetch()`. For intentional remote HTTP requests,
+trusted boards can use `persephone.fetch(url, init)`, optionally with `{ tor: true }` or
+`{ proxy: "host:port" }`. It sends only the headers you provide, is not subject to browser CORS,
+and returns a standard `Response`. Download each library into the board folder and reference it
+with a **relative** path:
 
 ```html
 <script src="./lib/av-grid.umd.js"></script>

@@ -20,6 +20,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Scripts and trusted boards can route HTTP requests through Tor or a proxy:** `app.fetch(url, { tor: true })` uses Persephone's Tor daemon, while `{ proxy: "socks5://host:port" }` or a bare `host:port` selects a SOCKS5 proxy. Trusted boards can use `persephone.fetch(url, init)` for remote requests from their frame. Routed calls never fall back to direct connections; SOCKS5 resolves host names remotely, including `.onion` addresses through Tor. See the [`app.fetch` API](./scripting/api/app.md#fetchurl-options) and [Boards](./boards.md#offline-first-and-the-csp).
 - **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns
   the values Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`,
   `settings`, `guides`, and capability `alwaysOpensNewPage`. Board Info's script-visible

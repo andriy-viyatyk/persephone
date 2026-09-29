@@ -1392,7 +1392,7 @@ are removed to make room. Keep `catch` blocks in your board JS calling
 
 ## Offline-first and the CSP
 
-A board's sandbox forbids remote network requests — the Content Security Policy (`connect-src 'self'`) blocks CDN scripts, stylesheets, fonts, and any `fetch` to an external host. **Download all component libraries into the board folder** and reference them with relative paths:
+A board's Content Security Policy (`connect-src 'self'`) blocks remote resources such as CDN scripts, stylesheets, fonts, and cross-host browser `fetch()`. For intentional remote HTTP requests, a trusted board can call `persephone.fetch(url, init)`, optionally with `{ tor: true }` or `{ proxy: "host:port" }`. This API sends only the headers you provide, is not subject to browser CORS, and returns a standard `Response`. **Download all component libraries into the board folder** and reference them with relative paths:
 
 ```html
 <!-- Correct: relative path to a local copy -->

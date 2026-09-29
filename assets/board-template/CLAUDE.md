@@ -890,7 +890,8 @@ Electron's native clipboard and do not require the board document to be focused.
 Persephone's own toolbar can leave the board frame unfocused, in which case
 `navigator.clipboard.write*` rejects with `"Document is not focused"`; the Web Clipboard API is
 still suitable when the board document is focused and the browser gesture requirements are met.
-Only remote *network* is blocked (by the CSP — see *Libraries & assets* below).
+The CSP blocks remote requests made directly from the board frame; use `persephone.fetch()` for
+intentional remote HTTP requests (see *Libraries & assets* below).
 
 ### Stream-host boards — `persephone.host.streamUrl()`
 
@@ -1183,11 +1184,13 @@ persephone.onThemeChange((theme) => {
 
 ## Libraries & assets — vendor them locally
 
-A board is a **local, offline-first app**, and its CSP **forbids remote network**:
-`connect-src 'self'` blocks CDN scripts, stylesheets, fonts, and any `fetch`
-to another host. So when you use a component library (grids, charts, markdown, icons,
-fonts, …), **download it into the board folder and reference it relatively** — never
-link a CDN.
+A board is a **local, offline-first app**. Its CSP (`connect-src 'self'`) blocks remote resources
+such as CDN scripts, stylesheets, fonts, and cross-host browser `fetch()`. For intentional remote
+HTTP requests, use `persephone.fetch(url, init)`, optionally with `{ tor: true }` or
+`{ proxy: "host:port" }`. It sends only the headers you provide, is not subject to browser CORS,
+and returns a normal `Response`. So when you use a component library (grids, charts, markdown,
+icons, fonts, …), **download it into the board folder and reference it relatively** — never link a
+CDN.
 
 - Put files under the board folder, e.g. `lib/av-grid.umd.js`, `lib/av-grid.css`,
   and load them with **relative paths**: `<script src="./lib/av-grid.umd.js"></script>`,

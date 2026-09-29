@@ -248,6 +248,15 @@ interface IApp {
 }
 ```
 
+`IFetchOptions` controls the Node.js HTTP request: `method`, `headers`, `body`, `timeout`,
+`maxRedirects`, `signal`, and `rejectUnauthorized` retain their usual meanings. `headers` are sent
+exactly as provided; no browser headers, cookies, cache, or CORS behavior are added. Requests can
+also be routed with either `tor: true` or `proxy` (not both): `tor` uses the app's Tor daemon,
+`socks5://` / `socks5h://` and `host:port` select SOCKS5, and `http://` selects an HTTP CONNECT
+proxy. SOCKS5 target names resolve at the proxy, and all routing fails closed without a direct
+fallback. See `/src/renderer/api/types/app.d.ts` for the option contract and
+`/src/renderer/api/node-fetch.ts` for request and Tor-lease handling.
+
 ### `app.ui` — Renderer UI service
 
 `app.ui` is the script-facing Object Model projection of renderer-owned dialogs, notifications,
