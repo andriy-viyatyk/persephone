@@ -1,0 +1,43 @@
+@layer app {
+    [data-type="page-loading-shell"] {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: var(--gap-md, 12px);
+        min-width: 0;
+        height: 100%;
+        padding: var(--space-lg, 16px);
+        overflow: auto;
+        color: var(--color-text-default, currentColor);
+        background: var(--color-bg-default, transparent);
+    }
+
+    [data-type="page-loading-shell"][data-state="error"] [data-part="message"] {
+        color: var(--color-error-text, currentColor);
+    }
+
+    [data-type="page-loading-shell"] [data-part="actions"] {
+        display: flex;
+        gap: var(--gap-sm, 6px);
+    }
+
+    [data-type="page-loading-shell"] button {
+        min-height: var(--size-control-md, 28px);
+        padding: 0 var(--space-md, 12px);
+        border: 1px solid var(--color-border-default, currentColor);
+        border-radius: var(--radius-sm, 2px);
+        color: var(--color-text-default, currentColor);
+        background: var(--color-bg-default, transparent);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    [data-type="page-loading-shell"] button:hover {
+        background: var(--color-bg-overlay-hover, transparent);
+    }
+
+    [data-type="page-loading-shell"] [hidden] {
+        display: none;
+    }
+}

@@ -16,6 +16,7 @@ import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 function wrapEventChannel<TEvent extends { handled?: boolean }>(
     channel: EventChannel<TEvent>,
     releaseList: Array<() => void>,
+    waitForPageReady = false,
 ) {
     return {
         subscribe(handler: EventHandler<TEvent>) {
@@ -27,6 +28,9 @@ function wrapEventChannel<TEvent extends { handled?: boolean }>(
             return channel.send(event);
         },
         sendAsync(event: TEvent) {
+            if (waitForPageReady && event && typeof event === "object") {
+                (event as TEvent & { waitForPageReady?: boolean }).waitForPageReady = true;
+            }
             return channel.sendAsync(event);
         },
     };
@@ -44,7 +48,11 @@ function createEventsProxy<T extends object>(target: T, releaseList: Array<() =>
             if (value && typeof value === "object") {
                 // EventChannel leaf — has subscribe method
                 if (typeof (value as { subscribe?: unknown }).subscribe === "function") {
-                    return wrapEventChannel(value as EventChannel<{ handled?: boolean }>, releaseList);
+                    return wrapEventChannel(
+                        value as EventChannel<{ handled?: boolean }>,
+                        releaseList,
+                        prop === "openRawLink",
+                    );
                 }
                 // Namespace object — recurse
                 return createEventsProxy(value as object, releaseList);

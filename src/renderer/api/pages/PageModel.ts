@@ -23,6 +23,7 @@ import { secondaryViewsToggled, panelExpanded, Subscription } from "../../core/s
 import { panelKey, parsePanelKey, panelIdOf, isCompositePanelKey } from "../../ui/secondary-views/panel-key";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { uiPreferences } from "../ui-preferences";
+import { errMessage } from "../../../shared/utils";
 
 interface PageModelOptions {
     seedSecondaryViewsWidth?: boolean;
@@ -56,6 +57,8 @@ export interface IPageState {
     /** Length of the Markdown back-navigation stack. Drives the Markdown view's
      *  Back button visibility (shown iff > 0). */
     navBackCount: number;
+    restoreStatus: "ready" | "loading" | "error";
+    restoreError?: string;
 }
 
 const defaultPageState: IPageState = {
@@ -64,6 +67,7 @@ const defaultPageState: IPageState = {
     version: 0,
     hasSidebar: false,
     navBackCount: 0,
+    restoreStatus: "ready",
 };
 
 export class PageModel implements IPageHost {
@@ -72,6 +76,61 @@ export class PageModel implements IPageHost {
 
     /** Reactive page-level state. UI subscribes directly for repainting. */
     readonly state = new TOneState<IPageState>({ ...defaultPageState });
+
+    /** Readiness for the current open/restore attempt. Runtime-only. */
+    ready: Promise<void> = Promise.resolve();
+    private restoreController: AbortController | undefined;
+    private restoreAttempt = 0;
+
+    startRestore(restore: (signal: AbortSignal) => Promise<void>): Promise<void> {
+        this.restoreController?.abort();
+        const controller = new AbortController();
+        this.restoreController = controller;
+        const attempt = ++this.restoreAttempt;
+        this.state.update((state) => {
+            state.restoreStatus = "loading";
+            state.restoreError = undefined;
+        });
+        const restorePromise = Promise.resolve().then(() => restore(controller.signal));
+        const cancellationPromise = new Promise<never>((_, reject) => {
+            controller.signal.addEventListener("abort", () => {
+                const error = new Error("Page restore was cancelled.");
+                error.name = "AbortError";
+                reject(error);
+            }, { once: true });
+        });
+        const ready = Promise.race([restorePromise, cancellationPromise]).then(() => {
+            if (attempt !== this.restoreAttempt) return;
+            this.restoreController = undefined;
+            this.state.update((state) => {
+                state.restoreStatus = "ready";
+                state.restoreError = undefined;
+            });
+        }, (error: unknown) => {
+            if (attempt === this.restoreAttempt) {
+                this.restoreController = undefined;
+                this.state.update((state) => {
+                    state.restoreStatus = "error";
+                    state.restoreError = errMessage(error, "Failed to restore page content.");
+                });
+            }
+            throw error;
+        });
+        // UI-only opens do not await this promise; callers awaiting `ready` still see rejection.
+        void ready.catch((): void => {});
+        this.ready = ready;
+        return ready;
+    }
+
+    cancelRestore(): void {
+        this.restoreAttempt++;
+        this.restoreController?.abort();
+        this.restoreController = undefined;
+    }
+
+    get isRestoring(): boolean {
+        return this.state.get().restoreStatus === "loading";
+    }
 
     /**
      * All editors attached to this page. Order matches sidebar panel order.
@@ -759,6 +818,11 @@ export class PageModel implements IPageHost {
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
+        if (this.isRestoring) {
+            this.cancelRestore();
+            this.onClose?.();
+            return true;
+        }
         // Panel-contributing editors first.
         for (const editor of this.editors) {
             if (editor.id === this._mainEditorId) continue;
@@ -817,6 +881,7 @@ export class PageModel implements IPageHost {
     // ── Cleanup ──────────────────────────────────────────────────────
 
     async dispose(): Promise<void> {
+        this.cancelRestore();
         this.pageDisposed = true;
         // Notify before anything is torn down, so a subscriber can still read the page it is
         // releasing state for. Guarded because dispose() has no early return of its own.

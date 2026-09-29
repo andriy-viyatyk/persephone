@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.23.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.26.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -395,13 +395,19 @@ implement the matching type inside the module service with
 `persephone.providers.register(type, implementation)`. This registration is service-only because
 the implementation contains functions that cannot cross the board frame's structured-clone RPC.
 The implementation supplies `readBinary(config)` and may supply `readRange(config, range)`,
-`writeBinary(config, data)`, `stat(config)`, and `watch(config, onChange)`; `watch` returns a
-disposer. `readRange` is optional: when present, the provider receives bounded ranged pulls (at
-most 1 MiB per call) as `Uint8Array` results; when absent, the pipe falls back to whole-resource
+`writeBinary(config, data)`, `stat(config)`, `status(config, emit)`, and `watch(config, onChange)`;
+`status` and `watch` return disposers. `readRange` is optional: when present, the provider receives
+bounded ranged pulls (at most 1 MiB per call) as `Uint8Array` results; when absent, the pipe falls back to whole-resource
 `readBinary()` buffering, capped at 256 MiB. `readBinary()`, `readRange()`, and `stat()` have no
 platform deadline. Only reads are exempt from the shared control-request cap; `stat()` still counts
 against it. `writeBinary()`, `watchSubscribe()`, and `watchUnsubscribe()` use the service request
 deadline. Cancellation releases pending requests, such as on page or frame teardown.
+
+An implementation may also supply `status(config, emit)` to report transient provider status.
+Call `emit(snapshot)` with `{ state, text?, detail?, progress?, rate? }`, where `state` is
+`idle`, `connecting`, `active`, `done`, or `error`; progress is `{ loaded, total? }` in bytes and
+rate is bytes per second. Return a disposer that stops status production. Status is observed while
+the provider is in use and is not persisted with the page's pipe descriptor.
 
 Provider types must contain `/` because un-namespaced types are reserved for the platform. The
 type is persisted in page state, so renaming it orphans old pages. Types and schemes are

@@ -19,7 +19,7 @@ layout anchors.
 
 ```
 +---------------------------------------------------------------------+
-| [page-nav] [left-slot controls]              [right-slot] [switch]  |  shared TextChrome/PageToolbar row: navigation and left slot at left, switch at right
+| [page-nav] [left-slot controls]              [right-slot] [pipe status] [switch] |  shared TextChrome/PageToolbar row; pipe status sits before the editor switch
 | [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar, with no generic navigation or switch
 | [board controls]                              [editor switch]       |  custom BoardToolbarView row
 +---------------------------------------------------------------------+
@@ -33,6 +33,11 @@ layout anchors.
 - Sidebar container → `secondary-views-container`
 - Sidebar stack → `secondary-views-stack`
 - Sidebar splitter → `secondary-views-splitter`
+
+- Page pipe status â†’ `page-pipe-status` (in the shared page toolbar, before the editor switch)
+- Loading page shell â†’ `page-loading-shell` (in the page area during deferred restore)
+- Cancel restore â†’ `page-loading-cancel` (in the loading shell)
+- Retry restore â†’ `page-loading-retry` (in the error shell)
 
 ### When the Explorer sidebar is open
 
@@ -159,6 +164,24 @@ and has items.
 - Branches tree → `git-branches-tree`
 - Tags tree → `git-tags-tree`
 
+### While page content is restoring
+
+Some editors opt to show the page before source restoration finishes. The page area then shows a
+loading shell with the current provider and transformer stages. **Cancel** closes the page; if
+loading fails, the shell shows the error and offers **Retry**. This appears in the same page area
+as the editor and its controls. Scripts can await `page.ready` before reading restored content; see
+the [Page API](../scripting/api/page.md#content-restore-and-pipe-status):
+
+```
++---------------------------------------------------------------------+
+| [Loading content…]                                      [Cancel]    |  page area while an opted-in editor restores content
+| [provider status and progress]                                      |  live source status
+| [transformer status]                                                |  one row for each pipe stage
++---------------------------------------------------------------------+
+| [error message]                                         [Retry]     |  failed restore state
++---------------------------------------------------------------------+
+```
+
 ### When the sidebar is closed
 
 ```
@@ -183,6 +206,10 @@ Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolb
 | Page navigation control | Opens the file Explorer sidebar | `[data-name="page-nav-panel"]` |
 | Page host | Every page lives here | `[data-name="pages-container"]` |
 | Active page editor container | The editor body for the active page | `[data-name="page-editor"]` |
+| Page pipe status | Shows source loading, completion, or error; opens stage details when clicked | `[data-name="page-pipe-status"]` |
+| Loading page shell | Shown while an opted-in editor restores content | `[data-name="page-loading-shell"]` |
+| Cancel page restore | Closes the page while it is loading | `[data-name="page-loading-cancel"]` |
+| Retry page restore | Starts another restore attempt after an error | `[data-name="page-loading-retry"]` |
 | Empty page | The page state before content is opened | `[data-name="page-empty"]` |
 | Sidebar panel container | Present while a page has panels open | `[data-name="secondary-views-container"]` |
 | Sidebar panel stack | The collapsible stack of page panels | `[data-name="secondary-views-stack"]` |

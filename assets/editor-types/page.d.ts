@@ -21,6 +21,7 @@ import type { IGenericEditor } from "./generic-editor";
 import type { IPageEditorSwitches } from "./page-editor-switches";
 import type { IPagePanels } from "./page-panels";
 import type { IPageTab } from "./page-tab";
+import type { IContentPipe } from "./io.pipe";
 import type { IFolderViewEditor } from "./folder-view-editor";
 import type { IGitTreeEditor } from "./git-tree-editor";
 import type { IBoardEditor } from "./board-editor";
@@ -64,12 +65,16 @@ export type IEditorFacade =
  */
 export interface IPage {
     readonly id: string;
+    /** Resolves when this page's current content restore attempt settles. */
+    readonly ready: Promise<void>;
     readonly title: string;
     readonly modified: boolean;
     readonly pinned: boolean;
     readonly filePath?: string;
     /** The project folder this page's Explorer is rooted at, or undefined without a folder Explorer or while browsing an archive. */
     readonly workspaceFolder?: string;
+    /** Current primary content pipe, when this page has one. */
+    readonly pipe?: IContentPipe;
     content: string;
     language: string;
     /** The current editor facade. Narrow on editor.id before using operations. */

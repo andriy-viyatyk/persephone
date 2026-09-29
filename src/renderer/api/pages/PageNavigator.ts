@@ -218,6 +218,7 @@ export async function navigatePageTo(
 ): Promise<boolean> {
     const page = model.query.findPage(pageId);
     if (!page) return false;
+    await page.ready;
 
     if (!(await confirmLeaveCurrentEditor(page, options))) return false;
 

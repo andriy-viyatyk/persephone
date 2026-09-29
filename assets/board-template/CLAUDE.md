@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.23.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.26.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -571,6 +571,10 @@ persephone.providers.register("acme/mem", {
   readRange: async (config, range, options) => new Uint8Array(/* range.start..range.end */),
   writeBinary: async (config, data) => {},       // only when writable is true
   stat: async (config, options) => ({ exists: true, size: 0, mtime: "..." }),
+  status: (config, emit) => {
+    emit({ state: "idle", text: "Ready" });
+    return () => {};
+  },
   watch: (config, onChange) => () => {},
 });
 ```
@@ -589,6 +593,12 @@ supplied by a higher-level API); `stat` also receives a signal. Honoring the sig
 accepting the extra argument is required; older implementations that ignore it remain compatible.
 `writeBinary`, `watchSubscribe`, and `watchUnsubscribe` use the service request deadline. Only
 `readBinary` and `readRange` are exempt from the shared control-request cap; `stat` counts against it.
+
+The optional `status(config, emit)` method reports transient provider status. Call `emit(snapshot)`
+with `{ state, text?, detail?, progress?, rate? }`, where `state` is `idle`, `connecting`, `active`,
+`done`, or `error`; progress is `{ loaded, total? }` in bytes and rate is bytes per second. Return
+a disposer that stops status production. The host observes status while the provider is in use;
+status is not persisted with the pipe descriptor.
 
 ### Resident backend server (the key pattern)
 

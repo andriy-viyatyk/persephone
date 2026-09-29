@@ -36,7 +36,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board capability transport (caller-window page reuse/open, per-root/page FIFO route reservations, dispatch after frame readiness, intent delivery/cancel, `CapabilityOutcome` assembly, active per-page chain state, handler-page subscriptions; shares `CapabilityError` with the bus) | `/src/renderer/api/board-capability-transport.ts` |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
-| Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, and media-pipe owner readiness) | `/src/renderer/api/pages/PageModel.ts` |
+| Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, media-pipe owner readiness, and deferred restore readiness/cancellation) | `/src/renderer/api/pages/PageModel.ts` |
 | Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
 | Page creation/opening (including capability-handler board opening, the fixed-ID Clipboard sidebar singleton, and existing-page reopen pipe ownership) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
@@ -94,6 +94,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Drag-and-drop utilities  | `/src/renderer/core/traits/dnd.ts`                |
 | ILink trait definition   | `/src/renderer/core/traits/linkTraits.ts` |
 | Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
+| Pipe status snapshots and loading/status UI (page badge/popover, stage list, loading shell) | `/src/renderer/components/pipe-status/` |
+| Content-pipe rate sampling | `/src/renderer/content/RateMeter.ts` |
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
 | Content pipe registry and script-provider shape validation (first-construction validation, cached verdicts, and registration diagnostics) | `/src/renderer/content/registry.ts` |
 | Board provider factory (constructs the renderer-side service delegate) | `/src/renderer/content/board-provider-factory.ts` |
@@ -133,6 +135,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page sidebar-panels AiVision node (live panel projection, bare-ID expansion, sidebar state/actions, and curated elements) | `/src/renderer/scripting/ai-vision/page-panels.ts` |
 | Page editor-switches AiVision node (current editor, toolbar-identical options, verified switching, and switch control elements) | `/src/renderer/scripting/ai-vision/page-editor-switches.ts` |
 | Page compare-mode AiVision node (active pairs, enter/exit actions, and page-scoped compare controls) | `/src/renderer/scripting/ai-vision/page-compare.ts` |
+| Page content-pipe AiVision status node (`stages` and `summary`) | `/src/renderer/scripting/ai-vision/content-pipe.ts` |
 | Curated element visibility and named highlight protocol | `ai-vision/dom`, `/src/renderer/scripting/ai-vision/namespaces/ui.ts` |
 | Agent-visible alert AiVision node (list/count/dismiss projection over the renderer alert bar) | `/src/renderer/scripting/ai-vision/namespaces/ui-alerts.ts` |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
@@ -546,5 +549,5 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Renderer trust bootstrap (subscribes to main trust broadcasts, hydrates authoritative paths, and pushes the disabled-bundled-board setting) | `/src/renderer/api/board-trust-sync.ts` |
 | Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
-| Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.23.0` unifies extension-to-MIME lookup for board files and pipe responses; `1.22.0` adds host-managed module-service request/shutdown handlers and structured errors; `1.21.0` adds optional `representation` to capability discovery and manifest declarations; `1.19.0` adds `persephone.intent.resolve(value, { discardPage })` and the `alwaysOpensNewPage` manifest capability field) | `/src/shared/board-bridge-version.ts` |
+| Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.26.0` adds live service-provider status; `1.23.0` unifies extension-to-MIME lookup for board files and pipe responses; `1.22.0` adds host-managed module-service request/shutdown handlers and structured errors; `1.21.0` adds optional `representation` to capability discovery and manifest declarations; `1.19.0` adds `persephone.intent.resolve(value, { discardPage })` and the `alwaysOpensNewPage` manifest capability field) | `/src/shared/board-bridge-version.ts` |
 | Static utility-process module-service host (injects `persephone.storage`, imports the board-relative ESM service entry, owns lifecycle and request replies for host-API entries while preserving legacy raw-protocol ownership, and isolates provider requests and watches per renderer lease) | `/assets/module-service-host.mjs` |

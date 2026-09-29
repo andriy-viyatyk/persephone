@@ -1,5 +1,6 @@
 import type { TComponentState } from "../../core/state/state";
 import { EditorModel } from "../base/EditorModel";
+import type { EditorRestoreOptions } from "../base/EditorModel";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "../base/editor-traits";
 import type { IContentHost } from "../base/IContentHost";
@@ -24,6 +25,7 @@ import { errMessage } from "../../../shared/utils";
  * (US-845).
  */
 export class BoardContentEditorModel extends BoardEditorModel {
+    override readonly deferRestoreOnOpen = true;
     /** A real editor whose dirty state Persephone tracks (base board is `true`). */
     override skipSave = false;
 
@@ -140,7 +142,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
     /** Board validation (trust, refreshBoards, legacy-throw) via `super.restore()`, THEN ensure
      *  the content host. Prefers an already-adopted host (US-845 pre-builds the pipe for non-local
      *  files); otherwise builds a fallback from `_pendingHost` or the local file path. */
-    override async restore(): Promise<void> {
+    override async restore(options?: EditorRestoreOptions): Promise<void> {
         await super.restore();
         try {
             if (!this._host) {
@@ -149,7 +151,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
                     : newTextFileModel(this.currentFilePath() ?? "");
             }
             if (!this._host.state.get().restored) {
-                await this._host.restore();
+                await this._host.restore(options);
             }
             this.adoptHost(this._host);
             this.state.update((s) => { s.contentHostError = this._host?.io.providerError; });

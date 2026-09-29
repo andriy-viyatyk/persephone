@@ -9,6 +9,7 @@ import { guard } from "../../core/utils/guard";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createOrnamentElement } from "../../theme/Ornament";
 import { RenderEditorView } from "./RenderEditorView";
+import { PageLoadingShellView } from "../../components/pipe-status/PageLoadingShellView";
 import "./Pages.css";
 
 export interface PageContentProps { pageId: string; }
@@ -21,6 +22,8 @@ export class PageContentView extends VanillaView<PageContentProps> {
     private secondaryView: SecondaryViewsView | undefined;
     private contentRoot: HTMLElement | undefined;
     private renderEditor: RenderEditorView | undefined;
+    private loadingShell: PageLoadingShellView | undefined;
+    private loadingShellPageId: string | undefined;
     private contentIdentity: string | undefined;
     private compareView: CompareEditor | undefined;
     private live = true;
@@ -50,6 +53,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
         this.pageSubscription = undefined;
         this.navSubscription = undefined;
         this.clearCompare();
+        this.clearLoadingShell();
         this.clearContent();
         this.clearSecondary();
     }
@@ -67,11 +71,19 @@ export class PageContentView extends VanillaView<PageContentProps> {
         }
         if (!page) {
             this.clearCompare();
+            this.clearLoadingShell();
             this.clearContent();
             this.clearSecondary();
             return;
         }
         const compareInfo = pagesModel.query.isInCompareMode(page.id);
+        if (page.state.get().restoreStatus !== "ready") {
+            this.clearCompare();
+            this.clearSecondary();
+            this.syncLoadingShell(page);
+            return;
+        }
+        this.clearLoadingShell();
         if (compareInfo.active) {
             this.clearContent();
             this.clearSecondary();
@@ -189,6 +201,39 @@ export class PageContentView extends VanillaView<PageContentProps> {
             this.root.append(editorContainer);
         }
         this.renderEditor.mount();
+    }
+
+    private syncLoadingShell(page: PageModel): void {
+        if (this.loadingShell && this.loadingShellPageId === page.id) return;
+        this.clearContent();
+        this.clearLoadingShell();
+        this.loadingShell = new PageLoadingShellView({
+            page,
+            onCancel: () => { void page.close(); },
+            onRetry: () => {
+                const retry = page.getTransient<() => Promise<void>>("retryRestore");
+                void (retry ? retry() : pagesModel.lifecycle.retryPageRestore(page));
+            },
+        });
+        this.loadingShellPageId = page.id;
+        this.contentRoot = this.loadingShell.root;
+        this.root.append(this.loadingShell.root);
+        this.loadingShell.mount();
+    }
+
+    private clearLoadingShell(): void {
+        const view = this.loadingShell;
+        if (!view) return;
+        this.loadingShell = undefined;
+        this.loadingShellPageId = undefined;
+        void guard("Failed to dispose page loading shell", () => {
+            try {
+                view.dispose();
+            } finally {
+                view.root.remove();
+            }
+        });
+        if (this.contentRoot === view.root) this.contentRoot = undefined;
     }
 
     private ornamentWrapper(): HTMLDivElement {

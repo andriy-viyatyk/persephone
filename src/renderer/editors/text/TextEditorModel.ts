@@ -397,8 +397,8 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         await this.io.saveState();
     }
 
-    async restore() {
-        await this.io.restore();
+    async restore(options?: { signal?: AbortSignal }) {
+        await this.io.restore(options);
         await this.script.restore(this.state.get().id);
         this.detectContentEditor();
         void this.detectGitRepo();

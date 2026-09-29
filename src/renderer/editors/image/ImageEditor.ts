@@ -53,6 +53,7 @@ export function getDefaultImageEditorState(): ImageEditorState {
 }
 
 export class ImageEditor extends EditorModel<ImageEditorState> implements IImageExport {
+    override readonly deferRestoreOnOpen = true;
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
     readonly editorId = "image-view";
 
@@ -106,10 +107,10 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         return !!this.state.get().url;
     }
 
-    async restore(): Promise<void> {
+    async restore(options?: { signal?: AbortSignal }): Promise<void> {
         await super.restore();
-        const { filePath, url } = this.state.get();
-        if (filePath) {
+        const { filePath, url, title } = this.state.get();
+        if (filePath && (!title || title === "untitled")) {
             this.state.update((s) => {
                 s.title = fpBasename(filePath);
             });
@@ -132,7 +133,8 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             if (!url) {
                 // No URL yet — read from pipe and create blob URL
                 try {
-                    const buffer = await this.pipe.readBinary();
+                    const buffer = await this.pipe.readBinary(options);
+                    if (options?.signal?.aborted) return;
                     const ext = fpExtname(
                         filePath || this.pipe.provider.sourceUrl || ".png",
                     ).toLowerCase();
@@ -151,6 +153,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
                         await this.cacheImageBuffer(buffer);
                     }
                 } catch (err) {
+                    if (options?.signal?.aborted) return;
                     // Pipe read failed — try cache file fallback
                     await this.tryRestoreFromCache();
                     reportProviderError(err);

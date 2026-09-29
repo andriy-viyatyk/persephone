@@ -284,8 +284,10 @@ function doFetch(
 
             // Wrap Node stream as web ReadableStream
             let isCancelled = false;
-            const readableStream = new ReadableStream({
+            let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined;
+            const readableStream = new ReadableStream<Uint8Array>({
                 start(controller) {
+                    bodyController = controller;
                     responseStream.on("data", (chunk) => {
                         if (!isCancelled) {
                             try {
@@ -336,6 +338,16 @@ function doFetch(
                     (responseStream as NodeJS.ReadableStream & { destroy?(): void }).destroy?.();
                 }
                 res.destroy();
+                // A destroyed response emits neither "end" nor "error", so without this a
+                // reader waiting on the body would never settle after an abort.
+                if (!isCancelled) {
+                    isCancelled = true;
+                    try {
+                        bodyController?.error(new DOMException("The HTTP request was aborted.", "AbortError"));
+                    } catch {
+                        // Already closed
+                    }
+                }
             }, { once: true });
 
             // Some status codes have no body

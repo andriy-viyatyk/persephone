@@ -232,7 +232,7 @@ export class TextFileIOModel {
         void this.model.detectGitRepo();
     };
 
-    async restore() {
+    async restore(options?: { signal?: AbortSignal }) {
         const { modified, filePath } = this.model.state.get();
         const pipe = this.ensurePipe();
 
@@ -247,8 +247,10 @@ export class TextFileIOModel {
             // Restore unsaved work from cache
             try {
                 const stat = await this.cachePipe.provider.stat?.();
+                if (options?.signal?.aborted) return;
                 if (stat?.exists) {
-                    const cachedContent = await this.cachePipe.readText();
+                    const cachedContent = await this.cachePipe.readText(options);
+                    if (options?.signal?.aborted) return;
                     if (cachedContent !== undefined) {
                         this.model.state.update((s) => {
                             s.content = cachedContent;
@@ -265,6 +267,7 @@ export class TextFileIOModel {
             if (pipe) {
                 try {
                     const stat = await pipe.provider.stat?.();
+                    if (options?.signal?.aborted) return;
                     if (stat && !stat.exists) {
                         this.model.state.update((s) => { s.deleted = true; });
                     }
@@ -276,7 +279,8 @@ export class TextFileIOModel {
             // Normal restore — read from source through pipe
             const ext = fpExtname(filePath || "").toLowerCase();
             try {
-                const fileContent = await pipe.readText();
+                const fileContent = await pipe.readText(options);
+                if (options?.signal?.aborted) return;
                 this.model.state.update((s) => {
                     s.content = fileContent || "";
                     s.encrypted = shell.encryption.isEncrypted(s.content);
@@ -298,6 +302,9 @@ export class TextFileIOModel {
                 });
                 this.clearProviderError();
             } catch (error: unknown) {
+                // A cancelled open (page closed while loading) is not a provider error, and the
+                // model may already be disposed.
+                if (options?.signal?.aborted) return;
                 this.recordProviderError(error);
                 // File read failed — check if deleted
                 try {

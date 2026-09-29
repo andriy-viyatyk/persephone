@@ -224,9 +224,18 @@ Boards group is not rendered.
 | Page host (all pages live here) | `[data-name="pages-container"]` |
 | The active page's editor container | `[data-name="page-editor"]` |
 | An empty page | `[data-name="page-empty"]` |
+| Page pipe status trigger | `[data-name="page-pipe-status"]` |
+| Pipe status popover | `[data-name="page-pipe-status-popover"]` |
+| Pipe stage list | `[data-name="pipe-stage-list"]` |
+| Pipe stage row | `[data-name="pipe-stage"]` |
 | Sidebar panel container (only when a page has panels open) | `[data-name="secondary-views-container"]` |
 | Sidebar panel stack | `[data-name="secondary-views-stack"]` |
 | Sidebar width splitter | `[data-name="secondary-views-splitter"]` |
+
+These names repeat when pages are grouped. Scope a page's trigger through its containing
+`[data-name="page-slot"][data-page-id="<page id>"]`. The popover is a transient overlay; it
+emits the owning `data-page-id`, so its stage list can be scoped by
+`[data-name="page-pipe-status-popover"][data-page-id="<page id>"]`.
 
 ### About guide browser
 

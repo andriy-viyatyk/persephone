@@ -1,3 +1,12 @@
+## EPIC-116 — Pipe status and instant open
+
+Completed 2026-09-29. Live pipe status (stage status, badge, board provider `status()`), and pages that open before their content has loaded. Bridge 1.26.0. [Epic document](EPIC-116.md).
+
+- [x] US-1560: Pipe status model — stage status, `ContentPipe` aggregation, `HttpProvider` progress, script/agent surface
+- [x] US-1561: Page-level pipe status badge and stage popover
+- [x] US-1562: Board provider status — service `status(config, emit)`, `ProxyProvider` subscription, bridge bump; torrent board adopts it
+- [x] US-1563: Instant open — add the page before `restore()`, loading shell with Cancel, error and Retry, `page.ready` for scripts
+
 ## EPIC-115 — Platform roadmap clean-up: fix what the adjustment rounds left behind
 
 Completed 2026-09-28. Post-roadmap review of EPIC-105 to EPIC-114. [Epic document](EPIC-115.md).

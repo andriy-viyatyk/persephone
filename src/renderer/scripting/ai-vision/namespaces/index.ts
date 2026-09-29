@@ -31,8 +31,11 @@ import { describeProcess } from "./proc";
 import { proc } from "../../../api/proc";
 import { describeTools, toolsNode } from "./tools";
 import { EventsNode, describeEvents } from "./events";
+import { ContentPipe } from "../../../content/ContentPipe";
+import { describeContentPipe } from "../content-pipe";
 
 registerAiVision(EventsNode, describeEvents);
+registerAiVision(ContentPipe, describeContentPipe);
 
 registerAiVisionFor(fs, describeFileSystem);
 registerAiVisionFor(settings, describeSettings);

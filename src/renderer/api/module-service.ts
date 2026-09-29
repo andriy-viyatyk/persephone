@@ -10,6 +10,7 @@ import {
     STOP_REASON_CODE,
     type BoardServiceStatus,
     type ProviderRequest,
+    type ProviderWireStatus,
     type RendererServiceMessage,
 } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
@@ -38,6 +39,12 @@ interface ProviderWatchIntent {
     acknowledged: boolean;
 }
 
+interface ProviderStatusIntent {
+    request: ProviderRequest;
+    callback: (status: ProviderWireStatus | null) => void;
+    acknowledged: boolean;
+}
+
 interface ServiceLeaseClient {
     boardRoot: string;
     state: "idle" | "attaching" | "attached" | "lost";
@@ -50,6 +57,7 @@ interface ServiceLeaseClient {
     capabilities: Map<string, boolean>;
     rangeCapabilities: Map<string, boolean>;
     watchIntents: Map<string, ProviderWatchIntent>;
+    statusIntents: Map<string, ProviderStatusIntent>;
     requestNumber: number;
     disposed: boolean;
     /** Live count of outstanding `readBinary`/`readRange` requests, pushed by the host via
@@ -119,6 +127,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             capabilities: new Map(),
             rangeCapabilities: new Map(),
             watchIntents: new Map(),
+            statusIntents: new Map(),
             requestNumber: 0,
             disposed: false,
             activeContentReads: 0,
@@ -139,7 +148,9 @@ function receivePort(payload: ModuleServicePortPayload, port: MessagePort): void
     client.generation = payload.generation;
     client.leaseNonce = payload.leaseNonce;
     client.state = "attaching";
-    port.onmessage = (event: MessageEvent<RendererServiceMessage>) => handleMessage(client, event.data);
+    port.onmessage = (event: MessageEvent<RendererServiceMessage>) => {
+        if (client.port === port && client.generation === payload.generation) handleMessage(client, event.data);
+    };
     port.onmessageerror = () => loseLease(client, "service-exited");
     port.addEventListener("close", () => {
         if (client.port === port) loseLease(client, "service-exited");
@@ -196,6 +207,17 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
             intent.callback(message.event);
         } catch (error: unknown) {
             console.error(`Provider watch callback failed: ${errMessage(error)}`);
+        }
+        return;
+    }
+    if (message.kind === "provider-status-event") {
+        if (client.state !== "attached" || typeof message.subscriptionId !== "string") return;
+        const intent = client.statusIntents.get(message.subscriptionId);
+        if (!intent || !intent.acknowledged) return;
+        try {
+            intent.callback(message.status);
+        } catch (error: unknown) {
+            console.error(`Provider status callback failed: ${errMessage(error)}`);
         }
         return;
     }
@@ -256,6 +278,14 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     client.rangeCapabilities.clear();
     client.activeContentReads = 0;
     for (const intent of client.watchIntents.values()) intent.acknowledged = false;
+    for (const intent of client.statusIntents.values()) {
+        intent.acknowledged = false;
+        try {
+            intent.callback(null);
+        } catch (error: unknown) {
+            console.error(`Provider status clear callback failed: ${errMessage(error)}`);
+        }
+    }
     if (port) {
         port.onmessage = null;
         port.onmessageerror = null;
@@ -370,6 +400,12 @@ function isWatchAcknowledgement(result: unknown): boolean {
         && candidate.ok === true;
 }
 
+function isStatusAcknowledgement(result: unknown, operation: "statusSubscribe" | "statusUnsubscribe"): boolean {
+    if (!result || typeof result !== "object") return false;
+    const candidate = result as { kind?: unknown; operation?: unknown; ok?: unknown };
+    return candidate.kind === "provider-result" && candidate.operation === operation && candidate.ok === true;
+}
+
 function replayWatchIntents(client: ServiceLeaseClient): void {
     for (const [subscriptionId, intent] of client.watchIntents) {
         intent.acknowledged = false;
@@ -390,6 +426,23 @@ function replayWatchIntents(client: ServiceLeaseClient): void {
             () => {
                 // Keep the caller-owned intent for a later lease. This attempt has settled.
             },
+        );
+    }
+    for (const [subscriptionId, intent] of client.statusIntents) {
+        intent.acknowledged = false;
+        void request(client.boardRoot, intent.request).then(
+            (result) => {
+                const current = client.statusIntents.get(subscriptionId);
+                if (!current) {
+                    if (isStatusAcknowledgement(result, "statusSubscribe")) {
+                        void request(client.boardRoot, { ...intent.request, operation: "statusUnsubscribe" })
+                            .catch((): undefined => undefined);
+                    }
+                    return;
+                }
+                current.acknowledged = isStatusAcknowledgement(result, "statusSubscribe");
+            },
+            (): undefined => undefined,
         );
     }
 }
@@ -445,6 +498,50 @@ function subscribeProvider(
     };
 }
 
+function subscribeProviderStatus(
+    boardRoot: string,
+    requestMessage: ProviderRequest,
+    callback: (status: ProviderWireStatus | null) => void,
+): () => void {
+    ensureInitialized();
+    const client = getClient(boardRoot);
+    const subscriptionId = requestMessage.subscriptionId;
+    if (!subscriptionId) return (): void => undefined;
+    const intent: ProviderStatusIntent = { request: requestMessage, callback, acknowledged: false };
+    client.statusIntents.set(subscriptionId, intent);
+    // Status only observes: it must not start a board service on its own (a badge mounts on a
+    // restored page before anything reads it). Without a live lease the intent waits and is
+    // sent by `replayWatchIntents` once a read attaches one.
+    if (client.state === "attached" && client.port) {
+        void request(boardRoot, requestMessage).then(
+            (result) => {
+                const current = client.statusIntents.get(subscriptionId);
+                if (!current) {
+                    if (isStatusAcknowledgement(result, "statusSubscribe")) {
+                        void request(boardRoot, { ...requestMessage, operation: "statusUnsubscribe" })
+                            .catch((): undefined => undefined);
+                    }
+                    return;
+                }
+                current.acknowledged = isStatusAcknowledgement(result, "statusSubscribe");
+            },
+            (): undefined => undefined,
+        );
+    }
+    let disposed = false;
+    return () => {
+        if (disposed) return;
+        disposed = true;
+        const current = client.statusIntents.get(subscriptionId);
+        if (!current) return;
+        client.statusIntents.delete(subscriptionId);
+        if (current.acknowledged) {
+            void request(boardRoot, { ...requestMessage, operation: "statusUnsubscribe" })
+                .catch((): undefined => undefined);
+        }
+    };
+}
+
 function providerWritable(boardRoot: string, type: string): boolean | undefined {
     const client = clients.get(normalizeRoot(boardRoot));
     return client?.capabilities.get(type);
@@ -478,6 +575,7 @@ export const moduleService = {
     acquire,
     request,
     subscribeProvider,
+    subscribeProviderStatus,
     providerWritable,
     providerRangeReadable,
     activeContentReads,

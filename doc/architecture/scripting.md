@@ -79,6 +79,10 @@ interface IPage {
     readonly modified: boolean;
     readonly pinned: boolean;
     readonly filePath: string | undefined;
+    // Resolves when the current content restore attempt settles; rejects if it fails or is cancelled.
+    readonly ready: Promise<void>;
+    // Current primary content pipe, if this editor has one.
+    readonly pipe: IContentPipe | undefined;
     // Local project folder at the root of this page's Explorer, or undefined without one/archive
     readonly workspaceFolder: string | undefined;
 
@@ -399,6 +403,26 @@ await app.events.openRawLink.sendAsync(io.createLinkData(url));
 // Open a URL through the link pipeline
 await app.events.openRawLink.sendAsync(io.createLinkData("https://api.com/data.json"));
 ```
+
+`IContentPipe.stages` exposes read-only snapshots of the provider and ordered transformers, each
+with its role, type, display name, and optional transient status. `summary` selects an error first,
+otherwise the most recently updated stage status. Stages report progress in bytes and rate in bytes
+per second. Subscribe with `pipe.onStatusChange(() => ...)` and call the returned disposer when the
+observer is no longer needed. Status is not persisted in the pipe descriptor.
+
+The active page's primary pipe is also available as `page.pipe` when it has one. For example:
+
+```javascript
+const pipe = page.pipe;
+if (pipe) {
+    console.log(pipe.stages, pipe.summary);
+    const unsubscribe = pipe.onStatusChange(() => console.log(pipe.summary));
+    // Call unsubscribe when this observer is no longer needed.
+}
+```
+
+`page.ready` resolves when the current restore attempt completes. Await it before reading content
+from an editor that defers restore on open; it rejects when restore fails or is cancelled.
 
 Provider registrations carry an origin. Factories registered by scripts are wrapped so the first
 descriptor construction checks the returned object for the required provider members and caches the
@@ -839,6 +863,11 @@ resolver walk and returns a node descriptor as data (`path`, `kind`, `summary`, 
 segment, is side-effect free, and can describe a restricted node without opening its descendants.
 The local renderer root, remote board/page models, and main-side routing all pass this result through
 the normal call result; `$help` remains the prose-oriented path for agents.
+
+For a page with a primary content pipe, `pages[pageId].pipe` is an AiVision node. MCP path calls
+and `$describe` expose its read-only `stages` and `summary` properties; stage entries identify the
+provider or transformer and its current status snapshot. The MCP projection is observational only
+and does not expose pipe operations or `onStatusChange`.
 
 The renderer owns one AiVision event log per window in
 `/src/renderer/scripting/ai-vision/event-log.ts`. The root `events` node is described by

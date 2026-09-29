@@ -14,6 +14,7 @@ const defaultPageState: IPageState = {
     version: 0,
     hasSidebar: false,
     navBackCount: 0,
+    restoreStatus: "ready",
 };
 
 /**

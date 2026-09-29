@@ -62,8 +62,13 @@ export function registerOpenHandler(): void {
                     folderPath: data.folderPath,
                     diffFrom: data.diffFrom,
                     diffTo: data.diffTo,
+                    revealLine: data.revealLine,
+                    highlightText: data.highlightText,
                     sessionHandle: data.sessionHandle,
                 });
+                if (page && (data.waitForPageReady || data.sourceId === "app-api")) {
+                    await page.ready;
+                }
                 const title = data.title;
                 if (page && title) {
                     page.mainEditor?.state.update((state) => {

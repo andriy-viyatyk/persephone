@@ -112,3 +112,7 @@ pages and groupings before command-line file or URL arguments are handled.
 
 `window.close-to-tray` is unrelated: it controls whether closing the last window hides Persephone
 in the notification tray or quits it. It does not turn session restoration on or off.
+
+When an editor opts into deferred content restore, a newly opened page can appear before its
+content is ready. The page area shows live source stages while it loads, with **Cancel** to close
+the page and **Retry** if loading fails. See [Page Area and Sidebar](./sidebar.md#while-page-content-is-restoring).

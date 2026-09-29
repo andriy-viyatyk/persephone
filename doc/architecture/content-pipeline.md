@@ -167,6 +167,27 @@ superseded work, or an explicit higher-level timeout aborts the signal instead. 
 against the shared control-request cap, while reads do not. `writeBinary()` and watch subscription
 operations use the service request deadline. The service host does not add a second provider timer.
 
+### Live stage status
+
+Providers and transformers may expose a transient `status` snapshot and an optional
+`onStatusChange(callback)` subscription. A status has a state (`idle`, `connecting`, `active`,
+`done`, or `error`) and may include text, detail, byte progress (`loaded` and optional `total`),
+and a byte-per-second rate. Status is runtime state; it is not written to the persisted pipe
+descriptor.
+
+`IContentPipe.stages` returns fresh read-only snapshots in read order: the provider first, then
+each transformer. Every entry has its `role`, `type`, `displayName`, and optional current `status`.
+`summary` returns an error status when a stage has errored, otherwise the most recently updated
+stage status; it is `undefined` when no stage has reported status. Subscribe to
+`pipe.onStatusChange(callback)` to observe changes across all stages. The pipe attaches to a
+stage's own status notifications only while it has listeners and returns a disposer from each
+subscription.
+
+The built-in board `ProxyProvider` forwards service-provider status through this same stage
+contract. Status observation does not start a board service by itself; it waits until an operation
+has attached a live service lease. Board service providers implement `status(config, emit)` and
+return a disposer, as described in the board authoring guide.
+
 ### Write flow
 
 ```

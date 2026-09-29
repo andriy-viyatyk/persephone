@@ -243,10 +243,12 @@ export class PagesModel extends TModel<OpenFilesState> {
         // bound to the folder as a file path — so the lookup below misses and this returned
         // `undefined` for an open that had in fact succeeded. The handler hands that page's
         // id back through `openedPageId`; prefer the path lookup, which is the normal case.
-        return this.query.findPageByFilePath(filePath)
+        const page = this.query.findPageByFilePath(filePath)
             ?? (data.openedPageId
                 ? this.query.findPage(data.openedPageId)
                 : undefined);
+        await page?.ready;
+        return page;
     };
     openFileAsArchive = (filePath: string) =>
         this.lifecycle.openFileAsArchive(filePath);

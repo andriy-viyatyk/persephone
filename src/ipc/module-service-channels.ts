@@ -115,7 +115,9 @@ export type ProviderOperation =
     | "writeBinary"
     | "stat"
     | "watchSubscribe"
-    | "watchUnsubscribe";
+    | "watchUnsubscribe"
+    | "statusSubscribe"
+    | "statusUnsubscribe";
 
 export interface ProviderOperationPolicy {
     /** End-to-end deadline, owned by the renderer client (`module-service.request`); absent =
@@ -139,6 +141,8 @@ export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, Provi
     stat: { requestClass: "control" },
     watchSubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
     watchUnsubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
+    statusSubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
+    statusUnsubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
 };
 
 export interface ProviderRequest {
@@ -165,6 +169,14 @@ export type ProviderWireErrorCode =
     | "provider-failed"
     | "provider-payload-too-large";
 
+export interface ProviderWireStatus {
+    state: "idle" | "connecting" | "active" | "done" | "error";
+    text?: string;
+    detail?: string;
+    progress?: { loaded: number; total?: number };
+    rate?: number;
+}
+
 export interface ProviderWireError {
     kind: "provider-error";
     code: ProviderWireErrorCode;
@@ -176,13 +188,19 @@ export type ProviderResult =
     | { kind: "provider-result"; operation: "readRange"; ok: true; data: Uint8Array }
     | { kind: "provider-result"; operation: "writeBinary"; ok: true }
     | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
-    | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe"; ok: true }
+    | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; ok: true }
     | { kind: "provider-result"; ok: false; error: ProviderWireError };
 
 export interface ProviderEvent {
     kind: "provider-event";
     subscriptionId: string;
     event: string;
+}
+
+export interface ProviderStatusEvent {
+    kind: "provider-status-event";
+    subscriptionId: string;
+    status: ProviderWireStatus | null;
 }
 
 export interface ProviderCapabilities {
@@ -210,6 +228,7 @@ export type RendererServiceMessage =
     | { kind: "cancel"; requestId: string }
     | { kind: "response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
     | ProviderEvent
+    | ProviderStatusEvent
     | ProviderCapabilities
     | ProviderActiveContentReadCount
     | { kind: "lease-lost"; reason: RendererLeaseLostReason };

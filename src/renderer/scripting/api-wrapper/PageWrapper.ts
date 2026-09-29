@@ -4,6 +4,7 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
+import type { IContentPipe } from "../../api/types/io.pipe";
 import { customEditorRegistry, isBoardEditorId } from "../../editors/board/custom-editor-registry";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
@@ -125,6 +126,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "modified", kind: "property", summary: "Whether there are unsaved changes." },
     { name: "pinned", kind: "property", summary: "Whether the tab is pinned." },
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
+    { name: "pipe", kind: "property", node: true, summary: "The current primary content pipe and its live provider/transformer status." },
     { name: "language", kind: "property", writable: true, summary: "Language id. Assigning changes it and returns { ok: true }; use page.tab.highlight(\"tab-language\") when the user asks where it is changed." },
     { name: "tab", kind: "property", node: true, summary: "This page's tab-strip entry and its visible controls." },
     { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations. A tab left open after its editor was closed reports an empty id and no .editor child — open a file into it with pages.navigatePageTo, or close it." },
@@ -202,6 +204,7 @@ export class PageWrapper implements IAiVisible {
     get hasEditor(): boolean { return !!this.model || !!this.mainEditor; }
 
     get id(): string { return this.page?.id ?? this.model?.id ?? ""; }
+    get ready(): Promise<void> { return this.pageModel?.ready ?? Promise.resolve(); }
     get title(): string { return this.model?.title ?? "Empty"; }
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }
@@ -225,6 +228,16 @@ export class PageWrapper implements IAiVisible {
 
     get content(): string {
         return this.model && isTextFileModel(this.model) ? this.model.state.get().content : "";
+    }
+
+    get pipe(): IContentPipe | undefined {
+        const mainEditor = this.mainEditor;
+        const mainContentHost = (mainEditor as (EditorModel & { contentHost?: unknown }) | null)?.contentHost;
+        const host = this.model && isTextFileModel(this.model)
+            ? this.model
+            : isTextFileModel(mainContentHost) ? mainContentHost : undefined;
+        if (host) return host.pipe ?? undefined;
+        return mainEditor?.pipe ?? undefined;
     }
 
     set content(value: string) {
@@ -279,7 +292,7 @@ export class PageWrapper implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Page",
-            summary: "One open page (tab): its text, language, editor facade, editor switches, live sidebar panels, and grouped page.",
+            summary: "One open page (tab): its text, content pipe status, language, editor facade, editor switches, live sidebar panels, and grouped page.",
             members: PAGE_MEMBERS,
             help: PAGE_HELP,
             identity: () => `pages[${JSON.stringify(this.id)}]`,
@@ -311,6 +324,11 @@ export class PageWrapper implements IAiVisible {
                 summary: `facade for the current editor (${editor.id})`,
             }]
             : [];
+        if (this.pipe) children.push({
+            segment: ".pipe",
+            kind: "ContentPipe",
+            summary: "the primary content pipe's read-only stage status",
+        });
         const pageId = this.id;
         if (pagesModel.isGrouped(pageId)) {
             const grouped = pagesModel.getGroupedPage(pageId);

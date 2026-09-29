@@ -1,4 +1,4 @@
-import type { IProvider, IProviderDescriptor, IProviderStat } from "./io.provider";
+import type { IProvider, IProviderDescriptor, IProviderStat, IPipeStageStatus } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 
 /** Serializable pipe descriptor for persistence (stored in IEditorState). */
@@ -9,6 +9,16 @@ export interface IPipeDescriptor {
     transformers: ITransformerDescriptor[];
     /** Detected content encoding (e.g., "utf-8", "utf-16le", "windows-1251"). Persisted for write-back. */
     encoding?: string;
+}
+
+/** One stage in a content pipe, in read order. */
+export type IPipeStageRole = "provider" | "transformer";
+
+export interface IPipeStage {
+    readonly role: IPipeStageRole;
+    readonly type: string;
+    readonly displayName: string;
+    readonly status?: IPipeStageStatus;
 }
 
 /**
@@ -26,6 +36,12 @@ export interface IContentPipe {
     readonly provider: IProvider;
     /** Ordered list of transformers applied after reading. */
     readonly transformers: ReadonlyArray<ITransformer>;
+    /** Provider followed by transformers, each with a read-only status snapshot. */
+    readonly stages: ReadonlyArray<IPipeStage>;
+    /** Error status first, otherwise the most recently updated stage status. */
+    readonly summary: IPipeStageStatus | undefined;
+    /** Subscribe to aggregated stage changes. Returns a disposer. */
+    onStatusChange(callback: () => void): () => void;
     /** Insert a transformer at a specific position (default: end).
      *  Typically used on a cloned pipe, not the active one (clone-and-try pattern). */
     addTransformer(transformer: ITransformer, index?: number): void;
@@ -47,7 +63,7 @@ export interface IContentPipe {
     /** Read logical pipe metadata, including the post-transform size when known. */
     stat(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Read as text — readBinary() then decode using detected encoding (auto-detected on first read, defaults to UTF-8). */
-    readText(): Promise<string>;
+    readText(options?: { signal?: AbortSignal }): Promise<string>;
     /** Write binary content — reverse-piped through transformers back to provider.
      *  Throws if `!writable`. Check `writable` before calling. */
     writeBinary(data: Buffer): Promise<void>;

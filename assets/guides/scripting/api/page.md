@@ -1,7 +1,7 @@
 ---
 title: "Page API"
 audience: user
-summary: "The active tab and its editor and editor-switching APIs."
+summary: "The active tab, its content pipe and restore status, and its editor and editor-switching APIs."
 ---
 
 # Page API
@@ -17,6 +17,8 @@ editor switching is available as `page.editorSwitches`.
 | `workspaceFolder` | The project folder at the root of this page's Explorer, or `undefined` without a folder Explorer or while browsing an archive |
 | `content` | Read or assign text content for text-based editors |
 | `language` | Read or assign the language id |
+| `ready` | Promise for the page's current content-restore attempt |
+| `pipe` | Current primary content pipe, when this page has one |
 | `editor` | Read-only current editor facade; narrow on `editor.id` |
 | `editorSwitches` | Current id, toolbar-identical options, and `switchTo(id)` |
 | `tab` | This page's tab state and scoped tab-strip controls |
@@ -42,6 +44,38 @@ a file in it, or `app.pages.closePage(page.id)` to close it.
 const editor = page.editor;
 if (editor.id === "grid-json") {
     editor.addRows(5);
+}
+```
+
+### Content restore and pipe status
+
+Some editors can show the page shell before its content has finished restoring. `page.ready`
+resolves when that restore attempt succeeds and rejects if it fails or is cancelled. Await it before
+reading content that depends on the editor being ready, and handle rejection when the open may be
+cancelled:
+
+```javascript
+try {
+    await page.ready;
+    console.log(page.content);
+} catch (error) {
+    console.log("Page content did not finish loading", error);
+}
+```
+
+For a page backed by a content pipe, `page.pipe` exposes its current primary pipe. Its `stages`
+list the provider and transformers in read order; each stage can have transient status. `summary`
+selects an error first, otherwise the most recently updated stage status. Use
+`pipe.onStatusChange(callback)` to observe updates and call the returned disposer when finished.
+Provider and transformer status may include a state, text, detail, byte progress, and bytes-per-second
+rate. Status is not persisted. See the [`io` pipe status reference](./io.md#icontentpipe).
+
+```javascript
+const pipe = page.pipe;
+if (pipe) {
+    console.log(pipe.stages, pipe.summary);
+    const unsubscribe = pipe.onStatusChange(() => console.log(pipe.summary));
+    // Call unsubscribe when observation is no longer needed.
 }
 ```
 

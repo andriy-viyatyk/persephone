@@ -1521,6 +1521,7 @@ function createHandle(
     // 1.16.0 adds a read-only board service status query.
     // 1.17.0 adds runtime source-open events through `source.onOpen()`.
     // 1.18.0 adds persephone.icons.forFiles() (US-1533).
+    // 1.26.0 adds live board service provider status subscriptions (US-1562).
     version: BOARD_BRIDGE_VERSION,
 
     icons: {

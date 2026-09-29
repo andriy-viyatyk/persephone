@@ -17,6 +17,15 @@ export interface IProviderStat {
     exists: boolean;
 }
 
+/** Live status reported by one content-pipeline stage. Progress is measured in bytes and rate in bytes per second. */
+export interface IPipeStageStatus {
+    readonly state: "idle" | "connecting" | "active" | "done" | "error";
+    readonly text?: string;
+    readonly detail?: string;
+    readonly progress?: { readonly loaded: number; readonly total?: number };
+    readonly rate?: number;
+}
+
 /**
  * IProvider — knows *where* to get bytes.
  *
@@ -36,6 +45,10 @@ export interface IProvider {
     readonly restorable: boolean;
     /** Whether this provider supports writing. */
     readonly writable: boolean;
+    /** Current transient status. Status is never included in the provider descriptor. */
+    readonly status?: IPipeStageStatus;
+    /** Subscribe to transient status changes. Returns a disposer. */
+    onStatusChange?(callback: () => void): () => void;
     /** Read binary content from the source. `options.signal`, when present, is aborted once
      *  Persephone stops waiting on this read (page close, cancellation); honoring it is optional,
      *  tolerating its presence is mandatory (US-1518). */

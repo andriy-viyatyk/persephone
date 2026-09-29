@@ -64,6 +64,21 @@ await page.tab.highlight("page-tab");
 page.data.myValue = 123;
 ```
 
+Some editors can show their page before content restoration finishes. If a script needs the
+restored content, await `page.ready`; it rejects if that attempt fails or is cancelled:
+
+```javascript
+try {
+    await page.ready;
+    console.log(page.content);
+} catch (error) {
+    console.log("Page content did not finish loading", error);
+}
+```
+
+For a page backed by a content pipe, `page.pipe` exposes its primary pipe and live provider and
+transformer status. The [Page API](./api/page.md#content-restore-and-pipe-status) documents both.
+
 ### Editor Facades
 
 `page.editor` is the current editor facade. It is read-only and exposes `id` and `name`; narrow on
@@ -228,6 +243,11 @@ Transformers process the raw bytes before they reach your code.
 const pipe = io.createPipe(provider, ...transformers);
 const text = await pipe.readText();
 ```
+
+Pipe status is available through `pipe.stages` and `pipe.summary`; subscribe to live changes with
+`pipe.onStatusChange(callback)`. Provider and transformer stages can report their state, text,
+detail, byte progress, and transfer rate. Status is transient and is not saved with a pipe. See the
+[`io` API reference](./api/io.md#icontentpipe) for the status shape and subscription example.
 
 ### Register custom providers and URL schemes
 

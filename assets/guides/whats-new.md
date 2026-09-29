@@ -20,6 +20,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Live content-pipe status and faster page opens:** a page toolbar badge shows source loading,
+  progress, completion, or errors and opens provider/transformer details. Editors that opt into
+  deferred restore show a loading shell with **Cancel** and **Retry**. Scripts can observe
+  `pipe.stages`, `pipe.summary`, and `pipe.onStatusChange()`, inspect the active `page.pipe`, and
+  await `page.ready` before using restored content. MCP can inspect `pages[pageId].pipe` stages and
+  summary. See the [Page API](./scripting/api/page.md#content-restore-and-pipe-status),
+  [`io` API](./scripting/api/io.md#icontentpipe), [MCP pipe access](./agents/ai-vision.md#inspecting-a-pages-content-pipe),
+  and [page area guide](./screens/sidebar.md#while-page-content-is-restoring).
+- **Board bridge 1.26.0 adds provider status reporting:** a board module service's content provider
+  can implement `status(config, emit)` to report transient state, text, detail, byte progress, and
+  transfer rate while the provider is in use. See [Boards — service-backed content providers](./agents/boards.md#service-backed-content-providers).
 - **Scripts and trusted boards can route HTTP requests through Tor or a proxy:** `app.fetch(url, { tor: true })` uses Persephone's Tor daemon, while `{ proxy: "socks5://host:port" }` or a bare `host:port` selects a SOCKS5 proxy. Trusted boards can use `persephone.fetch(url, init)` for remote requests from their frame. Routed calls never fall back to direct connections; SOCKS5 resolves host names remotely, including `.onion` addresses through Tor. See the [`app.fetch` API](./scripting/api/app.md#fetchurl-options) and [Boards](./boards.md#offline-first-and-the-csp).
 - **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns
   the values Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`,

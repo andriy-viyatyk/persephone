@@ -1,4 +1,4 @@
-import { EditorModel, type EditorStateBase, type RestoreData } from "./EditorModel";
+import { EditorModel, type EditorRestoreOptions, type EditorStateBase, type RestoreData } from "./EditorModel";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "./editor-traits";
 import type { IContentHost } from "./IContentHost";
 import type { ComponentQueueEvent } from "../../core/state/ComponentQueue";
@@ -50,6 +50,7 @@ export abstract class TextHostEditorModel<
     R = unknown,
     E extends ComponentQueueEvent = ComponentQueueEvent,
 > extends EditorModel<T, R, E> {
+    override readonly deferRestoreOnOpen = true;
     /** Human-readable editor name for error/notify strings ("Mermaid",
      *  "Rest Client", "Environment Variables"). */
     protected abstract readonly displayName: string;
@@ -204,7 +205,7 @@ export abstract class TextHostEditorModel<
         this.onHostAttached(host);
     }
 
-    async restore(): Promise<void> {
+    async restore(options?: EditorRestoreOptions): Promise<void> {
         try {
             if (!this._host) {
                 this._host = this._pendingHost
@@ -212,11 +213,13 @@ export abstract class TextHostEditorModel<
                     : newTextFileModel("");
             }
             if (!this._host.state.get().restored) {
-                await this._host.restore();
+                await this._host.restore(options);
             }
             this.adoptHost(this._host);
             this.onHostAttached(this._host);
         } catch (err) {
+            // Cancelled while loading: the page is closing, so there is nothing to report.
+            if (options?.signal?.aborted) return;
             ui.notify(
                 errMessage(err, `Failed to restore ${this.displayName} editor.`),
                 "error",

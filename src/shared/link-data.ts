@@ -70,6 +70,7 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
         fallbackTarget,
         folderPath,
         sessionHandle,
+        waitForPageReady,
         ...stored
     } = data;
     if (stored.pipeDescriptor?.provider?.config) {

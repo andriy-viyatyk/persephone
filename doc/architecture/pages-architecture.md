@@ -80,7 +80,8 @@ main editor is absent.
 ```
 PageModel (one per tab — stable identity, never changes during navigation)
 ├── id: string                          // stable UUID — tab key, cache key
-├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, mainEditorId }
+├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, mainEditorId, restoreStatus }
+├── ready: Promise<void>                 // current deferred restore attempt
 ├── mainEditor: EditorModel | null      // the content (swapped during navigation)
 ├── secondaryViews: EditorModel[]     // sidebar panels (ExplorerEditorModel, ArchiveEditorModel, etc.)
 ├── secondaryViewsModel                  // sidebar open/close/width
@@ -146,6 +147,18 @@ descriptors rather than restored sidebar state.
 
 - **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)` (or `mainEditor = null` for empty pages with sidebar only)
 - **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
+- **Deferred restore:** editors may opt in through `deferRestoreOnOpen`. Fresh file opens then add
+  the page immediately and start restore asynchronously; `page.ready` settles when that attempt
+  completes. Await it before work that depends on restored content. It rejects on restore failure
+  or cancellation. Editors that do not opt in preserve restore-before-add behavior.
+- **Loading UI:** while `restoreStatus` is `loading`, `PageContentView` shows a loading shell with
+  pipe stage status. Cancel closes the page and cancels its restore; an error replaces the loading
+  message with the failure and offers Retry, which starts a new restore attempt. The editor is
+  shown after restore succeeds.
+- **Pipe status badge:** while a pipe reports connecting/active work, the page toolbar shows its
+  status and any known byte progress. Successful reads show a brief completion label; errors remain
+  visible until dismissed. Opening the badge's popover shows the provider and transformer stages
+  with their current status details.
 - **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
 - **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen(pipe?)` hook with the newly resolved pipe. The hook returns `true` to take ownership; otherwise the lifecycle disposes the pipe. Editors can use this to retry a failed source without replacing the page.

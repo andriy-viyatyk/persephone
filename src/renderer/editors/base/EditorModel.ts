@@ -2,6 +2,7 @@ import { TDialogModel } from "../../core/state/model";
 import type { IState } from "../../core/state/state";
 import { TraitSet } from "../../core/traits/traits";
 import { Subscription } from "../../core/state/events";
+import { TOneState } from "../../core/state/state";
 import { ComponentQueue, ComponentQueueEvent } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
 import type { IContentHost } from "./IContentHost";
@@ -39,6 +40,10 @@ export type EditorOpenContext =
     | { mode: "register-session"; sourceUrl: string; sessionHandle: string }
     | { mode: "enqueue-source"; sourceUrl: string; sessionHandle?: string };
 
+export interface EditorRestoreOptions {
+    signal?: AbortSignal;
+}
+
 export abstract class EditorModel<
     T extends EditorStateBase = EditorStateBase,
     R = unknown,
@@ -50,6 +55,9 @@ export abstract class EditorModel<
      *  the switch widget's "current" highlight, and by persistence
      *  (`EditorDescriptor.editorId`). Replaces today's `state.type` discriminator. */
     abstract readonly editorId: string;
+
+    /** Fresh file opens may insert this editor before its source restore settles. */
+    readonly deferRestoreOnOpen: boolean = false;
 
     /** The folder this editor is anchored at, or undefined for a non-folder editor. */
     get folderAnchor(): string | undefined {
@@ -78,7 +86,15 @@ export abstract class EditorModel<
     /** Active content pipe (provider + transformers). For text-bearing
      *  editors the pipe lives on `TextFileModel`; this field stays on the
      *  base for no-host editors that own their pipe directly (e.g. Browser). */
-    pipe: IContentPipe | null = null;
+    readonly pipeState = new TOneState<IContentPipe | null>(null);
+
+    get pipe(): IContentPipe | null {
+        return this.pipeState.get();
+    }
+
+    set pipe(pipe: IContentPipe | null) {
+        this.pipeState.set(pipe);
+    }
 
     /** Auxiliary in-memory data for scripting; not persisted. */
     scriptData: Record<string, unknown> = {};
@@ -132,7 +148,7 @@ export abstract class EditorModel<
      *  restores from cache/disk, subscribes to host state for
      *  descriptorChanged forwarding. After this resolves, the editor is
      *  fully usable. */
-    async restore(): Promise<void> {
+    async restore(_options?: EditorRestoreOptions): Promise<void> {
         // Override in subclasses.
     }
 

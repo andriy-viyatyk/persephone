@@ -1,5 +1,5 @@
-import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
-import type { IProvider, IProviderStat } from "../api/types/io.provider";
+import type { IContentPipe, IPipeDescriptor, IPipeStage } from "../api/types/io.pipe";
+import type { IProvider, IProviderStat, IPipeStageStatus } from "../api/types/io.provider";
 import type { ITransformer } from "../api/types/io.transformer";
 import { createProviderFromDescriptor } from "./registry";
 import { decodeBuffer, encodeString } from "./encoding";
@@ -14,6 +14,13 @@ export class ContentPipe implements IContentPipe {
     readonly provider: IProvider;
     private readonly _transformers: ITransformer[];
     private _encoding: string | undefined;
+    private readonly statusListeners = new Set<() => void>();
+    private readonly stageUnsubscribers = new Map<object, () => void>();
+    private readonly stageUpdateOrder = new Map<object, number>();
+    private updateCounter = 0;
+    private lastStatusNotification = 0;
+    private statusTimer: ReturnType<typeof setTimeout> | undefined;
+    private disposed = false;
 
     constructor(provider: IProvider, transformers: ITransformer[] = [], encoding?: string) {
         this.provider = provider;
@@ -28,6 +35,42 @@ export class ContentPipe implements IContentPipe {
 
     get transformers(): ReadonlyArray<ITransformer> {
         return this._transformers;
+    }
+
+    get stages(): ReadonlyArray<IPipeStage> {
+        return this.getStageEntries().map(({ stage, role }) => ({
+            role,
+            type: stage.type,
+            displayName: "displayName" in stage && typeof stage.displayName === "string"
+                ? stage.displayName
+                : stage.type,
+            ...(stage.status && { status: this.copyStatus(stage.status) }),
+        }));
+    }
+
+    get summary(): IPipeStageStatus | undefined {
+        const stages = this.getStageEntries().filter(({ stage }) => stage.status);
+        const errors = stages.filter(({ stage }) => stage.status?.state === "error");
+        const candidates = errors.length > 0 ? errors : stages;
+        const latest = candidates.reduce<typeof candidates[number] | undefined>((current, entry) => {
+            if (!current) return entry;
+            return (this.stageUpdateOrder.get(entry.stage) ?? 0)
+                > (this.stageUpdateOrder.get(current.stage) ?? 0) ? entry : current;
+        }, undefined);
+        return latest?.stage.status ? this.copyStatus(latest.stage.status) : undefined;
+    }
+
+    onStatusChange(callback: () => void): () => void {
+        if (this.disposed) return () => undefined;
+        this.statusListeners.add(callback);
+        if (this.statusListeners.size === 1) this.refreshStageSubscriptions();
+        let subscribed = true;
+        return () => {
+            if (!subscribed) return;
+            subscribed = false;
+            this.statusListeners.delete(callback);
+            if (this.statusListeners.size === 0) this.releaseStageSubscriptions();
+        };
     }
 
     get writable(): boolean {
@@ -47,12 +90,15 @@ export class ContentPipe implements IContentPipe {
         } else {
             this._transformers.push(transformer);
         }
+        this.onStagesChanged();
     }
 
     removeTransformer(type: string): ITransformer | undefined {
         const index = this._transformers.findIndex((t) => t.type === type);
         if (index >= 0) {
-            return this._transformers.splice(index, 1)[0];
+            const [removed] = this._transformers.splice(index, 1);
+            this.onStagesChanged();
+            return removed;
         }
         return undefined;
     }
@@ -67,8 +113,8 @@ export class ContentPipe implements IContentPipe {
         return data;
     }
 
-    async readText(): Promise<string> {
-        const buffer = await this.readBinary();
+    async readText(options?: { signal?: AbortSignal }): Promise<string> {
+        const buffer = await this.readBinary(options);
         const decoded = decodeBuffer(buffer, this._encoding);
         this._encoding = decoded.encoding;
         return decoded.content;
@@ -200,7 +246,73 @@ export class ContentPipe implements IContentPipe {
     // ── Dispose ─────────────────────────────────────────────────────
 
     dispose(): void {
+        this.disposed = true;
+        this.statusListeners.clear();
+        this.releaseStageSubscriptions();
         this.provider.dispose?.();
+    }
+
+    private getStageEntries(): Array<{ stage: IProvider | ITransformer; role: "provider" | "transformer" }> {
+        return [
+            { stage: this.provider, role: "provider" },
+            ...this._transformers.map((stage) => ({ stage, role: "transformer" as const })),
+        ];
+    }
+
+    private copyStatus(status: IPipeStageStatus): IPipeStageStatus {
+        return {
+            ...status,
+            ...(status.progress && { progress: { ...status.progress } }),
+        };
+    }
+
+    private onStagesChanged(): void {
+        if (this.statusListeners.size > 0) this.refreshStageSubscriptions();
+        this.queueStatusNotification();
+    }
+
+    private refreshStageSubscriptions(): void {
+        const stages = this.getStageEntries().map(({ stage }) => stage);
+        const current = new Set(stages);
+        for (const [stage, unsubscribe] of this.stageUnsubscribers) {
+            if (!current.has(stage as IProvider | ITransformer)) {
+                unsubscribe();
+                this.stageUnsubscribers.delete(stage);
+                this.stageUpdateOrder.delete(stage);
+            }
+        }
+        for (const stage of stages) {
+            if (stage.status && !this.stageUpdateOrder.has(stage)) {
+                this.stageUpdateOrder.set(stage, ++this.updateCounter);
+            }
+            if (this.stageUnsubscribers.has(stage) || !stage.onStatusChange) continue;
+            const unsubscribe = stage.onStatusChange(() => {
+                if (this.disposed || !this.statusListeners.size
+                    || !this.getStageEntries().some(({ stage: current }) => current === stage)) return;
+                this.stageUpdateOrder.set(stage, ++this.updateCounter);
+                this.queueStatusNotification();
+            });
+            this.stageUnsubscribers.set(stage, unsubscribe);
+        }
+    }
+
+    private releaseStageSubscriptions(): void {
+        for (const unsubscribe of this.stageUnsubscribers.values()) unsubscribe();
+        this.stageUnsubscribers.clear();
+        if (this.statusTimer !== undefined) clearTimeout(this.statusTimer);
+        this.statusTimer = undefined;
+    }
+
+    private queueStatusNotification(): void {
+        if (this.disposed || this.statusListeners.size === 0) return;
+        if (this.statusTimer !== undefined) return;
+        const wait = Math.max(0, 250 - (Date.now() - this.lastStatusNotification));
+        this.statusTimer = setTimeout(() => {
+            this.statusTimer = undefined;
+            if (this.disposed || this.statusListeners.size === 0) return;
+            this.lastStatusNotification = Date.now();
+            for (const listener of [...this.statusListeners]) listener();
+        }, wait);
     }
 }
 

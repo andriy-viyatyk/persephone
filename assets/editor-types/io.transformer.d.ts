@@ -1,3 +1,5 @@
+import type { IPipeStageStatus } from "./io.provider";
+
 /** Serializable transformer descriptor for persistence. */
 export interface ITransformerDescriptor {
     /** Transformer type (e.g., "archive", "gunzip", "base64"). */
@@ -24,6 +26,10 @@ export interface ITransformer {
     /** Whether this transformer supports write (reverse-transform).
      *  Undefined or true means writable. False for read-only formats (RAR, 7z, TAR). */
     readonly writable?: boolean;
+    /** Current transient status. Status is never included in the transformer descriptor. */
+    readonly status?: IPipeStageStatus;
+    /** Subscribe to transient status changes. Returns a disposer. */
+    onStatusChange?(callback: () => void): () => void;
     /** Transform bytes on read (source → editor). */
     read(data: Buffer, signal?: AbortSignal): Promise<Buffer>;
     /** Reverse-transform bytes on write (editor → source).

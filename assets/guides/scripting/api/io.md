@@ -52,6 +52,8 @@ The provider contract has these mandatory and optional members:
 | `writeBinary(data: Buffer)` | No | Optional write operation for writable providers. |
 | `stat(options?: { signal?: AbortSignal }): Promise<IProviderStat>` | No | Optional size, modification-time, and existence metadata. |
 | `watch(callback: (event: string) => void): () => void` | No | Optional external-change notifications. |
+| `status?: IPipeStageStatus` | No | Current transient status, if the provider reports one. |
+| `onStatusChange?(callback: () => void): () => void` | No | Optional transient-status subscription; call the returned function to unsubscribe. |
 | `dispose(): void` | No | Optional resource cleanup. |
 
 When a script-registered factory is first used, Persephone checks that the returned provider has
@@ -278,6 +280,30 @@ The pipe is the primary abstraction for reading and writing content. Returned by
 | `writable` | `boolean` | True if the full chain (provider + all transformers) supports writing. Read-only. |
 | `displayName` | `string` | Human-readable name (filename, URL, etc.). Read-only. |
 | `encoding` | `string?` | Detected text encoding after the first `readText()` call (e.g., `"utf-8"`, `"utf-16le"`). Read-only. |
+| `stages` | `ReadonlyArray<IPipeStage>` | Provider followed by transformers in read order, with each stage's role, type, display name, and optional status. Read-only snapshots. |
+| `summary` | `IPipeStageStatus \| undefined` | Current aggregate status: an error takes priority; otherwise the most recently updated stage status. |
+
+Each status has a `state` (`idle`, `connecting`, `active`, `done`, or `error`) and may include
+`text`, `detail`, byte `progress` (`loaded` and optional `total`), and `rate` in bytes per second.
+Status is temporary and is not saved in the pipe descriptor. Providers and transformers may each
+report their own status; the pipe gathers those updates.
+
+#### onStatusChange(callback) -> `() => void`
+
+Subscribe to changes from any stage. Read `stages` or `summary` again inside the callback, and call
+the returned function when observation is no longer needed.
+
+```javascript
+const pipe = io.createPipe(new io.HttpProvider("https://example.com/data.json"));
+const unsubscribe = pipe.onStatusChange(() => {
+    console.log(pipe.summary, pipe.stages);
+});
+try {
+    return await pipe.readText();
+} finally {
+    unsubscribe();
+}
+```
 
 ### Reading
 

@@ -1,5 +1,5 @@
 import { moduleService } from "../../api/module-service";
-import type { IProvider, IProviderDescriptor, IProviderStat } from "../../api/types/io.provider";
+import type { IPipeStageStatus, IProvider, IProviderDescriptor, IProviderStat } from "../../api/types/io.provider";
 import {
     type ProviderOperation,
     type ProviderRequest,
@@ -8,6 +8,7 @@ import {
 } from "../../../ipc/module-service-channels";
 import { MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
 import { ProviderUnavailableError, providerDeclarationFor } from "../registry";
+import { errMessage } from "../../../shared/utils";
 
 // Node's `stream` module for `Readable.from`. `require` rather than `import` because Vite
 // externalizes Node builtins into broken browser stubs when statically imported — same pattern
@@ -15,6 +16,7 @@ import { ProviderUnavailableError, providerDeclarationFor } from "../registry";
 const { Readable } = require("stream") as typeof import("stream");
 
 let watchNumber = 0;
+let statusNumber = 0;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -24,6 +26,41 @@ function isUint8Array(value: unknown): value is Uint8Array {
     return value instanceof Uint8Array
         && Number.isInteger(value.byteLength)
         && value.byteLength === value.length;
+}
+
+function copyProviderStatus(value: unknown): IPipeStageStatus | undefined {
+    if (!isRecord(value)
+        || !["idle", "connecting", "active", "done", "error"].includes(String(value.state))) return undefined;
+    const status: {
+        state: IPipeStageStatus["state"];
+        text?: string;
+        detail?: string;
+        progress?: { loaded: number; total?: number };
+        rate?: number;
+    } = { state: value.state as IPipeStageStatus["state"] };
+    if (value.text !== undefined) {
+        if (typeof value.text !== "string" || value.text.length > 120) return undefined;
+        status.text = value.text;
+    }
+    if (value.detail !== undefined) {
+        if (typeof value.detail !== "string" || value.detail.length > 512) return undefined;
+        status.detail = value.detail;
+    }
+    if (value.progress !== undefined) {
+        if (!isRecord(value.progress)
+            || typeof value.progress.loaded !== "number"
+            || !Number.isFinite(value.progress.loaded) || value.progress.loaded < 0
+            || (value.progress.total !== undefined
+                && (typeof value.progress.total !== "number"
+                    || !Number.isFinite(value.progress.total) || value.progress.total < 0))) return undefined;
+        status.progress = { loaded: value.progress.loaded as number };
+        if (value.progress.total !== undefined) status.progress.total = value.progress.total as number;
+    }
+    if (value.rate !== undefined) {
+        if (typeof value.rate !== "number" || !Number.isFinite(value.rate) || value.rate < 0) return undefined;
+        status.rate = value.rate;
+    }
+    return status;
 }
 
 function unavailableError(type: string, error: unknown): ProviderUnavailableError {
@@ -58,6 +95,11 @@ export class ProxyProvider implements IProvider {
     readonly restorable = true;
     readonly displayName: string;
     readonly sourceUrl: string;
+    private statusSnapshot?: IPipeStageStatus;
+    private readonly statusListeners = new Set<() => void>();
+    private statusDisposer?: () => void;
+    private statusSubscription = 0;
+    private disposed = false;
 
     constructor(
         private readonly boardRoot: string,
@@ -75,6 +117,10 @@ export class ProxyProvider implements IProvider {
     get writable(): boolean {
         return moduleService.providerWritable(this.boardRoot, this.type)
             ?? (this.config.writable === true);
+    }
+
+    get status(): IPipeStageStatus | undefined {
+        return this.statusSnapshot ? copyProviderStatus(this.statusSnapshot) : undefined;
     }
 
     private stringConfig(key: string): string | undefined {
@@ -235,12 +281,67 @@ export class ProxyProvider implements IProvider {
 
     private readonly watchDisposers = new Set<() => void>();
 
+    onStatusChange(callback: () => void): () => void {
+        if (this.disposed) return (): void => undefined;
+        this.statusListeners.add(callback);
+        if (this.statusListeners.size === 1) this.startStatusSubscription();
+        let disposed = false;
+        return () => {
+            if (disposed) return;
+            disposed = true;
+            this.statusListeners.delete(callback);
+            if (this.statusListeners.size === 0) this.stopStatusSubscription(true);
+        };
+    }
+
+    private startStatusSubscription(): void {
+        const subscription = ++statusNumber;
+        this.statusSubscription = subscription;
+        const request = this.requestMessage("statusSubscribe", {
+            subscriptionId: `provider-status-${subscription}`,
+        });
+        this.statusDisposer = moduleService.subscribeProviderStatus(
+            this.boardRoot,
+            request,
+            (value) => {
+                if (this.disposed || this.statusSubscription !== subscription) return;
+                this.setStatus(value === null ? undefined : copyProviderStatus(value));
+            },
+        );
+    }
+
+    private stopStatusSubscription(clearStatus: boolean): void {
+        this.statusSubscription = ++statusNumber;
+        const disposer = this.statusDisposer;
+        this.statusDisposer = undefined;
+        disposer?.();
+        if (clearStatus) this.setStatus(undefined);
+    }
+
+    private setStatus(status: IPipeStageStatus | undefined): void {
+        const previous = this.statusSnapshot;
+        if (JSON.stringify(previous) === JSON.stringify(status)) return;
+        this.statusSnapshot = status ? copyProviderStatus(status) : undefined;
+        for (const listener of [...this.statusListeners]) {
+            try {
+                listener();
+            } catch (error: unknown) {
+                console.error(`Provider status listener failed: ${errMessage(error)}`);
+            }
+        }
+    }
+
     toDescriptor(): IProviderDescriptor {
         return { type: this.type, config: this.config };
     }
 
     dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.stopStatusSubscription(false);
         for (const disposer of this.watchDisposers) disposer();
         this.watchDisposers.clear();
+        this.statusListeners.clear();
+        this.statusSnapshot = undefined;
     }
 }

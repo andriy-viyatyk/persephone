@@ -43,6 +43,37 @@ function copyBytes(value) {
     return result;
 }
 
+const PROVIDER_STATUS_STATES = new Set(["idle", "connecting", "active", "done", "error"]);
+const PROVIDER_STATUS_INTERVAL_MS = 250;
+
+function copyProviderStatus(value) {
+    if (!isRecord(value) || !PROVIDER_STATUS_STATES.has(value.state)) return undefined;
+    const status = { state: value.state };
+    if (value.text !== undefined) {
+        if (typeof value.text !== "string") return undefined;
+        status.text = value.text.slice(0, 120);
+    }
+    if (value.detail !== undefined) {
+        if (typeof value.detail !== "string") return undefined;
+        status.detail = value.detail.slice(0, 512);
+    }
+    if (value.progress !== undefined) {
+        if (!isRecord(value.progress)
+            || typeof value.progress.loaded !== "number"
+            || !Number.isFinite(value.progress.loaded) || value.progress.loaded < 0
+            || (value.progress.total !== undefined
+                && (typeof value.progress.total !== "number"
+                    || !Number.isFinite(value.progress.total) || value.progress.total < 0))) return undefined;
+        status.progress = { loaded: value.progress.loaded };
+        if (value.progress.total !== undefined) status.progress.total = value.progress.total;
+    }
+    if (value.rate !== undefined) {
+        if (typeof value.rate !== "number" || !Number.isFinite(value.rate) || value.rate < 0) return undefined;
+        status.rate = value.rate;
+    }
+    return status;
+}
+
 async function storageRequest(operation, args) {
     await configReady;
     if (storagePending.size >= hostConfig.maxOutstandingRequestsPerService) {
@@ -149,6 +180,9 @@ function registerProvider(type, implementation) {
             throw new Error(`provider-registration-invalid-implementation:${type}`);
         }
     }
+    if (implementation.status !== undefined && typeof implementation.status !== "function") {
+        throw new Error(`provider-registration-invalid-implementation:${type}`);
+    }
     if (providers.has(type)) throw new Error(`provider-registration-duplicate:${type}`);
     providers.set(type, implementation);
     for (const lease of rendererLeases.values()) announceCapabilities(lease);
@@ -172,7 +206,7 @@ function validProviderRequest(message) {
     if (typeof message.type !== "string" || message.type.length === 0 || !isRecord(message.config)) {
         return "Malformed provider request.";
     }
-    if ((message.operation === "watchSubscribe" || message.operation === "watchUnsubscribe")
+    if (["watchSubscribe", "watchUnsubscribe", "statusSubscribe", "statusUnsubscribe"].includes(message.operation)
         && (typeof message.subscriptionId !== "string" || message.subscriptionId.length === 0)) {
         return "Malformed provider subscription request.";
     }
@@ -282,6 +316,94 @@ async function executeProviderRequest(lease, request, controller) {
     }
 
     const key = providerKey(request.type, request.subscriptionId);
+    if (request.operation === "statusUnsubscribe") {
+        const subscription = lease.subscriptions.get(key);
+        if (subscription) {
+            lease.subscriptions.delete(key);
+            try {
+                subscription.dispose();
+            } catch (error) {
+                return providerFailure("provider-failed", errorMessage(error, "status disposer failed."));
+            }
+        }
+        return { kind: "provider-result", operation: "statusUnsubscribe", ok: true };
+    }
+
+    if (request.operation === "statusSubscribe") {
+        if (typeof implementation.status !== "function") {
+            return { kind: "provider-result", operation: "statusSubscribe", ok: true };
+        }
+        const previous = lease.subscriptions.get(key);
+        if (previous) {
+            lease.subscriptions.delete(key);
+            previous.dispose();
+        }
+        const subscription = { dispose: () => undefined, clear: undefined, timer: undefined, pending: undefined, lastSentAt: 0 };
+        const isCurrent = () => rendererLeases.get(lease.leaseNonce) === lease
+            && lease.attached && lease.subscriptions.get(key) === subscription;
+        const send = (status) => {
+            if (!isCurrent()) return;
+            postRenderer(lease.port, {
+                kind: "provider-status-event",
+                subscriptionId: request.subscriptionId,
+                status,
+            });
+            subscription.lastSentAt = Date.now();
+        };
+        subscription.clear = () => {
+            if (lease.attached && rendererLeases.get(lease.leaseNonce) === lease) {
+                postRenderer(lease.port, {
+                    kind: "provider-status-event",
+                    subscriptionId: request.subscriptionId,
+                    status: null,
+                });
+            }
+        };
+        const flush = () => {
+            subscription.timer = undefined;
+            const status = subscription.pending;
+            subscription.pending = undefined;
+            if (status !== undefined) send(status);
+        };
+        const emit = (value) => {
+            const status = copyProviderStatus(value);
+            if (!status || !isCurrent()) return;
+            const delay = Math.max(0, PROVIDER_STATUS_INTERVAL_MS - (Date.now() - subscription.lastSentAt));
+            if (delay === 0 && !subscription.settingUp) {
+                send(status);
+                return;
+            }
+            subscription.pending = status;
+            if (!subscription.timer) subscription.timer = setTimeout(flush, Math.max(delay, subscription.settingUp ? 0 : 1));
+        };
+        subscription.settingUp = true;
+        lease.subscriptions.set(key, subscription);
+        let disposer;
+        try {
+            disposer = implementation.status(request.config, emit);
+        } catch (error) {
+            lease.subscriptions.delete(key);
+            return providerFailure("provider-failed", errorMessage(error, "status() failed."));
+        }
+        if (typeof disposer !== "function") {
+            lease.subscriptions.delete(key);
+            clearTimeout(subscription.timer);
+            return providerFailure("provider-invalid-result", "status() must return a disposer.");
+        }
+        subscription.dispose = () => {
+            subscription.clear();
+            clearTimeout(subscription.timer);
+            subscription.timer = undefined;
+            subscription.pending = undefined;
+            try { disposer(); } catch { /* Lease teardown is best effort. */ }
+        };
+        subscription.settingUp = false;
+        if (subscription.pending !== undefined && !subscription.timer) {
+            subscription.timer = setTimeout(flush, 0);
+        }
+        return { kind: "provider-result", operation: "statusSubscribe", ok: true };
+    }
+
     if (request.operation === "watchUnsubscribe") {
         const subscription = lease.subscriptions.get(key);
         if (subscription) {

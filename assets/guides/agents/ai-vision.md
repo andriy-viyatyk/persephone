@@ -15,6 +15,23 @@ If instead you are **driving** a board or page that already publishes one, you w
 sections of [Boards](./boards.md) and [Browser automation](./browser.md). This page is the other
 half: how to make `.app` exist.
 
+## Inspecting a page's content pipe
+
+The active page's primary content pipe is available to MCP agents at `pages[pageId].pipe` when the
+page has one. Its read-only `stages` and `summary` properties expose the provider and transformer
+status; stage details can include progress and transfer rate. This path is separate from the
+page-authored `.app` model and does not require `aiVision.expose()`:
+
+```text
+call pages["<id>"].pipe
+call pages["<id>"].pipe.stages
+call pages["<id>"].pipe.summary
+```
+
+MCP can inspect those properties but cannot call pipe methods or subscribe with
+`onStatusChange()`. Use a script when live callback notifications are needed. See the
+[`io` API reference](../scripting/api/io.md#icontentpipe) for script subscriptions.
+
 ## What the other agent gets
 
 A published model appears at **`pages[pageId].editor.app`** — a live subtree of Persephone's own

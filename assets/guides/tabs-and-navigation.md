@@ -41,6 +41,17 @@ If a file has unsaved changes, you'll be prompted to save before closing.
 When you activate a tab that is outside the visible part of the tab bar, the tab bar scrolls just
 enough to bring it into view. Activating a tab that is already visible does not recenter the tab bar.
 
+### Slow content opens
+
+Some editors opt to show a page while its content is still restoring, so the tab is available
+before a slow source has finished loading. The shared page toolbar shows a pipe status badge; click
+it to inspect the provider and transformer stages. **Cancel** closes a page that is still loading,
+and **Retry** appears if loading fails. See [Page Area and Sidebar](./screens/sidebar.md#while-page-content-is-restoring).
+
+Scripts that need restored content can await
+[`page.ready`](./scripting/api/page.md#content-restore-and-pipe-status); the same page API
+describes `page.pipe` and its status.
+
 ### Moving Tabs
 
 - **Reorder** — drag and drop tabs within the tab bar to rearrange them

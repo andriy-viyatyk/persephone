@@ -59,6 +59,8 @@ export interface ILinkNav {
  * and must never be persisted as a page source link.
  */
 export interface ILinkPipeline {
+    /** Transient script-call request to await the opened page's current restore attempt. */
+    waitForPageReady?: boolean;
     /** Set to `true` to short-circuit the current channel's pipeline. */
     handled?: boolean;
     /** Temporal pipe instance (set by Layer 2, consumed by Layer 3). */
