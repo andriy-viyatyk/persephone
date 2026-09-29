@@ -15,6 +15,7 @@ import { ScriptPanelView } from "../text/ScriptPanelView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { TextFileModel } from "../text/TextEditorModel";
 import { spacing } from "../../uikit/tokens";
+import { BoardStatusBarItems } from "./BoardStatusBarItems";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -69,6 +70,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
     private readonly toolbar: BoardToolbarView;
     private readonly webview: BoardWebview;
     private readonly host: TextFileModel | null;
+    private readonly statusItems: BoardStatusBarItems;
     private scriptPanel: ScriptPanelView | undefined;
     private footer: EditorStatusBarView | undefined;
     private statusElement: HTMLSpanElement | undefined;
@@ -82,12 +84,20 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         }));
         this.model = props.model;
         this.host = props.model.contentHost as unknown as TextFileModel | null;
+        this.statusItems = new BoardStatusBarItems({
+            model: props.model,
+            onAction: (event, generation) => this.webview.sendStatusBarAction(event, generation),
+            onChange: () => this.footer?.update(this.footerProps(this.model.state.get().statusText ? this.statusElement ?? null : null)),
+        });
         this.webview = new BoardWebview({
             model: props.model,
             boardRoot: props.boardRoot,
             onToolbarSet: (controls, frameGeneration, warning) => this.toolbar.setToolbarControls(controls, frameGeneration, warning),
             onToolbarUpdate: (patches, warning) => this.toolbar.updateToolbarControls(patches, warning),
             onToolbarClear: (frameGeneration) => this.toolbar.clearToolbarControls(frameGeneration),
+            onStatusBarSet: (items, frameGeneration, warning) => this.statusItems.set(items, frameGeneration, warning),
+            onStatusBarUpdate: (patches, frameGeneration, warning) => this.statusItems.updateCatalog(patches, frameGeneration, warning),
+            onStatusBarClear: (frameGeneration) => this.statusItems.clear(frameGeneration),
         });
         this.toolbar = new BoardToolbarView({
             model: props.model,
@@ -117,6 +127,8 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         // the board's status text; a content host adds its script toggle and encoding.
         this.statusElement = createTextElement("", { color: "light", size: "md" });
         this.statusElement.style.padding = `0 ${spacing.sm}px`;
+        this.child(this.statusItems);
+        this.statusItems.mount();
         this.footer = this.child(new EditorStatusBarView(this.footerProps(null)));
         this.root.append(this.footer.root);
         this.footer.mount();
@@ -140,6 +152,8 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
             model: this.model,
             host: this.host,
             contributions,
+            boardStart: this.statusItems.hasStartItems ? this.statusItems.root : undefined,
+            boardEnd: this.statusItems.hasEndItems ? this.statusItems.endRoot : undefined,
         };
     }
 }

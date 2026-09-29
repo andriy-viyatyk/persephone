@@ -1157,6 +1157,11 @@ Three things a content-host board can do that a simple board cannot:
 
 **Footer status text:** any board can put its own text in its footer bar — call `persephone.setStatusText(text)` with any string, e.g. a **Todo board** (a published board that replaces Persephone's former built-in Todo editor — see [What's New](./whats-new.md)) showing its `"12 items"` count. Call it from the board's main view; pass `""` to clear it. A **simple** board has the footer too (without the script toggle and encoding). Guard the call with `persephone.setStatusText?.(…)` if the same board also targets older Persephone builds.
 
+**Footer status-bar items:** boards that require bridge version `1.27.0` can also use
+`persephone.statusBar.set()` to add transient text labels and buttons beside the footer indicators.
+Items can be updated by id, hidden for later reuse, and aligned to the end of the board contribution
+area. The legacy `setStatusText()` label remains in its existing position.
+
 **Page-toolbar text:** a trusted or bundled board's main view can call
 `persephone.toolbar.setText(text)` to replace the wide middle label in the page toolbar. This is
 separate from the content-host footer status: it works for plain and content-host boards and is

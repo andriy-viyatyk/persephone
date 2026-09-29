@@ -72,6 +72,34 @@ Host-frame request/reply calls and toolbar calls made before the document's `loa
 and sent in call order once that event fires. This lets top-level board code request host data while
 the document is still loading.
 
+## Host-rendered footer status bar
+
+`persephone.statusBar.set(items)` replaces up to eight footer items; `update(id, patch)` patches an
+existing item and logs unknown ids. Items are `{ id, type: "text" | "button", text, tone?, title?,
+align?, hidden? }`; buttons also accept `disabled?` and an optional toolbar-format `icon`. Tones are
+`normal`, `muted`, `error`, and `accent`; `align: "end"` places an item after the legacy footer
+status text. Start items follow declaration order and long text truncates with an ellipsis. `hidden`
+works on either type and in updates, keeping the item available for later updates without a DOM
+element or automation declaration.
+
+```js
+persephone.statusBar.set([
+  { id: "status", type: "text", text: "Resolving…", tone: "muted" },
+  { id: "retry", type: "button", text: "Retry", tone: "accent" },
+  { id: "network", type: "text", text: "SOCKS5", align: "end" },
+]);
+persephone.statusBar.update("status", { text: "Ready" });
+const off = persephone.statusBar.onAction(({ id }) => { if (id === "retry") retry(); });
+```
+
+Button actions are `{ id }`; call the returned `off()` function to unsubscribe. Each visible item
+has the host selector `data-name="board-status-bar-item-${id}"` in `BoardEditor.elements`.
+Descriptors are validated and capped at eight, and the catalog and declarations clear on reload,
+frame error/replacement, teardown, or loss of trust; declare them again in each live main frame.
+Boards using this API require `minBridgeVersion: "1.27.0"`. It coexists with
+`persephone.setStatusText(text)`, which remains the legacy label and is never cleared by
+`statusBar.set()`.
+
 ## Board page-toolbar text
 
 The main view may call `persephone.toolbar.setText(text)` to replace the wide middle toolbar label

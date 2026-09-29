@@ -156,6 +156,14 @@
 
         <!-- ════════════════════════ CAPABILITIES ════════════════════════ -->
         <section class="panel" data-panel="capabilities">
+            <h2><code>persephone.statusBar</code> — host-rendered footer items</h2>
+            <p class="muted">
+                This board declares a live text item, a Retry button, and an end-aligned network label
+                in Persephone's shared footer. Click Retry in the footer to send an action back to this
+                frame; the text item updates in place. The catalog is transient and is declared again
+                after a board reload. Boards using this API require bridge version <code>1.27.0</code>.
+            </p>
+
             <h2><code>demo.greet</code> — a board capability</h2>
             <p>
                 This board declares <code>demo.greet</code> in <code>board-manifest.json</code> at

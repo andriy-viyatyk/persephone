@@ -214,6 +214,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private readonly pendingSourceListeners = new Set<() => void>();
     private toolbarFrameGeneration: number | undefined;
     private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
+    private statusBarFrameGeneration: number | undefined;
+    private liveStatusBarElements: readonly BoardToolbarElementDeclaration[] = [];
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
      *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
@@ -625,12 +627,30 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.liveToolbarElements = [];
     }
 
+    setLiveStatusBarElementDeclarations(
+        frameGeneration: number,
+        declarations: readonly BoardToolbarElementDeclaration[],
+    ): void {
+        const boardRoot = this.state.get().boardRoot;
+        if (!this.isMain || !boardRoot || !isBoardPermitted(boardRoot)) return;
+        this.statusBarFrameGeneration = frameGeneration;
+        this.liveStatusBarElements = [...declarations];
+    }
+
+    clearStatusBarItemsForFrame(frameGeneration: number): void {
+        if (this.statusBarFrameGeneration !== frameGeneration) return;
+        this.statusBarFrameGeneration = undefined;
+        this.liveStatusBarElements = [];
+    }
+
     getLiveToolbarElementDeclarations(): readonly BoardToolbarElementDeclaration[] {
         const boardRoot = this.state.get().boardRoot;
         if (!this.page || this.page.mainEditorInstance !== this || !boardRoot
-            || !isBoardPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)
-            || this.toolbarFrameGeneration === undefined) return [];
-        return this.liveToolbarElements;
+            || !isBoardPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)) return [];
+        return [
+            ...(this.toolbarFrameGeneration === undefined ? [] : this.liveToolbarElements),
+            ...(this.statusBarFrameGeneration === undefined ? [] : this.liveStatusBarElements),
+        ];
     }
 
     /** Manifest editor kind for this board's trusted association. */
@@ -924,6 +944,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 st.toolbarTextFrameGeneration = undefined;
             });
         }
+        this.statusBarFrameGeneration = undefined;
+        this.liveStatusBarElements = [];
         // Same for a materialized content path carried in from a pre-fix persisted blob: the cache
         // file is gone (or stale), so force a re-resolve on the next `ensureContentPath()`.
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
@@ -1098,6 +1120,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.pendingSourceListeners.clear();
         this.toolbarFrameGeneration = undefined;
         this.liveToolbarElements = [];
+        this.statusBarFrameGeneration = undefined;
+        this.liveStatusBarElements = [];
         this.state.update((s) => {
             s.toolbarTextFrameGeneration = undefined;
             s.toolbarText = undefined;

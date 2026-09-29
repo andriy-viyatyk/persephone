@@ -5,6 +5,16 @@
         display: contents;
     }
 
+    [data-status-bar] [data-part="board-status-start-slot"] {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    [data-status-bar] [data-part="board-status-end-slot"] {
+        flex: 0 0 auto;
+    }
+
     [data-status-bar] [data-part="script-label"] {
         color: var(--color-text-light);
         font-size: var(--font-md, 13px);

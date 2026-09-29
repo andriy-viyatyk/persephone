@@ -26,6 +26,8 @@ export interface EditorStatusBarViewProps {
     /** Text host: adds the script toggle and the encoding label. */
     host?: TextFileModel | null;
     contributions?: SlotContent;
+    boardStart?: SlotContent;
+    boardEnd?: SlotContent;
 }
 
 interface ProviderMeta {
@@ -56,6 +58,12 @@ const PROVIDER_META: Record<string, ProviderMeta> = {
 export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
     private readonly toolbar: EditorToolbarView;
     private contributionsHost: HTMLSpanElement | undefined;
+    private contentHost: HTMLSpanElement | undefined;
+    private spacer: SpacerView | undefined;
+    private boardStartHost: HTMLSpanElement | undefined;
+    private boardEndHost: HTMLSpanElement | undefined;
+    private boardStartCleanup: (() => void) | undefined;
+    private boardEndCleanup: (() => void) | undefined;
     private badgeHost: HTMLSpanElement | undefined;
     private contributionCleanup: (() => void) | undefined;
     private currentPipe: IContentPipe | null | undefined;
@@ -75,6 +83,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         content.dataset.part = "footer-content";
         // Let EditorToolbarView own the toolbar slot transition.
         this.toolbar.update({ name: this.props.name, borderTop: true, children: content });
+        this.contentHost = content;
 
         const host = this.props.host;
         if (host?.script) {
@@ -96,6 +105,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         }
 
         const spacer = this.child(new SpacerView({}));
+        this.spacer = spacer;
         content.append(spacer.root);
         spacer.mount();
 
@@ -132,6 +142,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         }
 
         this.updateContributions(this.props.contributions);
+        this.updateBoardSlots(this.props.boardStart, this.props.boardEnd);
         this.own(() => {
             this.contributionCleanup?.();
             this.contributionCleanup = undefined;
@@ -140,16 +151,56 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
 
     protected onUpdate(props: EditorStatusBarViewProps): void {
         this.updateContributions(props.contributions);
+        this.updateBoardSlots(props.boardStart, props.boardEnd);
     }
 
     protected onDispose(): void {
         this.contributionsHost = undefined;
         this.badgeHost = undefined;
+        this.contentHost = undefined;
+        this.spacer = undefined;
+        this.boardStartHost = undefined;
+        this.boardEndHost = undefined;
     }
 
     private updateContributions(contributions: SlotContent | undefined): void {
         if (!this.contributionsHost) return;
         this.contributionCleanup = fillSlot(this.contributionsHost, contributions);
+    }
+
+    private updateBoardSlots(start: SlotContent | undefined, end: SlotContent | undefined): void {
+        const content = this.contentHost;
+        const spacer = this.spacer;
+        const contributions = this.contributionsHost;
+        if (!content || !spacer || !contributions) return;
+        const hasStart = start !== undefined && start !== null;
+        spacer.update({ size: hasStart ? 0 : undefined });
+        if (hasStart) {
+            if (!this.boardStartHost) {
+                this.boardStartHost = document.createElement("span");
+                this.boardStartHost.dataset.part = "board-status-start-slot";
+                content.insertBefore(this.boardStartHost, spacer.root);
+            }
+            this.boardStartCleanup = fillSlot(this.boardStartHost, start);
+        } else {
+            this.boardStartCleanup?.();
+            this.boardStartCleanup = undefined;
+            this.boardStartHost?.remove();
+            this.boardStartHost = undefined;
+        }
+        if (end !== undefined && end !== null) {
+            if (!this.boardEndHost) {
+                this.boardEndHost = document.createElement("span");
+                this.boardEndHost.dataset.part = "board-status-end-slot";
+                content.insertBefore(this.boardEndHost, contributions.nextSibling);
+            }
+            this.boardEndCleanup = fillSlot(this.boardEndHost, end);
+        } else {
+            this.boardEndCleanup?.();
+            this.boardEndCleanup = undefined;
+            this.boardEndHost?.remove();
+            this.boardEndHost = undefined;
+        }
     }
 
     private readonly renderProvider = (pipe: IContentPipe | null): void => {

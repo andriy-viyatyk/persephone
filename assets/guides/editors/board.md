@@ -27,7 +27,7 @@ the file and folder association details.
 +---------------------------------------------------------------------+
 | [Board]                                  [Script panel]             |  board content and optional script panel
 +---------------------------------------------------------------------+
-| [Board status footer]                                               |  board status footer
+| [script] [board start items] [spacer] [legacy text] [board end items] [pipe] [provider] [encoding] | Board footer status bar
 +---------------------------------------------------------------------+
 ```
 
@@ -35,6 +35,7 @@ the file and folder association details.
 
 - File Explorer → `board-toolbar-explorer`
 - Board controls → `board-toolbar-control-<id>`, one per control the open board declares, in the order it declared them; absent when the board declares none
+- Board status items → `board-status-bar-item-<id>`, one per visible item the trusted main frame declares; hidden items have no entry
 - Toolbar text → no entry: a label, not a control, and empty unless the open board fills it
 - … (Board actions) → `board-toolbar-more`
 - Reload board / Open board log / Board properties → no entry: they are items inside the … menu, not toolbar controls

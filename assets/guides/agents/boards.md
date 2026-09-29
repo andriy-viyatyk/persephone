@@ -127,6 +127,39 @@ separated from Persephone's
 own **…** menu, which contains Reload board, Open board log, and Board properties; it does not add a
 permission or trust surface.
 
+## Host-rendered footer status bar
+
+Boards with a footer can declare up to eight transient text items and buttons with
+`persephone.statusBar.set(items)`. A later `set()` replaces the complete ordered catalog;
+`update(id, patch)` changes one existing item and ignores unknown ids with a warning. Both types
+accept `hidden`, including in patches, so an item can be hidden and shown without leaving the
+catalog. Descriptors support `tone: "normal" | "muted" | "error" | "accent"`, optional `title`,
+and `align: "end"`; end items follow the legacy `persephone.setStatusText()` label. Start items
+stay in declaration order at the left. Long start text truncates with an ellipsis so it cannot push
+the end group or native footer indicators away. Buttons also accept `disabled` and the toolbar icon
+format (`{ name }`, `{ svg, preserveColors? }`, or `{ file, preserveColors? }`).
+
+```js
+persephone.statusBar.set([
+  { id: "status", type: "text", text: "Resolving…", tone: "muted", title: "Current task" },
+  { id: "retry", type: "button", text: "Retry", tone: "accent" },
+  { id: "network", type: "button", text: "SOCKS5", align: "end" },
+]);
+persephone.statusBar.update("status", { text: "Ready", tone: "normal" });
+persephone.statusBar.update("retry", { hidden: true });
+const off = persephone.statusBar.onAction(({ id }) => { if (id === "retry") retry(); });
+// off() stops action delivery
+```
+
+Invalid descriptors, ids, duplicate ids, malformed patches, and entries over the eight-item cap
+are ignored with warnings in the board log. Only visible, enabled buttons emit actions. Items and
+their `data-name="board-status-bar-item-${id}"` declarations appear in `BoardEditor.elements` for
+the trusted main frame, allowing host/window automation to address them. The catalog is transient:
+reload, replacement, error, teardown, or loss of trust clears items and declarations. A new frame
+must call `set()` again. Boards using this API declare `minBridgeVersion: "1.27.0"` in their
+manifest; this API has no older-host fallback. `persephone.setStatusText()` remains an independent
+legacy label and is not cleared by `statusBar.set()`.
+
 ## What a board is
 
 - **Frontend** — `index.html` + `app.js` (+ any CSS/assets). Owns *all* UI and *all* state;

@@ -54,6 +54,9 @@ import type {
     BoardToolbarControlType,
     BoardToolbarSetMsg,
     BoardToolbarUpdateMsg,
+    BoardStatusBarSetMsg,
+    BoardStatusBarUpdateMsg,
+    BoardStatusBarActionMsg,
     BoardFileIconsResultMsg,
     BoardNavigationReturnMsg,
     BoardNavigationReturnUrlResultMsg,
@@ -692,6 +695,7 @@ interface PersephoneToolbarActionEvent {
     readonly value?: boolean | string;
 }
 const toolbarActionCbs = new Set<(event: PersephoneToolbarActionEvent) => void>();
+const statusBarActionCbs = new Set<(event: { id: string }) => void>();
 
 function navigationReturnUrlRpc(): Promise<string> {
     return hostRequest({ __persephone: "navigation:createReturnUrl" }, "navigation:returnUrl", (reply) => {
@@ -711,6 +715,7 @@ function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) =
 }
 
 type ToolbarMessage = BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardToolbarTextMsg;
+type StatusBarMessage = BoardStatusBarSetMsg | BoardStatusBarUpdateMsg;
 
 function sendToolbarMessage(message: ToolbarMessage): void {
     try {
@@ -727,6 +732,17 @@ function postToolbarMessage(message: ToolbarMessage): void {
 function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void): () => void {
     toolbarActionCbs.add(callback);
     return () => toolbarActionCbs.delete(callback);
+}
+
+function postStatusBarMessage(message: StatusBarMessage): void {
+    postAfterDocumentLoad(() => {
+        try { window.parent.postMessage(message, hostPostTarget); } catch { /* parent gone */ }
+    });
+}
+
+function onStatusBarAction(callback: (event: { id: string }) => void): () => void {
+    statusBarActionCbs.add(callback);
+    return () => statusBarActionCbs.delete(callback);
 }
 
 type BoardIntentInit = IntentEnvelope;
@@ -1262,6 +1278,16 @@ onHostMessage((event) => {
     }
 });
 
+onHostMessage((event) => {
+    const data = event.data as BoardStatusBarActionMsg | undefined;
+    if (!data || data.__persephone !== "statusBar:action"
+        || typeof data.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(data.id)) return;
+    for (const callback of statusBarActionCbs) {
+        try { callback({ id: data.id }); }
+        catch (error: unknown) { console.error("persephone.statusBar.onAction callback error:", error); }
+    }
+});
+
 // Capability request delivered to an ALREADY-OPEN board page — renderer → board.
 // The initial request of a page arrives on `BoardPortInitMsg` instead, because the page is
 // created for it; every later request reuses this frame and arrives here. Without this
@@ -1522,6 +1548,7 @@ function createHandle(
     // 1.17.0 adds runtime source-open events through `source.onOpen()`.
     // 1.18.0 adds persephone.icons.forFiles() (US-1533).
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
+    // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
     version: BOARD_BRIDGE_VERSION,
 
     icons: {
@@ -1586,6 +1613,16 @@ function createHandle(
             });
         },
         onAction: onToolbarAction,
+    },
+
+    statusBar: {
+        set(items: BoardStatusBarSetMsg["items"]): void {
+            postStatusBarMessage({ __persephone: "board:setStatusBarItems", items: Array.isArray(items) ? items : [] });
+        },
+        update(id: string, patch: Omit<BoardStatusBarUpdateMsg["items"][number], "id">): void {
+            postStatusBarMessage({ __persephone: "board:updateStatusBarItems", items: [{ id, ...patch }] });
+        },
+        onAction: onStatusBarAction,
     },
 
     /** Set the text shown in the board's footer status area — the same footer that shows the

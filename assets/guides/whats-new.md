@@ -31,6 +31,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board bridge 1.26.0 adds provider status reporting:** a board module service's content provider
   can implement `status(config, emit)` to report transient state, text, detail, byte progress, and
   transfer rate while the provider is in use. See [Boards — service-backed content providers](./agents/boards.md#service-backed-content-providers).
+- **Boards can add items to the shared editor status bar:** bridge 1.27.0 adds `persephone.statusBar`
+  for transient text labels and buttons, with updates and button actions. Items can be hidden or
+  aligned to the end of the board's footer contribution area. See [Boards](./boards.md).
 - **Scripts and trusted boards can route HTTP requests through Tor or a proxy:** `app.fetch(url, { tor: true })` uses Persephone's Tor daemon, while `{ proxy: "socks5://host:port" }` or a bare `host:port` selects a SOCKS5 proxy. Trusted boards can use `persephone.fetch(url, init)` for remote requests from their frame. Routed calls never fall back to direct connections; SOCKS5 resolves host names remotely, including `.onion` addresses through Tor. See the [`app.fetch` API](./scripting/api/app.md#fetchurl-options) and [Boards](./boards.md#offline-first-and-the-csp).
 - **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns
   the values Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`,

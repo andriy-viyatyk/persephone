@@ -32,6 +32,8 @@ import type {
     BoardSettingsResultMsg,
     BoardToolbarControlEventMsg,
     BoardToolbarControlPatch,
+    BoardStatusBarActionMsg,
+    BoardStatusBarPatch,
     BoardToHostMsg,
     BoardHostFrameMsg,
     BoardVarResultMsg,
@@ -79,6 +81,7 @@ import {
     normalizeToolbarControlSet,
     type ToolbarAction,
 } from "./BoardToolbarControls";
+import { normalizeBoardStatusBarPatches, normalizeBoardStatusBarSet } from "./BoardStatusBarItems";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -89,6 +92,9 @@ export interface BoardWebviewProps {
     onToolbarSet?: (controls: readonly import("../../../ipc/board-bridge-channels").BoardToolbarControlDescriptor[], frameGeneration: number, warning: (message: string) => void) => void;
     onToolbarUpdate?: (patches: readonly BoardToolbarControlPatch[], warning: (message: string) => void) => void;
     onToolbarClear?: (frameGeneration: number) => void;
+    onStatusBarSet?: (items: readonly import("../../../ipc/board-bridge-channels").BoardStatusBarItem[], frameGeneration: number, warning: (message: string) => void) => void;
+    onStatusBarUpdate?: (patches: readonly BoardStatusBarPatch[], frameGeneration: number, warning: (message: string) => void) => void;
+    onStatusBarClear?: (frameGeneration: number) => void;
 }
 
 type BoardToHostType = BoardToHostMsg["__persephone"];
@@ -126,6 +132,8 @@ const BOARD_MESSAGE_GATES = {
         kind: "mainTrusted",
         rejectionLog: "Ignored board toolbar text from a non-main or unavailable frame.",
     },
+    statusBarItems: { kind: "mainTrusted", rejectionLog: "Ignored board status-bar items from a non-main or unavailable frame." },
+    statusBarUpdate: { kind: "mainTrusted", rejectionLog: "Ignored board status-bar update from a non-main or unavailable frame." },
     aiVision: {
         kind: "mainTrusted",
         rejectionLog: "Ignored invalid or untrusted AiVision registration.",
@@ -241,6 +249,20 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             handle: (message) => {
                 const patches = normalizeToolbarControlPatches(message.controls, (warning) => this.appendLog("warn", warning));
                 this.props.onToolbarUpdate?.(patches, (warning) => this.appendLog("warn", warning));
+            },
+        },
+        "board:setStatusBarItems": {
+            gate: BOARD_MESSAGE_GATES.statusBarItems,
+            handle: (message, current) => {
+                const items = normalizeBoardStatusBarSet(message.items, (warning) => this.appendLog("warn", warning));
+                this.props.onStatusBarSet?.(items, current.generation, (warning) => this.appendLog("warn", warning));
+            },
+        },
+        "board:updateStatusBarItems": {
+            gate: BOARD_MESSAGE_GATES.statusBarUpdate,
+            handle: (message, current) => {
+                const patches = normalizeBoardStatusBarPatches(message.items, (warning) => this.appendLog("warn", warning));
+                this.props.onStatusBarUpdate?.(patches, current.generation, (warning) => this.appendLog("warn", warning));
             },
         },
         "board:cycleTheme": { handle: (message) => cycleAppTheme(message.direction === 1 ? 1 : -1) },
@@ -373,6 +395,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.live = true;
         this.ownSubscription(subscribeBoardPermission(() => {
             if (!isBoardPermitted(this.props.boardRoot)) {
+                this.props.model.clearStatusBarItemsForFrame(this.generation);
+                this.props.onStatusBarClear?.(this.generation);
                 this.fetchBridge.dispose();
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
                 this.unregisterCapabilityFrame();
@@ -391,8 +415,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.live = false;
         const retiredGeneration = this.generation;
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
+        this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
+        this.props.onStatusBarClear?.(retiredGeneration);
         this.generation++;
         this.fetchBridge.dispose();
         this.abortPendingContentOpen();
@@ -618,8 +644,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !host || !frame) return;
         const retiredGeneration = this.generation;
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
+        this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
+        this.props.onStatusBarClear?.(retiredGeneration);
         // The reloaded frame restarts its request ids, so its old fetches must not survive.
         this.fetchBridge.dispose();
         this.abortPendingContentOpen();
@@ -734,6 +762,17 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     };
 
     /** Deliver one catalog interaction to the current main board frame. */
+    public sendStatusBarAction(event: { id: string }, generation: number): void {
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        const model = this.props.model;
+        if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
+            || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
+        const message: BoardStatusBarActionMsg = { __persephone: "statusBar:action", id: event.id };
+        try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
+    }
+
     public sendToolbarControl(event: ToolbarAction): void {
         const host = this.host;
         const frame = this.iframe;
@@ -961,6 +1000,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private readonly handleFrameError = (): void => {
+        this.props.model.clearStatusBarItemsForFrame(this.generation);
+        this.props.onStatusBarClear?.(this.generation);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(this.generation);
         this.rejectPendingCapability("crashed", "The board frame failed to load.");
         const pageId = this.props.model.page?.id;

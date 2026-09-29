@@ -30,6 +30,19 @@
     // onRequest() delivers an already-active intent immediately. Keep the explicit get() path
     // below as a self-documenting example for a page opened FOR a request, and guard by request id
     // so the two paths cannot settle the same request twice.
+    // Host-rendered footer items belong to the live main frame and must be
+    // declared again whenever this board is loaded.
+    P.statusBar.set([
+        { id: "demo-status", type: "text", text: "Demo ready", tone: "muted", title: "Status-bar text item" },
+        { id: "demo-retry", type: "button", text: "Retry", tone: "accent", title: "Update the demo status" },
+        { id: "demo-network", type: "text", text: "Demo board", align: "end" },
+    ]);
+    P.statusBar.onAction(({ id }) => {
+        if (id === "demo-retry") {
+            P.statusBar.update("demo-status", { text: "Action received", tone: "normal" });
+        }
+    });
+
     const handledIntentIds = new Set();
     function handleGreeting(request) {
         if (!request || handledIntentIds.has(request.requestId)) return;

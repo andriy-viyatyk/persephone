@@ -253,6 +253,15 @@ guide view expose the following stable targets:
 | Guide page / breadcrumbs / body | `[data-name="about-guide-page"]`, `[data-name="about-guide-breadcrumbs"]`, `[data-name="about-guide-body"]` |
 | Back / Open in tab | `[data-name="about-guide-back"]`, `[data-name="about-guide-open-in-tab"]` |
 
+### Board footer item selectors
+
+Board-declared status-bar items are an editor-internal exception to the general rule against
+listing every editor sub-element: agent-authored buttons and labels are explicit host automation
+targets. Each visible item publishes the stable selector
+`[data-name="board-status-bar-item-<id>"]` in `BoardEditor.elements` while its trusted main frame
+is live. The id is validated against the board status-bar id format. Hidden catalog entries have
+no DOM node and no declaration; declarations are retired with the frame generation.
+
 ### Inspectable panel roots
 
 Panel roots that are useful inspection targets expose the stable selector

@@ -409,6 +409,23 @@ export interface BoardSettingsRequestMsg {
     settingsMethod: "get";
     settingsArgs: unknown[];
 }
+
+export type BoardStatusBarTone = "normal" | "muted" | "error" | "accent";
+export interface BoardStatusBarTextItem {
+    id: string; type: "text"; text: string; tone?: BoardStatusBarTone; title?: string;
+    align?: "end"; hidden?: boolean;
+}
+export interface BoardStatusBarButtonItem {
+    id: string; type: "button"; text: string; tone?: BoardStatusBarTone; title?: string;
+    disabled?: boolean; icon?: BoardToolbarIcon; align?: "end"; hidden?: boolean;
+}
+export type BoardStatusBarItem = BoardStatusBarTextItem | BoardStatusBarButtonItem;
+export type BoardStatusBarPatch = { id: string; type?: "text" | "button"; text?: string;
+    tone?: BoardStatusBarTone; title?: string; disabled?: boolean; icon?: BoardToolbarIcon;
+    align?: "end"; hidden?: boolean };
+export interface BoardStatusBarSetMsg { __persephone: "board:setStatusBarItems"; items: readonly BoardStatusBarItem[] }
+export interface BoardStatusBarUpdateMsg { __persephone: "board:updateStatusBarItems"; items: readonly BoardStatusBarPatch[] }
+export interface BoardStatusBarActionMsg { __persephone: "statusBar:action"; id: string }
 export interface BoardFetchInit {
     method?: string;
     headers?: Record<string, string>;
@@ -446,6 +463,8 @@ export type BoardToHostMsg =
     | BoardToolbarTextMsg
     | BoardToolbarSetMsg
     | BoardToolbarUpdateMsg
+    | BoardStatusBarSetMsg
+    | BoardStatusBarUpdateMsg
     | BoardCycleThemeMsg
     | BoardVarRequestMsg
     | BoardSettingsRequestMsg
@@ -688,7 +707,8 @@ export type BoardHostFrameMsg =
     | BoardNavigationCreateReturnUrlMsg
     | BoardNavigationReturnUrlResultMsg
     | BoardNavigationReturnMsg
-    | BoardToolbarControlEventMsg;
+    | BoardToolbarControlEventMsg
+    | BoardStatusBarActionMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {
