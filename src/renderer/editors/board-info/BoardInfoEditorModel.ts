@@ -322,6 +322,12 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     override findCompatibleEditors(): string[] {
         const source = this.currentSource();
         if (source.kind === "folder") return getFolderEditorsForFolder(source.path);
+        // A standalone simple board (no host, no file, no folder) has no peer editor to switch
+        // to — the board itself shows no switch (BoardEditorModel returns []), so neither does
+        // its properties page. The title fallback would otherwise offer a dead `Text | +` pair;
+        // the return path is the page's "Open board" button.
+        const state = this.state.get();
+        if (!this._host && !state.filePath) return [];
         const builtin = editorRegistry.resolveId(source.path) ?? "monaco";
         return [builtin, BOARD_INFO_EDITOR_ID];
     }
