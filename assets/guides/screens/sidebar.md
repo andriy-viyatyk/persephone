@@ -34,10 +34,10 @@ layout anchors.
 - Sidebar stack → `secondary-views-stack`
 - Sidebar splitter → `secondary-views-splitter`
 
-- Page pipe status â†’ `page-pipe-status` (in the shared page toolbar, before the editor switch)
-- Loading page shell â†’ `page-loading-shell` (in the page area during deferred restore)
-- Cancel restore â†’ `page-loading-cancel` (in the loading shell)
-- Retry restore â†’ `page-loading-retry` (in the error shell)
+- Page pipe status → `page-pipe-status` (in the shared page toolbar, before the editor switch)
+- Loading page shell → `page-loading-shell` (in the page area during deferred restore)
+- Close loading page → `page-loading-close` (close icon on the loading shell tile)
+- Retry restore → `page-loading-retry` (in the error shell)
 
 ### When the Explorer sidebar is open
 
@@ -167,8 +167,8 @@ and has items.
 ### While page content is restoring
 
 Some editors opt to show the page before source restoration finishes. The page area then shows a
-loading shell with the current provider and transformer stages. **Cancel** closes the page; if
-loading fails, the shell shows the error and offers **Retry**. This appears in the same page area
+loading tile with the current provider and transformer stages. The close icon in its top-right
+corner closes the page; if loading fails, the tile shows the error and offers **Retry**. This appears in the same page area
 as the editor and its controls. Scripts can await `page.ready` before reading restored content; see
 the [Page API](../scripting/api/page.md#content-restore-and-pipe-status):
 
@@ -208,7 +208,7 @@ Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolb
 | Active page editor container | The editor body for the active page | `[data-name="page-editor"]` |
 | Page pipe status | Shows source loading, completion, or error; opens stage details when clicked | `[data-name="page-pipe-status"]` |
 | Loading page shell | Shown while an opted-in editor restores content | `[data-name="page-loading-shell"]` |
-| Cancel page restore | Closes the page while it is loading | `[data-name="page-loading-cancel"]` |
+| Close loading page | Close icon on the loading tile; closes the page while it is loading or after an error | `[data-name="page-loading-close"]` |
 | Retry page restore | Starts another restore attempt after an error | `[data-name="page-loading-retry"]` |
 | Empty page | The page state before content is opened | `[data-name="page-empty"]` |
 | Sidebar panel container | Present while a page has panels open | `[data-name="secondary-views-container"]` |

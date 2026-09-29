@@ -22,7 +22,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Live content-pipe status and faster page opens:** a page toolbar badge shows source loading,
   progress, completion, or errors and opens provider/transformer details. Editors that opt into
-  deferred restore show a loading shell with **Cancel** and **Retry**. Scripts can observe
+  deferred restore show a loading tile with a close button and **Retry**. Scripts can observe
   `pipe.stages`, `pipe.summary`, and `pipe.onStatusChange()`, inspect the active `page.pipe`, and
   await `page.ready` before using restored content. MCP can inspect `pages[pageId].pipe` stages and
   summary. See the [Page API](./scripting/api/page.md#content-restore-and-pipe-status),
@@ -151,6 +151,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Long source links are easier to read:** the loading tile shown while a page's content arrives is
+  a bordered panel at most 60% of the page wide, with long names (such as a magnet link) wrapped and
+  selectable, and a close icon in its corner instead of **Cancel**. The Video Player's URL field
+  stays one line and expands over the player only while you edit it.
 - **Video Player recovers when a board content provider becomes available:** a failed video page
   retries playback automatically after the provider is registered, and reopening a failed source
   link retries in the existing page.
@@ -213,6 +217,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **No stray editor switches on a board opened from a magnet link:** a Torrent Viewer page opened
+  by a magnet link no longer offers **Text Editor** and a raw `board-editor:` switch — the link is
+  no longer mistaken for a local file.
 - **Board Info pages survive a restart:** a page opened with **Board properties** from a board is
   no longer lost when Persephone restarts or its window reloads. It comes back showing the same
   board, and when it was opened from a board on a file, **Open board** returns to that board with

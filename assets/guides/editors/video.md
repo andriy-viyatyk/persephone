@@ -16,6 +16,10 @@ Open `.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u`, `.mp3`, `.wav`, `
 from the Archive panel. It is also available from the **+** menu, where a path, HTTPS URL, HLS
 stream, or cURL/fetch command can be submitted. Agents open a file with `app.pages.openFile(path)`.
 
+The URL field stays one line, ending in an ellipsis for a long link such as a `torrent://` address.
+Click into it and it expands downward over the player to show the whole value (scrolling when very
+long); it collapses again when it loses focus. Press **Enter** to play.
+
 ## Layout
 
 ```

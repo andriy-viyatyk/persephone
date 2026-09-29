@@ -152,7 +152,7 @@ descriptors rather than restored sidebar state.
   completes. Await it before work that depends on restored content. It rejects on restore failure
   or cancellation. Editors that do not opt in preserve restore-before-add behavior.
 - **Loading UI:** while `restoreStatus` is `loading`, `PageContentView` shows a loading shell with
-  pipe stage status. Cancel closes the page and cancels its restore; an error replaces the loading
+  pipe stage status. The tile's close icon closes the page and cancels its restore; an error replaces the loading
   message with the failure and offers Retry, which starts a new restore attempt. The editor is
   shown after restore succeeds.
 - **Pipe status badge:** while a pipe reports connecting/active work, the page toolbar shows its

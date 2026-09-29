@@ -4,6 +4,7 @@
         flex-direction: column;
         gap: var(--gap-sm, 6px);
         min-width: var(--size-pipe-stage-list-min-width, 260px);
+        max-width: var(--size-pipe-stage-list-max-width, min(480px, 80vw));
         padding: var(--space-sm, 8px);
         color: var(--color-text-default, currentColor);
         font-size: var(--font-sm, 12px);
@@ -11,6 +12,7 @@
 
     [data-type="pipe-stage-list"][data-density="expanded"] {
         gap: var(--gap-md, 12px);
+        max-width: none;
         padding: var(--space-md, 12px);
     }
 
@@ -32,6 +34,20 @@
         justify-content: space-between;
         gap: var(--gap-md, 12px);
         font-weight: 600;
+    }
+
+    [data-type="pipe-stage"] [data-part="display-name"],
+    [data-type="pipe-stage"] [data-part="text"],
+    [data-type="pipe-stage"] [data-part="detail"] {
+        min-width: 0;
+        max-height: 6lh;
+        overflow-y: auto;
+        overflow-wrap: anywhere;
+        word-break: break-all;
+    }
+
+    [data-type="pipe-stage"] [data-part="role"] {
+        flex-shrink: 0;
     }
 
     [data-type="pipe-stage"] [data-part="role"],

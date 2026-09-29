@@ -29,6 +29,8 @@ export interface PageToolbarViewProps {
     noSpacer?: boolean;
     borderTop?: boolean;
     borderBottom?: boolean;
+    /** See `EditorToolbarViewProps.overflowVisible`. */
+    overflowVisible?: boolean;
 }
 
 export interface SwitchWidgetViewProps {
@@ -474,5 +476,6 @@ function toolbarProps(props: PageToolbarViewProps): ConstructorParameters<typeof
         name: props.name,
         borderTop: props.borderTop,
         borderBottom: props.borderBottom,
+        overflowVisible: props.overflowVisible,
     };
 }

@@ -623,7 +623,7 @@ a manifest that only declares the new folder axis does not affect ordinary folde
 
 ### Non-Local Sources
 
-A simple board reads an ordinary path, but Persephone opens plenty of things that are not one — an entry inside an archive (`archive.zip!doc.pdf`), an `http(s)` URL, a pipe with transformers. Two mechanisms let a simple board serve those without learning anything about them.
+A simple board reads an ordinary path, but Persephone opens plenty of things that are not one — an entry inside an archive (`archive.zip!doc.pdf`), an `http(s)` URL, a pipe with transformers. Locality is `isPlainLocalPath()` (`core/utils/file-path.ts`): any URL scheme of two or more characters is non-local, including slash-less ones such as `magnet:` and `data:`, while a one-letter prefix (`C:\…`) is a drive (US-1564 — before that, a `magnet:` source counted as a local path and a board opened from one offered Text Editor switches). Two mechanisms let a simple board serve those without learning anything about them.
 
 **The declarative gate — `editorSources`.** `resolveEditorIdForFile` refuses to offer a non-local source to a *simple* board unless its manifest says `editorSources: "any"`; a content-host board is always eligible (Persephone owns its content either way). The gate is **default-closed**, and deliberately so: a board that reads its file with `persephone.readFile(path)` — the common shape — would break on a source that has no readable path, and the failure would be invisible to an author who only ever tests local files. Opting in is one manifest field, and the decision is made *before* any board code runs, which is why it has to be declarative rather than something a board could opt into by calling an API.
 

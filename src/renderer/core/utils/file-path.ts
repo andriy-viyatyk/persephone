@@ -119,15 +119,15 @@ export function isArchiveFile(filePath: string): boolean {
 }
 
 /**
- * True for a plain local filesystem path — no `scheme://`, no `data:`, no
- * archive `!entry` bang. Windows drive paths (`C:\…`, `C:/…`) qualify (no `://`).
+ * True for a plain local filesystem path — no URL scheme (`https://`, `mneme://`, and also
+ * slash-less ones such as `magnet:?xt=…` or `data:`), no archive `!entry` bang. Windows drive
+ * paths (`C:\…`, `C:/…`) qualify: a one-letter prefix is a drive, never a scheme.
  * Gates custom-editor-board resolution / switch (a board edits a real local file
  * only — https / archive / virtual schemes are excluded).
  */
 export function isPlainLocalPath(p: string): boolean {
     if (!p) return false;
-    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(p)) return false; // http(s)://, mneme://, tree-category://, …
-    if (p.startsWith("data:")) return false;
+    if (/^[a-z][a-z0-9+.-]+:/i.test(p)) return false;    // http(s)://, mneme://, magnet:, data:, …
     if (p.includes("!")) return false;                    // archive entry (archivePath!entryPath)
     return true;
 }

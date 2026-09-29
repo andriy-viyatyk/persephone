@@ -6,6 +6,9 @@ export interface EditorToolbarViewProps {
     name?: string;
     borderTop?: boolean;
     borderBottom?: boolean;
+    /** Let content escape the toolbar box, e.g. an input that expands over the editor on focus.
+     *  Default: false (overflow is clipped). */
+    overflowVisible?: boolean;
     children?: SlotContent;
 }
 
@@ -15,7 +18,7 @@ function panelProps(props: EditorToolbarViewProps) {
         direction: "row" as const,
         align: "center" as const,
         gap: "sm" as const,
-        overflow: "hidden" as const,
+        overflow: props.overflowVisible ? "visible" as const : "hidden" as const,
         background: "dark" as const,
         paddingX: "sm" as const,
         paddingY: "xs" as const,

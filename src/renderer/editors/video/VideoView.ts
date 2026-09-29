@@ -65,7 +65,18 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             minWidth: 0,
         });
         this.urlInput = this.child(new TextareaView(this.urlInputProps(state.inputText)));
-        this.toolbarChildren.append(this.urlInput.root);
+        // A fixed one-line slot keeps the toolbar height; the input is positioned inside it and,
+        // when focused, grows downward over the player instead of pushing the layout.
+        const urlSlot = document.createElement("div");
+        urlSlot.dataset.part = "video-url-slot";
+        urlSlot.append(this.urlInput.root);
+        this.listen(this.urlInput.root, "focus", () => { urlSlot.dataset.expanded = "true"; });
+        this.listen(this.urlInput.root, "blur", () => {
+            delete urlSlot.dataset.expanded;
+            this.urlInput.root.scrollTop = 0;
+            this.urlInput.root.scrollLeft = 0;
+        });
+        this.toolbarChildren.append(urlSlot);
 
         this.pageToolbar = this.child(new PageToolbarView(this.pageToolbarProps()));
         this.playerArea = createPanelElement({
@@ -156,6 +167,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             model: this.model,
             noSpacer: true,
             borderBottom: true,
+            overflowVisible: true,
             children: this.toolbarChildren,
         };
     }
@@ -174,7 +186,6 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
                 }
             },
             minHeight: 28,
-            maxHeight: 72,
             size: "sm" as const,
         };
     }

@@ -209,7 +209,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
         this.clearLoadingShell();
         this.loadingShell = new PageLoadingShellView({
             page,
-            onCancel: () => { void page.close(); },
+            onClose: () => { void page.close(); },
             onRetry: () => {
                 const retry = page.getTransient<() => Promise<void>>("retryRestore");
                 void (retry ? retry() : pagesModel.lifecycle.retryPageRestore(page));

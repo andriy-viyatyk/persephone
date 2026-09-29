@@ -171,7 +171,9 @@ Choose the page chrome before writing the view:
 - **`PageToolbarView`** — use for a non-text editor that needs the standard page toolbar but does not
   need text-host actions, script panel, footer, or editor overlay. The Image editor is the native
   toolbar example. The page toolbar's native view is the canonical implementation for converted
-  non-text editors.
+  non-text editors. The toolbar clips its content; pass `overflowVisible: true` only when a toolbar
+  control deliberately draws over the editor body, as the Video Player's URL input does while
+  focused (US-1564).
 - **`TextChromeView`** — use for a text-host editor. It supplies the native host-aware toolbar,
   script panel, content-host footer, focus/key handling, and overlay slot. The editor's `View`
   composes it directly; the body is a native slot in its `children` slot.

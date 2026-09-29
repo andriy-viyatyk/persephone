@@ -1,16 +1,53 @@
 @layer app {
     [data-type="page-loading-shell"] {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        gap: var(--gap-md, 12px);
+        flex: 1 1 auto;
+        align-self: stretch;
+        box-sizing: border-box;
+        width: 100%;
         min-width: 0;
         height: 100%;
         padding: var(--space-lg, 16px);
         overflow: auto;
         color: var(--color-text-default, currentColor);
         background: var(--color-bg-default, transparent);
+    }
+
+    [data-type="page-loading-shell"] [data-part="tile"] {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--gap-md, 12px);
+        box-sizing: border-box;
+        min-width: 0;
+        max-width: 60%;
+        margin: auto;
+        padding: var(--space-lg, 16px);
+        border: 1px solid var(--color-border-default, currentColor);
+        border-radius: var(--radius-md, 4px);
+        background: var(--color-bg-light, transparent);
+        position: relative;
+        user-select: text;
+    }
+
+    [data-type="page-loading-shell"] [data-part="tile"] > [data-part="close"] {
+        position: absolute;
+        top: var(--space-xs, 4px);
+        right: var(--space-xs, 4px);
+    }
+
+    [data-type="page-loading-shell"] [data-part="message"] {
+        margin: 0;
+        padding-right: var(--space-xl, 24px);
+    }
+
+    /* The tile already pads its content; the list's own padding would double it. */
+    [data-type="page-loading-shell"] [data-part="tile"] > [data-type="pipe-stage-list"] {
+        align-self: stretch;
+        min-width: 0;
+        padding: 0;
     }
 
     [data-type="page-loading-shell"][data-state="error"] [data-part="message"] {
@@ -22,7 +59,7 @@
         gap: var(--gap-sm, 6px);
     }
 
-    [data-type="page-loading-shell"] button {
+    [data-type="page-loading-shell"] [data-part="actions"] button {
         min-height: var(--size-control-md, 28px);
         padding: 0 var(--space-md, 12px);
         border: 1px solid var(--color-border-default, currentColor);
@@ -33,7 +70,7 @@
         cursor: pointer;
     }
 
-    [data-type="page-loading-shell"] button:hover {
+    [data-type="page-loading-shell"] [data-part="actions"] button:hover {
         background: var(--color-bg-overlay-hover, transparent);
     }
 
