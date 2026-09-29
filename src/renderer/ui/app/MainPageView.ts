@@ -142,9 +142,11 @@ export class MainPageView extends VanillaView<object> {
      * subscription without leaking it, so keeping the glyph current is the owner's job —
      * this view rebuilds it. Without this, switching theme left the app-menu glyph on the previous
      * background until something else rebuilt the header (EPIC-064 E6-6 concern 1).
+     * Called once from `onMount`, so the binding lives as long as the view and the caller may
+     * discard the returned handle.
      */
-    private bindMenuGlyphToTheme(): void {
-        this.bind(themeState, (state) => state.isDark, () => {
+    private bindMenuGlyphToTheme(): () => void {
+        return this.bind(themeState, (state) => state.isDark, () => {
             const button = this.menuButton;
             if (!button) return;
             button.replaceChildren(createIconElement("persephone"));

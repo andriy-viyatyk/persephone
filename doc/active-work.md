@@ -15,13 +15,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Planned
 
-- *(no epic)*
-  - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
-    — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
-    residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,
-    two with measured baselines — clause 3's 77-site sweep showing "not retained" is the wrong
-    detector, and clause 5's 0-vs-95 precision measurement — so it gets cheaper to land as the
-    evidence accumulates, but nothing depends on it.
+*(no planned work)*
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 

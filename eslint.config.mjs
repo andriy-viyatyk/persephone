@@ -97,6 +97,82 @@ const vanillaViewPlugin = {
                 });
             },
         },
+        // ESLint has no type information here: recognize same-file direct VanillaView subclasses
+        // and the codebase's View/ViewImpl base-name convention as likely view classes. Limit
+        // reports to named declarations; anonymous class expressions are used as constructor
+        // adapters (for example Browser's PageSlot factory), not declared view hierarchy types.
+        "no-indirect-view-subclass": {
+            meta: {
+                type: "problem",
+                schema: [],
+                messages: {
+                    indirect: "{{className}} extends {{baseName}}; VanillaView subclasses must extend VanillaView directly.",
+                },
+            },
+            create(context) {
+                return {
+                    "Program:exit"(program) {
+                        const classes = [];
+                        visitAllNodes(program, (node) => {
+                            if (isClassNode(node)) classes.push(node);
+                        });
+
+                        const directViewBases = new Set();
+                        for (const node of classes) {
+                            if (node.superClass?.type !== "Identifier" || node.superClass.name !== "VanillaView") continue;
+                            const name = node.id?.name
+                                ?? (node.parent?.type === "VariableDeclarator" && node.parent.id.type === "Identifier"
+                                    ? node.parent.id.name
+                                    : undefined);
+                            if (name) directViewBases.add(name);
+                        }
+
+                        for (const node of classes) {
+                            if (node.type !== "ClassDeclaration" || !node.id) continue;
+                            const baseName = node.superClass?.type === "Identifier" ? node.superClass.name : undefined;
+                            if (!baseName || baseName === "VanillaView") continue;
+                            if (!directViewBases.has(baseName) && !/(?:View|ViewImpl)$/.test(baseName)) continue;
+
+                            const className = node.id?.name
+                                ?? (node.parent?.type === "VariableDeclarator" && node.parent.id.type === "Identifier"
+                                    ? node.parent.id.name
+                                    : "Anonymous class");
+                            context.report({
+                                node: node.superClass,
+                                messageId: "indirect",
+                                data: { className, baseName },
+                            });
+                        }
+                    },
+                };
+            },
+        },
+        "bind-handle-outside-mount": {
+            meta: {
+                type: "problem",
+                schema: [],
+                messages: {
+                    discarded: "Retain this bind() handle and release it before rebinding in a repeatable method.",
+                },
+            },
+            create(context) {
+                return classVisitors((classNode) => {
+                    for (const member of classNode.body.body) {
+                        const methodName = memberNameFromDefinition(member);
+                        if (!methodName || methodName === "constructor" || methodName === "onMount") continue;
+                        const body = functionBody(member);
+                        if (!body) continue;
+
+                        traverseAll(body, (node) => {
+                            if (!isThisCall(node, "bind")) return;
+                            if (node.parent?.type === "ExpressionStatement" && node.parent.expression === node) {
+                                context.report({ node, messageId: "discarded" });
+                            }
+                        });
+                    }
+                });
+            },
+        },
     },
 };
 
@@ -168,6 +244,19 @@ function traverseAll(node, visit) {
             });
         } else if (value && typeof value.type === "string") {
             traverseAll(value, visit);
+        }
+    }
+}
+
+function visitAllNodes(node, visit) {
+    if (!node || typeof node.type !== "string") return;
+    visit(node);
+    for (const [key, value] of Object.entries(node)) {
+        if (key === "parent" || key === "tokens" || key === "comments" || key === "range" || key === "loc") continue;
+        if (Array.isArray(value)) {
+            value.forEach((child) => visitAllNodes(child, visit));
+        } else if (value && typeof value.type === "string") {
+            visitAllNodes(value, visit);
         }
     }
 }
@@ -491,6 +580,8 @@ export default tseslint.config(
             "vanilla-view/no-constructor-measurement": "error",
             "vanilla-view/no-constructor-uncreated-field": "error",
             "vanilla-view/no-child-claim-twice": "error",
+            "vanilla-view/no-indirect-view-subclass": "error",
+            "vanilla-view/bind-handle-outside-mount": "error",
         },
     },
 

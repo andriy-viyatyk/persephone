@@ -43,6 +43,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private closeButton: IconButtonView | undefined;
 
     private readonly branchViews: IOwnedView[] = [];
+    private readonly modelBindings: (() => void)[] = [];
     private lastScriptState: ScriptPanelState | undefined;
 
     public constructor(props: ScriptPanelViewProps) {
@@ -68,6 +69,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
         if (props.model === this.model) return;
 
         this.releaseOpenBranch();
+        this.releaseModelBindings();
         this.model = props.model;
         this.scriptModel = props.model.script;
         this.lastScriptState = undefined;
@@ -75,6 +77,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     }
 
     protected onDispose(): void {
+        this.releaseModelBindings();
         this.branchRoot?.remove();
         this.scriptModel.handleEditorWillUnmount();
         this.branchRoot = undefined;
@@ -93,7 +96,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     }
 
     private bindModel(model: TextFileModel): void {
-        this.bind(
+        this.modelBindings.push(this.bind(
             model.script.state,
             (state) => ({
                 content: state.content,
@@ -106,14 +109,18 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             () => {
                 if (this.model === model) this.syncScriptState();
             },
-        );
-        this.bind(
+        ));
+        this.modelBindings.push(this.bind(
             model.state,
             (state) => state.language,
             () => {
                 if (this.model === model) this.syncToolbar();
             },
-        );
+        ));
+    }
+
+    private releaseModelBindings(): void {
+        for (const release of this.modelBindings.splice(0)) release();
     }
 
     private readonly syncScriptState = (): void => {

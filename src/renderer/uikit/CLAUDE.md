@@ -410,6 +410,10 @@ exports from `uikit/index.ts`.
   dependency observed by the state subscription. The apply callback must tolerate the disposed
   view because a state notification may still visit a listener removed during that same notification
   pass.
+- A class extending another view class must extend `VanillaView` directly. This keeps every view
+  inside the lifecycle checks; composition belongs in owned child views.
+- Outside the constructor and `onMount()`, do not discard a `bind()` handle. A bind in a repeatable
+  method must retain its release handle and call it before binding a replacement source.
 
 ### DOM, events, and state
 

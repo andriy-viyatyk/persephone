@@ -420,19 +420,17 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
     }
 }
 
-export class ScriptLibrarySectionView extends LibraryPathSectionView {
-    public constructor(props: Record<string, never>) {
-        super(props, {
-            read: () => settings.get("script-library.path"),
-            subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "script-library.path") listener(); }),
-            title: "Script Library",
-            description: "Folder for saved scripts and reusable modules",
-            emptyText: "Not linked",
-            browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
-            reset: () => settings.set("script-library.path", ""),
-            clearLabel: "Unlink",
-        });
-    }
+export function createScriptLibrarySection(): LibraryPathSectionView {
+    return new LibraryPathSectionView({}, {
+        read: () => settings.get("script-library.path"),
+        subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "script-library.path") listener(); }),
+        title: "Script Library",
+        description: "Folder for saved scripts and reusable modules",
+        emptyText: "Not linked",
+        browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
+        reset: () => settings.set("script-library.path", ""),
+        clearLabel: "Unlink",
+    });
 }
 
 interface VideoPlayerState { portValue: string; }
@@ -570,4 +568,4 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
     }
 }
 
-export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, ScriptLibrarySectionView as ScriptLibrarySection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };
+export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };

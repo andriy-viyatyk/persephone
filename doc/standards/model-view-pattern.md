@@ -247,6 +247,8 @@ general rendering or document-querying responsibilities.
 
 `VanillaView<P>` is the framework-free lifecycle base at
 [`src/renderer/uikit/shared/vanilla-view.ts`](../../src/renderer/uikit/shared/vanilla-view.ts).
+Concrete views extend `VanillaView` directly; compose shared behavior through owned child views
+rather than extending another view class, so every view remains inside the lifecycle checks.
 Every concrete `VanillaView` declares a public constructor because the base constructor is
 protected:
 

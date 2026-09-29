@@ -328,14 +328,14 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
     }
 
     /** Clear all filters (tags + dates). Does not auto-search. */
-    clearFilters(): void {
+    clearFilters = (): void => {
         this.state.update((s) => {
             s.filterTags = [];
             s.filterExcludeTags = [];
             s.dateFrom = "";
             s.dateTo = "";
         });
-    }
+    };
 
     /** Lazily load this root's tag vocabulary (`tags`) for the filter pickers'
      *  autocomplete. One-shot; best-effort (a failed load leaves it retryable). */
