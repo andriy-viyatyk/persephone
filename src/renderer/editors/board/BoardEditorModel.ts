@@ -142,7 +142,7 @@ export interface BoardEditorState extends EditorStateBase {
     /** Footer status text set via `persephone.setStatusText()` (US-892), e.g. a Todo board's
      *  "N items" count. TRANSIENT — stripped in `getRestoreData()` and cleared in `restore()`
      *  (like `busy`), so a persisted blob never resurrects a stale count; the board re-sets it on
-     *  load. Rendered by `BoardEditorView` in the `ContentHostFooter` slot (main-view footer only). */
+     *  load. Rendered by `BoardEditorView` in the `EditorStatusBarView` contributions slot (main-view footer only). */
     statusText?: string;
     /** Text shown in the main page toolbar. TRANSIENT — cleared on frame teardown, restore, and
      *  model disposal; never included in durable restore data. */
@@ -1002,7 +1002,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Set the content-host footer status text (`persephone.setStatusText`, US-892). TRANSIENT —
      *  not persisted; the board re-sets it on load. Rendered by `BoardEditorView` via the
-     *  `ContentHostFooter` contributions slot (main-view footer only). */
+     *  `EditorStatusBarView` contributions slot (main-view footer only). */
     setStatusText(text: string): void {
         this.state.update((s) => { s.statusText = typeof text === "string" ? text : ""; });
     }

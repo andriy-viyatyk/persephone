@@ -6,6 +6,7 @@ import { TextareaView } from "../../uikit/Textarea/TextareaView";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
+import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { EditorModel } from "../base/EditorModel";
 import { VideoEditor } from "./VideoEditor";
 import type { PlayerState, VideoFormat } from "./video-types";
@@ -108,9 +109,11 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
         }));
         this.vlcContainer.append(this.vlcButton.root);
 
-        this.root.append(this.pageToolbar.root, this.playerArea);
+        const statusBar = this.child(new EditorStatusBarView({ name: "video-status-bar", model: this.model }));
+        this.root.append(this.pageToolbar.root, this.playerArea, statusBar.root);
         this.playerArea.append(this.player.root, this.prompt, this.stateBadge, this.vlcContainer);
         this.pageToolbar.mount();
+        statusBar.mount();
         this.urlInput.mount();
         this.player.mount();
         this.vlcButton.mount();

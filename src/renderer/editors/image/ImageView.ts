@@ -1,4 +1,5 @@
 import { PageToolbarView } from "../base/PageToolbarView";
+import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { EditorModel } from "../base/EditorModel";
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
@@ -48,8 +49,10 @@ export class ImageEditorView extends VanillaView<{ model: EditorModel }> {
             borderBottom: true,
             rightContributions: this.toolbar.root,
         }));
-        this.root.append(this.pageToolbar.root, this.viewport.root);
+        const statusBar = this.child(new EditorStatusBarView({ name: "image-status-bar", model: this.model }));
+        this.root.append(this.pageToolbar.root, this.viewport.root, statusBar.root);
         this.pageToolbar.mount();
+        statusBar.mount();
         this.toolbar.mount();
         this.viewport.mount();
         this.bind(

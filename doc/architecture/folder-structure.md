@@ -385,8 +385,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── PageToolbarView.ts        # Native page toolbar — NavPanel + switch widget auto-slots
 │   │   ├── TextChromeView.ts         # Native host-aware chrome (toolbar, script panel, footer)
 │   │   ├── EditorToolbarView.ts      # Native toolbar root used by individual editors
-│   │   ├── ContentHostFooterView.ts  # Native text-host footer
-│   │   ├── ContentHostFooter.css     # Footer styles
+│   │   ├── EditorStatusBarView.ts    # Shared editor status bar (footer): pipe status, provider, text-host parts
+│   │   ├── EditorStatusBar.css       # Status bar styles
 │   │   ├── EditorConfig.ts            # Editor configuration value and empty default
 │   │   └── index.ts
 │   │

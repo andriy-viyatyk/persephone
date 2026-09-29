@@ -20,7 +20,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Live content-pipe status and faster page opens:** a page toolbar badge shows source loading,
+- **Live content-pipe status and faster page opens:** a badge in the editor status bar shows source loading,
   progress, completion, or errors and opens provider/transformer details. Editors that opt into
   deferred restore show a loading tile with a close button and **Retry**. Scripts can observe
   `pipe.stages`, `pipe.summary`, and `pipe.onStatusChange()`, inspect the active `page.pipe`, and
@@ -151,6 +151,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Status bar under every content editor:** the pipe status moved from the top toolbar to a
+  status bar at the bottom of the editor, where its details popover opens upward. Image, Video,
+  Archive and every board now have that bar too, with the source's provider icon; text editors keep
+  their script toggle and encoding there. A board without a content host can now show its
+  `persephone.setStatusText()` text in it.
 - **Long source links are easier to read:** the loading tile shown while a page's content arrives is
   a bordered panel at most 60% of the page wide, with long names (such as a magnet link) wrapped and
   selectable, and a close icon in its corner instead of **Cancel**. The Video Player's URL field

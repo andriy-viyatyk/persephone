@@ -10,6 +10,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
+import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { EditorModel } from "../base/EditorModel";
 import {
     ArchiveEditor,
@@ -62,9 +63,11 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
 
         this.pageToolbar = this.child(new PageToolbarView(this.pageToolbarProps()));
         this.tree = this.child(new TreeProviderViewImpl(this.treeProps(provider)));
-        this.root.append(this.pageToolbar.root, this.tree.root);
+        const statusBar = this.child(new EditorStatusBarView({ name: "archive-status-bar", model: this.model }));
+        this.root.append(this.pageToolbar.root, this.tree.root, statusBar.root);
 
         this.pageToolbar.mount();
+        statusBar.mount();
         this.collapseButton.mount();
         this.refreshButton.mount();
         this.tree.mount();

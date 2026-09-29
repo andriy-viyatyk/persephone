@@ -2,7 +2,7 @@ import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
 import type { IContentHost } from "./IContentHost";
-import { ContentHostFooterView } from "./ContentHostFooterView";
+import { EditorStatusBarView } from "./EditorStatusBarView";
 import { PageToolbarView } from "./PageToolbarView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
@@ -259,7 +259,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private runButtons: RunButtonsView | undefined;
     private showResourcesButton: ShowResourcesButtonView | undefined;
     private scriptPanel: ScriptPanelView | undefined;
-    private footer: ContentHostFooterView | undefined;
+    private footer: EditorStatusBarView | undefined;
     private overlay: HTMLDivElement | undefined;
 
     private childrenHost: HTMLSpanElement | undefined;
@@ -308,8 +308,10 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.pageToolbar?.setSlots(this.toolbarContent, this.rightContent);
         if (this.footer && this.textHost) {
             this.footer.update({
+                name: "text-chrome-footer",
+                model: this.model,
                 host: this.textHost,
-                footerContributions: props.footerContributions,
+                contributions: props.footerContributions,
             });
         }
     }
@@ -371,9 +373,11 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
             if (this.textHost.script) {
                 this.scriptPanel = this.child(new ScriptPanelView({ model: this.textHost }));
             }
-            this.footer = this.child(new ContentHostFooterView({
+            this.footer = this.child(new EditorStatusBarView({
+                name: "text-chrome-footer",
+                model: this.model,
                 host: this.textHost,
-                footerContributions: this.props.footerContributions,
+                contributions: this.props.footerContributions,
             }));
         } else {
             toolbarContent.append(toolbarContributionsHost);

@@ -59,8 +59,17 @@
         flex: 0 0 auto;
     }
 
+    /* The progress bar is a thin line under the trigger, not a column beside it: beside the
+       label it read as an empty gap at the end of the status bar. */
+    [data-type="page-pipe-status"] [data-part="content"] {
+        position: relative;
+    }
+
     [data-type="page-pipe-status"] [data-type="progress-bar"] {
-        width: var(--size-pipe-status-progress-width, 72px);
-        flex: 0 0 auto;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
     }
 }

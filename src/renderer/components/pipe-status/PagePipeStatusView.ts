@@ -101,7 +101,7 @@ export class PagePipeStatusView extends VanillaView<PagePipeStatusProps> {
             "data-type": "page-pipe-status-popover",
             "data-page-id": this.props.page.id,
             elementRef: this.trigger,
-            placement: "bottom-end",
+            placement: "top-end",
             offset: [0, 4],
             onClose: () => {
                 this.stageList = undefined;

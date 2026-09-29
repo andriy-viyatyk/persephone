@@ -19,11 +19,12 @@ layout anchors.
 
 ```
 +---------------------------------------------------------------------+
-| [page-nav] [left-slot controls]              [right-slot] [pipe status] [switch] |  shared TextChrome/PageToolbar row; pipe status sits before the editor switch
+| [page-nav] [left-slot controls]              [right-slot] [switch]  |  shared TextChrome/PageToolbar row
 | [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar, with no generic navigation or switch
 | [board controls]                              [editor switch]       |  custom BoardToolbarView row
 +---------------------------------------------------------------------+
 | [sidebar panel stack] [sidebar splitter] | [active page editor]     |  sidebar left of the page content; splitter at its right edge
+|                                          | [script] … [pipe status] [provider] | [encoding] |  editor status bar (footer)
 +---------------------------------------------------------------------+
 ```
 
@@ -34,7 +35,8 @@ layout anchors.
 - Sidebar stack → `secondary-views-stack`
 - Sidebar splitter → `secondary-views-splitter`
 
-- Page pipe status → `page-pipe-status` (in the shared page toolbar, before the editor switch)
+- Page pipe status → `page-pipe-status` (in the editor status bar at the bottom of the editor)
+- Editor status bar → `text-chrome-footer` for text editors and content-host boards; `image-status-bar`, `video-status-bar`, `archive-status-bar`, `board-status-bar` elsewhere
 - Loading page shell → `page-loading-shell` (in the page area during deferred restore)
 - Close loading page → `page-loading-close` (close icon on the loading shell tile)
 - Retry restore → `page-loading-retry` (in the error shell)

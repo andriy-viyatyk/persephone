@@ -823,11 +823,11 @@ must respect.
   saves automatically (no board code). The board and Monaco share one host, so they switch back and
   forth on the same file with no reload. On a plain board `getContent`/`getLanguage` reject and a
   registered `onContentChange` never fires.
-- `persephone.setStatusText(text)` — set the text shown in a **content-host** board's footer bar
-  (the same footer that shows the provider/encoding), e.g. a Todo board's `"12 items"` count.
-  Call it from the board's **main** view; `""` clears it. It's a visual no-op for plain
-  (non-content-host) boards, which have no footer — so guard with `persephone.setStatusText?.(…)`
-  if the board must also run on older app builds.
+- `persephone.setStatusText(text)` — set the text shown in the board's footer bar (the status
+  bar that also shows the pipe status, and for a content-host board the provider/encoding), e.g. a
+  Todo board's `"12 items"` count. Call it from the board's **main** view; `""` clears it. Every
+  board has the footer; on builds before 5.0.4 only content-host boards did, so guard with
+  `persephone.setStatusText?.(…)` if the board must also run on older app builds.
 - `persephone.toolbar.setText(text)` — set transient text in the wide middle slot of the page
   toolbar from the board's **main** view. **The slot is empty unless your board fills it** — it
   no longer falls back to the board path — so `""` and an unset value both leave it blank. While

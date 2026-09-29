@@ -14,7 +14,6 @@ import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../core/events/context-menu";
 import { SwitchWidgetView } from "../base/PageToolbarView";
 import { openBoardInfo } from "../board-info/open-board-info";
-import { PagePipeStatusView } from "../../components/pipe-status/PagePipeStatusView";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import { BoardToolbarControls, type ToolbarAction } from "./BoardToolbarControls";
 import "../../uikit/Panel/Panel.css";
@@ -40,7 +39,6 @@ export class BoardToolbarView extends VanillaView<{
     private readonly explorerButton: IconButtonView;
     private readonly moreButton: IconButtonView;
     private readonly switchWidget: SwitchWidgetView;
-    private readonly pipeStatus: PagePipeStatusView | undefined;
     private readonly boardControls: BoardToolbarControls;
     private menu: MenuHandle | undefined;
     private dot: DotView | undefined;
@@ -75,9 +73,6 @@ export class BoardToolbarView extends VanillaView<{
             onClick: () => this.openBoardMenu(),
         });
         this.switchWidget = new SwitchWidgetView({ model: props.model });
-        const pageId = props.model.page?.id;
-        const page = pageId ? app.pages.findPage(pageId) : undefined;
-        this.pipeStatus = page ? new PagePipeStatusView({ page }) : undefined;
         this.boardControls = new BoardToolbarControls({ model: props.model, onAction: props.onAction });
     }
 
@@ -108,14 +103,12 @@ export class BoardToolbarView extends VanillaView<{
             this.pathPanel,
             this.boardControls.root,
             this.morePanel,
-            ...(this.pipeStatus ? [this.pipeStatus.root] : []),
             this.switchWidget.root,
         );
         this.child(this.explorerButton).mount();
         this.child(this.moreButton).mount();
         this.child(this.switchWidget).mount();
         this.child(this.boardControls).mount();
-        if (this.pipeStatus) this.child(this.pipeStatus).mount();
         this.own(publishedBoards.subscribeCatalog(this.sync));
         this.own(boardInstallRegistry.subscribeInstalled(this.sync));
         void publishedBoards.load();

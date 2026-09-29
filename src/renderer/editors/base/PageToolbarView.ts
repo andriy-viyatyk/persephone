@@ -6,7 +6,6 @@ import type { EditorModel, EditorStateBase } from "./EditorModel";
 import { getEditorSwitchFileName, getEditorSwitchOptions } from "./editor-switch-options";
 import { EditorToolbarView } from "./EditorToolbarView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
-import { app } from "../../api/app";
 import { customEditorRegistry } from "../board/custom-editor-registry";
 import { isTextFileModel, type TextFileEditorModelState, type TextFileModel } from "../text/TextEditorModel";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
@@ -18,7 +17,6 @@ import {
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { PagePipeStatusView } from "../../components/pipe-status/PagePipeStatusView";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 
 export interface PageToolbarViewProps {
@@ -398,7 +396,6 @@ export class PageToolbarView extends VanillaView<PageToolbarViewProps> {
         const content = createContentsPart("page-toolbar-content");
         const childrenHost = createContentsPart("page-toolbar-children");
         const rightHost = createContentsPart("page-toolbar-right");
-        const statusHost = createContentsPart("page-toolbar-status");
         this.content = content;
         this.childrenHost = childrenHost;
         this.rightHost = rightHost;
@@ -417,14 +414,7 @@ export class PageToolbarView extends VanillaView<PageToolbarViewProps> {
             this.spacer = this.child(new SpacerView({}));
             content.append(this.spacer.root);
         }
-        content.append(rightHost, statusHost);
-        const pageId = this.props.model.page?.id;
-        const page = pageId ? app.pages.findPage(pageId) : undefined;
-        if (page) {
-            const status = this.child(new PagePipeStatusView({ page }));
-            statusHost.append(status.root);
-            status.mount();
-        }
+        content.append(rightHost);
         content.append(switchWidget.root);
 
         navPanel.mount();

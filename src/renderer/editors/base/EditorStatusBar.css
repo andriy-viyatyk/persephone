@@ -1,0 +1,29 @@
+@layer editor {
+    [data-status-bar] [data-part="footer-content"],
+    [data-status-bar] [data-part="footer-contributions"],
+    [data-status-bar] [data-part="provider-slot"] {
+        display: contents;
+    }
+
+    [data-status-bar] [data-part="script-label"] {
+        color: var(--color-text-light);
+        font-size: var(--font-md, 13px);
+    }
+
+    [data-status-bar] [data-part="script-label"][data-state="open"] {
+        color: var(--color-text-default);
+    }
+
+    [data-status-bar] [data-part="encoding-label"] {
+        color: var(--color-text-light);
+        padding: 0 var(--space-sm, 4px);
+        font-size: var(--font-md, 13px);
+    }
+
+    [data-status-bar] [data-part="provider-badge"] {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--gap-xs, 2px);
+        padding: 0 var(--space-xs, 2px);
+    }
+}

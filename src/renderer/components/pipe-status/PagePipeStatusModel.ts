@@ -3,9 +3,7 @@ import type { IPipeStageStatus } from "../../api/types/io.provider";
 import type { PageModel } from "../../api/pages/PageModel";
 import { TComponentModel } from "../../core/state/model";
 import { formatBytes } from "../../core/utils/format-bytes";
-import { EditorModel } from "../../editors/base/EditorModel";
-import { TextHostEditorModel } from "../../editors/base/TextHostEditorModel";
-import { isTextFileModel, TextFileModel } from "../../editors/text/TextEditorModel";
+import { subscribePagePipe } from "./page-pipe";
 
 export interface PagePipeStatusProps {
     page: PageModel;
@@ -37,7 +35,6 @@ export const initialPagePipeStatusState: PagePipeStatusState = {
 
 export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, PagePipeStatusProps> {
     private releasePage: (() => void) | undefined;
-    private releaseOwnerPipe: (() => void) | undefined;
     private releasePipe: (() => void) | undefined;
     private doneTimer: ReturnType<typeof setTimeout> | undefined;
     private currentPipe: IContentPipe | null = null;
@@ -46,9 +43,8 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
     private disposed = false;
 
     init(): void {
-        this.releasePage = this.props.page.state.subscribe(() => this.rebindCurrentPipe());
+        this.releasePage = subscribePagePipe(this.props.page, (pipe) => this.bindPipe(pipe));
         this.own(() => this.releasePage?.());
-        this.rebindCurrentPipe();
     }
 
     override dispose(): void {
@@ -64,30 +60,6 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
             state.visible = false;
         });
     };
-
-    private rebindCurrentPipe(): void {
-        if (this.disposed) return;
-        this.releaseOwnerPipe?.();
-        this.releaseOwnerPipe = undefined;
-        const editor = this.props.page.mainEditorInstance;
-        let pipe: IContentPipe | null = null;
-        let owner: TextFileModel | EditorModel | null = null;
-
-        if (isTextFileModel(editor)) {
-            owner = editor;
-        } else if (editor instanceof TextHostEditorModel && isTextFileModel(editor.contentHost)) {
-            owner = editor.contentHost;
-        }
-
-        if (owner instanceof TextFileModel) {
-            pipe = owner.pipe;
-            this.releaseOwnerPipe = owner.pipeState.subscribe(() => this.bindPipe(owner?.pipe ?? null));
-        } else if (editor instanceof EditorModel) {
-            pipe = editor.pipe;
-            this.releaseOwnerPipe = editor.pipeState.subscribe(() => this.bindPipe(editor.pipe));
-        }
-        this.bindPipe(pipe);
-    }
 
     private bindPipe(pipe: IContentPipe | null): void {
         if (this.disposed || pipe === this.currentPipe) return;
@@ -177,8 +149,6 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
     private releaseSourceSubscriptions(): void {
         this.releasePage?.();
         this.releasePage = undefined;
-        this.releaseOwnerPipe?.();
-        this.releaseOwnerPipe = undefined;
         this.releasePipe?.();
         this.releasePipe = undefined;
     }

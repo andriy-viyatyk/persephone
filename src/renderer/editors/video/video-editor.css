@@ -61,9 +61,11 @@
         white-space: nowrap;
     }
 
+    /* Top-centred: at the bottom it covered the audio control panel (and the native video
+       controls) while a source was still loading. */
     [data-editor="video"] [data-part="video-state-badge"] {
         position: absolute;
-        bottom: 24px;
+        top: 24px;
         left: 50%;
         transform: translateX(-50%);
         padding: var(--space-sm, 4px) var(--space-lg, 12px);
@@ -88,6 +90,19 @@
         pointer-events: auto;
         background: transparent;
         transition: background 0.2s ease;
+    }
+
+    /* The overlay is centred and 33% wide; the controls must fill it, with the seek slider taking
+       the slack. Left at content width they sat at the overlay's left edge, off-centre by half
+       the unused width — a shift that grew as the page widened. */
+    [data-editor="video"] [data-audio-overlay] > [data-name="audio-controls"] {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    [data-editor="video"] [data-audio-overlay] [data-name="audio-seek"] {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     [data-editor="video"] [data-audio-overlay]:hover {

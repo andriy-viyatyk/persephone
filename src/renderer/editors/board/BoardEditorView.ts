@@ -12,7 +12,7 @@ import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { requestBoardTrust } from "./request-board-trust";
 import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../text/ScriptPanelView";
-import { ContentHostFooterView } from "../base/ContentHostFooterView";
+import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { TextFileModel } from "../text/TextEditorModel";
 import { spacing } from "../../uikit/tokens";
 import "../../uikit/Panel/Panel.css";
@@ -70,7 +70,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
     private readonly webview: BoardWebview;
     private readonly host: TextFileModel | null;
     private scriptPanel: ScriptPanelView | undefined;
-    private footer: ContentHostFooterView | undefined;
+    private footer: EditorStatusBarView | undefined;
     private statusElement: HTMLSpanElement | undefined;
 
     public constructor(props: BoardHostViewProps) {
@@ -113,17 +113,14 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
             this.root.append(this.scriptPanel.root);
             this.scriptPanel.mount();
         }
-        if (this.host) {
-            this.statusElement = createTextElement("", { color: "light", size: "md" });
-            this.statusElement.style.padding = `0 ${spacing.sm}px`;
-            this.footer = this.child(new ContentHostFooterView({
-                host: this.host,
-                footerContributions: null,
-            }));
-            this.root.append(this.footer.root);
-            this.footer.mount();
-            this.bind(this.model.state, (state) => state.statusText, this.updateStatus);
-        }
+        // Content-host and stream-host boards alike: the footer carries the pipe status and
+        // the board's status text; a content host adds its script toggle and encoding.
+        this.statusElement = createTextElement("", { color: "light", size: "md" });
+        this.statusElement.style.padding = `0 ${spacing.sm}px`;
+        this.footer = this.child(new EditorStatusBarView(this.footerProps(null)));
+        this.root.append(this.footer.root);
+        this.footer.mount();
+        this.bind(this.model.state, (state) => state.statusText, this.updateStatus);
     }
 
     protected onUpdate(): void {
@@ -132,13 +129,19 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
     }
 
     private readonly updateStatus = (statusText: string | undefined): void => {
-        if (!this.footer || !this.statusElement || !this.host) return;
+        if (!this.footer || !this.statusElement) return;
         this.statusElement.textContent = statusText ?? "";
-        this.footer.update({
-            host: this.host,
-            footerContributions: statusText ? this.statusElement : null,
-        });
+        this.footer.update(this.footerProps(statusText ? this.statusElement : null));
     };
+
+    private footerProps(contributions: HTMLElement | null) {
+        return {
+            name: this.host ? "text-chrome-footer" : "board-status-bar",
+            model: this.model,
+            host: this.host,
+            contributions,
+        };
+    }
 }
 
 type BranchView = BoardNotFoundView | UntrustedBoardView | ContentErrorView | BoardHostView;

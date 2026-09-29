@@ -224,7 +224,9 @@ Boards group is not rendered.
 | Page host (all pages live here) | `[data-name="pages-container"]` |
 | The active page's editor container | `[data-name="page-editor"]` |
 | An empty page | `[data-name="page-empty"]` |
-| Page pipe status trigger | `[data-name="page-pipe-status"]` |
+| Page pipe status trigger (in the editor status bar) | `[data-name="page-pipe-status"]` |
+| Editor status bar (footer): text hosts and content-host boards | `[data-name="text-chrome-footer"]` |
+| Editor status bar: image / video / archive / stream-host board | `[data-name="image-status-bar"]`, `[data-name="video-status-bar"]`, `[data-name="archive-status-bar"]`, `[data-name="board-status-bar"]` |
 | Pipe status popover | `[data-name="page-pipe-status-popover"]` |
 | Pipe stage list | `[data-name="pipe-stage-list"]` |
 | Pipe stage row | `[data-name="pipe-stage"]` |

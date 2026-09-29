@@ -155,8 +155,8 @@ descriptors rather than restored sidebar state.
   pipe stage status. The tile's close icon closes the page and cancels its restore; an error replaces the loading
   message with the failure and offers Retry, which starts a new restore attempt. The editor is
   shown after restore succeeds.
-- **Pipe status badge:** while a pipe reports connecting/active work, the page toolbar shows its
-  status and any known byte progress. Successful reads show a brief completion label; errors remain
+- **Pipe status badge:** while a pipe reports connecting/active work, the editor status bar
+  (`EditorStatusBarView`, the footer) shows its status and any known byte progress. Successful reads show a brief completion label; errors remain
   visible until dismissed. Opening the badge's popover shows the provider and transformer stages
   with their current status details.
 - **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
