@@ -305,7 +305,9 @@ that page's browser session. With bridge 1.24.0, the board receives `privateSess
 of the page's initial source. The Torrent Viewer board uses this information to explain that the
 private session applies only to fetching the source; the torrent's tracker and peer connections are
 not routed through Tor, so other peers can see your real IP. Persephone no longer shows a
-torrent-specific privacy toast for this case.
+torrent-specific privacy toast for this case. From Torrent Viewer 1.8.0, the network indicator in
+the board's status bar can put all tracker, peer, and web-seed traffic behind a SOCKS5 proxy
+instead; the board then says so in that notice.
 
 Only trusted boards and enabled bundled boards contribute claims. Registration order is trusted
 roots followed by bundled boards; an exact normalized duplicate is refused and reported as a
