@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.4 (Upcoming)
+## Version 5.0.5 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.4
 
 ### Breaking Changes
 
@@ -27,233 +33,184 @@ Release notes and changelog for Persephone (formerly js-notepad).
   opt-in and may contain sensitive page data. See the [Page API](./scripting/api/page.md#browser-board-and-window-page-automation)
   and [Browser editor guide](./editors/browser.md).
 
-- **Live content-pipe status and faster page opens:** a badge in the editor status bar shows source loading,
-  progress, completion, or errors and opens provider/transformer details. Editors that opt into
-  deferred restore show a loading tile with a close button and **Retry**. Scripts can observe
-  `pipe.stages`, `pipe.summary`, and `pipe.onStatusChange()`, inspect the active `page.pipe`, and
-  await `page.ready` before using restored content. MCP can inspect `pages[pageId].pipe` stages and
-  summary. See the [Page API](./scripting/api/page.md#content-restore-and-pipe-status),
+- **Live content-pipe status and faster page opens:** a badge in the editor status bar shows source
+  loading, progress, completion, or errors and opens provider/transformer details. The status bar is
+  available under every content editor: it shows the source provider icon, keeps script and encoding
+  controls in text editors, and lets boards without a content host show `persephone.setStatusText()`.
+  Its details popover opens upward. Editors that defer restore show a loading tile capped at 60% of
+  the page width, with wrapped, selectable source names, a close button, and **Retry**. Scripts can observe `pipe.stages`,
+  `pipe.summary`, and `pipe.onStatusChange()`, inspect `page.pipe`, and await `page.ready`; MCP can
+  inspect pipe stages and summary. Boards can report provider state, detail, byte progress, and
+  transfer rate through bridge 1.26.0, and add transient text and buttons with update and action
+  handling through `persephone.statusBar` in bridge 1.27.0. Items can be hidden or aligned to the
+  end of the board's footer area. See the [Page API](./scripting/api/page.md#content-restore-and-pipe-status),
   [`io` API](./scripting/api/io.md#icontentpipe), [MCP pipe access](./agents/ai-vision.md#inspecting-a-pages-content-pipe),
-  and [page area guide](./screens/sidebar.md#while-page-content-is-restoring).
-- **Board bridge 1.26.0 adds provider status reporting:** a board module service's content provider
-  can implement `status(config, emit)` to report transient state, text, detail, byte progress, and
-  transfer rate while the provider is in use. See [Boards — service-backed content providers](./agents/boards.md#service-backed-content-providers).
-- **Boards can add items to the shared editor status bar:** bridge 1.27.0 adds `persephone.statusBar`
-  for transient text labels and buttons, with updates and button actions. Items can be hidden or
-  aligned to the end of the board's footer contribution area. See [Boards](./boards.md).
-- **Scripts and trusted boards can route HTTP requests through Tor or a proxy:** `app.fetch(url, { tor: true })` uses Persephone's Tor daemon, while `{ proxy: "socks5://host:port" }` or a bare `host:port` selects a SOCKS5 proxy. Trusted boards can use `persephone.fetch(url, init)` for remote requests from their frame. Routed calls never fall back to direct connections; SOCKS5 resolves host names remotely, including `.onion` addresses through Tor. See the [`app.fetch` API](./scripting/api/app.md#fetchurl-options) and [Boards](./boards.md#offline-first-and-the-csp).
-- **Scripts can inspect the normalized board manifest:** `page.editor.getManifest()` now returns
-  the values Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`,
-  `settings`, `guides`, and capability `alwaysOpensNewPage`. Board Info's script-visible
-  `page.editor.properties` exposes the same normalized manifest fields alongside install and trust
-  state. Lists and nested declarations are copied, and optional fields remain absent when not
-  declared. See [Boards — Inspecting board metadata from scripts](./boards.md#inspecting-board-metadata-from-scripts).
-- **Bridge 1.23.0 unifies file MIME detection:** `board://` files and `__pipe` responses use the
-  shared extension table, including explicit types for documents, archives, and fonts. Markdown,
-  CSV, XML, and YAML board files are served as UTF-8.
-- **Bridge 1.24.0 reports private source sessions to boards:** `source.onOpen` events include
-  `privateSession: true` when the source was fetched through a Tor or Incognito session, and
-  `source.initialSourcePrivateSession` reports the initial source's status. The Torrent Viewer board
-  now displays the swarm privacy notice; Persephone no longer shows a torrent-specific toast.
+  [page area guide](./screens/sidebar.md#while-page-content-is-restoring),
+  [service-backed content providers](./agents/boards.md#service-backed-content-providers), and
+  [Boards](./boards.md).
+
+- **Scripts and trusted boards can route HTTP requests through Tor or a proxy:** `app.fetch(url, { tor: true })`
+  uses Persephone's Tor daemon, while `{ proxy: "socks5://host:port" }` or a bare `host:port`
+  selects a SOCKS5 proxy. Trusted boards can use `persephone.fetch(url, init)` for remote requests
+  from their frame. Routed calls never fall back to direct connections; SOCKS5 resolves host names
+  remotely, including `.onion` addresses through Tor. See the [`app.fetch` API](./scripting/api/app.md#fetchurl-options)
+  and [Boards](./boards.md#offline-first-and-the-csp).
+
+- **Scripts can inspect normalized board manifests:** `page.editor.getManifest()` returns the values
+  Persephone applies, including `browserUrlMasks`, `contentMasks`, `singleInstance`, `settings`,
+  `guides`, and capability `alwaysOpensNewPage`. Board Info's `page.editor.properties` exposes the
+  same fields alongside install and trust state. Lists and nested declarations are copied, and
+  optional fields remain absent when undeclared. See [Boards — Inspecting board metadata from scripts](./boards.md#inspecting-board-metadata-from-scripts).
+
 - **Agents can read Image Viewer pixels inline:** after narrowing an image page's editor to
   `image-view`, call `read()` to receive a bounded PNG image block with applied and original
   dimensions. It works for inactive pages and does not write a temporary file.
-- **Scripts can register custom content providers and URL schemes:** use `io.registerProvider()`
-  and `io.registerScheme()` to make script-defined content readable through Persephone's normal
+
+- **Scripts can register custom content providers and URL schemes:** use `io.registerProvider()` and
+  `io.registerScheme()` to make script-defined content readable through Persephone's normal
   link-opening flow. Scheme hooks can hand off to that flow with `context.handoff()`, and scheme
   matching is case-insensitive. Registrations remain available in the current window until it is
   reloaded or restarted. See the [`io` API reference](./scripting/api/io.md#registering-providers-and-url-schemes).
-- **Scripts and agents can inspect and dismiss toast alerts:** use `app.ui.alerts` in scripts or
-  `ui.alerts` through the application object model to check alert severity, message, and creation
-  time, then dismiss one or more alerts when that serves the user's intent. See the [`app.ui` API
-  reference](./scripting/api/ui.md#alerts).
-- **Browser profiles can route through a proxy:** every browser profile — a named profile, the
-  built-in Default profile, and Incognito — can be set to **Direct** or an unauthenticated
-  SOCKS5/HTTP proxy endpoint in **Settings → Browser Profiles** (a **Network:** row per profile,
-  plus one for Default and one for Incognito). A proxied page shows a chip next to the address box;
-  click it for a connection-info dialog reporting the egress IP and location. A proxied page
-  never falls back to a direct connection — with the proxy down its pages simply fail to load — and page loads, downloads, tab/bookmark favicons, and Link editor preview images
-  all route through the same proxy. This also closes four privacy leaks Tor mode had: the tab-strip
-  favicon, "Open Image in New Tab," board-claimed downloads, and WebRTC could each reveal your real
-  IP outside the Tor connection; all four are now routed the same way for both Tor and proxied
-  profiles. See [Browser — Profile network (proxy)](./editors/browser.md#profile-network-proxy).
+
+- **Scripts and agents can monitor toast alerts:** use `app.ui.alerts` or `ui.alerts` to check
+  severity, message, and creation time, and dismiss alerts when useful. Error and warning toasts
+  also reach the agent event feed. See the [`app.ui` API reference](./scripting/api/ui.md#alerts).
+
+- **Browser profiles can route through a proxy:** named profiles, Default, and Incognito can use
+  **Direct** or an unauthenticated SOCKS5/HTTP proxy in **Settings → Browser Profiles**. A proxied
+  page shows a connection chip with egress IP and location. Pages fail to load if the proxy is down,
+  and page loads, downloads, favicons, and Link editor preview images use the same route. Tor mode
+  also routes tab favicons, **Open Image in New Tab**, board-claimed downloads, and WebRTC through
+  Tor. See [Browser — Profile network (proxy)](./editors/browser.md#profile-network-proxy).
+
 - **Boards can declare supervised module services:** a trusted board can name an ESM service entry
-  that starts lazily under main-process supervision, answers requests with no board page open, and
-  shares the board frame's `persephone.storage`. One service handles activity from multiple windows
-  concurrently, so reloading one window does not interrupt the others. Live state, failures, restart
+  that starts lazily under main-process supervision, answers requests without an open board page,
+  and shares the board frame's `persephone.storage`. One service handles activity from multiple
+  windows, so reloading one window does not interrupt the others. Live state, failures, restart
   counts, and process identity are visible through `boards.list()`; `permissions` is disclosure and
-  lifecycle hygiene, not a privilege grant or sandbox. See [Boards — declared services](./boards.md#declared-services-storage-and-lifecycle)
-  and the [canonical service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
-- **Bridge 1.22.0 moves service lifecycle handling into the host:** service entries register
-  `persephone.service.onRequest(handler)` and `onShutdown(fn)` at module load. The host owns ready,
-  probe, request replies, and shutdown; structured `{ code, message }` errors preserve `error.code`
-  in the board. Existing raw-protocol services remain supported during migration.
-- **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders`
-  type in the manifest and register its provider from the service; implement optional `readRange`
-  for bounded provider-side pulls, while providers without it retain the bounded whole-resource
-  fallback;
-  `editorKind: "stream-host"` exposes `persephone.host.streamUrl()` for `Range` reads without a
-  materialized source file. Saved pages retain their provider descriptor and show a recoverable
-  missing/unavailable state if the board is absent or its service cannot start. `persephone.content.open()`
-  also gives simple boards an origin-local ranged URL for any supported link.
-- **Torrent Viewer uses a self-contained provider link:** the torrent board is a metadata-only
-  viewer backed by bounded `readRange` pulls, with `torrent/viewer` descriptors carrying the full
-  URL and embedded magnet needed for restore. The live-verified `browserUrlMasks` claim cancels a
-  matching Browser download before saving it and opens its source in the board. A claim from a Tor
-  or Incognito page fetches the source through that page's session; the Torrent Viewer board uses
-  bridge 1.24.0's private-session status to show that tracker and peer connections are not anonymous.
-  Later sources, including opens targeted at another page, are delivered to the existing Torrent
-  Viewer page without replacing that page; private-session claims retain the session used to fetch
-  the source. The Torrent Viewer keeps one page per window;
-  its torrent list is shared across windows.
+  lifecycle hygiene, not a privilege grant or sandbox. Bridge 1.22.0 adds
+  `persephone.service.onRequest(handler)` and `onShutdown(fn)`; the host owns ready, probe, replies,
+  and shutdown, while raw-protocol services remain supported during migration. See [Boards — declared
+  services](./boards.md#declared-services-storage-and-lifecycle) and the [service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
+
+- **Boards can provide content and ranged pipe pages:** declare a namespaced `contentProviders` type
+  and register its provider from the service. Optional `readRange` enables bounded pulls; providers
+  without it retain the bounded whole-resource fallback. `editorKind: "stream-host"` exposes
+  `persephone.host.streamUrl()` for `Range` reads without a materialized source file. Saved pages
+  retain their provider descriptor and show a recoverable missing/unavailable state if the board is
+  absent or its service cannot start. `persephone.content.open()` gives simple boards an origin-local
+  ranged URL. Bridge 1.23.0 also unifies MIME detection through the shared extension table for
+  `board://` files and `__pipe` responses, including documents, archives, and fonts; Markdown, CSV,
+  XML, and YAML board files are served as UTF-8.
+
+- **Torrent Viewer opens and restores torrent sources in one shared list:** the board uses bounded
+  `readRange` pulls and self-contained `torrent/viewer` descriptors with the full URL and embedded
+  magnet. Its `browserUrlMasks` claim cancels matching Browser downloads before saving them and
+  opens their source in the board; claims from Tor or Incognito pages fetch through that page's
+  session. Bridge 1.24.0 reports private source sessions through `source.onOpen` and
+  `source.initialSourcePrivateSession`, so the board can show that tracker and peer connections are
+  not anonymous. Later sources, including those targeted at another page, reach the existing Torrent
+  Viewer page without replacing it and retain the session used to fetch them. Each window has one
+  page and shares its torrent list across windows. `persephone.icons.forFiles(names)`
+  returns Explorer file icons for board lists, and the Torrent Viewer uses it for its file list.
+  See [Boards](./boards.md) and [Boards — Integration methods](./boards.md#integration-methods).
+
 - **Browser links can open registered board schemes:** clicking a trusted board's registered custom
-  scheme now routes through Persephone's content pipeline instead of disappearing inside Chromium;
-  unregistered non-web schemes remain blocked.
-- **Video Player plays archive-hosted media:** audio and video entries opened from supported archives
-  can play and seek without loading the entire source first. When VLC is available, **Open in VLC**
-  uses the same streamed source.
-- **Boards can provide named capability handlers:** declare a capability in a trusted board's
-  manifest, receive structured requests through `persephone.intent`, and let scripts or other
-  boards discover and invoke it without knowing which board owns the implementation. The same
-  registry also provides built-in handoffs for opening and editing content. See [Boards — capability
+  scheme routes through Persephone's content pipeline; unregistered non-web schemes remain blocked.
+
+- **Video Player plays archive-hosted media:** audio and video entries from supported archives can
+  play and seek without loading the full source first. When VLC is available, **Open in VLC** uses
+  the same streamed source.
+
+- **Boards can provide named capability handlers and link routing:** declare capabilities in a
+  trusted board's manifest, receive structured requests through `persephone.intent`, and let scripts
+  or other boards discover and invoke handlers without knowing their owner. Built-in handoffs open
+  and edit content; image data URLs can route with `openRawLink(imageDataUrl, { editor: "image.edit" })`;
+  the old `{ editor: "draw-view" }` form no longer routes. When no handler is available, Persephone
+  explains that no image or diagram editor is registered and points to Tools & Editors or a replacement board.
+  Bridge 1.19.0 preserves handler results, supports discarding a page opened for a failed request,
+  and allows a fresh handler page per invocation; 1.20.0 serializes up to 32 active and queued
+  requests per handler page in FIFO order, rejecting expired deadlines and sending a best-effort
+  cancel; 1.21.0 scopes `content.view` by representation for discovery. See [Boards — capability
   handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents) and the
   [`app.capabilities` API](./scripting/api/app.md#capabilities).
-- **Board capability bridge 1.21.0 scopes `content.view` by representation:** board manifests can
-  declare one `content.view` capability per representation, and capability discovery exposes that
-  representation so scripts can filter matching handlers. Boards using the field must set
-  `minBridgeVersion: "1.21.0"`. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
-- **Board capability bridge 1.20.0 serializes requests per handler page:** overlapping requests are
-  delivered in FIFO order, up to the existing limit of 32 active and queued requests per handler.
-  Expired deadlines reject with `Capability invocation deadline elapsed.` and send a best-effort
-  cancel. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
-- **Board capability bridge 1.19.0 preserves handler results:** board callers receive the exact
-  handler value under `result`, including primitives, arrays, and empty objects. Handlers can pass
-  `{ discardPage: true }` to `persephone.intent.resolve(value, options)` (or the request-bound
-  `request.resolve`) to close a page opened for a failed
-  request, and a manifest capability can set `alwaysOpensNewPage: true` to open a fresh handler page
-  for each invocation. See [Boards — capability handlers and in-memory intents](./boards.md#capability-handlers-and-in-memory-intents).
+
 - **Excalidraw ships as a bundled board:** `.excalidraw` files and image/diagram handoffs use the
-  offline-capable bundled board by default. It appears under **Built-in** with a **Disable** action;
-  disabling it removes those capabilities; if no replacement is installed, Persephone explains that
-  no image or diagram editor is registered. The disabled entry stays in the list greyed out so you can
-  right-click it and choose **Enable** again. Excalidraw library browsing now
-  returns to the drawing, asks before adding a library, and merges accepted items with the existing
-  library. See [Excalidraw Board](./editors/draw.md#libraries).
-- **Script API breaking change — drawing pages are boards:** `pages[i].editor` for an Excalidraw page
-  now exposes the board facade. The removed `IDrawEditor`, `DrawEditorFacade`, and `draw-view` editor
-  id are no longer valid. `app.pages.addDrawPage()` is unchanged and remains the supported way to
-  create a drawing page.
-- **Script and Board link routing now uses capabilities:** route an image data URL with
-  `openRawLink(imageDataUrl, { editor: "image.edit" })`; the old `{ editor: "draw-view" }` form no
-  longer routes. When no handler is available, Persephone reports **No image editor is registered**
-  or **No diagram editor is registered** and points to Tools & Editors or a replacement board.
+  offline-capable board by default. It appears under **Built-in** with a **Disable** action that
+  removes its capabilities; if no replacement is installed, Persephone explains that no image or
+  diagram editor is registered. The disabled entry stays available to **Enable** again. Excalidraw library browsing returns to the
+  drawing, asks before adding a library, and merges accepted items with the existing library. The
+  board uses its own brand icon and applies Persephone's theme before the drawing app loads, avoiding
+  a white flash on dark themes. See [Excalidraw Board](./editors/draw.md#libraries).
+
+- **Boards can put their own controls in the page toolbar:** trusted and bundled boards can declare
+  buttons, toggles, menus, selects, and text inputs from a fixed catalog. Persephone renders them in
+  its themed toolbar and sends interaction events to the board; boards can also set a text label, and
+  the slot stays empty when unset. Recovery actions (**Reload board**, **Open board log**, and
+  **Board properties**) share a **…** menu exposed as `board-toolbar-more`; individual recovery
+  actions are not addressable controls. The bundled Excalidraw board uses five toolbar controls
+  for theme, copy, save as SVG/PNG, open in a new tab, and screen snip. See [Boards](./boards.md).
+
+- **Boards can declare user settings:** typed declarations in `board-manifest.json` appear in
+  Settings, explicit values are stored in `board-settings.json`, and boards read effective values
+  through bridge 1.13.0's `persephone.settings.get()` and `onChange()`. Users change or reset these
+  settings in Persephone, not from the board; the Excalidraw board uses this for its library folder at **Settings →
+  Editors → Excalidraw → Library folder**.
+
+- **Excalidraw pages use the board facade:** `pages[i].editor` exposes the board facade instead of
+  the removed `IDrawEditor`, `DrawEditorFacade`, and `draw-view` editor id. `app.pages.addDrawPage()`
+  remains the supported way to create a drawing page.
+
 - **Programmatic `call()` results are no longer silently truncated:** `app.call()` in scripts and
-  `persephone.call()` in boards are unbounded by default. Pass `maxLength` explicitly when you want
-  a limit; the MCP `call` tool keeps its 20,000-character display limit.
+  `persephone.call()` in boards are unbounded by default. Pass `maxLength` explicitly to set a limit;
+  the MCP `call` tool keeps its 20,000-character display limit.
+
 - **Boards can write to the OS clipboard:** board authors can use `persephone.clipboard.writeText()`
-  or `persephone.clipboard.writeImage()` for copy actions triggered from Persephone's own toolbar,
-  even when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).
-- **Error and warning toasts reach the agent event feed:** agents can notice failures and warnings
-  raised while Persephone is running without separately checking the alert list.
-- **Boards can show Persephone's file icons:** `persephone.icons.forFiles(names)` returns the icon
-  the Explorer shows for each file name, as an image a board can put in its own lists. The Torrent
-  Viewer's file list uses it. See [Boards — Integration methods](./boards.md#integration-methods).
+  or `persephone.clipboard.writeImage()` for copy actions triggered from Persephone's toolbar, even
+  when the board page is not focused. See [Boards — Integration methods](./boards.md#integration-methods).
 
 ### Improvements
 
-- **Status bar under every content editor:** the pipe status moved from the top toolbar to a
-  status bar at the bottom of the editor, where its details popover opens upward. Image, Video,
-  Archive and every board now have that bar too, with the source's provider icon; text editors keep
-  their script toggle and encoding there. A board without a content host can now show its
-  `persephone.setStatusText()` text in it.
-- **Long source links are easier to read:** the loading tile shown while a page's content arrives is
-  a bordered panel at most 60% of the page wide, with long names (such as a magnet link) wrapped and
-  selectable, and a close icon in its corner instead of **Cancel**. The Video Player's URL field
-  stays one line and expands over the player only while you edit it.
-- **Video Player recovers when a board content provider becomes available:** a failed video page
-  retries playback automatically after the provider is registered, and reopening a failed source
-  link retries in the existing page.
+- **Video Player source field stays on one line:** its URL field expands over the player only while
+  you edit it.
+- **Video Player recovers when a board content provider becomes available:** failed playback retries
+  after the provider is registered, and reopening a failed source link retries in the existing page.
 - **Board registration refusals are easier to spot:** provider, scheme, capability, settings, and
-  browser URL mask refusals now show a toast when they first appear and remain listed in Board Info.
+  browser URL mask refusals show a toast when they first appear and remain listed in Board Info.
 - **Command-line launches accept multiple inputs:** open several files or folders at once, pass an
-  `http(s)` URL to open it in the built-in browser, or compare two files with
-  `persephone.exe diff before.txt after.txt`. These inputs also open in the running Persephone
-  instance when one is already open. See [Getting Started — Installation](./getting-started.md#installation).
+  `http(s)` URL to open in the built-in browser, or compare two files with
+  `persephone.exe diff before.txt after.txt`. Inputs also open in the running Persephone instance.
+  See [Getting Started — Installation](./getting-started.md#installation).
 - **Settings has a navigable two-pane layout:** settings are arranged as per-group panels, with a
   fixed two-level **Content** tree on the left. Click a group or section to scroll to it; the tree
   follows the panel currently visible as you scroll. Board-declared settings appear in their own
   **Editors** or **Boards** panel.
-- **Boards can declare user settings:** add typed declarations to `board-manifest.json` and
-  Persephone presents them in Settings, stores explicit values in `board-settings.json`, and
-  exposes the effective values to the board through bridge version 1.13.0's
-  `persephone.settings.get()` and `persephone.settings.onChange()` methods. The board cannot
-  write these values itself; users change or reset them in Settings.
-- **Excalidraw owns its library location:** the bundled Drawing board declares `library-path` as
-  its own setting, available at **Settings → Editors → Excalidraw → Library folder**, instead of
-  using a Persephone-wide Drawing Library setting.
-
-- **Boards can put their own controls in the page toolbar:** a trusted or bundled board declares
-  buttons, toggles, menus, selects and text inputs from a fixed catalog and Persephone renders them
-  in its own toolbar, themed and addressable by an agent, delivering an event to the board on each
-  interaction. A board can also set the toolbar's text label; the slot stays empty when it sets
-  nothing. See [Boards](./boards.md).
-- **The Excalidraw board has its drawing toolbar:** the bundled board carries five controls — theme,
-  copy image, save as SVG/PNG, open in a new tab, and screen snip.
-- **Board recovery actions now share a single toolbar menu:** **Reload board**, **Open board log**,
-  and **Board properties** are under **…**. The addressable `BOARD_ELEMENTS` contract now exposes
-  `board-toolbar-more`; `board-toolbar-reload`, `board-toolbar-log`, and
-  `board-toolbar-properties` were removed because menu items are not addressable controls.
-- **The board toolbar text slot starts empty:** a board can fill it with
-  `persephone.toolbar.setText(text)`, while `setText("")` clears it instead of restoring the board
-  path. The path remains available under **… → Board properties** and the tab's **Copy Board Path**.
-- **Board toolbars now match the app's other editor chrome:** their background uses the same dark
-  toolbar surface instead of appearing a shade lighter.
-- **Excalidraw uses its own brand icon:** the bundled board now shows Excalidraw's recognizable
-  purple mark wherever Persephone displays its board icon.
-- **Excalidraw opens without a white flash on dark themes:** its initial document background uses
-  Persephone's theme before the drawing app finishes loading.
-- **Board logs keep recent history across reloads:** opening or reloading a board now adds a
-  `----- board loaded -----` separator instead of clearing the log. Logs are capped at 256 KiB,
-  with older entries trimmed as needed. Bundled boards keep their logs under
-  `%APPDATA%\persephone\board-logs\<id>\ui.log`; logs for other boards remain in the board folder.
-  See [Boards — Error log](./boards.md#error-log-uilog).
-- **Board path switching now uses the Boards panels:** clicking the board path no longer opens a
-  switcher; use the **Boards** panel or the Explorer **Boards** panel to switch boards.
-- **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** now
-  stay together, followed by the shared **Rename**, **Delete**, **New File**, **New Folder** edit
-  group. Pasting or creating from a file row targets its parent folder.
+- **Board path switching uses the Boards panels:** use the **Boards** panel or Explorer's **Boards**
+  panel to switch boards instead of clicking the board path.
+- **Board logs keep recent history across reloads:** opening or reloading a board adds a separator
+  instead of clearing the log. Logs are capped at 256 KiB, trimming older entries as needed; bundled
+  boards keep logs under `%APPDATA%\persephone\board-logs\<id>\ui.log`. See [Boards — Error log](./boards.md#error-log-uilog).
+- **File Explorer context menus are grouped consistently:** **Cut**, **Copy**, and **Paste** stay
+  together, followed by **Rename**, **Delete**, **New File**, and **New Folder**. Pasting or creating
+  from a file row targets its parent folder.
 - **Sidebar sizing is remembered for new pages:** resize the sidebar once and new pages start with
   that width; the sidebar is capped at 90% of the page area so the editor remains visible.
 - **Git Tree remembers its layout for new pages:** column widths and order, plus the lower
   Commit/Diff panel height, carry forward when you open another Git Tree page.
-- **Grids no longer flicker while you scroll them:** dragging a grid's scrollbar, or scrolling
-  quickly through a long list, used to blink. Affects every table view — the grid editors,
-  the Explorer and Boards trees, Git Changes and the Git Tree.
+- **Grids no longer flicker while scrolling:** dragging a grid's scrollbar or quickly scrolling a
+  long list no longer causes blinking in grid editors, Explorer and Boards trees, Git Changes, or
+  Git Tree.
 
 ### Bug Fixes
 
-- **No stray editor switches on a board opened from a magnet link:** a Torrent Viewer page opened
-  by a magnet link no longer offers **Text Editor** and a raw `board-editor:` switch — the link is
-  no longer mistaken for a local file.
-- **Board Info pages survive a restart:** a page opened with **Board properties** from a board is
-  no longer lost when Persephone restarts or its window reloads. It comes back showing the same
-  board, and when it was opened from a board on a file, **Open board** returns to that board with
-  its file loaded.
-- **Failed archive and provider media can be retried:** reopen the source link to start a fresh
-  playback attempt in its existing page.
+- **Board Info pages survive a restart:** Board properties pages opened from a board or the hub now
+  restore after a restart or window reload. When opened from a board on a file, **Open board**
+  returns to that board with its file loaded.
 - **Files and web links supplied when starting Persephone now open as expected.**
-- **A web link that starts Persephone opens inside it when Persephone is the default browser:**
-  it no longer bounces back out to the default browser (which is Persephone itself).
-- **Board toolbar controls declared at startup now appear:** a board that called
-  `persephone.toolbar.set()`, `update()` or `setText()` from its top-level script code lost those
-  controls a moment later, when its page finished loading. They are now held until the page has
-  loaded and then applied in order, so boards no longer need to wait for `load` to declare them.
-- **Board capability handlers open and reuse their pages consistently:** invoking a capability
-  supplied by any trusted board now opens its handler page in the caller's window when needed and
-  reuses an existing page, regardless of the board's editor kind.
+- **A web link that starts Persephone opens inside it when Persephone is the default browser:** it
+  no longer bounces back out to the default browser.
 
 ---
-
 ## Version 5.0.3
 
 ### New Features
