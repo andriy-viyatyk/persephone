@@ -70,6 +70,7 @@ export enum Endpoint {
     clearCompletedDownloads = "clearCompletedDownloads",
     setMcpEnabled = "setMcpEnabled",
     setMainScriptsEnabled = "setMainScriptsEnabled",
+    setWindowsSsoEnabled = "setWindowsSsoEnabled",
     getMcpStatus = "getMcpStatus",
     setMnemeEnabled = "setMnemeEnabled",
     restartMneme = "restartMneme",
@@ -235,6 +236,7 @@ export type Api = {
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
     [Endpoint.setMcpEnabled]: (enabled: boolean, port?: number) => Promise<void>;
     [Endpoint.setMainScriptsEnabled]: (enabled: boolean) => Promise<void>;
+    [Endpoint.setWindowsSsoEnabled]: (enabled: boolean) => Promise<void>;
     [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
     [Endpoint.setMnemeEnabled]: (enabled: boolean, port?: number) => Promise<MnemeStatus>;
     [Endpoint.restartMneme]: (port?: number) => Promise<MnemeStatus>;

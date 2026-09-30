@@ -65,14 +65,14 @@ const sections = await app.call("settings.sections");
 await app.call("settings.highlight", { args: ["mcp.enabled"] });
 ```
 
-The catalog has 14 built-in sections and 26 Settings-page rows:
+The catalog has 14 built-in sections and 27 Settings-page rows:
 
 | Section | Rows |
 |---------|------|
 | Theme | `theme` |
 | Window Behavior | `window.close-to-tray` |
 | Editor Behavior | `editor.word-wrap` |
-| Browser Profiles | `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file` |
+| Browser Profiles | `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file` |
 | Links | `link-open-behavior` |
 | Default Browser | *(no setting row)* |
 | File Search | `search-extensions`, `search-exclude` |
@@ -102,6 +102,7 @@ its own effective values through `persephone.settings.get(id)` and
 | `mcp.port` | `number` | `7865` | Port for the MCP HTTP server. The server URL will be `http://127.0.0.1:{port}/mcp`. Changing this setting requires toggling `mcp.enabled` off and on to take effect. |
 | `main.scripting.enabled` | `boolean` | `false` in packaged builds | Allow the MCP `call` tool to run code in Persephone's main process. This can freeze the app; enable it only for trusted MCP clients. Development builds enable it by default. |
 | `editor.word-wrap` | `boolean` | `false` | Default Word Wrap for newly shown Text Editor pages; existing pages retain their persisted choice. |
+| `browser-windows-sso` | `boolean` | `false` | On Windows, allow regular browser profiles, including Default, to use sign-in proof on supported Microsoft sign-in navigations; never used by Incognito or Tor. |
 | `clipboard.enabled` | `boolean` | `false` | Record supported clipboard items for the Clipboard sidebar panel. History is off by default; copied secrets may remain readable on disk while enabled. |
 | `clipboard.max-items` | `number` | `100` | Maximum retained clipboard history items, from 1 through 1000. Invalid stored values fall back to 100. |
 | `script-library.path` | `string` | `""` | Path to the Script Library folder. When set, a "Script Library" entry appears in the sidebar for quick access to reusable scripts. |

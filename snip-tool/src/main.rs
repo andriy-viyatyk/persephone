@@ -13,11 +13,14 @@
 //                            — clipboard change events as JSON lines; copies owned by
 //                              <pid> keep Chromium's CanIncludeInClipboardHistory marker
 //                              from excluding them (see clipboard_watch.rs)
+//   sso-cookies <uri>        — Windows single sign-on cookies for a Microsoft
+//                              sign-in URI as one JSON line (see sso_cookies.rs)
 
 mod capture;
 mod clipboard;
 mod clipboard_watch;
 mod overlay;
+mod sso_cookies;
 
 // clipboard-watch emits change events and health-check responses as JSON lines.
 
@@ -34,6 +37,7 @@ fn main() {
         Some("clipboard-read") => clipboard::read(),
         Some("clipboard-write") => clipboard::write(std::env::args().any(|a| a == "--cut")),
         Some("clipboard-watch") => clipboard_watch::run(),
+        Some("sso-cookies") => sso_cookies::run(std::env::args().nth(2)),
         _ => run_snip(),
     }
 }

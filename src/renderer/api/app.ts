@@ -281,6 +281,7 @@ class App {
         const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");
         await settingsInstance.wait();
         api.setMainScriptsEnabled(!!services.settings.get("main.scripting.enabled"));
+        void api.setWindowsSsoEnabled(!!services.settings.get("browser-windows-sso"));
 
         // Defer MCP auto-start and autoload scripts to not block window rendering
         setTimeout(async () => {
@@ -336,6 +337,9 @@ class App {
         services.settings.onChanged.subscribe(({ key, value }) => {
             if (key === "main.scripting.enabled") {
                 api.setMainScriptsEnabled(!!value);
+            }
+            if (key === "browser-windows-sso") {
+                void api.setWindowsSsoEnabled(!!value);
             }
             if (key === "mcp.enabled") {
                 const port = services.settings.get("mcp.port") as number | undefined;

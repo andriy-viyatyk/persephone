@@ -15,6 +15,10 @@ _No active work._
 
 ## Planned
 
+- *(no epic)*
+  - [ ] [US-1582: Permission policy for the app and browser pages](tasks/US-1582-permission-policy/README.md)
+  - [ ] [US-1583: Browser brands match Chrome](tasks/US-1583-chrome-brand/README.md)
+
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 
 ---

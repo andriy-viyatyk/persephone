@@ -171,6 +171,18 @@ ordinary browser behavior; routing them to a remote proxy would only break local
 adding privacy. WebRTC on a proxied or Tor page is restricted to the proxy connection, so it cannot
 reveal your local or public IP address outside it.
 
+## Windows single sign-on
+
+On Windows, turn on **Allow Windows single sign-on for Microsoft, work, and school accounts** in
+**Settings → Browser Profiles** to let regular browser profiles, including Default, use the device's
+Windows sign-in proof on supported Microsoft sign-in pages. This can help work or school accounts
+satisfy company sign-in rules that require a registered device. The setting is global and off by
+default.
+
+The proof is requested only for HTTPS page or frame navigations to `login.microsoftonline.com` and
+`login.live.com`. It is obtained from Windows for each eligible request and is not used by Incognito
+or Tor pages. If Windows cannot provide it, the browser continues the sign-in without it.
+
 ## Agent API
 
 After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` facade exposes browser

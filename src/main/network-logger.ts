@@ -5,9 +5,13 @@
  * HTTP/HTTPS request and response metadata. Logs are stored per page
  * (registration key: tabId/internalTabId) and exposed to the renderer
  * via IPC. Cleared automatically when the webview is unregistered.
+ *
+ * Its onBeforeSendHeaders listener is the only one a session can have, so it also adds the
+ * Windows single sign-on proof to Microsoft sign-in navigations (see windows-sso.ts).
  */
 import { app, Session, ipcMain } from "electron";
 import { BrowserChannel, NetworkLogEntry, NetworkLogOptions } from "../ipc/browser-ipc";
+import { addWindowsSsoHeaders, redactWindowsSsoHeaders, wantsWindowsSso } from "./windows-sso";
 
 const MAX_LOG_ENTRIES = 200;
 const MAX_BODY_SIZE = 100 * 1024; // 100 KB — skip larger bodies
@@ -56,6 +60,42 @@ function decodeBody(uploadData?: Electron.UploadData[]): string | undefined {
     }
 }
 
+/** Record a request in its page's log. `requestHeaders` is what may be stored and shown. */
+function logRequest(details: Electron.OnBeforeSendHeadersListenerDetails, requestHeaders: Record<string, string>): void {
+    const key = details.webContentsId != null
+        ? resolveWebContentsId(details.webContentsId)
+        : undefined;
+    if (!key) return;
+
+    if (!pageLogs.has(key)) {
+        pageLogs.set(key, []);
+        pagePending.set(key, new Map());
+    }
+
+    const log = pageLogs.get(key);
+    const pending = pagePending.get(key);
+
+    const entry: NetworkLogEntry = {
+        id: details.id,
+        url: details.url,
+        method: details.method,
+        resourceType: details.resourceType,
+        referrer: details.referrer,
+        timestamp: details.timestamp,
+        requestHeaders,
+        requestBody: decodeBody(details.uploadData),
+    };
+
+    // Circular buffer: remove oldest if at capacity
+    if (log.length >= MAX_LOG_ENTRIES) {
+        const removed = log.shift();
+        pending.delete(removed.id);
+    }
+
+    pending.set(details.id, entry);
+    log.push(entry);
+}
+
 /**
  * Attach webRequest listeners to a session for network logging.
  * Idempotent via WeakSet guard.
@@ -73,40 +113,15 @@ function hookSession(ses: Session): void {
             return;
         }
 
-        const key = details.webContentsId != null
-            ? resolveWebContentsId(details.webContentsId)
-            : undefined;
-
-        if (key) {
-            if (!pageLogs.has(key)) {
-                pageLogs.set(key, []);
-                pagePending.set(key, new Map());
-            }
-
-            const log = pageLogs.get(key);
-            const pending = pagePending.get(key);
-
-            const entry: NetworkLogEntry = {
-                id: details.id,
-                url: details.url,
-                method: details.method,
-                resourceType: details.resourceType,
-                referrer: details.referrer,
-                timestamp: details.timestamp,
-                requestHeaders: { ...details.requestHeaders },
-                requestBody: decodeBody(details.uploadData),
-            };
-
-            // Circular buffer: remove oldest if at capacity
-            if (log.length >= MAX_LOG_ENTRIES) {
-                const removed = log.shift();
-                pending.delete(removed.id);
-            }
-
-            pending.set(details.id, entry);
-            log.push(entry);
+        if (wantsWindowsSso(ses, details.url, details.resourceType)) {
+            void addWindowsSsoHeaders(details.url, details.requestHeaders).then((requestHeaders) => {
+                logRequest(details, redactWindowsSsoHeaders(requestHeaders));
+                callback({ requestHeaders });
+            });
+            return;
         }
 
+        logRequest(details, { ...details.requestHeaders });
         // Pass through unchanged
         callback({ requestHeaders: details.requestHeaders });
     });

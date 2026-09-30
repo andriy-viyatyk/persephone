@@ -445,6 +445,33 @@ Each browser page is bound to a **profile** that determines its Electron session
 
 `getPartitionString()` in `BrowserEditorModel.ts` computes the partition. `BrowserTorModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/Tor model has stable IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls.
 
+### Windows Single Sign-On
+
+The global `browser-windows-sso` setting is opt-in and defaults to off. The renderer sends its
+initial value and later changes to the main process over the typed
+`Endpoint.setWindowsSsoEnabled` IPC endpoint; main keeps only this boolean policy. The setting
+appears in Settings â†’ Browser â†’ Browser Profiles.
+
+When enabled on Windows, the sole `session.webRequest.onBeforeSendHeaders` listener in
+`network-logger.ts` may add Windows sign-in proof to `mainFrame` and `subFrame` HTTPS requests
+whose normalized origin is exactly `https://login.microsoftonline.com` or
+`https://login.live.com`. Eligibility is derived from the Electron `Session`: it must be
+persistent and its storage path must identify a `Partitions/browser-<name>` profile. The result
+is cached per Session, which excludes Incognito and Tor because their sessions are in-memory.
+Other requests, origins, and platforms keep the normal pass-through path. The policy does not
+discover tenant or sovereign-cloud endpoints.
+
+For an eligible request, `windows-sso.ts` starts a fresh `persephone-snip.exe sso-cookies <uri>`
+process. The Rust helper calls Windows' `IProofOfPossessionCookieInfoManager`, emits the cookie
+records as JSON on stdout, and emits no diagnostic details. The adapter discards stderr, parses
+stdout, and returns no cookies if the helper is missing, fails, or exceeds its 3000 ms deadline.
+It maps `x-ms-*` records to individual headers and other records to the existing `Cookie` header.
+
+These values are transient credentials. They stay in the main process, are not cached or sent
+over IPC, and are removed from the cloned request headers before `network-logger.ts` stores an
+entry for the browser network log. Keep the SSO composition inside that one listener because
+Electron supports only one `onBeforeSendHeaders` listener per session.
+
 ### Profile Settings
 
 Profiles are stored in app settings as `BrowserProfile[]` (`{ name, color }`). A separate `browser-default-profile` setting tracks which profile the "Browser" quick-add menu item uses. Colors come from the `TAG_COLORS` palette in `palette-colors.ts`, and the built-in default uses `DEFAULT_BROWSER_COLOR` (cyan `#4DD0E1`).

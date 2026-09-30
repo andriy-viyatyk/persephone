@@ -139,6 +139,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
             { key: "browser-default-profile", label: "Default browser profile", purpose: "The profile used when opening a new browser tab; empty selects the built-in default." },
             { key: "browser-default-bookmarks-file", label: "Default profile bookmarks", purpose: "The .link.json file holding bookmarks for the default browser profile." },
             { key: "browser-incognito-bookmarks-file", label: "Incognito bookmarks", purpose: "The separate .link.json bookmarks file used in incognito mode." },
+            { key: "browser-windows-sso", label: "Windows single sign-on", purpose: "Send this device's Windows sign-in to Microsoft sign-in pages from browser profiles (not Incognito or Tor); off by default." },
             { key: "tor.exe-path", label: "Tor executable", purpose: "The tor.exe path required for Browser (Tor) mode; empty disables it." },
             { key: "tor.socks-port", label: "Tor SOCKS port", purpose: "The SOCKS proxy port used by Tor." },
             { key: "tor.bookmarks-file", label: "Tor bookmarks", purpose: "The .link.json bookmarks file used for Browser (Tor) mode." },

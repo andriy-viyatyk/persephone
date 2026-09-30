@@ -13,6 +13,7 @@ import { versionService } from "../../main/version-service";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
+import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { startMneme, stopMneme, restartMneme, getMnemeStatus as getMnemeServiceStatus } from "../../main/mneme-service";
 import type { ClipboardFileList } from "../clipboard-ipc";
@@ -235,6 +236,10 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         setMainScriptsEnabled(enabled);
     }
 
+    setWindowsSsoEnabled = async (_event: IpcMainEvent, enabled: boolean): Promise<void> => {
+        setWindowsSsoEnabled(enabled);
+    }
+
     getMcpStatus = async (_event: IpcMainEvent): Promise<McpStatus> => {
         return {
             running: isMcpHttpServerRunning(),
@@ -410,6 +415,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
     bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
     bindEndpoint(Endpoint.setMainScriptsEnabled, controllerInstance.setMainScriptsEnabled);
+    bindEndpoint(Endpoint.setWindowsSsoEnabled, controllerInstance.setWindowsSsoEnabled);
     bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
     bindEndpoint(Endpoint.setMnemeEnabled, controllerInstance.setMnemeEnabled);
     bindEndpoint(Endpoint.restartMneme, controllerInstance.restartMneme);

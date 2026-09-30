@@ -35,6 +35,7 @@ export type AppSettingsKey =
     | "browser-default-network"
     | "browser-incognito-network"
     | "browser-incognito-bookmarks-file"
+    | "browser-windows-sso"
     | "link-open-behavior"
     | "mcp.enabled"
     | "mcp.port"
@@ -112,6 +113,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-default-network": "Network route for the built-in default browser profile (named profiles carry their own \"network\").\n{ \"kind\": \"direct\" } (default), or { \"kind\": \"proxy\", \"protocol\": \"socks5\" | \"http\", \"host\": \"127.0.0.1\", \"port\": 1080 }.\nA proxied profile never falls back to direct: when the proxy is unreachable its pages fail to load.\nWith SOCKS5 the proxy also resolves host names. localhost and link-local addresses always go direct.",
     "browser-incognito-network": "Network route for Incognito browser pages — same shape as \"browser-default-network\".\nEach Incognito page has its own in-memory session; this route applies to every one of them.",
     "browser-incognito-bookmarks-file": "Absolute path to the .link.json bookmarks file used in incognito mode.\nKept separate so incognito bookmarks never mix with the normal profile's.",
+    "browser-windows-sso": "Allow Windows single sign-on for Microsoft, work, and school accounts (Windows only).\nOn an Entra-joined device, browser profile pages send Windows' device sign-in proof to\nlogin.microsoftonline.com and login.live.com, as Edge and Chrome do, so company sign-in rules\nthat require a registered device accept the sign-in. Never applies to Incognito or Tor pages.",
     "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
     "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
     "mcp.port": "Port for the MCP HTTP server.\nNumber. Default: 7865. Changing this alone does NOT move a running server —\nset \"mcp.enabled\": false, save, then set it back to true.",
@@ -152,6 +154,7 @@ const defaultAppSettingsState = {
         "browser-default-network": { kind: "direct" } as BrowserNetwork,
         "browser-incognito-network": { kind: "direct" } as BrowserNetwork,
         "browser-incognito-bookmarks-file": "",
+        "browser-windows-sso": false,
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,
         "mcp.port": 7865,

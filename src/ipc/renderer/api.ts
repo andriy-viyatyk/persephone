@@ -257,6 +257,10 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.setMainScriptsEnabled, enabled);
     }
 
+    setWindowsSsoEnabled = async (enabled: boolean) => {
+        return executeOnce<void>(Endpoint.setWindowsSsoEnabled, enabled);
+    }
+
     getMcpStatus = async () => {
         return executeOnce<McpStatus>(Endpoint.getMcpStatus);
     }

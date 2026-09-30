@@ -56,7 +56,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Window Behavior → `window.close-to-tray`
 - Editor Behavior → `editor.word-wrap`
-- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
+- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
 - Links → `link-open-behavior`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`
@@ -156,6 +156,7 @@ example.
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
+| `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |
 | `theme` | Applies when saved; the settings file comments list the accepted theme names |
 | `window.close-to-tray` | On by default; controls whether closing the last window hides to the tray or quits |

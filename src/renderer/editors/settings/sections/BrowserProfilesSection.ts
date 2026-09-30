@@ -5,6 +5,8 @@ import { createComponentModelDriver, type ComponentModelDriver } from "../../../
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../../theme/palette-colors";
 import { IncognitoIcon, TorIcon } from "../../../theme/language-icons";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
+import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
+import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../../uikit/Input/InputView";
@@ -17,6 +19,7 @@ import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
+import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
 import "../../../uikit/IconButton/IconButton.css";
 import "../../../uikit/Input/Input.css";
@@ -367,9 +370,18 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
     private newNameInput: InputView | undefined;
     private addButton: ButtonView | undefined;
     private colorDots: DotView[] = [];
+    private windowsSso: CheckboxView | undefined;
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
+    }
+
+    private windowsSsoProps(): CheckboxProps {
+        return {
+            checked: settings.get("browser-windows-sso"),
+            onChange: () => settings.set("browser-windows-sso", !settings.get("browser-windows-sso")),
+            children: "Allow Windows single sign-on for Microsoft, work, and school accounts",
+        };
     }
 
     protected onMount(): void {
@@ -468,9 +480,19 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         addPanel.append(colorPanel);
         this.root.append(addPanel);
 
+        const ssoPanel = panel({ direction: "column", gap: "xs", paddingTop: "lg" });
+        this.windowsSso = this.child(new CheckboxView(this.windowsSsoProps()));
+        ssoPanel.append(
+            this.windowsSso.root,
+            text("Browser profile pages send this device's Windows sign-in to Microsoft, as Edge and Chrome do, for company sign-ins that require a registered device. Never used by Incognito or Tor pages.", { color: "light", size: "xs" }),
+        );
+        this.windowsSso.mount();
+        this.root.append(ssoPanel);
+
         driver.mount();
 
         const subscription = settings.onChanged.subscribe(({ key }) => {
+            if (key === "browser-windows-sso") this.windowsSso?.update(this.windowsSsoProps());
             if (this.isRelevantSetting(key)) {
                 driver.update(this.currentProps());
                 this.sync(model.state.get());
@@ -492,6 +514,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.incognitoBookmarks = undefined;
         this.incognitoNetwork = undefined;
         this.torRow = undefined;
+        this.windowsSso = undefined;
         this.newNameInput = undefined;
         this.addButton = undefined;
         this.colorDots = [];
