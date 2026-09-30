@@ -140,6 +140,7 @@ export async function uninstallCatalogBoard(args: {
     if (!(await ensureBoardIdle(args.root, "deleting"))) return false;
 
     try {
+        await api.stopModuleService(args.root);
         await fs.removeDir(args.root, true);
     } catch (err) {
         const { ui } = await import("./ui");
@@ -151,6 +152,23 @@ export async function uninstallCatalogBoard(args: {
     removePin({ kind: "board", root: args.root });
     if (args.catalogId) await boardInstallRegistry.remove(args.catalogId);
     return true;
+}
+
+/**
+ * Rename a folder a just-stopped process was using. Windows can report the process gone a moment
+ * before it releases the folder, so EBUSY / EPERM are retried briefly (about 3 s in total).
+ */
+async function renameReleasedFolder(from: string, to: string): Promise<void> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            await fs.rename(from, to);
+            return;
+        } catch (err) {
+            const code = (err as { code?: unknown })?.code;
+            if ((code !== "EBUSY" && code !== "EPERM") || attempt >= 15) throw err;
+            await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+    }
 }
 
 export async function installVersion(
@@ -190,8 +208,12 @@ export async function installVersion(
             throw new Error("Board was reopened during the update — aborted (nothing changed).");
         }
 
+        // A running module service holds the folder as its cwd, which makes Windows refuse the
+        // rename (EBUSY). Stop it; the board's next request starts it again from the new files.
+        await api.stopModuleService(root);
+
         // Swap: move old aside, move staging in; roll back on failure.
-        await fs.rename(root, backupDir);
+        await renameReleasedFolder(root, backupDir);
         try {
             await fs.rename(stagingDir, root);
         } catch (swapErr) {
