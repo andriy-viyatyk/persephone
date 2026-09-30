@@ -12,7 +12,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.6 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Browser video fullscreen works as expected:** fullscreen video now fills the app window, and
+  fullscreen ends when you press `Esc`, close the browser tab, or leave it hidden.
 
 ---
 

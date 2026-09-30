@@ -129,6 +129,9 @@ DevTools (`F12`), and session restore.
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.
 
+Videos can use their own fullscreen control to fill the app window. Press `Esc` to leave fullscreen;
+it also ends when you close the browser tab or leave it hidden.
+
 When a page link uses a scheme registered by a trusted board, clicking it leaves the browser tab and
 opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
 blocked rather than being sent to Chromium.

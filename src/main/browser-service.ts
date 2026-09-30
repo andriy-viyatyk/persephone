@@ -76,6 +76,9 @@ interface RegisteredWebview {
      *  cleared defensively on did-stop-loading so it can never leak to a later
      *  reload if no prompt was triggered. */
     bypassUnloadGuard: boolean;
+    /** The page is in HTML fullscreen (a video's fullscreen button), which also made the
+     *  host window fullscreen. */
+    htmlFullscreen: boolean;
 }
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
@@ -121,6 +124,37 @@ function sendHostEvent(sender: WebContents, endpoint: EventEndpoint, data: strin
     } catch {
         // The host renderer may be destroyed before the webview is disposed.
     }
+}
+
+/**
+ * Take the host window out of fullscreen once no webview of it is in HTML fullscreen.
+ * Electron makes the whole window fullscreen for a guest's fullscreen request; when the guest
+ * goes away or ignores an exit request, nothing else would ever restore the window.
+ */
+function releaseWindowFullscreen(sender: WebContents): void {
+    if (sender.isDestroyed()) return;
+    for (const reg of registrations.values()) {
+        if (reg.senderWebContents === sender && reg.htmlFullscreen) return;
+    }
+    const win = BrowserWindow.fromWebContents(sender);
+    if (win && !win.isDestroyed() && win.isFullScreen()) win.setFullScreen(false);
+}
+
+/** Ask a fullscreen page to leave fullscreen; force the window out if it does not. */
+function exitHtmlFullscreen(key: string): void {
+    const reg = registrations.get(key);
+    if (!reg?.htmlFullscreen || reg.webContents.isDestroyed()) return;
+    const { webContents: wc, senderWebContents: sender } = reg;
+    wc.executeJavaScript("document.fullscreenElement ? document.exitFullscreen() : undefined", true)
+        .catch((): void => undefined);
+    setTimeout(() => {
+        const current = registrations.get(key);
+        if (current?.webContents === wc) {
+            if (!current.htmlFullscreen) return;
+            current.htmlFullscreen = false;
+        }
+        releaseWindowFullscreen(sender);
+    }, 1000);
 }
 
 /**
@@ -289,6 +323,16 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         }
     });
 
+    on("enter-html-full-screen", () => {
+        const reg = registrations.get(key);
+        if (reg) reg.htmlFullscreen = true;
+    });
+
+    on("leave-html-full-screen", () => {
+        const reg = registrations.get(key);
+        if (reg) reg.htmlFullscreen = false;
+    });
+
     on("audio-state-changed", (e: Electron.Event & { audible: boolean }) => {
         sendEvent(sender, tabId, internalTabId, "audio-state-changed", {
             audible: e.audible,
@@ -349,6 +393,13 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // it lives in `preload-webview.ts` instead.
     on("before-input-event", (_e: Electron.Event, input: Electron.Input) => {
         if (input.type !== "keyDown") return;
+        // Escape leaves a page's HTML fullscreen, as in Chrome. Electron does not do it for a
+        // webview guest, which left a fullscreen video with no keyboard way out.
+        if (input.key === "Escape" && registrations.get(key)?.htmlFullscreen) {
+            _e.preventDefault();
+            exitHtmlFullscreen(key);
+            return;
+        }
         const keyLower = input.key.toLowerCase();
         if (input.key === "F5" || (keyLower === "r" && input.control)) {
             _e.preventDefault();
@@ -451,6 +502,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         senderWebContents: sender,
         listeners,
         bypassUnloadGuard: false,
+        htmlFullscreen: false,
     });
 }
 
@@ -470,6 +522,8 @@ function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}
     }
 
     registrations.delete(key);
+    // A tab closed while its video is fullscreen would leave the window fullscreen for good.
+    if (reg.htmlFullscreen) releaseWindowFullscreen(reg.senderWebContents);
     if (!options.keepCdpState) {
         clearNetworkLog(key);
         clearCdpTargetState(key);
@@ -641,6 +695,10 @@ export function initBrowserHandlers(): void {
         if (reg && !reg.webContents.isDestroyed()) {
             reg.webContents.setAudioMuted(muted);
         }
+    });
+
+    ipcMain.on(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => {
+        exitHtmlFullscreen(key);
     });
 
     ipcMain.on(BrowserChannel.allowPopups, () => {

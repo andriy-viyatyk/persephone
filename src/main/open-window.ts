@@ -276,7 +276,9 @@ export class OpenWindow {
     };
 
     saveWindowSize = debounce(() => {
-        if (this.window && !this.window?.isMaximized()) {
+        // A fullscreen window (a video in a browser page) has the display's size; saving it
+        // would restore the next launch as a screen-sized ordinary window.
+        if (this.window && !this.window.isMaximized() && !this.window.isFullScreen()) {
             const bounds = this.window?.getBounds();
             if (bounds) {
                 electronStore.set("windowState", {

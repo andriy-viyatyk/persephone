@@ -57,6 +57,8 @@ export const BrowserChannel = {
     allowPopups: "browser:allow-popups",
     /** Renderer → Main: hard reload (ignore cache) bypassing the beforeunload guard prompt. Args: (key: string) */
     hardReload: "browser:hard-reload",
+    /** Renderer → Main: take a webview out of HTML fullscreen (its page was hidden). Args: (key: string) */
+    exitHtmlFullscreen: "browser:exit-html-fullscreen",
 
     // Main → Renderer
     event: "browser:event",

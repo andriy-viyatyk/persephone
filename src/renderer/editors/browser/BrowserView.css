@@ -21,4 +21,6 @@
 .browser-root [data-tor-status-dot] { position: absolute; right: 0; bottom: 0; }
 .browser-root [data-webview-wrapper] { position: absolute; inset: 0; display: flex; }
 .browser-root [data-webview-wrapper] webview { flex: 1 1 auto; border: none; }
+/* HTML fullscreen: the window is fullscreen, so the page covers the whole app (tabs, toolbar). */
+.browser-root [data-webview-wrapper][data-html-fullscreen] { position: fixed; inset: 0; z-index: 2147483647; -webkit-app-region: no-drag; }
 .browser-root [data-webview-click-overlay] { position: absolute; inset: 0; z-index: 1; }

@@ -60,6 +60,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     private readonly webview: Electron.WebviewTag;
     private registered = false;
     private wasCurrentWebview = false;
+    private htmlFullscreen = false;
 
     public constructor(props: BrowserWebviewItemProps) {
         const wrapper = document.createElement("div");
@@ -154,6 +155,21 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         };
         this.listenNative("ipc-message", onIpcMessage);
 
+        // HTML fullscreen (a video's fullscreen button). Electron makes the window fullscreen but
+        // leaves the webview in its box, so the wrapper is stretched over the whole app. If the
+        // webview is then hidden — the video opened an ad in a new tab, or the user switched
+        // pages — the window would stay fullscreen with nothing to leave it by, so leave it.
+        this.listenNative("enter-html-full-screen", () => this.setHtmlFullscreen(true));
+        this.listenNative("leave-html-full-screen", () => this.setHtmlFullscreen(false));
+        const hiddenObserver = new ResizeObserver(() => {
+            if (this.htmlFullscreen && this.root.offsetWidth === 0 && this.root.offsetHeight === 0) {
+                this.setHtmlFullscreen(false);
+                if (this.registered) ipcRenderer.send(BrowserChannel.exitHtmlFullscreen, `${this.model.id}/${this.tabId}`);
+            }
+        });
+        hiddenObserver.observe(this.root);
+        this.own(() => hiddenObserver.disconnect());
+
         const onFoundInPage = (event: Electron.FoundInPageEvent): void => {
             if (this.props.isActive) this.model.webview.handleFoundInPage(event.result);
         };
@@ -169,6 +185,11 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     }
 
     protected onUpdate(props: BrowserWebviewItemProps): void { this.updateBackground(props.tab); }
+
+    private setHtmlFullscreen(fullscreen: boolean): void {
+        this.htmlFullscreen = fullscreen;
+        this.root.toggleAttribute("data-html-fullscreen", fullscreen);
+    }
 
     private updateBackground(tab: BrowserTabData): void {
         this.webview.style.backgroundColor = isBlankUrl(tab.url) ? color.background.default : color.background.webview;
