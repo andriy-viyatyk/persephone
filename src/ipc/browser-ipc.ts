@@ -22,6 +22,29 @@ export const BrowserChannel = {
     collectDom: "browser:collect-dom",
     /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
     getNetworkLog: "browser:get-network-log",
+    /** Renderer → Main (invoke): read bounded CDP event records for a target/session. */
+    getPageEvents: "browser:get-page-events",
+    /** Renderer → Main (invoke): mark the oldest reported dialog after snapshot succeeds. */
+    markDialogReported: "browser:mark-dialog-reported",
+    /** Renderer → Main (invoke): set dialog policy for a target/session. */
+    setDialogPolicy: "browser:set-dialog-policy",
+    /** Renderer → Main (invoke): resolve the pending JavaScript dialog. */
+    handleDialog: "browser:handle-dialog",
+    /** Renderer → Main (invoke): mark a target automation operation active/inactive. */
+    automationBegin: "browser:automation-begin",
+    automationEnd: "browser:automation-end",
+    /** Arm a main-process CDP navigation wait. Args: (key, options) */
+    armNavigationWait: "browser:arm-navigation-wait",
+    /** Await and consume a previously armed navigation wait. Args: (token) */
+    awaitNavigationWait: "browser:await-navigation-wait",
+    /** Arm a main-process CDP response wait. Args: (key, pattern, options) */
+    armResponseWait: "browser:arm-response-wait",
+    /** Await and consume a previously armed response wait. Args: (token) */
+    awaitResponseWait: "browser:await-response-wait",
+    /** Arm one Input.dragIntercepted listener. Args: (key, sessionId?) */
+    armDragIntercept: "browser:arm-drag-intercept",
+    /** Consume an armed drag listener, returning data or null on timeout. Args: (token, waitMs) */
+    takeDragIntercept: "browser:take-drag-intercept",
     /** Renderer → Main (invoke): attach CDP debugger to a webview. Args: (key: string, options?) */
     cdpAttach: "browser:cdp-attach",
     /** Renderer → Main (invoke): detach CDP debugger. Args: (key: string) */
@@ -48,6 +71,70 @@ export interface BrowserRegisterRequest {
 
 export interface CdpAttachOptions {
     aiVisionBinding?: boolean;
+}
+
+export type NavigationWaitUntil = "load" | "domcontentloaded" | "networkidle";
+export interface NavigationWaitResult { url: string; status: number | null }
+export interface NavigationWaitOptions {
+    waitUntil?: NavigationWaitUntil;
+    timeout?: number;
+}
+
+export interface BrowserResponsePattern { source: string; flags: string }
+export interface BrowserResponseWaitOptions { timeout?: number; includeBody?: boolean; maxBodyBytes?: number }
+export interface BrowserResponseResult {
+    url: string;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    mimeType: string;
+    body?: string;
+    base64Encoded?: boolean;
+    truncated?: boolean;
+}
+export interface NetworkLogOptions { includeBodies?: boolean; maxBodyBytes?: number }
+export interface NetworkResponseBody { responseBody: string; responseBodyBase64Encoded: boolean; responseBodyTruncated: boolean }
+
+export interface DragData {
+    items: Array<{ mimeType: string; data: string; title?: string; baseURL?: string }>;
+    dragOperationsMask: number;
+}
+
+export type PageDialogPolicy = "accept" | "dismiss" | "manual";
+export type PageDialogDisposition = "accepted" | "dismissed" | "pending";
+export type PageConsoleLevel = "debug" | "info" | "log" | "warning" | "error";
+
+export interface PageDialogRecord {
+    type: string;
+    message: string;
+    url: string;
+    timestamp: number;
+    disposition: PageDialogDisposition;
+    reported: boolean;
+}
+
+export interface PageConsoleRecord {
+    type: PageConsoleLevel;
+    args: string[];
+    url: string;
+    lineNumber: number;
+    columnNumber: number;
+    timestamp: number;
+}
+
+export interface PageErrorRecord {
+    text: string;
+    url: string;
+    lineNumber: number;
+    columnNumber: number;
+    timestamp: number;
+}
+
+export interface PageEventsSnapshot {
+    policy: PageDialogPolicy;
+    dialogs: PageDialogRecord[];
+    consoleMessages: PageConsoleRecord[];
+    pageErrors: PageErrorRecord[];
 }
 
 // Main → Renderer: event payload
@@ -115,4 +202,7 @@ export interface NetworkLogEntry {
     responseHeaders?: Record<string, string[]>;
     fromCache?: boolean;
     error?: string;
+    responseBody?: string;
+    responseBodyBase64Encoded?: boolean;
+    responseBodyTruncated?: boolean;
 }

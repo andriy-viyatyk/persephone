@@ -11,11 +11,9 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-*(nothing active)*
+_No active work._
 
 ## Planned
-
-*(no planned work)*
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 

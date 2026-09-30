@@ -173,12 +173,15 @@ export class BrowserWebviewModel {
      * Called from the view's update path when activeTab.url changes.
      */
     navigateWebview = (activeTabId: string, url: string) => {
-        if (url !== this.prevActiveUrl && url !== "about:blank") {
+        if (url !== this.prevActiveUrl) {
             const webview = this.webviewRefs.get(activeTabId);
             if (webview && this.webviewReady.has(activeTabId)) {
                 const actualUrl = this.model.tabs.currentUrls.get(activeTabId) || "";
                 if (actualUrl !== url) {
-                    webview.loadURL(url);
+                    // A failed load (e.g. ERR_NAME_NOT_RESOLVED) is shown by the webview's own
+                    // error page and reported to automation by the navigation wait; the promise
+                    // rejection itself must not surface as an unhandled-rejection alert.
+                    webview.loadURL(url).catch((): void => undefined);
                 }
             }
         }
@@ -248,10 +251,10 @@ export class BrowserWebviewModel {
                 return;
             }
             if (previousUrl) {
-                webview.loadURL(previousUrl);
+                webview.loadURL(previousUrl).catch((): void => undefined);
                 return;
             }
-            webview.loadURL(DEFAULT_URL);
+            webview.loadURL(DEFAULT_URL).catch((): void => undefined);
             return;
         }
         const safeUrl = previousUrl || DEFAULT_URL;

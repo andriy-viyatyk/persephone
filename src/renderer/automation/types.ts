@@ -1,4 +1,23 @@
 import type { CdpSession } from "./CdpSession";
+import type {
+    PageConsoleLevel,
+    PageConsoleRecord,
+    PageDialogPolicy,
+    PageDialogRecord,
+    PageErrorRecord,
+} from "../../ipc/browser-ipc";
+
+export type { PageConsoleLevel, PageConsoleRecord, PageDialogPolicy, PageDialogRecord, PageErrorRecord };
+
+export interface IPageDialogSnapshot {
+    policy: PageDialogPolicy;
+    dialogs: PageDialogRecord[];
+}
+
+export interface IConsoleMessageOptions {
+    since?: number;
+    level?: PageConsoleLevel;
+}
 
 /** Tab info returned by IBrowserTarget. */
 export interface ITargetTab {
@@ -9,6 +28,18 @@ export interface ITargetTab {
     active: boolean;
 }
 
+export interface IInputPoint {
+    x: number;
+    y: number;
+}
+
+export interface IInputSession {
+    cdp: CdpSession;
+    sessionId?: string;
+    /** Map document-local coordinates through same-process ancestor iframe offsets. */
+    mapPoint(point: IInputPoint, ancestorFrameOffsets?: ReadonlyArray<IInputPoint>): IInputPoint;
+}
+
 /** Lightweight adapter interface — what the automation layer needs from the browser editor. */
 export interface IBrowserTarget {
     /** Editor model ID (for page identification). */
@@ -17,10 +48,13 @@ export interface IBrowserTarget {
     /** CDP session for a specific tab (or active tab if omitted). */
     cdp(tabId?: string): CdpSession;
 
-    /** Focus the webview element so it receives keyboard events. */
+    /** CDP input channel for the selected document or an attached OOPIF session. */
+    inputCdp(tabId?: string, sessionId?: string): IInputSession;
+
+    /** Focus the host webview for the explicit synthetic compatibility route. Trusted keys use inputCdp(). */
     focusWebview(tabId?: string): void;
 
-    /** Insert text into the focused element via Electron's native webview.insertText(). */
+    /** Insert text through the host's legacy native insertion seam for explicit synthetic compatibility. */
     insertText(text: string, tabId?: string): Promise<void>;
 
     /** Navigation */

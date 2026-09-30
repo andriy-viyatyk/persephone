@@ -1,4 +1,4 @@
-import type { IBrowserTarget, ITargetTab } from "../../automation/types";
+import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
 import { CdpSession } from "../../automation/CdpSession";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { panelKey } from "../../ui/secondary-views/panel-key";
@@ -50,9 +50,20 @@ export class BoardTargetModel implements IBrowserTarget {
         return new CdpSession(`${this.model.id}/${tabId ?? this.model.activeTabId}`);
     }
 
+    inputCdp(tabId?: string, sessionId?: string) {
+        return {
+            cdp: this.cdp(tabId),
+            sessionId,
+            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
+                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
+            ),
+        };
+    }
+
     focusWebview(tabId?: string): void {
-        // Focus the iframe element so keyboard / synthetic input is routed to the target
-        // board frame (its contentWindow is cross-origin, so we focus the element, not it).
+        // Focus remains available to the explicit synthetic compatibility path. Trusted mouse
+        // and keyboard input use the resolved board-frame CDP session; the cross-origin
+        // contentWindow itself cannot be focused.
         this.model.getFrame(tabId ?? this.model.activeTabId)?.focus();
     }
 

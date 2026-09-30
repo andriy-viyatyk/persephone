@@ -3,9 +3,8 @@
  *
  * Incognito and Tor pages are private to the user — unless the agent opened the page itself
  * (`openedByAgent`, an ephemeral flag set by MCP tools and MCP-run scripts, never persisted, so a
- * restored page is the user's again). One rule behind browser automation targeting
- * (`automation/commands.ts`) and AiVision's
- * `Page.restricted()` (`scripting/api-wrapper/PageWrapper.ts`).
+ * restored page is the user's again). One rule used by browser facade target resolution and
+ * AiVision's `Page.restricted()` (`scripting/api-wrapper/PageWrapper.ts`).
  *
  * Dependency-free on purpose: those callers load at startup and must not pull the browser chunk.
  */

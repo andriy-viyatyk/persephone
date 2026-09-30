@@ -1,8 +1,26 @@
 import type {
     IBrowserElementLocator,
+    IBrowserClickOptions,
+    IBrowserHoverOptions,
+    IBrowserTypeOptions,
+    IBrowserSelectOptions,
+    IBrowserActionOptions,
+    IBrowserKeyboardOptions,
     IBrowserNetworkRequest,
+    IBrowserResponse,
+    IBrowserResponseWaitOptions,
     IBrowserScreenshot,
     IBrowserTab,
+    IBrowserDialogPolicy,
+    IBrowserDialogRecord,
+    IBrowserConsoleLevel,
+    IBrowserConsoleMessage,
+    IBrowserPageError,
+    IBrowserDragOptions,
+    IBrowserFormField,
+    IBrowserScreenshotOptions,
+    IBrowserEvaluateOptions,
+    IBrowserEvaluateFunction,
 } from "./browser-editor";
 
 export type BoardRenderState = "trusted" | "bundled" | "untrusted" | "not-found";
@@ -106,23 +124,43 @@ export interface IBoardEditor {
     readonly tabs: IBrowserTab[];
     /** The selected board frame. */
     readonly activeTab: IBrowserTab | undefined;
-    snapshot(options?: { tabId?: string }): Promise<string>;
-    click(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
-    hover(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
-    type(locator: IBrowserElementLocator, text: string, options?: { tabId?: string; slowly?: boolean; submit?: boolean }): Promise<void>;
-    select(locator: IBrowserElementLocator, values: string | string[], options?: { tabId?: string }): Promise<void>;
-    pressKey(key: string, options?: { tabId?: string }): Promise<void>;
-    evaluate(expression: string, options?: { tabId?: string }): Promise<unknown>;
+    /** Get a board accessibility snapshot; `root`, `interactive`, `maxNodes`, and `maxChars` narrow or bound the tree. */
+    snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
+    click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
+    hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
+    type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void>;
+    select(locator: IBrowserElementLocator, values: string | string[], options?: IBrowserSelectOptions): Promise<void>;
+    check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
+    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    fillForm(fields: IBrowserFormField[]): Promise<void>;
+    setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
+    pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown>;
     waitFor(options: {
         selector?: string;
+        state?: "attached" | "detached" | "visible" | "hidden";
         text?: string;
         textGone?: string;
         time?: number;
         timeout?: number;
         tabId?: string;
     }): Promise<void>;
-    screenshot(options?: { tabId?: string }): Promise<IBrowserScreenshot | undefined>;
+    screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined>;
     networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
+    /** Wait for a matching completed response on the board frame; owned existing OOPIFs are included. */
+    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
+    /** Read and optionally update dialog policy for the selected board frame. */
+    dialogs(options?: { tabId?: string; policy?: IBrowserDialogPolicy }): Promise<{ policy: IBrowserDialogPolicy; dialogs: IBrowserDialogRecord[] }>;
+    /** Resolve a pending JavaScript dialog in the selected board frame. */
+    handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
+    /** Read recent console messages from the selected board frame. */
+    consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
+    /** Read recent uncaught errors from the selected board frame. */
+    pageErrors(options?: { tabId?: string }): Promise<IBrowserPageError[]>;
     /** Switch to the main frame or a declared secondary-view frame. */
     switchTab(tabId: string): Promise<void>;
 }

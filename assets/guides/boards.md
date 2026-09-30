@@ -1465,6 +1465,11 @@ pages["abc"].editor.click({ ref: "e12" })
 pages["abc"].editor.evaluate("document.querySelector('#result').textContent")
 ```
 
+Mouse and keyboard actions use trusted input and check that targets are visible and actionable.
+Snapshots can be limited to interactive items or scoped to a board region. See the
+[page automation reference](./scripting/api/page.md#browser-board-and-window-page-automation)
+for locators, waits, page events, response inspection, and the shared operation list.
+
 `pages["abc"].editor.evaluate(...)` is useful for testing `persephone.execute()` from the agent
 side without modifying source files.
 

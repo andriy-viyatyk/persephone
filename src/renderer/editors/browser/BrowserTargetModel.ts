@@ -1,6 +1,6 @@
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 import { CdpSession } from "../../automation/CdpSession";
-import type { IBrowserTarget, ITargetTab } from "../../automation/types";
+import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
 
 /**
  * Lightweight automation adapter for BrowserEditorModel.
@@ -18,6 +18,16 @@ export class BrowserTargetModel implements IBrowserTarget {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
         return new CdpSession(`${this.model.id}/${targetTab}`);
+    }
+
+    inputCdp(tabId?: string, sessionId?: string) {
+        return {
+            cdp: this.cdp(tabId),
+            sessionId,
+            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
+                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
+            ),
+        };
     }
 
     focusWebview(tabId?: string): void {

@@ -7,7 +7,7 @@
  * via IPC. Cleared automatically when the webview is unregistered.
  */
 import { app, Session, ipcMain } from "electron";
-import { BrowserChannel, NetworkLogEntry } from "../ipc/browser-ipc";
+import { BrowserChannel, NetworkLogEntry, NetworkLogOptions } from "../ipc/browser-ipc";
 
 const MAX_LOG_ENTRIES = 200;
 const MAX_BODY_SIZE = 100 * 1024; // 100 KB — skip larger bodies
@@ -26,6 +26,14 @@ const hookedSessions = new WeakSet<Session>();
  * Set by browser-service.ts which owns the registrations map.
  */
 let resolveWebContentsId: (wcId: number) => string | undefined = () => undefined;
+type ResponseBodyFields = { responseBody: string; responseBodyBase64Encoded: boolean; responseBodyTruncated: boolean };
+let resolveResponseBodies: (key: string, entries: NetworkLogEntry[], maxBodyBytes: number) => Promise<Map<number, ResponseBodyFields>> = async () => new Map();
+
+export function setNetworkResponseBodyResolver(
+    resolver: (key: string, entries: NetworkLogEntry[], maxBodyBytes: number) => Promise<Map<number, ResponseBodyFields>>,
+): void {
+    resolveResponseBodies = resolver;
+}
 
 /** Set the resolver function. Called once from browser-service.ts. */
 export function setWebContentsResolver(
@@ -182,7 +190,12 @@ export function initNetworkLogger(): void {
         hookSession(ses);
     });
 
-    ipcMain.handle(BrowserChannel.getNetworkLog, (_event, key: string) => {
-        return pageLogs.get(key) ?? [];
+    ipcMain.handle(BrowserChannel.getNetworkLog, async (_event, key: string, options: NetworkLogOptions = {}) => {
+        const entries = pageLogs.get(key) ?? [];
+        if (!options.includeBodies) return entries.map(entry => ({ ...entry }));
+        const requestedLimit = options.maxBodyBytes ?? 64 * 1024;
+        const maxBodyBytes = Number.isFinite(requestedLimit) ? Math.max(0, Math.min(1024 * 1024, Math.floor(requestedLimit))) : 64 * 1024;
+        const bodies = await resolveResponseBodies(key, entries, maxBodyBytes);
+        return entries.map(entry => ({ ...entry, ...(bodies.get(entry.id) ?? {}) }));
     });
 }

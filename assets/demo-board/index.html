@@ -527,6 +527,7 @@ for (const name of names) {
                 <li><code>call</code> at <code>pages</code> → find this board (<code>editor: "board-view"</code>, with its <code>selectedBoard</code>) and read its <code>pageId</code>.</li>
                 <li><code>call</code> at <code>pages[pageId].editor.snapshot()</code> → read the accessibility tree (element refs).</li>
                 <li><code>call</code> at <code>pages[pageId].editor.click/type/pressKey(...)</code> → interact, using refs from the snapshot.</li>
+                <li>Mouse and keyboard actions use trusted input and check visibility, enabled state, stability, and hit-testing. Pass <code>{ nth }</code> to disambiguate selectors or <code>{ force: true }</code> to skip checks; arm <code>waitForResponse()</code> before triggering a request.</li>
                 <li><code>call</code> at <code>pages[pageId].editor.evaluate(...)</code> → run JS in the page: inspect state, read <code>--p-*</code> values, poke the DOM. The most useful probe when something looks wrong.</li>
             </ul>
             <div class="note">

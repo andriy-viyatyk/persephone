@@ -137,7 +137,8 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
 - `board-view` and `board-editor:<id>`: board state and board-specific operations. An Excalidraw
   page uses this board facade; it no longer has a dedicated drawing-editor facade.
 - `browser-view`: browser navigation, tabs, DOM queries, ref-based interaction, waits, screenshots,
-  network requests, and evaluation. DOM, wait, screenshot, and network methods accept an optional
+  network requests, and evaluation. See [Browser, board, and window page automation](#browser-board-and-window-page-automation)
+  for the shared interaction methods. DOM, wait, screenshot, and network methods accept an optional
   `{ tabId }` for a specific internal browser tab.
 - `mcp-view`: MCP connection status, server metadata, request history, and copied Tools/Resources/
   Prompts panel state. `command` and `args` are read-only; the `url` setter rejects embedded
@@ -170,6 +171,48 @@ The `html` value on `md-view` and `html-view`, and the `svg` value on `svg-view`
 when their backing preview host is not mounted; use each facade's `viewMounted` property to tell
 that state apart from genuinely empty content. Mermaid's `svgUrl` is different by design: `""`
 means its state-backed diagram has not rendered yet or rendered with an error.
+
+### Browser, board, and window page automation
+
+Browser pages and board pages expose their automation methods through `page.editor`. Use
+`app.window.screen` to inspect or operate Persephone's own window and its active page:
+
+```javascript
+const tree = await page.editor.snapshot({ interactive: true });
+await page.editor.click({ ref: "e12" });
+
+const appTree = await app.window.screen.snapshot({ interactive: true });
+```
+
+Snapshots return an accessibility tree with refs. Pass a ref as `{ ref: "e12" }`; a string
+locator is interpreted as a CSS selector. Snapshots can be narrowed to a subtree with `root`,
+filtered to actionable items with `interactive: true`, or bounded with `maxNodes` and `maxChars`.
+The returned tree can omit content beyond its size budget, so use the suggested scope or interactive
+view when the snapshot reports that it was truncated.
+
+The shared methods include `click`, `hover`, `type`, `select`, `check`, `uncheck`, `clear`,
+`pressKey`, `keyDown`, `keyUp`, `drag`, `fillForm`, `setInputFiles`, `evaluate`, `waitFor`,
+`screenshot`, `waitForResponse`, `dialogs`, `handleDialog`, `consoleMessages`, and `pageErrors`.
+Element actions accept a CSS selector or snapshot ref. Selectors matching multiple visible elements
+fail with the match count; pass `{ nth }` to choose one, or use a ref. Actions check that the target
+is attached, visible, stable, enabled, and receives the event. `{ force: true }` skips those checks.
+Mouse and keyboard input is trusted by default. Pass `{ synthetic: true }` to supported input
+methods when a page specifically requires synthetic events. `select()` operates on native select
+elements programmatically; use trusted clicks and keys for custom dropdowns.
+
+`waitFor()` accepts one selector, text, disappearing text, or time condition. Browser pages also
+provide `waitForSelector()`, `waitForNavigation()`, `waitForURL()`, and `navigateAndWait()` for
+navigation lifecycle and URL waits. `waitForResponse()` is available on all three surfaces; arm it
+before the action that sends the request. A string matches a URL exactly, while a `RegExp` can
+match query strings. It resolves when response headers arrive, or when the body finishes if
+`includeBody: true`.
+
+Browser pages provide `networkRequests({ includeBodies: true })` to opt into retained request and
+response bodies. Response bodies can contain secrets, are omitted unless requested, and are available
+only for requests captured after automation first used the tab and while Chromium still buffers the
+body. Binary bodies are base64 encoded. `waitForResponse()` can also return an opt-in body with
+`includeBody: true`. Boards and `window.screen` can wait for responses but do not expose browser
+request history. See the [Browser editor guide](../../editors/browser.md) for using the browser UI.
 
 Every facade's `$help` describes access through `page.editor` and gives its id-narrowing example.
 

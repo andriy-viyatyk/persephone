@@ -261,6 +261,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser webview context-menu builder (bounded DOM/SVG/resource probes and menu actions) | `/src/renderer/editors/browser/webview-context-menu.ts` |
 | Browser guest preload (title/favicon and image tracking, page-first keyboard handling, and cinema mode) | `/src/preload-webview.ts` |
 | Browser webContents service (main-process webview registration, registered Browser-webContents scope check, event relay, navigation guards, registered-protocol handoff, and pre-dispatch browser shortcuts) | `/src/main/browser-service.ts` |
+| Browser request log (bounded per-tab HTTP metadata, opt-in response bodies fetched from CDP while Chromium retains them, and metadata-only AiVision summaries) | `/src/main/network-logger.ts` |
 | Browser download interception (main-process `will-download`; generation-checked accepted browser-URL claims are matched before save-dialog handling, with private-session sources handed off through an opaque session-bound capability) | `/src/main/download-service.ts` |
 | Private browser-session source capability (`session-src://` binds one HTTP(S) URL to a private session for a short-lived provider fetch; renderer receives only an opaque handle) | `/src/main/session-src-protocol.ts` |
 | Rest Client editor and native request/response views | `/src/renderer/editors/rest-client/RestClientEditor.ts`, `/src/renderer/editors/rest-client/RestClientBodyView.ts`, `/src/renderer/editors/rest-client/RequestBuilderView.ts`, `/src/renderer/editors/rest-client/ResponseViewerView.ts`, `/src/renderer/editors/rest-client/KeyValueEditorView.ts` |
@@ -353,15 +354,14 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer MCP `call` command and page-scoped Board call command | `/src/renderer/api/mcp/call-command.ts`, `/src/renderer/api/mcp/board-call-command.ts` |
 | Agent Tools call-tree node and shared search/execute/create handlers | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/mcp/tool-commands.ts` |
 | Renderer MCP request history and server-log page integration | `/src/renderer/api/mcp/request-log.ts` |
-| Browser automation commands (target resolution, private browser-page refusal, and active-private-page refusal for the explicit app-window target) | `/src/renderer/automation/commands.ts`             |
-| Shared browser-like automation operations (target-neutral snapshot, navigation, locator/input, wait, screenshot, network, and inner-tab behaviors) | `/src/renderer/automation/operations.ts` |
-| Shared browser-like AiVision members (the common ten-operation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
+| Shared browser-like automation operations (target-neutral snapshot, navigation waits, locator/actionability, input, screenshot, drag, forms, and event reads) | `/src/renderer/automation/operations.ts` |
+| Shared browser-like AiVision members (common automation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
 | Browser input dispatch   | `/src/renderer/automation/input.ts`                |
 | Browser ref resolution and per-host iframe-session stores (a snapshot ref is a `backendDOMNodeId`; `StaticText` refs are coerced to their nearest element, and frame maps are keyed by the host registration key) | `/src/renderer/automation/ref.ts` |
 | CDP session wrapper      | `/src/renderer/automation/CdpSession.ts`           |
 | Accessibility snapshot   | `/src/renderer/automation/snapshot.ts`              |
-| App-window automation adapter (`IBrowserTarget` for the app's own UI through `window.screen`; `APP_WINDOW_CDP_KEY` sentinel routed to the calling window's own webContents in `cdp-service`; explicit-only in `getTarget`; snapshot shows only the active page — hidden pages excluded by the AX tree) | `/src/renderer/automation/AppTargetModel.ts` |
-| CDP service (main; three target kinds — browser webContents, board frame, and the app window itself via the `APP_WINDOW_CDP_KEY` sentinel → `event.sender`; browser-only AiVision binding installation and filtered `Runtime.bindingCalled` event path) | `/src/main/cdp-service.ts` |
+| App-window automation target (`IBrowserTarget` for `window.screen`; `APP_WINDOW_CDP_KEY` routes to the calling window's own webContents in `cdp-service`; snapshot includes the active page while hidden page content is excluded by the AX tree) | `/src/renderer/automation/AppTargetModel.ts` |
+| CDP service (main; browser, board-frame, and app-window targets; page event capture, dialog policy, navigation/response waiters, bounded response-body reads, and browser-only AiVision binding events) | `/src/main/cdp-service.ts` |
 | Rust launcher            | `/launcher/src/main.rs`                           |
 | Rust screen snip tool + clipboard helper (`clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands; CF_HDROP interop and JSON-lines watcher protocol) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |

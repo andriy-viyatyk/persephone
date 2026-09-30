@@ -20,7 +20,7 @@ import {
 import { EventEndpoint } from "../ipc/api-types";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
-import { initCdpHandlers } from "./cdp-service";
+import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
@@ -193,8 +193,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     const { tabId, internalTabId, webContentsId } = request;
     const key = regKey(tabId, internalTabId);
 
-    // Clean up any previous registration for this key
-    unregisterWebview(key);
+    // Clean up any previous registration for this key. This re-runs on every dom-ready, so a
+    // re-registration of the SAME webContents keeps its CDP state: pending navigation waits
+    // (which this very load is about to satisfy), page-event buffers and the dialog policy.
+    const previous = registrations.get(key);
+    unregisterWebview(key, { keepCdpState: previous?.webContents.id === webContentsId });
 
     const wc = webContents.fromId(webContentsId);
     if (!wc) return;
@@ -451,7 +454,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     });
 }
 
-function unregisterWebview(key: string) {
+function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}) {
     const reg = registrations.get(key);
     if (!reg) return;
 
@@ -467,7 +470,10 @@ function unregisterWebview(key: string) {
     }
 
     registrations.delete(key);
-    clearNetworkLog(key);
+    if (!options.keepCdpState) {
+        clearNetworkLog(key);
+        clearCdpTargetState(key);
+    }
 }
 
 // =====================================================================

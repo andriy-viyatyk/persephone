@@ -115,6 +115,32 @@ export function isBlockingRendererCall(path: string): boolean {
         normalized === blocking || normalized.startsWith(`${blocking}(`));
 }
 
+const AUTOMATION_WAITS = new Set([
+    "waitFor", "waitForSelector", "waitForNavigation", "waitForURL", "waitForResponse", "navigateAndWait", "back", "forward", "wait",
+]);
+
+/** Extend only the renderer calls whose own declared wait can outlive the normal bridge deadline. */
+export function automationWaitBridgeTimeout(path: string, args: unknown[]): number | undefined {
+    const normalized = path.trim();
+    if (!/^pages\[[^\]]+\]\.editor\./.test(normalized) && !/^window\.screen\./.test(normalized)) return undefined;
+    const method = normalized.match(/\.([A-Za-z]+)(?:\([^)]*\))?$/)?.[1];
+    if (!method || !AUTOMATION_WAITS.has(method)) return undefined;
+    let requested = 10_000;
+    const optionAt = method === "waitForSelector" || method === "waitForURL" || method === "waitForResponse" || method === "navigateAndWait" ? 1 : 0;
+    const options = args[optionAt];
+    if (method === "wait") {
+        if (typeof args[0] === "number" && Number.isFinite(args[0])) requested = Math.max(0, args[0]);
+    } else if (method === "waitFor" && options && typeof options === "object") {
+        const waitOptions = options as { time?: unknown; timeout?: unknown };
+        if (typeof waitOptions.time === "number" && Number.isFinite(waitOptions.time)) requested = Math.max(0, waitOptions.time * 1000);
+        else if (typeof waitOptions.timeout === "number" && Number.isFinite(waitOptions.timeout)) requested = Math.max(0, waitOptions.timeout);
+    } else if (options && typeof options === "object" && typeof (options as { timeout?: unknown }).timeout === "number") {
+        const timeout = (options as { timeout: number }).timeout;
+        if (Number.isFinite(timeout)) requested = Math.max(0, timeout);
+    }
+    return Math.min(600_000, requested + 5_000);
+}
+
 /** Event text is renderer-relative until a forwarded response is returned to the caller. */
 function prefixEventPaths(text: string, prefix: string): string {
     return text.replaceAll("pages[", `${prefix}pages[`);
@@ -193,7 +219,9 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                     const eventCursor = targetWindowIndex === undefined
                         ? 0
                         : eventCursors.get(targetWindowIndex) ?? 0;
-                    const bridgeTimeoutMs = isBlockingRendererCall(forward.path) ? 125_000 : undefined;
+                    const bridgeTimeoutMs = isBlockingRendererCall(forward.path)
+                        ? 125_000
+                        : automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
                     response = await sendToRenderer(
                         "call",
                         { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor },

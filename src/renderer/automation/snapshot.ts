@@ -1,18 +1,6 @@
-/**
- * Accessibility snapshot for browser automation.
- *
- * Converts CDP accessibility trees into Playwright-compatible YAML snapshots.
- * Supports composite snapshots with iframe content via Target.attachToTarget + sessionId.
- *
- * Ref format:
- * - Main frame: [ref=e123]
- * - Iframe #1:  [ref=f1-e456]
- * - Iframe #2:  [ref=f2-e789]
- */
+/** Accessibility snapshots for browser automation. */
 import type { CdpSession } from "./CdpSession";
-import { setFrameSessions } from "./ref";
-
-// ── Types ───────────────────────────────────────────────────────────
+import { getRefSessionId, parseRef, setFrameSessions } from "./ref";
 
 interface AXNode {
     nodeId: string;
@@ -22,87 +10,489 @@ interface AXNode {
     ignored?: boolean;
     role?: { value: string };
     name?: { value: string };
+    /** A control's current value (an input's text, a slider's number) — a top-level AXNode
+     *  field, not one of `properties`. */
+    value?: { value?: unknown };
     properties?: Array<{ name: string; value: { value: unknown } }>;
 }
 
-interface IframeTarget {
+interface TargetInfo {
     targetId: string;
-    url: string;
+    parentId?: string;
+    type?: string;
+    url?: string;
 }
 
-interface IframeSnapshot {
-    frameIndex: number;
-    sessionId: string;
-    snapshot: string;
-    url: string;
+export interface SnapshotOptions {
+    root?: string | { ref: string };
+    interactive?: boolean;
+    maxNodes?: number;
+    maxChars?: number;
+    host?: "browser" | "app" | "board";
+    prefix?: string;
 }
 
-// ── Constants ───────────────────────────────────────────────────────
+interface RenderedLine {
+    text: string;
+    node: AXNode;
+    depth: number;
+    rootable: boolean;
+    ref?: string;
+}
 
-/** Roles to skip — non-semantic wrappers that add noise. */
-const SKIP_ROLES = new Set(["none", "generic", "InlineTextBox", "LineBreak"]);
+const DEFAULT_MAX_CHARS = 18_000;
+// LayoutTable*: Chromium's roles for presentational (layout-only) tables — wrappers, like generic.
+const SKIP_ROLES = new Set([
+    "none", "generic", "InlineTextBox", "LineBreak", "RootWebArea", "LayoutTable", "LayoutTableRow", "LayoutTableCell",
+]);
+const LANDMARK_ROLES = new Set([
+    "banner", "complementary", "contentinfo", "main", "navigation", "region", "search", "form",
+]);
+const ROOTABLE_ROLES = new Set(["dialog", "alertdialog", ...LANDMARK_ROLES]);
+const INTERACTIVE_ROLES = new Set([
+    "button", "link", "checkbox", "radio", "switch", "textbox", "searchbox", "combobox",
+    "option", "slider", "spinbutton", "menuitem", "menuitemcheckbox", "menuitemradio", "tab",
+    "treeitem",
+]);
+const CONTEXT_ROLES = new Set([
+    "heading", ...LANDMARK_ROLES, "dialog", "alertdialog", "menu", "menubar", "tablist", "toolbar", "listbox", "Iframe",
+]);
+// Most often a ref from an older snapshot: apps re-render containers (Gmail swaps the compose
+// dialog node when its title changes), so say that first.
+const SNAPSHOT_ROOT_HAS_NO_AX_NODE = "snapshot root is not in the current accessibility tree — the element was probably re-rendered; take a new snapshot() and use its fresh ref (or pass a selector for a semantic element)";
 
-/** Minimum AX node count for an iframe to be included (skip empty/placeholder iframes). */
-const MIN_IFRAME_NODES = 3;
+/** Build an accessibility snapshot and refresh the frame-ref map for this host. */
+export async function buildSnapshot(cdp: CdpSession, options: SnapshotOptions = {}): Promise<string> {
+    const host = options.host ?? "browser";
+    const requestedMaxChars = options.maxChars;
+    const maxChars = Number.isFinite(requestedMaxChars)
+        ? Math.max(1, Math.floor(requestedMaxChars as number))
+        : DEFAULT_MAX_CHARS;
+    let rootSessionId: string | undefined;
+    let rootBackendNodeId: number | undefined;
+    let rootFramePrefix = "";
 
-// ── Public API ──────────────────────────────────────────────────────
-
-/**
- * Build a composite accessibility snapshot including iframe content.
- *
- * 1. Gets main frame AX tree
- * 2. Discovers iframe targets via Target.getTargets()
- * 3. Attaches to each iframe, gets its AX tree with frame-scoped refs
- * 4. Merges iframe content under Iframe placeholder nodes in the main snapshot
- * 5. Updates frameSessionMap for ref resolution
- */
-export async function buildSnapshot(cdp: CdpSession): Promise<string> {
-    // 1. Main frame AX tree
-    const mainTree = await cdp.send("Accessibility.getFullAXTree");
-    const mainLines = formatAccessibilityTree(mainTree.nodes || [], "");
-
-    // 2. Discover iframe targets
-    const iframeTargets = await getIframeTargets(cdp);
-    if (iframeTargets.length === 0) {
-        setFrameSessions(cdp.registrationKey, new Map());
-        return mainLines;
-    }
-
-    // 3. Get AX tree for each iframe
-    const iframeSnapshots: IframeSnapshot[] = [];
-    const sessionMap = new Map<number, string>();
-
-    for (let i = 0; i < iframeTargets.length; i++) {
-        const result = await getIframeAXTree(cdp, iframeTargets[i].targetId);
-        if (!result || result.nodes.length < MIN_IFRAME_NODES) continue;
-
-        const frameIndex = i + 1;
-        const framePrefix = `f${frameIndex}`;
-        const frameSnapshot = formatAccessibilityTree(result.nodes, framePrefix);
-        if (frameSnapshot.trim()) {
-            iframeSnapshots.push({
-                frameIndex,
-                sessionId: result.sessionId,
-                snapshot: frameSnapshot,
-                url: iframeTargets[i].url,
-            });
-            sessionMap.set(frameIndex, result.sessionId);
+    if (options.root !== undefined) {
+        if (typeof options.root === "object") {
+            const parsed = parseRef(options.root.ref);
+            rootBackendNodeId = parsed.backendNodeId;
+            rootFramePrefix = parsed.frameIndex === null ? "" : `f${parsed.frameIndex}-`;
+            rootSessionId = getRefSessionId(cdp, options.root.ref);
+        } else {
+            rootBackendNodeId = await resolveSelectorRoot(cdp, options.root);
         }
     }
 
-    // Update frameSessionMap for ref resolution
+    const mainTree = await cdp.send("Accessibility.getFullAXTree", {}, rootSessionId);
+    const mainNodes = (mainTree.nodes || []) as AXNode[];
+    const mainRoot = rootBackendNodeId === undefined
+        ? mainNodes[0]
+        : mainNodes.find(node => node.backendDOMNodeId === rootBackendNodeId);
+    if (rootBackendNodeId !== undefined && !mainRoot) throw new Error(SNAPSHOT_ROOT_HAS_NO_AX_NODE);
+
+    const sessionMap = new Map<number, string>();
+    const targetTrees = new Map<string, { target: TargetInfo; sessionId: string; nodes: AXNode[] }>();
+    let ownTargetId: string | undefined;
+    if (host !== "board" && rootSessionId === undefined && mainRoot) {
+        const { ownId, targets } = await getOwnedIframeTargets(cdp, host);
+        ownTargetId = ownId;
+        for (const target of targets) {
+            const attached = await getIframeAXTree(cdp, target.targetId);
+            if (!attached) continue;
+            targetTrees.set(target.targetId, { target, ...attached });
+        }
+
+        const childByParentAndOwner = new Map<string, Map<number, string>>();
+        for (const [targetId, tree] of targetTrees) {
+            const parentSessionId = tree.target.parentId === ownTargetId
+                ? undefined
+                : tree.target.parentId ? targetTrees.get(tree.target.parentId)?.sessionId : undefined;
+            if (tree.target.parentId !== ownTargetId && !parentSessionId) continue;
+            try {
+                const frameTree = await cdp.send("Page.getFrameTree", {}, tree.sessionId);
+                const childFrameId = frameTree.frameTree?.frame?.id;
+                if (!childFrameId) continue;
+                // DOM.getDocument must run first to initialize the parent's DOM domain.
+                await cdp.send("DOM.getDocument", { depth: 0 }, parentSessionId);
+                const owner = await cdp.send("DOM.getFrameOwner", { frameId: childFrameId }, parentSessionId);
+                if (owner.backendNodeId) {
+                    const parentKey = tree.target.parentId || ownTargetId || "";
+                    const owners = childByParentAndOwner.get(parentKey) ?? new Map<number, string>();
+                    owners.set(owner.backendNodeId, targetId);
+                    childByParentAndOwner.set(parentKey, owners);
+                }
+            } catch {
+                // A detached or unsupported frame is omitted; other owned frames remain usable.
+            }
+        }
+        let frameIndex = 0;
+        const buildLines = async (
+            nodes: AXNode[], prefix: string, parentKey: string, sessionId?: string, root: AXNode | undefined = nodes[0],
+        ): Promise<RenderedLine[]> => {
+            if (!root) return [];
+            const treeLines: RenderedLine[] = [];
+            const pointerIds = await getPointerBackendNodeIds(cdp, nodes, sessionId);
+            collectLines(root, nodes, prefix, 0, options.interactive === true, pointerIds, treeLines);
+            const owners = childByParentAndOwner.get(parentKey);
+            if (!owners) return treeLines;
+            for (let lineIndex = 0; lineIndex < treeLines.length; lineIndex++) {
+                const line = treeLines[lineIndex];
+                if (line.node.role?.value !== "Iframe" || !line.node.backendDOMNodeId) continue;
+                const childTargetId = owners.get(line.node.backendDOMNodeId);
+                const child = childTargetId ? targetTrees.get(childTargetId) : undefined;
+                if (!child || !childTargetId) continue;
+                frameIndex++;
+                sessionMap.set(frameIndex, child.sessionId);
+                const childLines = await buildLines(child.nodes, `f${frameIndex}-`, childTargetId, child.sessionId);
+                treeLines.splice(lineIndex + 1, 0, ...childLines.map(childLine => ({
+                    ...childLine,
+                    depth: childLine.depth + line.depth + 1,
+                })));
+                lineIndex += childLines.length;
+            }
+            return treeLines;
+        };
+        // A scoped snapshot starts at the resolved root, not the document root.
+        const lines = await buildLines(mainNodes, "", ownTargetId || "", undefined, mainRoot);
+        setFrameSessions(cdp.registrationKey, sessionMap);
+        const prefixText = options.prefix ? `${options.prefix}\n` : "";
+        return fitSnapshot(lines, prefixText, maxChars, options.maxNodes);
+    }
     setFrameSessions(cdp.registrationKey, sessionMap);
 
-    if (iframeSnapshots.length === 0) return mainLines;
+    const pointerIds = await getPointerBackendNodeIds(cdp, mainNodes, rootSessionId);
+    const mainPrefix = rootFramePrefix;
+    const lines: RenderedLine[] = [];
+    if (mainRoot) {
+        collectLines(mainRoot, mainNodes, mainPrefix, 0, options.interactive === true, pointerIds, lines);
+    }
 
-    // 4. Merge iframe content into main snapshot
-    return mergeSnapshots(mainLines, iframeSnapshots);
+    const prefixText = options.prefix ? `${options.prefix}\n` : "";
+    return fitSnapshot(lines, prefixText, maxChars, options.maxNodes);
+}
+
+/** Format one AX tree without composite iframe discovery or a result budget. */
+export function formatAccessibilityTree(nodes: AXNode[], framePrefix = ""): string {
+    const root = nodes[0];
+    if (!root) return "";
+    const lines: RenderedLine[] = [];
+    collectLines(root, nodes, framePrefix, 0, false, new Set(), lines);
+    return lines.map(line => line.text).join("\n");
+}
+
+async function resolveSelectorRoot(cdp: CdpSession, selector: string): Promise<number> {
+    const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
+    const { nodeIds } = await cdp.send("DOM.querySelectorAll", { nodeId: root.nodeId, selector });
+    const count = (nodeIds || []).length;
+    if (count === 0) throw new Error(`snapshot root selector matched no elements: ${selector}`);
+    if (count > 1) throw new Error(`snapshot root selector matched ${count} elements: ${selector}`);
+    const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector });
+    const { node } = await cdp.send("DOM.describeNode", { nodeId });
+    if (!node.backendNodeId) throw new Error(`Could not resolve snapshot root selector: ${selector}`);
+    return node.backendNodeId;
+}
+
+async function getOwnedIframeTargets(
+    cdp: CdpSession,
+    host: "browser" | "app",
+): Promise<{ ownId?: string; targets: TargetInfo[] }> {
+    let ownTargetId: string | undefined;
+    let targetInfos: TargetInfo[] = [];
+    try {
+        const current = await cdp.send("Target.getTargetInfo");
+        const info = current.targetInfo as TargetInfo | undefined;
+        const expectedType = host === "browser" ? "webview" : "page";
+        if (info?.targetId && info.type === expectedType) {
+            ownTargetId = info.targetId;
+        }
+    } catch {
+        // A host can expose target discovery without identifying its current target.
+    }
+    try {
+        const result = await cdp.send("Target.getTargets");
+        targetInfos = (result.targetInfos || []) as TargetInfo[];
+        if (!ownTargetId) {
+            // Resolve only an unambiguous page matching the URL of this attached host session.
+            // Never treat the global target list as the current host when multiple candidates exist.
+            const sessionUrl = await cdp.evaluate("document.location.href");
+            const expectedType = host === "browser" ? "webview" : "page";
+            const candidates = targetInfos.filter(target => target.type === expectedType && target.url === sessionUrl);
+            if (candidates.length === 1) ownTargetId = candidates[0].targetId;
+        }
+        if (!ownTargetId) return { targets: [] };
+        const byId = new Map<string, TargetInfo>(targetInfos.map(target => [target.targetId, target]));
+        const isOwned = (target: TargetInfo): boolean => {
+            let parentId = target.parentId;
+            const visited = new Set<string>();
+            while (parentId && !visited.has(parentId)) {
+                if (parentId === ownTargetId) return true;
+                visited.add(parentId);
+                const parent = byId.get(parentId);
+                if (!parent || (host === "app" && parent.type === "webview")) return false;
+                parentId = parent.parentId;
+            }
+            return false;
+        };
+        return { ownId: ownTargetId, targets: targetInfos.filter(target => target.type === "iframe" && isOwned(target)) };
+    } catch {
+        return { ownId: ownTargetId, targets: [] };
+    }
+}
+
+async function getIframeAXTree(
+    cdp: CdpSession,
+    targetId: string,
+): Promise<{ nodes: AXNode[]; sessionId: string } | null> {
+    try {
+        try { await cdp.send("Target.detachFromTarget", { targetId }); } catch { /* no previous attachment */ }
+        const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
+        const tree = await cdp.send("Accessibility.getFullAXTree", {}, sessionId);
+        return { nodes: (tree.nodes || []) as AXNode[], sessionId };
+    } catch {
+        return null;
+    }
 }
 
 /**
- * Detect modal overlays/popups that may block interaction.
- * Returns a hint string if detected, null otherwise.
+ * Backend ids of the AX tree's nodes whose computed `cursor` is `pointer`. Two batch calls, never
+ * one per node: `cursor` is inherited, so a large app has thousands of matching elements. The
+ * outermost-only rule is applied by `collectLines` over the AX ancestry.
  */
+async function getPointerBackendNodeIds(
+    cdp: CdpSession,
+    nodes: AXNode[],
+    sessionId?: string,
+): Promise<Set<number>> {
+    const result = new Set<number>();
+    const backendIds = nodes
+        .map(node => node.backendDOMNodeId)
+        .filter((id): id is number => id !== undefined);
+    if (!backendIds.length) return result;
+    try {
+        const { root: documentRoot } = await cdp.send("DOM.getDocument", { depth: 0 }, sessionId);
+        await cdp.send("CSS.enable", {}, sessionId);
+        const { nodeIds } = await cdp.send("DOM.getNodesForSubtreeByStyle", {
+            nodeId: documentRoot.nodeId,
+            computedStyles: [{ name: "cursor", value: "pointer" }],
+        }, sessionId);
+        const pointerNodeIds = new Set<number>(nodeIds || []);
+        if (!pointerNodeIds.size) return result;
+        const { nodeIds: candidateNodeIds } = await cdp.send("DOM.pushNodesByBackendIdsToFrontend", {
+            backendNodeIds: backendIds,
+        }, sessionId);
+        (candidateNodeIds as number[] || []).forEach((nodeId, index) => {
+            if (nodeId && pointerNodeIds.has(nodeId)) result.add(backendIds[index]);
+        });
+    } catch {
+        // The experimental query is optional; snapshots remain useful without pointer markers.
+    }
+    return result;
+}
+
+function collectLines(
+    root: AXNode,
+    nodes: AXNode[],
+    framePrefix: string,
+    depth: number,
+    interactive: boolean,
+    pointerIds: Set<number>,
+    lines: RenderedLine[],
+): boolean {
+    const map = new Map(nodes.map(node => [node.nodeId, node]));
+    const included = new Set<string>();
+    if (interactive) {
+        const includeAncestors = (node: AXNode): void => {
+            let current: AXNode | undefined = node;
+            while (current) {
+                included.add(current.nodeId);
+                current = current.parentId ? map.get(current.parentId) : undefined;
+            }
+        };
+        for (const node of nodes) {
+            const role = node.role?.value || "";
+            const focusable = node.properties?.some(property => property.name === "focusable" && property.value.value === true);
+            const pointer = node.backendDOMNodeId !== undefined && pointerIds.has(node.backendDOMNodeId);
+            if (focusable || INTERACTIVE_ROLES.has(role) || CONTEXT_ROLES.has(role) || pointer) includeAncestors(node);
+        }
+    }
+
+    // `underPointer`: inside a [cursor=pointer] line, whose name already carries the text.
+    const visit = (node: AXNode, currentDepth: number, underPointer = false): boolean => {
+        const role = node.role?.value || "";
+        const pointerCandidate = node.backendDOMNodeId !== undefined
+            && pointerIds.has(node.backendDOMNodeId)
+            && !hasPointerAncestor(node, map, pointerIds)
+            && !hasSemanticInteractiveAncestor(node, map);
+        const isPointer = pointerCandidate && role === "generic";
+        const focusable = node.properties?.some(property => property.name === "focusable" && property.value.value === true);
+        // Wrapper roles pass through to their children BEFORE the ignored check: Chromium marks
+        // wrappers such as <html>/<body> ignored, and their subtrees hold the whole page.
+        if (SKIP_ROLES.has(role) && !(role === "generic" && isPointer)) {
+            let kept = false;
+            for (const childId of node.childIds || []) {
+                const child = map.get(childId);
+                if (child) kept = visit(child, currentDepth, underPointer) || kept;
+            }
+            return kept;
+        }
+        if (node.ignored || (interactive && !included.has(node.nodeId))) return false;
+        if (interactive && (role === "gridcell" || role === "row") && !focusable && !pointerCandidate) return false;
+        if (role === "StaticText" && (underPointer || hasNamedSemanticAncestor(node, map))) return false;
+        const line = formatNode(node, currentDepth, framePrefix, isPointer, map);
+        const record: RenderedLine = {
+            text: line,
+            node,
+            depth: currentDepth,
+            rootable: ROOTABLE_ROLES.has(role),
+            ref: node.backendDOMNodeId ? `${framePrefix}e${node.backendDOMNodeId}` : undefined,
+        };
+        const previousLength = lines.length;
+        lines.push(record);
+        let childKept = false;
+        for (const childId of node.childIds || []) {
+            const child = map.get(childId);
+            if (child) childKept = visit(child, currentDepth + 1, underPointer || isPointer) || childKept;
+        }
+        if (interactive && !childKept && !focusable && !INTERACTIVE_ROLES.has(role)
+            && !CONTEXT_ROLES.has(role) && !isPointer) {
+            lines.splice(previousLength, lines.length - previousLength);
+            return false;
+        }
+        return true;
+    };
+    return visit(root, depth);
+}
+
+function hasSemanticInteractiveAncestor(node: AXNode, map: Map<string, AXNode>): boolean {
+    let parent = node.parentId ? map.get(node.parentId) : undefined;
+    while (parent) {
+        if (INTERACTIVE_ROLES.has(parent.role?.value || "")) return true;
+        parent = parent.parentId ? map.get(parent.parentId) : undefined;
+    }
+    return false;
+}
+
+function hasPointerAncestor(node: AXNode, map: Map<string, AXNode>, pointerIds: Set<number>): boolean {
+    let parent = node.parentId ? map.get(node.parentId) : undefined;
+    while (parent) {
+        if (parent.backendDOMNodeId !== undefined && pointerIds.has(parent.backendDOMNodeId)) return true;
+        parent = parent.parentId ? map.get(parent.parentId) : undefined;
+    }
+    return false;
+}
+
+function hasValue(node: AXNode): boolean {
+    const value = node.value?.value;
+    return value != null && String(value) !== "";
+}
+
+function hasNamedSemanticAncestor(node: AXNode, map: Map<string, AXNode>): boolean {
+    let parent = node.parentId ? map.get(node.parentId) : undefined;
+    while (parent) {
+        const role = parent.role?.value || "";
+        // A field's value already carries its text (a textbox's inner StaticText repeats it).
+        if (!SKIP_ROLES.has(role) && !parent.ignored) return Boolean(parent.name?.value) || hasValue(parent);
+        parent = parent.parentId ? map.get(parent.parentId) : undefined;
+    }
+    return false;
+}
+
+function formatNode(
+    node: AXNode,
+    depth: number,
+    framePrefix: string,
+    pointer: boolean,
+    map: Map<string, AXNode>,
+): string {
+    const role = node.role?.value || "generic";
+    const name = pointer ? descendantStaticText(node, map) || node.name?.value : node.name?.value;
+    let line = `${"  ".repeat(depth)}- ${role}`;
+    if (name) line += ` ${JSON.stringify(pointer ? name.slice(0, 80) : name)}`;
+    for (const property of node.properties || []) {
+        const value = property.value?.value;
+        if (property.name === "level" && value != null) line += ` [level=${escapeInline(String(value))}]`;
+        if (property.name === "checked" && value === true) line += " [checked]";
+        if (property.name === "expanded" && value != null) line += value ? " [expanded]" : " [collapsed]";
+        if (property.name === "required" && value === true) line += " [required]";
+        if (property.name === "disabled" && value === true) line += " [disabled]";
+    }
+    if (pointer) line += " [cursor=pointer]";
+    if (node.backendDOMNodeId) line += ` [ref=${framePrefix}e${node.backendDOMNodeId}]`;
+    const value = node.value?.value ?? node.properties?.find(property => property.name === "value")?.value?.value;
+    if (value != null && String(value)) line += `: ${JSON.stringify(String(value))}`;
+    return line;
+}
+
+function descendantStaticText(node: AXNode, nodes: Map<string, AXNode>): string {
+    const texts: string[] = [];
+    const walk = (current: AXNode): void => {
+        if (current.role?.value === "StaticText" && current.name?.value) texts.push(current.name.value);
+        for (const childId of current.childIds || []) {
+            const child = nodes.get(childId);
+            if (child) walk(child);
+        }
+    };
+    walk(node);
+    return texts.join(" ").trim() || node.name?.value || "";
+}
+
+function escapeInline(value: string): string {
+    return JSON.stringify(value).slice(1, -1);
+}
+
+function fitSnapshot(
+    lines: RenderedLine[],
+    prefix: string,
+    maxChars: number,
+    maxNodes?: number,
+): string {
+    // Track the body length incrementally: re-joining every line per step is quadratic, and a
+    // large app (Gmail) renders thousands of lines.
+    const nodeLimit = maxNodes == null ? Number.POSITIVE_INFINITY : Math.max(0, maxNodes);
+    let count = 0;
+    let bodyLength = 0;
+    let truncatedBy: "chars" | "nodes" | undefined;
+    for (; count < lines.length; count++) {
+        if (count >= nodeLimit) { truncatedBy = "nodes"; break; }
+        const next = bodyLength + (count ? 1 : 0) + lines[count].text.length;
+        if (prefix.length + next > maxChars) { truncatedBy = "chars"; break; }
+        bodyLength = next;
+    }
+    if (!truncatedBy) return prefix + lines.map(line => line.text).join("\n");
+
+    // Shortened: drop lines from the end until the hint (which lists the omitted rootable
+    // containers, so it grows as lines are dropped) fits after the body.
+    const hintFor = (kept: number) => makeHint(maxChars, truncatedBy as "chars" | "nodes",
+        collectOmittedRootables(lines.slice(kept), lines.slice(0, kept)), maxNodes);
+    let hint = hintFor(count);
+    while (count > 0 && prefix.length + bodyLength + 1 + hint.length > maxChars) {
+        count--;
+        bodyLength -= lines[count].text.length + (count ? 1 : 0);
+        hint = hintFor(count);
+    }
+    const body = lines.slice(0, count).map(line => line.text).join("\n");
+    return `${prefix}${body}${body ? "\n" : ""}${hint}`.slice(0, maxChars);
+}
+
+function collectOmittedRootables(lines: RenderedLine[], selected: RenderedLine[]): string[] {
+    const selectedIds = new Set(selected.map(line => line.node.nodeId));
+    return lines.filter(line => line.rootable && !selectedIds.has(line.node.nodeId))
+        .slice(0, 10)
+        .map(line => {
+            const role = line.node.role?.value || "";
+            const name = line.node.name?.value?.slice(0, 80);
+            const ref = line.ref ? ` [ref=${line.ref}]` : "";
+            return `${role}${name ? ` ${JSON.stringify(name)}` : ""}${ref}`;
+        });
+}
+
+function makeHint(maxChars: number, reason: "chars" | "nodes", omitted: string[], maxNodes?: number): string {
+    const limit = reason === "nodes" ? `node limit ${maxNodes}` : `${maxChars} chars`;
+    const roots = omitted.length ? ` Not shown: ${omitted.join(", ")}.` : "";
+    return `# Shortened at ${limit}.${roots} Pass root: { ref } or interactive: true.`;
+}
+
+/** Detect modal overlays/popups that may block interaction. */
 export async function detectOverlay(cdp: CdpSession): Promise<string | null> {
     return await cdp.evaluate(`(() => {
         const dialog = document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]');
@@ -120,186 +510,4 @@ export async function detectOverlay(cdp: CdpSession): Promise<string | null> {
         }
         return null;
     })()`);
-}
-
-/**
- * Format a single frame's AX tree into YAML.
- * Kept as public export for backward compatibility (used by BrowserEditorFacade.snapshot()).
- */
-export function formatAccessibilityTree(nodes: AXNode[], framePrefix = ""): string {
-    const map = new Map<string, AXNode>();
-    for (const n of nodes) map.set(n.nodeId, n);
-
-    const root = nodes[0];
-    if (!root) return "";
-
-    const lines: string[] = [];
-    formatNode(root, 0, map, lines, framePrefix);
-    return lines.join("\n");
-}
-
-// ── Iframe Discovery ────────────────────────────────────────────────
-
-async function getIframeTargets(cdp: CdpSession): Promise<IframeTarget[]> {
-    try {
-        const { targetInfos } = await cdp.send("Target.getTargets");
-        return (targetInfos || [])
-            .filter((t: any) => t.type === "iframe") // eslint-disable-line @typescript-eslint/no-explicit-any
-            .map((t: any) => ({ targetId: t.targetId, url: t.url || "" })); // eslint-disable-line @typescript-eslint/no-explicit-any
-    } catch {
-        return [];
-    }
-}
-
-async function getIframeAXTree(
-    cdp: CdpSession,
-    targetId: string,
-): Promise<{ nodes: AXNode[]; sessionId: string } | null> {
-    try {
-        // Detach first in case already attached from a previous snapshot
-        try { await cdp.send("Target.detachFromTarget", { targetId }); } catch { /* ignore */ }
-        const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
-        const tree = await cdp.send("Accessibility.getFullAXTree", {}, sessionId);
-        return { nodes: tree.nodes || [], sessionId };
-    } catch {
-        return null;
-    }
-}
-
-// ── Snapshot Merging ────────────────────────────────────────────────
-
-/**
- * Merge iframe snapshots into the main snapshot.
- * Finds `- Iframe "..." [ref=eN]` lines and injects iframe content indented below.
- * Unmatched iframe snapshots are appended at the end.
- */
-function mergeSnapshots(mainSnapshot: string, iframeSnapshots: IframeSnapshot[]): string {
-    const mainLines = mainSnapshot.split("\n");
-    const used = new Set<number>();
-    const result: string[] = [];
-
-    for (const line of mainLines) {
-        result.push(line);
-
-        // Check if this line is an Iframe placeholder
-        const iframeMatch = line.match(/^(\s*)- Iframe/);
-        if (iframeMatch && iframeSnapshots.length > used.size) {
-            // Match to the next unused iframe snapshot (in order)
-            const nextIdx = iframeSnapshots.findIndex((_, i) => !used.has(i));
-            if (nextIdx >= 0) {
-                used.add(nextIdx);
-                const indent = iframeMatch[1] + "  "; // 2 spaces deeper
-                const iframeLines = iframeSnapshots[nextIdx].snapshot.split("\n");
-                for (const iframeLine of iframeLines) {
-                    if (iframeLine.trim()) {
-                        result.push(indent + iframeLine);
-                    }
-                }
-            }
-        }
-    }
-
-    // Append any unmatched iframe snapshots at the end
-    for (let i = 0; i < iframeSnapshots.length; i++) {
-        if (used.has(i)) continue;
-        const snap = iframeSnapshots[i];
-        result.push(`- Iframe [frame=${snap.frameIndex}] (${snap.url}):`);
-        const iframeLines = snap.snapshot.split("\n");
-        for (const iframeLine of iframeLines) {
-            if (iframeLine.trim()) {
-                result.push("  " + iframeLine);
-            }
-        }
-    }
-
-    return result.join("\n");
-}
-
-// ── Node Formatting ─────────────────────────────────────────────────
-
-function formatNode(
-    node: AXNode,
-    indent: number,
-    map: Map<string, AXNode>,
-    lines: string[],
-    framePrefix: string,
-): void {
-    if (!node) return;
-
-    const role = node.role?.value || "";
-
-    // Skip non-semantic wrapper nodes — process children at same indent
-    // Check this BEFORE ignored, because ignored wrappers still have meaningful children
-    if (SKIP_ROLES.has(role) || role === "RootWebArea") {
-        for (const id of node.childIds || []) {
-            const child = map.get(id);
-            if (child) formatNode(child, indent, map, lines, framePrefix);
-        }
-        return;
-    }
-
-    // Skip ignored nodes (after SKIP_ROLES check — ignored wrappers still have children)
-    if (node.ignored) return;
-
-    // Skip StaticText if a semantic ancestor already carries text in its name
-    // Walk up through ignored/skipped wrapper nodes to find the real parent
-    if (role === "StaticText") {
-        let ancestor = node.parentId ? map.get(node.parentId) : undefined;
-        while (ancestor) {
-            const aRole = ancestor.role?.value || "";
-            if (!SKIP_ROLES.has(aRole) && aRole !== "RootWebArea" && !ancestor.ignored) {
-                if (ancestor.name?.value) return; // semantic parent has a name — skip this text
-                break;
-            }
-            ancestor = ancestor.parentId ? map.get(ancestor.parentId) : undefined;
-        }
-    }
-
-    // Build the line
-    let line = " ".repeat(indent) + "- " + role;
-
-    const name = node.name?.value;
-    if (name) line += ` "${name}"`;
-
-    // Add useful properties
-    const props = node.properties || [];
-    for (const p of props) {
-        if (p.name === "level" && p.value.value != null) {
-            line += ` [level=${p.value.value}]`;
-        }
-        if (p.name === "checked" && p.value.value === true) {
-            line += " [checked]";
-        }
-        if (p.name === "expanded" && p.value.value != null) {
-            line += p.value.value ? " [expanded]" : " [collapsed]";
-        }
-        if (p.name === "required" && p.value.value === true) {
-            line += " [required]";
-        }
-        if (p.name === "disabled" && p.value.value === true) {
-            line += " [disabled]";
-        }
-    }
-
-    // Add ref with frame prefix (main frame: e123, iframe: f1-e456)
-    if (node.backendDOMNodeId) {
-        const ref = framePrefix
-            ? `${framePrefix}-e${node.backendDOMNodeId}`
-            : `e${node.backendDOMNodeId}`;
-        line += ` [ref=${ref}]`;
-    }
-
-    // Add value for inputs, selects, textareas
-    const valueProp = props.find(p => p.name === "value");
-    if (valueProp?.value?.value != null && String(valueProp.value.value)) {
-        line += `: "${valueProp.value.value}"`;
-    }
-
-    lines.push(line);
-
-    // Process children with increased indent
-    for (const id of node.childIds || []) {
-        const child = map.get(id);
-        if (child) formatNode(child, indent + 2, map, lines, framePrefix);
-    }
 }

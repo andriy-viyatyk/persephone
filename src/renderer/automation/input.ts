@@ -1,16 +1,6 @@
 /**
  * Keyboard input for browser automation.
  *
- * Text input strategy (Electron <webview> limitation):
- * CDP Input.dispatchKeyEvent / Input.insertText do NOT work in Electron <webview>
- * elements — the events don't cross the guest process boundary. This is a known
- * limitation confirmed by Electron, Playwright, and Puppeteer issue trackers.
- *
- * Instead we use:
- * - <input>/<textarea>: el.value = text (atomic focus+fill in single evaluate)
- * - contentEditable: selectAll + target.insertText() via Electron's webview.insertText()
- * - pressKey: JS KeyboardEvent dispatch via Runtime.evaluate
- *
  * Key layout derived from Playwright's USKeyboardLayout
  * (Apache 2.0, originally from Puppeteer/Google).
  */
@@ -20,7 +10,7 @@ import type { IBrowserTarget } from "./types";
 
 // ── Key Definitions ─────────────────────────────────────────────────
 
-interface KeyDefinition {
+export interface KeyDefinition {
     key: string;
     keyCode: number;
     code: string;
@@ -28,7 +18,7 @@ interface KeyDefinition {
     location?: number;
 }
 
-const KEY_DEFINITIONS: Record<string, KeyDefinition> = {
+export const KEY_DEFINITIONS: Record<string, KeyDefinition> = {
     // Function keys
     "Escape":    { key: "Escape", keyCode: 27, code: "Escape" },
     "F1":        { key: "F1", keyCode: 112, code: "F1" },
@@ -102,73 +92,186 @@ for (const [key, keyCode, code] of PUNCTUATION) {
 
 const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
 
-function resolveKey(key: string): KeyDefinition {
+export function resolveKeyDefinition(key: string): KeyDefinition {
     return KEY_DEFINITIONS[key] || { key, keyCode: 0, code: "", text: undefined };
 }
 
-/**
- * Element type returned by focusElement().
- * - "input": <input> — can use el.value = text reliably
- * - "textarea": <textarea> — frameworks may ignore .value, use webview.insertText()
- * - "contentEditable": contentEditable div — use webview.insertText()
- */
-type ElementKind = "input" | "textarea" | "contentEditable" | "unknown";
+type KeyEventType = "keyDown" | "rawKeyDown" | "keyUp" | "char";
+interface CdpKeyEvent {
+    type: KeyEventType;
+    key: string;
+    code: string;
+    windowsVirtualKeyCode: number;
+    modifiers: number;
+    location?: number;
+    text?: string;
+    unmodifiedText?: string;
+}
 
-// ── Public API ──────────────────────────────────────────────────────
+const modifierBits: Record<string, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
+const heldKeysBySession = new WeakMap<CdpSession, Map<string, Set<string>>>();
 
-/**
- * Press a single key or key combination via JS KeyboardEvent dispatch.
- *
- * Supports:
- * - Simple keys: "Enter", "Tab", "Backspace", "a", "1"
- * - Compound keys: "Control+a", "Shift+Enter", "Control+Shift+Delete"
- *
- * NOTE: CDP Input.dispatchKeyEvent does NOT work in Electron <webview>.
- * JS KeyboardEvent dispatch covers form navigation and shortcuts.
- */
-export async function pressKey(cdp: CdpSession, key: string): Promise<void> {
+function sessionKey(sessionId?: string): string { return sessionId ?? ""; }
+function heldKeys(cdp: CdpSession, sessionId?: string): Set<string> {
+    let sessions = heldKeysBySession.get(cdp);
+    if (!sessions) { sessions = new Map(); heldKeysBySession.set(cdp, sessions); }
+    let keys = sessions.get(sessionKey(sessionId));
+    if (!keys) { keys = new Set(); sessions.set(sessionKey(sessionId), keys); }
+    return keys;
+}
+function modifierMask(keys: ReadonlySet<string>): number {
+    return [...keys].reduce((mask, key) => mask | (modifierBits[key] ?? 0), 0);
+}
+function eventParams(key: string, type: KeyEventType, modifiers: number, shifted = false): CdpKeyEvent {
+    const definition = resolveKeyDefinition(key);
+    const letter = /^[a-z]$/i.test(key);
+    const printable = definition.text !== undefined;
+    const isShifted = shifted || Boolean(modifiers & modifierBits.Shift);
+    const keyValue = isShifted && letter ? key.toUpperCase() : definition.key;
+    const text = isShifted && letter ? key.toUpperCase() : definition.text;
+    const params: CdpKeyEvent = {
+        type,
+        key: keyValue,
+        code: definition.code,
+        windowsVirtualKeyCode: definition.keyCode,
+        modifiers,
+    };
+    if (definition.location !== undefined) params.location = definition.location;
+    if (type === "keyDown" && printable && !(modifiers & (1 | 2 | 4))) {
+        params.text = text;
+        params.unmodifiedText = letter ? key.toLowerCase() : definition.text;
+    }
+    return params;
+}
+
+export async function dispatchKeyDown(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
+    const keys = heldKeys(cdp, sessionId);
+    const wasHeld = keys.has(key);
+    keys.add(key);
+    try {
+        const modifiers = modifierMask(keys);
+        const type = resolveKeyDefinition(key).text !== undefined ? "keyDown" : "rawKeyDown";
+        await cdp.send("Input.dispatchKeyEvent", eventParams(key, type, modifiers), sessionId);
+    } catch (error: unknown) {
+        if (!wasHeld) keys.delete(key);
+        throw error;
+    }
+}
+
+export async function dispatchKeyUp(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
+    const keys = heldKeys(cdp, sessionId);
+    const modifiers = modifierMask(keys);
+    await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifiers), sessionId);
+    keys.delete(key);
+}
+
+async function pressMappedKey(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
+    const keys = heldKeys(cdp, sessionId);
+    const definition = resolveKeyDefinition(key);
+    const type = definition.text !== undefined ? "keyDown" : "rawKeyDown";
+    await cdp.send("Input.dispatchKeyEvent", eventParams(key, type, modifierMask(keys)), sessionId);
+    await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifierMask(keys)), sessionId);
+}
+
+/** Press a key or compound key using trusted CDP input unless synthetic is explicitly selected. */
+export async function pressKey(
+    cdp: CdpSession,
+    key: string,
+    options: { sessionId?: string; synthetic?: boolean } = {},
+): Promise<void> {
+    if (options.synthetic) {
+        await dispatchSyntheticKey(cdp, key);
+        return;
+    }
     const parts = key.split("+");
-    const mainKey = parts.pop()!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const modifiers = new Set(parts.filter(p => MODIFIER_KEYS.has(p)));
+    const mainKey = parts.pop();
+    if (!mainKey) throw new Error("A key is required.");
+    const aliases: Record<string, string> = { Ctrl: "Control", Cmd: "Meta", Command: "Meta" };
+    const modifiers = [...new Set(parts.map(part => aliases[part] ?? part).filter(part => MODIFIER_KEYS.has(part)))];
+    const pressed: string[] = [];
+    let dispatchFailure: unknown;
+    try {
+        for (const modifier of modifiers) {
+            const wasHeld = heldKeys(cdp, options.sessionId).has(modifier);
+            await dispatchKeyDown(cdp, modifier, options.sessionId);
+            if (!wasHeld) pressed.push(modifier);
+        }
+        await pressMappedKey(cdp, mainKey, options.sessionId);
+    } catch (error: unknown) {
+        dispatchFailure = error;
+    }
+    for (const modifier of pressed.reverse()) {
+        try {
+            await dispatchKeyUp(cdp, modifier, options.sessionId);
+        } catch (error: unknown) {
+            if (dispatchFailure === undefined) dispatchFailure = error;
+        }
+    }
+    if (dispatchFailure !== undefined) throw dispatchFailure;
+}
 
-    const def = resolveKey(mainKey);
-    const ctrlKey = modifiers.has("Control");
-    const shiftKey = modifiers.has("Shift");
-    const altKey = modifiers.has("Alt");
-    const metaKey = modifiers.has("Meta");
+/**
+ * Send a mapped character as trusted keyDown (carrying its text) + keyUp; return false if
+ * unmapped. No separate `char` event: a `keyDown` with `text` already inserts the character
+ * (it is rawKeyDown + char in one), so adding `char` typed every character twice.
+ */
+export async function typeMappedCharacter(cdp: CdpSession, character: string, sessionId?: string): Promise<boolean> {
+    const shifted = /^[A-Z]$/.test(character);
+    const key = shifted ? character.toLowerCase() : character;
+    const definition = KEY_DEFINITIONS[key];
+    if (!definition?.code || definition.text === undefined) return false;
+    const keys = heldKeys(cdp, sessionId);
+    const addedShift = shifted && !keys.has("Shift");
+    if (addedShift) keys.add("Shift");
+    const modifiers = modifierMask(keys);
+    try {
+        const downParams = eventParams(key, "keyDown", modifiers, shifted);
+        downParams.text = character;
+        downParams.unmodifiedText = key;
+        await cdp.send("Input.dispatchKeyEvent", downParams, sessionId);
+        await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifiers, shifted), sessionId);
+        return true;
+    } finally {
+        if (addedShift) keys.delete("Shift");
+    }
+}
 
+async function dispatchSyntheticKey(cdp: CdpSession, key: string): Promise<void> {
+    const parts = key.split("+");
+    const mainKey = parts.pop() ?? "";
+    const modifiers = new Set(parts.map(part => ({ Ctrl: "Control", Cmd: "Meta", Command: "Meta" }[part] ?? part)).filter(part => MODIFIER_KEYS.has(part)));
+    const definition = resolveKeyDefinition(mainKey);
     await cdp.evaluate(`(() => {
         const el = document.activeElement || document.body;
-        const opts = {
-            key: ${JSON.stringify(def.key)},
-            code: ${JSON.stringify(def.code)},
-            keyCode: ${def.keyCode},
-            which: ${def.keyCode},
-            ctrlKey: ${ctrlKey},
-            shiftKey: ${shiftKey},
-            altKey: ${altKey},
-            metaKey: ${metaKey},
-            bubbles: true,
-            cancelable: true,
-        };
+        const opts = { key: ${JSON.stringify(definition.key)}, code: ${JSON.stringify(definition.code)}, keyCode: ${definition.keyCode}, which: ${definition.keyCode},
+            ctrlKey: ${modifiers.has("Control")}, shiftKey: ${modifiers.has("Shift")}, altKey: ${modifiers.has("Alt")}, metaKey: ${modifiers.has("Meta")}, bubbles: true, cancelable: true };
         el.dispatchEvent(new KeyboardEvent('keydown', opts));
         el.dispatchEvent(new KeyboardEvent('keypress', opts));
         el.dispatchEvent(new KeyboardEvent('keyup', opts));
     })()`);
 }
 
+/** Element kind used by the explicitly synthetic legacy fill path. */
+type ElementKind = "input" | "textarea" | "contentEditable" | "unknown";
+
+// ── Public API ──────────────────────────────────────────────────────
+
+/** Dispatch the old synthetic DOM-key path for callers that explicitly request it. */
+export async function pressSyntheticKey(cdp: CdpSession, key: string): Promise<void> {
+    await dispatchSyntheticKey(cdp, key);
+}
+
 /**
- * Focus an element by CSS selector (or by ref via callOnRef) and detect its type.
- * Returns the element kind so the caller knows which fill strategy to use.
- * Combines focus + detection in a single evaluate call to prevent focus interception.
+ * Resolve and focus an element only for the explicitly requested synthetic fill path.
  */
 async function focusElementBySelector(cdp: CdpSession, selector: string): Promise<ElementKind> {
     const s = JSON.stringify(selector);
     return await cdp.evaluate(`(() => {
-        // Find the best matching element — prefer visible ones when multiple match
+        // Legacy synthetic compatibility picks the first selector match, preferring a visible
+        // alternative only when that first match is hidden. Trusted operations use strict locators.
         let el = document.querySelector(${s});
         if (!el) throw new Error('Element not found: ' + ${s});
-        // If the first match is hidden, try to find a visible alternative
+        // In this explicitly synthetic route only, if the first match is hidden, try a visible alternative.
         if (el.offsetHeight === 0 || getComputedStyle(el).display === 'none') {
             const all = document.querySelectorAll(${s});
             for (const candidate of all) {
@@ -202,8 +305,7 @@ async function focusElementByRef(cdp: CdpSession, ref: string): Promise<ElementK
 }
 
 /**
- * Fill an <input> or <textarea> with text via direct value assignment.
- * Uses atomic focus+fill in a single evaluate call to prevent focus interception.
+ * Fill a form control via direct value assignment for synthetic compatibility.
  * For <textarea>, uses the native prototype setter to bypass framework interception
  * (e.g., Gmail ignores regular .value assignment on its textarea).
  */
@@ -233,11 +335,11 @@ async function fillInput(cdp: CdpSession, selector: string | undefined, ref: str
 }
 
 /**
- * Fill a <textarea> or contentEditable element via Electron's webview.insertText().
+ * Fill a <textarea> or contentEditable element via Electron's webview.insertText() for synthetic compatibility.
  * Selects all existing content first, then inserts new text.
  * The element must already be focused via focusElement.
  *
- * This is needed because:
+ * The legacy synthetic path uses this because:
  * - <textarea>: Frameworks (Gmail) may ignore programmatic .value changes
  * - contentEditable: .value doesn't exist, and Trusted Types may block DOM assignment
  * - webview.insertText() works like real typing at the Chromium level
@@ -259,7 +361,7 @@ async function fillWithInsertText(
         await cdp.evaluate("document.execCommand('selectAll')");
     }
     if (text) {
-        // Insert via Electron's native webview API (bypasses Trusted Types)
+        // Retain the legacy native insertion behavior for synthetic callers.
         await target.insertText(text, tabId);
     } else {
         await cdp.evaluate("document.execCommand('delete')");
@@ -267,8 +369,7 @@ async function fillWithInsertText(
 }
 
 /**
- * Type text character by character via Electron's webview.insertText().
- * Used for "slowly" mode — triggers page key handlers for each character.
+ * Type text character by character via Electron's webview.insertText() for synthetic callers.
  * Works on both input/textarea and contentEditable.
  * The element must already be focused.
  */
@@ -313,12 +414,14 @@ export interface TypeOptions {
     slowly?: boolean;
     /** Press Enter after typing. Default: false. */
     submit?: boolean;
+    /** Keep the legacy DOM/value path for pages that explicitly request it. */
+    synthetic?: boolean;
 }
 
 /**
- * Type text into an element — unified command matching Playwright MCP browser_type.
+ * Retain the legacy synthetic type path for callers that explicitly request { synthetic: true }.
  *
- * Automatically detects element type and uses the appropriate strategy:
+ * It detects element type and uses the previous value/insertText strategy:
  * - <input>/<textarea> default: el.value = text (atomic, fast)
  * - <input>/<textarea> slowly: webview.insertText() char by char
  * - contentEditable default: selectAll + webview.insertText() (bulk)
@@ -333,7 +436,7 @@ export async function typeText(target: IBrowserTarget, options: TypeOptions): Pr
 
     const cdp = target.cdp(tabId);
 
-    // Ensure webview has Electron-level focus
+    // The old synthetic path still asks Electron to focus the host before DOM evaluation.
     target.focusWebview(tabId);
 
     // Detect element type
@@ -350,12 +453,12 @@ export async function typeText(target: IBrowserTarget, options: TypeOptions): Pr
     } else if (elementKind === "contentEditable") {
         await fillWithInsertText(cdp, target, elementKind, text, tabId);
     } else {
-        // Unknown element — try value assignment as fallback
+        // Legacy synthetic compatibility retains the old unknown-element value-setter fallback.
         await fillInput(cdp, selector, ref, text);
     }
 
     // Submit (press Enter) if requested
     if (submit) {
-        await pressKey(cdp, "Enter");
+        await pressKey(cdp, "Enter", { synthetic: options.synthetic });
     }
 }

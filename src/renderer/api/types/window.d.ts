@@ -11,9 +11,25 @@
  * await app.window.openNew("C:/file.txt");
  */
 import type {
+    IBrowserClickOptions,
     IBrowserElementLocator,
+    IBrowserHoverOptions,
+    IBrowserTypeOptions,
+    IBrowserSelectOptions,
+    IBrowserActionOptions,
+    IBrowserKeyboardOptions,
     IBrowserNetworkRequest,
+    IBrowserResponse,
+    IBrowserResponseWaitOptions,
     IBrowserScreenshot,
+    IBrowserConsoleLevel,
+    IBrowserConsoleMessage,
+    IBrowserPageError,
+    IBrowserDragOptions,
+    IBrowserFormField,
+    IBrowserScreenshotOptions,
+    IBrowserEvaluateOptions,
+    IBrowserEvaluateFunction,
 } from "./browser-editor";
 
 export interface IMenuBarFolder {
@@ -59,22 +75,32 @@ export interface IMenuBar {
  */
 export interface IWindowScreen {
     /** Build the complete current app-window accessibility snapshot. */
-    snapshot(options?: { tabId?: string }): Promise<string>;
+    /** Get the app-window snapshot; `root`, `interactive`, `maxNodes`, and `maxChars` narrow or bound the tree. */
+    snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
     /** Click an app-window element by CSS selector or explicit snapshot ref. */
-    click(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
+    click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
     /** Hover an app-window element by CSS selector or explicit snapshot ref. */
-    hover(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
+    hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
     /** Type into an app-window input, clearing its existing value first. */
-    type(locator: IBrowserElementLocator, text: string, options?: { tabId?: string; slowly?: boolean; submit?: boolean }): Promise<void>;
+    type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void>;
     /** Select an app-window option by value. */
-    select(locator: IBrowserElementLocator, values: string | string[], options?: { tabId?: string }): Promise<void>;
+    select(locator: IBrowserElementLocator, values: string | string[], options?: IBrowserSelectOptions): Promise<void>;
     /** Press a key or compound key in the app window. */
-    pressKey(key: string, options?: { tabId?: string }): Promise<void>;
+    check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
+    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    fillForm(fields: IBrowserFormField[]): Promise<void>;
+    setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
+    pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
     /** Run JavaScript in the app window and return the result. */
-    evaluate(expression: string, options?: { tabId?: string }): Promise<unknown>;
+    evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown>;
     /** Wait for exactly one selector, text, textGone, or time condition. */
     waitFor(options: {
         selector?: string;
+        state?: "attached" | "detached" | "visible" | "hidden";
         text?: string;
         textGone?: string;
         time?: number;
@@ -82,9 +108,15 @@ export interface IWindowScreen {
         tabId?: string;
     }): Promise<void>;
     /** Capture the app window as a PNG; unavailable sessions return undefined. */
-    screenshot(options?: { tabId?: string }): Promise<IBrowserScreenshot | undefined>;
+    screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined>;
     /** Get recorded network requests for the app-window target. */
     networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
+    /** Wait for a matching completed response from the app window or an owned existing iframe. */
+    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
+    /** Read console messages from Persephone's top-level renderer. */
+    consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
+    /** Read uncaught exceptions from Persephone's top-level renderer. */
+    pageErrors(options?: { tabId?: string }): Promise<IBrowserPageError[]>;
 }
 
 export interface IWindow {

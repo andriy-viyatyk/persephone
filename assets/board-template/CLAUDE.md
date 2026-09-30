@@ -1335,6 +1335,10 @@ Once the user has opened this board in Persephone, an agent can drive it with
 - `pages[pageId].editor.snapshot()` → read the page's accessibility tree (element refs).
 - `pages[pageId].editor.click/type/pressKey/evaluate(...)` → interact, using refs from
   the snapshot. Pass a ref as `{ ref: "e12" }`; a plain string is always a selector.
+- Mouse and keyboard actions use trusted input and check that the target is visible, enabled,
+  stable, and receives the event. Use `{ nth }` to choose among matching selectors or
+  `{ force: true }` to skip those checks. `waitForResponse()` can observe a request from the board;
+  arm it before the action that sends the request.
 - `persephone.service.request(message)` → reach the declared service from the board frame; use
   `persephone.storage` for shared JSON state and call `app.boards.list()` from the host renderer
   when you need the service lifecycle payload.

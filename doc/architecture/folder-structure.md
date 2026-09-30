@@ -772,10 +772,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── CdpSession.ts       # CDP session wrapper (IPC to main process debugger)
 │   ├── snapshot.ts         # Accessibility snapshot (main frame + iframes, overlay detection)
 │   ├── input.ts            # Keyboard/text input (typeText, pressKey, fill strategies)
-│   ├── operations.ts       # Shared target-neutral automation operations used by commands and facades
+│   ├── operations.ts       # Shared target-neutral automation operations used by facades
 │   ├── ref.ts              # Per-host ref/frame-session stores and ref resolution
 │   ├── AppTargetModel.ts   # Automation adapter (IBrowserTarget) for the app's own UI (pageId "app")
-│   └── commands.ts         # Legacy parameter/target adapter retained beside the shared operations
 │
 ├── uikit/                  # UIKit — standalone component library
 │   │                       # Canonical home for reusable primitives. Must not import from

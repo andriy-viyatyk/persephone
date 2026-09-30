@@ -8,7 +8,7 @@
  * Frame-scoped refs use sessionId (from Target.attachToTarget) to resolve
  * in the correct iframe context via CDP DOM.resolveNode + Runtime.callFunctionOn.
  */
-import type { CdpSession } from "./CdpSession";
+import { cdpExceptionMessage, type CdpSession } from "./CdpSession";
 import { errMessage } from "../../shared/utils";
 
 // ── Frame Session Map ───────────────────────────────────────────────
@@ -76,6 +76,12 @@ function getFrameSessionId(cdp: CdpSession, ref: string, frameIndex: number): st
         + `${frameCount} ${frameLabel}. The iframe may have been removed — re-take the snapshot `
         + "and use a ref from it.",
     );
+}
+
+/** Get the flattened CDP session used by a ref, when the ref belongs to an OOPIF. */
+export function getRefSessionId(cdp: CdpSession, ref: string): string | undefined {
+    const { frameIndex } = parseRef(ref);
+    return frameIndex === null ? undefined : getFrameSessionId(cdp, ref, frameIndex);
 }
 
 // ── Ref Resolution ──────────────────────────────────────────────────
@@ -164,10 +170,7 @@ export async function callOnRef(
     }, sessionId);
 
     if (result.exceptionDetails) {
-        const errMsg = result.exceptionDetails.exception?.description
-            || result.exceptionDetails.text
-            || "callOnRef failed";
-        throw new Error(errMsg);
+        throw new Error(cdpExceptionMessage(result.exceptionDetails, "callOnRef failed"));
     }
     return returnByValue ? result.result?.value : result;
 }

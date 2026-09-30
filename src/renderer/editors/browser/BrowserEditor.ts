@@ -488,9 +488,10 @@ export class BrowserEditor extends EditorModel<
             }
         }
 
-        const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(normalizedUrl);
+        const isHostWithPort = /^[^:/\s]+:\d+(?:\/|$)/.test(normalizedUrl);
+        const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(normalizedUrl) && !isHostWithPort;
 
-        if (!hasScheme && !normalizedUrl.startsWith("about:")) {
+        if (!hasScheme) {
             if (
                 normalizedUrl.includes(".") &&
                 !normalizedUrl.includes(" ")

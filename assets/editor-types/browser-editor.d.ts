@@ -22,11 +22,70 @@
  * const title = await browser.getText("h1", { tabId: newTab });
  */
 export type IBrowserElementLocator = string | { ref: string };
+export type IBrowserJsonValue = null | boolean | number | string | IBrowserJsonValue[] | { [key: string]: IBrowserJsonValue };
+export type IBrowserEvaluateFunction = (...args: never[]) => unknown;
+export type IBrowserMousePosition = { x: number; y: number };
+export type IBrowserMouseModifier = "Alt" | "Control" | "Meta" | "Shift";
+export interface IBrowserClickOptions {
+    tabId?: string;
+    button?: "left" | "right" | "middle";
+    clickCount?: number;
+    modifiers?: IBrowserMouseModifier[];
+    position?: IBrowserMousePosition;
+    force?: boolean;
+    synthetic?: boolean;
+    nth?: number;
+    timeout?: number;
+}
+export interface IBrowserHoverOptions {
+    tabId?: string;
+    position?: IBrowserMousePosition;
+    modifiers?: IBrowserMouseModifier[];
+    force?: boolean;
+    synthetic?: boolean;
+    nth?: number;
+    timeout?: number;
+}
+export interface IBrowserTypeOptions {
+    tabId?: string;
+    slowly?: boolean;
+    submit?: boolean;
+    synthetic?: boolean;
+    nth?: number;
+    timeout?: number;
+    force?: boolean;
+}
+export interface IBrowserSelectOptions { tabId?: string; nth?: number; timeout?: number; force?: boolean }
+export interface IBrowserActionOptions { tabId?: string; nth?: number; timeout?: number; force?: boolean }
+export interface IBrowserKeyboardOptions {
+    tabId?: string;
+    target?: IBrowserElementLocator;
+    nth?: number;
+    timeout?: number;
+    synthetic?: boolean;
+}
+
+export interface IBrowserDragOptions {
+    tabId?: string; position?: IBrowserMousePosition; targetPosition?: IBrowserMousePosition;
+    modifiers?: IBrowserMouseModifier[]; force?: boolean; nth?: number; timeout?: number;
+}
+export type IBrowserFormField =
+    | { name: string; locator: IBrowserElementLocator; action: "type"; value: string; options?: IBrowserTypeOptions }
+    | { name: string; locator: IBrowserElementLocator; action: "select"; value: string | string[]; options?: IBrowserSelectOptions }
+    | { name: string; locator: IBrowserElementLocator; action: "check" | "uncheck"; options?: IBrowserActionOptions };
+export type IBrowserScreenshotFormat = "png" | "jpeg";
+export interface IBrowserScreenshotOptions {
+    tabId?: string; target?: IBrowserElementLocator; fullPage?: boolean; format?: IBrowserScreenshotFormat; quality?: number;
+    /** Zero-based among visible matches when `target` is a selector matching several. */
+    nth?: number;
+}
+export interface IBrowserEvaluateOptions { tabId?: string; args?: IBrowserJsonValue[] }
+export interface IBrowserViewportOptions { tabId?: string; width: number; height: number; deviceScaleFactor?: number }
 
 export interface IBrowserScreenshot {
     readonly type: "image";
     readonly data: string;
-    readonly mimeType: "image/png";
+    readonly mimeType: "image/png" | "image/jpeg";
 }
 
 export interface IBrowserNetworkRequest {
@@ -43,6 +102,48 @@ export interface IBrowserNetworkRequest {
     readonly responseHeaders?: Record<string, string[]>;
     readonly fromCache?: boolean;
     readonly error?: string;
+    readonly responseBody?: string;
+    readonly responseBodyBase64Encoded?: boolean;
+    readonly responseBodyTruncated?: boolean;
+}
+
+export interface IBrowserNetworkRequestsOptions { tabId?: string; includeBodies?: boolean; maxBodyBytes?: number }
+export interface IBrowserResponseWaitOptions { timeout?: number; tabId?: string; includeBody?: boolean; maxBodyBytes?: number }
+export interface IBrowserResponse {
+    readonly url: string;
+    readonly status: number;
+    readonly statusText: string;
+    readonly headers: Record<string, string>;
+    readonly mimeType: string;
+    readonly body?: string;
+    readonly base64Encoded?: boolean;
+    readonly truncated?: boolean;
+}
+
+export type IBrowserDialogPolicy = "accept" | "dismiss" | "manual";
+export type IBrowserDialogDisposition = "accepted" | "dismissed" | "pending";
+export type IBrowserConsoleLevel = "debug" | "info" | "log" | "warning" | "error";
+export interface IBrowserDialogRecord {
+    readonly type: string;
+    readonly message: string;
+    readonly url: string;
+    readonly timestamp: number;
+    readonly disposition: IBrowserDialogDisposition;
+}
+export interface IBrowserConsoleMessage {
+    readonly type: IBrowserConsoleLevel;
+    readonly args: readonly string[];
+    readonly url: string;
+    readonly lineNumber: number;
+    readonly columnNumber: number;
+    readonly timestamp: number;
+}
+export interface IBrowserPageError {
+    readonly text: string;
+    readonly url: string;
+    readonly lineNumber: number;
+    readonly columnNumber: number;
+    readonly timestamp: number;
 }
 
 export interface IBrowserEditor {
@@ -56,17 +157,20 @@ export interface IBrowserEditor {
 
     // --- Navigation ---
 
-    /** Navigate the active tab to a URL. Supports URLs and search queries. */
-    navigate(url: string): void;
+    /** Dispatch navigation without waiting for completion. Supports URLs and search queries. */
+    navigate(url: string): Promise<void>;
 
-    /** Go back in history. */
-    back(): void;
+    /** Navigate, await a lifecycle event, and return the committed URL and HTTP status. */
+    navigateAndWait(url: string, options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
 
-    /** Go forward in history. */
-    forward(): void;
+    /** Go back and await the main-frame result; rejects immediately when history is absent. */
+    back(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
+
+    /** Go forward and await the main-frame result; rejects immediately when history is absent. */
+    forward(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
 
     /** Reload the current page (or stop loading if in progress). */
-    reload(): void;
+    reload(): Promise<void>;
 
     // --- Tab management ---
 
@@ -91,7 +195,7 @@ export interface IBrowserEditor {
      * Run JavaScript in the page and return the result.
      * Supports async expressions (awaited automatically).
      */
-    evaluate(expression: string, options?: { tabId?: string }): Promise<unknown>;
+    evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown>;
 
     /**
      * Get an accessibility snapshot of the page as a YAML-like tree.
@@ -104,8 +208,10 @@ export interface IBrowserEditor {
      * // - heading "Page Title" [level=1] [ref=e40]
      * // - textbox "Search" [ref=e52]
      * // - button "Submit" [ref=e65]
+     * await browser.snapshot({ interactive: true });
+     * await browser.snapshot({ root: { ref: "e40" }, maxChars: 8000 });
      */
-    snapshot(options?: { tabId?: string }): Promise<string>;
+    snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
 
     // --- Query methods ---
 
@@ -126,34 +232,42 @@ export interface IBrowserEditor {
 
     // --- Interaction methods ---
 
-    /** Click by CSS selector or explicit snapshot ref. Throws if not found. */
-    click(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
+    /** Click by CSS selector or ref using trusted mouse input by default. */
+    click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
 
-    /** Hover by CSS selector or explicit snapshot ref. Throws if not found. */
-    hover(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<void>;
+    /** Move the page pointer over a CSS selector or ref. */
+    hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
 
     /**
      * Type text into an input/textarea. Clears existing value first.
      * Dispatches input and change events for framework compatibility.
      * Throws if not found.
      */
-    type(locator: IBrowserElementLocator, text: string, options?: { tabId?: string; slowly?: boolean; submit?: boolean }): Promise<void>;
+    type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void>;
 
     /** Select an option in a <select> element by value. Throws if not found. */
-    select(locator: IBrowserElementLocator, values: string | string[], options?: { tabId?: string }): Promise<void>;
+    select(locator: IBrowserElementLocator, values: string | string[], options?: IBrowserSelectOptions): Promise<void>;
 
     /** Check a checkbox or radio button. Throws if not found. */
-    check(selector: string, options?: { tabId?: string }): Promise<void>;
+    check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
 
     /** Uncheck a checkbox. Throws if not found. */
-    uncheck(selector: string, options?: { tabId?: string }): Promise<void>;
+    uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
 
     /** Clear the value of an input/textarea. Throws if not found. */
-    clear(selector: string, options?: { tabId?: string }): Promise<void>;
+    clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
 
-    /** Wait for exactly one selector, text, textGone, or time condition. */
+    /** Drag between actionable elements in the same frame. */
+    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    /** Fill named locator actions in order, stopping at the first failing field. */
+    fillForm(fields: IBrowserFormField[]): Promise<void>;
+    /** Assign local files directly to an input[type=file], including hidden inputs. */
+    setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
+
+    /** Wait for one selector, text, textGone, or time condition; selector state defaults to attached. */
     waitFor(options: {
         selector?: string;
+        state?: IBrowserWaitState;
         text?: string;
         textGone?: string;
         time?: number;
@@ -162,27 +276,45 @@ export interface IBrowserEditor {
     }): Promise<void>;
 
     /** Capture the selected tab as a PNG; unavailable sessions return undefined. */
-    screenshot(options?: { tabId?: string }): Promise<IBrowserScreenshot | undefined>;
+    screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined>;
+    /** Emulate browser page viewport metrics inside the existing webview box. */
+    setViewport(options: IBrowserViewportOptions): Promise<void>;
+    /** Clear selected tab viewport emulation. */
+    clearViewport(options?: { tabId?: string }): Promise<void>;
 
-    /** Get recorded network requests for the selected tab. */
-    networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
+    /** Get request history. Response bodies require includeBodies and may contain secrets. */
+    networkRequests(options?: IBrowserNetworkRequestsOptions): Promise<IBrowserNetworkRequest[]>;
+    /** Read and optionally update per-page JavaScript dialog policy and recent dialog records. */
+    dialogs(options?: { tabId?: string; policy?: IBrowserDialogPolicy }): Promise<{ policy: IBrowserDialogPolicy; dialogs: IBrowserDialogRecord[] }>;
+    /** Resolve a pending page-authored JavaScript dialog. */
+    handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
+    /** Read recent copied console records, optionally filtered by epoch-millisecond receipt time and level. */
+    consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
+    /** Read recent uncaught page exceptions. */
+    pageErrors(options?: { tabId?: string }): Promise<IBrowserPageError[]>;
 
     // --- Wait methods ---
 
     /**
-     * Wait for an element matching the selector to appear in the DOM.
-     * @param options.timeout — max wait time in ms (default 30000)
+     * Wait for an element selector state. visible uses positive size, visibility not hidden, and display not none.
+     * @param options.timeout — max wait time in ms (default 10000)
      * @param options.tabId — target tab (default: active tab)
      */
-    waitForSelector(selector: string, options?: { timeout?: number; tabId?: string }): Promise<void>;
+    waitForSelector(selector: string, options?: { state?: IBrowserWaitState; timeout?: number; tabId?: string }): Promise<void>;
 
     /**
-     * Wait for the page to finish loading (document.readyState === "complete").
-     * For SPA navigations, use waitForSelector() instead.
-     * @param options.timeout — max wait time in ms (default 30000)
-     * @param options.tabId — target tab (default: active tab)
+     * Wait for the next or in-progress main-frame navigation using CDP lifecycle events.
+     * HTTP 4xx/5xx responses resolve with their status; main-frame network failures reject.
+     * @param options.timeout - max wait time in ms (default 10000)
+     * @param options.tabId - target tab (default: active tab)
      */
-    waitForNavigation(options?: { timeout?: number; tabId?: string }): Promise<void>;
+    waitForNavigation(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>
+
+    /** Wait for exact string or RegExp match on the main-frame URL, including SPA/hash changes. */
+    waitForURL(pattern: string | RegExp, options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
+
+    /** Arm before the triggering action; strings match exactly, RegExp supports query matching. Resolves on the final response's headers; with `includeBody`, once its body finishes loading. */
+    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
 
     /** Wait for a specified number of milliseconds. */
     wait(ms: number): Promise<void>;
@@ -191,7 +323,23 @@ export interface IBrowserEditor {
      * Press a key or key combination via CDP.
      * Supports compound keys: "Control+a", "Shift+Enter", "Control+Shift+Delete".
      */
-    pressKey(key: string, options?: { tabId?: string }): Promise<void>;
+    pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    /** Hold a key down; pair with keyUp to release it. */
+    keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+    /** Release a key held by keyDown. */
+    keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+}
+
+export type IBrowserWaitState = "attached" | "detached" | "visible" | "hidden";
+export interface IBrowserNavigationOptions {
+    waitUntil?: "load" | "domcontentloaded" | "networkidle";
+    timeout?: number;
+    tabId?: string;
+}
+export interface IBrowserNavigationResult {
+    url: string;
+    /** Main-frame HTTP status; null for same-document, about:, and data: navigation. */
+    status: number | null;
 }
 
 /** Represents a browser internal tab. */

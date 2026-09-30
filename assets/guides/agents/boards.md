@@ -1183,6 +1183,9 @@ pages[pageId].editor.click({ ref: "e12" }) / .type(...) / .evaluate(...)  → in
   board's page id** — board pages are not browser tabs.
 - `click`, `type`, `pressKey`, and `evaluate` on that editor → interact using refs from the
   snapshot. Pass `{ ref: "e12" }` explicitly; a plain string is a CSS selector.
+- Mouse and keyboard actions use trusted input and check visibility, enabled state, stability, and
+  hit-testing before dispatch. Use `{ nth }` to disambiguate matching selectors, or `{ force: true }`
+  to skip actionability checks. Arm `waitForResponse()` before an action that sends the request.
 - **Verify UI visually.** The accessibility snapshot includes elements that are invisible on
   screen (zero-height, overridden `display`), so it can look right while the render is broken.
   After UI changes, check `pages[pageId].editor.screenshot()` before declaring the UI correct.

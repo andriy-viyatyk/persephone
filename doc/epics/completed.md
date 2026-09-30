@@ -1,3 +1,20 @@
+## EPIC-117 — Trusted browser automation: real input, actionable locators, agent-sized snapshots
+
+Completed 2026-09-30. Browser pages, boards and `window.screen` drive pages with trusted CDP input
+(mouse, keyboard, text, clipboard), Playwright-style actionability and strict locators, agent-sized
+snapshots, page events, reliable waits and navigation, the missing Playwright operations, and
+network response waits with opt-in bodies. A blank test agent sent a Gmail message in 17 calls
+(baseline 79). [Epic document](EPIC-117.md).
+
+- [x] US-1568: Trusted mouse input engine — dispatch seam, actionability and hit-test, strict locators
+- [x] US-1569: Trusted keyboard and text input — `pressKey`, `keyDown`/`keyUp`, `type` modes, `select`/`check`/`clear`
+- [x] US-1570: Page events — dialog policy and `handleDialog`, console messages, page errors, execution contexts
+- [x] US-1571: Waits and navigation — lifecycle navigation with status and failures, `forward`, `waitForURL`, element-state waits
+- [x] US-1572: Agent-sized snapshots — `root`, `interactive`, size budget and hint, `[cursor=pointer]`, owned iframes only
+- [x] US-1573: Missing Playwright operations — drag, `fillForm`, `setInputFiles`, screenshots, `evaluate` args, viewport
+- [x] US-1574: Cleanup, agent guide rewrite and the Gmail QA scenario; `automation/commands.ts` deleted
+- [x] US-1575: Network responses — `waitForResponse`, opt-in response bodies, request history kept across page loads
+
 ## EPIC-116 — Pipe status and instant open
 
 Completed 2026-09-29. Live pipe status (stage status, badge, board provider `status()`), and pages that open before their content has loaded. Bridge 1.26.0. [Epic document](EPIC-116.md).

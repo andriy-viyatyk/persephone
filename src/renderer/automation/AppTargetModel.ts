@@ -1,27 +1,24 @@
-import type { IBrowserTarget, ITargetTab } from "./types";
+import type { IBrowserTarget, IInputPoint, ITargetTab } from "./types";
 import { CdpSession } from "./CdpSession";
 import { APP_WINDOW_CDP_KEY } from "../../ipc/api-types";
 
 /**
  * `IBrowserTarget` adapter for Persephone's OWN main window (US-810), letting the
- * automation command set drive the app's own UI through `window.screen` — page
+ * shared automation operations drive the app's own UI through `window.screen` — page
  * tabs, sidebar, toolbars, dialogs, and the active editor. Selected explicitly via
- * `pageId: "app"` (never by fallback — see `getTarget` in commands.ts).
+ * `window.screen` or the explicit `pageId: "app"` target.
  *
  * The app window is a single top-level document with no tabs and no navigation, so
  * only the page-interaction surface is real:
  *  • `cdp()` — a session keyed by the `APP_WINDOW_CDP_KEY` sentinel that main routes
  *    to the calling window's own top-level webContents (snapshot / click / type /
  *    press-key / evaluate / screenshot).
- *  • `focusWebview()` — a no-op: the input layer drives everything through JS events
- *    (`el.click()`, `KeyboardEvent` dispatch, native-setter fill), which need no OS
- *    focus. Making it a no-op avoids stealing the user's window focus.
- *  • `insertText()` — insert at the focused element via the app-window CDP session
- *    (`document.execCommand`), same approach as the board target.
- * Navigation and tab methods throw a clear error (the dispatcher turns it into a
- * JSON-RPC error): the app window has no browser-style navigation or tabs — opening
- * and switching Persephone pages is done via the `pages` node (`pages`,
- * `pages.showPage(id)`), not synthetic navigation.
+ *  • `focusWebview()` — a no-op. Trusted mouse input is sent through CDP and needs no OS
+ *    focus; the existing keyboard path also avoids stealing the user's window focus.
+ *  • `insertText()` — legacy insertion seam used only by explicit synthetic input.
+ * Navigation and tab methods throw a clear error: the app window has no browser-style
+ * navigation or tabs — opening and switching Persephone pages is done through `pages`
+ * (`pages.showPage(id)`).
  *
  * Exposed as a module-level singleton — there is exactly one app UI per renderer, and
  * the sentinel key resolves to whichever window handled the MCP command.
@@ -42,8 +39,18 @@ class AppTargetModel implements IBrowserTarget {
         return new CdpSession(APP_WINDOW_CDP_KEY);
     }
 
+    inputCdp(_tabId?: string, sessionId?: string) {
+        return {
+            cdp: this.cdp(),
+            sessionId,
+            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
+                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
+            ),
+        };
+    }
+
     focusWebview(): void {
-        // No-op — JS-dispatched input needs no OS focus, and we must not steal the
+        // No-op — trusted CDP mouse input needs no OS focus, and we must not steal the
         // user's window focus while they work.
     }
 

@@ -68,11 +68,15 @@ await app.window.screen.click({ ref: "e12" });
 await app.window.screen.waitFor({ text: "Settings" });
 ```
 
-Available methods are `snapshot()`, `click()`, `hover()`, `type()`, `select()`, `pressKey()`,
-`evaluate()`, `waitFor()`, `screenshot()`, and `networkRequests()`. Element methods accept either a
-CSS selector string or `{ ref: "eN" }` from `snapshot()`. `waitFor()` accepts exactly one of
-`selector`, `text`, `textGone`, or `time`, with an optional `timeout` in milliseconds. The
-`screenshot()` result is an image object when the capture is available.
+The shared page automation methods are also available here, including `check()`, `uncheck()`,
+`clear()`, `drag()`, `fillForm()`, `setInputFiles()`, `keyDown()`, `keyUp()`, `waitForResponse()`,
+`dialogs()`, `handleDialog()`, `consoleMessages()`, and `pageErrors()`. `snapshot()` accepts
+`root`, `interactive`, `maxNodes`, and `maxChars`; element methods accept either a CSS selector or
+`{ ref: "eN" }` from a snapshot. `waitFor()` accepts exactly one of `selector`, `text`, `textGone`,
+or `time`, with an optional `timeout` in milliseconds. Mouse and keyboard actions use trusted input
+and check target actionability by default. See [Browser, board, and window page automation](./page.md#browser-board-and-window-page-automation)
+for locator, wait, screenshot, and response details. The `screenshot()` result is an image object
+when the capture is available.
 
 The app-window host follows the browser privacy guard: it cannot automate a user-opened incognito or
 Tor page while that page is active. Agent-opened private pages remain available to that agent.

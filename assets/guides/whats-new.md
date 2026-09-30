@@ -20,6 +20,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Trusted page automation:** scripts and agents can drive browser pages, boards, and the app window
+  with trusted mouse and keyboard input. Actions check that targets are visible and actionable,
+  snapshots can be scoped or limited to interactive elements, and the shared surface adds waits,
+  page events, drag, form filling, file upload, and response inspection. Browser response bodies are
+  opt-in and may contain sensitive page data. See the [Page API](./scripting/api/page.md#browser-board-and-window-page-automation)
+  and [Browser editor guide](./editors/browser.md).
+
 - **Live content-pipe status and faster page opens:** a badge in the editor status bar shows source loading,
   progress, completion, or errors and opens provider/transformer details. Editors that opt into
   deferred restore show a loading tile with a close button and **Retry**. Scripts can observe
