@@ -12,6 +12,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.6 (Upcoming)
 
+### New Features
+
+- **F12 opens Persephone's DevTools** — Press `F12` when no browser page claims the shortcut to
+  open DevTools for Persephone. An active browser page keeps `F12` for its own page DevTools.
+  See [Keyboard Shortcuts](./shortcuts.md).
+
 ### Bug Fixes
 
 - **Browser video fullscreen works as expected:** fullscreen video now fills the app window, and
@@ -2152,7 +2158,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   - `F5` — Reload page
   - `Ctrl+F5` / `Ctrl+Shift+R` — Hard reload (bypass cache)
   - `Ctrl+R` — Reload (alias)
-  - `F12` — Open DevTools
+  - `F12` — Open the browser page's DevTools
   - `Alt+Left` / `Alt+Right` — Back / Forward
   - `Alt+Home` — Navigate to the tab's home page
   - `Escape` — Stop loading

@@ -40,6 +40,7 @@ export enum Endpoint {
     showSaveFileDialog = "showSaveFileDialog",
     showOpenFolderDialog = "showOpenFolderDialog",
     inspectElement = "inspectElement",
+    openDevTools = "openDevTools",
     getCommonFolder = "getCommonFolder",
     zoom = "zoom",
     showItemInFolder = "showItemInFolder",
@@ -203,6 +204,7 @@ export type Api = {
         params: OpenFolderDialogParams
     ) => Promise<string[] | undefined>;
     [Endpoint.inspectElement]: (x: number, y: number) => Promise<void>;
+    [Endpoint.openDevTools]: () => Promise<void>;
     [Endpoint.getCommonFolder]: (folder: CommonFolder) => Promise<string>;
     [Endpoint.zoom]: (delta: number) => Promise<void>;
     [Endpoint.showItemInFolder]: (path: string) => Promise<void>;

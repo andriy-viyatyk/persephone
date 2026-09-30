@@ -124,7 +124,8 @@ Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplex
 **Home** remembers the first URL for each tab. **Back**, **Forward**, **Reload**, and **Stop** have
 the expected browser behavior, with a loading indicator below the toolbar. One Persephone page can
 contain inner browser tabs, isolated profiles, incognito sessions, bookmarks, downloads, find-in-page,
-DevTools (`F12`), and session restore.
+DevTools (`F12`), and session restore. An active browser page handles `F12` for its own DevTools;
+when no browser page claims it, `F12` opens Persephone's DevTools.
 
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.

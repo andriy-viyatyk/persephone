@@ -135,6 +135,10 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.inspectElement, x, y);
     };
 
+    openDevTools = async () => {
+        return executeOnce<void>(Endpoint.openDevTools);
+    };
+
     getCommonFolder = async (folder: CommonFolder) => {
         return executeOnce<string>(Endpoint.getCommonFolder, folder);
     };

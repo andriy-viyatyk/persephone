@@ -799,7 +799,7 @@ If the `.link.json` file is encrypted, `BrowserBookmarks.init()` detects this vi
 
 ## Keyboard Shortcuts
 
-Browser hotkeys (F5, F12, Alt+Left/Right, etc.) must work regardless of where focus is — inside the webview, on the toolbar, or elsewhere. This requires a three-layer approach:
+Browser hotkeys (F5, F12, Alt+Left/Right, etc.) must work regardless of where focus is — inside the webview, on the toolbar, or elsewhere. Browser-owned handling uses three layers; F12 also has an application-wide fallback for windows without an active browser page:
 
 ### Layer 1: Main Process (`before-input-event`)
 
@@ -820,12 +820,18 @@ The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in 
 | `F5` | Reload | Main process + global |
 | `Ctrl+F5` / `Ctrl+Shift+R` | Hard reload | Main process + global |
 | `Ctrl+R` | Reload | Main process + global |
-| `F12` | Open DevTools | Main process + global |
+| `F12` | Open the browser page's DevTools | Main process + browser page global |
 | `Alt+Left` / `Alt+Right` | Back / Forward | Main process + global |
 | `Alt+Home` | Go to home page | Global only |
 | `Escape` | Exit HTML fullscreen, or stop loading / close find bar | Main process (fullscreen only), global (host focus), and guest preload (page focus) |
 | `Ctrl+L` | Focus URL bar | Root div only |
 | `Ctrl+F` | Find in page | Root div (host focus) + guest preload (page focus) |
+
+When focus is on renderer chrome, the active `BrowserEditor` handles F12 on the global key event bus
+and calls `openDevTools()` on its active webview. After all global-key subscribers run,
+`KeyboardService` opens the current Persephone window's DevTools if F12 remains unclaimed. This
+fallback also works in windows whose active page is not a browser. It crosses to the main process
+through the typed `Endpoint.openDevTools` IPC handler, which opens DevTools for the sender's window.
 
 #### `Ctrl+F` and ordinary `Escape` are the two keys the page can take
 

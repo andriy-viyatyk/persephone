@@ -28,6 +28,7 @@ These shortcuts work regardless of which editor is active.
 | `Ctrl+Alt+]` | Next theme (also works with focus inside a board) |
 | `Ctrl+Alt+[` | Previous theme (also works with focus inside a board) |
 | `F1` | Open the User Guide, or the guide for the active editor when one is available |
+| `F12` | Open Persephone's DevTools (unless an active browser page claims it for that page's DevTools) |
 | `F5` | Run script (JavaScript or TypeScript) |
 | `Ctrl+V` | Paste clipboard content into a new viewer tab — bitmap images (screenshots, Snipping Tool) open in the **Image Viewer**; rich HTML (Teams / Outlook conversations, Word or Excel selections, PowerPoint pictures, web-page selections) opens in the **HTML viewer**. Images are intercepted anywhere; the HTML fallback stands down when the destination handles the paste itself, including a text editor, input, grid, or other component (those paste normally). |
 
@@ -156,7 +157,7 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | `Ctrl+F5` | Hard reload (bypass cache) |
 | `Ctrl+R` | Reload page |
 | `Ctrl+Shift+R` | Hard reload (bypass cache) |
-| `F12` | Open DevTools |
+| `F12` | Open this browser page's DevTools |
 | `Alt+Left` | Go back |
 | `Alt+Right` | Go forward |
 | `Alt+Home` | Go to tab's home page |

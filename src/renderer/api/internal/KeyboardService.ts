@@ -64,7 +64,7 @@ function collectGuideMatches(
 
 /**
  * Global keyboard service for application-wide shortcuts.
- * Handles: F1, Ctrl+Tab, Ctrl+W, Ctrl+N, Ctrl+O, theme cycling.
+ * Handles: F1, F12, Ctrl+Tab, Ctrl+W, Ctrl+N, Ctrl+O, theme cycling.
  */
 export class KeyboardService {
     async init(): Promise<void> {
@@ -84,6 +84,14 @@ export class KeyboardService {
                 if (e.target instanceof Element && e.target.closest(".monaco-editor")) break;
                 e.preventDefault();
                 void guard("Failed to open User Guide", () => openActiveGuideOrContents());
+                break;
+
+            case "F12":
+                // An active browser page claims F12 for its own page's DevTools (it prevents
+                // the default first); everywhere else F12 opens Persephone's DevTools.
+                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) break;
+                e.preventDefault();
+                void api.openDevTools();
                 break;
 
             case "Tab":

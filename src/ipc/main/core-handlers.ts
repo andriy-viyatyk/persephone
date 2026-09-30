@@ -95,6 +95,11 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         window?.webContents.inspectElement(x, y);
     }
 
+    openDevTools = async (event: IpcMainEvent): Promise<void> => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        window?.webContents.openDevTools();
+    }
+
     getCommonFolder = async (event: IpcMainEvent, folder: string): Promise<string> => {
         return app.getPath(folder as Parameters<typeof app.getPath>[0]);
     }
@@ -375,6 +380,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.showSaveFileDialog, controllerInstance.showSaveFileDialog);
     bindEndpoint(Endpoint.showOpenFolderDialog, controllerInstance.showOpenFolderDialog);
     bindEndpoint(Endpoint.inspectElement, controllerInstance.inspectElement);
+    bindEndpoint(Endpoint.openDevTools, controllerInstance.openDevTools);
     bindEndpoint(Endpoint.getCommonFolder, controllerInstance.getCommonFolder);
     bindEndpoint(Endpoint.zoom, controllerInstance.zoom);
     bindEndpoint(Endpoint.resetZoom, controllerInstance.resetZoom);
