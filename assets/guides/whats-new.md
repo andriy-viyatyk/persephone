@@ -12,7 +12,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.5 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Segmented board toolbar control:** boards can put a row of joined choice buttons, like the
+  editor switch, in the page toolbar with `type: "segmented"`. Options take a label, an icon, or
+  both. Board bridge `1.28.0`. See the [boards guide](./boards.md#in-board-toolbar).
+
+### Bug Fixes
+
+- **Board toolbar selects and toggles show the picked value:** choosing an option in a board's
+  toolbar select, or clicking its toggle, now updates the control itself. Before, the board received
+  the new value but the control kept showing the old one.
 
 ---
 

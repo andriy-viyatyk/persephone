@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.26.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.28.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -19,6 +19,8 @@ page one at a time in FIFO order, allows up to 32 active and queued requests per
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
 `alwaysOpensNewPage` to request a fresh handler page for each invocation.
+Bridge `1.28.0` adds the `segmented` toolbar control; boards using it set
+`minBridgeVersion: "1.28.0"`.
 Bridge `1.21.0` adds optional `representation` to capability discovery and board declarations.
 Boards declaring `content.view` must provide one non-empty `representation` per supported format
 and set `minBridgeVersion: "1.21.0"`.
@@ -94,17 +96,28 @@ persephone.toolbar.set([
     { value: "all", label: "All" }, { value: "open", label: "Open" },
   ], value: "all" },
   { id: "query", type: "input", placeholder: "Filter", value: "" },
+  { id: "scope", type: "segmented", value: "active", options: [
+    { value: "active", label: "Active" }, { value: "all", label: "All", title: "Include closed items" },
+  ] },
 ]);
 persephone.toolbar.update([{ id: "enabled", value: false }]);
 const off = persephone.toolbar.onAction(({ id, type, value }) => {
-  // button: no value; toggle: boolean; menu/select/input: string
+  // button: no value; toggle: boolean; menu/select/segmented/input: string
 });
 ```
 
-The fixed types are `button`, `toggle`, `menu`, `select`, and `input`. A button action has
-`{ id, type: "button" }`; toggles send a boolean, menus send the selected item id, selects send
-the selected option value, and inputs send the current string after 500 ms of quiet time. Menu
-items are `{ id, label, disabled? }`; select options are `{ value, label }`. A control's stable
+The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`, and `input`. A button
+action has `{ id, type: "button" }`; toggles send a boolean, menus send the selected item id,
+selects and segmented controls send the selected option value, and inputs send the current string
+after 500 ms of quiet time. Menu items are `{ id, label, disabled? }`; select options are
+`{ value, label }`.
+
+A `segmented` control is a row of joined buttons with one selected, like Persephone's editor
+switch — the better fit when there are two to four short, always-visible choices. Its options are
+`{ value, label?, icon?, title?, disabled? }`; each needs a `label`, an `icon`, or both (an
+icon-only segment should carry a `title`). `update()` accepts `value`, `options`, and `disabled`.
+The `segmented` type needs bridge `1.28.0` (`minBridgeVersion: "1.28.0"`); an older host ignores
+the control with a warning and renders the rest. A control's stable
 agent-facing address is `data-name="board-toolbar-control-${id}"` and it appears in
 `BoardEditor.elements` while the main trusted frame and toolbar are mounted. These are host
 controls, not iframe content, so use the generic host/window automation surface for them.

@@ -529,7 +529,28 @@ Every open board displays a thin toolbar above the board's content area. The too
 | **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. |
 | **Text slot** | Empty unless the open board fills it with `persephone.toolbar.setText()`. A non-interactive label; the board's own folder path is under **… → Board properties** and the tab's **Copy Board Path**. |
 | **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. An update-available dot appears here when a newer catalog version is ready. |
-| **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
+| **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns, segmented choice buttons and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
+
+Trusted and bundled boards can declare these controls with `persephone.toolbar.set()` and handle
+their picks with `persephone.toolbar.onAction()`. A `segmented` control shows joined choice buttons
+with one value selected; use it for a few short, always-visible options. Each option needs a label,
+an icon, or both:
+
+```js
+persephone.toolbar.set([
+  { id: "scope", type: "segmented", value: "active", options: [
+    { value: "active", label: "Active" },
+    { value: "all", label: "All" },
+  ] },
+]);
+persephone.toolbar.onAction(({ id, type, value }) => {
+  if (id === "scope" && type === "segmented") showScope(value);
+});
+```
+
+The `segmented` type requires board bridge `1.28.0`; set `minBridgeVersion: "1.28.0"` in the
+board manifest when using it. See the [board authoring reference](./agents/boards.md#host-rendered-board-toolbar)
+for all control types and option details.
 
 ---
 

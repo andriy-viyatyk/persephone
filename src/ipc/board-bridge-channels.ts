@@ -288,7 +288,7 @@ export interface BoardPortInitMsg {
     materialize?: boolean;
 }
 
-export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "input";
+export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "segmented" | "input";
 
 export type BoardToolbarIcon =
     | { name: string }
@@ -333,6 +333,16 @@ export type BoardToolbarControlDescriptor =
     }
     | {
         id: string;
+        type: "segmented";
+        label?: string;
+        title?: string;
+        /** One button per option; each needs a `label`, an `icon`, or both. */
+        options: readonly BoardToolbarSegment[];
+        value: string;
+        disabled?: boolean;
+    }
+    | {
+        id: string;
         type: "input";
         label?: string;
         title?: string;
@@ -340,6 +350,15 @@ export type BoardToolbarControlDescriptor =
         placeholder?: string;
         disabled?: boolean;
     };
+
+/** One option of a `segmented` toolbar control. */
+export interface BoardToolbarSegment {
+    value: string;
+    label?: string;
+    title?: string;
+    icon?: BoardToolbarIcon;
+    disabled?: boolean;
+}
 
 export type BoardToolbarControlPatch = {
     id: string;
@@ -350,7 +369,8 @@ export type BoardToolbarControlPatch = {
     disabled?: boolean;
     value?: boolean | string;
     items?: readonly { id: string; label: string; disabled?: boolean }[];
-    options?: readonly { value: string; label: string }[];
+    /** Select options (`label` required, no icons) or segmented options. */
+    options?: readonly BoardToolbarSegment[];
     placeholder?: string;
 };
 

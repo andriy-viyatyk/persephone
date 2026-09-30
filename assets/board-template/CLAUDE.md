@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.26.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.28.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -18,6 +18,8 @@ and structured service errors; service entries using these APIs must set
 `minBridgeVersion: "1.22.0"`.
 Bridge `1.23.0` uses one extension-to-MIME table for `board://` files and `__pipe` responses;
 markdown, CSV, XML, and YAML board text uses UTF-8.
+Bridge `1.28.0` adds the `segmented` toolbar control; boards using it set
+`minBridgeVersion: "1.28.0"`.
 Bridge `1.18.0` adds `persephone.icons.forFiles(names)` to retrieve Persephone's file icons as
 `data:` URLs and queues toolbar declarations made before the document's `load` event; `1.13.0` adds
 `persephone.settings.get(id)` and `persephone.settings.onChange(cb)`, which read the settings your
@@ -38,7 +40,8 @@ stored under the old one, including board variables.
 Trusted and bundled boards may call `persephone.toolbar.set(controls)` with the complete ordered
 catalog and `persephone.toolbar.update(partial)` to patch existing ids. The catalog is capped at
 eight rendered controls; malformed, duplicate, unknown-update, and over-cap entries are ignored
-with a warning in `ui.log`. The fixed types are `button`, `toggle`, `menu`, `select`, and `input`.
+with a warning in `ui.log`. The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`
+(bridge `1.28.0`), and `input`.
 Values are host-owned and uncontrolled.
 
 ```js
@@ -47,14 +50,19 @@ persephone.toolbar.set([
   { id: "enabled", type: "toggle", label: "Enabled", value: true },
   { id: "mode", type: "select", options: [{ value: "all", label: "All" }], value: "all" },
   { id: "query", type: "input", placeholder: "Filter", value: "" },
+  { id: "scope", type: "segmented", value: "active", options: [
+    { value: "active", label: "Active" }, { value: "all", label: "All" },
+  ] },
 ]);
 const off = persephone.toolbar.onAction(({ id, type, value }) => {
-  // button has no value; toggle is boolean; menu/select/input are strings
+  // button has no value; toggle is boolean; menu/select/segmented/input are strings
 });
 ```
 
-Inputs send one string event after 500 ms of quiet time; menus send their item id, selects their
-option value, and toggles their new boolean. Every live control is addressed by
+Inputs send one string event after 500 ms of quiet time; menus send their item id, selects and
+segmented controls their option value, and toggles their new boolean. A `segmented` control is a
+row of joined buttons like the editor switch; its options are `{ value, label?, icon?, title?,
+disabled? }`, each with a `label`, an `icon`, or both. Every live control is addressed by
 `data-name="board-toolbar-control-${id}"` in `BoardEditor.elements`, while host/window automation
 is the correct way to operate it (the board iframe methods target iframe content).
 

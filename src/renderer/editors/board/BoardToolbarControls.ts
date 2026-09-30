@@ -3,13 +3,20 @@ import type {
     BoardToolbarControlPatch,
     BoardToolbarIcon,
     BoardToolbarControlType,
+    BoardToolbarSegment,
 } from "../../../ipc/board-bridge-channels";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../uikit/Input/InputView";
-import { SelectView } from "../../uikit/Select/SelectView";
-import { SwitchView } from "../../uikit/Switch/SwitchView";
+import { SelectView, type SelectViewProps } from "../../uikit/Select/SelectView";
+import { SwitchView, type SwitchProps } from "../../uikit/Switch/SwitchView";
+import {
+    SegmentedControlView,
+    type ISegment,
+    type SegmentedControlViewProps,
+} from "../../uikit/SegmentedControl/SegmentedControlView";
+import "../../uikit/SegmentedControl/SegmentedControl.css";
 import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../uikit/Menu/types";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
@@ -26,7 +33,7 @@ import { errMessage } from "../../../shared/utils";
 
 export const BOARD_TOOLBAR_CONTROL_LIMIT = 8;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
-const CONTROL_TYPES = new Set<BoardToolbarControlType>(["button", "toggle", "menu", "select", "input"]);
+const CONTROL_TYPES = new Set<BoardToolbarControlType>(["button", "toggle", "menu", "select", "segmented", "input"]);
 
 export type ToolbarAction = {
     readonly id: string;
@@ -35,7 +42,10 @@ export type ToolbarAction = {
 };
 
 type ToolbarWarning = (message: string) => void;
-type ToolbarRecordView = IconButtonView | SwitchView | SelectView<IListBoxItem> | InputView;
+type BoardToolbarToggleDescriptor = Extract<BoardToolbarControlDescriptor, { type: "toggle" }>;
+type BoardToolbarSelectDescriptor = Extract<BoardToolbarControlDescriptor, { type: "select" }>;
+type BoardToolbarSegmentedDescriptor = Extract<BoardToolbarControlDescriptor, { type: "segmented" }>;
+type ToolbarRecordView = IconButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value);
@@ -83,18 +93,33 @@ function normalizeMenuItems(value: unknown, warning: ToolbarWarning): Array<{ id
     return items;
 }
 
-function normalizeOptions(value: unknown, warning: ToolbarWarning): Array<{ value: string; label: string }> | undefined {
+/**
+ * Options of a `select` or `segmented` control. A patch does not name its type, so this accepts
+ * the wider segmented shape; `normalizeToolbarControl` then applies the per-type rules (a select
+ * option needs a label and drops icons; a segment needs a label or an icon).
+ */
+function normalizeOptions(value: unknown, warning: ToolbarWarning): BoardToolbarSegment[] | undefined {
     if (!Array.isArray(value)) return undefined;
     const seen = new Set<string>();
-    const options: Array<{ value: string; label: string }> = [];
+    const options: BoardToolbarSegment[] = [];
     for (const option of value) {
-        if (!isRecord(option) || typeof option.value !== "string" || typeof option.label !== "string"
-            || seen.has(option.value)) {
-            warning("Ignored an invalid or duplicate board toolbar select option.");
+        const icon = isRecord(option) && option.icon !== undefined ? normalizeIcon(option.icon) : undefined;
+        if (!isRecord(option) || typeof option.value !== "string" || seen.has(option.value)
+            || option.label !== undefined && typeof option.label !== "string"
+            || option.title !== undefined && typeof option.title !== "string"
+            || option.disabled !== undefined && typeof option.disabled !== "boolean"
+            || option.icon !== undefined && !icon) {
+            warning("Ignored an invalid or duplicate board toolbar option.");
             continue;
         }
         seen.add(option.value);
-        options.push({ value: option.value, label: option.label });
+        options.push({
+            value: option.value,
+            ...(option.label !== undefined ? { label: option.label as string } : {}),
+            ...(option.title !== undefined ? { title: option.title as string } : {}),
+            ...(icon ? { icon } : {}),
+            ...(option.disabled !== undefined ? { disabled: option.disabled as boolean } : {}),
+        });
     }
     return options;
 }
@@ -145,7 +170,19 @@ export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning)
             warning(`Ignored board toolbar select "${id}" without options and a string value.`);
             return undefined;
         }
-        return { ...common, type, options, value: value.value };
+        const labelled = options.flatMap((option) => option.label === undefined ? [] : [{ value: option.value, label: option.label }]);
+        if (labelled.length !== options.length) warning(`Ignored board toolbar select options without a label on "${id}".`);
+        return { ...common, type, options: labelled, value: value.value };
+    }
+    if (type === "segmented") {
+        const options = normalizeOptions(value.options, warning);
+        if (!options || typeof value.value !== "string") {
+            warning(`Ignored board toolbar segmented control "${id}" without options and a string value.`);
+            return undefined;
+        }
+        const shown = options.filter((option) => option.label !== undefined || option.icon !== undefined);
+        if (shown.length !== options.length) warning(`Ignored segmented options without a label or icon on "${id}".`);
+        return { ...common, type, options: shown, value: value.value };
     }
     if (typeof value.value !== "string") {
         warning(`Ignored board toolbar input "${id}" without a string value.`);
@@ -260,7 +297,7 @@ function mergePatch(
             ? ["items", "options", "placeholder"]
             : descriptor.type === "menu"
                 ? ["value", "options", "placeholder"]
-                : descriptor.type === "select"
+                : descriptor.type === "select" || descriptor.type === "segmented"
                     ? ["items", "placeholder", "icon"]
                     : ["items", "options", "icon"];
     if (forbidden.some((field) => hasField(patch, field))) {
@@ -272,7 +309,7 @@ function mergePatch(
         if (value !== undefined) next[key] = value;
     }
     if (descriptor.type === "menu" && hasField(patch, "items")) next.items = patch.items;
-    if (descriptor.type === "select" && hasField(patch, "options")) next.options = patch.options;
+    if ((descriptor.type === "select" || descriptor.type === "segmented") && hasField(patch, "options")) next.options = patch.options;
     if (descriptor.type === "input" && hasField(patch, "value")) next.value = patch.value;
     if (descriptor.type === "toggle" && hasField(patch, "value")) next.value = patch.value;
     return normalizeToolbarControl(next, warning);
@@ -295,6 +332,8 @@ class ToolbarControlRecord {
     private readonly labelElement: HTMLSpanElement | undefined;
     private readonly iconHost: HTMLSpanElement | undefined;
     private iconRef: IconRef = createToolbarIconFallback();
+    /** Resolved segment icons by option value; a segment renders without its icon until resolved. */
+    private segmentIcons = new Map<string, IconRef>();
     private menu: MenuHandle | undefined;
     private inputDebounce: ReturnType<typeof setTimeout> | undefined;
     private iconRequest = 0;
@@ -318,12 +357,10 @@ class ToolbarControlRecord {
         if (this.iconHost) this.iconHost.dataset.part = "icon";
 
         if (descriptor.type === "select") {
-            const items = descriptor.options.map((option) => ({ value: option.value, label: option.label }));
-            this.view = new SelectView<IListBoxItem>({
-                name: this.dataName(), items, value: items.find((item) => item.value === descriptor.value) ?? null,
-                onChange: (item) => this.selectChanged(String(item.value)), disabled: descriptor.disabled,
-                placeholder: descriptor.title ?? descriptor.label, size: "sm", "aria-label": labelOf(descriptor),
-            });
+            this.view = new SelectView<IListBoxItem>(this.selectProps(descriptor));
+            this.root = this.view.root;
+        } else if (descriptor.type === "segmented") {
+            this.view = new SegmentedControlView(this.segmentedProps(descriptor));
             this.root = this.view.root;
         } else if (descriptor.type === "input") {
             this.view = new InputView({
@@ -333,10 +370,7 @@ class ToolbarControlRecord {
             });
             this.root = this.view.root;
         } else if (descriptor.type === "toggle") {
-            const toggle = new SwitchView({
-                name: this.dataName(), label: labelOf(descriptor), checked: descriptor.value,
-                disabled: descriptor.disabled, size: "sm", onChange: (value) => this.toggleChanged(value),
-            });
+            const toggle = new SwitchView(this.switchProps(descriptor));
             this.view = toggle;
             this.root = createPanelElement({ direction: "row", align: "center", gap: "xs", shrink: false });
             if (this.iconHost) this.root.append(this.iconHost);
@@ -364,19 +398,11 @@ class ToolbarControlRecord {
             this.inputDebounce = undefined;
         }
         if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
-        else if (this.view instanceof SwitchView && descriptor.type === "toggle") this.view.update({
-            name: this.dataName(), label: labelOf(descriptor), checked: descriptor.value,
-            disabled: descriptor.disabled, size: "sm", onChange: (value) => this.toggleChanged(value),
-        });
+        else if (this.view instanceof SwitchView && descriptor.type === "toggle") this.view.update(this.switchProps(descriptor));
         else if (this.view instanceof SelectView && descriptor.type === "select") {
-            const options = descriptor.options;
-            const items = options.map((option) => ({ value: option.value, label: option.label }));
-            this.view.update({
-                name: this.dataName(), items,
-                value: items.find((item) => item.value === descriptor.value) ?? null,
-                onChange: (item) => this.selectChanged(String(item.value)), disabled: descriptor.disabled,
-                placeholder: descriptor.title ?? descriptor.label, size: "sm", "aria-label": labelOf(descriptor),
-            });
+            this.view.update(this.selectProps(descriptor));
+        } else if (this.view instanceof SegmentedControlView && descriptor.type === "segmented") {
+            this.view.update(this.segmentedProps(descriptor));
         } else if (this.view instanceof InputView && descriptor.type === "input") this.view.update({
             name: this.dataName(), value: descriptor.value, placeholder: descriptor.placeholder,
             disabled: descriptor.disabled, size: "sm", "aria-label": labelOf(descriptor),
@@ -415,6 +441,58 @@ class ToolbarControlRecord {
         return `board-toolbar-control-${this.descriptor.id}`;
     }
 
+    private switchProps(descriptor: BoardToolbarToggleDescriptor): SwitchProps {
+        return {
+            name: this.dataName(), label: labelOf(descriptor), checked: descriptor.value,
+            disabled: descriptor.disabled, size: "sm", onChange: (value) => this.toggleChanged(value),
+        };
+    }
+
+    private selectProps(descriptor: BoardToolbarSelectDescriptor): SelectViewProps<IListBoxItem> {
+        const items = descriptor.options.map((option) => ({ value: option.value, label: option.label }));
+        return {
+            name: this.dataName(), items, value: items.find((item) => item.value === descriptor.value) ?? null,
+            onChange: (item) => this.selectChanged(String(item.value)), disabled: descriptor.disabled,
+            placeholder: descriptor.title ?? descriptor.label, size: "sm", "aria-label": labelOf(descriptor),
+        };
+    }
+
+    private segmentedProps(descriptor: BoardToolbarSegmentedDescriptor): SegmentedControlViewProps {
+        const items: ISegment[] = descriptor.options.map((option) => ({
+            value: option.value,
+            // SegmentedControlView falls back to the value as text; an icon-only segment has none.
+            label: option.label ?? "",
+            icon: this.segmentIcons.get(option.value),
+            title: option.title ?? option.label,
+            disabled: option.disabled,
+        }));
+        return {
+            name: this.dataName(), items, value: descriptor.value, size: "sm", disabled: descriptor.disabled,
+            onChange: (value) => this.segmentedChanged(value),
+        };
+    }
+
+    private startSegmentIconResolution(request: number): void {
+        const descriptor = this.descriptor;
+        if (descriptor.type !== "segmented") return;
+        const withIcons = descriptor.options.filter((option) => option.icon);
+        this.segmentIcons = new Map([...this.segmentIcons]
+            .filter(([value]) => withIcons.some((option) => option.value === value)));
+        for (const option of withIcons) {
+            void resolveBoardToolbarIcon(option.icon, this.boardRoot).then((resolved) => {
+                if (this.disposed || request !== this.iconRequest || !resolved) return;
+                this.segmentIcons.set(option.value, resolved);
+                if (this.view instanceof SegmentedControlView && this.descriptor.type === "segmented") {
+                    this.view.update(this.segmentedProps(this.descriptor));
+                }
+            }).catch((error: unknown) => {
+                if (!this.disposed && request === this.iconRequest) {
+                    this.warning(`Ignored icon of segment "${option.value}" on "${descriptor.id}": ${errMessage(error, "invalid icon")}.`);
+                }
+            });
+        }
+    }
+
     private buttonProps(): IconButtonViewProps {
         const descriptor = this.descriptor;
         return {
@@ -426,6 +504,7 @@ class ToolbarControlRecord {
 
     private startIconResolution(): void {
         const request = ++this.iconRequest;
+        this.startSegmentIconResolution(request);
         const descriptor = this.descriptor;
         const icon = "icon" in descriptor ? descriptor.icon : undefined;
         void resolveBoardToolbarIcon(icon, this.boardRoot).then((resolved) => {
@@ -445,13 +524,26 @@ class ToolbarControlRecord {
     private readonly toggleChanged = (value: boolean): void => {
         if (this.descriptor.type !== "toggle") return;
         this.descriptor = { ...this.descriptor, value };
+        // SwitchView is controlled, like SelectView below — write the new state back to it.
+        if (this.view instanceof SwitchView) this.view.update(this.switchProps(this.descriptor));
         this.emit({ id: this.descriptor.id, type: "toggle", value });
     };
 
     private readonly selectChanged = (value: string): void => {
         if (this.descriptor.type !== "select") return;
         this.descriptor = { ...this.descriptor, value };
+        // SelectView is controlled — it shows only the value it is given, so the pick has to
+        // be written back or the control keeps displaying the previous option.
+        if (this.view instanceof SelectView) this.view.update(this.selectProps(this.descriptor));
         this.emit({ id: this.descriptor.id, type: "select", value });
+    };
+
+    private readonly segmentedChanged = (value: string): void => {
+        if (this.descriptor.type !== "segmented" || value === this.descriptor.value) return;
+        this.descriptor = { ...this.descriptor, value };
+        // SegmentedControlView is controlled too — write the pick back before telling the board.
+        if (this.view instanceof SegmentedControlView) this.view.update(this.segmentedProps(this.descriptor));
+        this.emit({ id: this.descriptor.id, type: "segmented", value });
     };
 
     private readonly inputChanged = (value: string): void => {

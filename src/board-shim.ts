@@ -1261,7 +1261,7 @@ onHostMessage((event) => {
     if (!data || data.__persephone !== "toolbar:control"
         || typeof data.id !== "string" || !data.id
         || (data.type !== "button" && data.type !== "toggle" && data.type !== "menu"
-            && data.type !== "select" && data.type !== "input")
+            && data.type !== "select" && data.type !== "segmented" && data.type !== "input")
         || (data.value !== undefined && typeof data.value !== "boolean" && typeof data.value !== "string")) return;
     const value = data.type === "button" ? undefined : data.value;
     const publicEvent: PersephoneToolbarActionEvent = {
@@ -1549,6 +1549,7 @@ function createHandle(
     // 1.18.0 adds persephone.icons.forFiles() (US-1533).
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
+    // 1.28.0 adds the `segmented` board toolbar control (US-1577).
     version: BOARD_BRIDGE_VERSION,
 
     icons: {

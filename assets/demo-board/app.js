@@ -72,7 +72,28 @@
         tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
         panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === name));
         out.style.display = consoleTabs.has(name) ? "" : "none";
+        P.toolbar.update([{ id: "demo-view", value: name }]);
     }
+    // Host-rendered toolbar controls belong to the live main frame and must be
+    // declared again whenever this board is loaded.
+    P.toolbar.set([
+        {
+            id: "demo-view",
+            type: "segmented",
+            label: "Demo view",
+            value: "overview",
+            options: [
+                { value: "overview", label: "Overview" },
+                { value: "capabilities", label: "Capabilities" },
+            ],
+        },
+    ]);
+    P.toolbar.onAction(({ id, value }) => {
+        if (id !== "demo-view" || typeof value !== "string") return;
+        activate(value);
+        header(`persephone.toolbar.onAction → ${value}`);
+        print(`Selected toolbar value: ${value}`);
+    });
     tabs.forEach((t) => t.addEventListener("click", () => activate(t.dataset.tab)));
     activate("overview");
 
