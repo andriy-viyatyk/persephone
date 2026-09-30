@@ -872,7 +872,10 @@ also clears the view state when the user uses its fullscreen controls.
 When a page enters HTML fullscreen (for example, through a video's fullscreen control), Electron
 makes the host `BrowserWindow` fullscreen but keeps the guest `<webview>` inside its editor-sized
 box. `BrowserWebviewItemView` marks its wrapper and CSS stretches it across the app window, covering
-the browser chrome. The wrapper also opts out of Electron's drag region while fullscreen.
+the browser chrome. The wrapper also opts out of Electron's drag region while fullscreen. A
+capturing `document` keydown listener in `BrowserWebviewItemView` sends the fullscreen-exit request
+when Escape is pressed while focus is in Persephone chrome, so this path does not depend on the
+guest page receiving the key.
 
 The renderer and main process both track the webview's `enter-html-full-screen` and
 `leave-html-full-screen` events. If the fullscreen webview becomes hidden because the user changes
@@ -881,8 +884,14 @@ pages or opens another tab, a `ResizeObserver` removes the fullscreen presentati
 per webview registration, so it leaves the host window fullscreen only after no registered webview
 needs it. It forces the window out after a one-second fallback if the guest does not respond, and
 unregistering a fullscreen webview also releases the window. Escape requests the same exit while
-HTML fullscreen is active. Window bounds are not persisted during fullscreen, avoiding restoration
-of the display-sized bounds as a normal window on the next launch.
+HTML fullscreen is active, whether focus is in the guest or Persephone chrome. Window bounds are not
+persisted during fullscreen, avoiding restoration of the display-sized bounds as a normal window on
+the next launch.
+
+The main process also tracks the last mouse press per webview registration. If focus leaves the
+guest, its host window blurs, or the press opens a new tab or popup before the matching mouse-up
+reaches the page, the service sends a mouse-up at the last pointer position. This prevents the page
+from retaining a pressed-button state after the release was routed elsewhere.
 
 ### Reload and the `beforeunload` guard
 

@@ -79,6 +79,8 @@ interface RegisteredWebview {
     /** The page is in HTML fullscreen (a video's fullscreen button), which also made the
      *  host window fullscreen. */
     htmlFullscreen: boolean;
+    /** A mouse button pressed in the page and not yet released (see releaseLostPress). */
+    pressed: { x: number; y: number; button: "left" | "middle" | "right" } | null;
 }
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
@@ -138,6 +140,22 @@ function releaseWindowFullscreen(sender: WebContents): void {
     }
     const win = BrowserWindow.fromWebContents(sender);
     if (win && !win.isDestroyed() && win.isFullScreen()) win.setFullScreen(false);
+}
+
+/**
+ * Complete a press whose mouse-up the page never received. When a press in the page opens a
+ * popup or a new tab (an ad script on a video's seek bar) or moves focus away, the release lands
+ * elsewhere. The page then believes the button is still held — a video player
+ * stays in "dragging the seek bar" and ignores clicks — and Chromium keeps routing the mouse to
+ * that page, so even the browser toolbar stops responding until the user clicks inside the page
+ * again. Sending the missing mouse-up where the pointer last was ends both.
+ */
+function releaseLostPress(reg: RegisteredWebview, reason: string): void {
+    const press = reg.pressed;
+    if (!press || reg.webContents.isDestroyed()) return;
+    reg.pressed = null;
+    console.log(`[browser] released a mouse press lost to ${reason} (${reg.tabId}/${reg.internalTabId})`);
+    reg.webContents.sendInputEvent({ type: "mouseUp", x: press.x, y: press.y, button: press.button, clickCount: 1 });
 }
 
 /** Ask a fullscreen page to leave fullscreen; force the window out if it does not. */
@@ -333,6 +351,25 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         if (reg) reg.htmlFullscreen = false;
     });
 
+    // Track the page's button state so a press whose release went elsewhere can be completed.
+    on("before-mouse-event", (_e: Electron.Event, mouse: Electron.MouseInputEvent) => {
+        const reg = registrations.get(key);
+        if (!reg) return;
+        if (mouse.type === "mouseDown") {
+            reg.pressed = { x: mouse.x, y: mouse.y, button: mouse.button ?? "left" };
+        } else if (mouse.type === "mouseUp") {
+            reg.pressed = null;
+        } else if (mouse.type === "mouseMove" && reg.pressed) {
+            reg.pressed.x = mouse.x;
+            reg.pressed.y = mouse.y;
+        }
+    });
+
+    on("blur", () => {
+        const reg = registrations.get(key);
+        if (reg) releaseLostPress(reg, "focus loss");
+    });
+
     on("audio-state-changed", (e: Electron.Event & { audible: boolean }) => {
         sendEvent(sender, tabId, internalTabId, "audio-state-changed", {
             audible: e.audible,
@@ -429,6 +466,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     wc.setWindowOpenHandler(({ url, disposition, features }) => {
         // Link clicks (target="_blank") → open as internal tab
         if (disposition === "foreground-tab" || disposition === "background-tab") {
+            const reg = registrations.get(key);
+            if (reg) releaseLostPress(reg, "a new tab");
             sendEvent(sender, tabId, internalTabId, "new-window", {
                 url,
                 disposition,
@@ -474,6 +513,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // Must go through on() — registerWebview re-runs on every dom-ready, and
     // only tracked listeners are removed by the unregisterWebview() above.
     on("did-create-window", (childWindow: BrowserWindow) => {
+        const reg = registrations.get(key);
+        if (reg) releaseLostPress(reg, "a popup window");
         guardPopupWindow(childWindow, sender, tabId, internalTabId);
     });
 
@@ -486,6 +527,12 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // Only attach one listener per sender to avoid exceeding MaxListeners.
     if (!watchedSenders.has(sender)) {
         watchedSenders.add(sender);
+        // The window losing focus mid-press (a popup, another app) loses the release too.
+        BrowserWindow.fromWebContents(sender)?.on("blur", () => {
+            for (const reg of registrations.values()) {
+                if (reg.senderWebContents === sender) releaseLostPress(reg, "window focus loss");
+            }
+        });
         sender.once("destroyed", () => {
             for (const [k, reg] of registrations) {
                 if (reg.senderWebContents === sender) {
@@ -503,6 +550,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         listeners,
         bypassUnloadGuard: false,
         htmlFullscreen: false,
+        pressed: null,
     });
 }
 

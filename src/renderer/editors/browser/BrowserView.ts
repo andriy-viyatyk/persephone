@@ -169,6 +169,15 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         });
         hiddenObserver.observe(this.root);
         this.own(() => hiddenObserver.disconnect());
+        // Escape normally reaches the page's own key hook in the main process. When keyboard focus
+        // is in Persephone instead, the key lands here; it must still leave the fullscreen video.
+        const onDocumentKeyDown = (event: KeyboardEvent): void => {
+            if (!this.htmlFullscreen || event.key !== "Escape" || !this.registered) return;
+            event.preventDefault();
+            ipcRenderer.send(BrowserChannel.exitHtmlFullscreen, `${this.model.id}/${this.tabId}`);
+        };
+        document.addEventListener("keydown", onDocumentKeyDown, true);
+        this.own(() => document.removeEventListener("keydown", onDocumentKeyDown, true));
 
         const onFoundInPage = (event: Electron.FoundInPageEvent): void => {
             if (this.props.isActive) this.model.webview.handleFoundInPage(event.result);

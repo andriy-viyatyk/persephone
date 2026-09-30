@@ -21,7 +21,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 ### Bug Fixes
 
 - **Browser video fullscreen works as expected:** fullscreen video now fills the app window, and
-  fullscreen ends when you press `Esc`, close the browser tab, or leave it hidden.
+  fullscreen ends when you press `Esc` (including when Persephone has keyboard focus), close the
+  browser tab, or leave it hidden.
+- **Browser pages recover from lost mouse releases:** opening a new tab or popup, or moving focus
+  away, no longer leaves a page behaving as if a mouse button is still held.
 
 ---
 
