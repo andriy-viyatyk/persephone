@@ -29,6 +29,42 @@ function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, da
     }
 }
 
+/** The http(s) URL to record, without credentials; undefined for anything else
+ *  (data:, blob:, about:), which Chrome records as about:internet. */
+function motwUrl(raw: string): string | undefined {
+    try {
+        const url = new URL(raw);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+        url.username = "";
+        url.password = "";
+        return url.href;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Mark a completed browser download as coming from the internet (Mark-of-the-Web), as Chrome
+ * and Firefox do: Windows then shows SmartScreen for executables, Protected View for Office
+ * files and the "blocked" flag on archives. Electron does not write it (US-1592).
+ * ZoneId=3 is always written: Persephone does not map URLs to the user's IE zones, so
+ * intranet sources are treated as internet too (the stricter side). A filesystem without
+ * alternate data streams (FAT32, exFAT, some network shares) cannot store the mark; the
+ * download itself still succeeds.
+ */
+async function writeMarkOfTheWeb(savePath: string, url: string, referrerUrl: string): Promise<void> {
+    if (process.platform !== "win32") return;
+    const lines = ["[ZoneTransfer]", "ZoneId=3"];
+    const referrer = motwUrl(referrerUrl);
+    if (referrer) lines.push(`ReferrerUrl=${referrer}`);
+    lines.push(`HostUrl=${motwUrl(url) ?? "about:internet"}`);
+    try {
+        await fs.promises.writeFile(`${savePath}:Zone.Identifier`, lines.join("\r\n") + "\r\n", "utf8");
+    } catch {
+        // No alternate data streams on this volume — nothing else to do.
+    }
+}
+
 class DownloadService {
     private downloads = new Map<string, { entry: DownloadEntry; item?: DownloadItem }>();
     private hookedSessions = new WeakSet<Session>();
@@ -150,6 +186,10 @@ class DownloadService {
     private handleOrdinaryDownload(item: DownloadItem, webContents: WebContents): void {
         const id = this.generateId();
         let lastProgressSent = 0;
+        // The downloading page — DownloadItem has no referrer getter. A Tor download keeps the
+        // mark but records no source (US-1592).
+        const recordSource = !torService.findActivePartitionForSession(webContents.session);
+        const referrerUrl = recordSource && !webContents.isDestroyed() ? webContents.getURL() : "";
 
         // Show our own save dialog to reliably capture the save path.
         // Electron's getSavePath() returns empty for webview session downloads.
@@ -214,7 +254,11 @@ class DownloadService {
 
             if (state === "completed") {
                 entry.status = "completed";
-                openWindows.send(EventEndpoint.eDownloadCompleted, { id, savePath: entry.savePath });
+                const hostUrl = recordSource ? (item.getURLChain().at(-1) ?? item.getURL()) : "";
+                // Mark before announcing, so an immediate "Open" already sees the mark.
+                void writeMarkOfTheWeb(savePath, hostUrl, referrerUrl).finally(() => {
+                    openWindows.send(EventEndpoint.eDownloadCompleted, { id, savePath: entry.savePath });
+                });
             } else if (state === "cancelled") {
                 entry.status = "cancelled";
                 openWindows.send(EventEndpoint.eDownloadFailed, { id, error: "Cancelled" });

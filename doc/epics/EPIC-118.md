@@ -171,7 +171,7 @@ in either order. Task documents are written when each task starts.
 | [US-1589](../tasks/US-1589-page-internal-scheme-gate/README.md) | Web pages cannot open internal Persephone schemes | F3 | Medium | Planned |
 | [US-1590](../tasks/US-1590-main-window-csp/README.md) | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
 | [US-1591](../tasks/US-1591-electron-fuses/README.md) | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
-| US-1592 | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
+| [US-1592](../tasks/US-1592-download-mark-of-the-web/README.md) | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
 | US-1593 | Least-privilege viewer boards (no `execute()`, stricter CSP) | F7 | Medium | Planned |
 | US-1594 | IPC sender checks and popup navigation guard | F8 | Low | Planned |
 
