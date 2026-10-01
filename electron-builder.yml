@@ -38,6 +38,25 @@ extraFiles:
 
 asar: true
 
+# Electron fuses, flipped by electron-builder right before signing (EPIC-118 / US-1591).
+# - runAsNode off: persephone.exe is not a Node runtime. Board Node scripts run in a
+#   utilityProcess (assets/node-script-host.mjs) instead.
+# - nodeOptions / nodeCliInspect off: NODE_OPTIONS, NODE_EXTRA_CA_CERTS and --inspect are
+#   ignored by the release build.
+# - asar integrity + onlyLoadAppFromAsar: app.asar is hash-checked at load and is the only
+#   app source. electron-builder embeds the hash in the exe.
+# - cookieEncryption on: browser cookies are encrypted at rest (DPAPI). One-way: existing
+#   plaintext cookies stay readable and are encrypted on their next write.
+# - grantFileProtocolExtraPrivileges stays at its default (on): the production window loads
+#   index.html over file:// (open-window.ts loadFile).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+
 # Use Castlabs Electron for Widevine CDM (DRM) support.
 # @electron/get builds the URL as `mirror + customDir`, and customDir defaults
 # to `v${version}` — so the mirror must NOT end in `v`, otherwise the tag

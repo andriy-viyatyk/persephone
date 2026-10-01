@@ -59,6 +59,7 @@ import {
     killJob,
     reapJobsBySinkId,
     startJobTo,
+    startNodeJobTo,
     writeJobStdin,
 } from "./command-runner";
 import { errMessage } from "../shared/utils";
@@ -357,7 +358,7 @@ type BoardRunnerHandler = (entry: BoardPortEntry, boardId: string, msg: unknown)
 /** Outbound runner messages are exhaustive over the board side of RunnerChannel. */
 const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandler> = {
     [RunnerChannel.start](entry, boardId, raw) {
-        let msg = raw as RunnerStartMsg;
+        const msg = raw as RunnerStartMsg;
         const opts = { ...(entry.root ? { cwd: entry.root } : {}), ...msg.opts };
         if (msg.node) {
             const script = path.isAbsolute(msg.command) ? msg.command : path.resolve(entry.root, msg.command);
@@ -365,9 +366,8 @@ const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandl
                 portSink(entry, boardId).send(RunnerChannel.error, { jobId: msg.jobId, message: `Node script not found: ${script}` });
                 return;
             }
-            opts.shell = false;
-            opts.env = { ...opts.env, ELECTRON_RUN_AS_NODE: "1", NODE_NO_WARNINGS: "1" };
-            msg = { ...msg, command: process.execPath, args: [script, ...(msg.args ?? [])] };
+            startNodeJobTo(portSink(entry, boardId), { ...msg, command: script, opts });
+            return;
         }
         startJobTo(portSink(entry, boardId), { ...msg, opts });
     },
