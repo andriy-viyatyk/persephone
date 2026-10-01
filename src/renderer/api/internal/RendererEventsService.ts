@@ -5,7 +5,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
-import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
+import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { boardEditorId } from "../../editors/board/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
@@ -109,7 +109,7 @@ export class RendererEventsService {
 
     private handlePipelineCandidate = async (url: string) => {
         const scheme = schemeOf(url);
-        if (!scheme || !isSchemeRegistered(scheme)) return;
+        if (!scheme || !isBoardClaimedScheme(scheme)) return;
 
         await guard("Failed to open URL", () =>
             app.events.openRawLink.sendAsync(createLinkData(url)),

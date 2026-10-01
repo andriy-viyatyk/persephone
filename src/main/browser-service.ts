@@ -38,6 +38,10 @@ const CHROMIUM_NAVIGATION_PROTOCOLS = [
     "tel:",
 ];
 
+/** Chromium's transient user activation lasts 5 s. A page navigation to a non-web scheme
+ *  is passed to the host only within this window after a real click or key press. */
+const USER_ACTIVATION_WINDOW_MS = 5000;
+
 /** Generic event-listener shape — used for storing handlers we attach to
  *  WebContents. WebContents extends EventEmitter; this matches that surface
  *  while letting us bypass Electron's per-event overloaded `on()` types. */
@@ -106,6 +110,8 @@ interface RegisteredWebview {
     htmlFullscreen: boolean;
     /** A mouse button pressed in the page and not yet released (see releaseLostPress). */
     pressed: { x: number; y: number; button: "left" | "middle" | "right" } | null;
+    /** Time (Date.now()) of the last trusted mouse or key press in the page; 0 = none or consumed. */
+    lastUserActivation: number;
 }
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
@@ -388,8 +394,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         const reg = registrations.get(key);
         if (!reg) return;
         if (mouse.type === "mouseDown") {
+            reg.lastUserActivation = Date.now();
             reg.pressed = { x: mouse.x, y: mouse.y, button: mouse.button ?? "left" };
         } else if (mouse.type === "mouseUp") {
+            reg.lastUserActivation = Date.now();
             reg.pressed = null;
         } else if (mouse.type === "mouseMove" && reg.pressed) {
             reg.pressed.x = mouse.x;
@@ -408,7 +416,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         });
     });
 
-    // Block page-initiated navigations to dangerous protocols.
+    // Non-web schemes reach the host only after a user action; the host opens only board-claimed ones.
     // will-navigate fires only for navigations triggered by the page
     // (links, window.location, forms) — NOT for programmatic loadURL().
     // This allows app-initiated file:// navigations (MCP, restore) while
@@ -429,7 +437,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
             }
             if (!CHROMIUM_NAVIGATION_PROTOCOLS.includes(parsed.protocol)) {
                 event.preventDefault();
-                sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
+                const reg = registrations.get(key);
+                // Consume the activation: one user action hands over at most one URL.
+                const activated = !!reg && Date.now() - reg.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
+                if (reg) reg.lastUserActivation = 0;
+                if (activated) sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
             }
         } catch {
             // Invalid URL
@@ -462,6 +474,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // it lives in `preload-webview.ts` instead.
     on("before-input-event", (_e: Electron.Event, input: Electron.Input) => {
         if (input.type !== "keyDown") return;
+        const reg = registrations.get(key);
+        if (reg) reg.lastUserActivation = Date.now();
         // Escape leaves a page's HTML fullscreen, as in Chrome. Electron does not do it for a
         // webview guest, which left a fullscreen video with no keyboard way out.
         if (input.key === "Escape" && registrations.get(key)?.htmlFullscreen) {
@@ -584,6 +598,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         bypassUnloadGuard: false,
         htmlFullscreen: false,
         pressed: null,
+        lastUserActivation: 0,
     });
 }
 

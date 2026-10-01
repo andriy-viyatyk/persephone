@@ -168,7 +168,7 @@ in either order. Task documents are written when each task starts.
 |------|-------|---------|----------|--------|
 | [US-1587](../tasks/US-1587-markdown-html-sanitize/README.md) | Sanitize Markdown HTML; Mermaid strict mode | F1 | Critical | In Progress |
 | [US-1588](../tasks/US-1588-mcp-rebinding-origin/README.md) | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | In Progress |
-| US-1589 | Web pages cannot open internal schemes without a gesture and confirmation | F3 | Medium | Planned |
+| [US-1589](../tasks/US-1589-page-internal-scheme-gate/README.md) | Web pages cannot open internal Persephone schemes | F3 | Medium | Planned |
 | US-1590 | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
 | US-1591 | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
 | US-1592 | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
@@ -194,6 +194,9 @@ in either order. Task documents are written when each task starts.
 - **US-1589:** For page-initiated navigations, open only http/https in the browser. Drop the other
   registered schemes, or require a recent user gesture plus a confirmation that names the target.
   User-initiated paths (address bar, Markdown links, agent calls) keep working.
+  *Decided 2026-10-01 (user):* block platform and script schemes outright; no dialog. Only
+  board-claimed schemes, such as the torrent board's `magnet`, stay routable, and only after a real
+  user action.
 - **US-1590:** Hash the theme bootstrap. Remove `'unsafe-inline'`, `http:`, `https:` from
   `script-src`, and confirm that dev (Vite HMR) and prod still load. Keep `'unsafe-eval'`. Find
   out why `webSecurity: false` is set; remove it if nothing needs it, otherwise document why.

@@ -122,6 +122,12 @@ export function isSchemeRegistered(scheme: string): boolean {
     return schemeOwnership.has(normalizeScheme(scheme));
 }
 
+/** True when a trusted board claimed this scheme. Only these may be opened by a web page's own
+ *  navigation; platform and script schemes are internal to Persephone. */
+export function isBoardClaimedScheme(scheme: string): boolean {
+    return schemeOwnership.get(normalizeScheme(scheme))?.value.origin === "board";
+}
+
 export function listRegisteredSchemes(): string[] {
     return schemeOwnership.keys();
 }
