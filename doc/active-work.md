@@ -31,7 +31,6 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
   - [ ] US-1601: Migrate the user's registered custom boards (Codex run per board)
 
-- [ ] [US-1585: Code signing via SignPath Foundation](tasks/US-1585-code-signing-signpath/README.md) — *on hold: awaiting SignPath Foundation review (applied 2026-10-01)*
 - [ ] [US-1595: Agents can see and dismiss native dialogs](tasks/US-1595-native-dialog-agent-dismiss/README.md) — async download Save dialog, `windows[i].nativeDialog` + `dismiss()`
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).

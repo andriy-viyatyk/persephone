@@ -796,6 +796,36 @@ Either resolve through the same board-aware path, or document the limitation on 
 
 ---
 
+## Code signing via SignPath Foundation (shelved US-1585)
+
+Shelved 2026-10-02. SignPath Foundation replied that it could not find enough public references
+(articles, blog posts, forum or community mentions) to verify the project's reputation, and asked
+for such material before a final decision. Revisit once Persephone has that public footprint;
+reply to SignPath's request with the references rather than starting a new application.
+
+What the investigation established (2026-10-01), so it need not be repeated:
+
+- **Scope:** Authenticode-sign `persephone.exe`, `persephone-launcher.exe`, `persephone-snip.exe`,
+  `mneme.exe` and the NSIS installer. Leave upstream Electron DLLs unsigned. The NSIS uninstaller
+  cannot be reached by the SignPath GitHub action (electron-builder signs it mid-build) — accept it
+  unsigned in v1.
+- **Pipeline:** electron-builder `--win --dir` with signing and VMP off → upload the app tree,
+  SignPath action → VMP-sign the returned `persephone.exe` (`scripts/vmp-sign.mjs`, Authenticode
+  must come first) → `--prepackaged <dir> --win nsis zip` with `win.signExecutable: false` →
+  SignPath the installer → `electron-builder publish`. Drop `latest.yml`/blockmaps (stale after
+  signing; nothing consumes them).
+- **Foundation terms:** OSI license, MFA, Authors/Reviewers/Approvers, a "Code signing policy"
+  section on the home and download pages, manual approval of every signing request (two per
+  release here — set a long `wait-for-completion` timeout).
+- **Open eligibility question:** the Castlabs ECS Electron fork, the runtime-downloaded Widevine
+  CDM, and the closed Castlabs EVS VMP service — asked in the application, never answered.
+- **Quota:** Foundation projects have a yearly artifact-size cap; ~350 MB per signed release.
+  Sign only deliberate releases behind a workflow input, not every patch tag.
+- The README "Code signing policy" section was removed when the task was shelved; the privacy
+  statement stays. Restore the policy section (attribution, roles, approval rule) on acceptance.
+
+---
+
 ## Technical Debt
 
 ### Two residuals from closed De-React entries *(2026-08-28)*

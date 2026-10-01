@@ -41,7 +41,7 @@ downloads.
 - If an injection bug slips in later, the main window's security policy still blocks remote and
   inline script (defense in depth).
 - Release binaries cannot be reused as a Node runtime or tampered with in place (fuses + asar
-  integrity), before signed releases start (US-1585).
+  integrity). Code signing (US-1585) is shelved — see the backlog.
 - Downloaded files carry Mark-of-the-Web, so Windows SmartScreen and Office Protected View apply.
 
 ## Findings (verified 2026-10-01)
@@ -207,7 +207,7 @@ in either order. Task documents are written when each task starts.
   `EnableNodeOptionsEnvironmentVariable=false`, `EnableNodeCliInspectArguments=false`,
   `EnableEmbeddedAsarIntegrityValidation=true`, `OnlyLoadAppFromAsar=true`,
   `EnableCookieEncryption=true` (check existing browser profiles survive the cookie migration).
-  Coordinate with US-1585 (signing).
+  Signing (US-1585) was shelved 2026-10-02; the fuse order is still signing-compatible.
 - **US-1592:** Verify with a live download. If no `Zone.Identifier` is written, write it in the
   `done` handler for completed downloads, with the `ZoneId=3` and `ReferrerUrl`/`HostUrl` lines
   that Chrome writes.
