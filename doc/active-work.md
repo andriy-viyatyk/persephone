@@ -18,12 +18,21 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] [US-1590: Main-window CSP hardening; investigate `webSecurity: false`](tasks/US-1590-main-window-csp/README.md) *(Medium)*
   - [ ] [US-1591: Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE`](tasks/US-1591-electron-fuses/README.md) *(Medium)*
   - [ ] [US-1592: Mark-of-the-Web on browser downloads](tasks/US-1592-download-mark-of-the-web/README.md) *(Medium)*
-  - [ ] US-1593: Least-privilege viewer boards (no `execute()`, stricter CSP)
-  - [ ] US-1594: IPC sender checks and popup navigation guard
+  - [ ] [US-1594: IPC sender checks and popup navigation guard](tasks/US-1594-ipc-sender-popup-guard/README.md)
 
 ## Planned
 
+- **EPIC-119** — [Board permissions — least privilege, declared in the manifest](epics/EPIC-119.md) — *starts after EPIC-118*
+  - [ ] US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement
+  - [ ] US-1596: Scoped file access for boards
+  - [ ] US-1597: Device permissions for board frames
+  - [ ] US-1598: Trust dialog and Board Info show granted permissions; re-trust on change
+  - [ ] US-1599: Scaffold all-`false` manifest; board guides and agent instructions
+  - [ ] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
+  - [ ] US-1601: Migrate the user's registered custom boards (Codex run per board)
+
 - [ ] [US-1585: Code signing via SignPath Foundation](tasks/US-1585-code-signing-signpath/README.md) — *on hold: awaiting SignPath Foundation review (applied 2026-10-01)*
+- [ ] [US-1595: Agents can see and dismiss native dialogs](tasks/US-1595-native-dialog-agent-dismiss/README.md) — async download Save dialog, `windows[i].nativeDialog` + `dismiss()`
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 

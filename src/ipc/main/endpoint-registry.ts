@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { Endpoint, type Api } from "../api-types";
 import { errMessage } from "../../shared/utils";
+import { guardIpcSender, IPC_AUTHORIZATION_ERROR } from "../../main/ipc-sender-guard";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
     ? (event: Electron.IpcMainEvent, ...args: Args) => Return
@@ -17,6 +18,10 @@ export type BindEndpoint = <K extends Endpoint>(command: K, handler: MainApi[K])
  * instead of each owning their own `ipcMain.on` wrapper. */
 export const bindEndpoint: BindEndpoint = (command, handler) => {
     ipcMain.on(command, async (event, arg, commandId) => {
+        if (!guardIpcSender(event, command)) {
+            event.reply(`${command}_${commandId}`, new Error(IPC_AUTHORIZATION_ERROR));
+            return;
+        }
         try {
             const invoke = handler as (...args: unknown[]) => unknown;
             const result = await invoke(event, ...arg);

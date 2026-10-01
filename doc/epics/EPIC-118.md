@@ -136,6 +136,8 @@ Every test page was closed afterwards.
   PowerPoint, PDF, draw.io) parses hostile documents. One HTML-injection bug in such a viewer runs
   script with the full bridge. Board isolation from the host itself held in the live probe.
 - Any bridge change here must bump `BOARD_BRIDGE_VERSION`.
+- **Moved to [EPIC-119](EPIC-119.md)** (2026-10-02), which makes board permissions enforced and
+  off by default.
 
 ### F8 — Low: defense-in-depth gaps (not reachable from a page today)
 
@@ -172,8 +174,8 @@ in either order. Task documents are written when each task starts.
 | [US-1590](../tasks/US-1590-main-window-csp/README.md) | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
 | [US-1591](../tasks/US-1591-electron-fuses/README.md) | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
 | [US-1592](../tasks/US-1592-download-mark-of-the-web/README.md) | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
-| US-1593 | Least-privilege viewer boards (no `execute()`, stricter CSP) | F7 | Medium | Planned |
-| US-1594 | IPC sender checks and popup navigation guard | F8 | Low | Planned |
+| — | F7 moved to [EPIC-119](EPIC-119.md) (enforced board permissions) on 2026-10-02 | F7 | Medium | Moved |
+| [US-1594](../tasks/US-1594-ipc-sender-popup-guard/README.md) | IPC sender checks and popup navigation guard | F8 | Low | Planned |
 
 ### Task scope notes
 
@@ -209,11 +211,12 @@ in either order. Task documents are written when each task starts.
 - **US-1592:** Verify with a live download. If no `Zone.Identifier` is written, write it in the
   `done` handler for completed downloads, with the `ZoneId=3` and `ReferrerUrl`/`HostUrl` lines
   that Chrome writes.
-- **US-1593:** Design first. Add a manifest capability (for example `"execute": false`) that the
-  bridge enforces, and/or a CSP without `'unsafe-inline'` for boards that opt in. Then update the
-  catalog viewer boards in `persephone-boards`. Bump `BOARD_BRIDGE_VERSION`.
-- **US-1594:** Add the `isAppRenderer` check to the listed handlers, validate partition names
-  against known browser partitions, and give popup windows the same `will-navigate` protocol guard.
+- **F7:** moved to [EPIC-119](EPIC-119.md) on 2026-10-02 (user decision): enforced, off-by-default
+  board permissions instead of a single `execute` flag.
+- **[US-1594](../tasks/US-1594-ipc-sender-popup-guard/README.md):** Add a shared app-renderer
+  sender guard at IPC registration choke points, validate clear-data/cache partitions against
+  app-owned browser profile partitions, and apply the shared protocol navigation guard to popup
+  windows and their descendants.
 
 ## Concerns / Open questions
 

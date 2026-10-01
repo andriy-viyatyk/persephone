@@ -13,9 +13,10 @@
  *   Main → Renderer:  WorkerChannel.proxyCall { id, callId, path, args }
  *   Main → Renderer:  WorkerChannel.proxySet  { id, path, value }
  */
-import { ipcMain, IpcMainEvent } from "electron";
+import { IpcMainEvent } from "electron";
 import { Worker } from "worker_threads";
 import { WorkerChannel } from "../ipc/worker-channels";
+import { guardedIpcOn } from "./ipc-sender-guard";
 
 // Worker → Host message discriminator (see protocol comment above).
 type WorkerHostMessage =
@@ -138,7 +139,7 @@ const activeWorkers = new Map<string, Worker>();
  * Initialize worker host IPC handlers. Call once during app startup.
  */
 export function initWorkerHost(): void {
-    ipcMain.on(WorkerChannel.start, (event: IpcMainEvent, msg: {
+    guardedIpcOn(WorkerChannel.start, (event: IpcMainEvent, msg: {
         id: string;
         fnString: string;
         data: unknown;
@@ -212,7 +213,7 @@ export function initWorkerHost(): void {
     });
 
     // Renderer sends proxy call results back
-    ipcMain.on(WorkerChannel.proxyResult, (_event: IpcMainEvent, msg: {
+    guardedIpcOn(WorkerChannel.proxyResult, (_event: IpcMainEvent, msg: {
         id: string;
         callId: number;
         value?: unknown;

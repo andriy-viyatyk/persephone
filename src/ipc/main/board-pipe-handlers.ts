@@ -5,8 +5,8 @@ import {
 } from "../board-pipe-channels";
 import { Endpoint } from "../api-types";
 import { boardPipeService } from "../../main/board-pipe-service";
+import { guardedIpcOn } from "../../main/ipc-sender-guard";
 import { bindEndpoint } from "./endpoint-registry";
-import { ipcMain } from "electron";
 
 export function initBoardPipeHandlers(): void {
     bindEndpoint(
@@ -33,7 +33,7 @@ export function initBoardPipeHandlers(): void {
             boardPipeService.unregisterResource(resourceId, event.sender);
         },
     );
-    ipcMain.on(BOARD_PIPE_REPLY_CHANNEL, (event, reply: BoardPipeReadReply) => {
+    guardedIpcOn(BOARD_PIPE_REPLY_CHANNEL, (event, reply: BoardPipeReadReply) => {
         boardPipeService.handleReply(event.sender, reply);
     });
 }

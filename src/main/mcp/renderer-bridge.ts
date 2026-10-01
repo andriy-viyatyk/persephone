@@ -1,7 +1,8 @@
-import { BrowserWindow, ipcMain, WebContents } from "electron";
+import { BrowserWindow, WebContents } from "electron";
 import { openWindows } from "../open-windows";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { McpResponse } from "./types";
+import { guardedIpcOn } from "../ipc-sender-guard";
 
 // ── IPC Bridge (main ↔ renderer) ───────────────────────────────────
 // Reuses the same MCP_EXECUTE/MCP_RESULT channels as the old pipe server.
@@ -17,7 +18,7 @@ export function initMcpIpc(): void {
     if (ipcInitialized) return;
     ipcInitialized = true;
 
-    ipcMain.on(MCP_RESULT, (_event, requestId: string, response: McpResponse) => {
+    guardedIpcOn(MCP_RESULT, (_event, requestId: string, response: McpResponse) => {
         const resolve = pendingRequests.get(requestId);
         if (resolve) {
             pendingRequests.delete(requestId);

@@ -18,7 +18,7 @@
  *    window to drive. We attach the debugger to it and run commands on the TOP-LEVEL
  *    session (the app UI) with no frame routing.
  */
-import { ipcMain, WebContents } from "electron";
+import { WebContents } from "electron";
 import {
     BrowserChannel,
     type CdpAttachOptions,
@@ -37,6 +37,7 @@ import { APP_WINDOW_CDP_KEY } from "../ipc/api-types";
 import { AI_VISION_HOST_SIGNAL } from "ai-vision";
 import { errMessage } from "../shared/utils";
 import { setNetworkResponseBodyResolver } from "./network-logger";
+import { guardedIpcHandle } from "./ipc-sender-guard";
 
 /** Track which webContents have an attached debugger. */
 const attachedDebuggers = new WeakSet<WebContents>();
@@ -1037,7 +1038,7 @@ export function initCdpHandlers(
         }
         return output;
     });
-    ipcMain.handle(BrowserChannel.getPageEvents, async (event, key: string) => {
+    guardedIpcHandle(BrowserChannel.getPageEvents, async (event, key: string) => {
         const state = await pageEventsForSender(event, key);
         return {
             policy: state.policy,
@@ -1046,12 +1047,12 @@ export function initCdpHandlers(
             pageErrors: state.pageErrors.map(error => ({ ...error })),
         } satisfies PageEventsSnapshot;
     });
-    ipcMain.handle(BrowserChannel.markDialogReported, async (event, key: string) => {
+    guardedIpcHandle(BrowserChannel.markDialogReported, async (event, key: string) => {
         const state = await pageEventsForSender(event, key);
         const dialog = state.dialogs.find(record => !record.reported && record.disposition !== "pending");
         if (dialog) dialog.reported = true;
     });
-    ipcMain.handle(BrowserChannel.setDialogPolicy, async (event, key: string, policy: PageDialogPolicy) => {
+    guardedIpcHandle(BrowserChannel.setDialogPolicy, async (event, key: string, policy: PageDialogPolicy) => {
         if (policy !== "accept" && policy !== "dismiss" && policy !== "manual") {
             throw new Error("Dialog policy must be accept, dismiss, or manual.");
         }
@@ -1063,14 +1064,14 @@ export function initCdpHandlers(
         }
         return policy;
     });
-    ipcMain.handle(BrowserChannel.handleDialog, async (event, key: string, accept: boolean, promptText?: string) => {
+    guardedIpcHandle(BrowserChannel.handleDialog, async (event, key: string, accept: boolean, promptText?: string) => {
         const state = await pageEventsForSender(event, key);
         const pending = key === APP_WINDOW_CDP_KEY ? undefined
             : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
         if (!pending) throw new Error("No pending JavaScript dialog is open on this page.");
         await sendDialogCommand(state, accept, promptText);
     });
-    ipcMain.handle(BrowserChannel.automationBegin, async (event, key: string) => {
+    guardedIpcHandle(BrowserChannel.automationBegin, async (event, key: string) => {
         const state = await pageEventsForSender(event, key);
         const pending = key === APP_WINDOW_CDP_KEY ? undefined
             : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
@@ -1084,29 +1085,29 @@ export function initCdpHandlers(
         activity.count++;
         automationActivity.set(key, activity);
     });
-    ipcMain.handle(BrowserChannel.automationEnd, (_event, key: string) => {
+    guardedIpcHandle(BrowserChannel.automationEnd, (_event, key: string) => {
         const activity = automationActivity.get(key);
         if (!activity || activity.count === 0) return;
         activity.count--;
         if (activity.count === 0) activity.graceUntil = Date.now() + 2000;
     });
-    ipcMain.handle(BrowserChannel.armNavigationWait, async (_event, key: string, options: NavigationWaitRequest) =>
+    guardedIpcHandle(BrowserChannel.armNavigationWait, async (_event, key: string, options: NavigationWaitRequest) =>
         armNavigationWait(key, options));
-    ipcMain.handle(BrowserChannel.awaitNavigationWait, async (_event, token: string) => {
+    guardedIpcHandle(BrowserChannel.awaitNavigationWait, async (_event, token: string) => {
         const state = navigationWaits.get(token);
         if (!state) throw new Error("Navigation wait token is missing or expired.");
         try { return await state.promise; }
         finally { navigationWaits.delete(token); }
     });
-    ipcMain.handle(BrowserChannel.armResponseWait, async (event, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) =>
+    guardedIpcHandle(BrowserChannel.armResponseWait, async (event, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) =>
         armResponseWait(event, key, pattern, options));
-    ipcMain.handle(BrowserChannel.awaitResponseWait, async (_event, token: string) => {
+    guardedIpcHandle(BrowserChannel.awaitResponseWait, async (_event, token: string) => {
         const state = responseWaits.get(token);
         if (!state) throw new Error("Response wait token is missing or expired.");
         try { return await state.promise; }
         finally { responseWaits.delete(token); }
     });
-    ipcMain.handle(BrowserChannel.armDragIntercept, async (event, key: string, sessionId?: string) => {
+    guardedIpcHandle(BrowserChannel.armDragIntercept, async (event, key: string, sessionId?: string) => {
         const page = await pageEventsForSender(event, key);
         if (boardRegistrations.has(key) && (page.sessionId || undefined) !== (sessionId || undefined)) {
             throw new Error("Drag interception session does not match the selected target.");
@@ -1128,7 +1129,7 @@ export function initCdpHandlers(
         dragIntercepts.set(token, state);
         return token;
     });
-    ipcMain.handle(BrowserChannel.takeDragIntercept, async (_event, token: string, waitMs: number) => {
+    guardedIpcHandle(BrowserChannel.takeDragIntercept, async (_event, token: string, waitMs: number) => {
         const state = dragIntercepts.get(token);
         if (!state || state.taken) return null;
         state.taken = true;
@@ -1146,7 +1147,7 @@ export function initCdpHandlers(
         }
     });
 
-    ipcMain.handle(BrowserChannel.cdpAttach, async (event, key: string, options?: CdpAttachOptions) => {
+    guardedIpcHandle(BrowserChannel.cdpAttach, async (event, key: string, options?: CdpAttachOptions) => {
         if (key === APP_WINDOW_CDP_KEY) {
             if (event.sender.isDestroyed()) return false;
             try {
@@ -1179,7 +1180,7 @@ export function initCdpHandlers(
         }
     });
 
-    ipcMain.handle(BrowserChannel.cdpDetach, async (_event, key: string) => {
+    guardedIpcHandle(BrowserChannel.cdpDetach, async (_event, key: string) => {
         if (key === APP_WINDOW_CDP_KEY) {
             // The app window's debugger is SHARED (boards attach to the same wc);
             // never detach it — just leave it attached for the window's lifetime.
@@ -1206,7 +1207,7 @@ export function initCdpHandlers(
         attachedDebuggers.delete(wc);
     });
 
-    ipcMain.handle(
+    guardedIpcHandle(
         BrowserChannel.cdpSend,
         async (event, key: string, method: string, params?: object, sessionId?: string) => {
             if (key === APP_WINDOW_CDP_KEY) {

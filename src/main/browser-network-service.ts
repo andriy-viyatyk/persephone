@@ -18,7 +18,7 @@
  *  - one-URL `session-src` handles for resources opened out of such a page.
  */
 import { randomBytes } from "node:crypto";
-import { app, ipcMain, session, webContents } from "electron";
+import { app, session, webContents } from "electron";
 import type { Session, WebContents } from "electron";
 import {
     BrowserNetworkChannel,
@@ -28,6 +28,7 @@ import {
 } from "../ipc/browser-network-ipc";
 import type { BrowserNetwork, BrowserNetworkApplyResult, EgressIpInfo } from "../ipc/browser-network-ipc";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
+import { guardedIpcHandle } from "./ipc-sender-guard";
 import { registerSessionSource } from "./session-src-protocol";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
@@ -249,21 +250,21 @@ export function initBrowserNetworkHandlers(): void {
         browserNetworkService.handleWebContentsCreated(contents);
     });
 
-    ipcMain.handle(
+    guardedIpcHandle(
         BrowserNetworkChannel.apply,
         (_event, partition: string, network: BrowserNetwork) =>
             browserNetworkService.apply(partition, network),
     );
 
-    ipcMain.handle(BrowserNetworkChannel.checkIp, (_event, partition: string) =>
+    guardedIpcHandle(BrowserNetworkChannel.checkIp, (_event, partition: string) =>
         browserNetworkService.checkIp(partition),
     );
 
-    ipcMain.handle(BrowserNetworkChannel.release, (_event, partition: string) =>
+    guardedIpcHandle(BrowserNetworkChannel.release, (_event, partition: string) =>
         browserNetworkService.release(partition),
     );
 
-    ipcMain.handle(
+    guardedIpcHandle(
         BrowserNetworkChannel.sessionSource,
         (_event, partition: string, url: string) =>
             browserNetworkService.sessionSource(partition, url),

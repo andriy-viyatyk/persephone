@@ -22,7 +22,7 @@
  */
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import path from "node:path";
-import { ipcMain, IpcMainEvent, UtilityProcess, WebContents, utilityProcess } from "electron";
+import { IpcMainEvent, UtilityProcess, WebContents, utilityProcess } from "electron";
 import {
     RunnerChannel,
     RunnerJobMsg,
@@ -32,6 +32,7 @@ import {
 } from "../ipc/runner-channels";
 import { errMessage } from "../shared/utils";
 import { getAssetPath } from "./utils";
+import { guardedIpcOn } from "./ipc-sender-guard";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
 const COALESCE_MS = 16;
@@ -411,20 +412,20 @@ export function killJob(jobId: string, signal?: string): void {
  * via `startJobTo`/`writeJobStdin`/… (see `board-bridge.ts`).
  */
 export function initCommandRunner(): void {
-    ipcMain.on(RunnerChannel.start, (event: IpcMainEvent, msg: RunnerStartMsg) => {
+    guardedIpcOn(RunnerChannel.start, (event: IpcMainEvent, msg: RunnerStartMsg) => {
         wireSenderReaping(event.sender);
         startJobTo(webContentsSink(event.sender), msg);
     });
 
-    ipcMain.on(RunnerChannel.stdin, (_event, msg: RunnerStdinMsg) => {
+    guardedIpcOn(RunnerChannel.stdin, (_event, msg: RunnerStdinMsg) => {
         writeJobStdin(msg.jobId, msg.data);
     });
 
-    ipcMain.on(RunnerChannel.endStdin, (_event, msg: RunnerJobMsg) => {
+    guardedIpcOn(RunnerChannel.endStdin, (_event, msg: RunnerJobMsg) => {
         endJobStdin(msg.jobId);
     });
 
-    ipcMain.on(RunnerChannel.kill, (_event, msg: RunnerKillMsg) => {
+    guardedIpcOn(RunnerChannel.kill, (_event, msg: RunnerKillMsg) => {
         killJob(msg.jobId, msg.signal);
     });
 }
