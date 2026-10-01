@@ -49,20 +49,9 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 | **Installer** | [![Download EXE](https://img.shields.io/badge/Download-Installer%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
 | **Portable** | [![Download ZIP](https://img.shields.io/badge/Download-Portable%20(.zip)-orange?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
 
-### Code signing policy
+### Privacy policy
 
-> **Status: not signed yet.** Persephone has applied to SignPath Foundation for free code signing.
-> Current releases are unsigned, and Windows SmartScreen may warn when you run the installer.
-> This note will be removed once the first signed release ships.
-
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
-
-- Committers and reviewers: [andriy-viyatyk](https://github.com/andriy-viyatyk)
-- Approvers: [andriy-viyatyk](https://github.com/andriy-viyatyk)
-
-Only release builds produced by this repository's GitHub Actions workflow are signed, and every signing request is approved by hand.
-
-**Privacy policy.** Persephone does not collect or send usage data. It contacts other networked systems on its own in three cases only:
+Persephone does not collect or send usage data. It contacts other networked systems on its own in three cases only:
 
 - **Update check:** on start-up it asks the GitHub API for the latest release version, to tell you when an update is available.
 - **Board catalog:** at most once a day it downloads the list of installable boards from this project's GitHub repositories.
