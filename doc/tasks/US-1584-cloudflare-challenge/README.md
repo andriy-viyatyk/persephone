@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned — placeholder, needs investigation before implementation
+**Status:** Implemented 2026-10-01 — awaiting user testing on the other challenge pages
 **Priority:** High
 **Epic:** None (standalone)
 
@@ -86,7 +86,44 @@ Also carried from US-1582: verify at runtime whether a cross-origin iframe witho
 attribute can reach the permission request handler; if it can, deny cross-origin subframe Ask
 requests (see the US-1582 Phase 2 note).
 
-## Scope to investigate
+## Root cause and fix (POC verified 2026-10-01)
+
+**Cross-origin iframes reported the raw Electron User-Agent.** `cleanUserAgent()` in
+`src/main/browser-service.ts` set the cleaned UA with `session.setUserAgent()`, which reaches the
+top frame only. The Turnstile iframe (`challenges.cloudflare.com`) is an out-of-process iframe and
+read `app.userAgentFallback`, so `navigator.userAgent` there was
+`… persephone/5.0.6 Chrome/150.0.7871.46 Electron/43.0.0 …` while the page claimed Chrome.
+Cloudflare rejects a UA that changes during solving (Turnstile error 110510, "inconsistent
+user-agent"), which is the clearance-issued-then-rechallenged loop.
+
+Fix:
+- `toChromeUserAgent(ua)` (`src/main/browser-service.ts`) removes `persephone/x` and
+  `Electron/x` and reduces the version to `Chrome/<major>.0.0.0`, the string Chrome itself sends
+  (User-Agent reduction).
+- `initBrowserUserAgent()` applies it to `app.userAgentFallback`; `setupMainProcess()`
+  (`src/main/main-setup.ts`) calls it right after `initPermissionPolicy()`, before any renderer
+  process starts. `cleanUserAgent(ses)` reuses the same function per session.
+- Persephone's own window now reports the same Chrome UA; nothing in `src/` reads
+  `navigator.userAgent` or expects the `Electron/` token.
+
+Ablation on https://www.scrapingcourse.com/cloudflare-challenge (cookies cleared before each run):
+
+| Configuration | Result |
+|---|---|
+| Session UA cleaned, iframe UA raw Electron, no debugger | Loop |
+| Fallback + session UA cleaned and reduced, no debugger | **Pass** |
+| Same, with the AI-vision probe re-enabled (debugger attached, `Runtime.enable`, binding) | **Pass** |
+
+So the CDP probe, the `window.chrome` polyfill, the Client Hints brands (US-1583) and the
+`denied` permission states are **not** required for this challenge and stay unchanged.
+
+External research matches: Orca (stablyai/orca PR #18749, #19927, Electron 43 / Chromium 150) and
+t3code (pingdotgg/t3code PR #7110) measured that every "cleaned Chrome UA" arm failed Turnstile
+and concluded the stock Electron UA is required. Both set the UA through `session.setUserAgent` /
+CDP, which leaves OOPIFs on a different UA, so their failing arms most likely had the same split
+identity rather than a rejected Chrome claim.
+
+## Scope to investigate (original, kept for reference)
 
 1. Diff Persephone against Chrome on the diagnostics pages above; list every mismatch
    (User-Agent vs Client Hints brands, `window.chrome` shape, `navigator.plugins`/`mimeTypes`,
@@ -103,7 +140,8 @@ requests (see the US-1582 Phase 2 note).
 
 ## Acceptance criteria (draft)
 
-- [ ] https://www.scrapingcourse.com/cloudflare-challenge passes in a normal profile after at
+- [x] https://www.scrapingcourse.com/cloudflare-challenge passes in a normal profile after at
       most one click.
+- [x] Every frame of a browser page, and the app window, reports the same reduced Chrome UA.
 - [ ] The other challenge pages above behave as in Chrome.
 - [ ] No regression in Google / Microsoft (US-1581) sign-in or Widevine playback.

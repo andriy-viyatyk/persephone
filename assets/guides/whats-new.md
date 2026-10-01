@@ -27,6 +27,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Cloudflare "Verify you are human" checks pass in browser pages:** the checkbox no longer
+  reloads the page with the same check again. Every frame of a page, including the challenge
+  frame, now reports the same Chrome identity.
+
 - **Browser video fullscreen works as expected:** fullscreen video now fills the app window, and
   fullscreen ends when you press `Esc` (including when Persephone has keyboard focus), close the
   browser tab, or leave it hidden.

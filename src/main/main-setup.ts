@@ -9,7 +9,7 @@ import { openWindows } from "./open-windows";
 import { setupTray } from "./tray-setup";
 import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
-import { initBrowserHandlers } from "./browser-service";
+import { initBrowserHandlers, initBrowserUserAgent } from "./browser-service";
 import { initTorHandlers, torService } from "./tor-service";
 import { registerTorSrcProtocol } from "./tor-src-protocol";
 import { registerSessionSrcProtocol } from "./session-src-protocol";
@@ -35,6 +35,8 @@ import { initPermissionPolicy } from "./permission-policy-service";
 export function setupMainProcess() {
     // Permission handlers must be present before any renderer or webview session is created.
     initPermissionPolicy();
+    // Likewise the fallback User-Agent: a renderer process reads it when it starts.
+    initBrowserUserAgent();
     // Load the main-owned board trust state before restored renderer windows can request services.
     void boardTrustService.init().catch((error: unknown) => {
         console.error(`Board trust initialization failed: ${errMessage(error)}`);

@@ -422,6 +422,25 @@ The main preload (`src/preload.ts`) exposes the path to the webview preload:
 ).toString();
 ```
 
+## User-Agent
+
+Browser pages present Chrome's own User-Agent: `toChromeUserAgent()` (`src/main/browser-service.ts`)
+removes the `persephone/x` and `Electron/x` tokens and reduces the version to
+`Chrome/<major>.0.0.0`, as Chrome's User-Agent reduction does. It is applied in two places, and both
+are required:
+
+- `initBrowserUserAgent()` sets `app.userAgentFallback`. `setupMainProcess()` calls it before any
+  renderer starts. A cross-origin iframe runs in its own renderer process and reads this fallback,
+  not the session's UA.
+- `cleanUserAgent(ses)` calls `session.setUserAgent()` for each browser session, which covers top-level
+  navigations and the HTTP `User-Agent` header.
+
+With only the session UA cleaned, a page claims Chrome while its cross-origin iframes report
+Electron. Cloudflare's challenge frame (`challenges.cloudflare.com`) sees the mismatch and
+re-challenges forever (US-1584). Persephone's own window reports the same string. Client Hints
+brands (`navigator.userAgentData`) stay Electron's `Chromium` brands; no Electron API changes them,
+and the challenge passes without it.
+
 ## Session Restore
 
 `getRestoreData()` saves all internal tabs with their actual current URLs (from the `BrowserTabsModel.currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore. Profile name, incognito flag, and Tor flag are also saved/restored.

@@ -15,9 +15,7 @@ _No active work._
 
 ## Planned
 
-- *(no epic)*
-  - [ ] [US-1583: Browser brands match Chrome](tasks/US-1583-chrome-brand/README.md)
-  - [ ] [US-1584: Pass Cloudflare "Verify you are human" challenges](tasks/US-1584-cloudflare-challenge/README.md)
+_No planned work._
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 

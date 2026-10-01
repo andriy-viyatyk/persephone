@@ -51,16 +51,36 @@ interface EventTarget {
 const cleanedSessions = new WeakSet<Electron.Session>();
 
 /**
- * Strip app name and Electron version from User-Agent so websites
- * see a standard Chrome UA instead of "persephone/x.x.x ... Electron/x.x.x".
+ * The User-Agent Chrome itself would send: "persephone/x.x.x" and "Electron/x.x.x" removed,
+ * and the version reduced to "Chrome/<major>.0.0.0" (Chrome's User-Agent reduction).
+ */
+function toChromeUserAgent(ua: string): string {
+    return ua
+        .replace(/\s*persephone\/\S+/i, "")
+        .replace(/\s*Electron\/\S+/i, "")
+        .replace(/Chrome\/(\d+)\.[\d.]+/, "Chrome/$1.0.0.0");
+}
+
+/**
+ * Give a browser session the Chrome User-Agent.
+ *
+ * This covers the top frame only: a cross-origin iframe runs in its own renderer process and
+ * reads `app.userAgentFallback` instead, so `initBrowserUserAgent()` must clean that too. A page
+ * whose iframes still say "Electron" fails Cloudflare's challenge endlessly (US-1584).
  */
 function cleanUserAgent(ses: Electron.Session): void {
     if (cleanedSessions.has(ses)) return;
     cleanedSessions.add(ses);
-    const ua = ses.getUserAgent()
-        .replace(/\s*persephone\/\S+/i, "")
-        .replace(/\s*Electron\/\S+/i, "");
-    ses.setUserAgent(ua);
+    ses.setUserAgent(toChromeUserAgent(ses.getUserAgent()));
+}
+
+/**
+ * Make the process-wide fallback User-Agent the Chrome one, so every frame of a browser page
+ * (including cross-origin iframes such as Cloudflare's challenge) reports the same identity.
+ * Must run before any renderer process starts.
+ */
+export function initBrowserUserAgent(): void {
+    app.userAgentFallback = toChromeUserAgent(app.userAgentFallback);
 }
 
 /** Extract a numeric value from a window.open() features string (e.g. "width=500,height=600"). */
