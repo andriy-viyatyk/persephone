@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeRaw from "rehype-raw";
 import type { Properties, Root, RootContent } from "hast";
+import { BLOCKED_MARKDOWN_TAGS, markdownSanitizeSchema, rehypeSanitize } from "./markdown-sanitize";
 import { ContextMenuEvent } from "../../api/events/events";
 import { themeState } from "../../theme/theme-state";
 import { CopyIcon, OpenFileIcon } from "../../theme/icons";
@@ -130,6 +131,7 @@ function renderNode(
     if (node.type === "text") return document.createTextNode(node.value);
     if (node.type === "raw") return document.createTextNode(node.value);
     if (node.type !== "element") return document.createDocumentFragment();
+    if (BLOCKED_MARKDOWN_TAGS.has(node.tagName.toLowerCase())) return document.createDocumentFragment();
 
     const namespace = elementNamespace(parentNamespace, node.tagName);
     if (node.tagName === "code") return createCodeBlockNode(node, context);
@@ -348,6 +350,7 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
             .use(remarkGfm)
             .use(remarkRehype, { allowDangerousHtml: true })
             .use(rehypeRaw)
+            .use(rehypeSanitize, markdownSanitizeSchema)
             .use(rehypeMarkdownOverrides, {
                 filePath: this.props.filePath,
                 wikiRoot: this.wikiRoot,
@@ -376,6 +379,9 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
             renderNode: (node, namespace = "html") =>
                 renderNode(context, node, namespace, mermaidLightMode),
             renderElement: (tagName, properties, children, namespace) => {
+                if (BLOCKED_MARKDOWN_TAGS.has(tagName.toLowerCase())) {
+                    return document.createElement("span");
+                }
                 const element = namespace === "svg"
                     ? document.createElementNS("http://www.w3.org/2000/svg", tagName)
                     : document.createElement(tagName);
