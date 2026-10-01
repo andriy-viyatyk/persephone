@@ -12,7 +12,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.7 (Upcoming)
 
-*No changes yet.*
+### Breaking Changes
+
+- **Removed the script-level Claude API integration:** scripts no longer expose the `ai` global. Scripts that use it now fail with `ReferenceError: ai is not defined`. Connect external agents to Persephone through the MCP server instead; see the [MCP Server Setup guide](./mcp-setup.md).
 
 ---
 
@@ -1439,7 +1441,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   });
   ```
 
-  The `stopSequences` value is also exposed as a read-only `session.stopSequences` property. See the [`ai` API reference](./scripting/api/ai.md) for details.
+  The `stopSequences` value is also exposed as a read-only `session.stopSequences` property.
 
 ---
 
@@ -1515,7 +1517,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Script API: `ai.ClaudeSession`** — Scripts now have access to a global `ai` namespace with a `ClaudeSession` class for building multi-turn conversations with Claude via the Anthropic API. Create a session, set a system message, add user messages, define tools, and call `send()` — the session handles the full tool-call loop internally. Supports event callbacks for `"tool-call"`, `"tool-result"`, `"assistant-message"`, and `"error"`. See the [`ai` API reference](./scripting/api/ai.md).
+- **Script API: `ai.ClaudeSession`** — Scripts now have access to a global `ai` namespace with a `ClaudeSession` class for building multi-turn conversations with Claude via the Anthropic API. Create a session, set a system message, add user messages, define tools, and call `send()` — the session handles the full tool-call loop internally. Supports event callbacks for `"tool-call"`, `"tool-result"`, `"assistant-message"`, and `"error"`.
 
   ```javascript
   const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });

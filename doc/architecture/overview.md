@@ -210,7 +210,7 @@ See [editors.md](./editors.md).
 
 See [scripting.md](./scripting.md).
 
-- JavaScript/TypeScript execution with `page`, `app`, `io`, and `ai` globals
+- JavaScript/TypeScript execution with `page`, `app`, and `io` globals
 - TypeScript transpilation via sucrase (lazy-loaded, type stripping only)
 - Full Node.js access for scripts; renderer UI frameworks are not part of the script context
 - API wrappers (AppWrapper, PageWrapper) provide safe, typed access

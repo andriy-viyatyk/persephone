@@ -117,8 +117,6 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
 | Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.ts`       |
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
-| Script `ai` namespace    | `/src/renderer/scripting/api-wrapper/AiNamespace.ts` |
-| Script `ClaudeSession`   | `/src/renderer/scripting/api-wrapper/ClaudeSession.ts` |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |

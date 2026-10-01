@@ -64,7 +64,6 @@ editor when one is available, or the guide contents otherwise.
 - File comparison (diff view)
 - File encryption
 - Full Node.js access in scripts
-- **AI scripting** — call Claude directly from scripts via `ai.ClaudeSession` (multi-turn conversations, tool use)
 - AI agent integration — connect external tools like Claude Desktop, Claude Code, or ChatGPT to control persephone via HTTP (MCP)
 - **Boards** — build fully custom HTML-page applications inside a project folder; call backend scripts (any language) via `persephone.execute()`, and theme the UI automatically with the `--p-*` CSS-variable contract; AI agents can author and test boards over MCP. You can also discover and install ready-made boards published by the project, with safe updates and rollback
 - **Agent Tools registry** — turn a working integration script into a reusable, parameterized tool (any language) that AI agents discover with `tools.search` and run with `tools.execute` over MCP; user-gated by a registration/trust dialog

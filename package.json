@@ -51,7 +51,6 @@
     "vite-plugin-monaco-editor-esm": "^2.0.2"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.111.0",
     "@floating-ui/dom": "^1.8.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ai-vision": "^1.2.0",

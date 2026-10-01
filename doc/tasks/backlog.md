@@ -224,14 +224,6 @@ events (add/update, before open), so a link collection is self-contained and por
 the existing ScriptRunner with an injected scope; each script edits in Monaco over a virtual
 `IProvider` backed by the LinkViewModel. 8 tasks: US-396 … US-403.
 
-### [EPIC-014: Claude AI Chat Panel](../epics/EPIC-014.md)
-
-A right-side chat panel over `@anthropic-ai/claude-agent-sdk` (reusing Claude CLI auth), with
-Persephone MCP auto-registration, active-page context injection, streamed markdown responses and
-conversation persistence. App-level, so conversations survive tab switches. Includes the
-`Ctrl+\`` open-PowerShell-at-cwd shortcut that stands in for a full terminal editor.
-7 tasks: US-385 … US-391.
-
 ### [EPIC-011: Chrome Extension Support for Built-in Browser](../epics/EPIC-011.md)
 
 Load Chrome extensions (ad blockers, password managers, devtools) into the built-in browser's

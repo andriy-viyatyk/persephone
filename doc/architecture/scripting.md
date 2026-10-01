@@ -25,7 +25,6 @@ ScriptRunner.run(script, page?, language?)
     │       ├── page = PageWrapper      ← wraps `page` global
     │       │     └── Editor facades (28 operation + generic)  ← page.editor
     │       ├── io = IoNamespace        ← wraps `io` global (providers, pipes, events)
-    │       ├── ai = AiNamespace        ← wraps `ai` global (ClaudeSession)
     │       ├── ui getter (lazy, stack-based on globalThis)
     │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
@@ -439,55 +438,6 @@ supplied no-op delegate and leaves `handled` unchanged; the parse-hook delegate 
 resolver to rebuild the pipe. See [Content Delivery Pipeline](content-pipeline.md) for the registry
 and dispatch flow.
 
-### `ai` — AI Model Integrations
-
-Provides the `ClaudeSession` class for conversational AI scripting via `@anthropic-ai/sdk`.
-
-```typescript
-interface IAiNamespace {
-    readonly ClaudeSession: new(config: IClaudeSessionConfig) => IClaudeSession;
-}
-```
-
-`ClaudeSession` wraps the raw Anthropic SDK and manages the message list, tool-call loop, and events automatically. The SDK is **lazy-loaded** on first instantiation via `require("@anthropic-ai/sdk")` — no cost if unused.
-
-**Examples:**
-```javascript
-// Basic conversation
-const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
-session.systemMessage("You are a helpful assistant.");
-session.userMessage("What is 2 + 2?");
-const reply = await session.send();
-
-// With tools
-session.tools = [{
-    name: "get_data",
-    description: "Read data from the current page",
-    inputSchema: { type: "object", properties: {} },
-    tool: () => page.content,
-}];
-session.on("tool-call", (name, input) => console.log(`Tool called: ${name}`));
-session.userMessage("Analyze the current page data");
-const reply = await session.send();
-
-// Force a specific tool, multi-turn
-session.userMessage("What's the weather in Paris?");
-await session.send({ toolChoice: "get_weather" });
-session.userMessage("And London?");
-await session.send();
-```
-
-Key features:
-- **`send(options?)`** — runs the full tool-call loop until `end_turn`, returns final text
-- **`toolChoice`** — `"auto"` (default) / `"any"` / specific tool name
-- **Events** — `"tool-call"`, `"tool-result"`, `"assistant-message"`, `"message"`, `"error"`
-- **`maxToolRounds`** (default 20) — safety limit to prevent infinite tool loops
-- **`clear()`** — resets message history, keeps system message and tools
-- **`dangerouslyAllowBrowser: true`** — set internally (Electron renderer is trusted, not a public browser)
-
-See type definitions: [`src/renderer/api/types/ai.d.ts`](../../src/renderer/api/types/ai.d.ts)
-Implementation: [`src/renderer/scripting/api-wrapper/ClaudeSession.ts`](../../src/renderer/scripting/api-wrapper/ClaudeSession.ts)
-
 ### `app.events` — Event Channels
 
 Scripts can both subscribe to and send events. `send()` synchronously freezes the event and invokes
@@ -531,8 +481,8 @@ const config = require("library/config");
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
 - **Context injection — two mechanisms:**
-  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, io=this.io, ai=this.ai, require=this.customRequire, ...`
-  - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, io=__ctx?.io, ai=__ctx?.ai, ...`
+  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
+  - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, io=__ctx?.io, ...`
 - **Context-bound require chain:** Each `ScriptContext` creates a `customRequire` function bound to itself. It's injected as the `require` local var in every script and module. When a module calls `require("library/X")`, it calls the context's `customRequire`, which sets `__activeScriptContext__`, calls native require, and the extension handler injects the same context's properties. Sub-modules get the same `customRequire` injected, so the chain propagates through the entire dependency tree.
 - **Always-fresh cache:** `customRequire()` deletes the specific module from `require.cache` before loading. This ensures fresh compilation with the current context's bindings. Library modules cannot share state across script executions (use `page.data` or `app.settings` for shared state).
 - **Cache clearing on file changes:** Bulk `clearLibraryRequireCache()` only runs when `libraryDirty` is set by the file watcher — not on every execution.
@@ -1094,7 +1044,7 @@ ctx.dispose();  // restores previous ui getter, releases ViewModels, unsubscribe
 The constructor:
 
 1. Creates `releaseList` (shared cleanup array)
-2. Creates `AppWrapper` (always), `PageWrapper` (if page provided), `io` namespace (`createIoNamespace()`), and `ai` namespace (`createAiNamespace()`) — stored as instance properties
+2. Creates `AppWrapper` (always), `PageWrapper` (if page provided), and `io` namespace (`createIoNamespace()`) — stored as instance properties
 3. If `consoleLogs` array is provided (MCP mode), sets `this.console` to a capturing console that records `log`, `error`, `warn`, `info` calls. Otherwise uses native `console`. Capture is replaced with full forwarding when `ui` is accessed (see step 6).
    ```typescript
    interface ConsoleLogEntry {
@@ -1330,7 +1280,7 @@ Two injection mechanisms exist:
 - **Top-level scripts:** `SCRIPT_PREFIX` reads from `this` — `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
 - **Library modules (require'd):** `MODULE_CONTEXT_PREFIX` reads from `globalThis.__activeScriptContext__` — set by `customRequire()` during the synchronous `require()` call
 
-Both produce the same result: `app`, `page`, `io`, `ai`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules. The `ui` global remains a separate lazy getter.
+Both produce the same result: `app`, `page`, `io`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules. The `ui` global remains a separate lazy getter.
 
 - **`require()`** — context-bound `customRequire` on `ScriptContext`. Supports `library/` path resolution. Always clears specific module from cache before loading (always-fresh). Falls back to Node.js native `require` for non-library paths.
 - **`ui`** — lazy getter on `globalThis` (not a local variable, not in prefix). Stack-based: each `ScriptContext` saves the previous getter and restores it on dispose. Eagerly accessing `ui` creates a Log View page.

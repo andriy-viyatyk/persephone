@@ -103,7 +103,7 @@ const SCRIPT_MEMBERS: readonly IAiMember[] = [
 
 const SCRIPT_HELP = `
 script.execute(code, pageId?, language?) runs code in the renderer execution context. The available
-script globals are app, page, io, and ai; app exposes application services, and page is the selected
+script globals are app, page, and io; app exposes application services, and page is the selected
 page's script global. If pageId is omitted, execution targets the active page; pass a page id to
 target that page explicitly. language is optional and may be "javascript" or "typescript"; TypeScript
 is transpiled without type checking.
@@ -160,7 +160,7 @@ What you can do here:
     waitFor / snapshot: Playwright-like automation over a tab the user can watch.
   Build the user a small app - boards are sandboxed offline web-apps you author
     (boards.createBoard); once open, you drive the board's own model at pages[i].editor.app.
-  Run code - script.execute("1 + 1") in the renderer, with the app, page, io and ai globals.
+  Run code - script.execute("1 + 1") in the renderer, with the app, page and io globals.
   Point at Persephone's own UI - ui.elements names the on-screen controls, ui.highlight points at
     one, and ui.guide.step(target, message) walks the user through a screen one control at a time.
   Reach the machine - fs, proc and shell; all cautioned, because they act with the user's rights.

@@ -1,12 +1,12 @@
 ---
 title: "Scripting API Reference"
 audience: user
-summary: "The `page`, `app`, `ui`, `io`, and `ai` globals and their scripting helpers."
+summary: "The `page`, `app`, `ui`, and `io` globals and their scripting helpers."
 ---
 
 # Scripting API Reference
 
-Scripts have access to five globals — `page`, `app`, `ui`, `io`, and `ai` — plus helpers `preventOutput()` and `styledText()`. No imports needed.
+Scripts have access to four globals — `page`, `app`, `ui`, and `io` — plus helpers `preventOutput()` and `styledText()`. No imports needed.
 
 ```javascript
 const text = page.content;
@@ -230,21 +230,6 @@ ui.log("Hello");
 
 - **[preventOutput()](../index.md#output-suppression)** — Suppress default script output to grouped page
 - **[styledText(text)](./ui-log.md#styledtext-global)** — Create styled text builder for dialogs
-
----
-
-- **[ai](./ai.md)** — AI model integrations
-  - `new ai.ClaudeSession(config)` — Create a Claude conversation session
-    - `.modelId` / `.maxTokens` / `.temperature` / `.maxToolRounds` — Session config
-    - `.messages` / `.lastResponse` — Conversation state
-    - `.systemMessage(text)` — Set system instructions
-    - `.userMessage(text)` — Add a user message
-    - `.tools` — Tool definitions (get/set)
-    - `.on(event, callback)` — Subscribe to events (`"tool-call"`, `"tool-result"`, `"assistant-message"`, etc.)
-    - `.send(options?)` — Send and run tool loop → `Promise<string>`
-    - `.clear()` — Reset conversation history
-
----
 
 - **[io](./io.md)** — Content pipes, custom providers and URL schemes, and link helpers
   - `new io.FileProvider(filePath)` — local file data source

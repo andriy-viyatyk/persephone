@@ -221,7 +221,7 @@ const { ArchiveEditorView } = await import("../archive/ArchiveEditorView");
 import { ArchiveEditorView } from "../archive/ArchiveEditorView";
 ```
 
-### 2. Script Context (`page`, `app`, `io`, `ai`)
+### 2. Script Context (`page`, `app`, `io`)
 ```javascript
 const data = JSON.parse(page.content);
 const output = page.grouped;
