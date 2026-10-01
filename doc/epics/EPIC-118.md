@@ -167,7 +167,7 @@ in either order. Task documents are written when each task starts.
 | Task | Title | Finding | Severity | Status |
 |------|-------|---------|----------|--------|
 | [US-1587](../tasks/US-1587-markdown-html-sanitize/README.md) | Sanitize Markdown HTML; Mermaid strict mode | F1 | Critical | In Progress |
-| US-1588 | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | Planned |
+| [US-1588](../tasks/US-1588-mcp-rebinding-origin/README.md) | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | In Progress |
 | US-1589 | Web pages cannot open internal schemes without a gesture and confirmation | F3 | Medium | Planned |
 | US-1590 | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
 | US-1591 | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
@@ -223,6 +223,12 @@ in either order. Task documents are written when each task starts.
 - **RunAsNode migration risk.** Board Node scripts depend on stdin/stdout/exit semantics. A
   `utilityProcess` behaves slightly differently (no TTY, `process.parentPort`), so it needs a
   regression pass over the boards that use `persephone.proc` with `node: true`.
+- **US-1588 ↔ US-1590 coupling.** In-app MCP clients (`McpConnectionManager`, the Mneme
+  connection) use the renderer's Chromium `fetch`, which sends no `Origin` only because the main
+  window has `webSecurity: false`. US-1588 refuses any `Origin`, so if US-1590 removes
+  `webSecurity: false` it must also give `McpConnectionManager` a Node-based `fetch`.
+- **Mneme is already rebinding-safe.** rmcp 1.7's default config restricts `Host` to loopback
+  names, so for Mneme US-1588 only adds the `Origin` check.
 - **Cookie-encryption fuse** may invalidate existing browser profile cookies once; check before
   turning it on.
 

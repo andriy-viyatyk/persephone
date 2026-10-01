@@ -13,7 +13,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 - **EPIC-118** — [Security hardening — hostile web pages and files](epics/EPIC-118.md)
   - [ ] [US-1587: Sanitize Markdown HTML; Mermaid strict mode](tasks/US-1587-markdown-html-sanitize/README.md) *(Critical)*
-  - [ ] US-1588: DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers *(High)*
+  - [ ] [US-1588: DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers](tasks/US-1588-mcp-rebinding-origin/README.md) *(High)*
   - [ ] US-1589: Web pages cannot open internal schemes without a gesture and confirmation
   - [ ] US-1590: Main-window CSP hardening; investigate `webSecurity: false`
   - [ ] US-1591: Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE`

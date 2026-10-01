@@ -352,7 +352,11 @@ pub fn serve(cfg: Config, config_path: PathBuf, bind: &str, port: u16) -> crate:
                 move || Ok(MnemeServer::new(Arc::clone(&state)))
             },
             LocalSessionManager::default().into(),
-            StreamableHttpServerConfig::default(),
+            // Any request carrying an Origin is a browser page; agent clients send none. Allowing
+            // only this server's own origin refuses every browser Origin. Host is already
+            // restricted to loopback by rmcp's default allowed_hosts.
+            StreamableHttpServerConfig::default()
+                .with_allowed_origins([format!("http://{bind}:{port}")]),
         );
         let app = axum::Router::new().nest_service("/mcp", service);
         let listener = tokio::net::TcpListener::bind((bind.as_str(), port)).await?;

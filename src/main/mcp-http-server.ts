@@ -89,7 +89,31 @@ function parseJsonBody(req: http.IncomingMessage): Promise<unknown> {
 
 // ── HTTP Request Handler ───────────────────────────────────────────
 
+/** Loopback authorities a legitimate client addresses this server by. A DNS-rebinding page
+ *  arrives with its own hostname in `Host`, so anything else is refused. */
+function isAllowedHost(host: string | undefined): boolean {
+    if (!host) return false;
+    const value = host.toLowerCase();
+    return value === `127.0.0.1:${currentPort}` || value === `localhost:${currentPort}`;
+}
+
+/** Refuse requests a web page could make: a foreign Host (DNS rebinding) or any Origin.
+ *  Agent clients are Node HTTP clients and send no Origin. Returns true when refused. */
+function refuseUntrustedRequest(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+    const reason = !isAllowedHost(req.headers.host)
+        ? "Invalid Host header"
+        : req.headers.origin !== undefined
+            ? "Browser requests are not accepted"
+            : undefined;
+    if (!reason) return false;
+    console.warn(`MCP HTTP request refused: ${reason}; Host=${JSON.stringify(req.headers.host)} Origin=${JSON.stringify(req.headers.origin)}`);
+    res.writeHead(403, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: reason }, id: null }));
+    return true;
+}
+
 async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    if (refuseUntrustedRequest(req, res)) return;
     const url = new URL(req.url ?? "/", `http://localhost:${currentPort}`);
     if (url.pathname !== "/mcp") {
         res.writeHead(404, { "Content-Type": "application/json" });
@@ -166,6 +190,8 @@ async function startSession(req: http.IncomingMessage, res: http.ServerResponse,
     const mcpServer = createMcpServer();
     const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        enableDnsRebindingProtection: true,
+        allowedHosts: [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`],
         onsessioninitialized: (sid: string) => {
             sessions.set(sid, { server: mcpServer, transport, lastActivity: Date.now() });
             broadcastMcpStatus();
