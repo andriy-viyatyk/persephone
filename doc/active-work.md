@@ -15,7 +15,7 @@ _No active work._
 
 ## Planned
 
-_No planned work._
+- [ ] [US-1585: Code signing via SignPath Foundation](tasks/US-1585-code-signing-signpath/README.md) — *on hold: awaiting SignPath Foundation review (applied 2026-10-01)*
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 
