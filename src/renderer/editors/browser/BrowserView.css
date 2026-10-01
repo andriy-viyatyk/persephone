@@ -16,6 +16,17 @@
 .browser-root [data-proxy-chip] { cursor: pointer; font-size: 11px; color: var(--color-text-light); padding: 0 4px; border-radius: 3px; white-space: nowrap; user-select: none; line-height: 20px; background: transparent; border: 1px solid var(--color-border-default); }
 .browser-root [data-proxy-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
 .browser-root [data-search-engine-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
+@layer editor {
+    [data-type="browser-site-permissions"] { display: flex; flex-direction: column; gap: var(--space-sm, 4px); padding: var(--space-md, 8px) var(--space-lg, 12px); width: max-content; max-width: calc(100vw - var(--space-xl, 16px) - var(--space-xl, 16px)); }
+    [data-type="browser-site-permissions"] > [data-type="text"] { overflow-wrap: anywhere; }
+    [data-type="browser-site-permissions"] [data-part="permission-list"] { display: flex; flex-direction: column; gap: var(--space-xs, 2px); }
+    [data-type="browser-site-permissions"] [data-part="permission-row"] { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg, 12px); min-height: var(--size-control-md, 26px); }
+    [data-type="browser-site-permissions"] [data-part="permission-copy"] { display: flex; flex-direction: column; min-width: 0; }
+    [data-type="browser-site-permissions"] [data-part="permission-ask"] { color: var(--color-text-light); }
+    [data-type="browser-site-permissions"] [data-part="reload-hint"] { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md, 8px); padding-top: var(--space-sm, 4px); border-top: 1px solid var(--color-border-light); }
+    [data-type="browser-site-permissions"] [data-part="reload-hint"][hidden] { display: none; }
+    [data-type="browser-site-permissions"] [data-part="reload-hint"] [data-type="text"][hidden] { display: none; }
+}
 .browser-root [data-tor-indicator] { cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 2px; position: relative; }
 .browser-root [data-tor-indicator] svg { width: 14px; height: 14px; }
 .browser-root [data-tor-status-dot] { position: absolute; right: 0; bottom: 0; }

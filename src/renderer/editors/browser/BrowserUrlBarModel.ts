@@ -45,6 +45,7 @@ export class BrowserUrlBarModel {
         this.model.state.update((s) => {
             s.urlInput = url;
             s.suggestionsOpen = false;
+            s.userHasTyped = false;
         });
     };
 

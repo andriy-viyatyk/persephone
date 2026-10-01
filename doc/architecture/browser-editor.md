@@ -445,6 +445,49 @@ Each browser page is bound to a **profile** that determines its Electron session
 
 `getPartitionString()` in `BrowserEditorModel.ts` computes the partition. `BrowserTorModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/Tor model has stable IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls.
 
+### Permission Policy
+
+`initPermissionPolicy()` runs during main-process setup before renderer or webview sessions are
+created. The main process installs Electron permission-request and permission-check handlers on
+each session, plus device-selection denial handlers. `permission-policy-service.ts` owns the
+policy, pending request callbacks, and saved decisions; renderer code only presents prompts and
+controls.
+
+The service classifies sessions by their Electron `Session`, rather than trusting a renderer mode
+flag. The app renderer session has a small built-in allowlist for app UI capabilities. The
+file-access persistence session denies web permission requests. Browser sessions are identified
+separately; persistent `persist:browser-<name>` sessions map to that named profile, while
+non-persistent Incognito and Tor sessions have no profile name. Profile decisions are stored in
+`browser-permissions.json` under the app data folder. Decisions for Incognito and Tor are held in
+memory for the lifetime of their Electron session and are never written to disk.
+
+For browser sessions, permission checks require a valid top-level HTTP(S) origin. They deny file
+system, storage-access, HID, serial, USB, and deprecated synchronous clipboard-read checks;
+media-key-system, fullscreen, pointer-lock, and sanitized clipboard-write checks are allowed.
+Camera, microphone, and other supported site permissions check true only after an explicit saved
+allow, while `openExternal` checks are false and unknown permissions default to false. Permission
+requests apply their own handler rules: selected browser capabilities (including media-key-system,
+fullscreen, pointer-lock, and sanitized clipboard writes) are accepted directly; storage-access,
+top-level storage-access, and display-capture requests are denied; and supported undecided site
+permissions prompt. The promptable set is camera, microphone, geolocation, notifications, MIDI,
+clipboard read, idle detection, window management, speaker selection, and external URL schemes
+`http`, `https`, `mailto`, and `tel`. Requests are attributed to the webContents' current top-level
+HTTP(S) origin. An allow/block choice is remembered for that origin and permission; media requests
+can cover camera and microphone together. Unknown requests and requests without a valid top-level
+origin fail closed. Electron request and check callbacks are guarded so policy errors also fail
+closed.
+
+The main process accepts prompts only from registered browser webContents and relays them through
+the owning app renderer's `BrowserChannel.event`. `BrowserWebviewModel` associates each prompt with
+its internal tab, and `BrowserView` shows the permission bar for the active tab. Allow and Block
+send only the opaque request ID and decision back over `BrowserChannel.resolvePermissionRequest`;
+the main process owns the pending callback and stores the decision. Closing a webContents or
+starting its main-frame navigation settles outstanding prompts as denied. The URL bar's site
+permissions popover reads, changes, and resets decisions through main-process IPC keyed by the
+registered webview. Main verifies that the caller owns that registration and derives the current
+origin from the webContents. Profile Settings lists, removes, or clears saved profile decisions;
+Incognito and Tor decisions do not appear there because they are memory-only.
+
 ### Windows Single Sign-On
 
 The global `browser-windows-sso` setting is opt-in and defaults to off. The renderer sends its

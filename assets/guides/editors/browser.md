@@ -19,12 +19,13 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [Proxy][ address box      ] [→]        [★][⋮][</>][×]  |  toolbar: navigation at left, address box across middle
+| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→] [★][⋮][</>][×] | toolbar: navigation at left, address box across middle
 |                                                                     |  (proxy chip inside it when routed), Go at its right edge,
 |                                                                     |  bookmarks/more/devtools/close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
 | [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar at the top of browser content when present
+| [Origin requests permission for access] [Allow] [Block]             |  prompt bar for the active inner tab when present
 +---------------------------------------------------------------------+
 ```
 
@@ -35,6 +36,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Forward → `toolbar-forward`
 - Reload → `toolbar-reload`
 - Address box → `url-input`
+- Site permissions (HTTP(S) page, while no address text has been typed) → `url-site-permissions`
 - Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
 - Go → `url-navigate`
 - Bookmark → `url-bookmark-toggle`
@@ -46,6 +48,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Close → `toolbar-close`
 - Browser tabs → `tabs-panel-host`
 - Blocked popups → `popup-blocked-bar`
+- Permission request (active inner tab only) → `browser-permission-prompt`
 - Page navigation and Editor switch → no entry: this custom browser toolbar draws neither control
 - Webview page controls → no entry: third-party browser content
 
@@ -81,6 +84,34 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 +---------------------------------------------------------------------+
 ```
 
+### When site permissions are open
+
+```
++---------------------------------------------------------------------+
+| [Site permissions] [Origin]                                         |  popover below the address box control
+| [Permission switches, with Ask for undecided entries]               |
+| [Reset permissions] [Reload the page to apply] [Reload]             |
++---------------------------------------------------------------------+
+```
+
+The Site permissions button appears for HTTP(S) pages while no address text has been typed.
+It takes the search-engine selector's place when that selector is available. The popover lists
+permissions for the current origin; undecided permissions show **Ask**. Changing a switch saves an
+Allow or Block choice. **Reset permissions** returns that origin's saved choices to Ask, and
+**Reload** applies changed choices to the current page.
+
+### When a page asks for permission
+
+```
++---------------------------------------------------------------------+
+| [Origin] wants permission to access [requested capabilities] [Allow] [Block] |  above browser content
++---------------------------------------------------------------------+
+```
+
+Only requests from the active inner tab show here. Allow and Block remember the choice for that
+site in a regular browser profile. Incognito and Tor keep choices only for the life of their
+session.
+
 ### When the bookmarks drawer is open
 
 ```
@@ -108,7 +139,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 ### Drawn controls without `elements`
 
 - Page navigation and Editor switch — no entry: the measured browser toolbar draws neither generic control.
-- URL suggestion, search-engine, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces; the stable toolbar controls are listed above.
+- URL suggestion, search-engine, site-permissions popover, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces; the stable toolbar controls are listed above.
 - Webview page controls — no entry: third-party browser content.
 
 ## URL Bar
@@ -118,6 +149,16 @@ button submits the field, and its context menu offers **Paste and Go**. `Ctrl+L`
 Focusing it shows current-tab history; typing filters history, and **Clear** removes the visible
 filtered entries. The search-engine label is available on blank and search-result pages and offers
 Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, and Gibiru.
+
+## Site permissions and prompts
+
+On an HTTP(S) page, the **Site permissions** button appears at the start of the address field until
+you type into the address field. It opens the current site's permission choices. Camera,
+microphone, location, notifications, MIDI, clipboard reading, and other prompted capabilities can
+be set to **Allow** or **Block**; **Ask** means there is no saved choice. Some permission requests
+show a bar above the page with the requesting site and requested access. Choose **Allow** or
+**Block** to answer. Choices for regular profiles are saved between app runs. Incognito and Tor
+choices stay in memory for that private session and are discarded when it ends.
 
 ## Navigation and tabs
 

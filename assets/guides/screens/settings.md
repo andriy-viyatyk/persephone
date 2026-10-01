@@ -56,7 +56,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Window Behavior → `window.close-to-tray`
 - Editor Behavior → `editor.word-wrap`
-- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
+- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`
@@ -95,6 +95,16 @@ Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining betw
 (100 by default). Capture depends on the copy reaching the Windows clipboard, not on which editor or
 page supplied it. The section warns that occasionally-copied secrets may
 remain on disk in readable form; disable the feature or clear its history when that matters.
+
+## Browser site permissions
+
+In **Browser → Browser Profiles**, each regular profile row, including **Default**, has a **site
+permissions** button. Open it to review saved decisions grouped by site. Choose a permission entry
+under a site to remove that choice and return it to **Ask**, or choose **Revoke all site
+permissions** to clear all saved choices for that profile. These controls apply to regular profiles;
+Incognito and Tor choices exist only in memory for their session and do not appear in this review.
+See the [Browser guide](../editors/browser.md#site-permissions-and-prompts) for how to set a site's
+permissions from the URL bar.
 
 ### Drawn controls without `elements`
 

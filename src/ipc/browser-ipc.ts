@@ -18,6 +18,20 @@ export const BrowserChannel = {
     clearProfileData: "browser:clear-profile-data",
     /** Clear only HTTP cache (not cookies/storage) for a given partition. Returns when done. */
     clearCache: "browser:clear-cache",
+    /** Renderer → Main (invoke): list saved permission decisions for a profile. */
+    listPermissionDecisions: "browser:list-permission-decisions",
+    /** Renderer → Main (invoke): remove one saved site permission decision. */
+    removePermissionDecision: "browser:remove-permission-decision",
+    /** Renderer → Main (invoke): revoke all saved permissions for a profile. */
+    clearPermissionDecisions: "browser:clear-permission-decisions",
+    /** Renderer → Main (invoke): resolve an in-tab permission prompt. */
+    resolvePermissionRequest: "browser:resolve-permission-request",
+    /** Renderer → Main (invoke): read site permissions for a registered browser tab. */
+    getSitePermissions: "browser:get-site-permissions",
+    /** Renderer → Main (invoke): set a site permission for a registered browser tab. */
+    setSitePermission: "browser:set-site-permission",
+    /** Renderer → Main (invoke): reset site permissions for a registered browser tab. */
+    resetSitePermissions: "browser:reset-site-permissions",
     /** Renderer → Main (invoke): collect full DOM including iframe content. Args: (key: string) */
     collectDom: "browser:collect-dom",
     /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
@@ -161,7 +175,36 @@ export type BrowserEventType =
     | "popups-blocked"
     | "show-find-bar"
     | "hide-find-bar"
+    | "permission-request"
     | "ai-vision-signal";
+
+export type BrowserPermissionKey =
+    | "camera" | "microphone" | "geolocation" | "notifications" | "midi" | "midiSysex"
+    | "clipboard-read" | "idle-detection" | "window-management" | "speaker-selection" | "openExternal";
+
+export type BrowserSitePermissionKey = Exclude<BrowserPermissionKey, "openExternal"> | `openExternal:${string}`;
+export interface BrowserSitePermissionEntry {
+    key: BrowserSitePermissionKey;
+    decision: "allow" | "block" | undefined;
+}
+export interface BrowserSitePermissions {
+    origin: string;
+    entries: BrowserSitePermissionEntry[];
+}
+export interface BrowserSitePermissionRegistrationRequest {
+    registrationKey: string;
+}
+export interface SetBrowserSitePermissionRequest extends BrowserSitePermissionRegistrationRequest {
+    key: BrowserSitePermissionKey;
+    decision: "allow" | "block";
+}
+
+export interface BrowserPermissionPromptData {
+    requestId: string;
+    topLevelOrigin: string;
+    permissions: BrowserPermissionKey[];
+    externalScheme?: string;
+}
 
 export interface BrowserEventData {
     url?: string;
@@ -187,6 +230,13 @@ export interface BrowserEventData {
     registrationKey?: string;
     /** Raw JSON text authored by the page. */
     payload?: string;
+    permissionRequest?: BrowserPermissionPromptData;
+}
+
+export interface BrowserPermissionDecisionEntry {
+    origin: string;
+    permission: string;
+    decision: "allow" | "block";
 }
 
 /** A logged network request/response pair. */

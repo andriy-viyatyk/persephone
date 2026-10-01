@@ -2,6 +2,7 @@ const { ipcRenderer } = require("electron");
 import {
     BrowserChannel,
     BrowserEvent,
+    BrowserPermissionPromptData,
 } from "../../../ipc/browser-ipc";
 import type { IAiHostSignal, IAiVisionShape } from "ai-vision";
 import type { MenuItem } from "../../uikit/Menu";
@@ -202,6 +203,15 @@ export class BrowserWebviewModel {
         ipcRenderer.removeListener(BrowserChannel.event, this.handleBrowserEvent);
     };
 
+    /** Reload the active page even while it is loading. */
+    reload = () => {
+        this.getActiveWebview()?.reload();
+    };
+
+    resolvePermissionRequest = (requestId: string, decision: "allow" | "block") => {
+        void ipcRenderer.invoke(BrowserChannel.resolvePermissionRequest, { requestId, decision });
+    };
+
     /** Apply shared state updates for full and in-page navigation events. */
     private applyNavigation = (
         internalTabId: string,
@@ -304,6 +314,9 @@ export class BrowserWebviewModel {
                 this.model.updateTab(internalTabId, { audible: !!data.audible });
                 break;
             case "did-start-navigation": {
+                this.model.state.update((state) => {
+                    state.permissionPrompts = state.permissionPrompts.filter((item) => item.internalTabId !== internalTabId);
+                });
                 if (data.blocked) {
                     const webview = this.webviewRefs.get(internalTabId);
                     const tabData = this.model.state
@@ -331,6 +344,17 @@ export class BrowserWebviewModel {
             }
             case "popups-blocked": {
                 this.model.state.update((s) => { s.blockedPopupCount++; });
+                break;
+            }
+            case "permission-request": {
+                const prompt = data.permissionRequest as BrowserPermissionPromptData | undefined;
+                if (prompt && this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) {
+                    this.model.state.update((state) => {
+                        if (!state.permissionPrompts.some((item) => item.requestId === prompt.requestId)) {
+                            state.permissionPrompts.push({ ...prompt, internalTabId });
+                        }
+                    });
+                }
                 break;
             }
             case "show-find-bar":

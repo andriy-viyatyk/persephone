@@ -17,6 +17,7 @@ import { openMenu, type MenuHandle } from "../../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../../uikit/Menu/types";
 import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
+import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
@@ -28,6 +29,16 @@ interface BookmarksFileLineProps {
     filePath: string;
     onBrowse: () => void;
     onClear: () => void;
+}
+
+function groupPermissionDecisions(entries: BrowserPermissionDecisionEntry[]): Array<[string, BrowserPermissionDecisionEntry[]]> {
+    const grouped = new Map<string, BrowserPermissionDecisionEntry[]>();
+    for (const entry of entries) {
+        const group = grouped.get(entry.origin) ?? [];
+        group.push(entry);
+        grouped.set(entry.origin, group);
+    }
+    return [...grouped.entries()];
 }
 
 class BookmarksFileLineView extends VanillaView<BookmarksFileLineProps> {
@@ -96,6 +107,7 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
     private colorDot: DotView | undefined;
     private defaultButton: ButtonView | undefined;
     private clearButton: ButtonView | undefined;
+    private permissionsButton: ButtonView | undefined;
     private removeButton: IconButtonView | undefined;
 
     public constructor(props: ProfileHeaderProps) {
@@ -118,18 +130,20 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
         this.colorDot = undefined;
         this.defaultButton = undefined;
         this.clearButton = undefined;
+        this.permissionsButton = undefined;
         this.removeButton = undefined;
     }
 
     private renderHeader(props: ProfileHeaderProps): void {
         this.menuHandle?.dispose();
         this.menuHandle = undefined;
-        [this.colorDot, this.defaultButton, this.clearButton, this.removeButton].forEach((view) => {
+        [this.colorDot, this.defaultButton, this.clearButton, this.permissionsButton, this.removeButton].forEach((view) => {
             if (view) this.releaseChild(view);
         });
         this.colorDot = undefined;
         this.defaultButton = undefined;
         this.clearButton = undefined;
+        this.permissionsButton = undefined;
         this.removeButton = undefined;
         this.header.replaceChildren();
 
@@ -160,6 +174,13 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
         }));
         this.header.append(this.clearButton.root);
         this.clearButton.mount();
+        const permissionsButton: ButtonView = this.child(new ButtonView({
+            name: "browser-profile-permissions", variant: "ghost", size: "sm", background: "light",
+            onClick: (): void => { void this.openPermissionsMenu(permissionsButton.root); }, children: "site permissions",
+        }));
+        this.permissionsButton = permissionsButton;
+        this.header.append(permissionsButton.root);
+        permissionsButton.mount();
         if (props.name) {
             this.removeButton = this.child(new IconButtonView({
                 size: "sm", icon: "close", title: "Remove profile", onClick: () => void props.model.handleRemoveProfile(props.name),
@@ -189,6 +210,25 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
             items,
             onClose: () => { this.menuHandle = undefined; },
         });
+    }
+
+    private async openPermissionsMenu(anchor: Element): Promise<void> {
+        const decisions = await this.props.model.getPermissionDecisions(this.props.name);
+        if (this.isDisposed) return;
+        const items: MenuItem[] = decisions.length
+            ? [
+                { label: "Revoke all site permissions", startGroup: true, onClick: () => void this.props.model.clearPermissionDecisions(this.props.name) },
+                ...groupPermissionDecisions(decisions).map(([origin, entries]) => ({
+                    label: origin,
+                    items: entries.map((entry) => ({
+                        label: `${entry.permission}: ${entry.decision}`,
+                        onClick: (): void => { void this.props.model.removePermissionDecision(this.props.name, entry); },
+                    })),
+                })),
+            ]
+            : [{ label: "No saved site permissions", disabled: true }];
+        this.menuHandle?.dispose();
+        this.menuHandle = openMenu(anchor, { items, onClose: () => { this.menuHandle = undefined; } });
     }
 
     private createTagColorIcon(tagColor: string): HTMLSpanElement {

@@ -16,6 +16,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Windows single sign-on for Microsoft work and school accounts:** opt in under **Settings → Browser Profiles** on Windows to use the device's sign-in proof on supported Microsoft sign-in pages. It is off by default and does not apply to Incognito or Tor. See the [Browser editor guide](./editors/browser.md#windows-single-sign-on).
 
+- **Browser site permissions:** pages can ask before using sensitive capabilities. Answer with
+  **Allow** or **Block**, review or reset choices from the **Site permissions** button in the URL
+  bar, and manage saved decisions under **Settings → Browser → Browser Profiles**. Incognito and
+  Tor choices remain in memory for the private session. See the [Browser editor guide](./editors/browser.md#site-permissions-and-prompts).
+
 - **F12 opens Persephone's DevTools** — Press `F12` when no browser page claims the shortcut to
   open DevTools for Persephone. An active browser page keeps `F12` for its own page DevTools.
   See [Keyboard Shortcuts](./shortcuts.md).

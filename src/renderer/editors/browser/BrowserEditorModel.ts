@@ -1,6 +1,7 @@
 import { IEditorState } from "../../../shared/types";
 import { TorStatus } from "../../../ipc/tor-ipc";
 import { getDefaultEditorModelState } from "../base";
+import type { BrowserPermissionPromptData } from "../../../ipc/browser-ipc";
 
 // ============================================================================
 // Search Engines
@@ -220,6 +221,8 @@ export interface BrowserEditorState extends IEditorState {
 
     /** Number of popups/tabs blocked by rate limiting since last dismiss. */
     blockedPopupCount: number;
+    /** Permission prompts queued for internal browser tabs. */
+    permissionPrompts: Array<BrowserPermissionPromptData & { internalTabId: string }>;
 
     /** Whether the find-in-page bar is visible. */
     findBarVisible: boolean;
@@ -303,6 +306,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         isBookmarked: false,
         bookmarksReady: false,
         blockedPopupCount: 0,
+        permissionPrompts: [],
         findBarVisible: false,
         findText: "",
         findActiveMatch: 0,

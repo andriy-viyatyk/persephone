@@ -30,8 +30,11 @@ import { boardTrustService } from "./board-trust-service";
 import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
+import { initPermissionPolicy } from "./permission-policy-service";
 
 export function setupMainProcess() {
+    // Permission handlers must be present before any renderer or webview session is created.
+    initPermissionPolicy();
     // Load the main-owned board trust state before restored renderer windows can request services.
     void boardTrustService.init().catch((error: unknown) => {
         console.error(`Board trust initialization failed: ${errMessage(error)}`);

@@ -4,7 +4,7 @@ import { ui } from "../../../api/ui";
 import { TComponentModel } from "../../../core/state/model";
 import { getPartitionString } from "../../browser/BrowserEditorModel";
 import { api } from "../../../../ipc/renderer/api";
-import { BrowserChannel } from "../../../../ipc/browser-ipc";
+import { BrowserChannel, type BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { TAG_COLORS } from "../../../theme/palette-colors";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 
@@ -71,9 +71,21 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         );
         if (result !== "Delete") return;
         await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(name, false));
+        await ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name);
         settings.set("browser-profiles", this.props.profiles.filter((profile) => profile.name !== name));
         if (this.props.defaultProfile === name) settings.set("browser-default-profile", "");
     };
+
+    getPermissionDecisions = (name: string): Promise<BrowserPermissionDecisionEntry[]> =>
+        ipcRenderer.invoke(BrowserChannel.listPermissionDecisions, name || "default");
+
+    removePermissionDecision = (name: string, entry: BrowserPermissionDecisionEntry): Promise<boolean> =>
+        ipcRenderer.invoke(BrowserChannel.removePermissionDecision, {
+            profileName: name || "default", origin: entry.origin, permission: entry.permission,
+        });
+
+    clearPermissionDecisions = (name: string): Promise<boolean> =>
+        ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name || "default");
 
     handleClearData = async (profileName: string) => {
         const label = profileName || "Default";

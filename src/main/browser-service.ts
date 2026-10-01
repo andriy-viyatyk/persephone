@@ -10,11 +10,14 @@
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per persephone page tab.
  */
-import { app, BrowserWindow, dialog, ipcMain, IpcMainEvent, session, webContents, WebContents, WebFrameMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, IpcMainEvent, IpcMainInvokeEvent, session, webContents, WebContents, WebFrameMain } from "electron";
 import * as cheerio from "cheerio";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
+    BrowserSitePermissionRegistrationRequest,
+    SetBrowserSitePermissionRequest,
+    BrowserSitePermissions,
     BrowserEvent,
 } from "../ipc/browser-ipc";
 import { EventEndpoint } from "../ipc/api-types";
@@ -22,6 +25,8 @@ import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
+import { appPartition, fileAccessPersistPartition } from "./constants";
+import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
 const CHROMIUM_NAVIGATION_PROTOCOLS = [
@@ -285,6 +290,13 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         }
     });
 
+    on("did-start-navigation", (_e: Electron.Event, url: string, _inPlace: boolean, isMainFrame: boolean) => {
+        if (isMainFrame) {
+            settlePermissionRequestsForWebContents(wc);
+            sendEvent(sender, tabId, internalTabId, "did-start-navigation", { url, isMainFrame });
+        }
+    });
+
     on("page-title-updated", (_e: Electron.Event, title: string) => {
         sendEvent(sender, tabId, internalTabId, "page-title-updated", {
             title,
@@ -520,6 +532,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 
     // Clean up if the webview's webContents is destroyed
     on("destroyed", () => {
+        settlePermissionRequestsForWebContents(wc);
         unregisterWebview(key);
     });
 
@@ -557,6 +570,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}) {
     const reg = registrations.get(key);
     if (!reg) return;
+    settlePermissionRequestsForWebContents(reg.webContents);
 
     // Remove all event listeners
     for (const { event: eventName, handler } of reg.listeners) {
@@ -725,6 +739,87 @@ export function initBrowserHandlers(): void {
     // rather than waiting for webview registration.
     app.on("session-created", (ses) => {
         cleanUserAgent(ses);
+    });
+
+    setPermissionPromptHandler((contents, permissionRequest) => {
+        for (const registration of registrations.values()) {
+            if (registration.webContents !== contents || contents.isDestroyed()) continue;
+            sendEvent(registration.senderWebContents, registration.tabId, registration.internalTabId,
+                "permission-request", { permissionRequest });
+            return true;
+        }
+        return false;
+    });
+
+    const isAppRenderer = (event: IpcMainEvent | IpcMainInvokeEvent): boolean =>
+        event.sender.session === session.fromPartition(appPartition)
+        && !event.sender.isDestroyed()
+        && event.sender.mainFrame === event.senderFrame
+        && !!BrowserWindow.fromWebContents(event.sender);
+
+    const ownedRegistration = (event: IpcMainInvokeEvent, key: unknown): RegisteredWebview | undefined => {
+        if (!isAppRenderer(event) || typeof key !== "string" || key.length > 240) return undefined;
+        const registration = registrations.get(key);
+        if (!registration || registration.senderWebContents !== event.sender
+            || registration.webContents.isDestroyed()) return undefined;
+        return registration;
+    };
+    const isBrowserPermissionSession = (registration: RegisteredWebview): boolean =>
+        registration.webContents.session !== session.fromPartition(appPartition)
+        && registration.webContents.session !== session.fromPartition(fileAccessPersistPartition);
+
+    ipcMain.handle(BrowserChannel.getSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): BrowserSitePermissions => {
+        const empty: BrowserSitePermissions = { origin: "", entries: [] };
+        const registration = ownedRegistration(event, request?.registrationKey);
+        if (!registration || !isBrowserPermissionSession(registration)) return empty;
+        const origin = registration.webContents.getURL();
+        try {
+            const parsed = new URL(origin);
+            if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return empty;
+            return { origin: parsed.origin, entries: getSitePermissionEntries(registration.webContents.session, origin) };
+        } catch { return empty; }
+    });
+
+    ipcMain.handle(BrowserChannel.setSitePermission, (event, request: SetBrowserSitePermissionRequest): boolean => {
+        if (!request || typeof request !== "object") return false;
+        const registration = ownedRegistration(event, request.registrationKey);
+        if (!registration || !isBrowserPermissionSession(registration) || typeof request.key !== "string"
+            || (request.decision !== "allow" && request.decision !== "block")) return false;
+        return setSitePermissionDecision(registration.webContents.session, registration.webContents.getURL(), request.key, request.decision);
+    });
+
+    ipcMain.handle(BrowserChannel.resetSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): boolean => {
+        const registration = ownedRegistration(event, request?.registrationKey);
+        if (!registration || !isBrowserPermissionSession(registration)) return false;
+        return resetSitePermissionDecisions(registration.webContents.session, registration.webContents.getURL());
+    });
+
+    ipcMain.handle(BrowserChannel.resolvePermissionRequest, (event, request: { requestId: string; decision: "allow" | "block" }) => {
+        if (!isAppRenderer(event) || !request || typeof request.requestId !== "string"
+            || (request.decision !== "allow" && request.decision !== "block")) return false;
+        return resolvePermissionRequest(request.requestId, request.decision);
+    });
+
+    const validProfileName = (name: unknown): name is string => typeof name === "string"
+        && name.trim().length > 0 && name.length <= 80 && !/[\\/]/.test(name)
+        && !Array.from(name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
+    ipcMain.handle(BrowserChannel.listPermissionDecisions, (event, profileName: string) => {
+        if (!isAppRenderer(event) || !validProfileName(profileName)) return [];
+        if (profileName !== "default" && !hasSavedProfilePermissionDecisions(profileName)) return [];
+        return listProfilePermissionDecisions(profileName);
+    });
+    ipcMain.handle(BrowserChannel.removePermissionDecision, (event, request: { profileName: string; origin: string; permission: string }) => {
+        if (!isAppRenderer(event) || !request || !validProfileName(request.profileName)
+            || typeof request.origin !== "string" || typeof request.permission !== "string") return false;
+        if (!hasSavedProfilePermissionDecisions(request.profileName)) return false;
+        removeProfilePermissionDecision(request.profileName, request.origin, request.permission);
+        return true;
+    });
+    ipcMain.handle(BrowserChannel.clearPermissionDecisions, (event, profileName: string) => {
+        if (!isAppRenderer(event) || !validProfileName(profileName)) return false;
+        if (!hasSavedProfilePermissionDecisions(profileName)) return false;
+        clearProfilePermissionDecisions(profileName);
+        return true;
     });
 
     ipcMain.on(

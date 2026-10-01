@@ -13,6 +13,7 @@ import { GlobeIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
+import type { BrowserSitePermissionKey, BrowserSitePermissions } from "../../../ipc/browser-ipc";
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { errMessage } from "../../../shared/utils";
@@ -112,6 +113,12 @@ export class BrowserEditor extends EditorModel<
     /** Put the profile session on its configured route before the first navigation. */
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
+    getSitePermissions = (registrationKey: string): Promise<BrowserSitePermissions> =>
+        ipcRenderer.invoke(BrowserChannel.getSitePermissions, { registrationKey });
+    setSitePermission = (registrationKey: string, key: BrowserSitePermissionKey, decision: "allow" | "block"): Promise<boolean> =>
+        ipcRenderer.invoke(BrowserChannel.setSitePermission, { registrationKey, key, decision });
+    resetSitePermissions = (registrationKey: string): Promise<boolean> =>
+        ipcRenderer.invoke(BrowserChannel.resetSitePermissions, { registrationKey });
     /** Retry a profile network that could not be applied; its webviews stay unmounted until then. */
     retryProfileNetwork = async (): Promise<void> => {
         try {
@@ -620,6 +627,13 @@ export class BrowserEditor extends EditorModel<
         globalPopupRateLimiter.allow("tabs");
         ipcRenderer.send(BrowserChannel.allowPopups);
         this.state.update((s) => { s.blockedPopupCount = 0; });
+    };
+
+    resolvePermissionPrompt = (requestId: string, decision: "allow" | "block") => {
+        this.state.update((state) => {
+            state.permissionPrompts = state.permissionPrompts.filter((prompt) => prompt.requestId !== requestId);
+        });
+        this.webview.resolvePermissionRequest(requestId, decision);
     };
 
 }
