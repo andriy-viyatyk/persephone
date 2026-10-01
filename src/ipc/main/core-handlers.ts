@@ -364,6 +364,16 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         return image.toPNG();
     };
 
+    setHtmlPreview = async (event: IpcMainEvent, id: string, html: string): Promise<void> => {
+        const { setHtmlPreview } = await import("../../main/html-preview-protocol");
+        setHtmlPreview(event.sender, id, html);
+    };
+
+    clearHtmlPreview = async (_event: IpcMainEvent, id: string): Promise<void> => {
+        const { clearHtmlPreview } = await import("../../main/html-preview-protocol");
+        clearHtmlPreview(id);
+    };
+
 
 }
 
@@ -439,4 +449,6 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.openTerminal, controllerInstance.openTerminal);
     bindEndpoint(Endpoint.detectTerminal, controllerInstance.detectTerminal);
     bindEndpoint(Endpoint.capturePageRegion, controllerInstance.capturePageRegion);
+    bindEndpoint(Endpoint.setHtmlPreview, controllerInstance.setHtmlPreview);
+    bindEndpoint(Endpoint.clearHtmlPreview, controllerInstance.clearHtmlPreview);
 }

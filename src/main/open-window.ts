@@ -51,6 +51,11 @@ export class OpenWindow {
                 partition: appPartition,
                 nodeIntegration: true,
                 contextIsolation: false,
+                // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
+                // Chromium fetch — favicon cache, Image editor, the in-app MCP client (which must send no Origin:
+                // the MCP servers refuse browser requests, US-1588), and user scripts' global fetch — and the dev
+                // origin (http://localhost) loads file:// media. It grants nothing an attacker in this window lacks:
+                // nodeIntegration already bypasses SOP. Guest content stays isolated (sandboxed preview, board://).
                 webSecurity: false,
                 webviewTag: true,
                 plugins: true,

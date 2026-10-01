@@ -105,6 +105,12 @@ export function setupMainProcess() {
                 supportFetchAPI: true,
             },
         },
+        {
+            // Native HTML preview documents (US-1590). A srcdoc frame would inherit the main window's
+            // strict CSP; this scheme serves each preview with its own (the pre-US-1590 policy).
+            scheme: "html-preview",
+            privileges: { standard: true, secure: true },
+        },
     ]);
 
     controller.init();
@@ -159,6 +165,8 @@ export function setupMainProcess() {
         // US-770) — boards load board://<host> iframes in this session, routed by host.
         const { initBoardProtocol } = await import("./board-protocol-service");
         initBoardProtocol(appPartition);
+        const { initHtmlPreviewProtocol } = await import("./html-preview-protocol");
+        initHtmlPreviewProtocol(appPartition);
         openWindows.restoreState();
         setupTray();
         startPipeServer();

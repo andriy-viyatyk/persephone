@@ -443,6 +443,14 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens);
     };
 
+    setHtmlPreview = async (id: string, html: string) => {
+        return executeOnce<void>(Endpoint.setHtmlPreview, id, html);
+    };
+
+    clearHtmlPreview = async (id: string) => {
+        return executeOnce<void>(Endpoint.clearHtmlPreview, id);
+    };
+
     appendBoardLog = async (boardRoot: string, level: BoardLogLevel, message: string) => {
         return executeOnce<void>(Endpoint.appendBoardLog, boardRoot, level, message);
     };

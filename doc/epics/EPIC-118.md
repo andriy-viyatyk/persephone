@@ -169,7 +169,7 @@ in either order. Task documents are written when each task starts.
 | [US-1587](../tasks/US-1587-markdown-html-sanitize/README.md) | Sanitize Markdown HTML; Mermaid strict mode | F1 | Critical | In Progress |
 | [US-1588](../tasks/US-1588-mcp-rebinding-origin/README.md) | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | In Progress |
 | [US-1589](../tasks/US-1589-page-internal-scheme-gate/README.md) | Web pages cannot open internal Persephone schemes | F3 | Medium | Planned |
-| US-1590 | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
+| [US-1590](../tasks/US-1590-main-window-csp/README.md) | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
 | US-1591 | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
 | US-1592 | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
 | US-1593 | Least-privilege viewer boards (no `execute()`, stricter CSP) | F7 | Medium | Planned |
@@ -230,6 +230,7 @@ in either order. Task documents are written when each task starts.
   connection) use the renderer's Chromium `fetch`, which sends no `Origin` only because the main
   window has `webSecurity: false`. US-1588 refuses any `Origin`, so if US-1590 removes
   `webSecurity: false` it must also give `McpConnectionManager` a Node-based `fetch`.
+  *Resolved by US-1590:* `webSecurity: false` stays, with its reasons documented at the setting.
 - **Mneme is already rebinding-safe.** rmcp 1.7's default config restricts `Host` to loopback
   names, so for Mneme US-1588 only adds the `Origin` check.
 - **Cookie-encryption fuse** may invalidate existing browser profile cookies once; check before

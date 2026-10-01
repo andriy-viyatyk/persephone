@@ -115,6 +115,8 @@ export enum Endpoint {
     gitRemoteUrl = "gitRemoteUrl",
     capturePageRegion = "capturePageRegion",
     registerBoard = "registerBoard",
+    setHtmlPreview = "setHtmlPreview",
+    clearHtmlPreview = "clearHtmlPreview",
     appendBoardLog = "appendBoardLog",
     getBoardLogPath = "getBoardLogPath",
     unregisterBoard = "unregisterBoard",
@@ -281,6 +283,8 @@ export type Api = {
     [Endpoint.gitRemoteUrl]: (dir: string, remote: string) => Promise<string>;
     [Endpoint.capturePageRegion]: (rect: CaptureRect) => Promise<Uint8Array>;
     [Endpoint.registerBoard]: (boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>) => Promise<string>;
+    [Endpoint.setHtmlPreview]: (id: string, html: string) => Promise<void>;
+    [Endpoint.clearHtmlPreview]: (id: string) => Promise<void>;
     [Endpoint.appendBoardLog]: (boardRoot: string, level: BoardLogLevel, message: string) => Promise<void>;
     [Endpoint.getBoardLogPath]: (boardRoot: string) => Promise<string>;
     [Endpoint.unregisterBoard]: (host: string) => Promise<void>;
