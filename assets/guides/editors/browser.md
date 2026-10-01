@@ -149,6 +149,8 @@ button submits the field, and its context menu offers **Paste and Go**. `Ctrl+L`
 Focusing it shows current-tab history; typing filters history, and **Clear** removes the visible
 filtered entries. The search-engine label is available on blank and search-result pages and offers
 Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, and Gibiru.
+The engine you pick is preselected in new browser pages. Incognito and Tor pages remember their
+own choice, separate from profile pages.
 
 ## Site permissions and prompts
 

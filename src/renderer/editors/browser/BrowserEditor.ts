@@ -449,9 +449,22 @@ export class BrowserEditor extends EditorModel<
         return SEARCH_ENGINES.find((e) => e.id === id) || SEARCH_ENGINES[0];
     }
 
-    /** Set the search engine by ID. */
+    /** The setting remembering the last pick: one for profile pages, one shared by Incognito and Tor. */
+    private get searchEngineSettingKey(): "browser-search-engine" | "browser-private-search-engine" {
+        const s = this.state.get();
+        return s.isIncognito || s.isTor ? "browser-private-search-engine" : "browser-search-engine";
+    }
+
+    /** Preselect the engine last picked in a page of the same mode. Call on a new page only. */
+    applyRememberedSearchEngine(): void {
+        const engineId = settings.get(this.searchEngineSettingKey);
+        this.state.update((s) => { s.searchEngineId = engineId; });
+    }
+
+    /** Set the search engine by ID, and remember it for new pages of the same mode. */
     setSearchEngine = (engineId: string) => {
         this.state.update((s) => { s.searchEngineId = engineId; });
+        settings.set(this.searchEngineSettingKey, engineId);
     };
 
     /** Switch the current search query to a different engine. Also updates the tab's homeUrl. */

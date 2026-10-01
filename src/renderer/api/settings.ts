@@ -36,6 +36,8 @@ export type AppSettingsKey =
     | "browser-incognito-network"
     | "browser-incognito-bookmarks-file"
     | "browser-windows-sso"
+    | "browser-search-engine"
+    | "browser-private-search-engine"
     | "link-open-behavior"
     | "mcp.enabled"
     | "mcp.port"
@@ -114,6 +116,8 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-incognito-network": "Network route for Incognito browser pages — same shape as \"browser-default-network\".\nEach Incognito page has its own in-memory session; this route applies to every one of them.",
     "browser-incognito-bookmarks-file": "Absolute path to the .link.json bookmarks file used in incognito mode.\nKept separate so incognito bookmarks never mix with the normal profile's.",
     "browser-windows-sso": "Allow Windows single sign-on for Microsoft, work, and school accounts (Windows only).\nOn an Entra-joined device, browser profile pages send Windows' device sign-in proof to\nlogin.microsoftonline.com and login.live.com, as Edge and Chrome do, so company sign-in rules\nthat require a registered device accept the sign-in. Never applies to Incognito or Tor pages.",
+    "browser-search-engine": "Search engine preselected in new profile browser pages (the default and named profiles).\nMaintained automatically: the last engine picked in the URL bar of such a page.\nOne of: google, bing, duckduckgo, yahoo, ecosia, brave, startpage, qwant, baidu, perplexity, gibiru.\nDefault: google.",
+    "browser-private-search-engine": "Search engine preselected in new Incognito and Tor browser pages — same values as\n\"browser-search-engine\", remembered separately from it. Default: google.",
     "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
     "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
     "mcp.port": "Port for the MCP HTTP server.\nNumber. Default: 7865. Changing this alone does NOT move a running server —\nset \"mcp.enabled\": false, save, then set it back to true.",
@@ -155,6 +159,8 @@ const defaultAppSettingsState = {
         "browser-incognito-network": { kind: "direct" } as BrowserNetwork,
         "browser-incognito-bookmarks-file": "",
         "browser-windows-sso": false,
+        "browser-search-engine": "google",
+        "browser-private-search-engine": "google",
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,
         "mcp.port": 7865,

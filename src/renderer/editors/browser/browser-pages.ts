@@ -58,6 +58,8 @@ export async function showBrowserPage(
             s.title = browserPageTitle(s, s.pageTitle);
         });
     }
+    // After the mode flags: Incognito and Tor pages remember their own engine.
+    editor.applyRememberedSearchEngine();
     const openUrl = options?.url;
     if (openUrl) {
         editor.state.update((s) => {

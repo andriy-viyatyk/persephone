@@ -31,6 +31,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   open DevTools for Persephone. An active browser page keeps `F12` for its own page DevTools.
   See [Keyboard Shortcuts](./shortcuts.md).
 
+### Improvements
+
+- **The browser remembers your search engine:** the engine picked in the URL bar is preselected
+  in new browser pages, with one choice for profile pages and another for Incognito and Tor pages.
+  See the [Browser editor guide](./editors/browser.md#url-bar).
+
 ### Bug Fixes
 
 - **Cloudflare "Verify you are human" checks pass in browser pages:** the checkbox no longer
