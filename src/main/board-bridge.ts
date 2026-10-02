@@ -75,6 +75,8 @@ import {
     validateBoardStorageValue,
 } from "./board-storage";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
+import { boardTrustService } from "./board-trust-service";
+import { boardPermissionError } from "../shared/board-manifest-utils";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -293,6 +295,9 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
 
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */
 async function runRpc(entry: BoardPortEntry, method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
+    if (method === "serviceRequest" || method === "serviceStatus" || method === "serviceStop") {
+        if (!(await boardTrustService.allows(entry.root, "service"))) throw boardPermissionError("service");
+    }
     const handler = boardRpcHandlers[method];
     if (!handler) throw new Error(`Unknown board RPC method: ${method}`);
     return handler(entry, args);
@@ -337,7 +342,7 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
     if (method === "openRawLink") {
         const href = args[0] as string;
         if (!href) return;
-        win?.webContents.send(EventEndpoint.eBoardOpenRawLink, { href, editor: args[1] as string | undefined });
+        win?.webContents.send(EventEndpoint.eBoardOpenRawLink, { href, editor: args[1] as string | undefined, boardRoot: entry.root });
         win?.focus();
         return;
     }
@@ -353,11 +358,15 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
     }
 }
 
-type BoardRunnerHandler = (entry: BoardPortEntry, boardId: string, msg: unknown) => void;
+type BoardRunnerHandler = (entry: BoardPortEntry, boardId: string, msg: unknown) => Promise<void>;
 
 /** Outbound runner messages are exhaustive over the board side of RunnerChannel. */
 const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandler> = {
-    [RunnerChannel.start](entry, boardId, raw) {
+    async [RunnerChannel.start](entry, boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) {
+            portSink(entry, boardId).send(RunnerChannel.error, { jobId: (raw as RunnerStartMsg).jobId, message: boardPermissionError("execute").message });
+            return;
+        }
         const msg = raw as RunnerStartMsg;
         const opts = { ...(entry.root ? { cwd: entry.root } : {}), ...msg.opts };
         if (msg.node) {
@@ -371,14 +380,17 @@ const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandl
         }
         startJobTo(portSink(entry, boardId), { ...msg, opts });
     },
-    [RunnerChannel.stdin](_entry, _boardId, raw) {
+    async [RunnerChannel.stdin](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         const msg = raw as RunnerStdinMsg;
         writeJobStdin(msg.jobId, msg.data);
     },
-    [RunnerChannel.endStdin](_entry, _boardId, raw) {
+    async [RunnerChannel.endStdin](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         endJobStdin((raw as { jobId: string }).jobId);
     },
-    [RunnerChannel.kill](_entry, _boardId, raw) {
+    async [RunnerChannel.kill](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         const msg = raw as RunnerKillMsg;
         killJob(msg.jobId, msg.signal);
     },
@@ -402,7 +414,9 @@ function handleBoardMessage(boardId: string, data: BoardToMain): void {
     if (data.kind === "runner") {
         // A malformed port message must be ignored like the former switch default.
         const handler = boardRunnerHandlers[data.channel];
-        if (handler) handler(entry, boardId, data.msg);
+        if (handler) void handler(entry, boardId, data.msg).catch((error: unknown) => {
+            portSink(entry, boardId).send(RunnerChannel.error, { jobId: (data.msg as { jobId?: string }).jobId, message: errMessage(error) });
+        });
         return;
     }
     if (data.kind === "fire") {

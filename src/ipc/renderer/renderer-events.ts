@@ -83,7 +83,7 @@ class RendererEvents implements EventApi {
         EventEndpoint.eUpdateAvailable
     );
 
-    [EventEndpoint.eOpenUrl] = new RendererEventObject<string>(
+    [EventEndpoint.eOpenUrl] = new RendererEventObject<{ url: string; boardRoot?: string; unattributedPopup?: boolean }>(
         EventEndpoint.eOpenUrl
     );
 
@@ -144,7 +144,7 @@ class RendererEvents implements EventApi {
         type?: "info" | "success" | "warning" | "error";
     }>(EventEndpoint.eBoardNotify);
 
-    [EventEndpoint.eBoardOpenRawLink] = new RendererEventObject<{ href: string; editor?: string }>(
+    [EventEndpoint.eBoardOpenRawLink] = new RendererEventObject<{ href: string; editor?: string; boardRoot: string }>(
         EventEndpoint.eBoardOpenRawLink
     );
 

@@ -63,7 +63,7 @@ export interface BoardPropsInfo {
     repository?: string;
     /** `version` from the board's own manifest (may lag the registry after a rollback). */
     manifestVersion?: string;
-    permissions?: string[];
+    permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
     standalone?: boolean;
     singleInstance?: boolean;
     minAppVersion?: string;

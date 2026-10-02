@@ -46,6 +46,10 @@ export interface ILinkNav {
     pipeDescriptor?: IPipeDescriptor;
     /** ID of the source editor/model that initiated this link opening. */
     sourceId?: string;
+    /** Main-attested board root carried to final external launch policy. */
+    boardRoot?: string;
+    /** Popup had an empty/non-board referrer and requires confirmation before OS launch. */
+    unattributedPopup?: boolean;
     /** The selected tag when opened from a Tags panel (`sourceId === "link-tag"`). */
     selectedTag?: string;
     /** Explorer root that scopes a board's in-board boards switcher. */

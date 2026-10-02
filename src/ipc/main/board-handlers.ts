@@ -33,6 +33,8 @@ export type BoardEndpoint =
     | Endpoint.cancelBoardDownload
     | Endpoint.setBoardTrust
     | Endpoint.getBoardTrustPaths
+    | Endpoint.getBoardPermissionGrants
+    | Endpoint.getBoardMcpEndpoint
     | Endpoint.setDisabledBundledBoards
     | Endpoint.getModuleServiceStatuses
     | Endpoint.requestModuleServicePort
@@ -111,6 +113,18 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
+    });
+    bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
+        const grants = await (await import("../../main/board-trust-service")).boardTrustService.getPermissionGrants();
+        return grants.map(({ root, permissions, manifestChanged }) => ({
+            boardRoot: root,
+            permissions,
+            ...(manifestChanged ? { manifestChanged: true } : {}),
+            canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
+        }));
+    });
+    bindEndpoint(Endpoint.getBoardMcpEndpoint, async (): Promise<string> => {
+        return (await import("../../main/mcp-http-server")).getMcpUrl();
     });
     bindEndpoint(Endpoint.setDisabledBundledBoards, async (_event, ids: string[]): Promise<void> => {
         await (await import("../../main/board-trust-service")).boardTrustService.setDisabledBundledBoards(ids);

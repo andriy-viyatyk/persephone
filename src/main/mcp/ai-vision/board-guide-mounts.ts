@@ -2,7 +2,7 @@
  * Resolves the board corpora mounted into the MAIN-process guide index (US-1406 / EPIC-100 D7),
  * the one `guides.*` over MCP is served from.
  *
- * Main owns the plain line-delimited trust file at `<userData>/data/trustedBoards.txt`, so this
+ * Main owns the grant record at `<userData>/data/trustedBoards.json`, so this
  * process reads it directly rather than round-tripping to a window that may not be open. Only
  * TRUSTED boards are mounted — an untrusted board contributes no documentation, exactly as it
  * contributes no editor association.
@@ -20,7 +20,7 @@ import {
 } from "../../../shared/guides/mounted-source";
 import { MainGuideSource } from "./guide-source";
 
-const TRUSTED_BOARDS_FILE = "trustedBoards.txt";
+const TRUSTED_BOARDS_FILE = "trustedBoards.json";
 const BOARD_MANIFEST_FILE = "board-manifest.json";
 
 /** How long a resolved mount list is reused. Bounds how stale trust and manifest changes can be;
@@ -37,8 +37,11 @@ function comparisonKey(boardRoot: string): string {
 function readTrustedRoots(): readonly string[] {
     try {
         const file = path.join(getDataFolder(), TRUSTED_BOARDS_FILE);
-        const text = fs.readFileSync(file, "utf-8");
-        return text.split("\n").map(line => line.trim()).filter(Boolean);
+        const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf-8"));
+        if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as { boards?: unknown }).boards)) return [];
+        return (parsed as { boards: { root?: unknown }[] }).boards
+            .map((entry) => entry.root)
+            .filter((root): root is string => typeof root === "string");
     } catch {
         return [];
     }

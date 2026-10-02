@@ -6,6 +6,8 @@ import { UNBOUNDED_CALL_MAX_LENGTH } from "../../scripting/ai-vision/call-limits
 import { errMessage } from "../../../shared/utils";
 import type { McpParams, McpResponse } from "./types";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
+import { boardTrust } from "../board-trust";
+import { boardPermissionError } from "../../../shared/board-manifest-utils";
 
 /** Internal renderer command used only by the Board MessagePort call envelope. */
 export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
@@ -52,6 +54,9 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
 
     const context = new ScriptContext(contextEditor);
     try {
+        if (!(await boardTrust.allows(boardRoot, "appScripting"))) {
+            return { error: { code: -32603, message: boardPermissionError("appScripting").message } };
+        }
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,
             restricted: () => isBoardPermitted(boardRoot)

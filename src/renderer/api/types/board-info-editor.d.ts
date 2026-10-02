@@ -56,7 +56,7 @@ export interface IBoardInfoProperties {
     readonly author?: string;
     readonly repository?: string;
     readonly manifestVersion?: string;
-    readonly permissions?: readonly string[];
+    readonly permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
     readonly standalone?: boolean;
     readonly singleInstance?: boolean;
     readonly minAppVersion?: string;

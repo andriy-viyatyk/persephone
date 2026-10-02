@@ -20,6 +20,8 @@ import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
 const zlib = require("zlib") as typeof import("zlib");
+const dns = require("dns").promises as typeof import("dns/promises");
+const net = require("net") as typeof import("net");
 const { ipcRenderer } = require("electron") as typeof import("electron");
 
 /** Default HTTPS agent with keep-alive for connection reuse. */
@@ -42,7 +44,7 @@ const insecureHttpsAgent = new https.Agent({
 
 export function nodeFetch(
     url: string,
-    options?: IFetchOptions,
+    options?: IFetchOptions & { boardNetworkPolicy?: BoardNetworkPolicy },
 ): Promise<Response> {
     const method = options?.method ?? "GET";
     const headers = options?.headers ?? {};
@@ -57,7 +59,7 @@ export function nodeFetch(
         const route = lease?.route ?? (options?.proxy ? parseProxy(options.proxy) : undefined);
         try {
             const response = await doFetch(url, method, headers, body, timeout, maxRedirects,
-                rejectUnauthorized, options?.signal, route);
+                rejectUnauthorized, options?.signal, route, options?.boardNetworkPolicy);
             return lease ? releaseWithBody(response, lease.release, options?.signal) : response;
         } catch (error: unknown) {
             lease?.release();
@@ -70,6 +72,8 @@ interface TorRouteLease {
     route: ProxyRoute;
     release(): void;
 }
+
+export interface BoardNetworkPolicy { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string }
 
 async function acquireTorRoute(signal?: AbortSignal): Promise<TorRouteLease> {
     if (signal?.aborted) throw new Error("The HTTP request was aborted.");
@@ -146,10 +150,42 @@ function doFetch(
     rejectUnauthorized: boolean,
     signal?: AbortSignal,
     route?: ProxyRoute,
+    boardPolicy?: BoardNetworkPolicy,
 ): Promise<Response> {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
         const isHttps = urlObj.protocol === "https:";
+
+        const prepare = async (): Promise<{ address?: string; family?: number }> => {
+            if (!boardPolicy) return {};
+            if (boardPolicy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            const port = Number(urlObj.port || (isHttps ? 443 : 80));
+            const mcp = new URL(boardPolicy.mcpUrl);
+            const targetHost = urlObj.hostname.replace(/^\[|\]$/g, "");
+            const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
+            if (!boardPolicy.appScripting && targetHost.toLowerCase() === mcpHost.toLowerCase()
+                && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))) {
+                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+            }
+            const family = net.isIP(targetHost);
+            const addresses = family ? [{ address: targetHost, family }]
+                : await dns.lookup(targetHost, { all: true, verbatim: true });
+            if (!addresses.length) throw new Error(`DNS resolution returned no addresses for ${targetHost}.`);
+            const mcpFamily = net.isIP(mcpHost);
+            const mcpAddresses = mcpFamily ? [{ address: mcpHost, family: mcpFamily }]
+                : await dns.lookup(mcpHost, { all: true, verbatim: true })
+                    .catch((): { address: string; family: number }[] => []);
+            if (!boardPolicy.appScripting && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))
+                && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
+                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+            }
+            if (boardPolicy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address))) {
+                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            }
+            return route ? {} : { address: addresses[0].address, family: addresses[0].family };
+        };
+
+        void prepare().then((pinned) => {
 
         if (route && !isHttps && urlObj.protocol !== "http:") {
             reject(new TypeError(`Unsupported protocol: ${urlObj.protocol}`));
@@ -167,6 +203,7 @@ function doFetch(
             headers,
             agent,
             timeout,
+            ...(pinned.address ? { lookup: (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, pinned.address!, pinned.family!) } : {}),
         };
 
         const lib = isHttps ? https : http;
@@ -243,6 +280,7 @@ function doFetch(
                     rejectUnauthorized,
                     signal,
                     route,
+                    boardPolicy,
                 ).then(resolve, reject);
 
                 return;
@@ -411,5 +449,22 @@ function doFetch(
         } else {
             req.end();
         }
+        }).catch(reject);
     });
+}
+
+function isPrivateAddress(address: string): boolean {
+    const value = address.toLowerCase().split("%", 1)[0];
+    const family = net.isIP(value);
+    if (family === 4) {
+        const [a, b] = value.split(".").map(Number);
+        return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254)
+            || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+    }
+    if (family === 6) {
+        if (value.startsWith("::ffff:")) return isPrivateAddress(value.slice(7));
+        return value === "::" || value === "::1" || value.startsWith("fc") || value.startsWith("fd")
+            || /^fe[89ab]/.test(value);
+    }
+    return true;
 }

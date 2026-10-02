@@ -142,7 +142,11 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.author !== undefined ? { author: properties.author } : {}),
             ...(properties.repository !== undefined ? { repository: properties.repository } : {}),
             ...(properties.manifestVersion !== undefined ? { manifestVersion: properties.manifestVersion } : {}),
-            ...(properties.permissions !== undefined ? { permissions: [...properties.permissions] } : {}),
+            ...(properties.permissions !== undefined
+                ? { permissions: properties.permissions.kind === "legacy"
+                    ? { ...properties.permissions }
+                    : { kind: "flags" as const, flags: { ...properties.permissions.flags } } }
+                : {}),
             ...(properties.standalone !== undefined ? { standalone: properties.standalone } : {}),
             ...(properties.singleInstance !== undefined ? { singleInstance: properties.singleInstance } : {}),
             ...(properties.minAppVersion !== undefined ? { minAppVersion: properties.minAppVersion } : {}),

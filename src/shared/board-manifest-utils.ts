@@ -23,8 +23,59 @@ export function normalizeStringList(
     return values;
 }
 
-export function normalizePermissions(raw: unknown): string[] {
-    return normalizeStringList(raw, { map: (entry) => entry.trim() });
+export interface BoardPermissionFlags {
+    execute: boolean;
+    service: boolean;
+    fileSystem: false | "board" | "full";
+    openExternal: boolean;
+    appScripting: boolean;
+    network: false | "internet" | "full";
+    clipboardRead: boolean;
+    camera: boolean;
+    microphone: boolean;
+    geolocation: boolean;
+    notifications: boolean;
+}
+
+export type NormalizedBoardPermissions =
+    | { kind: "flags"; flags: BoardPermissionFlags }
+    | { kind: "legacy"; service: boolean };
+
+export function normalizePermissions(raw: unknown): NormalizedBoardPermissions {
+    if (Array.isArray(raw)) {
+        return { kind: "legacy", service: raw.some((entry) => typeof entry === "string" && entry.trim() === "service") };
+    }
+    if (!raw || typeof raw !== "object") return { kind: "legacy", service: false };
+
+    const source = raw as Record<string, unknown>;
+    const fileSystem = source.fileSystem;
+    const network = source.network;
+    return {
+        kind: "flags",
+        flags: {
+            execute: source.execute === true,
+            service: source.service === true,
+            fileSystem: fileSystem === "board" || fileSystem === "full" ? fileSystem : false,
+            openExternal: source.openExternal === true,
+            appScripting: source.appScripting === true,
+            network: network === "internet" || network === "full" ? network : false,
+            clipboardRead: source.clipboardRead === true,
+            camera: source.camera === true,
+            microphone: source.microphone === true,
+            geolocation: source.geolocation === true,
+            notifications: source.notifications === true,
+        },
+    };
+}
+
+export function boardPermissionAllows(permissions: NormalizedBoardPermissions, flag: keyof BoardPermissionFlags): boolean {
+    if (permissions.kind === "legacy") return flag !== "service" || permissions.service;
+    const value = permissions.flags[flag];
+    return value === true || value === "full" || value === "board" || value === "internet";
+}
+
+export function boardPermissionError(flag: string): Error {
+    return new Error(`permission-denied: "${flag}" is not enabled in board-manifest.json`);
 }
 
 export function normalizeBoardServicePath(raw: unknown): string | null {

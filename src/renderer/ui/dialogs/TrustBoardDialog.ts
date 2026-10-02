@@ -3,12 +3,13 @@ import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
 import { registerDialogView } from "./dialog-view-registry";
 import { TrustBoardDialogView } from "./TrustBoardDialogView";
+import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
 
 export const trustBoardDialogId = Symbol("trustBoardDialog");
 
 export interface TrustBoardDialogProps {
     boardPath: string; // absolute board-root path, for display
-    permissions: readonly string[];
+    permissions: NormalizedBoardPermissions;
     serviceDeclared: boolean;
     capabilities: readonly string[];
 }

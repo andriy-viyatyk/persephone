@@ -38,7 +38,7 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
         return "Trusting this board lets it run programs on your computer with your full user privileges — including reading and changing your files and using any signed-in command-line tools (cloud CLIs, git, etc.).";
     }
     get boardPath(): string { return dialogState<TrustBoardDialogProps>(this.entry).boardPath; }
-    get permissions(): readonly string[] {
+    get permissions(): TrustBoardDialogProps["permissions"] {
         return dialogState<TrustBoardDialogProps>(this.entry).permissions;
     }
     get serviceDeclared(): boolean {

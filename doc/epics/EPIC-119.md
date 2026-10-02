@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned (starts after EPIC-118)
+**Status:** Active
 **Created:** 2026-10-02
 **Completed:** —
 
@@ -30,8 +30,9 @@ turns that bug into a defaced viewer page instead (EPIC-118 finding F7, moved he
   `"permissions": { "execute": false, "fileSystem": "board", "openExternal": false, "camera": false }`.
   The old array form is still read.
 - **Existing boards keep working.** A manifest with no permissions object (or the old array) gets
-  full access and is labelled **Unrestricted** in the trust dialog and Board Info. Nothing breaks
-  on upgrade.
+  historical unrestricted access and is labelled **Unrestricted** in the trust dialog and Board
+  Info. The existing service rule remains: legacy services start only when the old array contains
+  `"service"`.
 - **Clear refusals.** A denied call rejects with
   `permission-denied: "execute" is not enabled in board-manifest.json`, so an agent can fix the
   manifest itself.
@@ -47,6 +48,33 @@ turns that bug into a defaced viewer page instead (EPIC-118 finding F7, moved he
   board's service refuses to start. So a board that adopts the object form also sets
   `minBridgeVersion` to the new bridge version. Old builds then show their existing "needs a newer
   Persephone" state instead of half-working.
+- **2026-10-02 (US-1593 review): trust records own grants.** Store each trusted root together with
+  the normalized permissions the user granted at trust time. Migrate each old path-list entry by
+  reading its current manifest once and recording that set as granted. Enforcement reads the
+  main-owned snapshot, never the live manifest; if the manifest changes, keep enforcing the stored
+  grant set (never their union) until US-1598 obtains re-trust. Renderer gates use the same snapshot
+  through IPC/cache. Bundled boards use their shipped manifest as the grant set.
+- **2026-10-02 (US-1593 review): legacy service behavior is preserved.** Missing permissions and
+  old arrays remain unrestricted for all flags except `service`; a legacy board may start its service
+  only when its old array contains `"service"`, matching current behavior.
+- **2026-10-02 (US-1593 review): network scope.** Add `network: false | "internet" | "full"`.
+  `"internet"` refuses loopback/private/link-local IPs after DNS resolution (including redirects);
+  `"full"` allows local/LAN targets. Always refuse Persephone's configured MCP endpoint unless
+  `appScripting` is granted. US-1598 describes `"full"` as “can reach services on this computer and
+  your local network”.
+- **2026-10-02 (US-1593 review): clipboard scope.** Add `clipboardRead: boolean` and gate browser
+  clipboard reads in US-1597. Clipboard writes remain allowed; write-only access cannot read user
+  data, though replacing clipboard contents creates a pastejacking risk.
+- **2026-10-02 (US-1593 review): external opening.** `openExternal` gates only the final launch
+  outside Persephone (`shell.openExternal` / `shell.openPath`). Opening links in an in-app browser tab
+  or new Persephone page stays allowed. Carry a trusted board-source marker through link events; a
+  denied fire-and-forget route is dropped and written to the board log. For popup attribution,
+  `setWindowOpenHandler` uses `details.referrer.url` when it is `board://<host>/…`; empty or other
+  referrers remain in-app but are unattributed, and their final OS launch requires user confirmation.
+- **2026-10-02 (US-1593 review): hosted content and `board://`.** Reading, saving, streaming, and
+  disclosing the user-opened hosted document is always allowed; `fileSystem` governs other paths.
+  Object-form manifests always confine `board://` to the board root regardless of `fileSystem`.
+  Legacy manifests keep current protocol traversal behavior until migration.
 - **Every board is migrated in this epic** — the catalog in `persephone-boards` (republished) and
   the user's own registered boards (US-1601) — so nothing the user runs stays "Unrestricted".
 
@@ -56,9 +84,11 @@ turns that bug into a defaced viewer page instead (EPIC-118 finding F7, moved he
 |---|---|
 | `execute` | `execute()`, `executeNode()` |
 | `service` | Board background service (already enforced) |
-| `fileSystem` | `false`, `"board"` (board folder + files the user picks), or `"full"` (any path) |
-| `openExternal` | Launching URLs and files through the shell |
-| `appScripting` | Persephone scripts, agent tools, opening or changing other pages |
+| `fileSystem` | `false`, `"board"` (other paths under the board folder + user-picked files), or `"full"` (any path); hosted document and object-form board root always work |
+| `openExternal` | Final URL/file launch outside Persephone (`shell.openExternal` / `shell.openPath`); internal pages remain allowed |
+| `appScripting` | `persephone.call`, Persephone scripts, agent tools, and renderer-local capabilities |
+| `network` | `false`, `"internet"` (public addresses only), or `"full"` (also local/LAN); own MCP endpoint still requires `appScripting` |
+| `clipboardRead` | Browser clipboard reads; clipboard writes remain allowed |
 | `camera`, `microphone`, `geolocation`, `notifications` | Device access for the board frame |
 
 ## Linked Tasks
@@ -67,7 +97,7 @@ Task documents are written when each task starts.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1593 | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Planned |
+| [US-1593](../tasks/US-1593-board-permission-model/README.md) | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Planned |
 | US-1596 | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Planned |
 | US-1597 | Device permissions for board frames (camera, microphone, geolocation, notifications) | Planned |
 | US-1598 | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Planned |
@@ -81,6 +111,14 @@ Task documents are written when each task starts.
   board bridge, board services in `module-service-supervisor.ts`) and assign each to a flag or mark
   it harmless. Define the schema in `src/shared/board-manifest-utils.ts` (`normalizePermissions`
   today returns a string list). Enforce in main, not in the board page.
+- **US-1593 follow-ups (from implementation, 2026-10-02):**
+  - **US-1596:** the `session-src` remote-content path (`src/main/session-src-protocol.ts`) does not
+    yet receive the board identity, so `network: "internet"` local-address refusal (and the MCP
+    endpoint rule) is not applied there. `network: false` is already refused before resolution.
+  - Known limit: with a proxy/Tor route the proxy resolves DNS, so the local-address check cannot be
+    pinned to the final address.
+  - **US-1598:** `parseTrustRecords` rejects the whole `trustedBoards.json` if one record is
+    malformed and falls back to the legacy `trustedBoards.txt`; skip bad records instead.
 - **US-1596:** "User-picked files" means paths returned by the board's own open/save dialogs in
   this session. Decide whether `"board"` includes the board's data folder.
 - **US-1597:** Board frames load `board://<host>` in the app session; `permission-policy-service.ts`

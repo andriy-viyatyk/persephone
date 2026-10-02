@@ -24,6 +24,7 @@ export class HttpProvider implements IProvider {
     private readonly headers: Record<string, string>;
     private readonly body: string | undefined;
     private readonly sessionHandle: string | undefined;
+    private readonly boardNetworkPolicy: import("../../api/node-fetch").BoardNetworkPolicy | undefined;
     private _cachedBuffer: Buffer | null = null;
     private _status: IPipeStageStatus | undefined;
     private readonly statusListeners = new Set<() => void>();
@@ -43,6 +44,7 @@ export class HttpProvider implements IProvider {
             headers?: Record<string, string>;
             body?: string;
             sessionHandle?: string;
+            boardNetworkPolicy?: import("../../api/node-fetch").BoardNetworkPolicy;
         },
     ) {
         this.url = url;
@@ -51,6 +53,7 @@ export class HttpProvider implements IProvider {
         this.headers = options?.headers ?? {};
         this.body = options?.body;
         this.sessionHandle = options?.sessionHandle;
+        this.boardNetworkPolicy = options?.boardNetworkPolicy;
 
         try {
             const parsed = new URL(url);
@@ -351,6 +354,7 @@ export class HttpProvider implements IProvider {
             headers,
             body: this.body,
             signal,
+            ...(this.boardNetworkPolicy ? { boardNetworkPolicy: this.boardNetworkPolicy } : {}),
         });
     }
 

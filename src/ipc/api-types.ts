@@ -138,6 +138,8 @@ export enum Endpoint {
     cancelBoardDownload = "cancelBoardDownload",
     setBoardTrust = "setBoardTrust",
     getBoardTrustPaths = "getBoardTrustPaths",
+    getBoardPermissionGrants = "getBoardPermissionGrants",
+    getBoardMcpEndpoint = "getBoardMcpEndpoint",
     setDisabledBundledBoards = "setDisabledBundledBoards",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
@@ -213,7 +215,7 @@ export type Api = {
     [Endpoint.showItemInFolder]: (path: string) => Promise<void>;
     [Endpoint.showFolder]: (path: string) => Promise<void>;
     /** Resolves to Electron's error string — empty when the shell accepted the path. */
-    [Endpoint.openPath]: (path: string) => Promise<string>;
+    [Endpoint.openPath]: (path: string, boardRoot?: string) => Promise<string>;
     [Endpoint.windowReady]: () => Promise<void>;
     [Endpoint.getStartupInputs]: () => Promise<LaunchInput[]>;
     [Endpoint.getWindowIndex]: () => Promise<number>;
@@ -317,6 +319,8 @@ export type Api = {
     [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean) => Promise<string[]>;
     /** Read the main-owned trusted path list. */
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
+    [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
+    [Endpoint.getBoardMcpEndpoint]: () => Promise<string>;
     /** Push the renderer's setting value used to filter bundled URL-mask sources. */
     [Endpoint.setDisabledBundledBoards]: (ids: string[]) => Promise<void>;
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
@@ -397,7 +401,7 @@ export type EventApi = {
     [EventEndpoint.eMovePageOut]: EventObject<string>;
     [EventEndpoint.eZoomChanged]: EventObject<number>;
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
-    [EventEndpoint.eOpenUrl]: EventObject<string>;
+    [EventEndpoint.eOpenUrl]: EventObject<{ url: string; boardRoot?: string; unattributedPopup?: boolean }>;
     [EventEndpoint.eOpenPipelineCandidate]: EventObject<string>;
     [EventEndpoint.eOpenClaimedBrowserDownload]: EventObject<{
         url: string;
@@ -423,7 +427,7 @@ export type EventApi = {
     // Board `persephone.openRawLink(href, { editor })` → host renderer (US-756 C6).
     // `editor` is an optional registered editor id; the open pipeline falls back to
     // the default editor when omitted/unmatched.
-    [EventEndpoint.eBoardOpenRawLink]: EventObject<{ href: string; editor?: string }>;
+    [EventEndpoint.eBoardOpenRawLink]: EventObject<{ href: string; editor?: string; boardRoot: string }>;
     // Published-boards catalog refresh (US-862): main broadcasts the new catalog when
     // it changes; the renderer catalog model updates reactively.
     [EventEndpoint.ePublishedBoardsUpdated]: EventObject<PublishedBoardsCatalog>;

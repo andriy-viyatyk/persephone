@@ -695,6 +695,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         tabId: string,
         generation: number,
         signal?: AbortSignal,
+        boardNetworkPolicy?: import("../../api/node-fetch").BoardNetworkPolicy,
     ): Promise<ContentResourceInfo> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
         // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
@@ -703,8 +704,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (!sessionHandle && this.sessionBoundSources.has(link)) {
             throw new Error("The private session for this source has expired. Open the link again from its page.");
         }
-        const pipe = await pipeFromLink(link, { sessionHandle });
+        const pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
         try {
+            if (pipe.toDescriptor().provider.type === "http" && boardNetworkPolicy?.network === false) {
+                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            }
             const stat = await pipe.stat({ signal });
             if (signal?.aborted) throw new Error("The content resource request was cancelled.");
             if (!stat.exists || stat.size === undefined || !Number.isFinite(stat.size) || stat.size < 0) {

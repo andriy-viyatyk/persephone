@@ -398,9 +398,13 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             }
             metadata.append(this.infoRow("Folder editor", masks));
         }
-        if ((info.permissions?.length ?? 0) > 0) {
+        if (info.permissions) {
             const permissions = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
-            for (const permission of info.permissions ?? []) permissions.append(this.maskChip(permission));
+            const labels = info.permissions.kind === "legacy"
+                ? ["Unrestricted", ...(info.permissions.service ? ["service"] : [])]
+                : Object.entries(info.permissions.flags).filter(([, value]) => value !== false)
+                    .map(([key, value]) => `${key}${value === true ? "" : `: ${value}`}`);
+            for (const permission of labels) permissions.append(this.maskChip(permission));
             metadata.append(this.infoRow("Permissions", permissions));
         }
         if ((info.contentProviders?.length ?? 0) > 0) {

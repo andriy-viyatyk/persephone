@@ -10,6 +10,7 @@ import {
     normalizeBoardServicePath,
     normalizeBrowserUrlMasks,
     normalizePermissions,
+    type NormalizedBoardPermissions,
 } from "../shared/board-manifest-utils";
 import { getBoardCompatibility } from "../shared/version-utils";
 import { EventEndpoint } from "../ipc/api-types";
@@ -55,6 +56,40 @@ function parseTrustedPaths(data: string): string[] {
     return paths;
 }
 
+interface TrustedBoardGrant { root: string; permissions: NormalizedBoardPermissions; manifestChanged?: boolean }
+
+function parseTrustRecords(data: string): TrustedBoardGrant[] | null {
+    try {
+        const value: unknown = JSON.parse(data);
+        if (!value || typeof value !== "object" || !Array.isArray((value as { boards?: unknown }).boards)) return null;
+        const boards = (value as { boards: unknown[] }).boards;
+        const result: TrustedBoardGrant[] = [];
+        for (const item of boards) {
+            if (!item || typeof item !== "object") return null;
+            const record = item as { root?: unknown; permissions?: unknown };
+            if (typeof record.root !== "string" || !path.isAbsolute(record.root)) return null;
+            const permissions = record.permissions;
+            if (!permissions || typeof permissions !== "object") return null;
+            const normalized = permissions as Partial<NormalizedBoardPermissions>;
+            if (normalized.kind === "legacy") {
+                if (typeof normalized.service !== "boolean") return null;
+            } else if (normalized.kind === "flags") {
+                const flags = (normalized as Extract<NormalizedBoardPermissions, { kind: "flags" }>).flags;
+                if (!flags || typeof flags !== "object"
+                    || typeof flags.execute !== "boolean" || typeof flags.service !== "boolean"
+                    || !(flags.fileSystem === false || flags.fileSystem === "board" || flags.fileSystem === "full")
+                    || typeof flags.openExternal !== "boolean" || typeof flags.appScripting !== "boolean"
+                    || !(flags.network === false || flags.network === "internet" || flags.network === "full")
+                    || typeof flags.clipboardRead !== "boolean" || typeof flags.camera !== "boolean"
+                    || typeof flags.microphone !== "boolean" || typeof flags.geolocation !== "boolean"
+                    || typeof flags.notifications !== "boolean") return null;
+            } else return null;
+            result.push({ root: record.root, permissions: permissions as NormalizedBoardPermissions });
+        }
+        return result;
+    } catch { return null; }
+}
+
 async function readManifest(boardRoot: string): Promise<BoardManifestData | null> {
     try {
         const text = await fs.readFile(path.join(boardRoot, BOARD_MANIFEST_FILE), "utf8");
@@ -77,19 +112,31 @@ class BoardTrustService {
     private operation = Promise.resolve();
     private disabledBundledBoards = new Set<string>();
     private paths: string[] = [];
+    private grants: TrustedBoardGrant[] = [];
+    private permissionSnapshot: TrustedBoardGrant[] = [];
 
     init(): Promise<void> {
         if (!this.initialization) {
             this.initialization = this.serialize(async () => {
                 const dataFolder = getDataFolder();
                 await fs.mkdir(dataFolder, { recursive: true });
-                const trustFile = path.join(dataFolder, "trustedBoards.txt");
-                try {
-                    await fs.access(trustFile);
-                } catch {
-                    await fs.writeFile(trustFile, "", "utf8");
+                const trustFile = path.join(dataFolder, "trustedBoards.json");
+                let data = "";
+                try { data = await fs.readFile(trustFile, "utf8"); } catch { /* migrate legacy file below */ }
+                const records = parseTrustRecords(data);
+                if (records) this.grants = records;
+                else {
+                    const legacyFile = path.join(dataFolder, "trustedBoards.txt");
+                    let legacy = "";
+                    try { legacy = await fs.readFile(legacyFile, "utf8"); } catch { /* first run */ }
+                    const oldPaths = parseTrustedPaths(legacy);
+                    this.grants = await Promise.all(oldPaths.map(async (root) => ({
+                        root,
+                        permissions: normalizePermissions((await readManifest(root))?.permissions),
+                    })));
+                    await this.writeGrantsAtomically(this.grants);
                 }
-                this.paths = await this.readPathsFromDisk();
+                this.paths = this.grants.map(({ root }) => root);
                 const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
                 await moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
                 downloadService.setBrowserUrlMaskClaims(claims);
@@ -107,38 +154,52 @@ class BoardTrustService {
         return [...this.paths];
     }
 
+    async getPermissionGrants(): Promise<TrustedBoardGrant[]> {
+        await this.ready();
+        const { serviceSnapshot } = await this.createSnapshots(this.paths);
+        return serviceSnapshot.boards.map(({ boardRoot, permissions, manifestChanged }) => ({ root: boardRoot, permissions, manifestChanged }));
+    }
+
+    async allows(boardRoot: string, flag: keyof import("../shared/board-manifest-utils").BoardPermissionFlags): Promise<boolean> {
+        await this.ready();
+        const grant = this.permissionSnapshot.find(({ root }) =>
+            pathCovers(normalizePathForCompare(root), normalizePathForCompare(boardRoot)));
+        if (!grant) return false;
+        const permissions = grant.permissions;
+        if (permissions.kind === "legacy") return flag !== "service" || permissions.service;
+        const value = permissions.flags[flag];
+        return value === true || value === "board" || value === "full" || value === "internet";
+    }
+
     async setTrust(boardRoot: string, trusted: boolean): Promise<string[]> {
         await this.ready();
         return this.serialize(async () => {
             if (typeof boardRoot !== "string" || !path.isAbsolute(boardRoot)) {
                 throw new Error("Board trust requires an absolute root path.");
             }
-            const current = await this.readPathsFromDisk();
+            const current = [...this.paths];
+            const nextGrants = [...this.grants];
             const key = normalizePathForCompare(boardRoot);
-            let next: string[];
             if (trusted) {
-                if (current.some((root) => pathCovers(normalizePathForCompare(root), key))) {
-                    next = current;
-                } else {
-                    next = [
-                        ...current.filter((root) => !pathCovers(key, normalizePathForCompare(root))),
-                        boardRoot,
-                    ];
-                }
+                const effectiveRoot = current.find((root) => pathCovers(normalizePathForCompare(root), key));
+                if (effectiveRoot && normalizePathForCompare(effectiveRoot) !== key) return [...current];
+                const manifest = await readManifest(boardRoot);
+                const grant = { root: boardRoot, permissions: normalizePermissions(manifest?.permissions) };
+                const kept = nextGrants.filter(({ root }) => !pathCovers(key, normalizePathForCompare(root))
+                    && normalizePathForCompare(root) !== key);
+                nextGrants.splice(0, nextGrants.length, ...kept, grant);
             } else {
-                next = current.filter((root) => normalizePathForCompare(root) !== key);
+                nextGrants.splice(0, nextGrants.length, ...nextGrants.filter(({ root }) => normalizePathForCompare(root) !== key));
             }
-
-            if (next.length !== current.length || next.some((root, index) => root !== current[index])) {
-                await this.writePathsAtomically(next);
-            }
-            this.paths = next;
-            const { serviceSnapshot, claims } = await this.createSnapshots(next);
+            await this.writeGrantsAtomically(nextGrants);
+            this.grants = nextGrants;
+            this.paths = nextGrants.map(({ root }) => root);
+            const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
             const stop = moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
             downloadService.setBrowserUrlMaskClaims(claims);
-            openWindows.send(EventEndpoint.eBoardTrustChanged, [...next]);
+            openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
             await stop;
-            return [...next];
+            return [...this.paths];
         });
     }
 
@@ -146,7 +207,6 @@ class BoardTrustService {
         await this.ready();
         await this.serialize(async () => {
             this.disabledBundledBoards = new Set(ids.filter((id): id is string => typeof id === "string"));
-            this.paths = await this.readPathsFromDisk();
             const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
             await moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
             downloadService.setBrowserUrlMaskClaims(claims);
@@ -159,23 +219,15 @@ class BoardTrustService {
         return result;
     }
 
-    private async readPathsFromDisk(): Promise<string[]> {
-        try {
-            return parseTrustedPaths(await fs.readFile(path.join(getDataFolder(), "trustedBoards.txt"), "utf8"));
-        } catch {
-            return [];
-        }
-    }
-
-    private async writePathsAtomically(paths: string[]): Promise<void> {
+    private async writeGrantsAtomically(grants: TrustedBoardGrant[]): Promise<void> {
         const directory = getDataFolder();
         await fs.mkdir(directory, { recursive: true });
-        const destination = path.join(directory, "trustedBoards.txt");
+        const destination = path.join(directory, "trustedBoards.json");
         const temporary = path.join(directory, `trustedBoards.${process.pid}.${randomUUID()}.tmp`);
         let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
         try {
             handle = await fs.open(temporary, "wx");
-            await handle.writeFile(paths.join("\n"), "utf8");
+            await handle.writeFile(JSON.stringify({ version: 1, boards: grants }, null, 2), "utf8");
             await handle.close();
             handle = undefined;
             await fs.rename(temporary, destination);
@@ -199,12 +251,24 @@ class BoardTrustService {
         const boards: TrustedBoardSnapshotEntry[] = [];
         for (const source of allSources) {
             const service = normalizeBoardServicePath(source.manifest?.service);
+            const granted = source.bundledId
+                ? normalizePermissions(source.manifest?.permissions)
+                : this.grants.find((grant) => normalizePathForCompare(grant.root) === normalizePathForCompare(source.root))?.permissions
+                    ?? normalizePermissions(source.manifest?.permissions);
+            const storedGrant = this.grants.find((grant) => normalizePathForCompare(grant.root) === normalizePathForCompare(source.root));
+            const manifestChanged = !!storedGrant
+                && JSON.stringify(normalizePermissions(source.manifest?.permissions)) !== JSON.stringify(storedGrant.permissions);
             boards.push({
                 boardRoot: source.root,
-                canStartService: normalizePermissions(source.manifest?.permissions).includes("service"),
+                canStartService: granted.kind === "legacy" ? granted.service : granted.flags.service,
+                permissions: granted,
+                ...(manifestChanged ? { manifestChanged: true } : {}),
                 ...(service ? { service } : {}),
             });
         }
+        this.permissionSnapshot = boards.map(({ boardRoot, permissions, manifestChanged }) => ({
+            root: boardRoot, permissions, ...(manifestChanged ? { manifestChanged: true } : {}),
+        }));
 
         const browserUrlMaskOwners = new OwnershipRegistry<BoardSource>();
         const claims: BrowserUrlMaskClaim[] = [];

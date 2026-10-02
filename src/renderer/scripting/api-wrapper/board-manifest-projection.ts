@@ -18,7 +18,11 @@ export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardM
     if (typeof manifest.version === "string") copy.version = manifest.version;
     if (typeof manifest.standalone === "boolean") copy.standalone = manifest.standalone;
     if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
-    if (manifest.permissions !== undefined) copy.permissions = [...manifest.permissions];
+    if (manifest.permissions !== undefined) {
+        copy.permissions = manifest.permissions.kind === "legacy"
+            ? { ...manifest.permissions }
+            : { kind: "flags", flags: { ...manifest.permissions.flags } };
+    }
     if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
     if (typeof manifest.service === "string") copy.service = manifest.service;
     if (manifest.singleInstance !== undefined) copy.singleInstance = manifest.singleInstance;

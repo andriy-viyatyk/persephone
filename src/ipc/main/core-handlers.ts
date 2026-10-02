@@ -131,7 +131,10 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
      *  `showFolder`, but the error string is returned instead of discarded: the shell
      *  reports "no application is registered for this extension" that way, and without
      *  it an unopenable file looks like a menu item that does nothing. Empty = accepted. */
-    openPath = async (event: IpcMainEvent, path: string): Promise<string> => {
+    openPath = async (event: IpcMainEvent, path: string, boardRoot?: string): Promise<string> => {
+        if (boardRoot && !(await (await import("../../main/board-trust-service")).boardTrustService.allows(boardRoot, "openExternal"))) {
+            throw new Error('permission-denied: "openExternal" is not enabled in board-manifest.json');
+        }
         return shell.openPath(path);
     }
 

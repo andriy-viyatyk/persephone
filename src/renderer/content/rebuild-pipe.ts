@@ -38,6 +38,7 @@ export async function pipeFromLink(
     options: {
         unknownScheme?: "reject" | "file";
         sessionHandle?: string;
+        boardNetworkPolicy?: import("../api/node-fetch").BoardNetworkPolicy;
     } = { unknownScheme: "reject" },
 ): Promise<IContentPipe> {
     const registered = await resolveRegisteredSourcePath(link);
@@ -47,7 +48,12 @@ export async function pipeFromLink(
         url: link,
         sessionHandle: options.sessionHandle,
     });
-    if (descriptor) return createPipeFromDescriptor(descriptor);
+    if (descriptor) {
+        if (descriptor.provider.type === "http" && options.boardNetworkPolicy) {
+            descriptor.provider.config.boardNetworkPolicy = options.boardNetworkPolicy;
+        }
+        return createPipeFromDescriptor(descriptor);
+    }
 
     if (options.unknownScheme === "file") return new ContentPipe(new FileProvider(link));
     const scheme = schemeOf(link);

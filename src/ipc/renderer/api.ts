@@ -161,8 +161,8 @@ class ApiCalls implements Api {
 
     /** Open a file or folder with the OS default application. Resolves to Electron's
      *  error string — empty when the shell accepted the path. */
-    openPath = async (path: string) => {
-        return executeOnce<string>(Endpoint.openPath, path);
+    openPath = async (path: string, boardRoot?: string) => {
+        return executeOnce<string>(Endpoint.openPath, path, boardRoot);
     }
 
     windowReady = async () => {
@@ -555,6 +555,12 @@ class ApiCalls implements Api {
     getBoardTrustPaths = async () => {
         return executeOnce<string[]>(Endpoint.getBoardTrustPaths);
     };
+
+    getBoardPermissionGrants = async () => {
+        return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
+    };
+
+    getBoardMcpEndpoint = async () => executeOnce<string>(Endpoint.getBoardMcpEndpoint);
 
     setDisabledBundledBoards = async (ids: string[]) => {
         return executeOnce<void>(Endpoint.setDisabledBundledBoards, ids);

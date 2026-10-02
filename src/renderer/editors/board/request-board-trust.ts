@@ -15,7 +15,7 @@ export async function requestBoardTrust(boardRoot: string): Promise<boolean> {
     const manifest = await readNormalizedBoardManifest(boardRoot);
     const accepted = await showTrustBoardDialog(boardRoot, manifest
         ? boardTrustDisclosure(manifest)
-        : { permissions: [], serviceDeclared: false, capabilities: [] });
+        : { permissions: { kind: "legacy", service: false }, serviceDeclared: false, capabilities: [] });
     if (!accepted) return false;
     if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
 

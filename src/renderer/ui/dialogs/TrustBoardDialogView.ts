@@ -27,9 +27,9 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const declarationPanel = createPanelElement(
             { direction: "column", gap: "xs" },
             [
-                ...(state.permissions.length > 0
-                    ? [createTextElement(`Permissions: ${state.permissions.join(", ")}`, { color: "light" })]
-                    : []),
+                ...(state.permissions.kind === "legacy"
+                    ? [createTextElement("Permissions: Unrestricted", { color: "light" })]
+                    : [createTextElement(`Permissions: ${permissionLabels(state.permissions.flags).join(", ") || "none"}`, { color: "light" })]),
                 ...(state.serviceDeclared
                     ? [createTextElement("Service: declared", { color: "warning" })]
                     : []),
@@ -54,7 +54,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     { color: "warning" },
                 ),
                 boardPathElement,
-                ...(state.permissions.length > 0 || state.serviceDeclared || state.capabilities.length > 0
+                ...(state.permissions.kind === "flags" || state.serviceDeclared || state.capabilities.length > 0
                     ? [declarationPanel]
                     : []),
             ],
@@ -106,4 +106,8 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
             this.boardPathElement.textContent = boardPath;
         });
     }
+}
+
+function permissionLabels(flags: import("../../../shared/board-manifest-utils").BoardPermissionFlags): string[] {
+    return Object.entries(flags).filter(([, value]) => value !== false).map(([key, value]) => `${key}${value === true ? "" : `: ${value}`}`);
 }

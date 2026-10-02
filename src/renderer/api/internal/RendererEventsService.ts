@@ -53,11 +53,11 @@ export class RendererEventsService {
         rendererEvents[EventEndpoint.eBoardOpenRawLink].subscribe(this.handleBoardOpenRawLink);
     }
 
-    private handleBoardOpenRawLink = async (msg: { href: string; editor?: string }) => {
+    private handleBoardOpenRawLink = async (msg: { href: string; editor?: string; boardRoot: string }) => {
         if (!msg?.href) return;
         await guard("Failed to open link", () =>
             app.events.openRawLink.sendAsync(
-                createLinkData(msg.href, { sourceId: "board", target: msg.editor }),
+                createLinkData(msg.href, { sourceId: "board", target: msg.editor, boardRoot: msg.boardRoot }),
             ),
         );
     };
@@ -101,9 +101,12 @@ export class RendererEventsService {
         await guard("Failed to move page", () => pagesModel.movePageOut(pageId));
     };
 
-    private handleOpenUrl = async (url: string) => {
+    private handleOpenUrl = async (event: { url: string; boardRoot?: string; unattributedPopup?: boolean }) => {
         await guard("Failed to open URL", () =>
-            app.events.openRawLink.sendAsync(createLinkData(url)),
+            app.events.openRawLink.sendAsync(createLinkData(event.url, {
+                ...(event.boardRoot ? { boardRoot: event.boardRoot, sourceId: "board" } : {}),
+                ...(event.unattributedPopup ? { unattributedPopup: true } : {}),
+            })),
         );
     };
 

@@ -20,6 +20,7 @@
 import { api } from "../../ipc/renderer/api";
 import { TGlobalState } from "../core/state/state";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
+import type { NormalizedBoardPermissions, BoardPermissionFlags } from "../../shared/board-manifest-utils";
 
 /**
  * True when `ancestorKey` equals or contains `descendantKey` (path-boundary aware).
@@ -38,6 +39,8 @@ class BoardTrust {
     private readonly state = new TGlobalState<BoardTrustState>({ paths: [], loaded: false });
     private loadPromise: Promise<void> | undefined;
     private pathsRevision = 0;
+    private grants = new Map<string, NormalizedBoardPermissions>();
+    private grantsPromise: Promise<void> | undefined;
 
     /** Load the main-owned trusted list once into reactive state. */
     async load(): Promise<void> {
@@ -53,6 +56,39 @@ class BoardTrust {
                 });
         }
         await this.loadPromise;
+        await this.loadGrants();
+    }
+
+    private async loadGrants(): Promise<void> {
+        if (!this.grantsPromise) {
+            this.grantsPromise = api.getBoardPermissionGrants().then((entries) => {
+                this.grants = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
+            }).catch((error: unknown) => {
+                this.grantsPromise = undefined;
+                throw error;
+            });
+        }
+        await this.grantsPromise;
+    }
+
+    async allows(boardRoot: string, flag: keyof BoardPermissionFlags): Promise<boolean> {
+        try {
+            await this.loadGrants();
+            const key = fpNormalizeForCompare(boardRoot);
+            const grant = [...this.grants].find(([root]) => pathCovers(root, key))?.[1];
+            if (!grant) return false;
+            if (grant.kind === "legacy") return flag !== "service" || grant.service;
+            const value = grant.flags[flag];
+            return value === true || value === "board" || value === "full" || value === "internet";
+        } catch { return false; }
+    }
+
+    async getGrantedPermissions(boardRoot: string): Promise<NormalizedBoardPermissions | undefined> {
+        try {
+            await this.loadGrants();
+            const key = fpNormalizeForCompare(boardRoot);
+            return [...this.grants].find(([root]) => pathCovers(root, key))?.[1];
+        } catch { return undefined; }
     }
 
     /** Read main's current list without updating reactive state. */
@@ -88,6 +124,7 @@ class BoardTrust {
     /** Apply paths received from main IPC or its trust broadcast. */
     applyAuthoritativePaths(paths: string[]): void {
         this.pathsRevision += 1;
+        this.grantsPromise = undefined;
         this.state.update((state) => {
             if (state.paths.length !== paths.length || state.paths.some((root, index) => root !== paths[index])) {
                 state.paths = [...paths];
@@ -99,11 +136,15 @@ class BoardTrust {
     /** Request a main-owned trust mutation after the caller's user confirmation. */
     async trust(boardRoot: string): Promise<void> {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true));
+        this.grantsPromise = undefined;
+        await this.loadGrants();
     }
 
     /** Remove a board from main's trusted list. */
     async untrust(boardRoot: string): Promise<void> {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, false));
+        this.grantsPromise = undefined;
+        await this.loadGrants();
     }
 }
 

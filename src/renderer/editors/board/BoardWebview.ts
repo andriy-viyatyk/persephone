@@ -56,6 +56,8 @@ import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { boardTrust } from "../../api/board-trust";
+import { boardPermissionError } from "../../../shared/board-manifest-utils";
 import { errMessage } from "../../../shared/utils";
 import { CapabilityError } from "../../api/capability-bus";
 import { invokeCapabilityOutcome } from "../../api/capabilities";
@@ -339,6 +341,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             gate: { kind: "trusted", rejectionLog: "persephone.fetch requires a trusted board" },
             handle: (message, current) => this.fetchBridge.start(
                 message as BoardFetchRequestMsg,
+                this.props.boardRoot,
                 current.frame,
                 current.generation,
                 (frame, generation, reply, transfer) => this.replyToFrame(frame, generation, reply, transfer),
@@ -1040,6 +1043,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (!isBoardPermitted(this.props.boardRoot)) {
                 throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
+            if (!(await boardTrust.allows(this.props.boardRoot, "appScripting"))) throw boardPermissionError("appScripting");
             reply = { __persephone: "capabilities:list:result", reqId: message.reqId, result: app.capabilities.list() };
         } catch (error: unknown) {
             reply = {
@@ -1156,6 +1160,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: BoardContentOpenResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
+            const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
+            const network = grant?.kind === "legacy" ? "full" : grant?.flags.network ?? false;
+            const appScripting = grant?.kind === "legacy" || (grant?.kind === "flags" && grant.flags.appScripting);
+            if (/^https?:/i.test(request.link) && network === false) throw boardPermissionError("network");
             if (typeof request.link !== "string") throw new Error("content.open() requires a link string.");
             if (request.timeoutMs !== undefined
                 && (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs <= 0)) {
@@ -1170,7 +1178,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
                 throw new Error("The board frame is unavailable.");
             }
-            const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal);
+            const mcpUrl = await api.getBoardMcpEndpoint();
+            const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal, {
+                network, appScripting, mcpUrl,
+            });
             openedResourceId = info.resourceId;
             if (controller.signal.aborted) {
                 model.releaseContentResource(info.resourceId);
