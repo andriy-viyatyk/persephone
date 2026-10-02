@@ -111,17 +111,18 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
     });
-    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean): Promise<string[]> => {
-        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted);
+    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions): Promise<string[]> => {
+        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions);
     });
     bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
     });
     bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
         const grants = await (await import("../../main/board-trust-service")).boardTrustService.getPermissionGrants();
-        return grants.map(({ root, permissions, manifestChanged }) => ({
+        return grants.map(({ root, permissions, manifestPermissions, manifestChanged }) => ({
             boardRoot: root,
             permissions,
+            manifestPermissions,
             ...(manifestChanged ? { manifestChanged: true } : {}),
             canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
         }));

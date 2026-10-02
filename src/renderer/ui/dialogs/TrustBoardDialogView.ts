@@ -7,6 +7,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { TrustBoardDialogProps } from "./TrustBoardDialog";
+import { BOARD_PERMISSION_INTRODUCTION, FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, permissionChangeLines } from "../../editors/board/board-permission-copy";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -24,29 +25,27 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const model = props.model as TrustBoardDialogModel;
         const state = model.state.get();
         const boardPathElement = createTextElement(state.boardPath, { color: "light" });
-        const declarationPanel = createPanelElement(
-            { direction: "column", gap: "xs" },
-            [
-                ...(state.permissions.kind === "legacy"
-                    ? [createTextElement("Permissions: Unrestricted", { color: "light" })]
-                    : [createTextElement(`Permissions: ${permissionLabels(state.permissions.flags).join(", ") || "none"}`, { color: "light" })]),
-                ...(state.serviceDeclared
-                    ? [createTextElement("Service: declared", { color: "warning" })]
-                    : []),
-                ...(state.capabilities.length > 0
-                    ? [createTextElement(
-                        `Capabilities: ${state.capabilities.map((id) => id || "<empty id>").join(", ")}`,
-                        { color: "light" },
-                    )]
-                    : []),
-            ],
-        );
+        const declarationPanel = createPanelElement({ direction: "column", gap: "xs" }, [
+            ...permissionSection(state.change?.granted ?? state.permissions, state.change ? "Granted permissions" : undefined),
+            ...(state.change?.granted.kind === "legacy"
+                ? [createTextElement(LEGACY_PERMISSION_EXPLANATION, { color: "light" })]
+                : []),
+            ...(state.change ? [
+                createTextElement(state.change.legacyTransition ? "Unrestricted ->" : "Proposed permissions", { bold: true }),
+                ...permissionSection(state.change.proposed),
+                ...permissionChangeLines(state.change.changes).map((line) => createTextElement(line, { color: "warning" })),
+            ] : []),
+            ...(state.permissions.kind === "legacy" && !state.change
+                ? [createTextElement(LEGACY_PERMISSION_EXPLANATION, { color: "light" })]
+                : []),
+            ...(state.capabilities.length > 0
+                ? [createTextElement(`Capabilities: ${state.capabilities.map((id) => id || "<empty id>").join(", ")}`, { color: "light" })]
+                : []),
+        ]);
         const bodyPanel = createPanelElement(
             { direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" },
             [
-                createTextElement(
-                    "Trusting this board lets it run programs on your computer with your full user privileges — including reading and changing your files and using any signed-in command-line tools (cloud CLIs, git, etc.).",
-                ),
+                createTextElement(BOARD_PERMISSION_INTRODUCTION),
                 createTextElement("Only trust boards you created or fully understand."),
                 createTextElement(
                     "If you're not sure about a board, ask your AI agent to review its scripts before trusting it. "
@@ -54,7 +53,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     { color: "warning" },
                 ),
                 boardPathElement,
-                ...(state.permissions.kind === "flags" || state.serviceDeclared || state.capabilities.length > 0
+                ...(state.permissions.kind === "flags" || state.permissions.kind === "legacy" || state.serviceDeclared || state.capabilities.length > 0 || state.change
                     ? [declarationPanel]
                     : []),
             ],
@@ -108,6 +107,15 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
     }
 }
 
-function permissionLabels(flags: import("../../../shared/board-manifest-utils").BoardPermissionFlags): string[] {
-    return Object.entries(flags).filter(([, value]) => value !== false).map(([key, value]) => `${key}${value === true ? "" : `: ${value}`}`);
+function permissionSection(permissions: TrustBoardDialogProps["permissions"], title?: string): HTMLElement[] {
+    return [
+        ...(title ? [createTextElement(title, { bold: true })] : []),
+        ...boardPermissionLines(permissions).flatMap(({ text, fullAccess }) => fullAccess
+            ? [createPanelElement({ direction: "row", align: "center", gap: "xs", wrap: true }, [
+                createTextElement(text),
+                createTextElement("Full access", { bold: true, color: "warning" }),
+                createTextElement(FULL_ACCESS_DETAIL, { color: "light" }),
+            ])]
+            : [createTextElement(text, { color: "light" })]),
+    ];
 }

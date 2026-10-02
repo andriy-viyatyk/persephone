@@ -9,6 +9,8 @@ import type {
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
+import { requestBoardTrust } from "../../editors/board/request-board-trust";
+import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../editors/board/board-permission-copy";
 import { publishedBoards } from "../../api/published-boards";
 import { ui } from "../../api/ui";
 import { compareVersions } from "../../../shared/version-utils";
@@ -42,7 +44,8 @@ const BOARD_INFO_MEMBERS: readonly IAiMember[] = [
     { name: "mode", kind: "property", summary: "Model-backed install or properties mode." },
     { name: "matches", kind: "property", summary: "Fresh catalog match snapshots with install, download, and trust status." },
     { name: "installDir", kind: "property", summary: "The selected parent directory for catalog downloads, or undefined before it is established." },
-    { name: "properties", kind: "property", summary: "A copied installed-board properties snapshot, or undefined outside properties mode." },
+    { name: "properties", kind: "property", summary: "A copied installed-board snapshot. permissions is the main-owned GRANTED set; proposedPermissions and permissionChanges describe the live manifest separately." },
+    { name: "reviewPermissionChange", kind: "method", signature: "reviewPermissionChange(): Promise<void>", summary: "Open the current board's permission-change dialog; this action does not choose or accept it." },
     { name: "versions", kind: "property", summary: "Copied published version snapshots, undefined until history loads successfully." },
     { name: "versionsState", kind: "property", summary: "Published-version loading state, or undefined when version history does not apply." },
     { name: "changeInstallDir", kind: "method", signature: "changeInstallDir(): Promise<void>", summary: "Open the native install-location folder picker and retain its selected directory." },
@@ -92,6 +95,11 @@ adds no content or host getter. Board variables remain a separate credential sur
 app.boardVars.get() and the board-side persephone.var.get path already return values, list() returns
 names, and this facade adds no value, setter, .env, or password path. Existing boards.* members
 remain the lifecycle action paths; this facade only owns the folder picker and download cancellation.`;
+
+function projectPermissionLines(permissions: NonNullable<IBoardInfoProperties["permissions"]>): string[] {
+    return boardPermissionLines(permissions).flatMap(({ text, fullAccess }) =>
+        fullAccess ? [text, "Full access", FULL_ACCESS_DETAIL] : [text]);
+}
 
 export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
     constructor(
@@ -145,7 +153,20 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.permissions !== undefined
                 ? { permissions: properties.permissions.kind === "legacy"
                     ? { ...properties.permissions }
-                    : { kind: "flags" as const, flags: { ...properties.permissions.flags } } }
+                    : { kind: "flags" as const, flags: { ...properties.permissions.flags } },
+                    permissionLines: projectPermissionLines(properties.permissions) }
+                : {}),
+            ...(properties.proposedPermissions !== undefined
+                ? { proposedPermissions: properties.proposedPermissions.kind === "legacy"
+                    ? { ...properties.proposedPermissions }
+                    : { kind: "flags" as const, flags: { ...properties.proposedPermissions.flags } },
+                    proposedPermissionLines: projectPermissionLines(properties.proposedPermissions) }
+                : {}),
+            ...(properties.permissionChanges !== undefined
+                ? { permissionChanges: properties.permissionChanges.map((change) => ({ ...change })) }
+                : {}),
+            ...(properties.permissionChangePending !== undefined
+                ? { permissionChangePending: properties.permissionChangePending }
                 : {}),
             ...(properties.standalone !== undefined ? { standalone: properties.standalone } : {}),
             ...(properties.singleInstance !== undefined ? { singleInstance: properties.singleInstance } : {}),
@@ -226,6 +247,11 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
 
     changeInstallDir(): Promise<void> {
         return this.editor.changeInstallDir();
+    }
+
+    async reviewPermissionChange(): Promise<void> {
+        const root = this.editor.state.get().props?.root;
+        if (root) await requestBoardTrust(root, true);
     }
 
     cancelDownload(catalogId: string): void {

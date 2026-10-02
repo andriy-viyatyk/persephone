@@ -7,6 +7,7 @@ import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
+import { requestBoardTrust } from "./request-board-trust";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
@@ -1114,8 +1115,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  (`index.html` / `app.js` / CSS). Re-probes the board icon so a mid-session
      *  `icon.*` change shows on demand (no folder watcher — US-744 live refresh is
      *  intentionally dropped). Also invoked by the board editor's reload path. */
-    reloadBoard(): void {
+    async reloadBoard(): Promise<void> {
         const boardRoot = this.state.get().boardRoot;
+        if (boardRoot && !(await requestBoardTrust(boardRoot))) return;
         if (boardRoot) invalidateBoardIcon(boardRoot);
         this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
@@ -1124,8 +1126,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Wait for the next attachable main board frame after a model-owned reload. */
     reloadAndWait(): Promise<boolean> {
+        return this.runReloadAndWait();
+    }
+
+    private async runReloadAndWait(): Promise<boolean> {
+        const boardRoot = this.state.get().boardRoot;
+        if (boardRoot && !(await requestBoardTrust(boardRoot))) return false;
         const frameReady = this.waitForFrameLoad(BOARD_CDP_TAB);
-        this.reloadBoard();
+        if (boardRoot) invalidateBoardIcon(boardRoot);
+        this.reloadAwaitingRegistration = true;
+        this.clearAiVisionRegistration();
+        this.state.update((s) => { s.reloadToken++; });
         return frameReady;
     }
 

@@ -16,6 +16,7 @@ import {
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
 import type { BoardThemePalette } from "./board-bridge-channels";
+import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
 import type {
     ClipboardFileList,
     ClipboardHistoryChanged,
@@ -318,7 +319,7 @@ export type Api = {
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Request a main-owned trust mutation and return its authoritative path list. */
-    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean) => Promise<string[]>;
+    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions) => Promise<string[]>;
     /** Read the main-owned trusted path list. */
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;

@@ -15,7 +15,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] [US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement](tasks/US-1593-board-permission-model/README.md)
   - [ ] [US-1596: Scoped file access for boards](tasks/US-1596-board-scoped-file-access/README.md)
   - [ ] [US-1597: Device permissions for board frames](tasks/US-1597-board-device-permissions/README.md)
-  - [ ] US-1598: Trust dialog and Board Info show granted permissions; re-trust on change
+  - [ ] [US-1598: Trust dialog and Board Info show granted permissions; re-trust on change](tasks/US-1598-board-permission-trust-ui/README.md)
   - [ ] US-1599: Scaffold all-`false` manifest; board guides and agent instructions
   - [ ] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
   - [ ] US-1601: Migrate the user's registered custom boards (Codex run per board)

@@ -27,6 +27,7 @@ import { publishedBoards } from "../../api/published-boards";
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { downloadBoard } from "../../api/board-install";
 import { boardTrust } from "../../api/board-trust";
+import type { BoardPermissionChange } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
@@ -64,6 +65,9 @@ export interface BoardPropsInfo {
     /** `version` from the board's own manifest (may lag the registry after a rollback). */
     manifestVersion?: string;
     permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    proposedPermissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    permissionChanges?: BoardPermissionChange[];
+    permissionChangePending?: boolean;
     standalone?: boolean;
     singleInstance?: boolean;
     minAppVersion?: string;
@@ -387,6 +391,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         await boardInstallRegistry.load();
         const reg = boardInstallRegistry.getByRoot(root);
         const manifest = await readNormalizedBoardManifest(root);
+        await boardTrust.load();
+        await boardTrust.refreshPermissionSnapshot();
+        const permissionSnapshot = await boardTrust.getPermissionSnapshot(root);
         const assoc = manifest?.association ?? null;
         const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
         const bridgeCompatibility = getBoardCompatibility(
@@ -407,7 +414,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             author: manifest?.author,
             repository: manifest?.repository,
             manifestVersion: manifest?.version,
-            permissions: manifest?.permissions,
+            permissions: permissionSnapshot?.permissions,
+            proposedPermissions: permissionSnapshot?.manifestPermissions ?? manifest?.permissions,
+            permissionChanges: permissionSnapshot?.manifestChanged ? permissionSnapshot.changes : undefined,
+            permissionChangePending: permissionSnapshot?.manifestChanged,
             standalone: manifest?.standalone,
             singleInstance: manifest?.singleInstance,
             minAppVersion: manifest?.minAppVersion,

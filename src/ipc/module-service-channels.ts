@@ -77,6 +77,8 @@ export interface TrustedBoardSnapshotEntry {
     /** Result of the US-1466 trusted-plus-permission predicate. */
     canStartService: boolean;
     permissions: NormalizedBoardPermissions;
+    /** Current normalized manifest declaration; never used for enforcement. */
+    manifestPermissions: NormalizedBoardPermissions;
     manifestChanged?: boolean;
 }
 

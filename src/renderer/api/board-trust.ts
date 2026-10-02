@@ -35,11 +35,48 @@ interface BoardTrustState {
     loaded: boolean;
 }
 
+export type BoardPermissionChange = {
+    flag: keyof BoardPermissionFlags;
+    kind: "added" | "removed" | "level";
+    from?: boolean | string;
+    to?: boolean | string;
+};
+
+export interface BoardPermissionSnapshot {
+    root: string;
+    permissions: NormalizedBoardPermissions;
+    manifestPermissions: NormalizedBoardPermissions;
+    manifestChanged: boolean;
+    changes: BoardPermissionChange[];
+}
+
+export function diffBoardPermissions(
+    granted: NormalizedBoardPermissions,
+    proposed: NormalizedBoardPermissions,
+): BoardPermissionChange[] {
+    if (granted.kind === "legacy" || proposed.kind === "legacy") return [];
+    const changes: BoardPermissionChange[] = [];
+    for (const flag of Object.keys(granted.flags) as (keyof BoardPermissionFlags)[]) {
+        const from = granted.flags[flag];
+        const to = proposed.flags[flag];
+        if (from === to) continue;
+        const kind = from === false ? "added" : to === false ? "removed" : "level";
+        changes.push({ flag, kind, from, to });
+    }
+    return changes;
+}
+
+function permissionSetKey(permissions: NormalizedBoardPermissions): string {
+    return JSON.stringify(permissions);
+}
+
 class BoardTrust {
     private readonly state = new TGlobalState<BoardTrustState>({ paths: [], loaded: false });
     private loadPromise: Promise<void> | undefined;
     private pathsRevision = 0;
     private grants = new Map<string, NormalizedBoardPermissions>();
+    private manifests = new Map<string, NormalizedBoardPermissions>();
+    private readonly declinedProposals = new Map<string, Set<string>>();
     private grantsPromise: Promise<void> | undefined;
     private readonly grantListeners = new Set<(changedRoots: string[]) => void>();
 
@@ -73,11 +110,14 @@ class BoardTrust {
     private async refreshGrants(): Promise<void> {
         const entries = await api.getBoardPermissionGrants();
         const next = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
+        const nextManifests = new Map(entries.map(({ boardRoot, manifestPermissions }) => [fpNormalizeForCompare(boardRoot), manifestPermissions]));
         const changedRoots = new Set<string>();
-        for (const root of new Set([...this.grants.keys(), ...next.keys()])) {
-            if (JSON.stringify(this.grants.get(root)) !== JSON.stringify(next.get(root))) changedRoots.add(root);
+        for (const root of new Set([...this.grants.keys(), ...next.keys(), ...this.manifests.keys(), ...nextManifests.keys()])) {
+            if (JSON.stringify(this.grants.get(root)) !== JSON.stringify(next.get(root))
+                || JSON.stringify(this.manifests.get(root)) !== JSON.stringify(nextManifests.get(root))) changedRoots.add(root);
         }
         this.grants = next;
+        this.manifests = nextManifests;
         if (changedRoots.size) {
             for (const listener of this.grantListeners) listener([...changedRoots]);
         }
@@ -101,6 +141,48 @@ class BoardTrust {
             const key = fpNormalizeForCompare(boardRoot);
             return [...this.grants].find(([root]) => pathCovers(root, key))?.[1];
         } catch { return undefined; }
+    }
+
+    async getPermissionSnapshot(boardRoot: string): Promise<BoardPermissionSnapshot | undefined> {
+        try {
+            await this.loadGrants();
+            const root = fpNormalizeForCompare(boardRoot);
+            const matchedRoot = this.grants.has(root)
+                ? root
+                : [...this.grants.keys()].find((candidate) => pathCovers(candidate, root));
+            if (!matchedRoot) return undefined;
+            const permissions = this.grants.get(matchedRoot);
+            const manifestPermissions = this.manifests.get(matchedRoot);
+            if (!permissions || !manifestPermissions) return undefined;
+            return {
+                root: boardRoot,
+                permissions,
+                manifestPermissions,
+                manifestChanged: JSON.stringify(permissions) !== JSON.stringify(manifestPermissions),
+                changes: diffBoardPermissions(permissions, manifestPermissions),
+            };
+        } catch { return undefined; }
+    }
+
+    /** Refresh main's live manifest metadata before an open/reload permission preflight. */
+    async refreshPermissionSnapshot(): Promise<void> {
+        this.grantsPromise = undefined;
+        await this.loadGrants();
+    }
+
+    hasDeclinedProposal(boardRoot: string, permissions: NormalizedBoardPermissions): boolean {
+        return this.declinedProposals.get(fpNormalizeForCompare(boardRoot))?.has(permissionSetKey(permissions)) ?? false;
+    }
+
+    rememberDeclinedProposal(boardRoot: string, permissions: NormalizedBoardPermissions): void {
+        const key = fpNormalizeForCompare(boardRoot);
+        const proposals = this.declinedProposals.get(key) ?? new Set<string>();
+        proposals.add(permissionSetKey(permissions));
+        this.declinedProposals.set(key, proposals);
+    }
+
+    clearDeclinedProposals(boardRoot: string): void {
+        this.declinedProposals.delete(fpNormalizeForCompare(boardRoot));
     }
 
     /** Read main's current list without updating reactive state. */
@@ -159,9 +241,10 @@ class BoardTrust {
     }
 
     /** Request a main-owned trust mutation after the caller's user confirmation. */
-    async trust(boardRoot: string): Promise<void> {
-        this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true));
+    async trust(boardRoot: string, expectedPermissions?: NormalizedBoardPermissions): Promise<void> {
+        this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true, expectedPermissions));
         await this.loadGrants();
+        this.clearDeclinedProposals(boardRoot);
     }
 
     /** Remove a board from main's trusted list. */

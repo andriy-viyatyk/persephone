@@ -548,8 +548,8 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
     };
 
-    setBoardTrust = async (boardRoot: string, trusted: boolean) => {
-        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted);
+    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions) => {
+        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions);
     };
 
     getBoardTrustPaths = async () => {

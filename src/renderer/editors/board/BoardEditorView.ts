@@ -116,7 +116,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         }, [this.child(this.webview).root]);
         this.root.append(toolbar.root, webviewWrap);
         toolbar.mount();
-        this.webview.mount();
+        void this.preflightWebview();
 
         if (this.host?.script) {
             this.scriptPanel = this.child(new ScriptPanelView({ model: this.host }));
@@ -133,6 +133,11 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         this.root.append(this.footer.root);
         this.footer.mount();
         this.bind(this.model.state, (state) => state.statusText, this.updateStatus);
+    }
+
+    private async preflightWebview(): Promise<void> {
+        const permitted = await requestBoardTrust(this.props.boardRoot);
+        if (permitted && !this.isDisposed) this.webview.mount();
     }
 
     protected onUpdate(): void {

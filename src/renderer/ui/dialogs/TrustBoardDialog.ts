@@ -4,6 +4,7 @@ import { TComponentState } from "../../core/state/state";
 import { registerDialogView } from "./dialog-view-registry";
 import { TrustBoardDialogView } from "./TrustBoardDialogView";
 import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
+import type { BoardPermissionChange } from "../../api/board-trust";
 
 export const trustBoardDialogId = Symbol("trustBoardDialog");
 
@@ -12,6 +13,12 @@ export interface TrustBoardDialogProps {
     permissions: NormalizedBoardPermissions;
     serviceDeclared: boolean;
     capabilities: readonly string[];
+    change?: {
+        granted: NormalizedBoardPermissions;
+        proposed: NormalizedBoardPermissions;
+        changes: readonly BoardPermissionChange[];
+        legacyTransition?: boolean;
+    };
 }
 
 registerDialogView(trustBoardDialogId, TrustBoardDialogView);
