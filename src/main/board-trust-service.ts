@@ -162,6 +162,11 @@ class BoardTrustService {
 
     async getGrantedPermissions(boardRoot: string): Promise<NormalizedBoardPermissions | undefined> {
         await this.ready();
+        return this.getGrantedPermissionsFromSnapshot(boardRoot);
+    }
+
+    /** Read an already-built main-owned grant snapshot without awaiting initialization. */
+    getGrantedPermissionsFromSnapshot(boardRoot: string): NormalizedBoardPermissions | undefined {
         const key = normalizePathForCompare(boardRoot);
         return this.permissionSnapshot.find(({ root }) => normalizePathForCompare(root) === key)?.permissions;
     }

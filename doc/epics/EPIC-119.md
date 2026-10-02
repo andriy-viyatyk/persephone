@@ -99,7 +99,7 @@ Task documents are written when each task starts.
 |------|-------|--------|
 | [US-1593](../tasks/US-1593-board-permission-model/README.md) | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Planned |
 | [US-1596](../tasks/US-1596-board-scoped-file-access/README.md) | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Active |
-| US-1597 | Device permissions for board frames (camera, microphone, geolocation, notifications) | Planned |
+| [US-1597](../tasks/US-1597-board-device-permissions/README.md) | Device permissions for board frames (camera, microphone, geolocation, notifications) | Active |
 | US-1598 | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Planned |
 | US-1599 | Scaffold all-`false` manifest; board guides and agent instructions | Planned |
 | US-1600 | `persephone-boards` catalog: minimal permissions per board, `minBridgeVersion`, viewers render documents safely; republish all boards | Planned |

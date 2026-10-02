@@ -41,6 +41,7 @@ class BoardTrust {
     private pathsRevision = 0;
     private grants = new Map<string, NormalizedBoardPermissions>();
     private grantsPromise: Promise<void> | undefined;
+    private readonly grantListeners = new Set<(changedRoots: string[]) => void>();
 
     /** Load the main-owned trusted list once into reactive state. */
     async load(): Promise<void> {
@@ -61,14 +62,25 @@ class BoardTrust {
 
     private async loadGrants(): Promise<void> {
         if (!this.grantsPromise) {
-            this.grantsPromise = api.getBoardPermissionGrants().then((entries) => {
-                this.grants = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
-            }).catch((error: unknown) => {
+            this.grantsPromise = this.refreshGrants().catch((error: unknown) => {
                 this.grantsPromise = undefined;
                 throw error;
             });
         }
         await this.grantsPromise;
+    }
+
+    private async refreshGrants(): Promise<void> {
+        const entries = await api.getBoardPermissionGrants();
+        const next = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
+        const changedRoots = new Set<string>();
+        for (const root of new Set([...this.grants.keys(), ...next.keys()])) {
+            if (JSON.stringify(this.grants.get(root)) !== JSON.stringify(next.get(root))) changedRoots.add(root);
+        }
+        this.grants = next;
+        if (changedRoots.size) {
+            for (const listener of this.grantListeners) listener([...changedRoots]);
+        }
     }
 
     async allows(boardRoot: string, flag: keyof BoardPermissionFlags): Promise<boolean> {
@@ -121,10 +133,23 @@ class BoardTrust {
         return this.state.subscribe(() => listener(), (state) => state.paths);
     }
 
+    /** Subscribe to main-authoritative grant snapshot changes, including re-trust with unchanged paths. */
+    subscribeGrants(listener: (changedRoots: string[]) => void): () => void {
+        this.grantListeners.add(listener);
+        return () => this.grantListeners.delete(listener);
+    }
+
     /** Apply paths received from main IPC or its trust broadcast. */
     applyAuthoritativePaths(paths: string[]): void {
         this.pathsRevision += 1;
-        this.grantsPromise = undefined;
+        const previousRoots = [...this.grants.keys()];
+        this.grantsPromise = this.refreshGrants().catch(() => {
+            this.grants.clear();
+            if (previousRoots.length) {
+                for (const listener of this.grantListeners) listener(previousRoots);
+            }
+            this.grantsPromise = undefined;
+        });
         this.state.update((state) => {
             if (state.paths.length !== paths.length || state.paths.some((root, index) => root !== paths[index])) {
                 state.paths = [...paths];
@@ -136,14 +161,12 @@ class BoardTrust {
     /** Request a main-owned trust mutation after the caller's user confirmation. */
     async trust(boardRoot: string): Promise<void> {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true));
-        this.grantsPromise = undefined;
         await this.loadGrants();
     }
 
     /** Remove a board from main's trusted list. */
     async untrust(boardRoot: string): Promise<void> {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, false));
-        this.grantsPromise = undefined;
         await this.loadGrants();
     }
 }

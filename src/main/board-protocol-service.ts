@@ -327,6 +327,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
     headers.set("Cache-Control", "no-store"); // boards are local; keeps edit→reload instant
     if (mime === "text/html") {
         headers.set("Content-Security-Policy", BOARD_CSP);
+        if (permissions?.kind === "flags") headers.set("Permissions-Policy", "local-fonts=()");
         // Inject, in order, into <head> (before any author script/stylesheet):
         //   1. the `--p-*` palette `<style>` → first paint is themed (no white flash);
         //   2. `window.__persephoneBoot` → initial theme/tokens + host origin (US-771);
