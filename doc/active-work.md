@@ -26,6 +26,14 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 - [ ] [US-1595: Agents can see and dismiss native dialogs](tasks/US-1595-native-dialog-agent-dismiss/README.md) — async download Save dialog, `windows[i].nativeDialog` + `dismiss()`
 
+- **EPIC-120** — [Site extensions — injected AiVision models for web pages](epics/EPIC-120.md) — proof of concept first
+  - [ ] US-1602: PoC — injection hook + late-model discovery fix
+  - [ ] US-1603: PoC — Outlook model, reliability matrix, go/no-go report
+  - [ ] US-1604: Site extension store, manifest, host matching *(draft, after PoC)*
+  - [ ] US-1605: Registration and trust *(draft, after PoC)*
+  - [ ] US-1606: Agent tools — scaffold, reload, list, remove *(draft, after PoC)*
+  - [ ] US-1607: Guides and agent workflow *(draft, after PoC)*
+
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 
 ---
