@@ -16,6 +16,30 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Removed the script-level Claude API integration:** scripts no longer expose the `ai` global. Scripts that use it now fail with `ReferenceError: ai is not defined`. Connect external agents to Persephone through the MCP server instead; see the [MCP Server Setup guide](./mcp-setup.md).
 
+- **Markdown preview removes active raw HTML:** scripts, iframes, forms, and styles in Markdown are removed. Documents that relied on those elements may look different.
+
+- **Browser-based MCP clients are refused:** requests sent from web pages include an `Origin` header and are no longer accepted by the Persephone or Mneme MCP servers. Desktop agents and Persephone's in-app MCP Inspector are unaffected; see the [MCP Server Setup guide](./mcp-setup.md).
+
+- **Release builds ignore `NODE_OPTIONS` and `NODE_EXTRA_CA_CERTS`:** Persephone no longer reads these environment variables.
+
+- **Browser cookies are now encrypted:** if you return to an older Persephone version after using 5.0.7, that version cannot read the encrypted cookies and you will need to sign in to websites again.
+
+- **Browser pages cannot open internal Persephone links or schemes:** web pages can no longer launch Persephone's internal links. Popup windows are also blocked from navigating to local files or non-web schemes.
+
+### Security
+
+- **Markdown and Mermaid previews are safer:** raw HTML in Markdown is filtered; scripts, iframes, forms, and styles are removed. Mermaid diagrams render in strict mode.
+
+- **MCP servers reject browser requests:** Persephone and Mneme refuse requests from web pages to prevent DNS-rebinding and Origin-based attacks. Desktop agents and the in-app MCP Inspector continue to work; see the [MCP Server Setup guide](./mcp-setup.md).
+
+- **Web pages cannot open internal Persephone links or schemes.** Popup windows cannot navigate to local files or non-web schemes.
+
+- **The main window has a stricter security policy, and HTML previews use an isolated `html-preview://` origin.**
+
+- **Electron's security fuses are locked in release builds.** The environment-variable and browser-cookie effects are listed under [Breaking Changes](#breaking-changes).
+
+- **Browser downloads carry Mark-of-the-Web:** Windows SmartScreen and Office Protected View can apply their usual protections to downloaded files.
+
 ---
 
 ## Version 5.0.6

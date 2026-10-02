@@ -39,6 +39,25 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 - Scripts can `require()` any Node.js module or npm package
 - Multi-window support — each window has its own `app` instance
 
+### Main-Process Security Boundaries
+
+Every `ipcMain` event or invoke registration must authorize its sender through the shared
+`src/main/ipc-sender-guard.ts` guard. Use `guardedIpcOn` / `guardedIpcHandle`, or the typed
+`bindEndpoint` registrar (which calls the same guard); direct unguarded registrations are not
+allowed. The guard accepts only a live main frame belonging to a Persephone `BrowserWindow` in the
+application session.
+
+Packaged builds lock Electron fuses in `electron-builder.yml`: `RunAsNode`, `NODE_OPTIONS` (including
+`NODE_EXTRA_CA_CERTS`), and Node inspector arguments are disabled; embedded asar integrity validation
+and load-only-from-asar are enabled; and browser cookie encryption is enabled. Board Node scripts
+therefore run in an Electron utility process via `assets/node-script-host.mjs`, rather than
+relaunching the application executable as Node. Browser downloads are tagged with the Windows
+Mark-of-the-Web (`Zone.Identifier`) so Windows security features can identify internet-origin files.
+
+The main window uses a strict content security policy. HTML previews load through the separate
+`html-preview://` protocol origin, which keeps preview document policy separate from the main
+window. Web pages cannot use page-initiated navigation to open Persephone's internal schemes.
+
 ## Object Model
 
 The **Object Model** is the central architectural concept. It provides a single, typed API (`app.*`) that all consumers use — native views, boards, user scripts, and coding agents all access the same interfaces.

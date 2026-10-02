@@ -9,6 +9,8 @@ persephone includes a built-in [Model Context Protocol (MCP)](https://modelconte
 
 > **Two separate servers:** this page covers the **app-control** server (drive Persephone itself). The optional [Mneme knowledge base](./mneme.md) exposes its *own* MCP server on a different port for reading and maintaining a document store. They are configured independently and can both run at once.
 
+> **Browser requests are refused:** both servers reject requests that include an `Origin` header, as browser-based MCP clients send from a web page. This protects the local servers from web-page and DNS-rebinding attacks. Desktop agents and Persephone's in-app MCP Inspector do not send a browser `Origin` header and are unaffected.
+
 ## Quick Start
 
 1. Open persephone Settings (`Ctrl+,` or Settings tab)

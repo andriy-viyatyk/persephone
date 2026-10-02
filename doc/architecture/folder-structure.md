@@ -959,13 +959,15 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
 ├── browser-service.ts      # Browser page support (webview management and tracked native message boxes)
 ├── browser-registration.ts # Default browser registration
+├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
+├── html-preview-protocol.ts # Isolated html-preview:// origin and per-preview response registry
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── session-proxy.ts        # Shared session proxy primitives (one proxy, no direct fallback; set direct; geo lookup) for Tor and profile networks
 ├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// handler (token-guarded), guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Download management using main-derived Browser URL claims, and tracked synchronous save dialogs
+├── download-service.ts     # Download management using main-derived Browser URL claims, tracked synchronous save dialogs, and Windows Mark-of-the-Web on completed browser downloads
 ├── session-src-protocol.ts # Short-lived URL-bound capability for fetching one source through its private Browser session
 ├── native-dialog-tracker.ts # Per-window tracking and non-actionable attention for native dialogs
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
@@ -1007,6 +1009,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 
 ## IPC Layer
+
+All main-process `ipcMain` registrations must pass through the shared sender guard in
+`src/main/ipc-sender-guard.ts`. Use `guardedIpcOn` / `guardedIpcHandle` for event and invoke
+handlers, or register typed API endpoints with `bindEndpoint` in `main/endpoint-registry.ts`, which
+uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handler.
 
 ```
 /src/ipc/

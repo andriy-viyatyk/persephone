@@ -338,6 +338,13 @@ interface IContentHost {
 
 Text-bearing editors (Monaco, Grid, Markdown, ...) hold a reference to an `IContentHost` via `this.contentHost` and read content through it. The host outlives the editor — when a user switches a JSON file from text view to grid view, the same `TextFileModel` host transfers to the new `GridEditor` instance.
 
+### Markdown and Mermaid rendering security
+
+Markdown rendering parses raw HTML for compatibility, then sanitizes the resulting HAST before
+creating DOM nodes. Script, frame, form, style, and other active-content elements are removed, and
+URL-bearing properties are checked against the Markdown link and image scheme allowlists.
+Mermaid diagrams render with `securityLevel: "strict"`.
+
 ## CONTENT_HOST_TRAIT
 
 Switchable text-bearing editors expose `CONTENT_HOST_TRAIT` so any owner can transfer their host to a new editor instance:
@@ -378,7 +385,7 @@ an inactive image page without using viewport geometry.
 
 Each model builds its own source before delegating: Mermaid uses its rendered SVG data URL (rendering on demand via `renderMermaid` when the preview has not been generated), SVG builds the `image/svg+xml` data URL from host content, and the Image viewer rasterises the displayed image URL. The shared `ImageViewport` UIKit component's clipboard copy shares the same canvas path (`imageElementToPngBlob`). Its zoom/pan model is view-local; the editor models remain responsible for source data and export capabilities.
 
-The **HTML viewer captures differently**, and is the one implementer whose `exportPng()` is *not* headless. Its content renders inside a sandboxed `<iframe srcDoc>` whose document is cross-origin to the renderer, so it cannot be rasterised to a canvas. Instead `exportPng()` captures the **live on-screen iframe** pixel-for-pixel (WYSIWYG — the image matches exactly what is displayed) via the `capturePageRegion` IPC endpoint, which runs `webContents.capturePage(rect)` in the main process with the rect scaled by the window zoom factor. This requires a mounted, visible view and throws otherwise. The view reports the iframe element to the model through `setCaptureElement`, and the model derives the capture rect from its `getBoundingClientRect()`. Its toolbar exposes a Copy action plus a "…" menu (Save as PNG / Open in Image View / Edit Image); the latter two feed the captured blob to `pagesModel.openImageInNewTab` and `pagesModel.addDrawPage` (the data-URL conversion uses the shared `blobToDataUrl` helper alongside `blobToBuffer`).
+The **HTML viewer captures differently**, and is the one implementer whose `exportPng()` is *not* headless. Its content renders in a sandboxed iframe loaded from the isolated `html-preview://` origin, with a preview-specific CSP separate from the strict main-window policy. The document is cross-origin to the renderer, so it cannot be rasterised to a canvas. Instead `exportPng()` captures the **live on-screen iframe** pixel-for-pixel (WYSIWYG — the image matches exactly what is displayed) via the `capturePageRegion` IPC endpoint, which runs `webContents.capturePage(rect)` in the main process with the rect scaled by the window zoom factor. This requires a mounted, visible view and throws otherwise. The view reports the iframe element to the model through `setCaptureElement`, and the model derives the capture rect from its `getBoundingClientRect()`. Its toolbar exposes a Copy action plus a "…" menu (Save as PNG / Open in Image View / Edit Image); the latter two feed the captured blob to `pagesModel.openImageInNewTab` and `pagesModel.addDrawPage` (the data-URL conversion uses the shared `blobToDataUrl` helper alongside `blobToBuffer`).
 
 Two shared entry points sit on top of `exportPng()`: `savePngViaDialog(source)` (prompts for a path; backs the editors' toolbar "Save" actions and surfaces failures as a toast) and `writePngToFile(source, filePath)` (writes directly; backs the `savePngToFile(filePath)` script-facade method). The Image viewer additionally offers a "Save original" action that writes the source bytes in their original format without re-encoding.
 

@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-10-01
-**Completed:** —
+**Completed:** 2026-10-02
 
 ## Overview
 
@@ -164,18 +164,18 @@ Every test page was closed afterwards.
 ## Linked Tasks
 
 Severity order is the implementation order. US-1587 and US-1588 are independent and can go first
-in either order. Task documents are written when each task starts.
+in either order. Task folders were removed when the epic closed; the commits carry each task's ID.
 
 | Task | Title | Finding | Severity | Status |
 |------|-------|---------|----------|--------|
-| [US-1587](../tasks/US-1587-markdown-html-sanitize/README.md) | Sanitize Markdown HTML; Mermaid strict mode | F1 | Critical | In Progress |
-| [US-1588](../tasks/US-1588-mcp-rebinding-origin/README.md) | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | In Progress |
-| [US-1589](../tasks/US-1589-page-internal-scheme-gate/README.md) | Web pages cannot open internal Persephone schemes | F3 | Medium | Planned |
-| [US-1590](../tasks/US-1590-main-window-csp/README.md) | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Planned |
-| [US-1591](../tasks/US-1591-electron-fuses/README.md) | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Planned |
-| [US-1592](../tasks/US-1592-download-mark-of-the-web/README.md) | Mark-of-the-Web on browser downloads | F6 | Medium | Planned |
+| US-1587 | Sanitize Markdown HTML; Mermaid strict mode | F1 | Critical | Done |
+| US-1588 | DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers | F2 | High | Done |
+| US-1589 | Web pages cannot open internal Persephone schemes | F3 | Medium | Done |
+| US-1590 | Main-window CSP hardening; investigate `webSecurity: false` | F4 | Medium | Done |
+| US-1591 | Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE` | F5 | Medium | Done |
+| US-1592 | Mark-of-the-Web on browser downloads | F6 | Medium | Done |
 | — | F7 moved to [EPIC-119](EPIC-119.md) (enforced board permissions) on 2026-10-02 | F7 | Medium | Moved |
-| [US-1594](../tasks/US-1594-ipc-sender-popup-guard/README.md) | IPC sender checks and popup navigation guard | F8 | Low | Planned |
+| US-1594 | IPC sender checks and popup navigation guard | F8 | Low | Done |
 
 ### Task scope notes
 
@@ -213,7 +213,7 @@ in either order. Task documents are written when each task starts.
   that Chrome writes.
 - **F7:** moved to [EPIC-119](EPIC-119.md) on 2026-10-02 (user decision): enforced, off-by-default
   board permissions instead of a single `execute` flag.
-- **[US-1594](../tasks/US-1594-ipc-sender-popup-guard/README.md):** Add a shared app-renderer
+- **US-1594:** Add a shared app-renderer
   sender guard at IPC registration choke points, validate clear-data/cache partitions against
   app-owned browser profile partitions, and apply the shared protocol navigation guard to popup
   windows and their descendants.

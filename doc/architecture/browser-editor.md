@@ -351,6 +351,14 @@ The `<webview>` DOM element's event API is unreliable — events like `page-favi
 4. Events are relayed back via `BrowserChannel.event` with `internalTabId` for routing
 5. Main process also sets `windowOpenHandler` to intercept new-window requests
 
+The main process owns navigation policy as well as event forwarding. Page-initiated navigation to
+`file:` and `app-asset:` is denied; other non-Chromium schemes, including Persephone's internal
+schemes, are prevented from navigating the page and are handed to the host only after a recent user
+activation, where only a registered board claim can consume them. App-initiated navigation such as
+restoring a local page is separate from page-initiated navigation. Popup windows receive their own
+guards: they cannot navigate to local files or non-Chromium schemes, and a popup that enables Node
+integration is destroyed.
+
 ## Why the Preload Script?
 
 The main process `page-favicon-updated` event works for most cases, but the preload script provides a complementary detection mechanism using DOM observation. It:

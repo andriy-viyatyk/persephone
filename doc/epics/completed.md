@@ -1,3 +1,20 @@
+## EPIC-118 — Security hardening: hostile web pages and files
+
+Completed 2026-10-02. Closes the two code-execution paths from a hostile page or file (raw HTML in
+Markdown, DNS rebinding against the local MCP servers) and adds browser-grade layers: no
+page-initiated jumps into internal schemes, a strict main-window CSP with HTML previews on
+`html-preview://`, locked Electron fuses with board Node scripts in a utility process,
+Mark-of-the-Web on downloads, and a shared IPC sender guard with popup navigation blocking. Finding
+F7 (viewer boards) moved to EPIC-119. [Epic document](EPIC-118.md).
+
+- [x] US-1587: Sanitize Markdown HTML; Mermaid strict mode
+- [x] US-1588: DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers
+- [x] US-1589: Web pages cannot open internal Persephone schemes
+- [x] US-1590: Main-window CSP hardening; HTML previews served from `html-preview://`
+- [x] US-1591: Electron fuses + asar integrity; board Node scripts in a utility process
+- [x] US-1592: Mark-of-the-Web on browser downloads
+- [x] US-1594: IPC sender checks and popup navigation guard
+
 ## EPIC-117 — Trusted browser automation: real input, actionable locators, agent-sized snapshots
 
 Completed 2026-09-30. Browser pages, boards and `window.screen` drive pages with trusted CDP input

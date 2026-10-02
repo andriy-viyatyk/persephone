@@ -11,18 +11,11 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-- **EPIC-118** — [Security hardening — hostile web pages and files](epics/EPIC-118.md)
-  - [ ] [US-1587: Sanitize Markdown HTML; Mermaid strict mode](tasks/US-1587-markdown-html-sanitize/README.md) *(Critical)*
-  - [ ] [US-1588: DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers](tasks/US-1588-mcp-rebinding-origin/README.md) *(High)*
-  - [ ] [US-1589: Web pages cannot open internal Persephone schemes](tasks/US-1589-page-internal-scheme-gate/README.md) *(Medium)*
-  - [ ] [US-1590: Main-window CSP hardening; investigate `webSecurity: false`](tasks/US-1590-main-window-csp/README.md) *(Medium)*
-  - [ ] [US-1591: Electron fuses + asar integrity; move board Node scripts off `ELECTRON_RUN_AS_NODE`](tasks/US-1591-electron-fuses/README.md) *(Medium)*
-  - [ ] [US-1592: Mark-of-the-Web on browser downloads](tasks/US-1592-download-mark-of-the-web/README.md) *(Medium)*
-  - [ ] [US-1594: IPC sender checks and popup navigation guard](tasks/US-1594-ipc-sender-popup-guard/README.md)
+*(none — EPIC-119 is next)*
 
 ## Planned
 
-- **EPIC-119** — [Board permissions — least privilege, declared in the manifest](epics/EPIC-119.md) — *starts after EPIC-118*
+- **EPIC-119** — [Board permissions — least privilege, declared in the manifest](epics/EPIC-119.md)
   - [ ] US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement
   - [ ] US-1596: Scoped file access for boards
   - [ ] US-1597: Device permissions for board frames
