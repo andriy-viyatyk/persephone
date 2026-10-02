@@ -390,7 +390,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const assoc = manifest?.association ?? null;
         const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
         const bridgeCompatibility = getBoardCompatibility(
-            { minBridgeVersion },
+            {
+                minBridgeVersion,
+                requiresMinBridgeVersion: manifest?.permissions.kind === "flags",
+            },
             { bridgeVersion: BOARD_BRIDGE_VERSION },
         );
         await moduleServiceStatus.refresh();

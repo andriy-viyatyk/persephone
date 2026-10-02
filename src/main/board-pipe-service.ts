@@ -12,6 +12,9 @@ import type { ByteRange } from "../shared/range-utils";
 interface PipeOwner {
     webContents: WebContents;
     host: string | undefined;
+    boardRoot?: string;
+    filePath?: string;
+    hostedDocument: boolean;
 }
 
 interface PendingRead {
@@ -39,12 +42,12 @@ class BoardPipeService {
     private readonly wiredWebContents = new Map<number, WebContents>();
     private requestSequence = 0;
 
-    registerPage(pageId: string, webContents: WebContents, host?: string): void {
-        this.registerOwner("page", pageId, webContents, host);
+    registerPage(pageId: string, webContents: WebContents, host?: string, boardRoot?: string, hostedDocument = false): void {
+        this.registerOwner("page", pageId, webContents, host, boardRoot, undefined, hostedDocument);
     }
 
-    registerResource(resourceId: string, webContents: WebContents, host?: string): void {
-        this.registerOwner("resource", resourceId, webContents, host);
+    registerResource(resourceId: string, webContents: WebContents, host?: string, boardRoot?: string, filePath?: string): void {
+        this.registerOwner("resource", resourceId, webContents, host, boardRoot, filePath, false);
     }
 
     registerResourceIfUnowned(resourceId: string, webContents: WebContents): void {
@@ -55,14 +58,14 @@ class BoardPipeService {
         this.registerOwner("resource", resourceId, webContents);
     }
 
-    private registerOwner(pipeKind: BoardPipeKind, pipeId: string, webContents: WebContents, host?: string): void {
+    private registerOwner(pipeKind: BoardPipeKind, pipeId: string, webContents: WebContents, host?: string, boardRoot?: string, filePath?: string, hostedDocument = false): void {
         const key = this.ownerKey(pipeKind, pipeId);
         const previous = this.owners.get(key);
         if (previous && previous.webContents !== webContents) {
             this.removeOwner(key, new BoardPipeError(404, "Board pipe is no longer available."));
         }
 
-        this.owners.set(key, { webContents, host });
+        this.owners.set(key, { webContents, host, boardRoot, filePath, hostedDocument });
         let pageIds = this.ownersByWebContents.get(webContents.id);
         if (!pageIds) {
             pageIds = new Set<string>();
@@ -97,6 +100,30 @@ class BoardPipeService {
         if (!owner || owner.host !== host || owner.webContents.isDestroyed()) {
             return Promise.reject(new BoardPipeError(404, "Board pipe resource not found."));
         }
+        if (owner.boardRoot && owner.filePath !== undefined && !owner.hostedDocument) {
+            return (async () => {
+                const { boardTrustService } = await import("./board-trust-service");
+                const permissions = await boardTrustService.getGrantedPermissions(owner.boardRoot!);
+                if (!permissions) throw new BoardPipeError(404, "Board pipe resource not found.");
+                const { resolveAuthorizedPath } = await import("./board-file-access");
+                await resolveAuthorizedPath({
+                    boardRoot: owner.boardRoot!, requestedPath: owner.filePath!, permissions, intent: "read",
+                });
+                return this.requestRead(owner, host, pipeKind, pipeId, rangeHeader, range, signal);
+            })();
+        }
+        return this.requestRead(owner, host, pipeKind, pipeId, rangeHeader, range, signal);
+    }
+
+    private requestRead(
+        owner: PipeOwner,
+        host: string | undefined,
+        pipeKind: BoardPipeKind,
+        pipeId: string,
+        rangeHeader?: string,
+        range?: ByteRange,
+        signal?: AbortSignal,
+    ): Promise<BoardPipeReadReply> {
         if (signal?.aborted) {
             return Promise.reject(new BoardPipeError(503, "Board pipe read was cancelled."));
         }

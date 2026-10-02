@@ -73,7 +73,7 @@ interface TorRouteLease {
     release(): void;
 }
 
-export interface BoardNetworkPolicy { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string }
+export interface BoardNetworkPolicy { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string; boardRoot?: string }
 
 async function acquireTorRoute(signal?: AbortSignal): Promise<TorRouteLease> {
     if (signal?.aborted) throw new Error("The HTTP request was aborted.");

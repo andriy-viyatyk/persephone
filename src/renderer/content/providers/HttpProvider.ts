@@ -25,6 +25,8 @@ export class HttpProvider implements IProvider {
     private readonly body: string | undefined;
     private readonly sessionHandle: string | undefined;
     private readonly boardNetworkPolicy: import("../../api/node-fetch").BoardNetworkPolicy | undefined;
+    private boardSessionHandle: string | undefined;
+    private boardSessionHandlePromise: Promise<string> | undefined;
     private _cachedBuffer: Buffer | null = null;
     private _status: IPipeStageStatus | undefined;
     private readonly statusListeners = new Set<() => void>();
@@ -358,14 +360,34 @@ export class HttpProvider implements IProvider {
         });
     }
 
-    private fetchThroughSession(headers: Record<string, string>, signal?: AbortSignal): Promise<Response> {
-        const sessionUrl = `session-src://${this.sessionHandle}/?u=${encodeURIComponent(this.url)}`;
+    private async fetchThroughSession(headers: Record<string, string>, signal?: AbortSignal): Promise<Response> {
+        const sessionHandle = await this.resolveSessionHandle();
+        const sessionUrl = `session-src://${sessionHandle}/?u=${encodeURIComponent(this.url)}`;
         return fetch(sessionUrl, {
             method: this.method,
             headers,
             body: this.body,
             signal,
         });
+    }
+
+    private async resolveSessionHandle(): Promise<string> {
+        if (!this.sessionHandle) throw new Error("The private session handle is unavailable.");
+        const boardRoot = this.boardNetworkPolicy?.boardRoot;
+        if (!boardRoot) return this.sessionHandle;
+        if (this.boardSessionHandle) return this.boardSessionHandle;
+        if (!this.boardSessionHandlePromise) {
+            this.boardSessionHandlePromise = import("../../../ipc/renderer/api").then(({ api }) =>
+                api.bindBoardSessionSource(this.sessionHandle!, boardRoot));
+        }
+        try {
+            const handle = await this.boardSessionHandlePromise;
+            this.boardSessionHandle = handle;
+            return handle;
+        } catch (error: unknown) {
+            this.boardSessionHandlePromise = undefined;
+            throw error;
+        }
     }
 
     private copyStatus(status: IPipeStageStatus): IPipeStageStatus {

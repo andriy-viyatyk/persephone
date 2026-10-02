@@ -606,7 +606,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const sourceUrl = this.props.model.currentSourceUrl();
         const pageId = this.props.model.page?.id;
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
-        if (pageId) void api.registerBoardPipePage(pageId, host);
+        if (pageId) void api.registerBoardPipePage(pageId, host, this.props.boardRoot, this.props.model.pipeUrlEnabled);
         const initialIntent = pageId ? takeInitialIntent(pageId) : undefined;
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
@@ -1180,7 +1180,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             }
             const mcpUrl = await api.getBoardMcpEndpoint();
             const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal, {
-                network, appScripting, mcpUrl,
+                network, appScripting, mcpUrl, boardRoot: this.props.boardRoot,
             });
             openedResourceId = info.resourceId;
             if (controller.signal.aborted) {
@@ -1193,7 +1193,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 return;
             }
             try {
-                await api.registerBoardPipeResource(info.resourceId, host);
+                await api.registerBoardPipeResource(info.resourceId, host, this.props.boardRoot, info.filePath);
             } catch (error: unknown) {
                 model.releaseContentResource(info.resourceId);
                 throw error;

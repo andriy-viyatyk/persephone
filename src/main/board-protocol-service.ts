@@ -10,6 +10,8 @@ import { readPipeRange, BoardPipeRangeError } from "./board-pipe-range-reader";
 import { mimeTypeForPath } from "../shared/mime-types";
 import { errMessage } from "../shared/utils";
 import * as boardLog from "./board-log";
+import { boardTrustService } from "./board-trust-service";
+import { resolveAuthorizedPath } from "./board-file-access";
 
 /**
  * `board://` scheme handler (EPIC-034 / US-723; host-routed in EPIC-037 / US-770) —
@@ -24,10 +26,8 @@ import * as boardLog from "./board-log";
  * cross-origin origin + `nodeIntegrationInSubFrames:false` + the served CSP — not from
  * a per-board session partition.
  *
- * No path-traversal guard, by design (US-723 C1): a board is trusted local code
- * that can do anything via `execute()` anyway, so restricting board file reads
- * would protect nothing. The only network boundary is the CSP (below), which
- * forbids remote.
+ * Object-form permission grants confine assets to this board's canonical root.
+ * Legacy grants retain their historical traversal behavior until migration.
  */
 
 /** board:// URL host → absolute board root folder. Populated by `registerBoard` on
@@ -280,9 +280,32 @@ async function serveBoardFile(request: Request): Promise<Response> {
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });
 
-    // Empty path → the board's entry point. No traversal guard (US-723 C1).
-    const rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
-    const resolved = path.resolve(root, rel);
+    const permissions = await boardTrustService.getGrantedPermissions(root);
+    const confined = permissions?.kind === "flags" || await currentManifestIsObject(root);
+    let rel: string;
+    try {
+        rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
+    } catch {
+        return new Response("Not found", { status: 404 });
+    }
+    let resolved: string;
+    if (confined) {
+        if (/%(?:2f|5c)/i.test(pathname) || rel.includes("\\")) return new Response("Not found", { status: 404 });
+        try {
+            resolved = await resolveAuthorizedPath({
+                boardRoot: root,
+                requestedPath: rel,
+                permissions: permissions ?? { kind: "legacy", service: false },
+                intent: "read",
+                rootOnly: true,
+            });
+        } catch {
+            return new Response("Not found", { status: 404 });
+        }
+    } else {
+        // Legacy grants retain the historical traversal behavior through migration.
+        resolved = path.resolve(root, rel);
+    }
     const mime = mimeTypeForPath(resolved);
 
     let response: Response;
@@ -322,6 +345,15 @@ async function serveBoardFile(request: Request): Promise<Response> {
         statusText: response.statusText,
         headers,
     });
+}
+
+async function currentManifestIsObject(root: string): Promise<boolean> {
+    try {
+        const manifest = JSON.parse(await fs.promises.readFile(path.join(root, "board-manifest.json"), "utf8")) as { permissions?: unknown };
+        return !!manifest && typeof manifest.permissions === "object" && manifest.permissions !== null && !Array.isArray(manifest.permissions);
+    } catch {
+        return false;
+    }
 }
 
 /** Register the single `board://` handler on the host renderer's shared session.

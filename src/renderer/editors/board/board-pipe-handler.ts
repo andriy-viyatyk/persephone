@@ -14,6 +14,7 @@ import { parseRangeHeader, type ByteRange } from "../../../shared/range-utils";
 import { pages } from "../../api/pages";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
+import { api } from "../../../ipc/renderer/api";
 
 interface PipeMemo {
     pipe: IContentPipe;
@@ -36,7 +37,12 @@ interface PendingRead {
 const pipeMemos = new Map<string, PipeMemo>();
 /** Board content and video session resources, keyed by opaque resource id. Separate from
  *  `pipeMemos`, which caches read state rather than owning a pipe. */
-const contentResources = new Map<string, IContentPipe>();
+interface ContentResourceOwner {
+    readonly pipe: IContentPipe;
+    readonly boardRoot?: string;
+    readonly hostedDocument: boolean;
+}
+const contentResources = new Map<string, ContentResourceOwner>();
 const pendingReads = new Map<string, PendingRead>();
 let initialized = false;
 
@@ -133,7 +139,16 @@ async function readChunk(request: BoardPipeReadRequest, signal: AbortSignal): Pr
     let pipe: IContentPipe | undefined;
     if (request.pipeKind === "resource") {
         // BoardEditorModel publishes board resources and VideoEditor publishes session resources.
-        pipe = contentResources.get(request.pipeId);
+        const resource = contentResources.get(request.pipeId);
+        pipe = resource?.pipe;
+        if (resource?.boardRoot && !resource.hostedDocument) {
+            const descriptor = resource.pipe.toDescriptor();
+            if (descriptor.provider.type === "file") {
+                const filePath = descriptor.provider.config.path;
+                if (typeof filePath !== "string") throw new Error("The content pipe file path is unavailable.");
+                await api.authorizeBoardFilePath(resource.boardRoot, filePath, "read");
+            }
+        }
     } else {
         const page = pages.findPage(request.pipeId);
         const editor = page?.mainEditorInstance as {
@@ -253,8 +268,8 @@ export function invalidateBoardPipePage(pageId: string): void {
 }
 
 /** Publish a BoardEditorModel content pipe or VideoEditor's session pipe for resource reads. */
-export function registerBoardContentResource(resourceId: string, pipe: IContentPipe): void {
-    contentResources.set(resourceId, pipe);
+export function registerBoardContentResource(resourceId: string, pipe: IContentPipe, boardRoot: string, hostedDocument: boolean): void {
+    contentResources.set(resourceId, { pipe, boardRoot, hostedDocument });
 }
 
 /** Publish a VideoEditor's session pipe without replacing an existing resource. */
@@ -262,7 +277,7 @@ export function registerVideoSessionResource(resourceId: string, pipe: IContentP
     if (contentResources.has(resourceId)) {
         throw new Error("The video pipe resource id is already registered.");
     }
-    contentResources.set(resourceId, pipe);
+    contentResources.set(resourceId, { pipe, hostedDocument: false });
 }
 
 export function invalidateBoardPipeResource(resourceId: string): void {

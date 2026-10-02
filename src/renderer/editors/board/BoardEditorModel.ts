@@ -10,6 +10,8 @@ import { boardTrust } from "../../api/board-trust";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
+import { createPipeFromDescriptor } from "../../content/registry";
+import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
 import {
     decodePersephoneBoardLink,
@@ -46,6 +48,7 @@ export interface ContentResourceInfo {
     readonly resourceId: string;
     readonly size: number;
     readonly contentType: string;
+    readonly filePath?: string;
 }
 
 interface ContentResource {
@@ -700,14 +703,42 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
         // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
         // retains it for its reads and the source map must no longer authorize another open.
-        const sessionHandle = this.sourceSessionHandles.get(link);
-        if (!sessionHandle && this.sessionBoundSources.has(link)) {
+        const sourceSessionHandle = this.sourceSessionHandles.get(link);
+        const sessionHandle = sourceSessionHandle;
+        if (!sourceSessionHandle && this.sessionBoundSources.has(link)) {
             throw new Error("The private session for this source has expired. Open the link again from its page.");
         }
-        const pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
+        const boardRoot = this.state.get().boardRoot;
+        if (!boardRoot) throw new Error("The board root is unavailable.");
+        const scheme = schemeOf(link);
+        if (scheme && isBoardClaimedScheme(scheme) && !(await boardTrust.allows(boardRoot, "service"))) {
+            throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+        }
+        let pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
         try {
-            if (pipe.toDescriptor().provider.type === "http" && boardNetworkPolicy?.network === false) {
+            const descriptor = pipe.toDescriptor();
+            let filePath: string | undefined;
+            if (descriptor.provider.type === "http" && boardNetworkPolicy?.network === false) {
                 throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            }
+            if (descriptor.provider.type === "file") {
+                const configuredPath = descriptor.provider.config.path;
+                if (typeof configuredPath !== "string") throw new Error("The file provider did not expose an authorizable path.");
+                const canonicalPath = await api.authorizeBoardFilePath(boardRoot, configuredPath, "read");
+                descriptor.provider.config.path = canonicalPath;
+                for (const transformer of descriptor.transformers) {
+                    if (transformer.type === "archive" && transformer.config.archivePath === configuredPath) {
+                        transformer.config.archivePath = canonicalPath;
+                    }
+                }
+                pipe.dispose();
+                pipe = createPipeFromDescriptor(descriptor);
+                filePath = canonicalPath;
+            } else if (!["http", "data", "cache", "mneme", "guide"].includes(descriptor.provider.type)) {
+                if (!(await boardTrust.allows(boardRoot, "service"))) {
+                    throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+                }
+                throw new Error("This registered content provider does not expose a path that can be authorized for board access.");
             }
             const stat = await pipe.stat({ signal });
             if (signal?.aborted) throw new Error("The content resource request was cancelled.");
@@ -720,8 +751,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             // Publish to the read path BEFORE returning, so the URL handed to the board is already
             // serviceable — the board may fetch it on the next line.
             const { registerBoardContentResource } = await import("./board-pipe-handler");
-            registerBoardContentResource(resourceId, pipe);
-            if (sessionHandle && this.sourceSessionHandles.get(link) === sessionHandle) {
+            registerBoardContentResource(resourceId, pipe, boardRoot, false);
+            if (sourceSessionHandle && this.sourceSessionHandles.get(link) === sourceSessionHandle) {
                 this.sourceSessionHandles.delete(link);
                 const timer = this.sourceSessionHandleTimers.get(link);
                 if (timer) clearTimeout(timer);
@@ -731,6 +762,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 resourceId,
                 size: stat.size,
                 contentType: contentTypeForPipe(pipe),
+                ...(filePath ? { filePath } : {}),
             };
         } catch (error: unknown) {
             pipe.dispose();

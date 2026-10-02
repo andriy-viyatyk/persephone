@@ -493,7 +493,10 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
             ...installedSources,
         ];
         const compatibleSources = sources.filter((source) => getBoardCompatibility(
-            { minBridgeVersion: source.manifest?.minBridgeVersion },
+            {
+                minBridgeVersion: source.manifest?.minBridgeVersion,
+                requiresMinBridgeVersion: source.manifest?.permissions.kind === "flags",
+            },
             { bridgeVersion: BOARD_BRIDGE_VERSION },
         ).compatible);
         const boardSources = compatibleSources.filter(

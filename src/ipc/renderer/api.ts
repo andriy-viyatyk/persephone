@@ -516,16 +516,16 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.unregisterBoardFrame, boardId, tab, frameNonce);
     };
 
-    registerBoardPipePage = async (pageId: string, host?: string) => {
-        return executeOnce<void>(Endpoint.registerBoardPipePage, pageId, host);
+    registerBoardPipePage = async (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => {
+        return executeOnce<void>(Endpoint.registerBoardPipePage, pageId, host, boardRoot, hostedDocument);
     };
 
     unregisterBoardPipePage = async (pageId: string) => {
         return executeOnce<void>(Endpoint.unregisterBoardPipePage, pageId);
     };
 
-    registerBoardPipeResource = async (resourceId: string, host: string) => {
-        return executeOnce<void>(Endpoint.registerBoardPipeResource, resourceId, host);
+    registerBoardPipeResource = async (resourceId: string, host: string, boardRoot?: string, filePath?: string) => {
+        return executeOnce<void>(Endpoint.registerBoardPipeResource, resourceId, host, boardRoot, filePath);
     };
 
     unregisterBoardPipeResource = async (resourceId: string) => {
@@ -561,6 +561,12 @@ class ApiCalls implements Api {
     };
 
     getBoardMcpEndpoint = async () => executeOnce<string>(Endpoint.getBoardMcpEndpoint);
+
+    authorizeBoardFilePath = async (boardRoot: string, requestedPath: string, intent: "read" | "write" = "read") =>
+        executeOnce<string>(Endpoint.authorizeBoardFilePath, boardRoot, requestedPath, intent);
+
+    bindBoardSessionSource = async (handle: string, boardRoot: string) =>
+        executeOnce<string>(Endpoint.bindBoardSessionSource, handle, boardRoot);
 
     setDisabledBundledBoards = async (ids: string[]) => {
         return executeOnce<void>(Endpoint.setDisabledBundledBoards, ids);

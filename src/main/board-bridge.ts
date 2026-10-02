@@ -77,6 +77,7 @@ import {
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
 import { boardPermissionError } from "../shared/board-manifest-utils";
+import { recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, recheckWriteTarget } from "./board-file-access";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -197,15 +198,6 @@ function portSink(entry: BoardPortEntry, boardId: string): JobSink {
     };
 }
 
-/** Resolve a board file-bridge path (US-756 C4): absolute as-is, else relative to
- *  the board root. NOT sandboxed — a trusted board can already touch any file via
- *  `execute()`; this only removes the "shell a script to read a file" overhead. */
-function resolveBoardFilePath(root: string, p: string | undefined): string {
-    if (!p || typeof p !== "string") throw new Error("A file path is required");
-    if (path.isAbsolute(p)) return p;
-    return path.resolve(root, p);
-}
-
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */
 /** Validate a board's `encoding` argument. Absent → "utf8" (the historical default).
  *  An UNKNOWN value throws rather than falling back: the old code coerced anything that
@@ -235,11 +227,34 @@ type BoardRpcHandler = (entry: BoardPortEntry, args: unknown[]) => Promise<unkno
 
 /** Board RPC handlers are exhaustive over the public bridge contract. */
 const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
-    openFileDialog: (entry, args) => showOpenFileDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFileDialogParams) ?? {}),
-    saveFileDialog: (entry, args) => showSaveFileDialog(ownerWindow(entry.hostWebContents), (args[0] as SaveFileDialogParams) ?? {}),
-    openFolderDialog: (entry, args) => showOpenFolderDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFolderDialogParams) ?? {}),
+    async openFileDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showOpenFileDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFileDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, false, grant);
+        return result;
+    },
+    async saveFileDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showSaveFileDialog(ownerWindow(entry.hostWebContents), (args[0] as SaveFileDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, false, grant);
+        return result;
+    },
+    async openFolderDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showOpenFolderDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFolderDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, true, grant);
+        return result;
+    },
     async readFile(entry, args) {
-        const filePath = resolveBoardFilePath(entry.root, args[0] as string);
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        const filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: args[0] as string, permissions: grant, intent: "read" });
         const encoding = fileEncoding(args[1]);
         const buf = await fs.promises.readFile(filePath);
         if (encoding === "binary") {
@@ -248,14 +263,18 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         return buf.toString(encoding);
     },
     async writeFile(entry, args) {
-        const filePath = resolveBoardFilePath(entry.root, args[0] as string);
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        const requestedPath = args[0] as string;
+        const filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "write" });
         const encoding = fileEncoding(args[2]);
         const data = args[1];
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        const checkedPath = await recheckWriteTarget(entry.root, requestedPath, grant);
         const body = encoding === "binary"
             ? Buffer.from(toBytes(data))
             : Buffer.from((data as string) ?? "", encoding);
-        await fs.promises.writeFile(filePath, body);
+        await fs.promises.writeFile(checkedPath, body);
     },
     getJobs(entry) {
         const owner = ownerSinks.get(entry.ownerId);

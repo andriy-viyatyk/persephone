@@ -9,6 +9,7 @@ import type { BoardThemePalette } from "../board-bridge-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { errMessage } from "../../shared/utils";
+import { boardPermissionError } from "../../shared/board-manifest-utils";
 
 export type BoardEndpoint =
     | Endpoint.registerBoard
@@ -35,6 +36,8 @@ export type BoardEndpoint =
     | Endpoint.getBoardTrustPaths
     | Endpoint.getBoardPermissionGrants
     | Endpoint.getBoardMcpEndpoint
+    | Endpoint.authorizeBoardFilePath
+    | Endpoint.bindBoardSessionSource
     | Endpoint.setDisabledBundledBoards
     | Endpoint.getModuleServiceStatuses
     | Endpoint.requestModuleServicePort
@@ -125,6 +128,21 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.getBoardMcpEndpoint, async (): Promise<string> => {
         return (await import("../../main/mcp-http-server")).getMcpUrl();
+    });
+    bindEndpoint(Endpoint.authorizeBoardFilePath, async (_event, boardRoot: string, requestedPath: string, intent: "read" | "write" = "read"): Promise<string> => {
+        const { boardTrustService } = await import("../../main/board-trust-service");
+        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+        if (!permissions) throw boardPermissionError("fileSystem");
+        return (await import("../../main/board-file-access")).resolveAuthorizedPath({
+            boardRoot, requestedPath, permissions, intent,
+        });
+    });
+    bindEndpoint(Endpoint.bindBoardSessionSource, async (_event, handle: string, boardRoot: string): Promise<string> => {
+        const { boardTrustService } = await import("../../main/board-trust-service");
+        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+        if (!permissions) throw new Error("This board is not trusted.");
+        const mcpUrl = await (await import("../../main/mcp-http-server")).getMcpUrl();
+        return (await import("../../main/session-src-protocol")).bindSessionSourceToBoard(handle, boardRoot, permissions, mcpUrl);
     });
     bindEndpoint(Endpoint.setDisabledBundledBoards, async (_event, ids: string[]): Promise<void> => {
         await (await import("../../main/board-trust-service")).boardTrustService.setDisabledBundledBoards(ids);

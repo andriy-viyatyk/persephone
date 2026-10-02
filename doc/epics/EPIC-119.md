@@ -98,7 +98,7 @@ Task documents are written when each task starts.
 | Task | Title | Status |
 |------|-------|--------|
 | [US-1593](../tasks/US-1593-board-permission-model/README.md) | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Planned |
-| US-1596 | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Planned |
+| [US-1596](../tasks/US-1596-board-scoped-file-access/README.md) | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Active |
 | US-1597 | Device permissions for board frames (camera, microphone, geolocation, notifications) | Planned |
 | US-1598 | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Planned |
 | US-1599 | Scaffold all-`false` manifest; board guides and agent instructions | Planned |
@@ -128,8 +128,12 @@ Task documents are written when each task starts.
   list. Trust records must store the granted set to detect a change.
 - **US-1599:** `assets/board-template/board-manifest.json` gets every flag as `false`. Rewrite
   the "permissions are disclosure, not a gate" passages in `assets/guides/agents/boards.md` and
-  `assets/board-template/CLAUDE.md`, and tell the agent to enable only what the board uses.
-  `assets/guides/agents/board-review.md` checks that the declared set matches the code.
+  `assets/board-template/CLAUDE.md`, and tell the agent to enable only what the board uses. Tell
+  viewer boards to use `fileSystem: false` so viewer injection cannot persist by rewriting board
+  code under `"board"`; explain that bundled board assets remain readable through
+  `fetch("board://<host>/data.json")` or relative `fetch("./data.json")` even though bridge
+  `readFile()` is refused under `fileSystem: false`. `assets/guides/agents/board-review.md` checks
+  that the declared set matches the code.
 - **US-1600:** Repo `C:\projects\persephone-boards` (`boards/`, `boards-manifest.json`). Per board:
   find the bridge calls it makes, write the minimal permissions object, set `minBridgeVersion`.
   Viewer boards also get the audit from EPIC-118 F7: insert converted document HTML only after

@@ -140,6 +140,8 @@ export enum Endpoint {
     getBoardTrustPaths = "getBoardTrustPaths",
     getBoardPermissionGrants = "getBoardPermissionGrants",
     getBoardMcpEndpoint = "getBoardMcpEndpoint",
+    authorizeBoardFilePath = "authorizeBoardFilePath",
+    bindBoardSessionSource = "bindBoardSessionSource",
     setDisabledBundledBoards = "setDisabledBundledBoards",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
@@ -307,9 +309,9 @@ export type Api = {
     // frame after a remount (US-796).
     [Endpoint.registerBoardFrame]: (boardId: string, boardHost: string, frameNonce?: string, tab?: string) => Promise<void>;
     [Endpoint.unregisterBoardFrame]: (boardId: string, tab?: string, frameNonce?: string) => Promise<void>;
-    [Endpoint.registerBoardPipePage]: (pageId: string, host?: string) => Promise<void>;
+    [Endpoint.registerBoardPipePage]: (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => Promise<void>;
     [Endpoint.unregisterBoardPipePage]: (pageId: string) => Promise<void>;
-    [Endpoint.registerBoardPipeResource]: (resourceId: string, host: string) => Promise<void>;
+    [Endpoint.registerBoardPipeResource]: (resourceId: string, host: string, boardRoot?: string, filePath?: string) => Promise<void>;
     [Endpoint.unregisterBoardPipeResource]: (resourceId: string) => Promise<void>;
     [Endpoint.getPublishedBoards]: (force?: boolean) => Promise<PublishedBoardsResult>;
     [Endpoint.getBoardVersions]: (id: string) => Promise<PublishedBoardVersions | null>;
@@ -321,6 +323,8 @@ export type Api = {
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
     [Endpoint.getBoardMcpEndpoint]: () => Promise<string>;
+    [Endpoint.authorizeBoardFilePath]: (boardRoot: string, requestedPath: string, intent?: "read" | "write") => Promise<string>;
+    [Endpoint.bindBoardSessionSource]: (handle: string, boardRoot: string) => Promise<string>;
     /** Push the renderer's setting value used to filter bundled URL-mask sources. */
     [Endpoint.setDisabledBundledBoards]: (ids: string[]) => Promise<void>;
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */

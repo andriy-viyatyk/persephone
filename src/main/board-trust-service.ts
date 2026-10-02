@@ -160,6 +160,12 @@ class BoardTrustService {
         return serviceSnapshot.boards.map(({ boardRoot, permissions, manifestChanged }) => ({ root: boardRoot, permissions, manifestChanged }));
     }
 
+    async getGrantedPermissions(boardRoot: string): Promise<NormalizedBoardPermissions | undefined> {
+        await this.ready();
+        const key = normalizePathForCompare(boardRoot);
+        return this.permissionSnapshot.find(({ root }) => normalizePathForCompare(root) === key)?.permissions;
+    }
+
     async allows(boardRoot: string, flag: keyof import("../shared/board-manifest-utils").BoardPermissionFlags): Promise<boolean> {
         await this.ready();
         const grant = this.permissionSnapshot.find(({ root }) =>
@@ -274,7 +280,10 @@ class BoardTrustService {
         const claims: BrowserUrlMaskClaim[] = [];
         for (const source of [...trustedSources, ...bundledSources.filter((board) => !this.disabledBundledBoards.has(board.bundledId ?? ""))]) {
             const compatibility = getBoardCompatibility(
-                { minBridgeVersion: source.manifest?.minBridgeVersion },
+                {
+                    minBridgeVersion: source.manifest?.minBridgeVersion,
+                    requiresMinBridgeVersion: !!source.manifest?.permissions && typeof source.manifest.permissions === "object" && !Array.isArray(source.manifest.permissions),
+                },
                 { bridgeVersion: BOARD_BRIDGE_VERSION },
             );
             if (!compatibility.compatible) continue;
