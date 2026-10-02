@@ -21,6 +21,7 @@ turns that bug into a defaced viewer page instead (EPIC-118 finding F7, moved he
 
 ## Decisions
 
+- **2026-10-03:** Legacy (no `permissions`) manifests are deprecated; a future release removes the fallback; US-1608 notifies users and agents; US-1609 (scheduled 2027-01-03) removes the fallback and this notice.
 - **2026-10-02 (user): permissions are enforced, not disclosure.** This reverses the earlier
   rule that a trusted board is unrestricted and `permissions` only discloses. Trust stays the
   gate for running a board at all; the manifest now also bounds what it can do once trusted.
@@ -104,8 +105,11 @@ Task documents are written when each task starts.
 | [US-1599](../tasks/US-1599-board-permission-scaffold-guides/README.md) | Scaffold all-`false` manifest; board guides and agent instructions | Planned |
 | US-1600 | `persephone-boards` catalog: minimal permissions per board, `minBridgeVersion`, viewers render documents safely; republish all boards | Planned |
 | US-1601 | Migrate the user's registered custom boards: a Codex run per board works out what it uses and writes its permissions | Planned |
+| [US-1608](../tasks/US-1608-legacy-board-deprecation-notice/README.md) | Deprecation notice for boards without declared permissions | Planned |
 
 ### Task scope notes
+
+**Follow-up:** [US-1609](../tasks/US-1609-remove-legacy-board-permissions/README.md) removes the legacy fallback and this notice.
 
 - **US-1593:** Inventory every bridge method (`src/main/board-bridge.ts`, the renderer side of the
   board bridge, board services in `module-service-supervisor.ts`) and assign each to a flag or mark

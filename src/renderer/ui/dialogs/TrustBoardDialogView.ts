@@ -7,7 +7,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { TrustBoardDialogProps } from "./TrustBoardDialog";
-import { BOARD_PERMISSION_INTRODUCTION, FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, permissionChangeLines } from "../../editors/board/board-permission-copy";
+import { BOARD_PERMISSION_INTRODUCTION, FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, legacyBoardDeprecationWarning, permissionChangeLines } from "../../editors/board/board-permission-copy";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -36,7 +36,10 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 ...permissionChangeLines(state.change.changes).map((line) => createTextElement(line, { color: "warning" })),
             ] : []),
             ...(state.permissions.kind === "legacy" && !state.change
-                ? [createTextElement(LEGACY_PERMISSION_EXPLANATION, { color: "light" })]
+                ? [
+                    createTextElement(LEGACY_PERMISSION_EXPLANATION, { color: "light" }),
+                    createTextElement(legacyBoardDeprecationWarning(state.boardName), { color: "warning" }),
+                ]
                 : []),
             ...(state.capabilities.length > 0
                 ? [createTextElement(`Capabilities: ${state.capabilities.map((id) => id || "<empty id>").join(", ")}`, { color: "light" })]

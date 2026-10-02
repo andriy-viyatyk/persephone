@@ -10,6 +10,7 @@ export const trustBoardDialogId = Symbol("trustBoardDialog");
 
 export interface TrustBoardDialogProps {
     boardPath: string; // absolute board-root path, for display
+    boardName: string;
     permissions: NormalizedBoardPermissions;
     serviceDeclared: boolean;
     capabilities: readonly string[];

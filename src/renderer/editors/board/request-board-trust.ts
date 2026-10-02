@@ -4,7 +4,7 @@ import { showTrustBoardDialog } from "../../ui/dialogs/TrustBoardDialog";
 import { boardTrustDisclosure, readNormalizedBoardManifest } from "./board-manifest";
 import { bundledBoardRegistry } from "./bundled-board-registry";
 import { errMessage } from "../../../shared/utils";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 
 /** In-flight trust requests by board root, so concurrent opens/reloads of the same board share
  *  one dialog instead of stacking a copy per caller. */
@@ -40,7 +40,10 @@ async function requestBoardTrustOnce(boardRoot: string, forceReview: boolean): P
             || changes.some(({ kind }) => kind !== "removed");
         if (!requiresPrompt) return true;
         if (!forceReview && boardTrust.hasDeclinedProposal(boardRoot, proposed)) return true;
+        const manifest = await readNormalizedBoardManifest(boardRoot);
+        const boardName = manifest?.name?.trim() || fpBasename(boardRoot);
         const accepted = await showTrustBoardDialog(boardRoot, {
+            boardName,
             permissions: proposed,
             serviceDeclared: false,
             capabilities: [],
@@ -64,7 +67,8 @@ async function requestBoardTrustOnce(boardRoot: string, forceReview: boolean): P
     const disclosure = manifest
         ? boardTrustDisclosure(manifest)
         : { permissions: { kind: "legacy" as const, service: false }, serviceDeclared: false, capabilities: [] as string[] };
-    const accepted = await showTrustBoardDialog(boardRoot, disclosure);
+    const boardName = manifest?.name?.trim() || fpBasename(boardRoot);
+    const accepted = await showTrustBoardDialog(boardRoot, { ...disclosure, boardName });
     if (!accepted) return false;
     if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
 

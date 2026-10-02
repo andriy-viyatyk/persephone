@@ -1173,6 +1173,7 @@ the manifest's `loadOrder`.
   rejects a board on an older bridge;
   `permissions` is the enforced object-form grant set; new boards start all-false and need
   `minBridgeVersion: "1.30.0"`. Add only flags used by reachable calls;
+  missing permissions and the historical array form are deprecated; add an object-form `permissions` block.
   `service` names a board-relative ESM module-service entry. No secrets, no trust flags. To make the board a **custom editor**
   for a file type, add `fileMasks` (glob masks matched against the file name, e.g. `["*.drawio"]`;
   a wildcard-free mask with a dot inside it is an exact file **name**, e.g. `["DASHBOARD.md"]`),

@@ -11,6 +11,7 @@ import type {
     IAlerts,
     IAlert,
     NotificationType,
+    INotifyOptions,
 } from "./types/ui";
 import type { IAiHighlightApi } from "ai-vision/dom";
 import { installHighlightOverlay } from "ai-vision/dom";
@@ -102,8 +103,8 @@ class UserInterface implements IUserInterface {
         return result ?? null;
     }
 
-    notify(message: string, type?: NotificationType): Promise<string | undefined> {
-        return alertsBarModel.addAlert(message, type ?? "info") as Promise<string | undefined>;
+    notify(message: string, type?: NotificationType, options?: INotifyOptions): Promise<string | undefined> {
+        return alertsBarModel.addAlert(message, type ?? "info", options?.persistent === true) as Promise<string | undefined>;
     }
 
     async textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null> {

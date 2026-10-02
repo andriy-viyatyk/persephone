@@ -3,6 +3,18 @@ import type { BoardPermissionFlags, NormalizedBoardPermissions } from "../../../
 
 export const BOARD_PERMISSION_INTRODUCTION = "This board can do only what is listed below. Without any permission it can still show its own pages, work with the document you open in it, copy to the clipboard, and open links inside Persephone.";
 export const LEGACY_PERMISSION_EXPLANATION = "This board uses an older manifest without permission settings, so it can do anything you can: read and write your files, run programs, and use the network.";
+
+export function legacyBoardDeprecationWarning(boardName: string): string {
+    return `${boardName} doesn't declare its permissions. Boards like this are deprecated and will stop working in a future Persephone release. Ask the agent that built it to add a permissions block to board-manifest.json.`;
+}
+
+export function legacyBoardsDeprecationToast(boardNames: readonly string[]): string {
+    if (boardNames.length === 1) return legacyBoardDeprecationWarning(boardNames[0]);
+    const names = boardNames.join(", ");
+    return `These boards don't declare their permissions: ${names}. Boards like these are deprecated and will stop working in a future Persephone release. Ask the agent that built them to add a permissions block to board-manifest.json.`;
+}
+
+export const LEGACY_BOARD_AGENT_DEPRECATION_NOTE = "This board's permissions are deprecated because its manifest omits the permissions object or uses the historical array form. Add an object-form permissions block to board-manifest.json.";
 export const FULL_ACCESS_DETAIL = "Can reach everything your user account can.";
 
 const FLAG_COPY: Record<keyof BoardPermissionFlags, string> = {
@@ -62,4 +74,3 @@ export function permissionChangeLines(changes: readonly BoardPermissionChange[])
         return `Changed: ${label} (${change.from} -> ${change.to}).`;
     });
 }
-

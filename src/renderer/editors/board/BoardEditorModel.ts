@@ -8,6 +8,8 @@ import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "./request-board-trust";
+import { bundledBoardRegistry } from "./bundled-board-registry";
+import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-notice";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
@@ -993,6 +995,20 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         );
         if (matchingEntry && matchingEntry.boardRoot !== s.boardRoot) {
             this.state.update((state) => { state.boardRoot = matchingEntry.boardRoot; });
+        }
+        const restoredRoot = this.state.get().boardRoot;
+        if (restoredRoot && await isBoardFolder(restoredRoot)) {
+            await bundledBoardRegistry.ensureInitialized();
+            await boardTrust.load();
+            await boardTrust.refreshPermissionSnapshot();
+            const snapshot = await boardTrust.getPermissionSnapshot(restoredRoot);
+            if (boardTrust.isTrusted(restoredRoot)
+                && snapshot?.manifestPermissions.kind === "legacy"
+                && !bundledBoardRegistry.isBundled(restoredRoot)) {
+                const manifest = await readNormalizedBoardManifest(restoredRoot);
+                const boardName = manifest?.name?.trim() || fpBasename(restoredRoot);
+                queueLegacyBoardDeprecationNotice(s.id, restoredRoot, boardName);
+            }
         }
         // A plain board page persisted under its folder name (before pages took the manifest name,
         // or when the manifest was renamed) is retitled; a page carrying a file or folder is not.

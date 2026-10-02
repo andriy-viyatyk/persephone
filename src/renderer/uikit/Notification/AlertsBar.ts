@@ -32,13 +32,14 @@ const defaultAlertsBarState = {
 type AlertsBarState = typeof defaultAlertsBarState;
 
 class AlertsBarModel extends TModel<AlertsBarState> {
-    addAlert = (message: string, type: TMessageType) => {
+    addAlert = (message: string, type: TMessageType, persistent = false) => {
         return new Promise((resolve) => {
             const alertData: AlertData = {
                 message,
                 type,
                 key: getAlertId(),
                 createdAt: Date.now(),
+                ...(persistent ? { persistent: true } : {}),
                 // eslint-disable-next-line @typescript-eslint/no-empty-function
                 onClose: () => {},
             };
@@ -55,7 +56,7 @@ class AlertsBarModel extends TModel<AlertsBarState> {
                 if (newAlerts.length > maxAlerts) {
                     const notError = newAlerts.find(
                         (a, idx) =>
-                            a.type !== 'error' && idx < newAlerts.length,
+                            a.type !== 'error' && !a.persistent && idx < newAlerts.length,
                     );
                     if (notError) {
                         newAlerts = newAlerts.filter((a) => a !== notError);

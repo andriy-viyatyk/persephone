@@ -29,6 +29,7 @@ import { downloadBoard } from "../../api/board-install";
 import { boardTrust } from "../../api/board-trust";
 import type { BoardPermissionChange } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
+import { bundledBoardRegistry } from "../board/bundled-board-registry";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
@@ -66,6 +67,7 @@ export interface BoardPropsInfo {
     manifestVersion?: string;
     permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
     proposedPermissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    isBundled: boolean;
     permissionChanges?: BoardPermissionChange[];
     permissionChangePending?: boolean;
     standalone?: boolean;
@@ -374,6 +376,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = this.state.get().boardRoot;
         if (!root) return;
         await customEditorRegistry.ensureInitialized();
+        await bundledBoardRegistry.ensureInitialized();
         if (!(await isBoardFolder(root))) {
             this.state.update((s) => {
                 s.props = {
@@ -381,6 +384,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                     root,
                     trusted: false,
                     isCatalogInstall: false,
+                    isBundled: false,
                     missing: true,
                 };
                 s.versions = undefined;
@@ -416,6 +420,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             manifestVersion: manifest?.version,
             permissions: permissionSnapshot?.permissions,
             proposedPermissions: permissionSnapshot?.manifestPermissions ?? manifest?.permissions,
+            isBundled: bundledBoardRegistry.isBundled(root),
             permissionChanges: permissionSnapshot?.manifestChanged ? permissionSnapshot.changes : undefined,
             permissionChangePending: permissionSnapshot?.manifestChanged,
             standalone: manifest?.standalone,

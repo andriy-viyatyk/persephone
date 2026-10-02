@@ -2,7 +2,7 @@ import { app } from "../../api/app";
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
-import { FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, permissionChangeLines } from "../board/board-permission-copy";
+import { FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, legacyBoardDeprecationWarning, permissionChangeLines } from "../board/board-permission-copy";
 import { publishedBoards } from "../../api/published-boards";
 import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
@@ -405,17 +405,17 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             metadata.append(text("Not trusted — no permissions granted", { size: "sm", color: "warning" }));
             if (info.proposedPermissions) {
                 metadata.append(text("Proposed permissions", { size: "sm", bold: true }));
-                metadata.append(this.permissionList(info.proposedPermissions));
+                metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
             }
         } else if (info.permissions) {
             metadata.append(text("Granted permissions", { size: "sm", bold: true }));
-            metadata.append(this.permissionList(info.permissions));
+            metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, info.name));
         }
         if (info.permissionChangePending && info.proposedPermissions) {
             const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
             pending.append(text("Pending permission change", { size: "sm", bold: true, color: "warning" }));
             pending.append(text("Proposed permissions", { size: "sm", bold: true }));
-            pending.append(this.permissionList(info.proposedPermissions));
+            pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
             for (const line of permissionChangeLines(info.permissionChanges ?? [])) {
                 pending.append(text(line, { size: "sm", color: "warning" }));
             }
@@ -653,7 +653,11 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         return this.addChild(parent, new ButtonView(props));
     }
 
-    private permissionList(permissions: NonNullable<BoardPropsInfo["permissions"]>): HTMLElement {
+    private permissionList(
+        permissions: NonNullable<BoardPropsInfo["permissions"]>,
+        showDeprecationWarning = false,
+        boardName = "This board",
+    ): HTMLElement {
         const list = panel({ direction: "column", gap: "xs", align: "stretch" });
         for (const line of boardPermissionLines(permissions)) {
             const row = panel({ direction: "row", gap: "lg", align: "center", wrap: true });
@@ -664,7 +668,10 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             }
             list.append(row);
         }
-        if (permissions.kind === "legacy") list.append(text(LEGACY_PERMISSION_EXPLANATION, { size: "sm", color: "light" }));
+        if (permissions.kind === "legacy") {
+            list.append(text(LEGACY_PERMISSION_EXPLANATION, { size: "sm", color: "light" }));
+            if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarning(boardName), { size: "sm", color: "warning" }));
+        }
         return list;
     }
 

@@ -19,6 +19,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] [US-1599: Scaffold all-`false` manifest; board guides and agent instructions](tasks/US-1599-board-permission-scaffold-guides/README.md)
   - [ ] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
   - [ ] US-1601: Migrate the user's registered custom boards (Codex run per board)
+  - [ ] [US-1608: Deprecation notice for boards without declared permissions](tasks/US-1608-legacy-board-deprecation-notice/README.md)
 
 ## Planned
 
@@ -31,6 +32,13 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] US-1605: Registration and trust *(draft, after PoC)*
   - [ ] US-1606: Agent tools — scaffold, reload, list, remove *(draft, after PoC)*
   - [ ] US-1607: Guides and agent workflow *(draft, after PoC)*
+
+## Scheduled
+
+Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or
+**Planned**) and investigate it as usual.
+
+- [ ] **2027-01-03** — [US-1609: Remove the legacy (undeclared) board permission fallback](tasks/US-1609-remove-legacy-board-permissions/README.md) — ends the EPIC-119 / US-1608 deprecation period
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 
@@ -49,6 +57,12 @@ Each section (Active / Planned) lists epics as top-level items and tasks as sub-
 - *(no epic)*
   - [ ] US-AAA: Standalone task
 ```
+
+### Scheduled work
+
+The **Scheduled** section holds tasks with a not-before date, written as `**YYYY-MM-DD**` at the
+start of the entry and sorted by date. Agents reading the dashboard should mention any entry whose
+date has passed. When it is due, move it to Active or Planned.
 
 ### Starting work
 
