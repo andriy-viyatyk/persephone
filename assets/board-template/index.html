@@ -38,9 +38,9 @@
 </head>
 <body>
     <h1>My Board</h1>
-    <p>Click to run <code>scripts/hello.js</code> via <code>persephone.execute()</code>. The script
-       prints some log noise, then a <code>@@RESULT@@</code>-tagged JSON line — the page extracts it
-       with <code>getJson(/@@RESULT@@(.*)/)</code>.</p>
+    <p>This all-false starter demonstrates local board UI logic. Its button does not call a gated
+       bridge API. To run <code>scripts/hello.js</code> with <code>persephone.execute()</code>, first
+       enable <code>execute: true</code> in <code>board-manifest.json</code>.</p>
 
     <button id="run">Run example</button>
     <div id="out">Output appears here…</div>

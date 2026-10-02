@@ -52,7 +52,7 @@ export interface BoardCompatibilityResult {
 }
 
 /** First bridge that understands object-form enforced permissions. */
-const OBJECT_PERMISSION_BRIDGE_VERSION = "1.30.0";
+export const OBJECT_PERMISSION_BRIDGE_VERSION = "1.30.0";
 
 /** Compare the independent app and bridge requirements of a board. */
 export function getBoardCompatibility(

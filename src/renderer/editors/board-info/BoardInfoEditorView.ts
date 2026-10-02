@@ -656,7 +656,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     private permissionList(permissions: NonNullable<BoardPropsInfo["permissions"]>): HTMLElement {
         const list = panel({ direction: "column", gap: "xs", align: "stretch" });
         for (const line of boardPermissionLines(permissions)) {
-            const row = panel({ direction: "row", gap: "xs", align: "center", wrap: true });
+            const row = panel({ direction: "row", gap: "lg", align: "center", wrap: true });
             row.append(text(line.text, { size: "sm" }));
             if (line.fullAccess) {
                 row.append(text("Full access", { size: "xs", bold: true, color: "warning" }));

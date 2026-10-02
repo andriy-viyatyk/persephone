@@ -101,7 +101,7 @@ Task documents are written when each task starts.
 | [US-1596](../tasks/US-1596-board-scoped-file-access/README.md) | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Active |
 | [US-1597](../tasks/US-1597-board-device-permissions/README.md) | Device permissions for board frames (camera, microphone, geolocation, notifications) | Active |
 | [US-1598](../tasks/US-1598-board-permission-trust-ui/README.md) | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Planned |
-| US-1599 | Scaffold all-`false` manifest; board guides and agent instructions | Planned |
+| [US-1599](../tasks/US-1599-board-permission-scaffold-guides/README.md) | Scaffold all-`false` manifest; board guides and agent instructions | Planned |
 | US-1600 | `persephone-boards` catalog: minimal permissions per board, `minBridgeVersion`, viewers render documents safely; republish all boards | Planned |
 | US-1601 | Migrate the user's registered custom boards: a Codex run per board works out what it uses and writes its permissions | Planned |
 

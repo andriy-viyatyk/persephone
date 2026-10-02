@@ -111,7 +111,7 @@ function permissionSection(permissions: TrustBoardDialogProps["permissions"], ti
     return [
         ...(title ? [createTextElement(title, { bold: true })] : []),
         ...boardPermissionLines(permissions).flatMap(({ text, fullAccess }) => fullAccess
-            ? [createPanelElement({ direction: "row", align: "center", gap: "xs", wrap: true }, [
+            ? [createPanelElement({ direction: "row", align: "center", gap: "lg", wrap: true }, [
                 createTextElement(text),
                 createTextElement("Full access", { bold: true, color: "warning" }),
                 createTextElement(FULL_ACCESS_DETAIL, { color: "light" }),

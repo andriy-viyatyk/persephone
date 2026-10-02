@@ -5,7 +5,7 @@ import {
     normalizeBoardGuidesFolder,
     normalizeBoardRelativePath,
 } from "../../../shared/guides/mounted-source";
-import { normalizeVersionRequirement } from "../../../shared/version-utils";
+import { normalizeVersionRequirement, OBJECT_PERMISSION_BRIDGE_VERSION } from "../../../shared/version-utils";
 import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
 import {
     BOARD_MANIFEST_FILE,
@@ -435,6 +435,20 @@ export function defaultBoardManifest(name = ""): BoardManifest {
     const configuredAuthor = settings.get("boards.default-author");
     return {
         schemaVersion: BOARD_MANIFEST_SCHEMA_VERSION,
+        minBridgeVersion: OBJECT_PERMISSION_BRIDGE_VERSION,
+        permissions: {
+            execute: false,
+            service: false,
+            fileSystem: false,
+            openExternal: false,
+            appScripting: false,
+            network: false,
+            clipboardRead: false,
+            camera: false,
+            microphone: false,
+            geolocation: false,
+            notifications: false,
+        },
         name,
         author: typeof configuredAuthor === "string" ? configuredAuthor : "",
     };

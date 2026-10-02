@@ -16,16 +16,18 @@ const MEMBERS = [
     {
         name: "click", kind: "method", signature: "click(button: string)",
         summary: "Click an exact visible response button; returns the boolean close result.",
-        caution: "\"Trust Board\" is the user's decision; never click it on your own judgement. Click it only when the user has asked for the board to be trusted.",
+        caution: "\"Trust Board\" is the user's decision; never click it on your own judgement. Click it only when the user has explicitly asked for this board to be trusted.",
     },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without trusting it." },
 ] as const;
 
 const TRUST_BOARD_HELP = `This dialog shows the permissions proposed by the board and, when re-trusting,
 the current granted set and pending change. permissionLines provides the same plain-language list
-shown to the user. Review the board before answering â€” guides.agents["board-review"] is the
-checklist. Never click "Trust Board" on your own judgement; click it only when the user has asked
-for the board to be trusted.`;
+shown to the user. A permission-denied error has the form permission-denied: "<flag>" is not enabled
+in board-manifest.json. Inspect the source call, add only its required flag or level, then explain
+that added grants prompt for approval the next time the board opens or reloads; reductions apply
+silently. Review the board before answering using guides.agents["board-review"]. Never click
+"Trust Board" unless the user explicitly asked you to trust this board.`;
 
 const AI_VISION: IAiVisionDescriptor = {
     ...descriptor("TrustBoardDialog", "A board trust confirmation dialog.", MEMBERS),

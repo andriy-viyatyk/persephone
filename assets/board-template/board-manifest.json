@@ -1,5 +1,19 @@
 {
   "schemaVersion": 1,
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "geolocation": false,
+    "notifications": false
+  },
   "description": "",
   "author": "",
   "name": "",

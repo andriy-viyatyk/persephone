@@ -55,8 +55,10 @@ export function permissionChangeLines(changes: readonly BoardPermissionChange[])
         const label = change.flag === "fileSystem" ? "File access" : change.flag === "openExternal" ? "External opening"
             : change.flag === "appScripting" ? "App scripting" : change.flag === "clipboardRead" ? "Clipboard reading"
                 : change.flag[0].toUpperCase() + change.flag.slice(1);
-        if (change.kind === "added") return `Added: ${label}.`;
-        if (change.kind === "removed") return `Removed: ${label}.`;
+        const level = (value: boolean | string | undefined): string =>
+            typeof value === "string" ? ` (${value})` : "";
+        if (change.kind === "added") return `Added: ${label}${level(change.to)}.`;
+        if (change.kind === "removed") return `Removed: ${label}${level(change.from)}.`;
         return `Changed: ${label} (${change.from} -> ${change.to}).`;
     });
 }
