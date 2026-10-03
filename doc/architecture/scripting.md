@@ -635,10 +635,12 @@ if it exists. **Reading never creates it** — the facade's host-backed state re
 until the page exists, and only a write (`push`, `clear`, `toggleTimestamps`) get-or-creates and
 focuses it. That asymmetry is deliberate: `helpSearch` walks every `node: true` property and every
 declared child, and `logView` is both, so a get-or-create getter made every `helpSearch(...)` open
-and focus the Log View page as a side effect of a search. `push(entries)` renders entries immediately and returns
-entry/dialog IDs; it does not wait for inline dialog answers. `dialogResult(id)` reports whether an
-inline dialog is unresolved or resolved, while the user answers it in the Log View page. The
-The `pages.logView.push` call path remains available for agents and returns immediately; `dialogResult()` reports whether the user has answered an inline dialog.
+and focus the Log View page as a side effect of a search. `push(entries)` renders entries immediately
+and returns entry/dialog IDs; it does not wait for inline dialog answers. `dialogResult(id)` reports
+whether an inline dialog is unresolved or resolved, while the user answers it in the Log View page.
+An unanswered inline dialog is included in MCP attention once per renderer while it remains
+unresolved; subsequent calls do not repeat that message. The attention tracker forgets it when it
+is answered or removed, so a later new dialog can be reported.
 
 The Mermaid, SVG, and Image editors expose `savePngToFile(filePath)` — they rasterise their
 rendered output to PNG and write it to disk. This is the same capability used by each editor's
@@ -654,10 +656,10 @@ data, mimeType: "image/png", width, height, originalWidth, originalHeight }` rec
 defaults to a 2048-pixel maximum longer side, preserves aspect ratio, and does not write a file or
 depend on the active page's viewport. Callers may provide a positive integer `maxDimension`; a
 missing runtime URL is reported as an unavailable/loading error. Because AiVision result shaping
-applies `call.maxLength` before image conversion, callers should allow roughly 1.4 times the PNG
-byte size plus result overhead; an empty or partial record means the bound was too low. `app.call()`
-and a board's `persephone.call()` default to an unbounded transport-size limit for programmatic
-results; an explicit `maxLength` still applies. The MCP `call` tool keeps its 20,000-character
+returns a top-level image result whole, regardless of `call.maxLength`; other string and structured
+results remain bounded. `app.call()` and a board's `persephone.call()` default to an unbounded
+transport-size limit for programmatic results; an explicit `maxLength` still applies to non-image
+results. The MCP `call` tool keeps its 20,000-character
 default because its result is agent-facing text.
 Interface definitions: `/src/renderer/api/types/*.d.ts`
 
@@ -815,8 +817,10 @@ It is fully type-erased (no runtime cost) and names the offender on failure: `Ty
 
 ### AiVision path calls
 
-The `ai-vision` npm package contains the process-neutral descriptor interfaces, path parser, resolver,
-hint builder, help search, and result shaper used by path callers. Renderer wrappers and editor
+The Persephone integration uses `ai-vision` 1.3.0, which contains the process-neutral descriptor
+interfaces, path parser, resolver, hint builder, help search, and result shaper used by path callers.
+Its 1.2.1 release added whole top-level image results; 1.3.0 ranks `helpSearch` hits by query-token
+coverage and hit origin. Renderer wrappers and editor
 facades implement `IAiVisible` with descriptors beside their public members; dynamic pages and
 facades enumerate their own children so discovery does not probe side-effecting getters. Namespace
 objects that cannot carry a descriptor use the shared instance registry.
@@ -928,9 +932,15 @@ overlay is drawn; the user dismisses it afterward.
 The `guides` root is backed by the shared guide index in `/src/shared/guides/`. A page read through
 `guides.<path>` returns Markdown with valid front matter removed; `guides.<path>.layout` returns
 the body of its `## Layout` section or an explicit no-schema message. `guides.search()` searches
-the same corpus independently of descriptor help search. Guide front matter accepts `title`,
+titles, summaries, headings, table rows, and body text independently of descriptor help search.
+It splits identifiers such as `helpSearch` into searchable words, matches word prefixes, ignores
+common query filler when substantive words are present, and ranks hits that cover more query words
+first. Equal-coverage hits prefer titles/summaries/headings/table rows/body by match type, then
+built-in guides over installed-board guides. Guide front matter accepts `title`,
 `audience`, `summary`, optional `screen`, and either one `editorId` or a list of editor IDs. The
 editor mapping is used by the active-page guide entry points, while `screen` remains page metadata.
+The `board` editorId token lets an installed-board guide claim its own board for F1; it is excluded
+from duplicate-editorId diagnostics because the token intentionally appears in multiple boards.
 Trusted installed boards that declare a safe `guides` folder are mounted under
 `guides.installed-boards.<board-id>`; each mount is contained within that board's folder and is
 resolved dynamically so trust, installation, and removal are reflected without an app restart.

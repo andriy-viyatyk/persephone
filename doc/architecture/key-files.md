@@ -75,7 +75,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Framework-free virtualization engine (render-window calculation, pooled cells, sticky regions, scroll/resize handling, and scheduled repaint) | `av-grid` via `/src/renderer/uikit/DataGrid/index.ts` |
 | Markdown link resolution (relative → `file://`; Azure DevOps wiki root-relative pages + `.attachments`) | `/src/renderer/core/utils/path-utils.ts` |
 | Guide link resolution (`persephone-guide://` validation and relative guide href resolution) | `/src/shared/guides/guide-links.ts`, `/src/renderer/editors/markdown/markdown-nav.ts` |
-| Shared guide corpus index (front matter, tree, search, and `## Layout` extraction) | `/src/shared/guides/` |
+| Shared guide corpus index (search, front matter, tree, and layout extraction) | `/src/shared/guides/index.ts`, `/src/shared/guides/` |
 | Mounted guide source (composes the packaged corpus with isolated, dynamically resolved trusted-board guide roots) | `/src/shared/guides/mounted-source.ts` |
 | Git-root detection for Markdown wiki links (walk up to nearest `.git`, cached) | `/src/renderer/editors/markdown/detect-git-root.ts` |
 | Markdown heading anchors (GitHub-style slug ids + `-1`/`-2` dedupe; exports `slugifyHeading`, reused by `MarkdownBlock.scrollToAnchor` to match a `#fragment` against heading text so Azure-DevOps and GitHub dialects meet) | `/src/renderer/editors/markdown/rehypeHeadingIds.ts` |
@@ -126,7 +126,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
-| AiVision contracts, registry, path parser/resolver, hints, help search, result shaping, validation, and member suggestions (core, `dom`, and `remote` entries) | `ai-vision` npm package |
+| AiVision core package (help search, result shaping, and path resolution; external npm dependency 1.3.0) | `ai-vision` npm package |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls) | `/src/renderer/scripting/ai-vision/` |
 | AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations with optional spatial phrases) | `ai-vision` npm package |
 | Remote AiVision timeout precedence (per-call, remote-declared, session `boards.callTimeoutMs`, and built-in fallback) | `/src/shared/ai-vision-timeout.ts` |
@@ -355,6 +355,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer alert watcher (mount-time subscription that forwards each new error/warning toast into the AiVision event log) | `/src/renderer/scripting/ai-vision/alert-watch.ts` |
 | Renderer AiVision `events` namespace (`recent`, `since`, `count`, and bounded cursor-based `wait`) | `/src/renderer/scripting/ai-vision/namespaces/events.ts` |
 | Renderer AiVision page-attention state (agent-addressed page tracking, closed-page pruning, and synchronous activation suppression) | `/src/renderer/scripting/ai-vision/page-attention.ts` |
+| Renderer MCP call attention (blocking surfaces and inline Log View dialog notices) | `/src/renderer/scripting/ai-vision/attention.ts` |
 | Renderer AiVision page-activation observer (mount-scoped page-model subscription and `page-activated` producer) | `/src/renderer/scripting/ai-vision/page-activation.ts` |
 | Renderer AiVision UI walkthrough (`ui.guide.step` / `end`) and its curated-control provider | `/src/renderer/scripting/ai-vision/namespaces/ui-guide.ts`, `/src/renderer/scripting/ai-vision/namespaces/ui.ts` |
 | Agent highlight overlay (the package's dependency-free ring and explanation card; `window.__aiVisionHighlight`; fixed accent palette; visibility-based removal keeps rings from surviving hidden controls; the source remains ASCII-only for injection into contexts without a module graph) | `ai-vision/dom` |

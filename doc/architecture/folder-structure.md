@@ -762,6 +762,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       │   └── index.ts     # Namespace registration and descriptor wiring
 │       ├── event-log.ts     # Per-window event ring and producer helpers, including alert-raised events
 │       ├── alert-watch.ts   # Forwards new error/warning toasts into the renderer event log
+│       ├── attention.ts     # Renderer call attention, including once-per-renderer inline Log View dialog notices
 │       ├── page-attention.ts # Agent-addressed page tracking and activation suppression
 │       ├── page-activation.ts # Mount-scoped active-page observer and event producer
 │       ├── root.ts          # Renderer object-model root

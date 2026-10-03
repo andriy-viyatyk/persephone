@@ -11,10 +11,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-- *(no epic)*
-  - [ ] [US-1615: MCP noise and metadata fixes](tasks/US-1615-mcp-noise-fixes/README.md)
-  - [ ] [US-1616: Image results survive the MCP length limit (ai-vision 1.2.1)](tasks/US-1616-mcp-image-results/README.md)
-  - [ ] [US-1617: Intent queries find the obvious answer in helpSearch and guides.search (ai-vision 1.3.0)](tasks/US-1617-agent-search-ranking/README.md)
+*(none)*
 
 ## Planned
 

@@ -72,7 +72,7 @@ export interface GuideIndex {
     getTree(audience?: GuideAudienceFilter): Promise<readonly GuideTreeNode[]>;
     /** Canonical key lookup, e.g. `index` or `editors/index`; returns undefined when not found/filter-excluded. */
     getPage(path: string, audience?: GuideAudienceFilter): Promise<GuidePage | undefined>;
-    /** All-token, case-insensitive word-start search; default limit is 10 and is applied after dedupe. */
+    /** Case-insensitive prefix search across query tokens; hits rank by token coverage. Default limit is 10 after dedupe. */
     search(query: string, limit?: number, audience?: GuideAudienceFilter): Promise<readonly GuideSearchHit[]>;
     /** Returns the `## Layout` body, or undefined when that section is absent. */
     getLayout(path: string, audience?: GuideAudienceFilter): Promise<string | undefined>;

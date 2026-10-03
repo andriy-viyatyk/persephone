@@ -50,6 +50,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **MCP gives agents clearer hints, better search, and complete screenshots:** image results from `call` are returned as inline images without `maxLength` truncation, guide search and `helpSearch` rank the answers to plain questions such as "show a table to the user" first, and hints no longer repeat the same warning or the same pending-dialog notice on every call. See the [MCP Server Setup guide](./mcp-setup.md) and [AI Vision guide](./agents/ai-vision.md).
+
 - **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.
 
 - **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
