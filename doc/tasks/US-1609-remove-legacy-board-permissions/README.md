@@ -1,7 +1,7 @@
 # US-1609: Remove the legacy (undeclared) board permission fallback
 
 **Status:** Scheduled — due **2027-01-03** (three months after the US-1608 deprecation notice shipped).
-**Follows:** [EPIC-119](../../epics/EPIC-119.md), [US-1608](../US-1608-legacy-board-deprecation-notice/README.md).
+**Follows:** [EPIC-119](../../epics/EPIC-119.md), US-1608 (commit `94cd6b12`; its task folder was deleted at epic close).
 
 > This is a scheduled stub, not an investigated plan. When it becomes due, move it to **Active**
 > and run the normal task-document investigation before implementing.
@@ -44,8 +44,10 @@ undeclared manifest stays the easiest way to get full access.
    declared set once its manifest is updated.
 4. Apply `board://` confinement to every board.
 5. Remove the whole US-1608 deprecation implementation. When this task is investigated, take the
-   exact file list from the US-1608 task document, or from its commit if the folder has been
-   deleted. The pieces are:
+   exact file list from US-1608's commit `94cd6b12` (`git show --stat 94cd6b12`; its task folder
+   was deleted at epic close). That commit also added the general `ui.notify(..., { persistent: true })`
+   option (`api/ui.ts`, `uikit/Notification/*`); keep it, since it is not part of the deprecation. The
+   pieces to remove are:
    - the deprecation wording in `board-permission-copy.ts`;
    - the warning in the trust dialog;
    - the toast on every board open, including the combined toast for boards restored at startup,

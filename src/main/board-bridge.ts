@@ -379,7 +379,8 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
         const message = args[0] as string;
         if (!message) return;
         const type = args[1] as BoardNotifyType | undefined;
-        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type });
+        const persistent = args[2] === true;
+        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type, persistent });
         // Mirror errors/warnings to the board's ui.log (US-726) for author/agent review.
         if (type === "error" || type === "warning") {
             void boardLog.append(entry.root, type, message).catch(() => {});

@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.28.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.33.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -760,8 +760,7 @@ await persephone.call("page.grouped.content", {
 
 Pass `args` to invoke the final method, `value` to assign a writable property, or `maxLength` to
 bound string shaping. Programmatic board calls are unbounded by default so binary/data strings are
-not silently clipped; an explicit `maxLength` is still honored. `args` and `value` cannot be combined. See the bundled regex verification
-Board under `assets/board-call-regex/` for a complete Run/Write example.
+not silently clipped; an explicit `maxLength` is still honored. `args` and `value` cannot be combined.
 
 Append `.$describe` to a node path when a program needs the descriptor as data rather than prose:
 `{ path, kind, summary, members[], children[], overview?, help?, identity?, restricted? }`.
@@ -804,7 +803,9 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
     Tab_ / _Copy Image_ / _Save Image As…_ on images, _Cut_ / _Copy_ / _Paste_ in text fields, and
     _Copy_ on a text selection. To show your own menu instead, call `e.preventDefault()` on the
     `contextmenu` event in your handler (same opt-out as the link router and Ctrl+S).
-- `persephone.notify(message, type)` — toast (`"info" | "success" | "warning" | "error"`).
+- `persephone.notify(message, type, options?)` — toast (`"info" | "success" | "warning" | "error"`).
+  Info, success and warning toasts close after a few seconds; `{ persistent: true }` (bridge 1.33.0)
+  keeps one on screen until the user closes it — use it for a message that needs action.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)`
   — native dialogs; each returns a path you hand to `execute()`. They require
   `fileSystem: "board"` or `fileSystem: "full"`.

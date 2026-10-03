@@ -186,7 +186,7 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.32.0**. Bridge `1.32.0` allows a simple board with `fileSystem: false`
+The current board bridge is **1.33.0**. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
 to read only its currently hosted document through `readFile(getFilePath())`. Bridge `1.23.0` uses one extension-to-MIME table for
 `board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.22.0` adds host-managed module-service lifecycle
@@ -816,7 +816,7 @@ These handle in-app effects that `execute()` cannot express:
 
 | Method | Description |
 |--------|-------------|
-| `persephone.notify(message, type)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Errors are also appended to `ui.log`. |
+| `persephone.notify(message, type, options?)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Info, success and warning toasts close after a few seconds; `{ persistent: true }` (bridge 1.33.0) keeps the toast until you close it. Errors and warnings are also appended to `ui.log`. |
 | `persephone.clipboard.writeText(text)` | Write text to the OS clipboard. Useful for board actions triggered from Persephone's own toolbar, where the board page may not be focused. |
 | `persephone.clipboard.writeImage(data)` | Write encoded image bytes (`Uint8Array` or `ArrayBuffer`) to the OS clipboard. |
 | `persephone.icons.forFiles(names)` | Get the icon Persephone shows for each file name, as `{ [name]: dataUrl }` for `<img src>`, so a board's file list can match the Explorer. The file does not need to exist. Single-colour icons follow the current theme; request again after `persephone.onThemeChange` fires. |

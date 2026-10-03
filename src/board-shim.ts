@@ -1733,9 +1733,9 @@ function createHandle(
         },
     },
 
-    notify(message: string, type?: "info" | "success" | "warning" | "error"): void {
+    notify(message: string, type?: "info" | "success" | "warning" | "error", options?: { persistent?: boolean }): void {
         if (type === "error") console.error("[board]", message);
-        fire("notify", [message, type]);
+        fire("notify", [message, type, options?.persistent === true]);
     },
 
     /** Board module service protocol. Calls cross the bridge to the main-owned service supervisor. */

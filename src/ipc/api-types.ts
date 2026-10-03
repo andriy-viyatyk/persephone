@@ -430,6 +430,8 @@ export type EventApi = {
     [EventEndpoint.eBoardNotify]: EventObject<{
         message: string;
         type?: "info" | "success" | "warning" | "error";
+        /** Keep the toast until the user closes it (bridge 1.33.0). */
+        persistent?: boolean;
     }>;
     // Board `persephone.openRawLink(href, { editor })` → host renderer (US-756 C6).
     // `editor` is an optional registered editor id; the open pipeline falls back to

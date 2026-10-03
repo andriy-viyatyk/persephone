@@ -146,8 +146,8 @@ export class RendererEventsService {
         signalReadyToQuit();
     };
 
-    private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error" }) => {
-        void ui.notify(data.message, data.type ?? "info");
+    private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error"; persistent?: boolean }) => {
+        void ui.notify(data.message, data.type ?? "info", { persistent: data.persistent === true });
     };
 
     private handleUpdateAvailable = async (result: UpdateCheckResult) => {

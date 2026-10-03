@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.32.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.33.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -23,6 +23,9 @@ Bridge `1.28.0` adds the `segmented` toolbar control; boards using it set
 `minBridgeVersion: "1.28.0"`.
 Bridge `1.32.0` lets `readFile()` read the exact currently hosted document path when
 `fileSystem: false`; boards using this behavior should set `minBridgeVersion: "1.32.0"`.
+Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, which keeps the toast
+on screen until the user closes it. Older apps ignore the option and auto-close the toast, so it is
+safe to pass without raising `minBridgeVersion`.
 Bridge `1.21.0` adds optional `representation` to capability discovery and board declarations.
 Boards declaring `content.view` must provide one non-empty `representation` per supported format
 and set `minBridgeVersion: "1.21.0"`.
@@ -786,7 +789,10 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   const resource = await persephone.content.open("https://example.com/report.pdf", { timeoutMs: 10000 });
   const response = await fetch(resource.url, { headers: { Range: "bytes=0-1023" } });
   ```
-- `persephone.notify(message, type)` — toast (`"info"|"success"|"warning"|"error"`); errors are
+- `persephone.notify(message, type, options?)` — toast (`"info"|"success"|"warning"|"error"`).
+  Info, success and warning toasts close after a few seconds; pass `{ persistent: true }` (bridge
+  1.33.0) for a message the user must read in full, such as a failed sync that needs action. Do
+  not use `"error"` just to keep a message on screen. Errors and warnings are
   also appended to the board's **`ui.log`** (an on-board indicator opens it). For ordinary boards,
   it is in the board folder; for bundled boards, it is `%APPDATA%\persephone\board-logs\<id>\ui.log`.
   The log also receives automatically: load failures, CSP violations, uncaught errors / unhandled rejections,

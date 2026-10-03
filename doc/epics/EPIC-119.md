@@ -98,15 +98,15 @@ Task documents are written when each task starts.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1593](../tasks/US-1593-board-permission-model/README.md) | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Done |
-| [US-1596](../tasks/US-1596-board-scoped-file-access/README.md) | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Done |
-| [US-1597](../tasks/US-1597-board-device-permissions/README.md) | Device permissions for board frames (camera, microphone, geolocation, notifications) | Done |
-| [US-1598](../tasks/US-1598-board-permission-trust-ui/README.md) | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Done |
-| [US-1599](../tasks/US-1599-board-permission-scaffold-guides/README.md) | Scaffold all-`false` manifest; board guides and agent instructions | Done |
-| [US-1600](../tasks/US-1600-boards-catalog-permissions/README.md) | `persephone-boards` catalog: minimal permissions per board, `minBridgeVersion`, viewers render documents safely; republish all boards | Done |
-| [US-1601](../tasks/US-1601-migrate-user-boards/README.md) | Migrate the user's registered custom boards: a Codex run per board works out what it uses and writes its permissions | Done |
-| [US-1608](../tasks/US-1608-legacy-board-deprecation-notice/README.md) | Deprecation notice for boards without declared permissions | Done |
-| [US-1610](../tasks/US-1610-hosted-document-read/README.md) | A board can read its own hosted document without `fileSystem` | Done |
+| US-1593 | Permission model: bridge surface inventory, manifest schema, enforcement for `execute` / `openExternal` / `appScripting` / `service` | Done |
+| US-1596 | Scoped file access (`fileSystem: false / "board" / "full"`, user-picked files) | Done |
+| US-1597 | Device permissions for board frames (camera, microphone, geolocation, notifications) | Done |
+| US-1598 | Trust dialog and Board Info: show granted permissions, "Unrestricted" label, re-trust on change | Done |
+| US-1599 | Scaffold all-`false` manifest; board guides and agent instructions | Done |
+| US-1600 | `persephone-boards` catalog: minimal permissions per board, `minBridgeVersion`, viewers render documents safely; republish all boards | Done |
+| US-1601 | Migrate the user's registered custom boards: a Codex run per board works out what it uses and writes its permissions | Done |
+| US-1608 | Deprecation notice for boards without declared permissions | Done |
+| US-1610 | A board can read its own hosted document without `fileSystem` | Done |
 
 ### Task scope notes
 
