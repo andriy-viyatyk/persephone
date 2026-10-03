@@ -161,7 +161,8 @@ snapshots for structure or controls the model does not represent.
   content behind an explicit `read(id)` method.
 - Call `remote.refresh()` once after a late `expose()`, and again only when a collection becomes
   non-empty or empty: the item shape is probed from the first item once, and values are read live.
-  Each `refresh()` logs a `shape-changed` event to the agent, so never call it on every mutation.
+  A `refresh()` that changes the shape logs a `shape-changed` event to the agent, and every one
+  costs a re-probe, so never call it on every mutation.
   Register cleanup for every observer, listener, and timer with `runtime.onDispose()`.
 - To announce something new (for example, a newly arrived item), use `remote.notify(text)`: one
   short line to the agent's event log, at most 512 characters and five per rolling minute. Keep it

@@ -179,7 +179,7 @@ The report lists the changes US-1604 onward need. The main ones:
 | [US-1613](../tasks/US-1613-site-extensions-hub-tab/README.md) | Site Extensions tab in Tools & Editors; Settings keeps a summary, the configurable extensions folder, and an "Open site extensions" button | Implemented |
 | [US-1606](../tasks/US-1606-site-extension-agent-tools/README.md) | Agent tools: `siteExtensions` namespace with create, reload in place, list and remove | Planned |
 | [US-1607](../tasks/US-1607-site-extension-guides/README.md) | Site extension authoring guide and agent workflow | Planned |
-| US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Draft |
+| [US-1612](../tasks/US-1612-quieter-page-model-events/README.md) | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Planned |
 
 ### Task scope notes
 

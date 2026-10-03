@@ -858,6 +858,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
         }
         warnUnknownAiVisionViews(message.shape, model, (warning) => this.appendLog("warn", warning));
+        // A refresh() that republishes an identical shape changes nothing the agent can see.
+        const previousShape = model.getAiVisionRegistration()?.shape;
         const accepted = model.setAiVisionRegistration(
             message.shape,
             frame,
@@ -867,7 +869,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             reason,
         );
         const pageId = model.page?.id;
-        if (accepted && pageId && reason === "refresh") logShapeChanged(pageId);
+        if (accepted && pageId && reason === "refresh"
+            && JSON.stringify(previousShape) !== JSON.stringify(message.shape)) logShapeChanged(pageId);
         if (accepted && reason === "register" && model.consumeReloadRegistration() && pageId) {
             logBoardReloaded(pageId);
         }

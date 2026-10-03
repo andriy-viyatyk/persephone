@@ -181,8 +181,9 @@ function refreshAiVision() {
 ```
 
 Call it from wherever you re-render. Comparing an empty/non-empty signature keeps it cheap: a
-`refresh()` on every keystroke is wasted work, and the host logs a `shape-changed` event each time
-telling the agent to re-read `pages[id].editor.app`.
+`refresh()` on every keystroke is wasted work, and each time the shape actually changes the host logs
+a `shape-changed` event telling the agent to re-read `pages[id].editor.app` (a refresh that
+republishes an identical shape logs nothing).
 
 ### 4. Point at controls: `createElements`
 
@@ -284,8 +285,9 @@ The rest of the differences are on the host side:
   after `expose()`. Persephone handles the signal and probes again, including a trailing probe if
   the late-probe rate limit would otherwise defer it.
 - **The model may change without navigation.** `remote.version` starts at 1 and increments on
-  every `refresh()`, which also emits a signal to the host; the host logs a `shape-changed` event
-  naming `pages[id].editor.app` and re-probes. There is a second path for when that signal never
+  every `refresh()`, which also emits a signal to the host; the host re-probes and, when the shape
+  actually changed (or the model is gone), logs a `shape-changed` event naming
+  `pages[id].editor.app`. A same-document navigation under a live model logs no `navigated` event. There is a second path for when that signal never
   arrives: the host revalidates the version before every request, and a mismatch refuses the stale
   proxy and re-probes in the background without logging an event. Either way the agent's move is
   the same — read `pages[id].editor.app` again.

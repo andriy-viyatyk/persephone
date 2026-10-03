@@ -86,6 +86,13 @@ export class BrowserWebviewModel {
     private readonly aiVisionNotifyTimes: number[] = [];
     private readonly lateAiVisionProbeTimes = new Map<string, number>();
     private readonly lateAiVisionProbeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    /** The shape a refresh() replaced, per tab, keyed to the generation its re-probe runs at.
+     *  `shape-changed` is logged only when that probe finds a different shape, or none. */
+    private readonly pendingShapeComparisons = new Map<string, { generation: number; shape: string }>();
+    /** Whether the tab had a live model when its latest load started. Chromium fires
+     *  `did-start-loading` (which clears the registration) before `did-navigate-in-page`, even
+     *  for a same-document navigation, so the registration alone cannot answer "was it live". */
+    private readonly liveModelAtLoadStart = new Map<string, boolean>();
     private readonly dismissedExtensionPrompts = new Set<string>();
     /** Cross-document navigation count per tab: the document identity for site-extension
      *  prompts and injection. Not the AiVision generation, which also advances whenever a probe
@@ -245,6 +252,8 @@ export class BrowserWebviewModel {
         ipcRenderer.removeListener(BrowserChannel.event, this.handleBrowserEvent);
         for (const timer of this.lateAiVisionProbeTimers.values()) clearTimeout(timer);
         this.lateAiVisionProbeTimers.clear();
+        this.pendingShapeComparisons.clear();
+        this.liveModelAtLoadStart.clear();
     };
 
     /** Reload the active page even while it is loading. */
@@ -328,6 +337,8 @@ export class BrowserWebviewModel {
             case "did-navigate": {
                 const touched = this.model.hasAiVisionRegisteredTab(internalTabId);
                 this.model.clearAiVisionRegistration(internalTabId);
+                this.pendingShapeComparisons.delete(internalTabId);
+                this.liveModelAtLoadStart.delete(internalTabId);
                 this.siteDocuments.set(internalTabId, this.siteDocumentId(internalTabId) + 1);
                 this.model.clearSiteExtensionTrustPrompt(internalTabId);
                 for (const key of this.dismissedExtensionPrompts) {
@@ -341,14 +352,21 @@ export class BrowserWebviewModel {
             }
             case "did-navigate-in-page": {
                 this.applyNavigation(internalTabId, data, true);
+                // Under a live model the model is the agent's view of the page; it refreshes
+                // itself, so a same-document route change is not worth an event.
+                const modelWasLive = !!this.model.getAiVisionRegistration(internalTabId)
+                    || this.liveModelAtLoadStart.get(internalTabId) === true;
                 if (this.model.hasAiVisionRegisteredTab(internalTabId)
+                    && !modelWasLive
                     && data.url !== DEFAULT_URL && this.model.page?.id) {
                     logBrowserNavigated(this.model.page.id);
                 }
                 break;
             }
             case "did-start-loading":
+                this.liveModelAtLoadStart.set(internalTabId, !!this.model.getAiVisionRegistration(internalTabId));
                 this.model.clearAiVisionRegistration(internalTabId);
+                this.pendingShapeComparisons.delete(internalTabId);
                 this.model.updateTab(internalTabId, { loading: true });
                 break;
             case "did-stop-loading":
@@ -706,13 +724,28 @@ ${source}
         void this.probeAiVision(internalTabId);
     }
 
-    reprobeAiVision(internalTabId: string, generation: number, token: number): void {
+    /** `compareShape` is set for a page's own refresh() signal: the re-probe then logs
+     *  `shape-changed` only if the shape really changed. The stale-version re-probe stays silent. */
+    reprobeAiVision(internalTabId: string, generation: number, token: number, compareShape = false): void {
         const registration = this.model.getAiVisionRegistration(internalTabId);
         if (!registration
             || registration.generation !== generation
             || registration.token !== token) return;
         this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+        const probeGeneration = this.model.getAiVisionDocumentGeneration(internalTabId);
+        if (compareShape && probeGeneration !== undefined) {
+            this.pendingShapeComparisons.set(internalTabId, { generation: probeGeneration, shape: JSON.stringify(registration.shape) });
+        }
         void this.probeAiVision(internalTabId);
+    }
+
+    /** Resolve a pending refresh() comparison for this probe; `shape` undefined means no model. */
+    private settleShapeComparison(internalTabId: string, generation: number, shape: string | undefined): void {
+        const pending = this.pendingShapeComparisons.get(internalTabId);
+        if (!pending || pending.generation !== generation) return;
+        this.pendingShapeComparisons.delete(internalTabId);
+        const pageId = this.model.page?.id;
+        if (pageId && shape !== pending.shape) logBrowserShapeChanged(pageId);
     }
 
     private async probeAiVision(internalTabId: string): Promise<void> {
@@ -740,6 +773,7 @@ ${source}
         if (typeof serialized !== "string") {
             const current = this.model.getAiVisionRegistration(internalTabId);
             if (current?.generation === generation) return;
+            this.settleShapeComparison(internalTabId, generation, undefined);
             this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
             return;
         }
@@ -771,7 +805,9 @@ ${source}
         if (current?.generation === generation
             && current.version === probe.version
             && JSON.stringify(current.shape) === JSON.stringify(probe.shape)) return;
-        this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version);
+        if (this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version)) {
+            this.settleShapeComparison(internalTabId, generation, JSON.stringify(probe.shape));
+        }
     }
 
     /**
@@ -816,9 +852,7 @@ ${source}
                 return;
             }
             if (registration.version === signal.version) return;
-            const pageId = this.model.page?.id;
-            if (pageId) logBrowserShapeChanged(pageId);
-            this.reprobeAiVision(internalTabId, registration.generation, registration.token);
+            this.reprobeAiVision(internalTabId, registration.generation, registration.token, true);
             return;
         }
 

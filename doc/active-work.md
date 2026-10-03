@@ -19,7 +19,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] [US-1613: Site Extensions tab in Tools & Editors](tasks/US-1613-site-extensions-hub-tab/README.md)
   - [ ] [US-1606: Agent tools — create, reload in place, list, remove](tasks/US-1606-site-extension-agent-tools/README.md)
   - [ ] [US-1607: Site extension authoring guide and agent workflow](tasks/US-1607-site-extension-guides/README.md)
-  - [ ] US-1612: Quieter page-model events *(draft)*
+  - [ ] [US-1612: Quieter page-model events](tasks/US-1612-quieter-page-model-events/README.md)
 
 ## Planned
 
