@@ -9,6 +9,7 @@
  *   .vite/build/preload.js        – preload script (CJS)
  *   .vite/build/preload-webview.js – webview preload (CJS)
  *   .vite/build/board-shim.js     – board bridge shim (IIFE, inlined into board HTML)
+ *   .vite/build/site-extension-runtime.js – site-extension AiVision runtime (IIFE, EPIC-120 PoC)
  *   .vite/build/search-worker.js  – file-search worker thread (CJS, run via eval)
  *   .vite/renderer/main_window/   – renderer (ESM, HTML entry)
  */
@@ -125,6 +126,29 @@ await build({
         minify: false,
         rollupOptions: {
             input: { "board-shim": "src/board-shim.ts" },
+            output: {
+                format: "iife",
+                entryFileNames: "[name].js",
+                chunkFileNames: "[name].js",
+            },
+        },
+    },
+});
+
+// ── 3b'. Site-extension runtime ─────────────────────────────────────
+//
+// EPIC-120 PoC: `ai-vision/remote` + `ai-vision/dom` as a self-contained IIFE, evaluated in a web
+// page's main world ahead of a site-extension script. Same constraints as the board shim.
+
+console.log("\n🔨 Building site-extension-runtime...");
+await build({
+    configFile: false,
+    build: {
+        outDir: ".vite/build",
+        emptyOutDir: false,
+        minify: true,
+        rollupOptions: {
+            input: { "site-extension-runtime": "src/site-extension-runtime.ts" },
             output: {
                 format: "iife",
                 entryFileNames: "[name].js",

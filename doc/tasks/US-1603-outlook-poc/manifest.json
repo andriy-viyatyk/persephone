@@ -1,0 +1,11 @@
+{
+  "name": "Outlook",
+  "version": "1.0.0",
+  "description": "AiVision model for Outlook on the web.",
+  "hosts": [
+    "outlook.cloud.microsoft",
+    "outlook.office.com",
+    "outlook.office365.com"
+  ],
+  "script": "extension.js"
+}

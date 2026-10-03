@@ -17,6 +17,10 @@ import { showBrowserContextMenu } from "./webview-context-menu";
 import { agentMayAccessBrowserPage } from "./agent-access";
 import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
 import { tryParseJson } from "../../core/utils/parse-utils";
+import { errMessage } from "../../../shared/utils";
+import { api } from "../../../ipc/renderer/api";
+import { fs } from "../../api/fs";
+import { siteExtensionStore } from "../../api/site-extensions";
 import {
     logBrowserNavigated,
     logBrowserShapeChanged,
@@ -33,6 +37,8 @@ const MAX_AI_VISION_SHAPE_BYTES = 262_144;
 const MAX_AI_VISION_NOTIFY_LENGTH = 512;
 const AI_VISION_NOTIFY_LIMIT = 5;
 const AI_VISION_NOTIFY_WINDOW_MS = 60_000;
+/** A shape signal from a page with no registration probes at most this often per tab. */
+const AI_VISION_LATE_PROBE_INTERVAL_MS = 1_000;
 
 /**
  * Manages webview references, IPC event handling, context menu,
@@ -53,6 +59,7 @@ export class BrowserWebviewModel {
     private readonly warnedAiVisionShapes = new Set<string>();
     private readonly probedAiVisionGenerations = new Set<string>();
     private readonly aiVisionNotifyTimes: number[] = [];
+    private readonly lateAiVisionProbeTimes = new Map<string, number>();
 
     constructor(model: BrowserEditorModel) {
         this.model = model;
@@ -385,6 +392,80 @@ export class BrowserWebviewModel {
         void this.probeAiVision(internalTabId);
     }
 
+    /** Inject the valid site extension for this document's exact HTTPS host, then probe for its model. */
+    async injectSiteExtension(internalTabId: string): Promise<void> {
+        const state = this.model.state.get();
+        if (state.isIncognito || state.isTor) return;
+        const webview = this.webviewRefs.get(internalTabId);
+        if (!webview) return;
+        let pageUrl: URL;
+        try {
+            pageUrl = new URL(webview.getURL());
+        } catch {
+            return;
+        }
+        if (pageUrl.protocol !== "https:") return;
+        const extension = await siteExtensionStore.findForHost(pageUrl.hostname).catch((): undefined => undefined);
+        if (!extension) return;
+
+        let expression: string;
+        try {
+            const [source, runtime] = await Promise.all([
+                fs.read(extension.scriptPath),
+                api.getSiteExtensionRuntime(),
+            ]);
+            expression = `(() => {
+    const host = ${JSON.stringify(pageUrl.hostname)};
+    if (location.protocol !== "https:" || location.hostname !== host) return "host-mismatch";
+    if (window.__persephoneSiteExtension) return "already-injected";
+    Object.defineProperty(window, "__persephoneSiteExtension", {
+        value: { id: ${JSON.stringify(extension.id)}, host }, enumerable: false,
+    });
+${runtime}
+    try {
+${source}
+    } catch (error) {
+        // The page's own console only: the author debugs there, and the host warning stays generic.
+        console.error("[site-extension] " + ${JSON.stringify(extension.id)} + ":", error);
+        return "extension-error";
+    }
+    return "ok";
+})()`;
+        } catch {
+            console.warn(`[site-extension] ${extension.id}: extension files could not be read`);
+            return;
+        }
+
+        let result: unknown;
+        try {
+            const cdp = this.model.target.cdp(internalTabId);
+            if (!await cdp.attach({ aiVisionBinding: true })) {
+                console.warn(`[site-extension] ${extension.id}: CDP attach failed`);
+                return;
+            }
+            await ensureTargetReady(this.model.target, internalTabId);
+            result = await evaluateInTarget(this.model.target, expression, internalTabId);
+        } catch (error) {
+            console.warn(`[site-extension] ${extension.id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
+            return;
+        }
+        const detail = String(result);
+        if (detail === "extension-error") {
+            console.warn(`[site-extension] ${extension.id}: extension script failed`);
+            return;
+        }
+        if (detail === "ok") this.probeAiVisionAgain(internalTabId);
+    }
+
+    /** Probe the current document even if it was probed already — for a model that appeared
+     *  after the load-time probe found nothing. */
+    private probeAiVisionAgain(internalTabId: string): void {
+        const generation = this.model.getAiVisionDocumentGeneration(internalTabId);
+        if (generation === undefined) return;
+        this.probedAiVisionGenerations.delete(`${internalTabId}:${generation}`);
+        void this.probeAiVision(internalTabId);
+    }
+
     reprobeAiVision(internalTabId: string, generation: number, token: number): void {
         const registration = this.model.getAiVisionRegistration(internalTabId);
         if (!registration
@@ -417,6 +498,8 @@ export class BrowserWebviewModel {
         }
 
         if (typeof serialized !== "string") {
+            const current = this.model.getAiVisionRegistration(internalTabId);
+            if (current?.generation === generation) return;
             this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
             return;
         }
@@ -444,6 +527,10 @@ export class BrowserWebviewModel {
             || !this.webviewReady.has(internalTabId)
             || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)
             || this.model.getAiVisionDocumentGeneration(internalTabId) !== generation) return;
+        const current = this.model.getAiVisionRegistration(internalTabId);
+        if (current?.generation === generation
+            && current.version === probe.version
+            && JSON.stringify(current.shape) === JSON.stringify(probe.shape)) return;
         this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version);
     }
 
@@ -462,7 +549,16 @@ export class BrowserWebviewModel {
         if (!isAiHostSignal(signal)) return;
         if (signal.type === "shape") {
             const registration = this.model.getAiVisionRegistration(internalTabId);
-            if (!registration) return;
+            if (!registration) {
+                // A model published after the load-time probe (a single-page app that builds it
+                // late). Its first refresh() is the only way the host learns it exists.
+                const now = Date.now();
+                const last = this.lateAiVisionProbeTimes.get(internalTabId) ?? 0;
+                if (now - last < AI_VISION_LATE_PROBE_INTERVAL_MS) return;
+                this.lateAiVisionProbeTimes.set(internalTabId, now);
+                this.probeAiVisionAgain(internalTabId);
+                return;
+            }
             if (registration.version === signal.version) return;
             const pageId = this.model.page?.id;
             if (pageId) logBrowserShapeChanged(pageId);

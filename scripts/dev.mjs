@@ -92,7 +92,7 @@ function preloadConfig(input) {
     };
 }
 
-function boardShimConfig() {
+function iifeConfig(input) {
     return {
         configFile: false,
         mode: "development",
@@ -103,7 +103,7 @@ function boardShimConfig() {
             sourcemap: true,
             watch: {},
             rollupOptions: {
-                input: { "board-shim": "src/board-shim.ts" },
+                input,
                 output: {
                     format: "iife",
                     entryFileNames: "[name].js",
@@ -262,14 +262,16 @@ server.printUrls();
 const devServerUrl = server.resolvedUrls?.local?.[0] ?? "http://localhost:5273/";
 console.log(`\x1b[36m[dev]\x1b[0m Renderer at ${devServerUrl}`);
 
-console.log("\x1b[36m[dev]\x1b[0m Building main / preload / board-shim / search-worker (watch)...");
+console.log("\x1b[36m[dev]\x1b[0m Building main / preload / board-shim / site-extension-runtime / search-worker (watch)...");
 await Promise.all([
     watchBuild("main", mainConfig(devServerUrl), { restartOnChange: true }),
     watchBuild("preload", preloadConfig({ preload: "src/preload.ts" }), { restartOnChange: true }),
     watchBuild("preload-webview", preloadConfig({ "preload-webview": "src/preload-webview.ts" }), { restartOnChange: true }),
     // board-shim is read fresh from disk by the board:// handler on each board
     // load, so a rebuild does not require an Electron restart.
-    watchBuild("board-shim", boardShimConfig(), { restartOnChange: false }),
+    watchBuild("board-shim", iifeConfig({ "board-shim": "src/board-shim.ts" }), { restartOnChange: false }),
+    // Site-extension runtime (EPIC-120 PoC): read from disk per injection, like board-shim.
+    watchBuild("site-extension-runtime", iifeConfig({ "site-extension-runtime": "src/site-extension-runtime.ts" }), { restartOnChange: false }),
     // search-worker is likewise re-read from disk per search in dev (getWorkerSource
     // only caches when packaged), so a rebuild needs no Electron restart either.
     watchBuild("search-worker", searchWorkerConfig(), { restartOnChange: false }),

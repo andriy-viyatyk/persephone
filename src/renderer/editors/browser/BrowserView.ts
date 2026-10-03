@@ -136,6 +136,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             // user navigated. The probe dedupes per tab and document generation, so this costs at
             // most the one evaluate it would have cost anyway.
             this.model.webview.probeAiVisionOnReady(this.tabId);
+            void this.model.webview.injectSiteExtension(this.tabId);
         };
         this.listenNative("dom-ready", onDomReady);
 

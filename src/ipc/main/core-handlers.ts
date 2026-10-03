@@ -28,8 +28,12 @@ import {
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
+import fs from "node:fs";
+import path from "node:path";
 import type { BoardEndpoint } from "./board-handlers";
 import type { GitEndpoint } from "./git-handlers";
+
+let siteExtensionRuntime: string | null = null;
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
@@ -103,6 +107,15 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
 
     getCommonFolder = async (event: IpcMainEvent, folder: string): Promise<string> => {
         return app.getPath(folder as Parameters<typeof app.getPath>[0]);
+    }
+
+    /** The site-extension runtime bundle (EPIC-120 PoC), built beside `main.js`. Re-read in dev,
+     *  where the watcher rebuilds it without restarting Electron. */
+    getSiteExtensionRuntime = async (): Promise<string> => {
+        if (siteExtensionRuntime === null || !app.isPackaged) {
+            siteExtensionRuntime = await fs.promises.readFile(path.join(__dirname, "site-extension-runtime.js"), "utf8");
+        }
+        return siteExtensionRuntime;
     }
 
     zoom = async (event: IpcMainEvent, delta: number): Promise<void> => {
@@ -400,6 +413,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.inspectElement, controllerInstance.inspectElement);
     bindEndpoint(Endpoint.openDevTools, controllerInstance.openDevTools);
     bindEndpoint(Endpoint.getCommonFolder, controllerInstance.getCommonFolder);
+    bindEndpoint(Endpoint.getSiteExtensionRuntime, controllerInstance.getSiteExtensionRuntime);
     bindEndpoint(Endpoint.zoom, controllerInstance.zoom);
     bindEndpoint(Endpoint.resetZoom, controllerInstance.resetZoom);
     bindEndpoint(Endpoint.showItemInFolder, controllerInstance.showItemInFolder);

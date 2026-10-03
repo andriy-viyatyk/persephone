@@ -43,6 +43,7 @@ export enum Endpoint {
     inspectElement = "inspectElement",
     openDevTools = "openDevTools",
     getCommonFolder = "getCommonFolder",
+    getSiteExtensionRuntime = "getSiteExtensionRuntime",
     zoom = "zoom",
     showItemInFolder = "showItemInFolder",
     showFolder = "showFolder",
@@ -215,6 +216,7 @@ export type Api = {
     [Endpoint.inspectElement]: (x: number, y: number) => Promise<void>;
     [Endpoint.openDevTools]: () => Promise<void>;
     [Endpoint.getCommonFolder]: (folder: CommonFolder) => Promise<string>;
+    [Endpoint.getSiteExtensionRuntime]: () => Promise<string>;
     [Endpoint.zoom]: (delta: number) => Promise<void>;
     [Endpoint.showItemInFolder]: (path: string) => Promise<void>;
     [Endpoint.showFolder]: (path: string) => Promise<void>;

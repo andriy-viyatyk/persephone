@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned (proof of concept first; the full feature is decided after it)
+**Status:** Active. Proof of concept done (2026-10-03): **go**. US-1604 onward are to be rewritten from the report.
 **Created:** 2026-10-02
 **Completed:** —
 
@@ -63,16 +63,51 @@ Another: the injector probes again after it injects.
   the full feature an extension is registered and trusted like a board, matched by exact host over
   https, and members that send, move or delete carry `caution`.
 
+## Proof of concept result (2026-10-03)
+
+**Go.** See the [US-1603 report](../tasks/US-1603-outlook-poc/README.md):
+
+- **Injection.** CDP `Runtime.evaluate` on `dom-ready`, then a probe. The Content Security Policy does not block it.
+- **Model timing.** The model is up within 0.1–0.4 s of every navigation, and the list is ready at 1.3–1.9 s.
+- **Lifecycle.** It survives reloads, cross-host arrival, session restore and two tabs.
+- **Private pages.** None get injected.
+- **Cost.** The model costs 4–6 times fewer tokens than snapshots for a list, and about 19 times fewer for a body.
+- **Not tested:** a real sign-in redirect, long idle or sleep, and `outlook.live.com`.
+
+The report lists the changes US-1604 onward need. The main ones:
+
+- a list of hosts per extension;
+- no shape-changed or navigated events when the shape did not change;
+- `refresh()` after a late `expose()`.
+
+## Decisions (after the proof of concept, 2026-10-03)
+
+- **Layout.** `<userData>/data/site-extensions/<id>/` holds `manifest.json` plus the script. The id
+  is the folder name, restricted to lower-case letters, digits and hyphens. As with boards, there
+  is no nesting.
+- **Manifest.** `name`, `version`, `description`, `hosts` and `script` (a relative path, default
+  `extension.js`). `hosts` lists exact host names: https is implied, and there are no wildcards
+  and no ports. Outlook alone needs three hosts.
+- **One extension per host.** If two valid extensions claim the same host, neither is injected
+  there and both report the conflict. A page has one `window.__aiVision`, and a silent winner
+  would be confusing.
+- **The store is read in the renderer**, where injection happens. The manifest index is cached
+  and revalidated by manifest modification time on each lookup. The script is read fresh on every
+  injection, so an agent's edit takes effect on the next reload.
+- **US-1604 injects every valid extension; US-1605 adds the trust gate.** The two ship in the same
+  release, and nothing is released between them.
+
 ## Linked Tasks
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1602 | PoC: injection hook (developer-only, no UI) + fix late-model discovery | Planned |
-| US-1603 | PoC: Outlook model + reliability test matrix + go/no-go report | Planned |
-| US-1604 | Site extension store: folder layout, manifest, host matching, injection on navigation | Draft (after PoC) |
+| [US-1602](../tasks/US-1602-site-extension-injection-poc/README.md) | PoC: injection hook (developer-only, no UI) + fix late-model discovery | Implemented |
+| [US-1603](../tasks/US-1603-outlook-poc/README.md) | PoC: Outlook model + reliability test matrix + go/no-go report | Done: go |
+| [US-1604](../tasks/US-1604-site-extension-store/README.md) | Site extension store: folder layout, manifest, host matching, injection on navigation | Implementation in progress |
 | US-1605 | Registration and trust: trust prompt, list, enable/disable, remove | Draft (after PoC) |
 | US-1606 | Agent tools: scaffold an extension for the current host, reload it in place, list, remove | Draft (after PoC) |
 | US-1607 | Guides: site-extension authoring in `ai-vision.md` / `browser.md`; agent workflow | Draft (after PoC) |
+| US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Draft |
 
 ### Task scope notes
 
@@ -114,4 +149,16 @@ Another: the injector probes again after it injects.
 
   Compare the tokens a typical "what is new in my inbox" question costs through the model and
   through snapshots. The report ends with a go/no-go and the changes US-1604+ need.
-- **US-1604 to US-1607** are placeholders. They are rewritten after US-1603's report.
+- **US-1604 — store, manifest, host matching, injection.** Replaces the PoC folder and the PoC
+  source lookup (`site-extension-poc.ts`); keeps the PoC's injection path (CDP `Runtime.evaluate`
+  on `dom-ready`, then a probe), its private-page rule and the late-model fix. Decisions are in
+  "Decisions (after the proof of concept)" below. Also: minify the runtime bundle in the production
+  build, and stop the duplicate registration (the post-injection probe and the load probe often
+  register the same version twice).
+- **US-1605 — registration and trust.** Unchanged in intent. It must land in the same release as
+  US-1604 (see the decisions).
+- **US-1606 — agent tools.** Reloading in place needs the old remote disposed first, because
+  injection is once per document (report item 8).
+- **US-1607 — guides.** Covers the authoring lessons in report item 7.
+- **US-1612 — quieter events** (report items 4 and 5). This is host-side and also affects boards and
+  pages that publish their own model, so it is its own task.

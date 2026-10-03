@@ -143,6 +143,10 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.getCommonFolder, folder);
     };
 
+    getSiteExtensionRuntime = async () => {
+        return executeOnce<string>(Endpoint.getSiteExtensionRuntime);
+    };
+
     zoom = async (delta: number) => {
         return executeOnce<void>(Endpoint.zoom, delta);
     };
