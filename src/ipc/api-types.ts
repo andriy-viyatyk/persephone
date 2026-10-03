@@ -146,6 +146,10 @@ export enum Endpoint {
     authorizeBoardFilePath = "authorizeBoardFilePath",
     bindBoardSessionSource = "bindBoardSessionSource",
     setDisabledBundledBoards = "setDisabledBundledBoards",
+    getSiteExtensionTrust = "getSiteExtensionTrust",
+    trustSiteExtension = "trustSiteExtension",
+    revokeSiteExtensionTrust = "revokeSiteExtensionTrust",
+    setSiteExtensionEnabled = "setSiteExtensionEnabled",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
     requestModuleService = "requestModuleService",
@@ -346,7 +350,14 @@ export type Api = {
     [Endpoint.startModuleService]: (boardRoot: string) => Promise<void>;
     /** Explicitly stop a board module service. */
     [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
+    [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.trustSiteExtension]: (id: string, hosts: string[]) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.revokeSiteExtensionTrust]: (id: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.setSiteExtensionEnabled]: (id: string, enabled: boolean) => Promise<SiteExtensionTrustSnapshot>;
 };
+
+export interface SiteExtensionTrustGrant { hosts: string[]; enabled: boolean }
+export type SiteExtensionTrustSnapshot = Record<string, SiteExtensionTrustGrant>;
 
 export interface ModuleServicePortPayload {
     boardRoot: string;
@@ -395,6 +406,7 @@ export enum EventEndpoint {
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
     eBoardTrustChanged = "eBoardTrustChanged",
+    eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
 }
 
 export interface EventObject<T> {
@@ -451,6 +463,7 @@ export type EventApi = {
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
     [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
+    [EventEndpoint.eSiteExtensionTrustChanged]: EventObject<SiteExtensionTrustSnapshot>;
 };
 
 export enum RendererEvent {

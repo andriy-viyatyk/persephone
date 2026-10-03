@@ -169,6 +169,9 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eBoardTrustChanged] = new RendererEventObject<string[]>(
         EventEndpoint.eBoardTrustChanged,
     );
+    [EventEndpoint.eSiteExtensionTrustChanged] = new RendererEventObject<import("../api-types").SiteExtensionTrustSnapshot>(
+        EventEndpoint.eSiteExtensionTrustChanged,
+    );
 }
 
 const rendererEvents = new RendererEvents();

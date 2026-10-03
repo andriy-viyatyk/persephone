@@ -568,6 +568,11 @@ class ApiCalls implements Api {
         return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
     };
 
+    getSiteExtensionTrust = async () => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.getSiteExtensionTrust);
+    trustSiteExtension = async (id: string, hosts: string[]) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts);
+    revokeSiteExtensionTrust = async (id: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.revokeSiteExtensionTrust, id);
+    setSiteExtensionEnabled = async (id: string, enabled: boolean) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.setSiteExtensionEnabled, id, enabled);
+
     getBoardMcpEndpoint = async () => executeOnce<string>(Endpoint.getBoardMcpEndpoint);
 
     authorizeBoardFilePath = async (boardRoot: string, requestedPath: string, intent: "read" | "write" = "read") =>

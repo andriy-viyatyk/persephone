@@ -76,6 +76,7 @@ interface WaitOption extends TabOption {
 interface BrowserNavigationOptions extends WaitOption, NavigationWaitOptions {}
 
 const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
+    { name: "siteExtensionTrustPrompt", kind: "property", summary: "Read-only site extension consent state for the active browser document.", caution: "Trust is the user's decision; never click it on your own judgement. Click only when the user has explicitly asked for that outcome." },
     { name: "id", kind: "property", summary: "The concrete current editor id." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "url", kind: "property", summary: "Current URL of the active tab." },
@@ -207,7 +208,20 @@ export class BrowserEditorFacade implements IAiVisible {
             ],
             help: withEditorGuideHelp(this.id, BROWSER_EDITOR_HELP),
             elements: BROWSER_ELEMENTS,
-            provide: (name) => name === "app" && app ? { value: app } : elements.provide(name),
+            provide: (name) => {
+                if (name === "app" && app) return { value: app };
+                if (name === "siteExtensionTrustPrompt") {
+                    const state = this.model.state.get();
+                    const prompt = state.siteExtensionTrustPrompts.find((item) => item.internalTabId === state.activeTabId
+                        && item.documentId === this.model.webview.siteDocumentId(item.internalTabId));
+                    return { value: prompt ? {
+                        status: "waiting-for-user", name: prompt.name, id: prompt.id, host: prompt.host,
+                        otherHosts: prompt.hosts.filter((host) => host !== prompt.host),
+                        note: "The user decides in the bar above the page. Do not click Trust unless the user has explicitly asked.",
+                    } : undefined };
+                }
+                return elements.provide(name);
+            },
             summarize: () => {
                 const tabs = this.tabs;
                 const summary: Record<string, unknown> = {

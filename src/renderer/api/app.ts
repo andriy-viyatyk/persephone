@@ -219,6 +219,8 @@ class App {
         if (this._eventsInitialized) return;
         this._eventsInitialized = true;
         const services = this as unknown as AppServiceSurface;
+        const { initSiteExtensionTrustSync } = await import("./site-extension-trust-sync");
+        initSiteExtensionTrustSync();
 
         // The navigation-return registry owns the sole browser URL claim subscription.
         // Initialize it after pages exist and before any browser or board view mounts.

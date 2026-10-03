@@ -128,6 +128,19 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     {
         groupId: "browser",
         groupTitle: "Browser",
+        id: "site-extensions",
+        title: "Site Extensions",
+        description: "Review and manage site extensions that can run in browser tabs.",
+        elementName: "settings-section-site-extensions",
+        panelName: "settings-panel-site-extensions",
+        where: "Settings > Browser > Site Extensions",
+        rows: [
+            { key: "site-extensions", label: "Site extensions", purpose: "Extension status, approved hosts, trust, and enabled state." },
+        ],
+    },
+    {
+        groupId: "browser",
+        groupTitle: "Browser",
         id: "browser-profiles",
         title: "Browser Profiles",
         description: "Manage isolated browser sessions, defaults, bookmarks, and Tor.",

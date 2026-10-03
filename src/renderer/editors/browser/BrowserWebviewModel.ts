@@ -21,6 +21,7 @@ import { errMessage } from "../../../shared/utils";
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
 import { siteExtensionStore } from "../../api/site-extensions";
+import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
 import {
     logBrowserNavigated,
     logBrowserShapeChanged,
@@ -60,6 +61,15 @@ export class BrowserWebviewModel {
     private readonly probedAiVisionGenerations = new Set<string>();
     private readonly aiVisionNotifyTimes: number[] = [];
     private readonly lateAiVisionProbeTimes = new Map<string, number>();
+    private readonly dismissedExtensionPrompts = new Set<string>();
+    /** Cross-document navigation count per tab: the document identity for site-extension
+     *  prompts and injection. Not the AiVision generation, which also advances whenever a probe
+     *  finds no model (always, on a page whose extension is still untrusted). */
+    private readonly siteDocuments = new Map<string, number>();
+
+    siteDocumentId(internalTabId: string): number {
+        return this.siteDocuments.get(internalTabId) ?? 0;
+    }
 
     constructor(model: BrowserEditorModel) {
         this.model = model;
@@ -291,6 +301,11 @@ export class BrowserWebviewModel {
             case "did-navigate": {
                 const touched = this.model.hasAiVisionRegisteredTab(internalTabId);
                 this.model.clearAiVisionRegistration(internalTabId);
+                this.siteDocuments.set(internalTabId, this.siteDocumentId(internalTabId) + 1);
+                this.model.clearSiteExtensionTrustPrompt(internalTabId);
+                for (const key of this.dismissedExtensionPrompts) {
+                    if (key.startsWith(`${internalTabId}:`)) this.dismissedExtensionPrompts.delete(key);
+                }
                 this.applyNavigation(internalTabId, data, false);
                 if (touched && data.url !== DEFAULT_URL && this.model.page?.id) {
                     logBrowserNavigated(this.model.page.id);
@@ -394,6 +409,7 @@ export class BrowserWebviewModel {
 
     /** Inject the valid site extension for this document's exact HTTPS host, then probe for its model. */
     async injectSiteExtension(internalTabId: string): Promise<void> {
+        await siteExtensionTrust.load().catch((): undefined => undefined);
         const state = this.model.state.get();
         if (state.isIncognito || state.isTor) return;
         const webview = this.webviewRefs.get(internalTabId);
@@ -405,8 +421,61 @@ export class BrowserWebviewModel {
             return;
         }
         if (pageUrl.protocol !== "https:") return;
+        const documentId = this.siteDocumentId(internalTabId);
         const extension = await siteExtensionStore.findForHost(pageUrl.hostname).catch((): undefined => undefined);
         if (!extension) return;
+
+        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
+        const grant = siteExtensionTrust.get(extension.id);
+        const hostsMatch = !!grant && sameSiteExtensionHostSet(grant.hosts, extension.hosts);
+        if (grant?.enabled && hostsMatch) {
+            await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, extension, documentId);
+            return;
+        }
+        if (grant && !grant.enabled) return;
+        const promptKey = `${internalTabId}:${documentId}`;
+        if (!this.dismissedExtensionPrompts.has(promptKey)) {
+            this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: extension.id, name: extension.name, host: pageUrl.hostname, hosts: [...extension.hosts], available: true });
+        }
+    }
+
+    async trustSiteExtensionPrompt(internalTabId: string, documentId: number): Promise<void> {
+        const prompt = this.model.state.get().siteExtensionTrustPrompts.find((item) => item.internalTabId === internalTabId && item.documentId === documentId);
+        if (!prompt || !prompt.available || !this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        const current = await siteExtensionStore.findForHost(prompt.host).catch((): undefined => undefined);
+        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        if (!current || current.id !== prompt.id || !sameSiteExtensionHostSet(current.hosts, prompt.hosts)) {
+            if (current) this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: current.id, name: current.name, host: prompt.host, hosts: [...current.hosts], available: true });
+            else this.model.setSiteExtensionTrustPrompt({ ...prompt, available: false });
+            return;
+        }
+        await siteExtensionTrust.trust(current.id, prompt.hosts);
+        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        this.model.clearSiteExtensionTrustPrompt(internalTabId, documentId);
+        await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, current, documentId);
+    }
+
+    dismissSiteExtensionTrustPrompt(internalTabId: string, documentId: number): void {
+        this.dismissedExtensionPrompts.add(`${internalTabId}:${documentId}`);
+        this.model.clearSiteExtensionTrustPrompt(internalTabId, documentId);
+    }
+
+    private isCurrentDocument(internalTabId: string, documentId: number, host: string): boolean {
+        if (this.siteDocumentId(internalTabId) !== documentId) return false;
+        const webview = this.webviewRefs.get(internalTabId);
+        if (!webview) return false;
+        try {
+            const current = new URL(webview.getURL());
+            return current.protocol === "https:" && current.hostname === host;
+        } catch { return false; }
+    }
+
+    private async injectTrustedExtensionIntoCurrentDocument(internalTabId: string, extension: import("../../api/site-extensions").SiteExtensionRecord, documentId: number): Promise<void> {
+        const webview = this.webviewRefs.get(internalTabId);
+        if (!webview || this.model.state.get().isIncognito || this.model.state.get().isTor) return;
+        let pageUrl: URL;
+        try { pageUrl = new URL(webview.getURL()); } catch { return; }
+        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
 
         let expression: string;
         try {
@@ -436,6 +505,8 @@ ${source}
             return;
         }
 
+        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
+
         let result: unknown;
         try {
             const cdp = this.model.target.cdp(internalTabId);
@@ -444,6 +515,7 @@ ${source}
                 return;
             }
             await ensureTargetReady(this.model.target, internalTabId);
+            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
             result = await evaluateInTarget(this.model.target, expression, internalTabId);
         } catch (error) {
             console.warn(`[site-extension] ${extension.id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
@@ -454,7 +526,7 @@ ${source}
             console.warn(`[site-extension] ${extension.id}: extension script failed`);
             return;
         }
-        if (detail === "ok") this.probeAiVisionAgain(internalTabId);
+        if (detail === "ok" && this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) this.probeAiVisionAgain(internalTabId);
     }
 
     /** Probe the current document even if it was probed already — for a model that appeared

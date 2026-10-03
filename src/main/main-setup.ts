@@ -27,6 +27,7 @@ import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
+import { siteExtensionTrustService } from "./site-extension-trust-service";
 import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
@@ -40,6 +41,9 @@ export function setupMainProcess() {
     // Load the main-owned board trust state before restored renderer windows can request services.
     void boardTrustService.init().catch((error: unknown) => {
         console.error(`Board trust initialization failed: ${errMessage(error)}`);
+    });
+    void siteExtensionTrustService.init().catch((error: unknown) => {
+        console.error(`Site extension trust initialization failed: ${errMessage(error)}`);
     });
 
     // US-800: recover standard Windows folder/system env vars before any child

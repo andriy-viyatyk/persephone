@@ -97,6 +97,30 @@ The report lists the changes US-1604 onward need. The main ones:
 - **US-1604 injects every valid extension; US-1605 adds the trust gate.** The two ship in the same
   release, and nothing is released between them.
 
+## Decisions for trust (US-1605, 2026-10-03)
+
+- **Trust is keyed by extension id and its host list.** The prompt fires again when the hosts
+  change, because that widens where the extension runs. It does not fire again on script edits. This
+  matches boards, which are trusted by folder and asked again only when their permissions change, and
+  it keeps an agent's edit-and-reload authoring loop working. The prompt says plainly that the script
+  can do anything the signed-in site can do.
+- **Main owns the trust file**, `<userData>/data/trustedSiteExtensions.json`, and broadcasts it to
+  every window, in the same way as `trustedBoards.txt` (US-1538). Trust is never read from the
+  extension folder. It is not exposed on `app` or to scripts, so nothing can trust itself.
+- **No automatic trust, even for an extension an agent created** (US-1606). Unlike a board, the
+  code runs inside the user's signed-in session for a real site. That is exactly what the user
+  must approve.
+- **The prompt appears in the browser page**, not as a modal. It shows the first time a matching
+  host loads with an untrusted extension: "Site extension *Outlook* wants to run on
+  outlook.cloud.microsoft", with **Trust** and **Not now**. Trusting injects into the current
+  document straight away. "Not now" stays quiet for that tab until the next navigation. Agents never
+  click **Trust** (the same rule as boards).
+- **Management lives in a "Site extensions" section in Settings.** Each extension shows its name,
+  hosts, status (valid, invalid with the reason, or conflict) and trust. The section also offers an
+  **Enabled** switch (a trusted extension can be disabled without losing trust), **Revoke trust**,
+  **Open folder** and **Remove**. Remove deletes the folder after a confirmation and also drops its
+  trust.
+
 ## Linked Tasks
 
 | Task | Title | Status |
@@ -104,7 +128,7 @@ The report lists the changes US-1604 onward need. The main ones:
 | [US-1602](../tasks/US-1602-site-extension-injection-poc/README.md) | PoC: injection hook (developer-only, no UI) + fix late-model discovery | Implemented |
 | [US-1603](../tasks/US-1603-outlook-poc/README.md) | PoC: Outlook model + reliability test matrix + go/no-go report | Done: go |
 | [US-1604](../tasks/US-1604-site-extension-store/README.md) | Site extension store: folder layout, manifest, host matching, injection on navigation | Implementation in progress |
-| US-1605 | Registration and trust: trust prompt, list, enable/disable, remove | Draft (after PoC) |
+| [US-1605](../tasks/US-1605-site-extension-trust/README.md) | Registration and trust: trust prompt, list, enable/disable, remove | Planned |
 | US-1606 | Agent tools: scaffold an extension for the current host, reload it in place, list, remove | Draft (after PoC) |
 | US-1607 | Guides: site-extension authoring in `ai-vision.md` / `browser.md`; agent workflow | Draft (after PoC) |
 | US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Draft |
@@ -155,8 +179,8 @@ The report lists the changes US-1604 onward need. The main ones:
   "Decisions (after the proof of concept)" below. Also: minify the runtime bundle in the production
   build, and stop the duplicate registration (the post-injection probe and the load probe often
   register the same version twice).
-- **US-1605 — registration and trust.** Unchanged in intent. It must land in the same release as
-  US-1604 (see the decisions).
+- **US-1605 — registration and trust.** Must land in the same release as US-1604. Decisions are in
+  "Decisions for trust (US-1605, 2026-10-03)" below.
 - **US-1606 — agent tools.** Reloading in place needs the old remote disposed first, because
   injection is once per document (report item 8).
 - **US-1607 — guides.** Covers the authoring lessons in report item 7.

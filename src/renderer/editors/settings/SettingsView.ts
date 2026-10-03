@@ -10,6 +10,7 @@ import { TreeView } from "../../uikit/Tree/TreeView";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
 import { SETTINGS_CATALOG, type SettingsCatalogSection } from "./settings-catalog";
 import { BrowserProfilesSectionView } from "./sections/BrowserProfilesSection";
+import { SiteExtensionsSectionView } from "./sections/SiteExtensionsSection";
 import { ClipboardSectionView } from "./sections/ClipboardSection";
 import { DefaultBrowserSectionView } from "./sections/DefaultBrowserSection";
 import { FileSearchSectionView } from "./sections/FileSearchSection";
@@ -68,6 +69,7 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     "script-library": createScriptLibrarySection,
     "video-player": () => new VideoPlayerSectionView({}),
     "browser-profiles": () => new BrowserProfilesSectionView({}),
+    "site-extensions": () => new SiteExtensionsSectionView({}),
     "default-browser": () => new DefaultBrowserSectionView({}),
     "link-behavior": () => new LinkBehaviorSectionView({}),
     mcp: () => new McpSectionView({}),

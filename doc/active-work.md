@@ -15,7 +15,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
   - [ ] [US-1602: PoC — injection hook + late-model discovery fix](tasks/US-1602-site-extension-injection-poc/README.md)
   - [ ] [US-1603: PoC — Outlook model, reliability matrix, go/no-go report](tasks/US-1603-outlook-poc/README.md)
   - [ ] [US-1604: Site extension store, manifest, host matching, injection](tasks/US-1604-site-extension-store/README.md)
-  - [ ] US-1605: Registration and trust *(draft, after PoC)*
+  - [ ] [US-1605: Registration and trust](tasks/US-1605-site-extension-trust/README.md)
   - [ ] US-1606: Agent tools — scaffold, reload, list, remove *(draft, after PoC)*
   - [ ] US-1607: Guides and agent workflow *(draft, after PoC)*
   - [ ] US-1612: Quieter page-model events *(draft)*

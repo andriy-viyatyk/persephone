@@ -223,6 +223,10 @@ export interface BrowserEditorState extends IEditorState {
     blockedPopupCount: number;
     /** Permission prompts queued for internal browser tabs. */
     permissionPrompts: Array<BrowserPermissionPromptData & { internalTabId: string }>;
+    /** Site extension consent prompts, scoped to a tab and its document (`siteDocumentId`). */
+    siteExtensionTrustPrompts: Array<{
+        internalTabId: string; documentId: number; id: string; name: string; host: string; hosts: string[]; available: boolean;
+    }>;
 
     /** Whether the find-in-page bar is visible. */
     findBarVisible: boolean;
@@ -307,6 +311,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         bookmarksReady: false,
         blockedPopupCount: 0,
         permissionPrompts: [],
+        siteExtensionTrustPrompts: [],
         findBarVisible: false,
         findText: "",
         findActiveMatch: 0,
