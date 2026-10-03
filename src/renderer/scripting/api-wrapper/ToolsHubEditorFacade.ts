@@ -34,7 +34,8 @@ returns a secret. Values from .env never appear; env is names only in the canoni
 The existing RegisterToolsetDialog consent path remains the only registration route.
 
 The Site extensions tab lists installed site extensions with their trust state. No facade member
-trusts an extension; only the user grants trust, in the browser page's consent bar.
+trusts an extension; trust is answered in the browser page's consent bar (see
+pages[i].editor.trustSiteExtension()).
 
 elements is the curated, page-scoped list of the tab switcher, the Search boards controls, and the
 Site extensions filter and refresh; repeated matches use { all: true }. Tab-specific controls may

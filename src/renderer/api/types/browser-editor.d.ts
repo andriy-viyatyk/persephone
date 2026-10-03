@@ -288,6 +288,13 @@ export interface IBrowserEditor {
     dialogs(options?: { tabId?: string; policy?: IBrowserDialogPolicy }): Promise<{ policy: IBrowserDialogPolicy; dialogs: IBrowserDialogRecord[] }>;
     /** Resolve a pending page-authored JavaScript dialog. */
     handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
+    /**
+     * Answer the active document's site-extension trust bar with Trust, as its button does.
+     * Trust is the user's decision: call this only when the user has explicitly asked.
+     */
+    trustSiteExtension(): Promise<{ status: "trusted" | "changed" | "unavailable" | "not-current" | "no-prompt"; id?: string; hosts?: string[] }>;
+    /** Answer the active document's site-extension trust bar with Not now. */
+    dismissSiteExtensionTrustPrompt(): { status: "dismissed" | "no-prompt" };
     /** Read recent copied console records, optionally filtered by epoch-millisecond receipt time and level. */
     consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
     /** Read recent uncaught page exceptions. */

@@ -484,20 +484,28 @@ export class BrowserWebviewModel {
         }
     }
 
-    async trustSiteExtensionPrompt(internalTabId: string, documentId: number): Promise<void> {
+    /**
+     * Trust the extension a bar shows, for that bar's document only. Used by the bar's Trust button
+     * and by the agent facade (US-1614). `changed`: the manifest changed since the bar appeared,
+     * so the bar now shows the new name/hosts and nothing was granted. `unavailable`: the
+     * extension is gone or invalid. `not-current`: no such bar, or the document changed.
+     */
+    async trustSiteExtensionPrompt(internalTabId: string, documentId: number): Promise<"trusted" | "changed" | "unavailable" | "not-current"> {
         const prompt = this.model.state.get().siteExtensionTrustPrompts.find((item) => item.internalTabId === internalTabId && item.documentId === documentId);
-        if (!prompt || !prompt.available || !this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        if (!prompt || !this.isCurrentDocument(internalTabId, documentId, prompt.host)) return "not-current";
+        if (!prompt.available) return "unavailable";
         const current = await siteExtensionStore.findForHost(prompt.host).catch((): undefined => undefined);
-        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return "not-current";
         if (!current || current.id !== prompt.id || !sameSiteExtensionHostSet(current.hosts, prompt.hosts)) {
             if (current) this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: current.id, name: current.name, host: prompt.host, hosts: [...current.hosts], available: true });
             else this.model.setSiteExtensionTrustPrompt({ ...prompt, available: false });
-            return;
+            return current ? "changed" : "unavailable";
         }
         await siteExtensionTrust.trust(current.id, prompt.hosts);
-        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return;
+        if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return "trusted";
         this.model.clearSiteExtensionTrustPrompt(internalTabId, documentId);
         await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, current, documentId);
+        return "trusted";
     }
 
     dismissSiteExtensionTrustPrompt(internalTabId: string, documentId: number): void {

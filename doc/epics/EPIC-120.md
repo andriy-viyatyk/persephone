@@ -115,8 +115,10 @@ The report lists the changes US-1604 onward need. The main ones:
 - **The prompt appears in the browser page**, not as a modal. It shows the first time a matching
   host loads with an untrusted extension: "Site extension *Outlook* wants to run on
   outlook.cloud.microsoft", with **Trust** and **Not now**. Trusting injects into the current
-  document straight away. "Not now" stays quiet for that tab until the next navigation. Agents never
-  click **Trust** (the same rule as boards).
+  document straight away. "Not now" stays quiet for that tab until the next navigation. An agent
+  answers the bar only when the user explicitly asks (the same rule as boards), through
+  `pages[i].editor.trustSiteExtension()` / `dismissSiteExtensionTrustPrompt()` (US-1614, user
+  decision 2026-10-03).
 - **Management lives in a "Site extensions" section in Settings.** Each extension shows its name,
   hosts, status (valid, invalid with the reason, or conflict) and trust. The section also offers an
   **Enabled** switch (a trusted extension can be disabled without losing trust), **Revoke trust**,
@@ -140,8 +142,8 @@ The report lists the changes US-1604 onward need. The main ones:
     already claims. A conflict would silently switch off the user's existing extension on that
     host.
   - The result names the files and says plainly that the user must click **Trust** in the browser
-    page. No member grants or requests trust; the in-page bar is the only route (the US-1605
-    decision).
+    page. `siteExtensions` grants no trust. The in-page bar is the only route; since US-1614 an
+    agent may answer it with `pages[i].editor.trustSiteExtension()` when the user explicitly asks.
 - **`reload(pageId)` re-injects into the current document, in place.** The authoring loop keeps the
   page's state, such as the folder the agent opened, and avoids a slow reload of a heavy app.
   - The injection records the handle that `expose()` returns, plus any cleanups the script
@@ -180,6 +182,7 @@ The report lists the changes US-1604 onward need. The main ones:
 | [US-1606](../tasks/US-1606-site-extension-agent-tools/README.md) | Agent tools: `siteExtensions` namespace with create, reload in place, list and remove | Planned |
 | [US-1607](../tasks/US-1607-site-extension-guides/README.md) | Site extension authoring guide and agent workflow | Planned |
 | [US-1612](../tasks/US-1612-quieter-page-model-events/README.md) | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Planned |
+| [US-1614](../tasks/US-1614-agent-site-extension-trust/README.md) | Agents can answer the site-extension trust bar on request (`trustSiteExtension()` / `dismissSiteExtensionTrustPrompt()`) | Implemented |
 
 ### Task scope notes
 

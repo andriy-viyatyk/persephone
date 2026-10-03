@@ -10,9 +10,10 @@ const SITE_EXTENSION_MEMBERS: readonly IAiMember[] = [
 
 const SITE_EXTENSIONS_HELP = `
 siteExtensions manages extensions injected into exact HTTPS hostnames. create(id, options) writes
-manifest.json and extension.js, but no member can grant or request trust. Only the user can approve
-execution in the matching browser page's Trust bar. Edit the generated script with app.fs.write(...).
-An extension runs with the signed-in page's capabilities, so review it before trusting it.
+manifest.json and extension.js; it never trusts. Trust is answered in the matching browser page's
+Trust bar: by the user, or by pages[i].editor.trustSiteExtension() only when the user has explicitly
+asked you to trust it. Edit the generated script with app.fs.write(...). An extension runs with the
+signed-in page's capabilities, so review it before trusting it.
 
 reload(pageId) targets the browser editor's active internal tab and keeps the current page document.
 Its status is one of injected, waiting-for-user, disabled, no-extension, extension-error, or
