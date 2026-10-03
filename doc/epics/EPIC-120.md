@@ -65,7 +65,7 @@ Another: the injector probes again after it injects.
 
 ## Proof of concept result (2026-10-03)
 
-**Go.** See the [US-1603 report](../tasks/US-1603-outlook-poc/README.md):
+**Go.** See the US-1603 report:
 
 - **Injection.** CDP `Runtime.evaluate` on `dom-ready`, then a probe. The Content Security Policy does not block it.
 - **Model timing.** The model is up within 0.1–0.4 s of every navigation, and the list is ready at 1.3–1.9 s.
@@ -174,15 +174,15 @@ The report lists the changes US-1604 onward need. The main ones:
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1602](../tasks/US-1602-site-extension-injection-poc/README.md) | PoC: injection hook (developer-only, no UI) + fix late-model discovery | Done |
-| [US-1603](../tasks/US-1603-outlook-poc/README.md) | PoC: Outlook model + reliability test matrix + go/no-go report | Done |
-| [US-1604](../tasks/US-1604-site-extension-store/README.md) | Site extension store: folder layout, manifest, host matching, injection on navigation | Done |
-| [US-1605](../tasks/US-1605-site-extension-trust/README.md) | Registration and trust: trust prompt, list, enable/disable, remove | Done |
-| [US-1613](../tasks/US-1613-site-extensions-hub-tab/README.md) | Site Extensions tab in Tools & Editors; Settings keeps a summary, the configurable extensions folder, and an "Open site extensions" button | Done |
-| [US-1606](../tasks/US-1606-site-extension-agent-tools/README.md) | Agent tools: `siteExtensions` namespace with create, reload in place, list and remove | Done |
-| [US-1607](../tasks/US-1607-site-extension-guides/README.md) | Site extension authoring guide and agent workflow | Done |
-| [US-1612](../tasks/US-1612-quieter-page-model-events/README.md) | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Done |
-| [US-1614](../tasks/US-1614-agent-site-extension-trust/README.md) | Agents can answer the site-extension trust bar on request (`trustSiteExtension()` / `dismissSiteExtensionTrustPrompt()`) | Done |
+| US-1602 | PoC: injection hook (developer-only, no UI) + fix late-model discovery | Done |
+| US-1603 | PoC: Outlook model + reliability test matrix + go/no-go report | Done |
+| US-1604 | Site extension store: folder layout, manifest, host matching, injection on navigation | Done |
+| US-1605 | Registration and trust: trust prompt, list, enable/disable, remove | Done |
+| US-1613 | Site Extensions tab in Tools & Editors; Settings keeps a summary, the configurable extensions folder, and an "Open site extensions" button | Done |
+| US-1606 | Agent tools: `siteExtensions` namespace with create, reload in place, list and remove | Done |
+| US-1607 | Site extension authoring guide and agent workflow | Done |
+| US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Done |
+| US-1614 | Agents can answer the site-extension trust bar on request (`trustSiteExtension()` / `dismissSiteExtensionTrustPrompt()`) | Done |
 
 ### Task scope notes
 
