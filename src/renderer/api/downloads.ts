@@ -42,6 +42,16 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
                     }
                 });
             }));
+        this.own(rendererEvents.eDownloadAwaitingPath.subscribe((data) => {
+            this.state.update((s) => {
+                const dl = s.downloads.find((d) => d.id === data.id);
+                if (dl) {
+                    dl.status = "awaitingPath";
+                    dl.receivedBytes = data.receivedBytes;
+                    dl.totalBytes = data.totalBytes;
+                }
+            });
+        }));
         this.own(rendererEvents.eDownloadCompleted.subscribe((data) => {
                 this.state.update((s) => {
                     const dl = s.downloads.find((d) => d.id === data.id);
@@ -57,11 +67,16 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
                 this.state.update((s) => {
                     const dl = s.downloads.find((d) => d.id === data.id);
                     if (dl) {
-                        dl.status = "failed";
+                        dl.status = data.error === "Cancelled" ? "cancelled" : "failed";
                         dl.error = data.error;
                     }
                 });
             }));
+        this.own(rendererEvents.eDownloadRemoved.subscribe(({ id }) => {
+            this.state.update((s) => {
+                s.downloads = s.downloads.filter((download) => download.id !== id);
+            });
+        }));
         this.own(rendererEvents.eDownloadCleared.subscribe((downloads) => {
                 this.state.update((s) => {
                     s.downloads = downloads;
@@ -74,11 +89,11 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
     }
 
     get hasActiveDownloads(): boolean {
-        return this.state.get().downloads.some((d) => d.status === "downloading");
+        return this.state.get().downloads.some((d) => d.status === "downloading" || d.status === "awaitingPath");
     }
 
     get aggregateProgress(): number {
-        const active = this.state.get().downloads.filter((d) => d.status === "downloading");
+        const active = this.state.get().downloads.filter((d) => d.status === "downloading" || d.status === "awaitingPath");
         if (active.length === 0) return 0;
         const totalBytes = active.reduce((sum, d) => sum + d.totalBytes, 0);
         const receivedBytes = active.reduce((sum, d) => sum + d.receivedBytes, 0);

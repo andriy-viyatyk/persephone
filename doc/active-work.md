@@ -15,9 +15,6 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Planned
 
-- [ ] [US-1611: Close the DNS-rebinding gap in `network: "internet"` for board session fetches](tasks/US-1611-board-network-dns-pinning/README.md) — from the EPIC-119 review
-- [ ] [US-1595: Agents can see and dismiss native dialogs](tasks/US-1595-native-dialog-agent-dismiss/README.md) — async download Save dialog, `windows[i].nativeDialog` + `dismiss()`
-
 - **EPIC-120** — [Site extensions — injected AiVision models for web pages](epics/EPIC-120.md) — proof of concept first
   - [ ] US-1602: PoC — injection hook + late-model discovery fix
   - [ ] US-1603: PoC — Outlook model, reliability matrix, go/no-go report

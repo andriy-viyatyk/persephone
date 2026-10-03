@@ -1,3 +1,4 @@
+import { BrowserWindow } from "electron";
 import { openWindows } from "../../open-windows";
 import { windowStates } from "../../window-states";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
@@ -7,6 +8,8 @@ import { GuidesNode } from "./guides";
 import { MainGuideSource } from "./guide-source";
 import { resolveMainBoardGuideMounts } from "./board-guide-mounts";
 import { MainNode } from "./main-services";
+import { cancelNativeDialogs, getNativeDialogState } from "../../native-dialog-tracker";
+import type { NativeDialogKind } from "../../native-dialog-tracker";
 
 /**
  * The main process's half of the AiVision tree (EPIC-083, US-1290).
@@ -19,7 +22,7 @@ import { MainNode } from "./main-services";
  */
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
-export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "status", "pageCount", "activePageId", "pages", "open", "focus"];
+export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
 
 const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
     { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
@@ -35,6 +38,7 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "pages", kind: "property", summary: "The window's pages. Open window: the live Pages collection (windows[i].pages[0].content works). Closed window: summaries from persisted state (id, title, type, editor, filePath) — open() it to get the live collection. `type` appears only here: a persisted page may have no `editor` recorded, so `type` is the fallback classifier. On an open window use `editor`, which is the actionable one." },
     { name: "open", kind: "method", signature: "open()", summary: "Open (or reopen) this window with its persisted pages, and focus it." },
     { name: "focus", kind: "method", signature: "focus()", summary: "Bring an open window to the front." },
+    { name: "nativeDialog", kind: "property", node: true, summary: "Open native dialog state; dismiss cancels it." },
 ];
 
 const WINDOWS_MEMBERS: readonly IAiMember[] = [
@@ -43,7 +47,8 @@ const WINDOWS_MEMBERS: readonly IAiMember[] = [
 
 const WINDOWS_HELP = `
 Persephone can have several windows. windows[i] is one window; its own members (status, open(),
-focus(), persisted pages) are answered by the main process. Anything deeper is answered by that
+focus(), nativeDialog, persisted pages) are answered by the main process. nativeDialog reports
+owned native dialogs and dismiss() cancels them without choosing or confirming a path. Anything deeper is answered by that
 window itself: prefix any path with "windows[i]." — windows[1].pages, windows[1].page.content,
 windows[1].helpSearch(...). A path without the prefix targets the main (first open) window.
 `;
@@ -64,6 +69,10 @@ export class WindowNode implements IAiVisible {
 
     private get data() {
         return openWindows.windows.find(w => w.index === this.index);
+    }
+
+    get nativeDialog(): NativeDialogNode {
+        return new NativeDialogNode(this.data?.window?.window);
     }
 
     get status(): "open" | "closed" | "missing" {
@@ -122,12 +131,50 @@ export class WindowNode implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Window",
-            summary: "One Persephone window. Prefix a path with windows[i]. to address its pages.",
+            summary: "One Persephone window, its pages, and any native dialog it owns.",
             members: WINDOW_MEMBERS,
-            children: () => this.status === "open"
-                ? [{ segment: ".pages", kind: "Pages", summary: `${this.pageCount} page(s) — live, answered by the window` }]
-                : [],
+            children: () => [
+                ...(this.status === "open"
+                    ? [{ segment: ".pages", kind: "Pages", summary: this.pageCount + " page(s), answered by the window" }]
+                    : []),
+                { segment: ".nativeDialog", kind: "NativeDialog", summary: "Owned native dialog state and cancellation." },
+            ],
             summarize: () => ({ kind: "Window", index: this.index, status: this.status, pageCount: this.pageCount, activePageId: this.activePageId ?? null }),
+        };
+    }
+}
+
+const NATIVE_DIALOG_MEMBERS: readonly IAiMember[] = [
+    { name: "open", kind: "property", summary: "Whether this window owns an open native dialog." },
+    { name: "kind", kind: "property", summary: "Native dialog kind: file, folder, or messageBox." },
+    { name: "title", kind: "property", summary: "Title of the owned native dialog when available." },
+    { name: "dismiss", kind: "method", signature: "dismiss()", summary: "Cancel native dialogs owned by this window." },
+];
+
+class NativeDialogNode implements IAiVisible {
+    constructor(private readonly browserWindow: BrowserWindow | undefined) {}
+
+    private state() {
+        return getNativeDialogState(this.browserWindow);
+    }
+
+    get open(): Promise<boolean> { return this.state().then(state => state.open); }
+    get kind(): Promise<NativeDialogKind | undefined> { return this.state().then(state => state.kind); }
+    get title(): Promise<string | undefined> { return this.state().then(state => state.title); }
+
+    dismiss() {
+        return this.browserWindow
+            ? cancelNativeDialogs(this.browserWindow)
+            : Promise.resolve({ cancelled: 0, titles: [] });
+    }
+
+    get aiVision(): IAiVisionDescriptor {
+        return {
+            kind: "NativeDialog",
+            summary: "Native dialogs owned by one Persephone window; agents may cancel but cannot choose or confirm paths.",
+            members: NATIVE_DIALOG_MEMBERS,
+            help: "Use dismiss() to cancel an owned file picker. This cannot enter a path or confirm Save/Open.",
+            summarize: async () => ({ kind: "NativeDialog", ...(await this.state()) }),
         };
     }
 }

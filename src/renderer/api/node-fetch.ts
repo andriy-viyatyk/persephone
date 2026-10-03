@@ -16,6 +16,7 @@ import type { IFetchOptions } from "./types/app";
 import { TorChannel } from "../../ipc/tor-ipc";
 import { settings } from "./settings";
 import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
+import { isPrivateAddress, pinnedLookup } from "../../shared/board-network-guard";
 
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
@@ -156,7 +157,7 @@ function doFetch(
         const urlObj = new URL(url);
         const isHttps = urlObj.protocol === "https:";
 
-        const prepare = async (): Promise<{ address?: string; family?: number }> => {
+        const prepare = async (): Promise<{ addresses?: { address: string; family: number }[] }> => {
             if (!boardPolicy) return {};
             if (boardPolicy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
             const port = Number(urlObj.port || (isHttps ? 443 : 80));
@@ -179,10 +180,10 @@ function doFetch(
                 && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
                 throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
             }
-            if (boardPolicy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address))) {
+            if (boardPolicy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address, net.isIP))) {
                 throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
             }
-            return route ? {} : { address: addresses[0].address, family: addresses[0].family };
+            return route ? {} : { addresses };
         };
 
         void prepare().then((pinned) => {
@@ -191,13 +192,17 @@ function doFetch(
             reject(new TypeError(`Unsupported protocol: ${urlObj.protocol}`));
             return;
         }
+        const isPinnedBoardRequest = Boolean(boardPolicy && !route && pinned.addresses);
         const agent = route
             ? agentFor(route, isHttps, rejectUnauthorized)
-            : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
+            : isPinnedBoardRequest
+                ? isHttps
+                    ? new https.Agent({ keepAlive: false, rejectUnauthorized })
+                    : new http.Agent({ keepAlive: false })
+                : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
 
-        const { address: pinnedAddress, family: pinnedFamily } = pinned;
-        const lookup = pinnedAddress !== undefined && pinnedFamily !== undefined
-            ? (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, pinnedAddress, pinnedFamily)
+        const lookup = pinned.addresses
+            ? pinnedLookup(pinned.addresses) as typeof import("dns").lookup
             : undefined;
         const reqOptions = {
             hostname: urlObj.hostname,
@@ -455,20 +460,4 @@ function doFetch(
         }
         }).catch(reject);
     });
-}
-
-function isPrivateAddress(address: string): boolean {
-    const value = address.toLowerCase().split("%", 1)[0];
-    const family = net.isIP(value);
-    if (family === 4) {
-        const [a, b] = value.split(".").map(Number);
-        return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254)
-            || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
-    }
-    if (family === 6) {
-        if (value.startsWith("::ffff:")) return isPrivateAddress(value.slice(7));
-        return value === "::" || value === "::1" || value.startsWith("fc") || value.startsWith("fd")
-            || /^fe[89ab]/.test(value);
-    }
-    return true;
 }

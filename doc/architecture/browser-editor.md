@@ -660,8 +660,9 @@ The consequences handled explicitly:
 - **Opening a resource out of the page.** "Open Image in New Tab" asks main for a one-URL
   `session-src` handle (`browser-network:session-source`) and opens the image through it; the image
   editor then shows the bytes, not the URL. A routed page whose route is down opens nothing.
-  Board-claimed downloads get a `session-src` handle for proxied persistent sessions as they do for
-  Tor and incognito ones.
+  Board-claimed downloads get a board-bound `session-src` handle for proxied persistent sessions as
+  they do for Tor and incognito ones. The handle carries the board's granted network policy, and
+  main validates permission and pins resolved addresses on every redirect hop.
 - **Resources list.** "Show Resources" opens a standalone Link page that outlives the browser page,
   so on a routed page it is opened without image thumbnails.
 - **WebRTC.** An `app.on("web-contents-created")` hook in `browser-network-service.ts` sets

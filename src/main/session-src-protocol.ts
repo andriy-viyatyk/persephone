@@ -8,12 +8,16 @@
  */
 import { randomBytes } from "node:crypto";
 import dns from "node:dns/promises";
+import http from "node:http";
 import net from "node:net";
+import https from "node:https";
+import { Readable } from "node:stream";
 import { session } from "electron";
 import type { Session } from "electron";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+import { isPrivateAddress, pinnedLookup, type BoardNetworkAddress } from "../shared/board-network-guard";
 
 
 const SESSION_HANDLE_TTL_MS = 5 * 60 * 1000;
@@ -39,6 +43,7 @@ interface SessionSourceEntry {
     /** The one URL this handle may fetch, normalized. */
     readonly targetUrl: string;
     readonly torPartition?: string;
+    readonly routed: boolean;
     readonly expiresAt: number;
     readonly expiryTimer: ReturnType<typeof setTimeout>;
     readonly boardPolicy?: {
@@ -51,7 +56,12 @@ interface SessionSourceEntry {
 const sessionSources = new Map<string, SessionSourceEntry>();
 
 /** Register a private browser session and return its opaque hand-off handle. */
-export function registerSessionSource(session: Session, targetUrl: string, torPartition?: string): string {
+export function registerSessionSource(
+    session: Session,
+    targetUrl: string,
+    torPartition?: string,
+    routed = false,
+): string {
     const handle = randomBytes(32).toString("hex");
     const expiresAt = Date.now() + SESSION_HANDLE_TTL_MS;
     const expiryTimer = setTimeout(() => {
@@ -63,6 +73,7 @@ export function registerSessionSource(session: Session, targetUrl: string, torPa
         session,
         targetUrl: normalizedUrl(targetUrl),
         torPartition,
+        routed,
         expiresAt,
         expiryTimer,
     });
@@ -89,6 +100,7 @@ export function bindSessionSourceToBoard(
         session: source.session,
         targetUrl: source.targetUrl,
         torPartition: source.torPartition,
+        routed: source.routed,
         expiresAt,
         expiryTimer,
         boardPolicy: { boardRoot, permissions, mcpUrl },
@@ -163,13 +175,23 @@ async function serveSessionSrc(request: Request): Promise<Response> {
         if (method !== "GET" && method !== "HEAD") body = await request.arrayBuffer();
         for (let redirects = 0; ; redirects++) {
             if (!/^https?:$/.test(safeProtocol(currentUrl))) throw new Error("Only http(s) redirect targets are allowed.");
-            if (entry.boardPolicy) await assertBoardNetworkAllowed(currentUrl, entry.boardPolicy);
-            upstream = await entry.session.fetch(currentUrl, {
-                method,
-                headers,
-                ...(body ? { body } : {}),
-                redirect: "manual",
-            });
+            const addresses = entry.boardPolicy
+                ? await assertBoardNetworkAllowed(currentUrl, entry.boardPolicy)
+                : undefined;
+            upstream = entry.boardPolicy && !entry.routed
+                ? await pinnedSessionFetch(currentUrl, {
+                    method,
+                    headers,
+                    body,
+                    addresses: addresses ?? [],
+                    session: entry.session,
+                })
+                : await entry.session.fetch(currentUrl, {
+                    method,
+                    headers,
+                    ...(body ? { body } : {}),
+                    redirect: "manual",
+                });
             if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
             const location = upstream.headers.get("location");
             if (!location || redirects >= 10) return new Response("Invalid or excessive redirect", { status: 502 });
@@ -201,7 +223,7 @@ async function serveSessionSrc(request: Request): Promise<Response> {
 async function assertBoardNetworkAllowed(
     url: string,
     policy: NonNullable<SessionSourceEntry["boardPolicy"]>,
-): Promise<void> {
+): Promise<BoardNetworkAddress[]> {
     const permissions = policy.permissions;
     const network = permissions.kind === "legacy" ? "full" : permissions.flags.network;
     if (network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
@@ -224,24 +246,83 @@ async function assertBoardNetworkAllowed(
         targetHost.toLowerCase() === mcpHost.toLowerCase()
         || targetAddresses.some(({ address }) => mcpAddresses.some((item) => item.address === address))
     )) throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
-    if (network === "internet" && targetAddresses.some(({ address }) => isPrivateAddress(address))) {
+    if (network === "internet" && targetAddresses.some(({ address }) => isPrivateAddress(address, net.isIP))) {
         throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
     }
+    return targetAddresses;
 }
 
-function isPrivateAddress(address: string): boolean {
-    const value = address.toLowerCase().split("%", 1)[0];
-    const family = net.isIP(value);
-    if (family === 4) {
-        const [a, b] = value.split(".").map(Number);
-        return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254)
-            || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+interface PinnedSessionFetchOptions {
+    method: string;
+    headers: Headers;
+    body?: ArrayBuffer;
+    addresses: BoardNetworkAddress[];
+    session: Session;
+}
+
+async function pinnedSessionFetch(url: string, options: PinnedSessionFetchOptions): Promise<Response> {
+    const { method, body, addresses, session } = options;
+    // A per-hop copy: the redirect loop reuses its headers, and a cookie added for this host
+    // must not follow a redirect to another one.
+    const headers = new Headers(options.headers);
+    const target = new URL(url);
+    const isHttps = target.protocol === "https:";
+    const lib = isHttps ? https : http;
+    if (!headers.has("cookie")) {
+        const cookies = await session.cookies.get({ url });
+        if (cookies.length) headers.set("cookie", cookies.map(({ name, value }) => `${name}=${value}`).join("; "));
     }
-    if (family === 6) {
-        if (value.startsWith("::ffff:")) return isPrivateAddress(value.slice(7));
-        return value === "::" || value === "::1" || value.startsWith("fc") || value.startsWith("fd") || /^fe[89ab]/.test(value);
-    }
-    return true;
+    if (!headers.has("user-agent")) headers.set("user-agent", session.getUserAgent());
+    headers.set("accept-encoding", "identity");
+
+    return new Promise((resolve, reject) => {
+        const agent = isHttps
+            ? new https.Agent({ keepAlive: false, rejectUnauthorized: true })
+            : new http.Agent({ keepAlive: false });
+        const request = lib.request({
+            hostname: target.hostname,
+            port: target.port || (isHttps ? 443 : 80),
+            path: target.pathname + target.search,
+            method,
+            headers: Object.fromEntries(headers),
+            agent,
+            lookup: pinnedLookup(addresses) as typeof import("node:dns").lookup,
+            timeout: 30_000,
+            ...(isHttps ? { rejectUnauthorized: true } : {}),
+        }, (response) => {
+            const responseHeaders = new Headers();
+            for (const [name, value] of Object.entries(response.headers)) {
+                if (value === undefined) continue;
+                responseHeaders.set(name, Array.isArray(value) ? value.join(", ") : value);
+            }
+            const hasBody = method !== "HEAD" && response.statusCode !== 204
+                && response.statusCode !== 205 && response.statusCode !== 304;
+            resolve(new Response(
+                hasBody ? Readable.toWeb(response) as ReadableStream<Uint8Array> : null,
+                {
+                    status: response.statusCode ?? 200,
+                    statusText: response.statusMessage ?? "OK",
+                    headers: responseHeaders,
+                },
+            ));
+        });
+
+        const connectionTimeout = setTimeout(() => {
+            request.destroy(new Error(`Session fetch timed out connecting to ${url}.`));
+        }, 30_000);
+        request.on("socket", (socket) => {
+            const connectedEvent = isHttps ? "secureConnect" : "connect";
+            socket.once(connectedEvent, () => clearTimeout(connectionTimeout));
+            if (!socket.connecting) clearTimeout(connectionTimeout);
+        });
+        request.on("timeout", () => request.destroy(new Error(`Session fetch timed out: ${url}`)));
+        request.on("error", (error: unknown) => {
+            clearTimeout(connectionTimeout);
+            reject(error);
+        });
+        if (body && method !== "GET" && method !== "HEAD") request.end(Buffer.from(body));
+        else request.end();
+    });
 }
 
 function filteredRequestHeaders(headers: Headers): Headers {

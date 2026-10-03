@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version)
+│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -100,7 +100,8 @@ and `/src/renderer/guides/` resolves the corresponding mounts for the About brow
 
 The shared board-pipe helpers are deliberately process-neutral: `/src/shared/range-utils.ts` parses
 inclusive ranges and builds Content-Range values; `/src/shared/board-pipe-constants.ts` holds the
-board-pipe IPC chunk and fallback-buffer limits. `/src/shared/mime-types.ts` maps filename
+board-pipe IPC chunk and fallback-buffer limits. `/src/shared/board-network-guard.ts` contains the
+shared private-address check and DNS-pinned lookup used for board network requests. `/src/shared/mime-types.ts` maps filename
 extensions to MIME types for main and renderer consumers. The main-process
 `/src/main/board-pipe-range-reader.ts` owns board-pipe range resolution, reply validation, and
 bounded continuation reads for both board protocol and video-stream responses.
@@ -967,9 +968,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// handler (token-guarded), guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Download management using main-derived Browser URL claims, tracked synchronous save dialogs, and Windows Mark-of-the-Web on completed browser downloads
-├── session-src-protocol.ts # Short-lived URL-bound capability for fetching one source through its private Browser session
-├── native-dialog-tracker.ts # Per-window tracking and non-actionable attention for native dialogs
+├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; completed files receive Mark-of-the-Web from the final redirect URL
+├── session-src-protocol.ts # Short-lived URL-bound capability; board-bound requests enforce granted network policy and DNS-pin every redirect hop
+├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
 ├── search-worker.ts        # File search walk — runs in a worker_thread (bundled separately to .vite/build/search-worker.js); never imports electron
 ├── worker-host.ts          # Worker thread host for app.runAsync (IPC + worker_threads)

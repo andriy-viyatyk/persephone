@@ -94,7 +94,8 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
     }
 
     private renderDownloads(downloadEntries: DownloadEntry[]): void {
-        const hasCompleted = downloadEntries.some((entry) => entry.status !== "downloading");
+        const hasCompleted = downloadEntries.some((entry) =>
+            entry.status === "completed" || entry.status === "failed" || entry.status === "cancelled");
         this.syncClearButton(hasCompleted);
         this.disposeItemResources();
 
@@ -153,7 +154,9 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         const progress = totalBytes > 0 ? Math.min(1, receivedBytes / totalBytes) : 0;
         const statusText = isDownloading
             ? `${formatBytes(receivedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : "?"}`
-            : status === "completed"
+            : status === "awaitingPath"
+                ? "Waiting for save location"
+                : status === "completed"
                 ? formatBytes(totalBytes)
                 : status === "cancelled"
                     ? "Cancelled"

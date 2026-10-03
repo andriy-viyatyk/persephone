@@ -232,10 +232,9 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                         response = { result: { path, error: `Invalid path: ${route.parseError}` } };
                     }
                     const targetBrowserWindow = targetWindowData?.window?.window;
-                    const nativeAttention = getNativeDialogAttention(
+                    const nativeAttention = await getNativeDialogAttention(
                         targetBrowserWindow,
                         targetWindowData?.index,
-                        openWindows.windows.filter(windowData => windowData.window).length > 1,
                     );
                     if (response.error?.message === RENDERER_REQUEST_TIMEOUT_MESSAGE && nativeAttention) {
                         response = { result: { path, pending: true, attention: nativeAttention } };

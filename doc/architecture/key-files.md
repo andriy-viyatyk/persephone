@@ -48,7 +48,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Markdown back-nav stack (page-owned, persisted in the page descriptor, count mirrored into `IPageState.navBackCount`) | `/src/renderer/api/pages/NavBackStack.ts` |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP/RAR/7z/TAR) | `/src/renderer/api/archive-service.ts`          |
-| Node.js HTTP client      | `/src/renderer/api/node-fetch.ts`                 |
+| Node.js HTTP client (board requests enforce manifest network permissions and `appScripting`; direct requests DNS-pin each hop to prechecked addresses) | `/src/renderer/api/node-fetch.ts` |
+| Shared board network address policy and DNS-pinned lookup callback | `/src/shared/board-network-guard.ts` |
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
@@ -262,8 +263,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser permission policy (main-owned session classification, Electron permission request/check handlers, site prompts and decisions, persistent profile store, and memory-only private-session decisions) | `/src/main/permission-policy-service.ts` |
 | Browser request log (bounded per-tab HTTP metadata, opt-in response bodies fetched from CDP while Chromium retains them, metadata-only AiVision summaries, Windows SSO composition, and redacted request headers) | `/src/main/network-logger.ts` |
 | Windows SSO adapter (global opt-in policy, eligible-session/origin checks, snip-tool process invocation, header mapping, and request-log redaction) | `/src/main/windows-sso.ts` |
-| Browser download interception (main-process `will-download`; generation-checked accepted browser-URL claims are matched before save-dialog handling, private-session sources use an opaque session-bound capability, and completed downloads carry Windows Mark-of-the-Web) | `/src/main/download-service.ts` |
-| Private browser-session source capability (`session-src://` binds one HTTP(S) URL to a private session for a short-lived provider fetch; renderer receives only an opaque handle) | `/src/main/session-src-protocol.ts` |
+| Browser download interception (main-process `will-download`; generation-checked accepted browser-URL claims are matched before download UI, bytes stage in a temp file while an async Save As dialog is open, and completed downloads carry Windows Mark-of-the-Web from the final redirected URL) | `/src/main/download-service.ts` |
+| Browser-session source capability (`session-src://` binds one HTTP(S) URL to its session; board-bound handles enforce the granted network policy and DNS-pin each redirect hop; renderer receives only an opaque handle) | `/src/main/session-src-protocol.ts` |
 | Rest Client editor and native request/response views | `/src/renderer/editors/rest-client/RestClientEditor.ts`, `/src/renderer/editors/rest-client/RestClientBodyView.ts`, `/src/renderer/editors/rest-client/RequestBuilderView.ts`, `/src/renderer/editors/rest-client/ResponseViewerView.ts`, `/src/renderer/editors/rest-client/KeyValueEditorView.ts` |
 | Environment variables editor and native grid body | `/src/renderer/editors/env-vars/EnvVarsEditor.ts`, `/src/renderer/editors/env-vars/EnvVarsBodyView.ts` |
 | File diff editor and native revision/diff views | `/src/renderer/editors/file-diff/FileDiffEditor.ts`, `/src/renderer/editors/file-diff/FileDiffBodyView.ts`, `/src/renderer/editors/file-diff/RevisionPickerView.ts`, `/src/renderer/editors/file-diff/FileDiffToolbarView.ts` |
@@ -328,8 +329,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process AiVision roots and service descriptors, including the settings-gated main script node | `/src/main/mcp/ai-vision/` |
 | MCP tool definitions (the `call` tool — the whole manifest — as data) | `/src/main/mcp/tools/` |
 | MCP server factory (manifest assembly and guide-resource registration) | `/src/main/mcp/server-factory.ts` |
-| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, path prefixing, and native image content blocks) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
-| Per-window native dialog tracking and attention snapshots | `/src/main/native-dialog-tracker.ts` |
+| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, path prefixing, native image content blocks, and recent-request tracking for beforeunload handling) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
+| Per-window native dialog tracking, attention snapshots, and cancellation through the native dialog helper | `/src/main/native-dialog-tracker.ts` |
 | Audio/Video player editor view | `/src/renderer/editors/video/VideoView.ts` |
 | Video playback view (video.js + hls.js and stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |
 | Audio player view | `/src/renderer/editors/video/AudioPlayer.ts` |
@@ -551,7 +552,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Module-service handshake and process-message routing (ready/probe deadline, generation-checked utility-process messages, and callbacks into supervisor-owned behavior) | `/src/main/module-service-handshake.ts` |
 | Module-service renderer leases (per-`WebContents` `MessagePort` transfer, attach acknowledgement, loss, and lifecycle cleanup) | `/src/main/module-service-leases.ts` |
 | Module-service restart policy (sliding failure window, bounded restart count, reset and freeze) | `/src/main/module-service-restart-budget.ts` |
-| Browser-download interception (main; consumes derived URL-mask claims at Electron's `will-download` boundary, before the save dialog, and writes Windows Mark-of-the-Web to completed downloads) | `/src/main/download-service.ts` |
+| Browser-download interception (main; consumes derived URL-mask claims at Electron's `will-download` boundary, stages bytes while an async Save As dialog is open, and writes Windows Mark-of-the-Web from the final redirected URL) | `/src/main/download-service.ts` |
 | Module-service protocol and lifecycle types (main/utility-process parent messages, per-renderer lease messages, trust snapshots, status records, storage frames, and provider operation deadline/cap policy) | `/src/ipc/module-service-channels.ts` |
 | Per-board JSON storage owner (root-hash folder, `store.json`, `board.json` sidecar, JSON validation/limits, lazy cache and per-board mutation queue shared by frames and services) | `/src/main/board-storage.ts` |
 | Canonical board-root identity and full SHA-256 storage key | `/src/main/board-root-key.ts` |

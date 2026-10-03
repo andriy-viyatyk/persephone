@@ -144,6 +144,10 @@ window.screen.snapshot()
 `.networkRequests`, and `.waitFor` operate against the app window using refs or CSS selectors, exactly like a browser page,
 provided the active page is not incognito or Tor.
 
+Native operating-system dialogs are exposed on their owning window as `windows[i].nativeDialog`.
+Read its `open`, `kind`, and optional `title` properties to identify a picker or message box, then
+call `windows[i].nativeDialog.dismiss()` to cancel it. This cannot enter a path or confirm Save/Open.
+
 What's different:
 - The snapshot only ever shows the app **chrome** (tab strip, sidebar, toolbars) plus the **active page's** content — other open tabs stay hidden until you click their tab to activate them.
 - Browser navigation and inner-tab management don't apply to the app window — use `pages` and page

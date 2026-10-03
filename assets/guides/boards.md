@@ -165,6 +165,10 @@ with `fileSystem: false`; this does not allow it to read another path or write f
 least `1.30.0`. A declared service is shown in Board Info and in the live
 `app.boards.list()` status payload.
 
+With `network: "internet"`, Persephone checks every address returned by DNS and connects only to
+those checked addresses. A request is blocked if any answer is a local or private address, which
+prevents a public hostname from being redirected to your local network through DNS rebinding.
+
 The permission list in the trust dialog uses these meanings:
 
 | Permission | Access it grants |

@@ -25,6 +25,7 @@ import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
+import { hasRecentRendererRequest } from "./mcp/renderer-bridge";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
@@ -406,6 +407,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         if (reg?.bypassUnloadGuard) {
             reg.bypassUnloadGuard = false;
             event.preventDefault(); // allow unload — reload without prompting
+            return;
+        }
+        if (hasRecentRendererRequest()) {
+            event.preventDefault();
             return;
         }
         const parentWindow = BrowserWindow.fromWebContents(sender);

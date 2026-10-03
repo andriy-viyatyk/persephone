@@ -110,6 +110,9 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eDownloadProgress] = new RendererEventObject<{ id: string; receivedBytes: number; totalBytes: number }>(
         EventEndpoint.eDownloadProgress
     );
+    [EventEndpoint.eDownloadAwaitingPath] = new RendererEventObject<{ id: string; receivedBytes: number; totalBytes: number }>(
+        EventEndpoint.eDownloadAwaitingPath
+    );
 
     [EventEndpoint.eDownloadCompleted] = new RendererEventObject<{ id: string; savePath: string }>(
         EventEndpoint.eDownloadCompleted
@@ -117,6 +120,9 @@ class RendererEvents implements EventApi {
 
     [EventEndpoint.eDownloadFailed] = new RendererEventObject<{ id: string; error: string }>(
         EventEndpoint.eDownloadFailed
+    );
+    [EventEndpoint.eDownloadRemoved] = new RendererEventObject<{ id: string }>(
+        EventEndpoint.eDownloadRemoved
     );
 
     [EventEndpoint.eDownloadCleared] = new RendererEventObject<DownloadEntry[]>(

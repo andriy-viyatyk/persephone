@@ -71,10 +71,10 @@ export interface DownloadEntry {
     id: string;
     filename: string;
     url: string;
-    savePath: string;
+    savePath?: string;
     totalBytes: number;
     receivedBytes: number;
-    status: "downloading" | "completed" | "failed" | "cancelled";
+    status: "downloading" | "awaitingPath" | "completed" | "failed" | "cancelled";
     startTime: number;
     error?: string;
 }

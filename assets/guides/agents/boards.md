@@ -799,7 +799,8 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   and every **`console.error`/`console.warn`** from the board's frames — read it when debugging.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)` —
   native dialogs returning a path you hand to `execute()`. The board needs
-  `fileSystem: "board"` or `fileSystem: "full"` for these dialogs.
+  `fileSystem: "board"` or `fileSystem: "full"` for these dialogs. An agent may dismiss a
+  picker with `windows[i].nativeDialog.dismiss()`, but cannot choose or confirm a path.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file with
   `fileSystem: "board"` or `fileSystem: "full"` (full allows any accessible path). With
   `fileSystem: false`, `readFile()` may read only the exact current `getFilePath()` target; all other

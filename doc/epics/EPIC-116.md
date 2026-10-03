@@ -133,10 +133,10 @@ shows progress while the read runs.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1560](../tasks/US-1560-pipe-status-model/README.md) | Pipe status model: stage status on providers and transformers, `ContentPipe` aggregation, `HttpProvider` progress, script and agent surface | Done |
-| [US-1561](../tasks/US-1561-pipe-status-badge/README.md) | Page-level pipe status badge and stage popover | Done |
-| [US-1562](../tasks/US-1562-board-provider-status/README.md) | Board provider status: service-side `status(config, emit)`, `ProxyProvider` subscription, bridge version bump; torrent board adopts it | Done |
-| [US-1563](../tasks/US-1563-instant-open/README.md) | Instant open: add the page before `restore()`, loading shell with Cancel, error and Retry, `page.ready` for scripts | Done |
+| US-1560 | Pipe status model: stage status on providers and transformers, `ContentPipe` aggregation, `HttpProvider` progress, script and agent surface | Done |
+| US-1561 | Page-level pipe status badge and stage popover | Done |
+| US-1562 | Board provider status: service-side `status(config, emit)`, `ProxyProvider` subscription, bridge version bump; torrent board adopts it | Done |
+| US-1563 | Instant open: add the page before `restore()`, loading shell with Cancel, error and Retry, `page.ready` for scripts | Done |
 
 **Order.** US-1560, then US-1561. Each is useful on its own for slow HTTP opens. US-1562 depends on
 US-1560. US-1563 depends only on US-1561 (the shell reuses the badge's stage view) and may be

@@ -28,6 +28,9 @@ guide to read for which task. It is intentionally short — read it once per ses
   drive/test it through `pages[i].editor` (`tabs`, `switchTab`, and `reload` included).
 - **The app window itself is automatable.** Use `window.screen` to see and click Persephone's own
   UI (tabs, sidebar, dialogs).
+- **Native dialogs are visible and cancellable by window.** Inspect `windows[i].nativeDialog`
+  for an owned picker, then call `windows[i].nativeDialog.dismiss()` to cancel it. Agents cannot
+  enter a path or confirm Save/Open.
 - **`call` is the one tool you can use without reading anything.** It addresses Persephone's live
   object model by path — `""` lists the top level, `pages` the open tabs, `page.content` the active
   text, `pages[0].editor.rowCount` a grid, `windows[1].pages` another window — and the first visit

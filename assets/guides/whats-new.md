@@ -32,6 +32,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Board file access follows the permissions granted at trust time:** boards can be limited to their own folder or files selected in their dialogs, while object-form boards' `board://` assets stay inside their folder.
 
+- **Internet-only boards are protected from DNS rebinding:** Persephone checks DNS results and connects to the checked public addresses; requests resolving to local or private addresses are blocked. See the [Boards guide](./boards.md#service-declarations-in-board-manifestjson).
+
 - **Markdown and Mermaid previews are safer:** raw HTML in Markdown is filtered; scripts, iframes, forms, and styles are removed. Mermaid diagrams render in strict mode.
 
 - **MCP servers reject browser requests:** Persephone and Mneme refuse requests from web pages to prevent DNS-rebinding and Origin-based attacks. Desktop agents and the in-app MCP Inspector continue to work; see the [MCP Server Setup guide](./mcp-setup.md).
@@ -43,6 +45,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Electron's security fuses are locked in release builds.** The environment-variable and browser-cookie effects are listed under [Breaking Changes](#breaking-changes).
 
 - **Browser downloads carry Mark-of-the-Web:** Windows SmartScreen and Office Protected View can apply their usual protections to downloaded files.
+
+### Improvements
+
+- **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.
+
+- **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
 
 ---
 

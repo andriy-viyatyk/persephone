@@ -143,10 +143,10 @@ class BrowserNetworkService {
     sessionSource(partition: string, url: string): string | undefined {
         if (!/^https?:$/.test(safeProtocol(url))) return undefined;
         if (this.proxied.has(partition)) {
-            return registerSessionSource(session.fromPartition(partition), url);
+            return registerSessionSource(session.fromPartition(partition), url, undefined, true);
         }
         if (torService.isActiveTorPartition(partition)) {
-            return registerSessionSource(session.fromPartition(partition), url, partition);
+            return registerSessionSource(session.fromPartition(partition), url, partition, true);
         }
         return undefined;
     }

@@ -368,8 +368,10 @@ export enum EventEndpoint {
     eOpenExternalUrl = "eOpenExternalUrl",
     eDownloadStarted = "eDownloadStarted",
     eDownloadProgress = "eDownloadProgress",
+    eDownloadAwaitingPath = "eDownloadAwaitingPath",
     eDownloadCompleted = "eDownloadCompleted",
     eDownloadFailed = "eDownloadFailed",
+    eDownloadRemoved = "eDownloadRemoved",
     eDownloadCleared = "eDownloadCleared",
     eMcpStatusChanged = "eMcpStatusChanged",
     eMnemeStatusChanged = "eMnemeStatusChanged",
@@ -418,8 +420,10 @@ export type EventApi = {
     [EventEndpoint.eOpenExternalUrl]: EventObject<string>;
     [EventEndpoint.eDownloadStarted]: EventObject<DownloadEntry>;
     [EventEndpoint.eDownloadProgress]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
+    [EventEndpoint.eDownloadAwaitingPath]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eDownloadCompleted]: EventObject<{ id: string; savePath: string }>;
     [EventEndpoint.eDownloadFailed]: EventObject<{ id: string; error: string }>;
+    [EventEndpoint.eDownloadRemoved]: EventObject<{ id: string }>;
     [EventEndpoint.eDownloadCleared]: EventObject<DownloadEntry[]>;
     [EventEndpoint.eMcpStatusChanged]: EventObject<McpStatus>;
     [EventEndpoint.eMnemeStatusChanged]: EventObject<MnemeStatus>;
