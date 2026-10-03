@@ -54,7 +54,7 @@ export interface IAiCallContext {
 export const RESERVED_ROOT_NAMES: readonly string[] = ["windows", "main", "guides", "script", "pipe"];
 
 const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
-    { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. Also holds pages.logView — the channel for showing the user output or asking them a question." },
+    { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. To show the user a table, grid, or other output, or ask a question, use pages.logView.push; pages.addEditorPage can create a dedicated grid-json table page." },
     { name: "page", kind: "property", summary: "The active page (same as the `page` global in scripts)." },
     { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search the live descriptor graph for object-model paths; use guides.search for documentation text." },
     { name: "version", kind: "property", summary: "Persephone version string." },

@@ -1,7 +1,7 @@
 ---
 title: "Pages & Windows"
 audience: agent
-summary: "Pages and windows reference: page properties, editor types, creating pages, and multi-window object-model paths."
+summary: "Find or open files, create pages, and work with page properties, editor types, and multi-window object-model paths."
 ---
 
 # Pages & Windows

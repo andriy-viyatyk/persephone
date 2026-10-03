@@ -19,7 +19,7 @@ export const SERVER_INSTRUCTIONS = [
     "Persephone is a developer notepad with tabbed pages, specialized editors, and JavaScript/TypeScript scripting. GitHub: https://github.com/andriy-viyatyk/persephone",
     "Use Persephone to display rich content to the user: code, diagrams, tables/grids, images, and web pages.",
     "Start with `call` and no path to see the overview; follow its hints and node `$help`.",
-    "Use `pages.logView.push(...)` for output, rich results, and questions.",
+    "Use `pages.logView.push(...)` for output, rich results, and questions, e.g. `push([{ type: \"output.markdown\", text: \"# Done\" }])`; entry types are listed in `guides[\"formats/ui-push\"]`.",
     "Create pages with `pages.addEditorPage(...)`; assign `pages[i].content` to update text.",
     "Open a web URL with `pages.openUrlInBrowserTab(...)`, then use `pages[i].editor.*`.",
     "Use `window.screen.*` for Persephone's own window and `pages[i].editor.*` for browser or board pages.",
@@ -28,7 +28,7 @@ export const SERVER_INSTRUCTIONS = [
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
     "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard.",
-    "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. For a reusable model on a page without `.app`, read `guides.agents[\"site-extensions\"]` or `persephone://guides/site-extensions`. The focused `persephone://guides/*` resources remain available as an alternative.",
+    "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. For a reusable model on a page without `.app`, read `guides.agents[\"site-extensions\"]` or `persephone://guides/site-extensions`. The `persephone://guides/*` resources are the same files as `guides.*`.",
 ].join("\n");
 
 // ——— Guides ————————————————————————————————————————————————————————————————

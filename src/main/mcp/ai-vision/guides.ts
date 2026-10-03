@@ -167,7 +167,8 @@ function formatDiagnostics(node: GuideTreeNode): string {
     const diagnostics = node.kind === "page"
         ? node.editorIdDiagnostics ?? []
         : collectDiagnostics(node.children);
-    return diagnostics.length ? ` [${diagnostics.join(" ")}]` : "";
+    const uniqueDiagnostics = [...new Set(diagnostics)];
+    return uniqueDiagnostics.length ? ` [${uniqueDiagnostics.join(" ")}]` : "";
 }
 
 function collectDiagnostics(nodes: readonly GuideTreeNode[]): readonly string[] {

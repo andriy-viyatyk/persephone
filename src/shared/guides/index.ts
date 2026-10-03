@@ -1,5 +1,6 @@
 import { extractLayout, extractMarkdownCandidates } from "./markdown";
 import { parseGuideFile } from "./front-matter";
+import { BOARD_SELF_EDITOR_ID } from "./mounted-source";
 
 export type GuideAudience = "user" | "agent" | "both";
 
@@ -53,7 +54,7 @@ export interface GuidePage extends GuideTreePage {
     readonly content: string;
 }
 
-export type GuideSearchMatchKind = "title" | "heading" | "table-row" | "body";
+export type GuideSearchMatchKind = "title" | "summary" | "heading" | "table-row" | "body";
 
 export interface GuideSearchHit {
     readonly pagePath: string;
@@ -97,19 +98,27 @@ interface MutableFolder {
 interface RankedGuideHit extends GuideSearchHit {
     readonly sourceLine: number;
     readonly distinctTokenCount: number;
+    readonly queryTokenCount: number;
     readonly tokenOccurrences: number;
     readonly passageLength: number;
+    readonly isBuiltIn: boolean;
 }
 
 interface MatchRelevance {
     readonly distinctTokenCount: number;
+    readonly queryTokenCount: number;
     readonly tokenOccurrences: number;
 }
 
 const TITLE_SCORE = 300;
+const SUMMARY_SCORE = 250;
 const HEADING_SCORE = 200;
 const TABLE_ROW_SCORE = 150;
 const BODY_SCORE = 100;
+const STOP_WORDS = new Set([
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "how", "in", "is", "it",
+    "of", "on", "or", "the", "to", "was", "what", "when", "where", "which", "who", "why", "with",
+]);
 
 export function createGuideIndex(source: GuideSource): GuideIndex {
     const pageCache = new Map<string, CachedPage>();
@@ -176,7 +185,9 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
     }
 
     async function search(query: string, limit = 10, audience: GuideAudienceFilter = "all"): Promise<readonly GuideSearchHit[]> {
-        const tokens = [...new Set(query.trim().toLowerCase().split(/\s+/).filter(Boolean))];
+        const allTokens = tokenizeSearchText(query);
+        const substantiveTokens = allTokens.filter(token => !STOP_WORDS.has(token));
+        const tokens = substantiveTokens.length > 0 ? substantiveTokens : allTokens;
         if (tokens.length === 0) return [];
 
         const pages = await loadPages(await scan());
@@ -194,6 +205,21 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
                     sourceLine: -1,
                     ...titleRelevance,
                     passageLength: page.title.length,
+                    isBuiltIn: !page.path.startsWith("installed-boards/"),
+                });
+            }
+            const summaryRelevance = getMatchRelevance(page.summary, tokens);
+            if (summaryRelevance) {
+                hits.push({
+                    pagePath: page.path,
+                    title: page.title,
+                    passage: page.summary,
+                    matchKind: "summary",
+                    score: SUMMARY_SCORE,
+                    sourceLine: -1,
+                    ...summaryRelevance,
+                    passageLength: page.summary.length,
+                    isBuiltIn: !page.path.startsWith("installed-boards/"),
                 });
             }
             for (const candidate of extractMarkdownCandidates(page.content)) {
@@ -211,6 +237,7 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
                     sourceLine: candidate.sourceLine,
                     ...relevance,
                     passageLength: candidate.passage.length,
+                    isBuiltIn: !page.path.startsWith("installed-boards/"),
                 });
             }
         }
@@ -225,8 +252,10 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
         return sorted.slice(0, resultLimit).map(({
             sourceLine: _sourceLine,
             distinctTokenCount: _distinctTokenCount,
+            queryTokenCount: _queryTokenCount,
             tokenOccurrences: _tokenOccurrences,
             passageLength: _passageLength,
+            isBuiltIn: _isBuiltIn,
             ...hit
         }) => hit);
     }
@@ -247,6 +276,8 @@ function annotateEditorIdDiagnostics(pages: readonly GuidePage[]): readonly Guid
     const claims = new Map<string, string[]>();
     for (const page of pages) {
         for (const editorId of normalizeEditorIds(page.editorId)) {
+            // This token means the page's own board, so sharing it across board guides is expected.
+            if (editorId === BOARD_SELF_EDITOR_ID) continue;
             const paths = claims.get(editorId) ?? [];
             paths.push(page.path);
             claims.set(editorId, paths);
@@ -323,8 +354,12 @@ function toTreePage(page: GuidePage): GuideTreePage {
 }
 
 function compareHits(left: RankedGuideHit, right: RankedGuideHit): number {
-    return right.score - left.score
+    const leftFullCoverage = left.distinctTokenCount === left.queryTokenCount;
+    const rightFullCoverage = right.distinctTokenCount === right.queryTokenCount;
+    return Number(rightFullCoverage) - Number(leftFullCoverage)
         || right.distinctTokenCount - left.distinctTokenCount
+        || right.score - left.score
+        || Number(right.isBuiltIn) - Number(left.isBuiltIn)
         || left.passageLength - right.passageLength
         || right.tokenOccurrences - left.tokenOccurrences
         || compareStrings(left.pagePath, right.pagePath)
@@ -333,31 +368,29 @@ function compareHits(left: RankedGuideHit, right: RankedGuideHit): number {
 }
 
 function getMatchRelevance(candidate: string, tokens: readonly string[]): MatchRelevance | undefined {
-    const lower = candidate.toLowerCase();
-    const occurrences = tokens.map(token => countWordStartOccurrences(lower, token));
-    if (occurrences.some(count => count === 0)) return undefined;
+    const candidateTokens = tokenizeSearchText(candidate);
+    const occurrences = tokens.map(token => candidateTokens.filter(candidateToken => candidateToken.startsWith(token)).length);
+    if (occurrences.every(count => count === 0)) return undefined;
     return {
         distinctTokenCount: occurrences.filter(count => count > 0).length,
+        queryTokenCount: tokens.length,
         tokenOccurrences: occurrences.reduce((total, count) => total + count, 0),
     };
 }
 
-function countWordStartOccurrences(text: string, token: string): number {
-    let count = 0;
-    let searchStart = 0;
-    while (searchStart < text.length) {
-        const index = text.indexOf(token, searchStart);
-        if (index === -1) break;
-        if (index === 0 || !isAlphaNumeric(text[index - 1])) count++;
-        searchStart = index + Math.max(token.length, 1);
+function tokenizeSearchText(text: string): string[] {
+    const tokens = new Set<string>();
+    const identifiers = text.match(/[a-zA-Z0-9]+/g) ?? [];
+    for (const identifier of identifiers) {
+        tokens.add(identifier.toLowerCase());
+        const splitIdentifier = identifier
+            .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+            .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2");
+        for (const word of splitIdentifier.split(/\s+/)) {
+            if (word) tokens.add(word.toLowerCase());
+        }
     }
-    return count;
-}
-
-function isAlphaNumeric(character: string | undefined): boolean {
-    return character !== undefined
-        && ((character >= "a" && character <= "z")
-            || (character >= "0" && character <= "9"));
+    return [...tokens];
 }
 
 function audienceIncludes(audience: GuideAudience, filter: GuideAudienceFilter): boolean {

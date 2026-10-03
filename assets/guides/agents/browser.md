@@ -1,3 +1,9 @@
+---
+title: "Browser automation — drive web pages and boards"
+audience: both
+summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and private-page limits for pages[i].editor and window.screen."
+---
+
 # Browser automation
 
 Use `pages[i].editor` for browser pages and boards. Use `window.screen` for Persephone's own

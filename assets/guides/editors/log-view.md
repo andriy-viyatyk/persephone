@@ -1,7 +1,7 @@
 ---
 title: "Log View"
 audience: both
-summary: "Structured JSONL output, messages, and interactive dialogs for agent and script results."
+summary: "Show the user structured output, tables/grids, messages, and interactive questions in Log View."
 editorId: "log-view"
 ---
 

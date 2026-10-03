@@ -81,7 +81,7 @@ const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "csvDelimiter", kind: "property", summary: "The CSV delimiter, or undefined for non-CSV or detached grids." },
     { name: "csvWithColumns", kind: "property", summary: "Whether CSV uses its first row as headers, or undefined for non-CSV or detached grids." },
     { name: "editCell", kind: "method", signature: "editCell(columnKey: string, rowKey: string, value: unknown): void", summary: "Edit a single cell value; returns null after the edit.", caution: "changes grid data" },
-    { name: "addRows", kind: "method", signature: "addRows(count = 1, insertIndex?: number): unknown[]", summary: "Add new empty rows. Returns the new rows.", caution: "changes grid data" },
+    { name: "addRows", kind: "method", signature: "addRows(count = 1, insertIndex?: number): unknown[]", summary: "Add empty rows to a table/grid. Returns the new rows.", caution: "changes grid data" },
     { name: "deleteRows", kind: "method", signature: "deleteRows(rowKeys: string[]): void", summary: "Delete rows by their keys.", caution: "deletes grid data" },
     { name: "addColumns", kind: "method", signature: "addColumns(count = 1, insertBeforeKey?: string): Array<{ readonly key: string; readonly name: string }>", summary: "Add new columns. Returns the new column definitions.", caution: "changes grid data" },
     { name: "deleteColumns", kind: "method", signature: "deleteColumns(columnKeys: string[]): void", summary: "Delete columns by their keys.", caution: "deletes grid data" },

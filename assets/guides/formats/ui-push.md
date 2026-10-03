@@ -1,7 +1,7 @@
 ---
 title: "pages.logView.push — Log View Output Channel"
 audience: agent
-summary: "Log View reference: messages, dialogs, entry types, and examples for pages.logView.push and the script ui object."
+summary: "Show the user messages, tables/grids, Markdown, and questions with pages.logView.push; Log View entry and dialog reference."
 ---
 
 # `pages.logView.push` — Log View Output Channel

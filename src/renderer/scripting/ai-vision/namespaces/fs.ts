@@ -12,7 +12,7 @@ const FILE_SYSTEM_MEMBERS: readonly IAiMember[] = [
     { name: "rename", kind: "method", signature: "rename(oldPath: string, newPath: string)", summary: "Rename or move a file or directory.", caution: "changes the user's filesystem" },
     { name: "stat", kind: "method", signature: "stat(filePath: string)", summary: "Return file and directory metadata." },
     { name: "copyFile", kind: "method", signature: "copyFile(srcPath: string, destPath: string)", summary: "Copy a file and create parent directories as needed.", caution: "writes the destination file" },
-    { name: "listDir", kind: "method", signature: "listDir(dirPath: string, pattern?: string | RegExp)", summary: "List entry NAMES in a directory, optionally filtered; use listDirWithTypes when you need to tell files from subfolders." },
+    { name: "listDir", kind: "method", signature: "listDir(dirPath: string, pattern?: string | RegExp)", summary: "Find or browse files by listing entry NAMES in a directory, optionally filtered; use listDirWithTypes when you need to tell files from subfolders." },
     { name: "mkdir", kind: "method", signature: "mkdir(dirPath: string)", summary: "Create a directory and parents as needed.", caution: "changes the user's filesystem" },
     { name: "listDirWithTypes", kind: "method", signature: "listDirWithTypes(dirPath: string)", summary: "Like listDir, but each entry carries an isDirectory flag; takes no filter pattern." },
     { name: "removeDir", kind: "method", signature: "removeDir(dirPath: string, recursive?: boolean)", summary: "Remove a directory.", caution: "deletes a directory; recursive removal deletes its contents" },

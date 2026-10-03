@@ -37,14 +37,10 @@ refs and fullPage are unsupported on this host. evaluate() accepts JSON-safe arg
 function-expression strings; arrow strings are invoked. consoleMessages() and pageErrors() read
 Persephone's renderer records; this target has no page JavaScript dialog policy.
 
-summarize() returns host identity only ({ kind: "WindowScreen" }). Because a terminal
-window.screen walk ends before this descriptor's restricted() is consulted by the per-hop resolver
-(node_modules/ai-vision/dist/core/resolver.js:85-87), it never exposes active-page content, title, URL, editor id,
-or privacy state. screenshot() may return undefined when its CDP session is unavailable, and
-unavailable object fields are omitted from call answers rather than represented by undefined or null.
-As verified live by US-1335, snapshots returned no password or ordinary input value; US-1336 found
-that Chromium can omit hidden loaded frame subtrees, and doc/architecture/browser-editor.md explains
-that the app snapshot contains only the active page's content.`;
+summarize() returns only { kind: "WindowScreen" }; it never exposes the active page's content,
+title, URL, editor id, or privacy state. screenshot() may return undefined when its CDP session is
+unavailable. Unavailable fields are omitted rather than returned as null. Snapshots never include
+password or input values, may omit hidden frame subtrees, and cover only the active page.`;
 
 /**
  * The app-window boundary is stricter than the adjacent browser-page boundary. The latter uses
