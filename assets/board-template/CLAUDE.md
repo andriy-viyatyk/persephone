@@ -156,8 +156,9 @@ image.src = icons["movie.mp4"];
 
 Trust decides whether the board runs; the manifest's object-form permissions gate capabilities.
 Persephone-created blank boards begin all-false with `minBridgeVersion: "1.30.0"`. Auto-trust
-does not widen those grants. Object-form manifests require `minBridgeVersion >= 1.30.0`. Enable
-only flags the code uses. Approved permission wording:
+does not widen those grants. Object-form manifests require `minBridgeVersion >= 1.30.0`. The
+exact hosted-document `readFile()` exception requires bridge `1.32.0`; set that as the minimum
+when a board depends on it. Enable only flags the code uses. Approved permission wording:
 
 > This board can do only what is listed below. Without any permission it can still show its own
 > pages, work with the document you open in it, copy to the clipboard, and open links inside
@@ -167,7 +168,7 @@ only flags the code uses. Approved permission wording:
 |---|---|
 | `execute: true` | “Run programs and scripts on this computer.” — **Full access** |
 | `service: true` | “Run a background program while Persephone is open.” — **Full access** |
-| `fileSystem: false` | No bridge file methods or dialogs; the hosted document and own `board://` assets remain available. |
+| `fileSystem: false` | `readFile()` may read only the exact document hosted by this board frame; other bridge file methods and dialogs are unavailable. Own `board://` assets remain available. |
 | `fileSystem: "board"` | “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
 | `fileSystem: "full"` | “Read and write any file you can access.” — **Full access** |
 | `openExternal: true` | “Open links or files in your browser or another app.” |
@@ -185,8 +186,7 @@ False flags have no permission line. The all-false summary is “No permissions 
 legacy label is “Unrestricted”: “This board uses an older manifest without permission settings,
 so it can do anything you can: read and write your files, run programs, and use the network.” Legacy
 service runs only if the old array contains `"service"`. Full access secondary text is “Can reach
-everything your user account can.” `fileSystem: false` blocks bridge file methods and dialogs, but
-the hosted document and board's own `board://` assets remain available. Use native
+everything your user account can.” `fileSystem: false` blocks writes, dialogs, and other bridge file reads; `readFile()` may read only the exact currently hosted local document (bridge `1.32.0+`). The board's own `board://` assets remain available. Use native
 `fetch("./data.json")` or `fetch("board://<host>/data.json")` for own files; `persephone.fetch()`
 needs `network`. Opening links inside Persephone needs no `openExternal`.
 
@@ -810,8 +810,9 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   `fileSystem: "board"` or `fileSystem: "full"`.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file
   directly, no backend script needed. A **relative** `path` resolves against the board folder (the
-  same default as `execute()`'s cwd); an absolute path reads/writes anywhere. `writeFile` creates
-  parent folders. Both return Promises and reject on error. Three encodings:
+  same default as `execute()`'s cwd); access outside the hosted document is limited by
+  `fileSystem`. `writeFile` creates parent folders. Both return Promises and reject on error. Three
+  encodings:
   - **`"utf8"`** (default) — a plain string.
   - **`"binary"`** — a **`Uint8Array`** of the raw bytes. **Use this for any binary file** (an
     image, a PDF, a zip, a spreadsheet). It hands the bytes straight to your parser with no
@@ -837,8 +838,9 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   ```
 - `persephone.getFilePath()` → `Promise<string | undefined>` — when this board is opened as a
   **custom editor** for a file (associated via `fileMasks` in `board-manifest.json`), this resolves
-  to that file's **absolute path**; read/write it with `persephone.readFile()` / `writeFile()`. It
-  resolves to `undefined` for a board opened plainly. Safe to `await` at any time — it waits for the
+  to that file's **absolute path**; `readFile()` can read it with `fileSystem: false` on bridge
+  `1.32.0+`, while writes still require `fileSystem: "board"` or `"full"`. It resolves to
+  `undefined` for a board opened plainly. Safe to `await` at any time — it waits for the
   host handshake, so you never race a missing value:
   ```js
   const filePath = await persephone.getFilePath();
@@ -982,9 +984,10 @@ plain (non-content-host) board `persephone.host.getContent()` / `getLanguage()` 
 handshake answers the question) and a registered `onContentChange` callback never fires, so
 feature-detect with a `try`/`catch` around `getContent()` if a board can open either way.
 
-**Bridge file methods require `fileSystem: "board"` or `"full"`.** `"board"` scopes bridge file
-access to the board folder and paths returned by its dialogs; `"full"` reaches any accessible path.
-With `fileSystem: false`, the hosted document and own board assets remain available. Use native
+**Bridge file methods are permission-scoped.** `"board"` scopes bridge file access to the board
+folder and paths returned by its dialogs; `"full"` reaches any accessible path. With
+`fileSystem: false`, `readFile()` may read only the exact hosted document path on bridge
+`1.32.0+`; writes and dialogs remain unavailable. Own board assets remain available. Use native
 `fetch("./data.json")` or `fetch("board://<host>/data.json")` to load those assets without a grant.
 
 **Clipboard:** use `persephone.clipboard.writeImage(data)` for encoded image bytes (`Uint8Array` or

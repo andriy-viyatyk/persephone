@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.31.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.32.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -21,6 +21,8 @@ value under `result` for board callers, and adds the optional manifest capabilit
 `alwaysOpensNewPage` to request a fresh handler page for each invocation.
 Bridge `1.28.0` adds the `segmented` toolbar control; boards using it set
 `minBridgeVersion: "1.28.0"`.
+Bridge `1.32.0` lets `readFile()` read the exact currently hosted document path when
+`fileSystem: false`; boards using this behavior should set `minBridgeVersion: "1.32.0"`.
 Bridge `1.21.0` adds optional `representation` to capability discovery and board declarations.
 Boards declaring `content.view` must provide one non-empty `representation` per supported format
 and set `minBridgeVersion: "1.21.0"`.
@@ -53,7 +55,7 @@ user-facing wording:
 |---|---|
 | `execute: true` | Run programs/scripts. “Run programs and scripts on this computer.” — **Full access** |
 | `service: true` | Run a background program. “Run a background program while Persephone is open.” — **Full access** |
-| `fileSystem: false` | No bridge file APIs or dialogs. The hosted document and own `board://` assets still work. |
+| `fileSystem: false` | `readFile()` can read the currently hosted document; other bridge file APIs and dialogs remain unavailable. Own `board://` assets still work. |
 | `fileSystem: "board"` | Board folder and files picked in its dialogs. “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
 | `fileSystem: "full"` | Any accessible file. “Read and write any file you can access.” — **Full access** |
 | `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Opening links inside Persephone remains available without it. |
@@ -78,9 +80,11 @@ Use native `fetch("./data.json")` or `fetch("board://<host>/data.json")` for a b
 these work with `fileSystem: false`. `persephone.fetch()` is remote bridge networking and needs
 `network`. If a call rejects with exactly `permission-denied: "<flag>" is not enabled in
 board-manifest.json`, inspect that source call and add only its required flag or level. Tell the user
-that a permission increase prompts for approval when the board next opens or reloads; pure
-reductions reconcile silently. Object-form manifests need `minBridgeVersion >= 1.30.0`. Never click
-**Trust Board** unless the user expressly asks you to trust that board.
+that a permission increase shows the **Board permissions changed** dialog when the board next opens
+or reloads, where they choose **Accept** or **Unregister board** (closing it takes the board off
+its page); pure reductions
+reconcile silently. Object-form manifests need `minBridgeVersion >= 1.30.0`. Never click
+**Trust Board**, **Accept** or **Unregister board** unless the user expressly asks for that outcome.
 
 Viewer boards that render untrusted documents should keep `fileSystem: false` and `network: false`
 and never receive `execute` or `appScripting`. Injected document script could otherwise rewrite
@@ -791,7 +795,9 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   native dialogs returning a path you hand to `execute()`. The board needs
   `fileSystem: "board"` or `fileSystem: "full"` for these dialogs.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file with
-  `fileSystem: "board"` or `fileSystem: "full"` (full allows any accessible path). Relative `path`
+  `fileSystem: "board"` or `fileSystem: "full"` (full allows any accessible path). With
+  `fileSystem: false`, `readFile()` may read only the exact current `getFilePath()` target; all other
+  reads and every write still need `"board"` or `"full"`. Relative `path`
   resolves against the board folder; absolute reads/writes anywhere.
   `writeFile` creates parent dirs. Both return Promises (reject on error). Encodings: `"utf8"`
   (default) → string; **`"binary"` → a `Uint8Array`, the right choice for ANY binary file** (image,

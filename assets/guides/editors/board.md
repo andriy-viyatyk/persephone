@@ -76,10 +76,26 @@ unsaved changes.
 ## Trust and safety
 
 Installed or otherwise untrusted boards show the **Trust this board?** gate before rendering because
-their scripts run with the user's privileges. Bundled boards supplied by Persephone skip that gate.
-Trust is remembered per folder and inherited by boards inside a trusted folder. API-created boards
+their bridge access must be approved. The dialog lists the permissions requested in the board's
+manifest; enabled permissions are enforced, and higher-risk entries such as running programs,
+app scripting, or full file/network access are marked **Full access**. With all permissions off, a
+board can still show its own pages, work with its currently opened document, copy to the clipboard,
+and open links inside Persephone. Bundled boards supplied by Persephone skip the trust gate.
+
+Trust is remembered per folder and inherited by boards inside a trusted folder. If a trusted board
+adds a permission or raises an access level, opening or reloading it shows **Board permissions
+changed**: the kept (check), added (**+**) and removed (struck-through **−**) permissions in one list,
+with **Accept** or **Unregister board** (a catalog install is uninstalled). Closing the dialog takes
+the board off its page and asks again next time. Permission reductions
+apply without a prompt. API-created boards
 from `app.boards.createBoard` and `createDemoBoard` scaffold and auto-trust their board; the
 installed/published-board path still uses the user trust gate.
+
+A board without a permissions object, including one using the old list format, is shown as
+**Unrestricted** for compatibility. These boards are deprecated and will stop working in a future
+Persephone release. The trust dialog warns on first trust, and opening an already-trusted board
+shows a persistent warning. Ask the agent that built it to add a `permissions` object. For the full
+permission list and file access scopes, see [Boards](../boards.md#service-declarations-in-board-manifestjson).
 
 ## Agent API
 

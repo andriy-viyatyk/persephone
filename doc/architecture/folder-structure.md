@@ -160,7 +160,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
-│   ├── board-trust.ts      # Reactive mirror of main-owned user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
+│   ├── board-trust.ts      # Reactive mirror of main-owned trusted roots and permission grants (trustedBoards.json); bundled boards bypass it. This list IS the known-boards registry
 │   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
 │   ├── module-service.ts   # Renderer client for main-routed service requests and the optional per-window host-renderer lease
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
@@ -978,8 +978,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
 ├── board-pipe-service.ts     # Main-side board pipe page/resource ownership and renderer range request correlation
 ├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
-├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
-├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
+├── board-file-access.ts     # Canonical path validation and manifest-permission-scoped board file access
+├── board-bridge.ts         # Per-board MessagePort bridge (manifest permissions enforced) — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
+├── board-trust-service.ts # Main owner of persisted trust grants, manifest permission snapshots, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
 ├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, status, and teardown
 ├── module-service-record.ts # Per-service state and request/lease records, generation checks, and utility-process cleanup
 ├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing

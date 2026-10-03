@@ -179,6 +179,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private iframeGrant: NormalizedBoardPermissions | undefined;
     private iframe: HTMLIFrameElement | undefined;
     private pendingPort: MessagePort | null = null;
+    private hostedPathToken = "";
     private lastBoardContent: string | undefined;
     private live = false;
     private generation = 0;
@@ -693,6 +694,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
         this.generation++;
+        this.hostedPathToken = globalThis.crypto.randomUUID();
         this.installSettingsSubscription();
         this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
         if (this.capabilityFrame?.iframe === frame) {
@@ -722,7 +724,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             const message: BoardHostContentMsg = { __persephone: "host:content", content, language };
             win.postMessage(message, `board://${host}`);
         }
-        void api.requestBoardPort(this.boardId, host, model.id);
+        const currentFilePath = model.currentFilePath();
+        const hostedLocalPath = currentFilePath && isPlainLocalPath(currentFilePath) ? currentFilePath : null;
+        void api.requestBoardPort(this.boardId, host, model.id, hostedLocalPath, this.hostedPathToken);
         void api.registerBoardFrame(model.id, host, this.boardId, this.tabId).then(() => {
             if (this.live && generation === this.generation) model.markFrameLoaded(this.tabId);
             else if (model.frames.get(this.tabId) === frame) {
@@ -1149,9 +1153,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
+        const token = this.hostedPathToken;
         let reply: { path?: string; error?: string };
         try {
             reply = { path: await model.ensureContentPath() };
+            if (!this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || token !== this.hostedPathToken) return;
+            const updated = await api.updateBoardHostedPath(this.boardId, token, reply.path ?? null);
+            if (!updated || !this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || token !== this.hostedPathToken) return;
         } catch (error: unknown) {
             const message = errMessage(error);
             if (isProviderResolutionError(error)) ui.notify(message, "error");

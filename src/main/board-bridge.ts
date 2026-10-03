@@ -77,7 +77,7 @@ import {
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
 import { boardPermissionError } from "../shared/board-manifest-utils";
-import { recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, recheckWriteTarget } from "./board-file-access";
+import { recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -92,6 +92,10 @@ interface BoardPortEntry {
     ownerId: string;
     /** The host renderer window — owner for dialogs/links/notify/log. */
     hostWebContents: WebContents;
+    /** Exact local file currently exposed to this board frame, if any. */
+    hostedFilePath: string | null;
+    /** Per-load identity prevents delayed updates from changing a replacement port. */
+    token: string;
     /** Set when the shim's "connected" message arrives (mode D, EPIC-037 C11). */
     connected?: boolean;
     /** Mode-D handshake watchdog; cleared on connect / dispose. */
@@ -254,7 +258,13 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
     async readFile(entry, args) {
         const grant = await boardTrustService.getGrantedPermissions(entry.root);
         if (!grant) throw boardPermissionError("fileSystem");
-        const filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: args[0] as string, permissions: grant, intent: "read" });
+        const requestedPath = args[0] as string;
+        const filePath = await resolveHostedReadOrAuthorizedPath({
+            boardRoot: entry.root,
+            requestedPath,
+            hostedPath: entry.hostedFilePath,
+            permissions: grant,
+        });
         const encoding = fileEncoding(args[1]);
         const buf = await fs.promises.readFile(filePath);
         if (encoding === "binary") {
@@ -536,13 +546,15 @@ export function createBoardPort(
     boardId: string,
     host: string,
     ownerId: string,
+    hostedPath: string | null,
+    token: string,
 ): void {
     // Re-handshake (reload / navigation): drop the superseded port first.
     if (boardPorts.has(boardId)) disposeBoardPort(boardId);
 
     const root = getBoardRootForHost(host) ?? "";
     const { port1, port2 } = new MessageChannelMain();
-    const entry: BoardPortEntry = { port: port2, root, host, ownerId, hostWebContents };
+    const entry: BoardPortEntry = { port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token };
     boardPorts.set(boardId, entry);
     indexOwnerSink(ownerId, boardId, hostWebContents.id);
 
@@ -568,12 +580,28 @@ export function createBoardPort(
     hostWebContents.postMessage(EventEndpoint.eBoardPort, { boardId }, [port1]);
 }
 
+/** Update only the live port created by this host renderer for this exact load. */
+export function updateBoardHostedPath(
+    hostWebContents: WebContents,
+    boardId: string,
+    token: string,
+    hostedPath: string | null,
+): boolean {
+    const entry = boardPorts.get(boardId);
+    if (!entry || entry.hostWebContents !== hostWebContents || entry.token !== token
+        || hostWebContents.isDestroyed()) return false;
+    entry.hostedFilePath = hostedPath;
+    return true;
+}
+
 /** Tear down a board's port (unmount / reload / host crash). Jobs: a BUSY owner's
  *  jobs are KEPT (they outlive the iframe — US-799); otherwise every job of the
  *  owner is reaped (current sink + any kept from prior busy mounts). */
 export function disposeBoardPort(boardId: string): void {
     const entry = boardPorts.get(boardId);
     if (!entry) return;
+    entry.hostedFilePath = null;
+    entry.token = "";
     if (entry.watchdog) {
         clearTimeout(entry.watchdog);
         entry.watchdog = undefined;

@@ -123,6 +123,7 @@ export enum Endpoint {
     unregisterBoard = "unregisterBoard",
     updateBoardTheme = "updateBoardTheme",
     requestBoardPort = "requestBoardPort",
+    updateBoardHostedPath = "updateBoardHostedPath",
     disposeBoardPort = "disposeBoardPort",
     setBoardBusy = "setBoardBusy",
     setBoardCallTimeout = "setBoardCallTimeout",
@@ -298,7 +299,8 @@ export type Api = {
     // a postMessage on `eBoardPort` (EPIC-037 / US-771). Resolves once the request
     // is sent; the port arrives asynchronously on the event channel. `ownerId` is
     // the owning BoardEditorModel id — the stable job-retention key (US-799).
-    [Endpoint.requestBoardPort]: (boardId: string, host: string, ownerId: string) => Promise<void>;
+    [Endpoint.requestBoardPort]: (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => Promise<void>;
+    [Endpoint.updateBoardHostedPath]: (boardId: string, token: string, hostedPath: string | null) => Promise<boolean>;
     [Endpoint.disposeBoardPort]: (boardId: string) => Promise<void>;
     // Busy retention (US-799): mirror the renderer's busy flag / tree-kill every
     // job (kept + current) of a board owner on final teardown (model dispose).

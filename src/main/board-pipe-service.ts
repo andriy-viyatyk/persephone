@@ -100,14 +100,15 @@ class BoardPipeService {
         if (!owner || owner.host !== host || owner.webContents.isDestroyed()) {
             return Promise.reject(new BoardPipeError(404, "Board pipe resource not found."));
         }
-        if (owner.boardRoot && owner.filePath !== undefined && !owner.hostedDocument) {
+        const { boardRoot, filePath, hostedDocument } = owner;
+        if (boardRoot && filePath !== undefined && !hostedDocument) {
             return (async () => {
                 const { boardTrustService } = await import("./board-trust-service");
-                const permissions = await boardTrustService.getGrantedPermissions(owner.boardRoot!);
+                const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
                 if (!permissions) throw new BoardPipeError(404, "Board pipe resource not found.");
                 const { resolveAuthorizedPath } = await import("./board-file-access");
                 await resolveAuthorizedPath({
-                    boardRoot: owner.boardRoot!, requestedPath: owner.filePath!, permissions, intent: "read",
+                    boardRoot, requestedPath: filePath, permissions, intent: "read",
                 });
                 return this.requestRead(owner, host, pipeKind, pipeId, rangeHeader, range, signal);
             })();

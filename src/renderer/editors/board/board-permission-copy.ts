@@ -1,4 +1,3 @@
-import type { BoardPermissionChange } from "../../api/board-trust";
 import type { BoardPermissionFlags, NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
 
 export const BOARD_PERMISSION_INTRODUCTION = "This board can do only what is listed below. Without any permission it can still show its own pages, work with the document you open in it, copy to the clipboard, and open links inside Persephone.";
@@ -36,41 +35,73 @@ export interface BoardPermissionLine {
     fullAccess: boolean;
 }
 
+type FlagKey = keyof BoardPermissionFlags;
+type FlagValue = BoardPermissionFlags[FlagKey];
+
+/** Plain-language line for one enabled flag. */
+function flagLine(key: FlagKey, value: Exclude<FlagValue, false>): BoardPermissionLine {
+    let text = FLAG_COPY[key];
+    if (key === "fileSystem") {
+        text = value === "board"
+            ? "Read and write files in this board's folder (including its own code) and files you pick in its dialogs."
+            : "Read and write any file you can access.";
+    } else if (key === "network") {
+        text = value === "internet"
+            ? "Connect to public internet services; local and private network addresses are blocked."
+            : "Connect to the internet, this computer, and your local network.";
+    }
+    return {
+        text,
+        fullAccess: key === "execute" || key === "service" || key === "appScripting"
+            || (key === "fileSystem" && value === "full")
+            || (key === "network" && value === "full"),
+    };
+}
+
+const UNRESTRICTED_LINE: BoardPermissionLine = { text: "Unrestricted", fullAccess: false };
+
 export function boardPermissionLines(permissions: NormalizedBoardPermissions): BoardPermissionLine[] {
-    if (permissions.kind === "legacy") return [{ text: "Unrestricted", fullAccess: false }];
+    if (permissions.kind === "legacy") return [UNRESTRICTED_LINE];
     const lines: BoardPermissionLine[] = [];
-    for (const [key, value] of Object.entries(permissions.flags) as [keyof BoardPermissionFlags, BoardPermissionFlags[keyof BoardPermissionFlags]][]) {
-        if (value === false) continue;
-        let text = FLAG_COPY[key];
-        if (key === "fileSystem") {
-            text = value === "board"
-                ? "Read and write files in this board's folder (including its own code) and files you pick in its dialogs."
-                : "Read and write any file you can access.";
-        } else if (key === "network") {
-            text = value === "internet"
-                ? "Connect to public internet services; local and private network addresses are blocked."
-                : "Connect to the internet, this computer, and your local network.";
-        }
-        lines.push({
-            text,
-            fullAccess: key === "execute" || key === "service" || key === "appScripting"
-                || (key === "fileSystem" && value === "full")
-                || (key === "network" && value === "full"),
-        });
+    for (const [key, value] of Object.entries(permissions.flags) as [FlagKey, FlagValue][]) {
+        if (value !== false) lines.push(flagLine(key, value));
     }
     if (!lines.length) lines.push({ text: "No permissions requested.", fullAccess: false });
     return lines;
 }
 
-export function permissionChangeLines(changes: readonly BoardPermissionChange[]): string[] {
-    return changes.map((change) => {
-        const label = change.flag === "fileSystem" ? "File access" : change.flag === "openExternal" ? "External opening"
-            : change.flag === "appScripting" ? "App scripting" : change.flag === "clipboardRead" ? "Clipboard reading"
-                : change.flag[0].toUpperCase() + change.flag.slice(1);
-        const level = (value: boolean | string | undefined): string =>
-            typeof value === "string" ? ` (${value})` : "";
-        if (change.kind === "added") return `Added: ${label}${level(change.to)}.`;
-        if (change.kind === "removed") return `Removed: ${label}${level(change.from)}.`;
-        return `Changed: ${label} (${change.from} -> ${change.to}).`;
-    });
+export const PERMISSION_CHANGE_TITLE = "Board permissions changed";
+
+export function permissionChangeMessage(boardName: string): string {
+    return `${boardName} now asks for different permissions. Accept them to keep using the board, or unregister it.`;
+}
+
+export interface BoardPermissionDiffLine extends BoardPermissionLine {
+    /** `kept`: granted and still requested; `added`: newly requested; `removed`: no longer requested. */
+    mark: "kept" | "added" | "removed";
+}
+
+/** One list covering both sets: kept, added and removed permissions in flag order. A changed
+ *  level (for example `fileSystem` "board" -> "full") is a removed line plus an added line. */
+export function boardPermissionDiffLines(
+    granted: NormalizedBoardPermissions,
+    proposed: NormalizedBoardPermissions,
+): BoardPermissionDiffLine[] {
+    const lines: BoardPermissionDiffLine[] = [];
+    if (granted.kind === "legacy") lines.push({ ...UNRESTRICTED_LINE, mark: proposed.kind === "legacy" ? "kept" : "removed" });
+    if (granted.kind === "flags" || proposed.kind === "flags") {
+        const keys = Object.keys(granted.kind === "flags" ? granted.flags : (proposed as { flags: BoardPermissionFlags }).flags) as FlagKey[];
+        for (const key of keys) {
+            const from: FlagValue = granted.kind === "flags" ? granted.flags[key] : false;
+            const to: FlagValue = proposed.kind === "flags" ? proposed.flags[key] : false;
+            if (from !== false && from === to) {
+                lines.push({ ...flagLine(key, from), mark: "kept" });
+                continue;
+            }
+            if (from !== false) lines.push({ ...flagLine(key, from), mark: "removed" });
+            if (to !== false) lines.push({ ...flagLine(key, to), mark: "added" });
+        }
+    }
+    if (proposed.kind === "legacy" && granted.kind === "flags") lines.push({ ...UNRESTRICTED_LINE, mark: "added" });
+    return lines;
 }

@@ -70,7 +70,7 @@
                 isolated from the host by the Same-Origin Policy, behind a CSP that forbids remote network. The manifest
                 explicitly grants <code>execute</code>, <code>service</code>, <code>appScripting</code>, and
                 <code>fileSystem: "board"</code> for the demos below; every other flag is false. Those grants enable
-                only their matching bridge surfaces. Native same-origin fetches still read this board's assets.
+                only their matching bridge surfaces. A board with <code>fileSystem: false</code> can still use <code>readFile()</code> for the exact document hosted in its frame on bridge <code>1.32.0+</code>; other bridge file reads, writes, and dialogs need a file-system grant. Native same-origin fetches still read this board's assets. This demo declares <code>fileSystem: "board"</code> because its examples use file dialogs and board-scoped paths.
             </div>
         </section>
 

@@ -473,8 +473,12 @@ class ApiCalls implements Api {
     // Ask main to mint a per-board MessagePort (EPIC-037 / US-771). The port arrives
     // asynchronously on `eBoardPort` — subscribe via `onBoardPort` before requesting.
     // `ownerId` = the owning BoardEditorModel id, the stable job-retention key (US-799).
-    requestBoardPort = async (boardId: string, host: string, ownerId: string) => {
-        return executeOnce<void>(Endpoint.requestBoardPort, boardId, host, ownerId);
+    requestBoardPort = async (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => {
+        return executeOnce<void>(Endpoint.requestBoardPort, boardId, host, ownerId, hostedPath, token);
+    };
+
+    updateBoardHostedPath = async (boardId: string, token: string, hostedPath: string | null) => {
+        return executeOnce<boolean>(Endpoint.updateBoardHostedPath, boardId, token, hostedPath);
     };
 
     disposeBoardPort = async (boardId: string) => {

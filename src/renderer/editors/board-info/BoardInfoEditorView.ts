@@ -2,7 +2,8 @@ import { app } from "../../api/app";
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
-import { FULL_ACCESS_DETAIL, LEGACY_PERMISSION_EXPLANATION, boardPermissionLines, legacyBoardDeprecationWarning, permissionChangeLines } from "../board/board-permission-copy";
+import { LEGACY_PERMISSION_EXPLANATION, legacyBoardDeprecationWarning } from "../board/board-permission-copy";
+import { createBoardPermissionChangeList, createBoardPermissionList } from "../board/board-permission-list";
 import { publishedBoards } from "../../api/published-boards";
 import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
@@ -414,18 +415,15 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         if (info.permissionChangePending && info.proposedPermissions) {
             const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
             pending.append(text("Pending permission change", { size: "sm", bold: true, color: "warning" }));
-            pending.append(text("Proposed permissions", { size: "sm", bold: true }));
-            pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
-            for (const line of permissionChangeLines(info.permissionChanges ?? [])) {
-                pending.append(text(line, { size: "sm", color: "warning" }));
-            }
-            if (info.permissions?.kind === "legacy" && info.proposedPermissions.kind === "flags") {
-                pending.prepend(text("Unrestricted ->", { size: "sm", bold: true }));
+            if (info.permissions) {
+                pending.append(createBoardPermissionChangeList(info.permissions, info.proposedPermissions, "sm"));
+            } else {
+                pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
             }
             if (info.service) pending.append(text("Service: declared", { size: "sm", color: "light" }));
             this.addButton(pending, {
                 children: "Review permission change",
-                onClick: () => { void requestBoardTrust(info.root, true); },
+                onClick: () => { void requestBoardTrust(info.root); },
             });
             metadata.append(pending);
         } else if (info.service) {
@@ -659,15 +657,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         boardName = "This board",
     ): HTMLElement {
         const list = panel({ direction: "column", gap: "xs", align: "stretch" });
-        for (const line of boardPermissionLines(permissions)) {
-            const row = panel({ direction: "row", gap: "lg", align: "center", wrap: true });
-            row.append(text(line.text, { size: "sm" }));
-            if (line.fullAccess) {
-                row.append(text("Full access", { size: "xs", bold: true, color: "warning" }));
-                row.append(text(FULL_ACCESS_DETAIL, { size: "xs", color: "light" }));
-            }
-            list.append(row);
-        }
+        list.append(createBoardPermissionList(permissions, "sm"));
         if (permissions.kind === "legacy") {
             list.append(text(LEGACY_PERMISSION_EXPLANATION, { size: "sm", color: "light" }));
             if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarning(boardName), { size: "sm", color: "warning" }));

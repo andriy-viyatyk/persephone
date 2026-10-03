@@ -115,6 +115,42 @@ export async function resolveAuthorizedPath(options: ResolveOptions): Promise<st
     return candidate;
 }
 
+/** Resolve a hosted document read by exact canonical identity, or use normal file authorization. */
+export async function resolveHostedReadOrAuthorizedPath(options: {
+    boardRoot: string;
+    requestedPath: string;
+    hostedPath: string | null;
+    permissions: NormalizedBoardPermissions;
+}): Promise<string> {
+    if (options.hostedPath) {
+        try {
+            validateRequestedPath(options.requestedPath);
+            validateRequestedPath(options.hostedPath);
+            const root = await realpathNative(options.boardRoot);
+            const requested = path.isAbsolute(options.requestedPath)
+                ? options.requestedPath
+                : path.resolve(root, options.requestedPath);
+            const requestedCanonical = await realpathNative(
+                process.platform === "win32" ? normalizeWindowsComponents(requested) : requested,
+            );
+            const hostedCanonical = await realpathNative(
+                process.platform === "win32" ? normalizeWindowsComponents(options.hostedPath) : options.hostedPath,
+            );
+            if (normalizedForCompare(requestedCanonical) === normalizedForCompare(hostedCanonical)) {
+                return requestedCanonical;
+            }
+        } catch {
+            // Invalid or missing candidates cannot use the hosted-document exception.
+        }
+    }
+    return resolveAuthorizedPath({
+        boardRoot: options.boardRoot,
+        requestedPath: options.requestedPath,
+        permissions: options.permissions,
+        intent: "read",
+    });
+}
+
 export function requireDialogPermission(permissions: NormalizedBoardPermissions): void {
     if (effectiveFileSystem(permissions) === false) throw boardPermissionError("fileSystem");
 }

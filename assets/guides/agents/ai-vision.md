@@ -231,8 +231,9 @@ by the board. Trusted boards only, at most 512 characters, five per rolling minu
 A board frame needs `appScripting: true` to call `persephone.call()` into its hosting Persephone
 page. If it rejects with exactly `permission-denied: "appScripting" is not enabled in
 board-manifest.json`, inspect the call path, add only `appScripting: true` if the board uses it, and
-tell the user that an added grant prompts for approval the next time the board opens or reloads.
-Never accept **Trust Board** unless the user asked you to trust that board.
+tell the user that the next open or reload shows the **Board permissions changed** dialog, where
+they choose **Accept** or **Unregister board**. Never click **Trust Board**, **Accept** or
+**Unregister board** unless the user asked for that outcome.
 
 ### Rules that will bite you
 

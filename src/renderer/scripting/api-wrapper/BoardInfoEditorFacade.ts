@@ -251,7 +251,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
 
     async reviewPermissionChange(): Promise<void> {
         const root = this.editor.state.get().props?.root;
-        if (root) await requestBoardTrust(root, true);
+        if (root) await requestBoardTrust(root);
     }
 
     cancelDownload(catalogId: string): void {

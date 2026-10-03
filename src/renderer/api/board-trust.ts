@@ -66,17 +66,12 @@ export function diffBoardPermissions(
     return changes;
 }
 
-function permissionSetKey(permissions: NormalizedBoardPermissions): string {
-    return JSON.stringify(permissions);
-}
-
 class BoardTrust {
     private readonly state = new TGlobalState<BoardTrustState>({ paths: [], loaded: false });
     private loadPromise: Promise<void> | undefined;
     private pathsRevision = 0;
     private grants = new Map<string, NormalizedBoardPermissions>();
     private manifests = new Map<string, NormalizedBoardPermissions>();
-    private readonly declinedProposals = new Map<string, Set<string>>();
     private grantsPromise: Promise<void> | undefined;
     private readonly grantListeners = new Set<(changedRoots: string[]) => void>();
 
@@ -170,21 +165,6 @@ class BoardTrust {
         await this.loadGrants();
     }
 
-    hasDeclinedProposal(boardRoot: string, permissions: NormalizedBoardPermissions): boolean {
-        return this.declinedProposals.get(fpNormalizeForCompare(boardRoot))?.has(permissionSetKey(permissions)) ?? false;
-    }
-
-    rememberDeclinedProposal(boardRoot: string, permissions: NormalizedBoardPermissions): void {
-        const key = fpNormalizeForCompare(boardRoot);
-        const proposals = this.declinedProposals.get(key) ?? new Set<string>();
-        proposals.add(permissionSetKey(permissions));
-        this.declinedProposals.set(key, proposals);
-    }
-
-    clearDeclinedProposals(boardRoot: string): void {
-        this.declinedProposals.delete(fpNormalizeForCompare(boardRoot));
-    }
-
     /** Read main's current list without updating reactive state. */
     async readPaths(): Promise<string[]> {
         try {
@@ -244,7 +224,6 @@ class BoardTrust {
     async trust(boardRoot: string, expectedPermissions?: NormalizedBoardPermissions): Promise<void> {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true, expectedPermissions));
         await this.loadGrants();
-        this.clearDeclinedProposals(boardRoot);
     }
 
     /** Remove a board from main's trusted list. */

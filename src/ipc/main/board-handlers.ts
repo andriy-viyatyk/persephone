@@ -18,6 +18,7 @@ export type BoardEndpoint =
     | Endpoint.unregisterBoard
     | Endpoint.updateBoardTheme
     | Endpoint.requestBoardPort
+    | Endpoint.updateBoardHostedPath
     | Endpoint.disposeBoardPort
     | Endpoint.setBoardBusy
     | Endpoint.setBoardCallTimeout
@@ -78,8 +79,11 @@ export function initBoardHandlers(): void {
         (await import("../../main/board-protocol-service")).updateAllBoardThemes(theme);
         (await import("../../main/board-bridge")).pushThemeToBoards(theme);
     });
-    bindEndpoint(Endpoint.requestBoardPort, async (event: IpcMainEvent, boardId: string, host: string, ownerId: string): Promise<void> => {
-        (await import("../../main/board-bridge")).createBoardPort(event.sender, boardId, host, ownerId);
+    bindEndpoint(Endpoint.requestBoardPort, async (event: IpcMainEvent, boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string): Promise<void> => {
+        (await import("../../main/board-bridge")).createBoardPort(event.sender, boardId, host, ownerId, hostedPath, token);
+    });
+    bindEndpoint(Endpoint.updateBoardHostedPath, async (event: IpcMainEvent, boardId: string, token: string, hostedPath: string | null): Promise<boolean> => {
+        return (await import("../../main/board-bridge")).updateBoardHostedPath(event.sender, boardId, token, hostedPath);
     });
     bindEndpoint(Endpoint.disposeBoardPort, async (_event, boardId: string): Promise<void> => {
         (await import("../../main/board-bridge")).disposeBoardPort(boardId);

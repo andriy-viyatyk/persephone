@@ -11,18 +11,11 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-- **EPIC-119** — [Board permissions — least privilege, declared in the manifest](epics/EPIC-119.md)
-  - [ ] [US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement](tasks/US-1593-board-permission-model/README.md)
-  - [ ] [US-1596: Scoped file access for boards](tasks/US-1596-board-scoped-file-access/README.md)
-  - [ ] [US-1597: Device permissions for board frames](tasks/US-1597-board-device-permissions/README.md)
-  - [ ] [US-1598: Trust dialog and Board Info show granted permissions; re-trust on change](tasks/US-1598-board-permission-trust-ui/README.md)
-  - [ ] [US-1599: Scaffold all-`false` manifest; board guides and agent instructions](tasks/US-1599-board-permission-scaffold-guides/README.md)
-  - [ ] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
-  - [ ] US-1601: Migrate the user's registered custom boards (Codex run per board)
-  - [ ] [US-1608: Deprecation notice for boards without declared permissions](tasks/US-1608-legacy-board-deprecation-notice/README.md)
+*(none)*
 
 ## Planned
 
+- [ ] [US-1611: Close the DNS-rebinding gap in `network: "internet"` for board session fetches](tasks/US-1611-board-network-dns-pinning/README.md) — from the EPIC-119 review
 - [ ] [US-1595: Agents can see and dismiss native dialogs](tasks/US-1595-native-dialog-agent-dismiss/README.md) — async download Save dialog, `windows[i].nativeDialog` + `dismiss()`
 
 - **EPIC-120** — [Site extensions — injected AiVision models for web pages](epics/EPIC-120.md) — proof of concept first

@@ -28,6 +28,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Security
 
+- **Boards now enforce declared permissions:** the Trust board dialog shows the requested access, marks broad grants as **Full access**, and when a trusted board adds or expands a permission it shows **Board permissions changed** with the kept, added and removed permissions in one list and two choices: **Accept** or **Unregister board**. Boards without an object-form permissions declaration are marked **Unrestricted** and deprecated; trusted legacy boards show a persistent warning when opened. See the [Boards guide](./boards.md#board-trust-gate).
+
 - **Board file access follows the permissions granted at trust time:** boards can be limited to their own folder or files selected in their dialogs, while object-form boards' `board://` assets stay inside their folder.
 
 - **Markdown and Mermaid previews are safer:** raw HTML in Markdown is filtered; scripts, iframes, forms, and styles are removed. Mermaid diagrams render in strict mode.
@@ -167,8 +169,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   that starts lazily under main-process supervision, answers requests without an open board page,
   and shares the board frame's `persephone.storage`. One service handles activity from multiple
   windows, so reloading one window does not interrupt the others. Live state, failures, restart
-  counts, and process identity are visible through `boards.list()`; `permissions` is disclosure and
-  lifecycle hygiene, not a privilege grant or sandbox. Bridge 1.22.0 adds
+  counts, and process identity are visible through `boards.list()`. Board permissions are now
+  enforced; see the [Boards guide](./boards.md#service-declarations-in-board-manifestjson). Bridge 1.22.0 adds
   `persephone.service.onRequest(handler)` and `onShutdown(fn)`; the host owns ready, probe, replies,
   and shutdown, while raw-protocol services remain supported during migration. See [Boards — declared
   services](./boards.md#declared-services-storage-and-lifecycle) and the [service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).

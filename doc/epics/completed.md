@@ -1,3 +1,26 @@
+## EPIC-119 — Board permissions: least privilege, declared in the manifest
+
+Completed 2026-10-03. Board manifests declare an object-form permission set with every flag off
+by default: `execute`, `service`, `fileSystem` (`"board"` / `"full"`), `openExternal`,
+`appScripting`, `network` (`"internet"` / `"full"`), `clipboardRead` and device flags. Main
+enforces the grant stored with trust. The trust dialog and Board Info list the permissions, mark
+full-access grants, and re-ask when a manifest widens them. Board file access is scoped, device
+permissions follow the grant, and a board can read its own hosted document without file access.
+Manifests without a declaration are deprecated with a warning on every open, and their removal is
+scheduled as US-1609. The catalog boards (on `develop`, publishing after the release) and the
+user's registered boards were migrated. Follow-up: US-1611 (DNS rebinding for
+`network: "internet"`). [Epic document](EPIC-119.md).
+
+- [x] US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement
+- [x] US-1596: Scoped file access for boards
+- [x] US-1597: Device permissions for board frames
+- [x] US-1598: Trust dialog and Board Info show granted permissions; re-trust on change
+- [x] US-1599: Scaffold all-`false` manifest; board guides and agent instructions
+- [x] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
+- [x] US-1601: Migrate the user's registered custom boards (Codex run per board)
+- [x] US-1608: Deprecation notice for boards without declared permissions
+- [x] US-1610: A board can read its own hosted document without `fileSystem`
+
 ## EPIC-118 — Security hardening: hostile web pages and files
 
 Completed 2026-10-02. Closes the two code-execution paths from a hostile page or file (raw HTML in

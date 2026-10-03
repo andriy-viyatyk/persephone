@@ -24,15 +24,37 @@ export interface TrustBoardDialogProps {
 
 registerDialogView(trustBoardDialogId, TrustBoardDialogView);
 
-export async function showTrustBoardDialog(
+/** First trust resolves `true`/`false`; a permission change resolves `"accept"` / `"unregister"`.
+ *  A dialog dismissed without a button (agent `cancel()`) resolves `undefined`. */
+export type TrustBoardDialogResult = boolean | "accept" | "unregister";
+
+function openTrustBoardDialog(
     boardPath: string,
     disclosure: Omit<TrustBoardDialogProps, "boardPath">,
-): Promise<boolean> {
-    const model = new TDialogModel<TrustBoardDialogProps, boolean>(
+): Promise<TrustBoardDialogResult | undefined> {
+    const model = new TDialogModel<TrustBoardDialogProps, TrustBoardDialogResult>(
         new TComponentState({ boardPath, ...disclosure }),
     );
     return showDialog({
         viewId: trustBoardDialogId,
         model,
-    }) as Promise<boolean>;
+    }) as Promise<TrustBoardDialogResult | undefined>;
+}
+
+/** "Trust this board?" for a board that is not trusted yet. */
+export async function showTrustBoardDialog(
+    boardPath: string,
+    disclosure: Omit<TrustBoardDialogProps, "boardPath" | "change">,
+): Promise<boolean> {
+    return (await openTrustBoardDialog(boardPath, disclosure)) === true;
+}
+
+/** "Board permissions changed" for a trusted board whose manifest widened its permissions.
+ *  There is no cancel: the user accepts the new set or unregisters the board. */
+export async function showBoardPermissionChangeDialog(
+    boardPath: string,
+    disclosure: Omit<TrustBoardDialogProps, "boardPath"> & { change: NonNullable<TrustBoardDialogProps["change"]> },
+): Promise<"accept" | "unregister" | undefined> {
+    const result = await openTrustBoardDialog(boardPath, disclosure);
+    return result === "accept" || result === "unregister" ? result : undefined;
 }

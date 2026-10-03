@@ -195,6 +195,10 @@ function doFetch(
             ? agentFor(route, isHttps, rejectUnauthorized)
             : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
 
+        const { address: pinnedAddress, family: pinnedFamily } = pinned;
+        const lookup = pinnedAddress !== undefined && pinnedFamily !== undefined
+            ? (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, pinnedAddress, pinnedFamily)
+            : undefined;
         const reqOptions = {
             hostname: urlObj.hostname,
             port: urlObj.port || (isHttps ? 443 : 80),
@@ -203,7 +207,7 @@ function doFetch(
             headers,
             agent,
             timeout,
-            ...(pinned.address ? { lookup: (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, pinned.address!, pinned.family!) } : {}),
+            ...(lookup ? { lookup } : {}),
         };
 
         const lib = isHttps ? https : http;
