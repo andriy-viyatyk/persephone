@@ -11,6 +11,7 @@ class SiteExtensionTrust {
     private readonly state = new TGlobalState<SiteExtensionTrustSnapshot>({});
     private loadPromise: Promise<void> | undefined;
     private revision = 0;
+    private boundFolder: string | undefined;
 
     load(): Promise<void> {
         if (!this.loadPromise) {
@@ -31,7 +32,15 @@ class SiteExtensionTrust {
         const copy = Object.fromEntries(Object.entries(snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], enabled: grant.enabled }]));
         this.state.set(copy);
     }
-    async trust(id: string, hosts: string[]): Promise<void> { this.applyAuthoritativeSnapshot(await api.trustSiteExtension(id, hosts)); }
+    /** Tell main which folder extensions are read from; main drops every grant when it changes. */
+    async bindFolder(folder: string): Promise<void> {
+        this.applyAuthoritativeSnapshot(await api.bindSiteExtensionFolder(folder));
+        this.boundFolder = folder;
+    }
+    async trust(id: string, hosts: string[]): Promise<void> {
+        if (!this.boundFolder) throw new Error("The site extensions folder is not known yet.");
+        this.applyAuthoritativeSnapshot(await api.trustSiteExtension(id, hosts, this.boundFolder));
+    }
     async revoke(id: string): Promise<void> { this.applyAuthoritativeSnapshot(await api.revokeSiteExtensionTrust(id)); }
     async setEnabled(id: string, enabled: boolean): Promise<void> { this.applyAuthoritativeSnapshot(await api.setSiteExtensionEnabled(id, enabled)); }
 }

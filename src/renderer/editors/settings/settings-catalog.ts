@@ -135,7 +135,8 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         panelName: "settings-panel-site-extensions",
         where: "Settings > Browser > Site Extensions",
         rows: [
-            { key: "site-extensions", label: "Site extensions", purpose: "Extension status, approved hosts, trust, and enabled state." },
+            { key: "site-extensions.path", label: "Site extensions folder", purpose: "Folder that holds the site extensions; empty uses the default data folder." },
+            { key: "site-extensions", label: "Site extensions", purpose: "Installed and trusted counts, with a button that opens the Site extensions tab in Tools & Editors." },
         ],
     },
     {

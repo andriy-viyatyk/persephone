@@ -1,5 +1,7 @@
 import { fpJoin, fpRelative, fpResolve, fpSep } from "../core/utils/file-path";
 import { fs } from "./fs";
+import { settings } from "./settings";
+import { siteExtensionTrust } from "./site-extension-trust";
 
 const EXTENSION_ID_PATTERN = /^[a-z0-9-]+$/;
 const MANIFEST_NAME = "manifest.json";
@@ -90,11 +92,36 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
 
 class SiteExtensionStore {
     private readonly manifestCache = new Map<string, CachedManifest>();
-    private rootPromise: Promise<string> | undefined;
+    private defaultRootPromise: Promise<string> | undefined;
+    private cachedRoot: string | undefined;
+    private folderBinding: Promise<void> | undefined;
 
-    private getRoot(): Promise<string> {
-        this.rootPromise ??= fs.dataFileName("site-extensions");
-        return this.rootPromise;
+    /** `<userData>/data/site-extensions`, used while the "site-extensions.path" setting is empty. */
+    getDefaultRoot(): Promise<string> {
+        this.defaultRootPromise ??= fs.dataFileName("site-extensions");
+        return this.defaultRootPromise;
+    }
+
+    /**
+     * The folder that holds the extensions: the "site-extensions.path" setting, or the default.
+     * Resolves only after main has bound its trust grants to this folder, so no grant made in
+     * another folder can be read against an extension from this one.
+     */
+    async getRoot(): Promise<string> {
+        const configured = settings.get("site-extensions.path").trim();
+        const root = configured ? fpResolve(configured) : await this.getDefaultRoot();
+        if (root !== this.cachedRoot) {
+            // Cached manifests hold absolute script paths, and a copied folder keeps its mtimes,
+            // so a cache entry from the old root must never be reused under a new one.
+            this.manifestCache.clear();
+            this.cachedRoot = root;
+            this.folderBinding = siteExtensionTrust.bindFolder(root).catch((error: unknown) => {
+                if (this.cachedRoot === root) this.cachedRoot = undefined;
+                throw error;
+            });
+        }
+        await this.folderBinding;
+        return root;
     }
 
     private async refresh(): Promise<{ listings: SiteExtensionListing[]; hostMap: Map<string, SiteExtensionRecord> }> {

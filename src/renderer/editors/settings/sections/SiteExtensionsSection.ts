@@ -1,187 +1,112 @@
 import { api } from "../../../../ipc/renderer/api";
 import { errMessage } from "../../../../shared/utils";
-import { fpJoin, fpRelative, fpResolve, fpSep } from "../../../core/utils/file-path";
-import { siteExtensionStore, type SiteExtensionListing } from "../../../api/site-extensions";
+import { siteExtensionStore } from "../../../api/site-extensions";
 import { siteExtensionTrust } from "../../../api/site-extension-trust";
+import { settings } from "../../../api/settings";
+import { pagesModel } from "../../../api/pages";
 import { fs } from "../../../api/fs";
 import { ui } from "../../../api/ui";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
-import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
-import { SwitchView } from "../../../uikit/Switch/SwitchView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { createSectionRoot, panel, settingsLabel, text } from "./settings-native";
+import { createSectionRoot, panel, settingsPath, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
-import "../../../uikit/IconButton/IconButton.css";
-import "../../../uikit/Switch/Switch.css";
-import "./SiteExtensionsSection.css";
 
-type Entry = { listing?: SiteExtensionListing; id: string; grant?: { hosts: string[]; enabled: boolean } };
-
+/**
+ * Settings summary for site extensions (US-1613): the extensions folder, installed and trusted
+ * counts, and a button to the full list in the Tools & Editors hub's Site extensions tab.
+ */
 export class SiteExtensionsSectionView extends VanillaView<Record<string, never>> {
-    private readonly list = document.createElement("div");
-    private readonly refreshButton: ButtonView;
-    private readonly renderedSwitches: SwitchView[] = [];
-    private readonly renderedButtons: Array<ButtonView | IconButtonView> = [];
-    private readonly reloadNotice = text("", { color: "warning", size: "xs" });
-    private readonly status = text("", { color: "error", size: "xs" });
-    private reloadRequired = false;
+    private readonly folderValue = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
+    private readonly folderRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
+    private readonly summary = text("", { size: "xs" });
+    private readonly problems = text("", { color: "warning", size: "xs" });
+    private readonly browseButton: ButtonView;
+    private readonly resetButton: ButtonView;
+    private readonly openButton: ButtonView;
+    private refreshGeneration = 0;
 
     constructor(props: Record<string, never>) {
         const root = createSectionRoot("settings-section");
         super(props, root);
-        this.refreshButton = this.child(new ButtonView({
-            name: "site-extensions-refresh", variant: "ghost", size: "sm", background: "light",
-            children: "refresh", onClick: () => void this.refresh(),
+        this.browseButton = this.child(new ButtonView({
+            name: "site-extensions-folder-browse", variant: "link", size: "sm", background: "light",
+            children: "Browse...", onClick: () => void this.browse(),
         }));
-        const description = panel({ flex: true }, text(
-            "Scripts that give agents a model of a website. Each runs only on its own hosts, and only after you trust it.",
-            { color: "light", size: "xs" },
-        ));
-        this.list.className = "site-extensions-list";
-        this.reloadNotice.dataset.name = "site-extension-reload-notice";
+        this.resetButton = this.child(new ButtonView({
+            name: "site-extensions-folder-reset", variant: "link", size: "sm", background: "light",
+            children: "Use default", onClick: () => settings.set("site-extensions.path", ""),
+        }));
+        this.openButton = this.child(new ButtonView({
+            name: "site-extensions-open", variant: "ghost", size: "sm", background: "light",
+            children: "Open site extensions",
+            onClick: () => void pagesModel.showToolsHubPage({ tab: "site-extensions" }),
+        }));
+        this.folderValue.dataset.name = "site-extensions-folder";
+        this.summary.dataset.name = "site-extensions-summary";
+        this.problems.hidden = true;
+        this.folderRow.append(this.folderValue, this.browseButton.root, this.resetButton.root);
         root.append(
             panel({ paddingBottom: "lg" }, text("Site Extensions", { bold: true, size: "sm" })),
-            panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" }, description, this.refreshButton.root),
-            this.status, this.reloadNotice, this.list,
+            panel({ flex: true, paddingBottom: "md" }, text(
+                "Scripts that give agents a model of a website. Each runs only on its own hosts, and only after you trust it.",
+                { color: "light", size: "xs" },
+            )),
+            this.folderRow,
+            panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" },
+                panel({ direction: "column", flex: true }, this.summary, this.problems),
+                this.openButton.root,
+            ),
         );
     }
 
     protected onMount(): void {
-        this.refreshButton.mount();
-        // The mirror follows main's broadcasts, so this also covers changes made in other windows.
+        this.browseButton.mount();
+        this.resetButton.mount();
+        this.openButton.mount();
         this.own(siteExtensionTrust.subscribe(() => { void this.refresh(); }));
+        this.own(settings.onChanged.subscribe(({ key }) => { if (key === "site-extensions.path") void this.refresh(); }));
         void this.refresh();
     }
 
-    protected onDispose(): void { this.disposeRows(); }
+    protected onDispose(): void { this.refreshGeneration++; }
+
+    private async browse(): Promise<void> {
+        try {
+            const result = await api.showOpenFolderDialog({ title: "Select Site Extensions Folder", defaultPath: await siteExtensionStore.getRoot() });
+            if (result?.[0]) settings.set("site-extensions.path", result[0]);
+        } catch (error) {
+            ui.notify(errMessage(error, "Failed to choose the site extensions folder."), "warning");
+        }
+    }
 
     private async refresh(): Promise<void> {
+        const generation = ++this.refreshGeneration;
         try {
-            await siteExtensionTrust.load();
-            const [listings] = await Promise.all([siteExtensionStore.list(), siteExtensionTrust.load()]);
-            this.renderEntries(listings, siteExtensionTrust.snapshot);
-            this.status.textContent = "";
+            const configured = settings.get("site-extensions.path").trim() !== "";
+            const root = await siteExtensionStore.getRoot();
+            const [listings, folderStat] = await Promise.all([siteExtensionStore.list(), fs.stat(root), siteExtensionTrust.load()]);
+            if (generation !== this.refreshGeneration) return;
+            this.folderValue.replaceChildren(settingsPath(root));
+            if (!configured) this.folderValue.append(text(" (default)", { size: "xs", color: "light" }));
+            this.resetButton.root.hidden = !configured;
+
+            const grants = siteExtensionTrust.snapshot;
+            const listed = new Set(listings.map((listing) => listing.id));
+            const trusted = listings.filter((listing) => grants[listing.id]).length;
+            const broken = listings.filter((listing) => listing.status !== "valid").length
+                + Object.keys(grants).filter((id) => !listed.has(id)).length;
+            this.summary.textContent = listings.length === 0
+                ? "No site extensions installed."
+                : `${listings.length} installed, ${trusted} trusted.`;
+            const problems = [
+                // The default folder is created on first use; a configured one should already exist.
+                ...(configured && !folderStat.exists ? ["The folder does not exist."] : []),
+                ...(broken > 0 ? [`${broken} need attention.`] : []),
+            ];
+            this.problems.textContent = problems.join(" ");
+            this.problems.hidden = problems.length === 0;
         } catch (error) {
-            this.status.textContent = errMessage(error, "Site extensions could not be loaded.");
+            if (generation === this.refreshGeneration) this.summary.textContent = errMessage(error, "Site extensions could not be loaded.");
         }
     }
-
-    private renderEntries(listings: SiteExtensionListing[], grants: Record<string, { hosts: string[]; enabled: boolean }>): void {
-        this.disposeRows();
-        const byId = new Map(listings.map((listing) => [listing.id, listing]));
-        const entries: Entry[] = listings.map((listing) => ({ listing, id: listing.id, grant: grants[listing.id] }));
-        for (const [id, grant] of Object.entries(grants)) if (!byId.has(id)) entries.push({ id, grant });
-        this.list.replaceChildren();
-        this.reloadNotice.textContent = this.reloadRequired
-            ? "Trust or enabled state changed. Pages that already ran an extension keep their current code and model until you reload or navigate."
-            : "";
-        this.reloadNotice.hidden = !this.reloadRequired;
-        if (entries.length === 0) {
-            this.list.append(text("No site extensions installed.", { color: "light", size: "xs" }));
-            return;
-        }
-        for (const entry of entries) this.list.append(this.createEntry(entry));
-    }
-
-    private createEntry(entry: Entry): HTMLElement {
-        const listing = entry.listing;
-        const usable = listing && listing.status !== "invalid" ? listing : undefined;
-        const row = panel({ direction: "column", rounded: "sm", background: "dark" });
-        row.dataset.extensionId = entry.id;
-
-        const header = panel({ direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs" });
-        header.append(panel({ flex: true }, text(usable ? usable.name : entry.id, { size: "sm" })));
-        header.append(badge(!listing ? "folder missing" : listing.status));
-        if (entry.grant) {
-            header.append(text(entry.grant.enabled ? "trusted" : "trusted, disabled", { color: entry.grant.enabled ? "success" : "warning", size: "xs" }));
-            const enabled = new SwitchView({
-                name: `site-extension-enabled-${entry.id}`, label: `Enable ${entry.id}`, size: "sm", checked: entry.grant.enabled,
-                onChange: (value) => void this.perform(async () => { await siteExtensionTrust.setEnabled(entry.id, value); this.reloadRequired = true; }),
-            });
-            this.child(enabled); this.renderedSwitches.push(enabled); header.append(enabled.root); enabled.mount();
-            this.addButton(header, `site-extension-revoke-${entry.id}`, "revoke trust", async () => { await siteExtensionTrust.revoke(entry.id); this.reloadRequired = true; });
-        } else {
-            header.append(text("not trusted", { color: "light", size: "xs" }));
-        }
-        if (listing) {
-            this.addButton(header, `site-extension-open-folder-${entry.id}`, "open folder", async () => {
-                const root = await fs.dataFileName("site-extensions");
-                const extensionDir = fpResolve(root, entry.id);
-                const relative = fpRelative(root, extensionDir);
-                if (relative === ".." || relative.startsWith(`..${fpSep}`)) throw new Error("Extension folder is outside the site extensions directory.");
-                await api.openPath(extensionDir);
-            });
-            const remove = new IconButtonView({
-                name: `site-extension-remove-${entry.id}`, size: "sm", icon: "close", title: "Remove extension",
-                onClick: () => void this.perform(async () => this.removeExtension(entry.id, listing)),
-            });
-            this.child(remove); this.renderedButtons.push(remove); header.append(remove.root); remove.mount();
-        }
-        row.append(header);
-
-        if (usable) row.append(detail("Hosts:", usable.hosts.join(", ")));
-        if (listing?.status === "invalid") row.append(detail("Problem:", listing.reason, "error"));
-        if (listing?.status === "conflict") row.append(detail("Conflict:", `another extension also claims ${listing.conflictingHosts.join(", ")}; neither runs there`, "warning"));
-        if (!listing) row.append(detail("Folder:", "deleted outside Settings; revoke the leftover trust"));
-        if (entry.grant && usable && !sameHosts(entry.grant.hosts, usable.hosts)) {
-            row.append(detail("Trust:", "the host list changed since you trusted it; the browser will ask again", "warning"));
-        }
-        return row;
-    }
-
-    private addButton(host: HTMLElement, name: string, label: string, action: () => Promise<void>): void {
-        const button = new ButtonView({ name, variant: "ghost", size: "sm", background: "light", children: label, onClick: () => void this.perform(action) });
-        this.child(button); this.renderedButtons.push(button); host.append(button.root); button.mount();
-    }
-
-    private async removeExtension(id: string, listing?: SiteExtensionListing): Promise<void> {
-        const { showConfirmationDialog } = await import("../../../ui/dialogs/ConfirmationDialog");
-        const choice = await showConfirmationDialog({ title: "Remove site extension", message: `Remove site extension "${listing && listing.status !== "invalid" ? listing.name : id}" and its folder?`, buttons: ["Delete", "Cancel"] });
-        if (choice !== "Delete") return;
-        try {
-            const root = await fs.dataFileName("site-extensions");
-            const extensionDir = fpJoin(root, id);
-            const relative = fpRelative(root, extensionDir);
-            if (relative === ".." || relative.startsWith(`..${fpSep}`)) throw new Error("Extension folder is outside the site extensions directory.");
-            await fs.removeDir(extensionDir, true);
-            // Only a trusted extension can have run in a page, so only then is a reload needed.
-            if (siteExtensionTrust.get(id)) {
-                await siteExtensionTrust.revoke(id);
-                this.reloadRequired = true;
-            }
-            await this.refresh();
-        } catch (error) {
-            ui.notify(errMessage(error, "Failed to remove the site extension."), "error");
-            await this.refresh();
-        }
-    }
-
-    private async perform(action: () => Promise<void>): Promise<void> {
-        try { await action(); await this.refresh(); }
-        catch (error) { ui.notify(errMessage(error, "Site extension action failed."), "error"); }
-    }
-
-    private disposeRows(): void {
-        for (const view of [...this.renderedSwitches, ...this.renderedButtons]) view.dispose();
-        this.renderedSwitches.length = 0; this.renderedButtons.length = 0;
-    }
-}
-
-function sameHosts(left: string[], right: string[]): boolean {
-    return JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
-}
-
-function badge(value: string): HTMLSpanElement {
-    const element = document.createElement("span");
-    element.dataset.type = "settings-badge";
-    element.textContent = value;
-    return element;
-}
-
-function detail(label: string, value: string, color?: "error" | "warning"): HTMLDivElement {
-    return panel(
-        { direction: "row", align: "center", gap: "sm", paddingX: "md", paddingBottom: "xs" },
-        settingsLabel(label),
-        text(value, { color, size: "xs" }),
-    );
 }

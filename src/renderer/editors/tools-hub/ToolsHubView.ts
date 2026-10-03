@@ -1,6 +1,7 @@
 import type { EditorModel } from "../base/EditorModel";
 import { ToolsHubEditor, type HubTab } from "./ToolsHubEditor";
 import { SearchBoardsTabView } from "./SearchBoardsTab";
+import { SiteExtensionsTabView } from "./SiteExtensionsTab";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { BuiltinEditorsListView } from "../../ui/sidebar/BuiltinEditorsListView";
 import { PinnedRailView } from "../../ui/sidebar/PinnedRailView";
@@ -117,6 +118,7 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
                 { value: "boards", label: "Registered boards" },
                 { value: "search", label: "Search boards" },
                 { value: "tools", label: "Tools" },
+                { value: "site-extensions", label: "Site extensions" },
             ],
         };
     }
@@ -136,7 +138,9 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
                 ? new TrustedBoardsListView({})
                 : tab === "search"
                     ? new SearchBoardsTabView({})
-                    : new TrustedToolsListView({});
+                    : tab === "site-extensions"
+                        ? new SiteExtensionsTabView({})
+                        : new TrustedToolsListView({});
         this.activeBody = this.child(view);
         this.body?.append(view.root);
         view.mount();

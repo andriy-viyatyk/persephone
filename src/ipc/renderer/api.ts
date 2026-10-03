@@ -569,7 +569,8 @@ class ApiCalls implements Api {
     };
 
     getSiteExtensionTrust = async () => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.getSiteExtensionTrust);
-    trustSiteExtension = async (id: string, hosts: string[]) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts);
+    bindSiteExtensionFolder = async (folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.bindSiteExtensionFolder, folder);
+    trustSiteExtension = async (id: string, hosts: string[], folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts, folder);
     revokeSiteExtensionTrust = async (id: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.revokeSiteExtensionTrust, id);
     setSiteExtensionEnabled = async (id: string, enabled: boolean) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.setSiteExtensionEnabled, id, enabled);
 

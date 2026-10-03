@@ -1,4 +1,4 @@
-export type HubTab = "builtin" | "boards" | "search" | "tools";
+export type HubTab = "builtin" | "boards" | "search" | "tools" | "site-extensions";
 
 /** The model-backed facade for the Tools & Editors hub page. */
 export interface IToolsHubEditor {

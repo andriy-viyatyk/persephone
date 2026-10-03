@@ -6,24 +6,26 @@ import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 
-const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools"];
+const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools", "site-extensions"];
 
 const TOOLS_HUB_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "tools-hub-tabs", purpose: "Locate the hub's Built-in, Boards, Search, and Tools tab switcher.", where: "top of the Tools & Editors hub" },
+    { name: "tools-hub-tabs", purpose: "Locate the hub's Built-in, Boards, Search, Tools, and Site extensions tab switcher.", where: "top of the Tools & Editors hub" },
     { name: "search-boards-filter", purpose: "Locate the Search boards query field.", where: "Search boards tab, top of the search body" },
     { name: "search-boards-refresh", purpose: "Locate the Search boards catalog refresh control.", where: "Search boards tab, beside the query field" },
+    { name: "site-extensions-filter", purpose: "Locate the Site extensions filter field (name, id, or host).", where: "Site extensions tab, top of the list" },
+    { name: "site-extensions-refresh", purpose: "Locate the Site extensions list refresh control.", where: "Site extensions tab, beside the filter field" },
 ];
 
 const TOOLS_HUB_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete editor id: tools-hub-view." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "activeTab", kind: "property", summary: "The model-backed active tab, or undefined for absent or invalid persisted state." },
-    { name: "setTab", kind: "method", signature: "setTab(tab: HubTab): void", summary: "Select builtin, boards, search, or tools." },
+    { name: "setTab", kind: "method", signature: "setTab(tab: HubTab): void", summary: "Select builtin, boards, search, tools, or site-extensions." },
 ];
 
 const TOOLS_HUB_HELP = `Access via pages[i].editor after narrowing editor.id to "tools-hub-view".
-The model-backed activeTab is one of "builtin", "boards", "search", or "tools"; setTab() accepts
-only those four values and rejects guesses. The Tools tab's canonical data path is
+The model-backed activeTab is one of "builtin", "boards", "search", "tools", or "site-extensions";
+setTab() accepts only those five values and rejects guesses. The Tools tab's canonical data path is
 tools.toolsets[...], not a projection of the hub's visual tree. Explorer/sidebar tool trees belong
 to page.panels.
 
@@ -31,8 +33,12 @@ No facade member registers, trusts, or untrusts a toolset, accepts a trust decis
 returns a secret. Values from .env never appear; env is names only in the canonical tools path.
 The existing RegisterToolsetDialog consent path remains the only registration route.
 
-elements is the curated, page-scoped list of the tab switcher and Search boards controls; repeated
-matches use { all: true }. Search controls may be invisible when another tab is active. Structural
+The Site extensions tab lists installed site extensions with their trust state. No facade member
+trusts an extension; only the user grants trust, in the browser page's consent bar.
+
+elements is the curated, page-scoped list of the tab switcher, the Search boards controls, and the
+Site extensions filter and refresh; repeated matches use { all: true }. Tab-specific controls may
+be invisible when another tab is active. Structural
 roots, repeated rows, sidebar trees, pinned rails, menus, and overlays are not part of this editor
 list.`;
 

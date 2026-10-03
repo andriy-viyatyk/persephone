@@ -147,6 +147,7 @@ export enum Endpoint {
     bindBoardSessionSource = "bindBoardSessionSource",
     setDisabledBundledBoards = "setDisabledBundledBoards",
     getSiteExtensionTrust = "getSiteExtensionTrust",
+    bindSiteExtensionFolder = "bindSiteExtensionFolder",
     trustSiteExtension = "trustSiteExtension",
     revokeSiteExtensionTrust = "revokeSiteExtensionTrust",
     setSiteExtensionEnabled = "setSiteExtensionEnabled",
@@ -351,7 +352,8 @@ export type Api = {
     /** Explicitly stop a board module service. */
     [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
     [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
-    [Endpoint.trustSiteExtension]: (id: string, hosts: string[]) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.bindSiteExtensionFolder]: (folder: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.trustSiteExtension]: (id: string, hosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.revokeSiteExtensionTrust]: (id: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.setSiteExtensionEnabled]: (id: string, enabled: boolean) => Promise<SiteExtensionTrustSnapshot>;
 };

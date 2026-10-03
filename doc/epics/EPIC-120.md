@@ -82,7 +82,9 @@ The report lists the changes US-1604 onward need. The main ones:
 
 ## Decisions (after the proof of concept, 2026-10-03)
 
-- **Layout.** `<userData>/data/site-extensions/<id>/` holds `manifest.json` plus the script. The id
+- **Layout.** `<root>/<id>/` holds `manifest.json` plus the script. The root is the
+  `site-extensions.path` setting; empty, the default, means `<userData>/data/site-extensions`
+  (US-1613). Trust is bound to the root, so changing the folder drops every grant. The id
   is the folder name, restricted to lower-case letters, digits and hyphens. As with boards, there
   is no nesting.
 - **Manifest.** `name`, `version`, `description`, `hosts` and `script` (a relative path, default
@@ -129,6 +131,7 @@ The report lists the changes US-1604 onward need. The main ones:
 | [US-1603](../tasks/US-1603-outlook-poc/README.md) | PoC: Outlook model + reliability test matrix + go/no-go report | Done: go |
 | [US-1604](../tasks/US-1604-site-extension-store/README.md) | Site extension store: folder layout, manifest, host matching, injection on navigation | Implementation in progress |
 | [US-1605](../tasks/US-1605-site-extension-trust/README.md) | Registration and trust: trust prompt, list, enable/disable, remove | Planned |
+| [US-1613](../tasks/US-1613-site-extensions-hub-tab/README.md) | Site Extensions tab in Tools & Editors; Settings keeps a summary, the configurable extensions folder, and an "Open site extensions" button | Implemented |
 | US-1606 | Agent tools: scaffold an extension for the current host, reload it in place, list, remove | Draft (after PoC) |
 | US-1607 | Guides: site-extension authoring in `ai-vision.md` / `browser.md`; agent workflow | Draft (after PoC) |
 | US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Draft |
