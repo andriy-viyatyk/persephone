@@ -18,9 +18,12 @@ import { agentMayAccessBrowserPage } from "./agent-access";
 import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
 import { tryParseJson } from "../../core/utils/parse-utils";
 import { errMessage } from "../../../shared/utils";
+import { withTimeout } from "../../core/utils/utils";
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
 import { siteExtensionStore } from "../../api/site-extensions";
+import type { SiteExtensionRecord } from "../../api/site-extensions";
+import type { SiteExtensionReloadResult } from "../../api/types/site-extensions";
 import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
 import {
     logBrowserNavigated,
@@ -40,6 +43,27 @@ const AI_VISION_NOTIFY_LIMIT = 5;
 const AI_VISION_NOTIFY_WINDOW_MS = 60_000;
 /** A shape signal from a page with no registration probes at most this often per tab. */
 const AI_VISION_LATE_PROBE_INTERVAL_MS = 1_000;
+
+function stripExtensionErrorControls(message: string): string {
+    return Array.from(message).filter((character) => {
+        const code = character.charCodeAt(0);
+        return !((code >= 0 && code <= 8)
+            || code === 11
+            || code === 12
+            || (code >= 14 && code <= 31)
+            || (code >= 127 && code <= 159));
+    }).join("");
+}
+
+function boundExtensionError(message: string): string {
+    const sanitized = stripExtensionErrorControls(message);
+    return sanitized.length > 512 ? `${sanitized.slice(0, 511)}…` : sanitized;
+}
+
+function pageExtensionError(message: string): string {
+    const labelled = `Page-derived extension error: ${stripExtensionErrorControls(message)}`;
+    return labelled.length > 512 ? `${labelled.slice(0, 511)}…` : labelled;
+}
 
 /**
  * Manages webview references, IPC event handling, context menu,
@@ -61,6 +85,7 @@ export class BrowserWebviewModel {
     private readonly probedAiVisionGenerations = new Set<string>();
     private readonly aiVisionNotifyTimes: number[] = [];
     private readonly lateAiVisionProbeTimes = new Map<string, number>();
+    private readonly lateAiVisionProbeTimers = new Map<string, ReturnType<typeof setTimeout>>();
     private readonly dismissedExtensionPrompts = new Set<string>();
     /** Cross-document navigation count per tab: the document identity for site-extension
      *  prompts and injection. Not the AiVision generation, which also advances whenever a probe
@@ -218,6 +243,8 @@ export class BrowserWebviewModel {
     /** Remove the global IPC event listener during view disposal. */
     disposeIpcHandler = () => {
         ipcRenderer.removeListener(BrowserChannel.event, this.handleBrowserEvent);
+        for (const timer of this.lateAiVisionProbeTimers.values()) clearTimeout(timer);
+        this.lateAiVisionProbeTimers.clear();
     };
 
     /** Reload the active page even while it is loading. */
@@ -470,12 +497,141 @@ export class BrowserWebviewModel {
         } catch { return false; }
     }
 
-    private async injectTrustedExtensionIntoCurrentDocument(internalTabId: string, extension: import("../../api/site-extensions").SiteExtensionRecord, documentId: number): Promise<void> {
+    /** Re-inject the trusted extension into only the active, current browser document. */
+    async reloadSiteExtension(): Promise<SiteExtensionReloadResult> {
+        const internalTabId = this.model.state.get().activeTabId;
+        const documentId = this.siteDocumentId(internalTabId);
+        const currentHost = (): string | undefined => {
+            if (this.model.state.get().isIncognito || this.model.state.get().isTor) return undefined;
+            const webview = this.webviewRefs.get(internalTabId);
+            if (!webview || !this.webviewReady.has(internalTabId)) return undefined;
+            try {
+                const pageUrl = new URL(webview.getURL());
+                return pageUrl.protocol === "https:" ? pageUrl.hostname : undefined;
+            } catch { return undefined; }
+        };
+        const isCurrent = (host: string): boolean => this.model.state.get().activeTabId === internalTabId
+            && this.webviewReady.has(internalTabId)
+            && !this.model.state.get().isIncognito
+            && !this.model.state.get().isTor
+            && this.isCurrentDocument(internalTabId, documentId, host);
+        const notCurrent = (): SiteExtensionReloadResult => ({ status: "not-current", registered: false });
+
+        const host = currentHost();
+        if (!host || !isCurrent(host)) return notCurrent();
+        await siteExtensionTrust.load().catch((): undefined => undefined);
+        if (!isCurrent(host)) return notCurrent();
+
+        let extension = await siteExtensionStore.findForHost(host).catch((): undefined => undefined);
+        if (!isCurrent(host)) return notCurrent();
+        if (!extension) return { status: "no-extension", registered: false };
+        let grant = siteExtensionTrust.get(extension.id);
+        if (grant && !grant.enabled) return { status: "disabled", registered: false };
+        if (!grant || !sameSiteExtensionHostSet(grant.hosts, extension.hosts)) {
+            this.showExtensionTrustPrompt(internalTabId, documentId, extension, host);
+            return { status: "waiting-for-user", registered: false };
+        }
+
         const webview = this.webviewRefs.get(internalTabId);
-        if (!webview || this.model.state.get().isIncognito || this.model.state.get().isTor) return;
+        if (!webview || !this.webviewReady.has(internalTabId) || !isCurrent(host)) return notCurrent();
+        try {
+            const cdp = this.model.target.cdp(internalTabId);
+            if (!await cdp.attach({ aiVisionBinding: true })) return notCurrent();
+            if (!isCurrent(host)) return notCurrent();
+            await ensureTargetReady(this.model.target, internalTabId);
+            if (!isCurrent(host)) return notCurrent();
+
+            // Refresh the inventory and trust immediately before teardown; no failed gate may
+            // dispose code that is already running in this document.
+            const currentExtension = await siteExtensionStore.findForHost(host);
+            if (!isCurrent(host)) return notCurrent();
+            if (!currentExtension) return { status: "no-extension", registered: false };
+            extension = currentExtension;
+            grant = siteExtensionTrust.get(extension.id);
+            if (grant && !grant.enabled) return { status: "disabled", registered: false };
+            if (!grant || !sameSiteExtensionHostSet(grant.hosts, currentExtension.hosts)) {
+                this.showExtensionTrustPrompt(internalTabId, documentId, extension, host);
+                return { status: "waiting-for-user", registered: false };
+            }
+
+            const teardown = `(() => {
+    if (location.protocol !== "https:" || location.hostname !== ${JSON.stringify(host)}) return "host-mismatch";
+    window.__persephoneSiteRuntime?.dispose?.();
+    delete window.__persephoneSiteExtension;
+    return "ok";
+})()`;
+            const teardownResult = await evaluateInTarget(this.model.target, teardown, internalTabId);
+            if (!isCurrent(host)) return notCurrent();
+            if (String(teardownResult) !== "ok") return notCurrent();
+
+            this.model.clearAiVisionRegistration(internalTabId);
+            // The reload is an explicit request: its model's first refresh() must not be held back
+            // by the late-probe interval from the previous script.
+            this.lateAiVisionProbeTimes.delete(internalTabId);
+            const generation = this.model.getAiVisionDocumentGeneration(internalTabId);
+            if (generation === undefined || !isCurrent(host)) return notCurrent();
+
+            const injection = await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, extension, documentId, false);
+            if (!isCurrent(host)) return notCurrent();
+            if (injection.status !== "injected") {
+                return injection.status === "extension-error"
+                    ? { status: "extension-error", registered: false, error: injection.error }
+                    : notCurrent();
+            }
+
+            const deadline = Date.now() + 3_000;
+            this.probedAiVisionGenerations.delete(`${internalTabId}:${generation}`);
+            await withTimeout(this.probeAiVision(internalTabId), Math.max(0, deadline - Date.now()), undefined);
+            if (!isCurrent(host)) return notCurrent();
+            // A probe that finds no model yet advances the generation, so a late model registers
+            // under a newer one. Navigation is excluded by isCurrent(), so any registration from
+            // the captured generation onward belongs to this reload.
+            const registeredSinceReload = (): boolean => {
+                const registration = this.model.getAiVisionRegistration(internalTabId);
+                return registration !== undefined && registration.generation >= generation;
+            };
+            while (Date.now() < deadline) {
+                if (registeredSinceReload()) return { status: "injected", registered: true };
+                await new Promise<void>((resolve) => setTimeout(resolve, Math.min(50, deadline - Date.now())));
+                if (!isCurrent(host)) return notCurrent();
+            }
+            return { status: "injected", registered: registeredSinceReload() };
+        } catch (error) {
+            if (!isCurrent(host)) return notCurrent();
+            return { status: "extension-error", registered: false, error: boundExtensionError(errMessage(error, "Extension reload failed.")) };
+        }
+    }
+
+    private showExtensionTrustPrompt(
+        internalTabId: string,
+        documentId: number,
+        extension: SiteExtensionRecord,
+        host: string,
+    ): void {
+        const promptKey = `${internalTabId}:${documentId}`;
+        if (this.dismissedExtensionPrompts.has(promptKey)) return;
+        this.model.setSiteExtensionTrustPrompt({
+            internalTabId,
+            documentId,
+            id: extension.id,
+            name: extension.name,
+            host,
+            hosts: [...extension.hosts],
+            available: true,
+        });
+    }
+
+    private async injectTrustedExtensionIntoCurrentDocument(
+        internalTabId: string,
+        extension: SiteExtensionRecord,
+        documentId: number,
+        probeAfterInjection = true,
+    ): Promise<{ status: "injected" } | { status: "not-current" } | { status: "extension-error"; error: string }> {
+        const webview = this.webviewRefs.get(internalTabId);
+        if (!webview || this.model.state.get().isIncognito || this.model.state.get().isTor) return { status: "not-current" };
         let pageUrl: URL;
-        try { pageUrl = new URL(webview.getURL()); } catch { return; }
-        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
+        try { pageUrl = new URL(webview.getURL()); } catch { return { status: "not-current" }; }
+        if (pageUrl.protocol !== "https:" || !this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
 
         let expression: string;
         try {
@@ -483,50 +639,62 @@ export class BrowserWebviewModel {
                 fs.read(extension.scriptPath),
                 api.getSiteExtensionRuntime(),
             ]);
+            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
             expression = `(() => {
     const host = ${JSON.stringify(pageUrl.hostname)};
     if (location.protocol !== "https:" || location.hostname !== host) return "host-mismatch";
     if (window.__persephoneSiteExtension) return "already-injected";
     Object.defineProperty(window, "__persephoneSiteExtension", {
-        value: { id: ${JSON.stringify(extension.id)}, host }, enumerable: false,
+        value: { id: ${JSON.stringify(extension.id)}, host }, enumerable: false, configurable: true,
     });
 ${runtime}
     try {
 ${source}
     } catch (error) {
-        // The page's own console only: the author debugs there, and the host warning stays generic.
+        // Keep a page-console diagnostic while returning a bounded message to the agent.
         console.error("[site-extension] " + ${JSON.stringify(extension.id)} + ":", error);
-        return "extension-error";
+        let message = "Unknown page error";
+        try {
+            message = error && typeof error === "object" && typeof error.message === "string"
+                ? error.message
+                : String(error);
+        } catch { /* retain the safe fallback */ }
+        return "extension-error:" + message;
     }
     return "ok";
 })()`;
-        } catch {
+        } catch (error) {
             console.warn(`[site-extension] ${extension.id}: extension files could not be read`);
-            return;
+            return { status: "extension-error", error: boundExtensionError(`Extension files could not be read: ${errMessage(error, "read failed")}`) };
         }
 
-        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
+        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
 
         let result: unknown;
         try {
             const cdp = this.model.target.cdp(internalTabId);
             if (!await cdp.attach({ aiVisionBinding: true })) {
                 console.warn(`[site-extension] ${extension.id}: CDP attach failed`);
-                return;
+                return { status: "not-current" };
             }
+            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
             await ensureTargetReady(this.model.target, internalTabId);
-            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
+            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
             result = await evaluateInTarget(this.model.target, expression, internalTabId);
         } catch (error) {
             console.warn(`[site-extension] ${extension.id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
-            return;
+            return { status: "extension-error", error: boundExtensionError(`Extension evaluation failed: ${errMessage(error, "injection failed")}`) };
         }
+        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
         const detail = String(result);
-        if (detail === "extension-error") {
+        if (detail.startsWith("extension-error:")) {
             console.warn(`[site-extension] ${extension.id}: extension script failed`);
-            return;
+            return { status: "extension-error", error: pageExtensionError(detail.slice("extension-error:".length)) };
         }
-        if (detail === "ok" && this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) this.probeAiVisionAgain(internalTabId);
+        if (detail === "host-mismatch" || detail === "already-injected") return { status: "not-current" };
+        if (detail !== "ok") return { status: "extension-error", error: boundExtensionError("Extension evaluation returned an unexpected result.") };
+        if (probeAfterInjection) this.probeAiVisionAgain(internalTabId);
+        return { status: "injected" };
     }
 
     /** Probe the current document even if it was probed already — for a model that appeared
@@ -606,6 +774,26 @@ ${source}
         this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version);
     }
 
+    /**
+     * Probe for a model announced by a refresh() signal with no registration, at most once per
+     * interval. A signal inside the interval schedules one trailing probe rather than being
+     * dropped, because that signal may be the model's only announcement.
+     */
+    private scheduleLateAiVisionProbe(internalTabId: string): void {
+        if (this.lateAiVisionProbeTimers.has(internalTabId)) return;
+        const wait = (this.lateAiVisionProbeTimes.get(internalTabId) ?? 0) + AI_VISION_LATE_PROBE_INTERVAL_MS - Date.now();
+        const probe = (): void => {
+            this.lateAiVisionProbeTimers.delete(internalTabId);
+            this.lateAiVisionProbeTimes.set(internalTabId, Date.now());
+            if (!this.model.getAiVisionRegistration(internalTabId)) this.probeAiVisionAgain(internalTabId);
+        };
+        if (wait <= 0) {
+            probe();
+            return;
+        }
+        this.lateAiVisionProbeTimers.set(internalTabId, setTimeout(probe, wait));
+    }
+
     private handleAiVisionSignal(
         internalTabId: string,
         data: { registrationKey?: string; payload?: string },
@@ -624,11 +812,7 @@ ${source}
             if (!registration) {
                 // A model published after the load-time probe (a single-page app that builds it
                 // late). Its first refresh() is the only way the host learns it exists.
-                const now = Date.now();
-                const last = this.lateAiVisionProbeTimes.get(internalTabId) ?? 0;
-                if (now - last < AI_VISION_LATE_PROBE_INTERVAL_MS) return;
-                this.lateAiVisionProbeTimes.set(internalTabId, now);
-                this.probeAiVisionAgain(internalTabId);
+                this.scheduleLateAiVisionProbe(internalTabId);
                 return;
             }
             if (registration.version === signal.version) return;

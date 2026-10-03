@@ -67,6 +67,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "window", kind: "property", node: true, summary: "This window: state, sidebar, zoom, and multi-window actions." },
     { name: "proc", kind: "property", node: true, summary: "Spawn and manage child processes.", caution: "runs processes with the user's privileges" },
     { name: "boards", kind: "property", node: true, summary: "Boards — sandboxed mini web-apps: create, open, trust, install, update, and remove." },
+    { name: "siteExtensions", kind: "property", node: true, summary: "Inspect, scaffold, reload, and remove HTTPS site extensions; only the user can approve execution in the browser Trust bar." },
     { name: "tools", kind: "property", node: true, summary: "Agent Tools: search and execute registered tool scripts, inspect or refresh toolsets, and request user registration or remove one.", caution: "execution runs registered scripts with the user's privileges and registration requires user consent" },
     { name: "boardVars", kind: "property", node: true, summary: "Administer board environment variables and secrets." },
     { name: "editors", kind: "property", node: true, summary: "The editor registry: which editors exist and which languages they take." },
@@ -253,6 +254,7 @@ export class AiRoot implements IAiVisible {
     get window() { return this.app.window; }
     get proc() { return this.app.proc; }
     get boards() { return this.app.boards; }
+    get siteExtensions() { return this.app.siteExtensions; }
     get tools() { return toolsNode; }
     get boardVars() { return this.app.boardVars; }
     get editors() { return this.app.editors; }

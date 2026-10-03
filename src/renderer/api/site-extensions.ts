@@ -42,7 +42,11 @@ function nonEmptyString(value: unknown): value is string {
     return typeof value === "string" && value.trim().length > 0;
 }
 
-function isExactHostname(value: string): boolean {
+export function isValidSiteExtensionId(id: string): boolean {
+    return EXTENSION_ID_PATTERN.test(id);
+}
+
+export function isExactSiteExtensionHost(value: string): boolean {
     if (!value || value !== value.toLowerCase()) return false;
     try {
         const parsed = new URL(`https://${value}`);
@@ -58,6 +62,15 @@ function isExactHostname(value: string): boolean {
     }
 }
 
+/** Returns a deduplicated manifest host list, or undefined when the value is invalid. */
+export function validateSiteExtensionHosts(hosts: unknown): string[] | undefined {
+    if (!Array.isArray(hosts) || hosts.length === 0
+        || !hosts.every((host): host is string => typeof host === "string" && isExactSiteExtensionHost(host))) {
+        return undefined;
+    }
+    return [...new Set(hosts)];
+}
+
 function isAbsolutePath(value: string): boolean {
     return /^(?:[a-z]:[\\/]|[\\/]{1,2})/i.test(value);
 }
@@ -67,10 +80,8 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
     if (!nonEmptyString(raw.name)) return "name must be a non-empty string";
     if (!nonEmptyString(raw.version)) return "version must be a non-empty string";
     if (!nonEmptyString(raw.description)) return "description must be a non-empty string";
-    if (!Array.isArray(raw.hosts) || raw.hosts.length === 0) return "hosts must be a non-empty array";
-    if (!raw.hosts.every((host): host is string => typeof host === "string" && isExactHostname(host))) {
-        return "hosts must contain exact lower-case hostnames";
-    }
+    const hosts = validateSiteExtensionHosts(raw.hosts);
+    if (!hosts) return "hosts must contain exact lower-case hostnames";
 
     const script = raw.script === undefined ? "extension.js" : raw.script;
     if (!nonEmptyString(script)) return "script must be a non-empty relative path";
@@ -85,7 +96,7 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
         name: raw.name,
         version: raw.version,
         description: raw.description,
-        hosts: [...new Set(raw.hosts)],
+        hosts,
         scriptPath,
     };
 }
@@ -136,7 +147,7 @@ class SiteExtensionStore {
         const records: SiteExtensionRecord[] = [];
         const listings: SiteExtensionListing[] = [];
         for (const { name: id } of directories) {
-            if (!EXTENSION_ID_PATTERN.test(id)) {
+            if (!isValidSiteExtensionId(id)) {
                 listings.push({ id, status: "invalid", reason: "extension id must use lower-case letters, digits, or hyphens" });
                 continue;
             }

@@ -8,15 +8,38 @@ import type { IAiElementDeclaration } from "ai-vision";
 interface SiteRuntime {
     readonly schemaVersion: number;
     readonly expose: typeof expose;
+    readonly onDispose: (callback: () => void) => void;
+    readonly dispose: () => void;
     readonly createElements: (declarations: readonly IAiElementDeclaration[]) => ReturnType<typeof createElements>;
 }
 
 const target = window as unknown as { __persephoneSiteRuntime?: SiteRuntime };
 if (!target.__persephoneSiteRuntime) {
-    target.__persephoneSiteRuntime = Object.freeze({
+    let remote: ReturnType<typeof expose> | undefined;
+    const cleanups: Array<() => void> = [];
+    const runtime: SiteRuntime = {
         schemaVersion: AI_VISION_SCHEMA_VERSION,
-        expose,
+        expose(root) {
+            remote?.dispose();
+            remote = expose(root);
+            return remote;
+        },
+        onDispose(callback) {
+            cleanups.push(callback);
+        },
+        dispose() {
+            for (const callback of cleanups.splice(0)) {
+                try {
+                    callback();
+                } catch (error) {
+                    console.warn("[site-extension] cleanup failed", error);
+                }
+            }
+            remote?.dispose();
+            remote = undefined;
+        },
         createElements: (declarations: readonly IAiElementDeclaration[]) =>
             createElements(declarations, highlightElement),
-    });
+    };
+    target.__persephoneSiteRuntime = Object.freeze(runtime);
 }

@@ -123,6 +123,51 @@ The report lists the changes US-1604 onward need. The main ones:
   **Open folder** and **Remove**. Remove deletes the folder after a confirmation and also drops its
   trust.
 
+## Decisions for agent tools (US-1606, 2026-10-03)
+
+- **A root namespace, `siteExtensions`**, following `boards` and `tools`: the AiVision root node
+  plus the matching `app.siteExtensions` script API. Its members:
+  - `folder`: the effective extensions folder (read-only);
+  - `list()`;
+  - `create(id, { name, hosts, description? })`;
+  - `reload(pageId)`;
+  - `remove(id)`.
+
+  The agent edits the script with the existing `fs` writes. There is no separate write tool.
+- **`create` scaffolds, it never trusts.**
+  - It writes `<folder>/<id>/manifest.json` and a starter `extension.js`.
+  - It refuses an existing id, an invalid id or host, and a host that another valid extension
+    already claims. A conflict would silently switch off the user's existing extension on that
+    host.
+  - The result names the files and says plainly that the user must click **Trust** in the browser
+    page. No member grants or requests trust; the in-page bar is the only route (the US-1605
+    decision).
+- **`reload(pageId)` re-injects into the current document, in place.** The authoring loop keeps the
+  page's state, such as the folder the agent opened, and avoids a slow reload of a heavy app.
+  - The injection records the handle that `expose()` returns, plus any cleanups the script
+    registers with `__persephoneSiteRuntime.onDispose(fn)`.
+  - `reload` runs those cleanups, disposes the old remote (which clears `window.__aiVision`),
+    clears the injection marker, and then runs the normal injection path with the script read
+    fresh, followed by a probe.
+  - It uses the same gate as navigation (trusted, enabled, same hosts, not a private page). An
+    untrusted extension raises the normal trust bar and reports `waiting-for-user`.
+  - A full page reload stays available through the existing browser page members.
+- **`reload` returns the script's error.** Today a thrown error reaches only the page's console,
+  which the agent cannot see. `reload` returns a status (`injected`, `waiting-for-user`,
+  `disabled`, `no-extension`, `extension-error` or `not-current`), whether a model registered, and
+  for `extension-error` the error message. The message is truncated and labelled as page-derived,
+  because it is produced while the script reads the page.
+- **`remove(id)` asks the user**, through the same confirmation dialog as the Site extensions tab.
+  It deletes the folder and revokes trust, in the same way as `boards.uninstallBoard`.
+- **`list()` reports what the hub tab shows:**
+  - id, name, version and hosts;
+  - status: valid, invalid with the reason, or conflict with the hosts;
+  - trust state;
+  - whether the hosts changed since trust was granted;
+  - the script path.
+
+  It reports no trust-file internals.
+
 ## Linked Tasks
 
 | Task | Title | Status |
@@ -132,7 +177,7 @@ The report lists the changes US-1604 onward need. The main ones:
 | [US-1604](../tasks/US-1604-site-extension-store/README.md) | Site extension store: folder layout, manifest, host matching, injection on navigation | Implementation in progress |
 | [US-1605](../tasks/US-1605-site-extension-trust/README.md) | Registration and trust: trust prompt, list, enable/disable, remove | Planned |
 | [US-1613](../tasks/US-1613-site-extensions-hub-tab/README.md) | Site Extensions tab in Tools & Editors; Settings keeps a summary, the configurable extensions folder, and an "Open site extensions" button | Implemented |
-| US-1606 | Agent tools: scaffold an extension for the current host, reload it in place, list, remove | Draft (after PoC) |
+| [US-1606](../tasks/US-1606-site-extension-agent-tools/README.md) | Agent tools: `siteExtensions` namespace with create, reload in place, list and remove | Planned |
 | US-1607 | Guides: site-extension authoring in `ai-vision.md` / `browser.md`; agent workflow | Draft (after PoC) |
 | US-1612 | Quieter page-model events: no `shape-changed` for an identical shape, no `navigated` for a same-document navigation under a live model | Draft |
 

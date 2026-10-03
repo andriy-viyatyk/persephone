@@ -1,10 +1,9 @@
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
-import { fpRelative, fpResolve, fpSep } from "../../core/utils/file-path";
 import { siteExtensionStore, type SiteExtensionListing } from "../../api/site-extensions";
-import { siteExtensionTrust } from "../../api/site-extension-trust";
+import { sameSiteExtensionHostSet, siteExtensionTrust } from "../../api/site-extension-trust";
+import { confirmAndRemoveSiteExtension, siteExtensionFolder } from "../../api/site-extension-management";
 import { settings } from "../../api/settings";
-import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -161,10 +160,16 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
             header.append(createTextElement("not trusted", { color: "light", size: "xs" }));
         }
         if (listing) {
-            this.addButton(header, `site-extension-open-folder-${entry.id}`, "open folder", async () => { await pagesModel.addEmptyPageWithNavPanel(await extensionFolder(entry.id)); });
+            this.addButton(header, `site-extension-open-folder-${entry.id}`, "open folder", async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionFolder(entry.id)); });
+        }
+        if (listing || entry.grant) {
             this.addRowView(header, new IconButtonView({
                 name: `site-extension-remove-${entry.id}`, size: "sm", icon: "close", title: "Remove extension",
-                onClick: () => void this.perform(async () => this.removeExtension(entry.id, listing)),
+                onClick: () => void this.perform(async () => {
+                    const displayName = listing && listing.status !== "invalid" ? listing.name : entry.id;
+                    const result = await confirmAndRemoveSiteExtension(entry.id, displayName);
+                    if (result.revokedTrust) this.reloadRequired = true;
+                }),
             }));
         }
         row.append(header);
@@ -173,7 +178,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         if (listing?.status === "invalid") row.append(detail("Problem:", listing.reason, "error"));
         if (listing?.status === "conflict") row.append(detail("Conflict:", `another extension also claims ${listing.conflictingHosts.join(", ")}; neither runs there`, "warning"));
         if (!listing) row.append(detail("Folder:", "deleted outside Persephone; revoke the leftover trust"));
-        if (entry.grant && usable && !sameHosts(entry.grant.hosts, usable.hosts)) {
+        if (entry.grant && usable && !sameSiteExtensionHostSet(entry.grant.hosts, usable.hosts)) {
             row.append(detail("Trust:", "the host list changed since you trusted it; the browser will ask again", "warning"));
         }
         return row;
@@ -190,19 +195,6 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         view.mount();
     }
 
-    private async removeExtension(id: string, listing: SiteExtensionListing): Promise<void> {
-        const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
-        const name = listing.status !== "invalid" ? listing.name : id;
-        const choice = await showConfirmationDialog({ title: "Remove site extension", message: `Remove site extension "${name}" and its folder?`, buttons: ["Delete", "Cancel"] });
-        if (choice !== "Delete") return;
-        await fs.removeDir(await extensionFolder(id), true);
-        // Only a trusted extension can have run in a page, so only then is a reload needed.
-        if (siteExtensionTrust.get(id)) {
-            await siteExtensionTrust.revoke(id);
-            this.reloadRequired = true;
-        }
-    }
-
     private async perform(action: () => Promise<void>): Promise<void> {
         try { await action(); }
         catch (error) { ui.notify(errMessage(error, "Site extension action failed."), "error"); }
@@ -215,27 +207,12 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
     }
 }
 
-/** The extension's folder, refusing any id that would resolve outside the store root. */
-async function extensionFolder(id: string): Promise<string> {
-    const root = await siteExtensionStore.getRoot();
-    const folder = fpResolve(root, id);
-    const relative = fpRelative(root, folder);
-    if (!relative || relative === ".." || relative.startsWith(`..${fpSep}`)) {
-        throw new Error("Extension folder is outside the site extensions directory.");
-    }
-    return folder;
-}
-
 function matches(entry: Entry, query: string): boolean {
     const listing = entry.listing;
     const texts = [entry.id];
     if (listing && listing.status !== "invalid") texts.push(listing.name, ...listing.hosts);
     if (entry.grant) texts.push(...entry.grant.hosts);
     return texts.some((value) => value.toLowerCase().includes(query));
-}
-
-function sameHosts(left: string[], right: string[]): boolean {
-    return JSON.stringify([...new Set(left)].sort()) === JSON.stringify([...new Set(right)].sort());
 }
 
 function panel(props: PanelStyleProps, ...children: Node[]): HTMLDivElement {
