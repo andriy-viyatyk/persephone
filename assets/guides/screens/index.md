@@ -78,7 +78,7 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 
 ```
 +---------------------------------------------------------------------+
-| [Built-in] [Boards] [Search] [Tools]                                |  Tools & Editors: tabs across the top
+| [Built-in] [Boards] [Search] [Tools] [Site extensions]              |  Tools & Editors: tabs across the top
 +---------------------------------------------------------------------+
 | [active hub body]                                   [pinned rail]   |  active hub body below the tabs, pinned rail at the right
 +---------------------------------------------------------------------+
@@ -128,7 +128,7 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 
 ```
 +---------------------------------------------------------------------+
-| [Built-in] [Boards] [Search] [Tools]                                |  tab row at the top of the hub
+| [Built-in] [Boards] [Search] [Tools] [Site extensions]              |  tab row at the top of the hub
 +---------------------------------------------------------------------+
 | [active hub body]                                   [pinned rail]   |  active body below the tabs, pinned rail at the right
 +---------------------------------------------------------------------+
@@ -139,6 +139,10 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 - Individual guide-tree rows, breadcrumb links, and dynamic hub body rows — no entry: data-driven content; the stable tree/browser or tab-root entry is the addressable anchor.
 
 Evidence: `AboutView.ts:135-237`, `AboutGuidePageView.ts:104-150`, and `ToolsHubView.ts:45-123`.
+
+The **Site extensions** tab lists installed entries with their status and trust state. Its controls
+include a name/host filter, enable switches, **revoke trust**, **open folder**, and remove actions.
+For badge meanings and the reload notice, see the [Site Extensions guide](../site-extensions.md).
 
 ## About guide browser
 

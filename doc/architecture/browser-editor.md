@@ -1034,6 +1034,44 @@ while a page `notify(text)` becomes a rate-limited, page-attributed event. The p
 the page's remote handler through CDP with the shared timeout policy and labels the page-authored
 subtree as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
 
+### Site extensions
+
+The renderer-side `SiteExtensionStore` reads immediate child folders from the configured
+`site-extensions.path`, or defaults to `<userData>/data/site-extensions`. Each extension has a
+manifest and a script. The store validates the manifest and exact HTTPS host names, caches the
+manifest index against modification time, and reads the script fresh for each injection. If valid
+extensions claim the same host, none of those claims is selected for injection. A manifest script
+path is resolved relative to its extension folder and rejected when its normalized path leaves that
+folder. This is a lexical check; a symlink inside the extension folder can still point outside it,
+so this path check is not a filesystem sandbox.
+
+`BrowserWebviewModel` checks each completed document's URL and privacy mode before loading an
+extension. Incognito and Tor pages are always skipped. A matching extension runs in the page's
+main world through CDP `Runtime.evaluate`, with the standalone site-extension runtime loaded before
+the extension script; this path is not subject to the site's script CSP. Extensions do not run until
+the user trusts them. Trust is owned by the main process and persisted separately from extension
+folders. A grant records the extension id and its exact host set, so changing that set requires
+consent again. Binding trust to the configured folder means changing the folder clears all grants.
+The browser's in-page prompt offers Trust and Not now; Not now suppresses the prompt for that tab
+until its next navigation. Trusting evaluates the matching extension in that document immediately.
+The prompt is document-scoped, so a stale bar cannot grant trust after navigation or extension
+changes.
+
+The extension script publishes `window.__aiVision` through the injected runtime's `expose()` API.
+The regular page-model probe then registers that shape with the browser editor. `refresh()` signals
+the probe again when an extension exposes its model after the initial load probe. Injection is
+tracked per document to avoid rerunning on duplicate load events. The `app.siteExtensions` agent
+service can scaffold and list extensions, remove one with confirmation, and reload the trusted
+extension in the active browser document without reloading the site. In-place reload runs the old
+script's registered disposers, clears its remote model, reads the script again, and uses the same
+trust, host, enabled, and privacy gates as normal injection. Trust or enabled-state changes do not
+remove code already running in an open document; navigate or reload that document to apply them.
+
+The renderer trust mirror receives authoritative snapshots over IPC. The main-process trust service
+serializes file mutations and broadcasts updates to every application window. Renderer management
+helpers keep folder removal and trust revocation together, while the Tools & Editors hub's Site
+extensions tab lists validation status, host conflicts, trust state, and management actions.
+
 ## Browser Automation (MCP)
 
 Browser automation lives in `src/renderer/automation/`. `operations.ts` provides shared operations

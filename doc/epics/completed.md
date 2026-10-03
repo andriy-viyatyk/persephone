@@ -1,3 +1,38 @@
+## EPIC-120 — Site extensions: injected AiVision models for web pages
+
+Completed 2026-10-03. A site extension is a script for exact HTTPS hosts that Persephone injects
+into matching browser pages (CDP `Runtime.evaluate` on `dom-ready`) to publish an AiVision model, so
+an agent reads `pages[i].editor.app` instead of snapshotting the page. The Outlook proof of concept
+was a go: the model is up within 0.4 s, and it costs 4–6 times fewer tokens than snapshots for a
+list and about 19 times fewer for a body.
+
+- **Store.** Extensions live in a configurable folder, `site-extensions.path` (default
+  `<userData>/data/site-extensions`), one sub-folder per extension. Exact hosts are matched, and a
+  host claimed by two extensions runs neither.
+- **Trust.** Main owns trust, which is bound to the extension id, its host list and the folder. A
+  trust bar appears in the page, and an agent answers it only when the user asks
+  (`pages[i].editor.trustSiteExtension()`).
+- **Management.** The list is in the Site extensions tab of Tools & Editors; Settings keeps a summary
+  and the folder setting.
+- **Agent tools.** The `siteExtensions` namespace offers create, reload in place (with the script's
+  error returned), list and remove, and an agent authoring guide comes with it.
+- **Events.** Page-model events are quieter: `shape-changed` is logged only for a real change, and
+  `navigated` is not logged for an in-page navigation under a live model.
+- **Accepted limitation.** Path guards are lexical, so a symbolic link inside an extension folder is
+  not resolved. Writing the link needs the same access as writing the script.
+
+[Epic document](EPIC-120.md).
+
+- [x] US-1602: PoC — injection hook + late-model discovery fix
+- [x] US-1603: PoC — Outlook model, reliability matrix, go/no-go report
+- [x] US-1604: Site extension store, manifest, host matching, injection
+- [x] US-1605: Registration and trust
+- [x] US-1606: Agent tools — create, reload in place, list, remove
+- [x] US-1607: Site extension authoring guide and agent workflow
+- [x] US-1612: Quieter page-model events
+- [x] US-1613: Site Extensions tab in Tools & Editors; configurable folder
+- [x] US-1614: Agents can answer the site-extension trust bar on request
+
 ## EPIC-119 — Board permissions: least privilege, declared in the manifest
 
 Completed 2026-10-03. Board manifests declare an object-form permission set with every flag off

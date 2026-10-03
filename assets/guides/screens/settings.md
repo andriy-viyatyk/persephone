@@ -38,6 +38,7 @@ not through `app.settings`.
 |     Browser Profiles        |                                         |
 |     Default Browser         |                                         |
 |     Links                   |                                         |
+|     Site Extensions         |                                         |
 |   Integrations              |                                         |
 |     MCP Server / Mneme      | [View Settings File] in the left footer
 |   Boards                    | board panels for standalone boards      |
@@ -58,6 +59,9 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
+- Site Extensions folder → `site-extensions-folder`, `site-extensions-folder-browse`, `site-extensions-folder-reset`
+- Installed/trusted counts → `site-extensions-summary`
+- Open site extensions → `site-extensions-open`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`
 - Clipboard → `clipboard.enabled`, `clipboard.max-items`
@@ -106,6 +110,15 @@ Incognito and Tor choices exist only in memory for their session and do not appe
 See the [Browser guide](../editors/browser.md#site-permissions-and-prompts) for how to set a site's
 permissions from the URL bar.
 
+## Site Extensions
+
+Under **Browser → Site Extensions**, **Browse...** selects the folder containing your site
+extensions and **Use default** returns to the default data folder. Changing the folder drops all
+trust decisions; extensions in the new folder must be trusted again. The section shows installed
+and trusted counts. Choose **Open site extensions** to manage extensions in **Tools & Editors →
+Site extensions**. See the [Site Extensions guide](../site-extensions.md) for trust and management
+details.
+
 ### Drawn controls without `elements`
 
 - Settings root, Content container, and section panels — no entry: structural regions; the Settings
@@ -129,6 +142,11 @@ file. Section names are containers for highlighting rather than individual setti
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
 | Editor Behavior | `[data-name="settings-section-editor"]` |
 | Browser Profiles | `[data-name="settings-section-browser-profiles"]` |
+| Site Extensions section | `[data-name="settings-section-site-extensions"]` |
+| Site Extensions folder | `[data-name="site-extensions-folder"]` |
+| Browse... / Use default | `[data-name="site-extensions-folder-browse"]`, `[data-name="site-extensions-folder-reset"]` |
+| Installed/trusted counts | `[data-name="site-extensions-summary"]` |
+| Open site extensions | `[data-name="site-extensions-open"]` |
 | Links | `[data-name="settings-section-link-behavior"]` |
 | Default Browser | `[data-name="settings-section-default-browser"]` |
 | File Search | `[data-name="settings-section-file-search"]` |

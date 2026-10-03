@@ -233,6 +233,7 @@ interface IApp {
     readonly menuFolders: IMenuFolders;
     readonly proc: IProc;
     readonly boards: IBoards;
+    readonly siteExtensions: ISiteExtensions;
     readonly boardVars: IBoardVars;
     readonly capabilities: ICapabilities;
     readonly pages: IPageCollection;
@@ -313,6 +314,23 @@ children for hints and `index()` reads. Those hints perform no disk, manifest, n
 loading work; use `boards.list()` for complete cold-start discovery. `searchPublished()`,
 `getPublishedVersions()`, and the other published-board operations address the remote catalog and
 are separate from local inventory.
+
+### `app.siteExtensions` — Local site-extension authoring
+
+`app.siteExtensions.list()` reports each installed extension's validation, host-conflict, and trust
+state. `create(id, options)` scaffolds a manifest and starter script in the configured extensions
+folder; it never grants trust. The user approves execution in the matching browser page's trust bar.
+`reload(pageId)` disposes and re-injects the trusted extension in the current browser document,
+preserving that page's navigation and form state. `remove(id)` asks the user to confirm before
+deleting the extension and revoking its trust. The `siteExtensions` AiVision node exposes inventory
+and authoring/removal operations. Its browser-page `trustSiteExtension()` and
+`dismissSiteExtensionTrustPrompt()` methods may answer an active bar only when the user explicitly
+asks.
+
+Trust is owned by the main process and bound to the configured extension folder and the extension's
+exact host list. Editing the script does not invalidate consent; changing its hosts does. Incognito
+and Tor browser pages never run site extensions. See [Browser Editor Architecture](./browser-editor.md#site-extensions)
+for the injection, prompt, and remote-model lifecycle.
 
 ### `app.proc` — Process Execution
 

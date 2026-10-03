@@ -28,6 +28,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Security
 
+- **Browser site extensions require your trust:** agents can build reusable page models with scripts, but a script runs with the signed-in site's capabilities only after you choose **Trust**. Manage extension folders and trust in Settings and Tools & Editors. Incognito and Tor pages never run extensions. See the [Site Extensions guide](./site-extensions.md).
+
 - **Boards now enforce declared permissions:** the Trust board dialog shows the requested access, marks broad grants as **Full access**, and when a trusted board adds or expands a permission it shows **Board permissions changed** with the kept, added and removed permissions in one list and two choices: **Accept** or **Unregister board**. Boards without an object-form permissions declaration are marked **Unrestricted** and deprecated; trusted legacy boards show a persistent warning when opened. See the [Boards guide](./boards.md#board-trust-gate).
 
 - **Board file access follows the permissions granted at trust time:** boards can be limited to their own folder or files selected in their dialogs, while object-form boards' `board://` assets stay inside their folder.

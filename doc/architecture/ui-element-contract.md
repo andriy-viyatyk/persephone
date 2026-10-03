@@ -174,6 +174,7 @@ the stack reaches its bottom.
 | Drawing Library section row | `[data-name="settings-content-section-drawing-library"]` |
 | Browser Profiles section row | `[data-name="settings-content-section-browser-profiles"]` |
 | Default Browser section row | `[data-name="settings-content-section-default-browser"]` |
+| Site Extensions section row | `[data-name="settings-content-section-site-extensions"]` |
 | Links section row | `[data-name="settings-content-section-link-behavior"]` |
 | MCP Server / Mneme section row | `[data-name="settings-content-section-mcp"]` |
 | Git Integration section row | `[data-name="settings-content-section-git-integration"]` |
@@ -189,6 +190,7 @@ the stack reaches its bottom.
 | Drawing Library outer panel | `[data-name="settings-panel-drawing-library"]` |
 | Browser Profiles outer panel | `[data-name="settings-panel-browser-profiles"]` |
 | Default Browser outer panel | `[data-name="settings-panel-default-browser"]` |
+| Site Extensions outer panel | `[data-name="settings-panel-site-extensions"]` |
 | Links outer panel | `[data-name="settings-panel-link-behavior"]` |
 | MCP Server / Mneme outer panel | `[data-name="settings-panel-mcp"]` |
 | Git Integration outer panel | `[data-name="settings-panel-git-integration"]` |
@@ -200,6 +202,7 @@ the stack reaches its bottom.
 | Browser Profiles section | `[data-name="settings-section-browser-profiles"]` |
 | Links section | `[data-name="settings-section-link-behavior"]` |
 | Default Browser section | `[data-name="settings-section-default-browser"]` |
+| Site Extensions section | `[data-name="settings-section-site-extensions"]` |
 | File Search section | `[data-name="settings-section-file-search"]` |
 | Clipboard section | `[data-name="settings-section-clipboard"]` |
 | MCP Server / Mneme section | `[data-name="settings-section-mcp"]` |
@@ -224,6 +227,7 @@ Boards group is not rendered.
 | Page host (all pages live here) | `[data-name="pages-container"]` |
 | The active page's editor container | `[data-name="page-editor"]` |
 | An empty page | `[data-name="page-empty"]` |
+| Browser-page site-extension trust prompt / explanation | `[data-name="site-extension-trust-prompt"]`, `[data-name="site-extension-trust-prompt-copy"]` |
 | Page pipe status trigger (in the editor status bar) | `[data-name="page-pipe-status"]` |
 | Editor status bar (footer): text hosts and content-host boards | `[data-name="text-chrome-footer"]` |
 | Editor status bar: image / video / archive / stream-host board | `[data-name="image-status-bar"]`, `[data-name="video-status-bar"]`, `[data-name="archive-status-bar"]`, `[data-name="board-status-bar"]` |

@@ -34,6 +34,7 @@ editor when one is available, or the guide contents otherwise.
 - [Grid Editor](./editors/grid.md) - Spreadsheet-like data editor for JSON/CSV
 - [Notebook Editor](./editors/notebook.md) - Structured notes with categories and tags
 - [Browser](./editors/browser.md) - Built-in web browser with profiles, bookmarks, downloads, and scripting/MCP automation
+- [Site Extensions](./site-extensions.md) - Trust and manage scripts that add reusable models to browser pages
 - [Scripting](./scripting/index.md) - JavaScript/TypeScript execution and content transformation
 - [Scripting API Reference](./scripting/api/index.md) - Complete API for `page`, `app`, `io`, and other script namespaces
 - [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
