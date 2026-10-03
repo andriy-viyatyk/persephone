@@ -28,7 +28,7 @@ export const SERVER_INSTRUCTIONS = [
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
     "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard.",
-    "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. The focused `persephone://guides/*` resources remain available as an alternative.",
+    "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. For a reusable model on a page without `.app`, read `guides.agents[\"site-extensions\"]` or `persephone://guides/site-extensions`. The focused `persephone://guides/*` resources remain available as an alternative.",
 ].join("\n");
 
 // ——— Guides ————————————————————————————————————————————————————————————————
@@ -118,6 +118,12 @@ export const resourceFiles: IGuideResource[] = [
         uri: "persephone://guides/browser",
         file: "guides/agents/browser.md",
         description: "Browser automation reference: page targeting, snapshots, ref lifecycle, waiting, profiles, boards, and the app window.",
+    },
+    {
+        name: "site-extensions-guide",
+        uri: "persephone://guides/site-extensions",
+        file: "guides/agents/site-extensions.md",
+        description: "Site extension authoring workflow: study page structure, scaffold and write a model, follow the user-owned Trust step, reload, and verify.",
     },
 ];
 

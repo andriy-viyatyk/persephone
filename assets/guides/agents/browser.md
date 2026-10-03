@@ -21,6 +21,9 @@ use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `
 
 ## Hosts and members
 
+For a page the user will use repeatedly with no `pages[pageId].editor.app` model, read
+[Site extensions](./site-extensions.md) to build a reusable model.
+
 All three hosts share these 21 operations:
 
 | Member | Purpose |

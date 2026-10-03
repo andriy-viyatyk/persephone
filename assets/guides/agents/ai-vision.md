@@ -259,6 +259,10 @@ they choose **Accept** or **Unregister board**. Never click **Trust Board**, **A
 
 ## Web pages in the browser editor
 
+If you can change the site's own code, publish its model as described here. If you cannot change
+the site and want a reusable model for its page, read [Site extensions](./site-extensions.md) for
+the agent-authored extension workflow.
+
 A page the user opens in Persephone's browser can publish the same way. Here the page **does**
 depend on the package:
 
@@ -276,8 +280,9 @@ goes on the object.
 
 The rest of the differences are on the host side:
 
-- **Discovery is a probe, not a handshake.** Persephone looks for `window.__aiVision` after a
-  completed navigation. Publish it as part of page startup rather than behind a user action.
+- **Late model discovery.** If a model is published after page load, call `remote.refresh()` once
+  after `expose()`. Persephone handles the signal and probes again, including a trailing probe if
+  the late-probe rate limit would otherwise defer it.
 - **The model may change without navigation.** `remote.version` starts at 1 and increments on
   every `refresh()`, which also emits a signal to the host; the host logs a `shape-changed` event
   naming `pages[id].editor.app` and re-probes. There is a second path for when that signal never
