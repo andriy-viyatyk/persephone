@@ -98,9 +98,30 @@ export class BrowserWebviewModel {
      *  prompts and injection. Not the AiVision generation, which also advances whenever a probe
      *  finds no model (always, on a page whose extension is still untrusted). */
     private readonly siteDocuments = new Map<string, number>();
+    private readonly injectedSiteExtensions = new Map<string, { documentId: number; name: string }>();
 
     siteDocumentId(internalTabId: string): number {
         return this.siteDocuments.get(internalTabId) ?? 0;
+    }
+
+    getAiVisionSiteExtensionName(internalTabId: string): string | undefined {
+        const marker = this.injectedSiteExtensions.get(internalTabId);
+        return marker?.documentId === this.siteDocumentId(internalTabId) ? marker.name : undefined;
+    }
+
+    clearAiVisionSiteExtension(internalTabId: string): void {
+        if (this.injectedSiteExtensions.delete(internalTabId)) this.model.notifyAiVisionIndicatorChanged();
+    }
+
+    dispose(): void {
+        for (const internalTabId of this.injectedSiteExtensions.keys()) this.clearAiVisionSiteExtension(internalTabId);
+    }
+
+    private setAiVisionSiteExtension(internalTabId: string, documentId: number, name: string): void {
+        const previous = this.injectedSiteExtensions.get(internalTabId);
+        if (previous?.documentId === documentId && previous.name === name) return;
+        this.injectedSiteExtensions.set(internalTabId, { documentId, name });
+        this.model.notifyAiVisionIndicatorChanged();
     }
 
     constructor(model: BrowserEditorModel) {
@@ -339,6 +360,7 @@ export class BrowserWebviewModel {
                 this.model.clearAiVisionRegistration(internalTabId);
                 this.pendingShapeComparisons.delete(internalTabId);
                 this.liveModelAtLoadStart.delete(internalTabId);
+                this.clearAiVisionSiteExtension(internalTabId);
                 this.siteDocuments.set(internalTabId, this.siteDocumentId(internalTabId) + 1);
                 this.model.clearSiteExtensionTrustPrompt(internalTabId);
                 for (const key of this.dismissedExtensionPrompts) {
@@ -365,6 +387,9 @@ export class BrowserWebviewModel {
             }
             case "did-start-loading":
                 this.liveModelAtLoadStart.set(internalTabId, !!this.model.getAiVisionRegistration(internalTabId));
+                // The injected-extension marker is not cleared here: did-start-loading also fires
+                // for frame and same-document loads, where the injected script keeps running. A new
+                // document arrives through did-navigate, which clears it and bumps siteDocumentId.
                 this.model.clearAiVisionRegistration(internalTabId);
                 this.pendingShapeComparisons.delete(internalTabId);
                 this.model.updateTab(internalTabId, { loading: true });
@@ -590,6 +615,7 @@ export class BrowserWebviewModel {
             if (!isCurrent(host)) return notCurrent();
             if (String(teardownResult) !== "ok") return notCurrent();
 
+            this.clearAiVisionSiteExtension(internalTabId);
             this.model.clearAiVisionRegistration(internalTabId);
             // The reload is an explicit request: its model's first refresh() must not be held back
             // by the late-probe interval from the previous script.
@@ -719,6 +745,7 @@ ${source}
         }
         if (detail === "host-mismatch" || detail === "already-injected") return { status: "not-current" };
         if (detail !== "ok") return { status: "extension-error", error: boundExtensionError("Extension evaluation returned an unexpected result.") };
+        this.setAiVisionSiteExtension(internalTabId, documentId, extension.name);
         if (probeAfterInjection) this.probeAiVisionAgain(internalTabId);
         return { status: "injected" };
     }

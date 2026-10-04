@@ -136,6 +136,7 @@ export class BrowserTabsModel {
     closeTab = (internalTabId: string) => {
         const state = this.model.state.get();
         const isActive = state.activeTabId === internalTabId;
+        this.model.webview.clearAiVisionSiteExtension(internalTabId);
         this.model.clearAiVisionRegistration(internalTabId);
         if (isActive) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
@@ -175,7 +176,10 @@ export class BrowserTabsModel {
         const tab = state.tabs.find((candidate) => candidate.id === internalTabId);
         if (!tab) return;
         for (const candidate of state.tabs) {
-            if (candidate.id !== internalTabId) this.model.clearAiVisionRegistration(candidate.id);
+            if (candidate.id !== internalTabId) {
+                this.model.webview.clearAiVisionSiteExtension(candidate.id);
+                this.model.clearAiVisionRegistration(candidate.id);
+            }
         }
         if (state.activeTabId !== internalTabId) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
@@ -192,7 +196,10 @@ export class BrowserTabsModel {
         const idx = state.tabs.findIndex((t) => t.id === internalTabId);
         if (idx < 0 || idx >= state.tabs.length - 1) return;
         const removed = state.tabs.slice(idx + 1);
-        for (const tab of removed) this.model.clearAiVisionRegistration(tab.id);
+        for (const tab of removed) {
+            this.model.webview.clearAiVisionSiteExtension(tab.id);
+            this.model.clearAiVisionRegistration(tab.id);
+        }
         if (removed.some((tab) => tab.id === state.activeTabId)) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
             const removed = s.tabs.splice(idx + 1);

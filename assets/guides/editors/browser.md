@@ -90,6 +90,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 ```
 +---------------------------------------------------------------------+
 | [Site permissions] [Origin]                                         |  popover below the address box control
+| [Built-in or site-extension ai-vision badge, when available]        |  model source shown above the origin when registered
 | [Permission switches, with Ask for undecided entries]               |
 | [Reset permissions] [Reload the page to apply] [Reload]             |
 +---------------------------------------------------------------------+
@@ -99,7 +100,12 @@ The Site permissions button appears for HTTP(S) pages while no address text has 
 It takes the search-engine selector's place when that selector is available. The popover lists
 permissions for the current origin; undecided permissions show **Ask**. Changing a switch saves an
 Allow or Block choice. **Reset permissions** returns that origin's saved choices to Ask, and
-**Reload** applies changed choices to the current page.
+**Reload** applies changed choices to the current page. On regular pages, the icon is green when a
+registered model comes from the page, and blue when a trusted site extension has successfully run
+in the current document and a model is registered. The popover labels the source as **built-in
+ai-vision** or **site extension ai-vision**, with the extension name when applicable. Trust alone
+does not show an indicator, and no indicator appears without a registered model. Incognito and Tor
+pages never show it.
 
 ### When a page asks for permission
 

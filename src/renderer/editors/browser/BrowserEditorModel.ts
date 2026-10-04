@@ -147,6 +147,8 @@ export interface BrowserTabData {
 }
 
 export interface BrowserEditorState extends IEditorState {
+    /** Ephemeral revision for browser chrome derived from live ai-vision metadata. */
+    aiVisionIndicatorRevision: number;
     /** Active internal tab's URL (kept in sync for toolbar display). */
     url: string;
     pageTitle: string;
@@ -295,6 +297,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         searchEngineId: "google",
         lastSearchQuery: "",
         // Ephemeral state (managed by sub-models)
+        aiVisionIndicatorRevision: 0,
         openedByAgent: false,
         networkToken: "",
         networkLabel: "",

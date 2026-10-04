@@ -1040,6 +1040,17 @@ while a page `notify(text)` becomes a rate-limited, page-attributed event. The p
 the page's remote handler through CDP with the shared timeout policy and labels the page-authored
 subtree as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
 
+The URL bar's Site permissions control indicates when the active regular page has a live model
+registration: green identifies a page-published model and blue identifies a model after a trusted
+site extension was successfully injected into the same document. The popover repeats that source
+in a badge above the origin. `BrowserEditor` keeps registrations private and advances an ephemeral
+state revision when one is added or removed so the toolbar and an open popover refresh; neither the
+revision nor registration data is persisted. `BrowserWebviewModel` separately retains the injected
+extension name with the document id, clearing it on navigation, successful in-place extension
+teardown, tab removal, and disposal. The view only combines that marker with a live registration,
+and suppresses the indicator in Incognito and Tor modes. A trust grant, prompt, or failed injection
+alone is not evidence that a model came from an extension.
+
 ### Site extensions
 
 The renderer-side `SiteExtensionStore` reads immediate child folders from the configured

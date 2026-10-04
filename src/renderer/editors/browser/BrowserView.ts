@@ -18,6 +18,8 @@ import { SwitchView } from "../../uikit/Switch/SwitchView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { DotView } from "../../uikit/Dot/DotView";
+import { TagView } from "../../uikit/Tag/TagView";
+import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
 import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
@@ -318,9 +320,14 @@ class ProfileNetworkErrorView extends VanillaView<ProfileNetworkErrorProps> {
 
 interface BrowserToolbarProps { model: BrowserEditor; state: BrowserEditorState; }
 
+type AiVisionIndicator =
+    | { source: "none" | "page" }
+    | { source: "extension"; extensionName: string };
+
 interface SitePermissionsContentProps {
     permissions: BrowserSitePermissions;
     changed: boolean;
+    aiVisionIndicator: AiVisionIndicator;
     onSet: (key: BrowserSitePermissionKey, decision: "allow" | "block") => void;
     onReset: () => void;
     onReload: () => void;
@@ -342,6 +349,8 @@ const SITE_PERMISSION_LABELS: Record<string, string> = {
 class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps> {
     // The popover shell owns its own `data-type`; this editor-owned content root is the styling hook.
     private readonly contentRoot = document.createElement("div");
+    private readonly aiVisionBadge: TagView;
+    private aiVisionBadgeTooltip: TooltipAttachment | undefined;
     private readonly heading = createTextElement("", { size: "md", bold: true });
     private readonly rows = document.createElement("div");
     private readonly reset: ButtonView;
@@ -354,6 +363,7 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.rows.dataset.part = "permission-list";
         this.reset = this.child(new ButtonView({ name: "site-permissions-reset", variant: "ghost", size: "sm", children: "Reset permissions", onClick: () => this.props.onReset() }));
         this.reload = this.child(new ButtonView({ name: "site-permissions-reload", variant: "link", size: "sm", children: "Reload", onClick: () => this.props.onReload() }));
+        this.aiVisionBadge = this.child(new TagView({ name: "site-permissions-ai-vision-badge", label: "", variant: "outlined", size: "sm" }));
     }
 
     protected onMount(): void {
@@ -366,6 +376,9 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.root.append(this.contentRoot);
         this.reset.mount();
         this.reload.mount();
+        this.aiVisionBadge.mount();
+        this.aiVisionBadgeTooltip = attachTooltip(this.aiVisionBadge.root, { content: null });
+        this.own(() => this.aiVisionBadgeTooltip?.dispose());
         this.sync(this.props);
     }
 
@@ -376,6 +389,27 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
     private sync(props: SitePermissionsContentProps): void {
         this.heading.textContent = props.permissions.origin;
         this.contentRoot.dataset.changed = props.changed ? "" : "false";
+        const indicator = props.aiVisionIndicator;
+        if (indicator.source === "none") {
+            this.aiVisionBadge.root.remove();
+        } else {
+            const isPage = indicator.source === "page";
+            const extensionName = indicator.source === "extension" ? indicator.extensionName : "";
+            // Rest props (data-*) apply only at construction, so the source attribute is set directly.
+            this.aiVisionBadge.root.dataset.aiVisionSource = indicator.source;
+            this.aiVisionBadge.update({
+                name: "site-permissions-ai-vision-badge",
+                variant: "outlined",
+                size: "sm",
+                label: isPage ? "built-in ai-vision" : `site extension ai-vision · ${extensionName}`,
+            });
+            this.aiVisionBadgeTooltip?.update({
+                content: isPage
+                    ? "This site publishes its own ai-vision model, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page."
+                    : `The "${extensionName}" site extension adds an ai-vision model to this site, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page.`,
+            });
+            this.contentRoot.insertBefore(this.aiVisionBadge.root, this.heading);
+        }
         const entries = props.permissions.entries;
         const entryKeys = new Set(entries.map((entry) => entry.key));
         for (const [key, row] of this.rowViews) {
@@ -501,6 +535,15 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; }
 
     private sync(state: BrowserEditorState): void {
+        const aiVisionIndicator = this.getAiVisionIndicator(state);
+        const sitePermissionsTitle = aiVisionIndicator.source === "page"
+            ? "Site permissions · built-in ai-vision model"
+            : aiVisionIndicator.source === "extension"
+                ? `Site permissions · site extension ai-vision model (${aiVisionIndicator.extensionName})`
+                : "Site permissions";
+        this.sitePermissionsButton.update({ name: "url-site-permissions", size: "sm", icon: "info", title: sitePermissionsTitle, onClick: this.toggleSitePermissions });
+        if (aiVisionIndicator.source === "none") delete this.sitePermissionsButton.root.dataset.aiVisionSource;
+        else this.sitePermissionsButton.root.dataset.aiVisionSource = aiVisionIndicator.source;
         const active = state.tabs.find((tab) => tab.id === state.activeTabId);
         this.controls[0].update({ name: "toolbar-home", size: "sm", icon: "home", title: active?.homeUrl ? `Go to ${active.homeUrl}` : "Home", onClick: this.model.goHome, disabled: !active?.homeUrl });
         this.controls[1].update({ name: "toolbar-back", size: "sm", icon: "arrow-left", title: "Back (Alt+Left)", onClick: this.model.webview.goBack, disabled: !state.canGoBack });
@@ -599,7 +642,15 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     };
 
     private sitePermissionsContentProps(): SitePermissionsContentProps {
-        return { permissions: this.permissionsData, changed: this.permissionsChanged, onSet: this.setSitePermission, onReset: this.resetSitePermissions, onReload: this.reloadAfterPermissionChange };
+        return { permissions: this.permissionsData, changed: this.permissionsChanged, aiVisionIndicator: this.getAiVisionIndicator(this.props.state), onSet: this.setSitePermission, onReset: this.resetSitePermissions, onReload: this.reloadAfterPermissionChange };
+    }
+
+    private getAiVisionIndicator(state: BrowserEditorState): AiVisionIndicator {
+        if (state.isIncognito || state.isTor) return { source: "none" };
+        const registration = this.model.getAiVisionRegistration(state.activeTabId);
+        if (!registration) return { source: "none" };
+        const extensionName = this.model.webview.getAiVisionSiteExtensionName(state.activeTabId);
+        return extensionName === undefined ? { source: "page" } : { source: "extension", extensionName };
     }
 
     private readonly reloadAfterPermissionChange = (): void => {

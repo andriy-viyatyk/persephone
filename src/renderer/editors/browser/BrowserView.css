@@ -17,8 +17,17 @@
 .browser-root [data-proxy-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
 .browser-root [data-search-engine-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
 @layer editor {
+    .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="page"],
+    .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="page"]:hover { color: var(--color-success-text); }
+    .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="extension"],
+    .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="extension"]:hover { color: var(--color-primary-text); }
     [data-type="browser-site-permissions"] { display: flex; flex-direction: column; gap: var(--space-sm, 4px); padding: var(--space-md, 8px) var(--space-lg, 12px); width: max-content; max-width: calc(100vw - var(--space-xl, 16px) - var(--space-xl, 16px)); }
     [data-type="browser-site-permissions"] > [data-type="text"] { overflow-wrap: anywhere; }
+    /* An outlined pill in the source colour (green: the page's own model, blue: a site extension's). */
+    /* The theme's success/primary bg and border tokens are not badge colours, so the border takes the text colour. */
+    [data-type="browser-site-permissions"] [data-name="site-permissions-ai-vision-badge"] { align-self: flex-start; max-width: 100%; white-space: normal; overflow-wrap: anywhere; border-color: currentColor; border-radius: var(--radius-pill, 999px); cursor: help; }
+    [data-type="browser-site-permissions"] [data-name="site-permissions-ai-vision-badge"][data-ai-vision-source="page"] { color: var(--color-success-text); }
+    [data-type="browser-site-permissions"] [data-name="site-permissions-ai-vision-badge"][data-ai-vision-source="extension"] { color: var(--color-primary-text); }
     [data-type="browser-site-permissions"] [data-part="permission-list"] { display: flex; flex-direction: column; gap: var(--space-xs, 2px); }
     [data-type="browser-site-permissions"] [data-part="permission-row"] { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg, 12px); min-height: var(--size-control-md, 26px); }
     [data-type="browser-site-permissions"] [data-part="permission-copy"] { display: flex; flex-direction: column; min-width: 0; }

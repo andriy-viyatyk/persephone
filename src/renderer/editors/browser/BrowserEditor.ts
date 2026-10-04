@@ -150,6 +150,11 @@ export class BrowserEditor extends EditorModel<
 
     getAiVisionBindingVersion = (): number => this.aiVisionBindingVersion;
 
+    notifyAiVisionIndicatorChanged = (): void => {
+        if (this.aiVisionDisposed) return;
+        this.state.update((state) => { state.aiVisionIndicatorRevision++; });
+    };
+
     setAiVisionRegistration = (
         internalTabId: string,
         generation: number,
@@ -167,13 +172,14 @@ export class BrowserEditor extends EditorModel<
         };
         this.aiVisionByTab.set(internalTabId, registration);
         this.aiVisionRegisteredTabs.add(internalTabId);
+        this.notifyAiVisionIndicatorChanged();
         return true;
     };
 
     clearAiVisionRegistration = (internalTabId: string): void => {
         const generation = this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
         this.aiVisionGenerationByTab.set(internalTabId, generation + 1);
-        this.aiVisionByTab.delete(internalTabId);
+        if (this.aiVisionByTab.delete(internalTabId)) this.notifyAiVisionIndicatorChanged();
     };
 
     clearAiVisionRegistrationIfCurrent = (internalTabId: string, generation: number): void => {
@@ -195,6 +201,7 @@ export class BrowserEditor extends EditorModel<
 
     async dispose(): Promise<void> {
         this.aiVisionDisposed = true;
+        this.webview.dispose();
         this.clearAllAiVisionRegistrations();
         this.aiVisionGenerationByTab.clear();
         this.aiVisionRegisteredTabs.clear();
