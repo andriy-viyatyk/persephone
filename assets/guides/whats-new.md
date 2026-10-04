@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.7 (Upcoming)
+## Version 5.0.8 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.7
 
 ### Breaking Changes
 
@@ -40,23 +46,23 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **MCP servers reject browser requests:** Persephone and Mneme refuse requests from web pages to prevent DNS-rebinding and Origin-based attacks. Desktop agents and the in-app MCP Inspector continue to work; see the [MCP Server Setup guide](./mcp-setup.md).
 
-- **Web pages cannot open internal Persephone links or schemes.** Popup windows cannot navigate to local files or non-web schemes.
-
 - **The main window has a stricter security policy, and HTML previews use an isolated `html-preview://` origin.**
 
 - **Electron's security fuses are locked in release builds.** The environment-variable and browser-cookie effects are listed under [Breaking Changes](#breaking-changes).
 
 - **Browser downloads carry Mark-of-the-Web:** Windows SmartScreen and Office Protected View can apply their usual protections to downloaded files.
 
-### Improvements
+### New Features
 
-- **Record the Persephone window, active page, or editor area:** choose a region from quick settings, then control capture in the header. Review the video in Video Player and use **Save as…** or **Discard**; unsaved recordings are cleaned up after seven days. Agents can also record through `window.screen.recording`; see the [Header Strip guide](./screens/header.md), [Video Player guide](./editors/video.md), and [window API reference](./scripting/api/window.md).
+- **Record the Persephone window, active page, or editor area:** choose a region from quick settings, then control capture in the header. Review the video in Video Player and use **Save as…** or **Discard**. Closing the player without saving deletes the recording; anything left over is cleaned up after seven days. Agents can also record through `window.screen.recording`; see the [Header Strip guide](./screens/header.md), [Video Player guide](./editors/video.md), and [window API reference](./scripting/api/window.md).
+
+- **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
+
+### Improvements
 
 - **MCP gives agents clearer hints, better search, and complete screenshots:** image results from `call` are returned as inline images without `maxLength` truncation, guide search and `helpSearch` rank the answers to plain questions such as "show a table to the user" first, and hints no longer repeat the same warning or the same pending-dialog notice on every call. See the [MCP Server Setup guide](./mcp-setup.md) and [AI Vision guide](./agents/ai-vision.md).
 
 - **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.
-
-- **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
 
 ---
 
