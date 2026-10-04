@@ -15,7 +15,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Planned
 
-*(none)*
+- [ ] [US-1619: Smooth the rough edges agents hit when driving Persephone](tasks/US-1619-agent-interaction-friction/README.md)
 
 ## Scheduled
 
