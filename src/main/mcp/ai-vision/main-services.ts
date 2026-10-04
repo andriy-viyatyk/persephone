@@ -53,7 +53,7 @@ const BOARD_DOWNLOAD_MEMBERS: readonly IAiMember[] = [
 ];
 
 const DOWNLOAD_MEMBERS: readonly IAiMember[] = [
-    { name: "getDownloads", kind: "method", signature: "getDownloads()", summary: "Return bounded download entries; use renderer downloads.* to cancel, open, reveal, or clear them." },
+    { name: "getDownloads", kind: "method", signature: "getDownloads()", summary: "Return bounded download entries, including transfers awaiting a save path; use renderer downloads.* to cancel, open, reveal, or clear them." },
 ];
 
 const NETWORK_MEMBERS: readonly IAiMember[] = [
@@ -171,7 +171,7 @@ export class MainDownloadsNode implements IAiVisible {
             kind: "MainDownloads",
             summary: "Read-only download manager snapshots.",
             members: DOWNLOAD_MEMBERS,
-            help: "Use renderer downloads.cancelDownload(), openDownload(), showInFolder(), and clearCompleted() to change downloads.",
+            help: "Entries with status awaitingPath have finished transferring but are waiting for a save location. Use renderer downloads.cancelDownload(), openDownload(), showInFolder(), and clearCompleted() to change downloads.",
             summarize: () => ({ kind: "MainDownloads", downloads: this.getDownloads() }),
         };
     }

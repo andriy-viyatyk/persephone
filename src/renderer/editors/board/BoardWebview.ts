@@ -1,6 +1,6 @@
 import color from "../../theme/color";
 import { api } from "../../../ipc/renderer/api";
-import { isPlainLocalPath } from "../../core/utils/file-path";
+import { fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
@@ -56,6 +56,9 @@ import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { boardTrust, pathCovers } from "../../api/board-trust";
+import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
+import { boardPermissionError } from "../../../shared/board-manifest-utils";
 import { errMessage } from "../../../shared/utils";
 import { CapabilityError } from "../../api/capability-bus";
 import { invokeCapabilityOutcome } from "../../api/capabilities";
@@ -168,13 +171,15 @@ function isDataCloneError(error: unknown): boolean {
  */
 export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private readonly boardId = `board_${Math.random().toString(36).slice(2)}`;
-    private readonly fetchBridge = new BoardFetchBridge();
+    private fetchBridge = new BoardFetchBridge();
     private readonly tabId: string;
     private readonly isMain: boolean;
     private host: string | null = null;
     private registeredHost: string | null = null;
+    private iframeGrant: NormalizedBoardPermissions | undefined;
     private iframe: HTMLIFrameElement | undefined;
     private pendingPort: MessagePort | null = null;
+    private hostedPathToken = "";
     private lastBoardContent: string | undefined;
     private live = false;
     private generation = 0;
@@ -339,6 +344,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             gate: { kind: "trusted", rejectionLog: "persephone.fetch requires a trusted board" },
             handle: (message, current) => this.fetchBridge.start(
                 message as BoardFetchRequestMsg,
+                this.props.boardRoot,
                 current.frame,
                 current.generation,
                 (frame, generation, reply, transfer) => this.replyToFrame(frame, generation, reply, transfer),
@@ -393,6 +399,24 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onMount(): void {
         this.live = true;
+        window.addEventListener("message", this.handleMessage);
+        this.ownSubscription(() => window.removeEventListener("message", this.handleMessage));
+        if (this.isMain) {
+            const focusSubscription = pagesModel.onFocus.subscribe((pageModel) => {
+                if (!this.live || pageModel !== this.props.model.page) return;
+                if (this.focusTimer !== undefined) clearTimeout(this.focusTimer);
+                this.focusTimer = setTimeout(() => {
+                    this.focusTimer = undefined;
+                    if (this.live) this.focusFrame();
+                }, 200);
+            });
+            this.focusUnsubscribe = this.ownSubscription(focusSubscription);
+        }
+        this.ownSubscription(boardTrust.subscribeGrants((changedRoots) => {
+            const boardKey = fpNormalizeForCompare(this.props.boardRoot);
+            if (!changedRoots.some((root) => pathCovers(root, boardKey) || pathCovers(boardKey, root))) return;
+            void this.refreshIframeGrant();
+        }));
         this.ownSubscription(subscribeBoardPermission(() => {
             if (!isBoardPermitted(this.props.boardRoot)) {
                 this.props.model.clearStatusBarItemsForFrame(this.generation);
@@ -470,17 +494,20 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         }
         this.registeredHost = h;
         this.host = h;
-        this.createIframe();
+        await this.createIframe();
         this.startHostResources();
     }
 
-    private createIframe(): void {
+    private async createIframe(): Promise<void> {
         const host = this.host;
         if (!host || this.iframe) return;
+        const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
+        if (!this.live || host !== this.host || !grant || this.iframe) return;
         const { entry = "index.html", view = "main" } = this.props;
         const iframe = document.createElement("iframe");
         iframe.title = "board";
-        iframe.allow = "clipboard-read; clipboard-write";
+        iframe.allow = iframeFeaturesForGrant(grant).join("; ");
+        this.iframeGrant = grant;
         iframe.src = `board://${host}/${entry}?v=${this.boardId}&view=${encodeURIComponent(view)}`;
         iframe.style.flex = "1";
         iframe.style.width = "100%";
@@ -491,20 +518,33 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.setAiVisionTransport(this.tabId, iframe, this.generation, this.requestAiVision);
         this.listen(iframe, "load", this.handleLoad);
         this.listen(iframe, "error", this.handleFrameError);
-        window.addEventListener("message", this.handleMessage);
-        this.ownSubscription(() => window.removeEventListener("message", this.handleMessage));
         this.root.append(iframe);
-        if (this.isMain) {
-            const focusSubscription = pagesModel.onFocus.subscribe((pageModel) => {
-                if (!this.live || pageModel !== this.props.model.page) return;
-                if (this.focusTimer !== undefined) clearTimeout(this.focusTimer);
-                this.focusTimer = setTimeout(() => {
-                    this.focusTimer = undefined;
-                    if (this.live) this.focusFrame();
-                }, 200);
-            });
-            this.focusUnsubscribe = this.ownSubscription(focusSubscription);
+    }
+
+    private async refreshIframeGrant(): Promise<void> {
+        const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
+        if (!this.live || JSON.stringify(grant) === JSON.stringify(this.iframeGrant)) return;
+        const iframe = this.iframe;
+        this.iframe = undefined;
+        this.iframeGrant = grant;
+        this.generation++;
+        this.fetchBridge.dispose();
+        this.fetchBridge = new BoardFetchBridge();
+        this.abortPendingContentOpen();
+        this.rejectPendingAiVision(new Error("Board permissions changed."));
+        this.rejectPendingCapability("handler-closed", "Board permissions changed.");
+        this.unregisterCapabilityFrame();
+        this.closePendingPort();
+        await api.disposeBoardPort(this.boardId);
+        if (iframe) {
+            boardNavigationReturnService.releaseBoardFrame(this.props.model, iframe, this.tabId);
+            const ownsFrame = this.props.model.frames.get(this.tabId) === iframe;
+            this.props.model.clearIframe(iframe, this.tabId);
+            this.props.model.releaseContentResources(this.tabId, this.generation - 1);
+            if (ownsFrame) await api.unregisterBoardFrame(this.props.model.id, this.tabId, this.boardId);
+            iframe.remove();
         }
+        if (grant) await this.createIframe();
     }
 
     private startHostResources(): void {
@@ -603,7 +643,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const sourceUrl = this.props.model.currentSourceUrl();
         const pageId = this.props.model.page?.id;
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
-        if (pageId) void api.registerBoardPipePage(pageId, host);
+        if (pageId) void api.registerBoardPipePage(pageId, host, this.props.boardRoot, this.props.model.pipeUrlEnabled);
         const initialIntent = pageId ? takeInitialIntent(pageId) : undefined;
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
@@ -654,6 +694,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
         boardNavigationReturnService.resetBoardFrame(this.props.model, frame, this.tabId);
         this.generation++;
+        this.hostedPathToken = globalThis.crypto.randomUUID();
         this.installSettingsSubscription();
         this.props.model.setAiVisionTransport(this.tabId, frame, this.generation, this.requestAiVision);
         if (this.capabilityFrame?.iframe === frame) {
@@ -683,7 +724,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             const message: BoardHostContentMsg = { __persephone: "host:content", content, language };
             win.postMessage(message, `board://${host}`);
         }
-        void api.requestBoardPort(this.boardId, host, model.id);
+        const currentFilePath = model.currentFilePath();
+        const hostedLocalPath = currentFilePath && isPlainLocalPath(currentFilePath) ? currentFilePath : null;
+        void api.requestBoardPort(this.boardId, host, model.id, hostedLocalPath, this.hostedPathToken);
         void api.registerBoardFrame(model.id, host, this.boardId, this.tabId).then(() => {
             if (this.live && generation === this.generation) model.markFrameLoaded(this.tabId);
             else if (model.frames.get(this.tabId) === frame) {
@@ -815,6 +858,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
         }
         warnUnknownAiVisionViews(message.shape, model, (warning) => this.appendLog("warn", warning));
+        // A refresh() that republishes an identical shape changes nothing the agent can see.
+        const previousShape = model.getAiVisionRegistration()?.shape;
         const accepted = model.setAiVisionRegistration(
             message.shape,
             frame,
@@ -824,7 +869,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             reason,
         );
         const pageId = model.page?.id;
-        if (accepted && pageId && reason === "refresh") logShapeChanged(pageId);
+        if (accepted && pageId && reason === "refresh"
+            && JSON.stringify(previousShape) !== JSON.stringify(message.shape)) logShapeChanged(pageId);
         if (accepted && reason === "register" && model.consumeReloadRegistration() && pageId) {
             logBoardReloaded(pageId);
         }
@@ -1040,6 +1086,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (!isBoardPermitted(this.props.boardRoot)) {
                 throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
+            if (!(await boardTrust.allows(this.props.boardRoot, "appScripting"))) throw boardPermissionError("appScripting");
             reply = { __persephone: "capabilities:list:result", reqId: message.reqId, result: app.capabilities.list() };
         } catch (error: unknown) {
             reply = {
@@ -1109,9 +1156,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): Promise<void> {
         const generation = this.generation;
+        const token = this.hostedPathToken;
         let reply: { path?: string; error?: string };
         try {
             reply = { path: await model.ensureContentPath() };
+            if (!this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || token !== this.hostedPathToken) return;
+            const updated = await api.updateBoardHostedPath(this.boardId, token, reply.path ?? null);
+            if (!updated || !this.live || generation !== this.generation || this.iframe !== frame
+                || model.frames.get(this.tabId) !== frame || token !== this.hostedPathToken) return;
         } catch (error: unknown) {
             const message = errMessage(error);
             if (isProviderResolutionError(error)) ui.notify(message, "error");
@@ -1156,6 +1209,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: BoardContentOpenResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
+            const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
+            const network = grant?.kind === "legacy" ? "full" : grant?.flags.network ?? false;
+            const appScripting = grant?.kind === "legacy" || (grant?.kind === "flags" && grant.flags.appScripting);
+            if (/^https?:/i.test(request.link) && network === false) throw boardPermissionError("network");
             if (typeof request.link !== "string") throw new Error("content.open() requires a link string.");
             if (request.timeoutMs !== undefined
                 && (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs <= 0)) {
@@ -1170,7 +1227,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
                 throw new Error("The board frame is unavailable.");
             }
-            const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal);
+            const mcpUrl = await api.getBoardMcpEndpoint();
+            const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal, {
+                network, appScripting, mcpUrl, boardRoot: this.props.boardRoot,
+            });
             openedResourceId = info.resourceId;
             if (controller.signal.aborted) {
                 model.releaseContentResource(info.resourceId);
@@ -1182,7 +1242,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 return;
             }
             try {
-                await api.registerBoardPipeResource(info.resourceId, host);
+                await api.registerBoardPipeResource(info.resourceId, host, this.props.boardRoot, info.filePath);
             } catch (error: unknown) {
                 model.releaseContentResource(info.resourceId);
                 throw error;
@@ -1366,4 +1426,18 @@ function capabilityError(error: unknown): { code: CapabilityErrorCode; message: 
     const value = error as { code?: unknown } | null;
     const code = isCapabilityErrorCode(value?.code) ? value.code : "rejected";
     return { code, message: errMessage(error, "The capability request failed.") };
+}
+
+function iframeFeaturesForGrant(grant: NormalizedBoardPermissions): string[] {
+    const features = ["clipboard-write"];
+    if (grant.kind === "legacy") {
+        features.push("clipboard-read");
+        return features;
+    }
+    if (grant.flags.camera) features.push("camera");
+    if (grant.flags.microphone) features.push("microphone");
+    if (grant.flags.geolocation) features.push("geolocation");
+    if (grant.flags.notifications) features.push("notifications");
+    if (grant.flags.clipboardRead) features.push("clipboard-read");
+    return features;
 }

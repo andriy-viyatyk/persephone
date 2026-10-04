@@ -68,7 +68,7 @@ export interface IBoardManifest {
     readonly standalone?: boolean;
     readonly singleInstance?: boolean;
     readonly minAppVersion?: string;
-    readonly permissions?: readonly string[];
+    readonly permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
     readonly minBridgeVersion?: string;
     readonly service?: string;
     readonly contentProviders?: readonly IBoardContentProviderDeclaration[];

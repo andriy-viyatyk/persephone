@@ -8,11 +8,12 @@
  */
 import path from "path";
 import fs from "fs";
-import { app, BrowserWindow, ipcMain, session, Session } from "electron";
+import { app, BrowserWindow, session, Session } from "electron";
 import { TorChannel, TorIpInfo, TorStatus } from "../ipc/tor-ipc";
 import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
+import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
 const FETCH_IDLE_GRACE_MS = 60_000;
@@ -465,14 +466,14 @@ class TorService {
 const torService = new TorService();
 
 export function initTorHandlers(): void {
-    ipcMain.handle(
+    guardedIpcHandle(
         TorChannel.arm,
         async (_event, socksPort: number, partition: string) => {
             return torService.armPartition(socksPort, partition);
         },
     );
 
-    ipcMain.handle(
+    guardedIpcHandle(
         TorChannel.start,
         async (
             _event,
@@ -485,7 +486,7 @@ export function initTorHandlers(): void {
     );
 
     const fetchLeaseSenders = new Set<number>();
-    ipcMain.handle(TorChannel.fetchAcquire, async (event, torExePath: string, socksPort: number) => {
+    guardedIpcHandle(TorChannel.fetchAcquire, async (event, torExePath: string, socksPort: number) => {
         const senderId = event.sender.id;
         if (!fetchLeaseSenders.has(senderId)) {
             fetchLeaseSenders.add(senderId);
@@ -498,17 +499,17 @@ export function initTorHandlers(): void {
         }
         return torService.acquireFetch(senderId, torExePath, socksPort);
     });
-    ipcMain.on(TorChannel.fetchRelease, (event) => torService.releaseFetch(event.sender.id));
+    guardedIpcOn(TorChannel.fetchRelease, (event) => torService.releaseFetch(event.sender.id));
 
-    ipcMain.handle(TorChannel.stop, async (_event, partition: string) => {
+    guardedIpcHandle(TorChannel.stop, async (_event, partition: string) => {
         return torService.stopForPartition(partition);
     });
 
-    ipcMain.handle(TorChannel.checkIp, async (_event, partition: string) => {
+    guardedIpcHandle(TorChannel.checkIp, async (_event, partition: string) => {
         return torService.checkIp(partition);
     });
 
-    ipcMain.handle(TorChannel.restart, async (_event, partition: string) => {
+    guardedIpcHandle(TorChannel.restart, async (_event, partition: string) => {
         return torService.restart(partition);
     });
 }

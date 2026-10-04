@@ -9,6 +9,8 @@ import {
     PublishedBoardsResult,
     PublishedBoardVersions,
     RuntimeVersions,
+    RecordingRegion,
+    RecordingSessionStartResult,
     SaveFileDialogParams,
     UpdateCheckResult,
     VideoStreamSessionConfig,
@@ -143,6 +145,10 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.getCommonFolder, folder);
     };
 
+    getSiteExtensionRuntime = async () => {
+        return executeOnce<string>(Endpoint.getSiteExtensionRuntime);
+    };
+
     zoom = async (delta: number) => {
         return executeOnce<void>(Endpoint.zoom, delta);
     };
@@ -161,8 +167,8 @@ class ApiCalls implements Api {
 
     /** Open a file or folder with the OS default application. Resolves to Electron's
      *  error string — empty when the shell accepted the path. */
-    openPath = async (path: string) => {
-        return executeOnce<string>(Endpoint.openPath, path);
+    openPath = async (path: string, boardRoot?: string) => {
+        return executeOnce<string>(Endpoint.openPath, path, boardRoot);
     }
 
     windowReady = async () => {
@@ -313,6 +319,22 @@ class ApiCalls implements Api {
         return executeOnce<string | null>(Endpoint.startScreenSnip, hideWindows);
     }
 
+    startWindowRecording = async (request: { region: RecordingRegion }): Promise<RecordingSessionStartResult> => {
+        return executeOnce<RecordingSessionStartResult>(Endpoint.startWindowRecording, request);
+    }
+
+    appendWindowRecordingChunk = async (request: { recordingId: string; chunk: Uint8Array }): Promise<void> => {
+        return executeOnce<void>(Endpoint.appendWindowRecordingChunk, request);
+    }
+
+    finalizeWindowRecording = async (request: { recordingId: string; extension: "mp4" | "webm" }): Promise<string> => {
+        return executeOnce<string>(Endpoint.finalizeWindowRecording, request);
+    }
+
+    cancelWindowRecording = async (recordingId: string): Promise<void> => {
+        return executeOnce<void>(Endpoint.cancelWindowRecording, recordingId);
+    }
+
     clipboardReadFilePaths = async (): Promise<ClipboardFileList> => {
         return executeOnce<ClipboardFileList>(Endpoint.clipboardReadFilePaths);
     }
@@ -443,6 +465,14 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens);
     };
 
+    setHtmlPreview = async (id: string, html: string) => {
+        return executeOnce<void>(Endpoint.setHtmlPreview, id, html);
+    };
+
+    clearHtmlPreview = async (id: string) => {
+        return executeOnce<void>(Endpoint.clearHtmlPreview, id);
+    };
+
     appendBoardLog = async (boardRoot: string, level: BoardLogLevel, message: string) => {
         return executeOnce<void>(Endpoint.appendBoardLog, boardRoot, level, message);
     };
@@ -465,8 +495,12 @@ class ApiCalls implements Api {
     // Ask main to mint a per-board MessagePort (EPIC-037 / US-771). The port arrives
     // asynchronously on `eBoardPort` — subscribe via `onBoardPort` before requesting.
     // `ownerId` = the owning BoardEditorModel id, the stable job-retention key (US-799).
-    requestBoardPort = async (boardId: string, host: string, ownerId: string) => {
-        return executeOnce<void>(Endpoint.requestBoardPort, boardId, host, ownerId);
+    requestBoardPort = async (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => {
+        return executeOnce<void>(Endpoint.requestBoardPort, boardId, host, ownerId, hostedPath, token);
+    };
+
+    updateBoardHostedPath = async (boardId: string, token: string, hostedPath: string | null) => {
+        return executeOnce<boolean>(Endpoint.updateBoardHostedPath, boardId, token, hostedPath);
     };
 
     disposeBoardPort = async (boardId: string) => {
@@ -508,16 +542,16 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.unregisterBoardFrame, boardId, tab, frameNonce);
     };
 
-    registerBoardPipePage = async (pageId: string, host?: string) => {
-        return executeOnce<void>(Endpoint.registerBoardPipePage, pageId, host);
+    registerBoardPipePage = async (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => {
+        return executeOnce<void>(Endpoint.registerBoardPipePage, pageId, host, boardRoot, hostedDocument);
     };
 
     unregisterBoardPipePage = async (pageId: string) => {
         return executeOnce<void>(Endpoint.unregisterBoardPipePage, pageId);
     };
 
-    registerBoardPipeResource = async (resourceId: string, host: string) => {
-        return executeOnce<void>(Endpoint.registerBoardPipeResource, resourceId, host);
+    registerBoardPipeResource = async (resourceId: string, host: string, boardRoot?: string, filePath?: string) => {
+        return executeOnce<void>(Endpoint.registerBoardPipeResource, resourceId, host, boardRoot, filePath);
     };
 
     unregisterBoardPipeResource = async (resourceId: string) => {
@@ -540,13 +574,31 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
     };
 
-    setBoardTrust = async (boardRoot: string, trusted: boolean) => {
-        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted);
+    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions) => {
+        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions);
     };
 
     getBoardTrustPaths = async () => {
         return executeOnce<string[]>(Endpoint.getBoardTrustPaths);
     };
+
+    getBoardPermissionGrants = async () => {
+        return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
+    };
+
+    getSiteExtensionTrust = async () => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.getSiteExtensionTrust);
+    bindSiteExtensionFolder = async (folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.bindSiteExtensionFolder, folder);
+    trustSiteExtension = async (id: string, hosts: string[], folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts, folder);
+    revokeSiteExtensionTrust = async (id: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.revokeSiteExtensionTrust, id);
+    setSiteExtensionEnabled = async (id: string, enabled: boolean) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.setSiteExtensionEnabled, id, enabled);
+
+    getBoardMcpEndpoint = async () => executeOnce<string>(Endpoint.getBoardMcpEndpoint);
+
+    authorizeBoardFilePath = async (boardRoot: string, requestedPath: string, intent: "read" | "write" = "read") =>
+        executeOnce<string>(Endpoint.authorizeBoardFilePath, boardRoot, requestedPath, intent);
+
+    bindBoardSessionSource = async (handle: string, boardRoot: string) =>
+        executeOnce<string>(Endpoint.bindBoardSessionSource, handle, boardRoot);
 
     setDisabledBundledBoards = async (ids: string[]) => {
         return executeOnce<void>(Endpoint.setDisabledBundledBoards, ids);

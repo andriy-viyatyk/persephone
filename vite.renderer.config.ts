@@ -1,8 +1,33 @@
 import { defineConfig, Plugin } from 'vite';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor-esm';
 import electronRenderer from 'vite-plugin-electron-renderer';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+
+const INLINE_HASHES_TOKEN = "'inline-script-hashes'";
+
+/**
+ * Replaces INLINE_HASHES_TOKEN in index.html's CSP with a 'sha256-…' source for every inline
+ * <script> in the final HTML, so the main window needs no 'unsafe-inline'. Runs last ('post'),
+ * after vite-plugin-monaco-editor-esm has injected its MonacoEnvironment script, in dev and build.
+ */
+function inlineScriptHashesPlugin(): Plugin {
+  return {
+    name: 'inline-script-hashes',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        const hashes = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+          // The browser hashes the script text after HTML parsing, which turns CRLF and lone CR into
+          // LF; hash the same text, or a CRLF checkout of index.html blocks its inline scripts.
+          .map((match) => `'sha256-${crypto.createHash('sha256').update(match[1].replace(/\r\n?/g, '\n'), 'utf8').digest('base64')}'`);
+        if (!html.includes(INLINE_HASHES_TOKEN)) throw new Error('index.html CSP is missing the inline-script-hashes token');
+        return html.replace(INLINE_HASHES_TOKEN, hashes.join(' '));
+      },
+    },
+  };
+}
 
 /**
  * Vite plugin that copies .d.ts files from src/renderer/api/types/ to assets/editor-types/
@@ -115,6 +140,7 @@ export default defineConfig({
     monacoEditorPlugin({
       languageWorkers: ['typescript', 'editorWorkerService', 'json', 'html'],
     }),
+    inlineScriptHashesPlugin(),
     // The renderer runs with nodeIntegration, so Node builtins (buffer, stream,
     // fs, path, …) and `electron` must resolve to the real runtime modules via
     // require() — not Vite's browser-external stubs (which broke iconv-lite /

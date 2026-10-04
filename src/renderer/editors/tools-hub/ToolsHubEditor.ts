@@ -3,8 +3,8 @@ import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 export const TOOLS_HUB_PAGE_ID = "tools-hub-page";
 
 /** Which content tab the hub shows. Persisted in editor state (survives restart). */
-export type HubTab = "builtin" | "boards" | "search" | "tools";
-const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools"];
+export type HubTab = "builtin" | "boards" | "search" | "tools" | "site-extensions";
+const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools", "site-extensions"];
 
 export interface ToolsHubEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -23,8 +23,8 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
 
 /**
  * Tools & Editors hub — a singleton full-page counterpart to the AppBar "Tools & Editors"
- * slide-out panel (EPIC-045 / US-870). Four content tabs (Built-in / Registered boards /
- * Search boards / Tools) + a Pinned rail. Like About/Storybook it is a page-sized
+ * slide-out panel (EPIC-045 / US-870). Five content tabs (Built-in / Registered boards /
+ * Search boards / Tools / Site extensions) + a Pinned rail. Like About/Storybook it is a page-sized
  * `hasContentHost: false` editor reached only via `showToolsHubPage`; the fixed page id makes
  * it a singleton (`addPage` dedupes).
  */

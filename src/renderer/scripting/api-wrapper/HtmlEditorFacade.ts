@@ -36,7 +36,7 @@ Changes, and password dialogs are transient and are accessed through dialogs. el
 reports DOM presence and layout, not whether a capture control is enabled; capture controls remain
 visible while capturing is true. Drawing/Excalidraw page actions are opened by the image actions.
 
-HTML preview content is rendered in a sandboxed srcdoc iframe. page.editor.elements reports host-chrome controls only; its selectors stop at the renderer document and do not cross into the iframe. Use window.screen.snapshot() for DOM inside the preview iframe; it merges the preview accessibility tree when Chromium reports at least three AX nodes, while the html property remains the source content rather than the iframe DOM.`;
+HTML preview content is rendered in a sandboxed \`html-preview://\` iframe. page.editor.elements reports host-chrome controls only; its selectors stop at the renderer document and do not cross into the iframe. Use window.screen.snapshot() for DOM inside the preview iframe; it merges the preview accessibility tree when Chromium reports at least three AX nodes, while the html property remains the source content rather than the iframe DOM.`;
 
 /**
  * Safe facade around HtmlEditor for script access.

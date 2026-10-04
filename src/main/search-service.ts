@@ -13,7 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import { app, ipcMain, WebContents } from "electron";
+import { app, WebContents } from "electron";
 import {
     SearchChannel,
     SearchRequest,
@@ -24,6 +24,7 @@ import {
     SearchError,
 } from "../ipc/search-ipc";
 import type { SearchWorkerMessage } from "./search-worker";
+import { guardedIpcOn } from "./ipc-sender-guard";
 
 /** Active search per sender (webContents id → its worker). */
 const activeSearches = new Map<number, { worker: Worker; searchId: string }>();
@@ -79,7 +80,7 @@ function send(sender: WebContents, channel: string, payload: unknown): void {
  * Initialize search IPC handlers. Call once during app startup.
  */
 export function initSearchHandlers(): void {
-    ipcMain.on(SearchChannel.start, (event, request: SearchRequest) => {
+    guardedIpcOn(SearchChannel.start, (event, request: SearchRequest) => {
         const sender = event.sender;
         const senderId = sender.id;
         const { searchId } = request;
@@ -166,7 +167,7 @@ export function initSearchHandlers(): void {
     // was disposed after its search was replaced would otherwise terminate the *replacement*.
     // A stale or unknown id is a silent no-op — it only means that search already ended.
     // Optional-chained because a malformed message must not throw in the main process.
-    ipcMain.on(SearchChannel.cancel, (event, cancel: SearchCancel | undefined) => {
+    guardedIpcOn(SearchChannel.cancel, (event, cancel: SearchCancel | undefined) => {
         const active = activeSearches.get(event.sender.id);
         if (cancel?.searchId && active?.searchId === cancel.searchId) {
             terminateSearch(event.sender.id);

@@ -28,6 +28,9 @@ guide to read for which task. It is intentionally short — read it once per ses
   drive/test it through `pages[i].editor` (`tabs`, `switchTab`, and `reload` included).
 - **The app window itself is automatable.** Use `window.screen` to see and click Persephone's own
   UI (tabs, sidebar, dialogs).
+- **Native dialogs are visible and cancellable by window.** Inspect `windows[i].nativeDialog`
+  for an owned picker, then call `windows[i].nativeDialog.dismiss()` to cancel it. Agents cannot
+  enter a path or confirm Save/Open.
 - **`call` is the one tool you can use without reading anything.** It addresses Persephone's live
   object model by path — `""` lists the top level, `pages` the open tabs, `page.content` the active
   text, `pages[0].editor.rowCount` a grid, `windows[1].pages` another window — and the first visit
@@ -62,6 +65,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Run code, use `app.*`, touch files | `script.execute` | `script.$help` and `persephone://guides/scripting` |
 | Open a web page or search query | `pages.openUrlInBrowserTab(url, options)` → returns `pageId` | `pages.$help` and `persephone://guides/browser` |
 | Open a URL naming a file | `pages.openUrl(url, options)` | `pages.$help` and `persephone://guides/browser` |
+| Build a reusable model for a web page with no `.app` model | `siteExtensions.create` → `app.fs.write` → `siteExtensions.reload` | [Site extensions](./site-extensions.md) / `guides.agents["site-extensions"]` / `persephone://guides/site-extensions` |
 | Drive a web page / board / the app UI | `pages[i].editor` / `window.screen` | node `$help` and `persephone://guides/browser` |
 | Build a custom dashboard/tool/editor | `boards.createBoard`, `boards.openBoard`, `pages[i].editor` | `boards.$help` and `persephone://guides/boards` |
 | Give the board or web app you are building its own agent-drivable object model | `persephone.aiVision.expose(root)` in the board | [AI Vision](./ai-vision.md) / `guides.agents["ai-vision"]` |

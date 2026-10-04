@@ -468,8 +468,9 @@ interface PersephoneBoardApi {
         title?: string;
         content?: string;
     }): Promise<string>;
-    /** Show a Persephone toast. */
-    notify(message: string, type?: PersephoneNotifyType): void;
+    /** Show a Persephone toast. `options.persistent` (bridge 1.33.0) keeps it until the user
+     *  closes it; otherwise info/success/warning toasts close after a few seconds. */
+    notify(message: string, type?: PersephoneNotifyType, options?: { persistent?: boolean }): void;
     /** Native OS clipboard writes (bridge API 1.12.0); see {@link PersephoneClipboardApi}. */
     readonly clipboard: PersephoneClipboardApi;
     /** Set the footer status text for a **content-host** board (e.g. a Todo board's "N items"

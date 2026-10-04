@@ -37,7 +37,7 @@ export class AlertItemView extends VanillaView<AlertItemViewProps> {
         this.notification.mount();
         this.applyProps(this.props);
 
-        const seconds = AUTOCLOSE_SECONDS[this.props.data.type];
+        const seconds = this.props.data.persistent ? 0 : AUTOCLOSE_SECONDS[this.props.data.type];
         if (seconds) {
             let live = true;
             const timer = setTimeout(() => {

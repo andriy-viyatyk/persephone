@@ -9,6 +9,7 @@ import type { BoardThemePalette } from "../board-bridge-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { errMessage } from "../../shared/utils";
+import { boardPermissionError } from "../../shared/board-manifest-utils";
 
 export type BoardEndpoint =
     | Endpoint.registerBoard
@@ -17,6 +18,7 @@ export type BoardEndpoint =
     | Endpoint.unregisterBoard
     | Endpoint.updateBoardTheme
     | Endpoint.requestBoardPort
+    | Endpoint.updateBoardHostedPath
     | Endpoint.disposeBoardPort
     | Endpoint.setBoardBusy
     | Endpoint.setBoardCallTimeout
@@ -33,6 +35,10 @@ export type BoardEndpoint =
     | Endpoint.cancelBoardDownload
     | Endpoint.setBoardTrust
     | Endpoint.getBoardTrustPaths
+    | Endpoint.getBoardPermissionGrants
+    | Endpoint.getBoardMcpEndpoint
+    | Endpoint.authorizeBoardFilePath
+    | Endpoint.bindBoardSessionSource
     | Endpoint.setDisabledBundledBoards
     | Endpoint.getModuleServiceStatuses
     | Endpoint.requestModuleServicePort
@@ -73,8 +79,11 @@ export function initBoardHandlers(): void {
         (await import("../../main/board-protocol-service")).updateAllBoardThemes(theme);
         (await import("../../main/board-bridge")).pushThemeToBoards(theme);
     });
-    bindEndpoint(Endpoint.requestBoardPort, async (event: IpcMainEvent, boardId: string, host: string, ownerId: string): Promise<void> => {
-        (await import("../../main/board-bridge")).createBoardPort(event.sender, boardId, host, ownerId);
+    bindEndpoint(Endpoint.requestBoardPort, async (event: IpcMainEvent, boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string): Promise<void> => {
+        (await import("../../main/board-bridge")).createBoardPort(event.sender, boardId, host, ownerId, hostedPath, token);
+    });
+    bindEndpoint(Endpoint.updateBoardHostedPath, async (event: IpcMainEvent, boardId: string, token: string, hostedPath: string | null): Promise<boolean> => {
+        return (await import("../../main/board-bridge")).updateBoardHostedPath(event.sender, boardId, token, hostedPath);
     });
     bindEndpoint(Endpoint.disposeBoardPort, async (_event, boardId: string): Promise<void> => {
         (await import("../../main/board-bridge")).disposeBoardPort(boardId);
@@ -106,11 +115,39 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
     });
-    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean): Promise<string[]> => {
-        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted);
+    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions): Promise<string[]> => {
+        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions);
     });
     bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
+    });
+    bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
+        const grants = await (await import("../../main/board-trust-service")).boardTrustService.getPermissionGrants();
+        return grants.map(({ root, permissions, manifestPermissions, manifestChanged }) => ({
+            boardRoot: root,
+            permissions,
+            manifestPermissions,
+            ...(manifestChanged ? { manifestChanged: true } : {}),
+            canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
+        }));
+    });
+    bindEndpoint(Endpoint.getBoardMcpEndpoint, async (): Promise<string> => {
+        return (await import("../../main/mcp-http-server")).getMcpUrl();
+    });
+    bindEndpoint(Endpoint.authorizeBoardFilePath, async (_event, boardRoot: string, requestedPath: string, intent: "read" | "write" = "read"): Promise<string> => {
+        const { boardTrustService } = await import("../../main/board-trust-service");
+        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+        if (!permissions) throw boardPermissionError("fileSystem");
+        return (await import("../../main/board-file-access")).resolveAuthorizedPath({
+            boardRoot, requestedPath, permissions, intent,
+        });
+    });
+    bindEndpoint(Endpoint.bindBoardSessionSource, async (_event, handle: string, boardRoot: string): Promise<string> => {
+        const { boardTrustService } = await import("../../main/board-trust-service");
+        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+        if (!permissions) throw new Error("This board is not trusted.");
+        const mcpUrl = await (await import("../../main/mcp-http-server")).getMcpUrl();
+        return (await import("../../main/session-src-protocol")).bindSessionSourceToBoard(handle, boardRoot, permissions, mcpUrl);
     });
     bindEndpoint(Endpoint.setDisabledBundledBoards, async (_event, ids: string[]): Promise<void> => {
         await (await import("../../main/board-trust-service")).boardTrustService.setDisabledBundledBoards(ids);

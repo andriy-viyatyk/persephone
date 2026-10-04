@@ -1,11 +1,13 @@
 /**
  * Main-process streaming command runner — the engine behind
- * `app.proc.execute()` (and, via US-724, the Board `persephone.execute()`).
+ * `app.proc.execute()` (and, via US-724, the Board `persephone.execute()` and
+ * `persephone.executeNode()` utility process).
  *
  * Spawns a child process from a command-line string and streams its
  * stdout / stderr / exit / error back to the caller, keyed by `jobId`. The
- * caller can write to stdin and kill the child by the same `jobId`. Modeled on
- * the async-worker host (`worker-host.ts`): a `Map<jobId, …>` registry.
+ * caller can write to stdin and kill the process by the same `jobId`. Board Node scripts run
+ * in an Electron utility process through `startNodeJobTo`. Modeled on the async-worker host
+ * (`worker-host.ts`): a `Map<jobId, …>` registry.
  *
  * The transport is abstracted behind a {@link JobSink} (EPIC-037 / US-771) so
  * one spawn/stream/tree-kill engine serves two callers:
@@ -19,7 +21,8 @@
  * the tree-kill added in US-720 — centralized.
  */
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
-import { ipcMain, IpcMainEvent, WebContents } from "electron";
+import path from "node:path";
+import { IpcMainEvent, UtilityProcess, WebContents, utilityProcess } from "electron";
 import {
     RunnerChannel,
     RunnerJobMsg,
@@ -28,6 +31,8 @@ import {
     RunnerStdinMsg,
 } from "../ipc/runner-channels";
 import { errMessage } from "../shared/utils";
+import { getAssetPath } from "./utils";
+import { guardedIpcOn } from "./ipc-sender-guard";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
 const COALESCE_MS = 16;
@@ -43,7 +48,7 @@ export interface JobSink {
 }
 
 interface Job {
-    proc: ChildProcessWithoutNullStreams;
+    proc: JobProcess;
     sink: JobSink;
     /** The spawned command line — surfaced by `getJobsBySinkIds` (US-799). */
     command: string;
@@ -53,6 +58,14 @@ interface Job {
     stdoutBuf: Buffer[];
     stderrBuf: Buffer[];
     flushTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/** The process behind a job: a spawned child, or a board Node script in a utility process. */
+interface JobProcess {
+    readonly pid: number | undefined;
+    writeStdin(data: string | Uint8Array): void;
+    endStdin(): void;
+    kill(signal?: string): void;
 }
 
 /** Live jobs keyed by jobId (mirrors worker-host's `activeWorkers`). */
@@ -92,7 +105,7 @@ function webContentsSink(sender: WebContents): JobSink {
  * POSIX: process.kill(-pid, signal) signals the child's process group (the
  *   child is the group leader via detached:true at spawn).
  */
-function treeKill(proc: ChildProcessWithoutNullStreams, signal?: string): void {
+function treeKill(proc: JobProcess, signal?: string): void {
     const pid = proc.pid;
     if (pid == null) {
         try { proc.kill(); } catch { /* already dead */ }
@@ -228,8 +241,15 @@ export function startJobTo(sink: JobSink, msg: RunnerStartMsg): void {
         return;
     }
 
+    const jobProcess: JobProcess = {
+        get pid() { return proc.pid; },
+        writeStdin: (data) => { proc.stdin.write(data); },
+        endStdin: () => { proc.stdin.end(); },
+        kill: (signal) => { proc.kill((signal as NodeJS.Signals) || undefined); },
+    };
+
     const job: Job = {
-        proc,
+        proc: jobProcess,
         sink,
         command,
         name: opts?.name,
@@ -264,12 +284,80 @@ export function startJobTo(sink: JobSink, msg: RunnerStartMsg): void {
     });
 }
 
+const NODE_SCRIPT_HOST = "node-script-host.mjs";
+
+/**
+ * Run a board's Node script (`persephone.executeNode`) in an Electron utility process: the
+ * packaged app locks the RunAsNode fuse, so the app binary can no longer be spawned as Node
+ * (US-1591). Same sink protocol as startJobTo; signal is always null.
+ */
+export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
+    const { jobId, command: script, opts } = msg;
+    let child: UtilityProcess;
+    try {
+        child = utilityProcess.fork(getAssetPath(NODE_SCRIPT_HOST), ["--persephone-node-script", script, ...(msg.args ?? [])], {
+            cwd: opts?.cwd,
+            env: { ...process.env, ...(opts?.env ?? {}), NODE_NO_WARNINGS: "1" },
+            stdio: "pipe",
+            serviceName: `Persephone board script: ${path.basename(script)}`,
+        });
+    } catch (err) {
+        sink.send(RunnerChannel.error, { jobId, message: errMessage(err) });
+        return;
+    }
+    // Messages posted before the host starts may be lost, so stdin waits for "spawn".
+    let spawned = false;
+    const pending: Array<{ kind: "stdin"; data: string | Uint8Array } | { kind: "end-stdin" }> = [];
+    const post = (message: (typeof pending)[number]) => {
+        if (spawned) child.postMessage(message);
+        else pending.push(message);
+    };
+    child.once("spawn", () => {
+        spawned = true;
+        for (const message of pending.splice(0)) child.postMessage(message);
+    });
+    const jobProcess: JobProcess = {
+        get pid() { return child.pid; },
+        writeStdin: (data) => post({ kind: "stdin", data }),
+        endStdin: () => post({ kind: "end-stdin" }),
+        kill: () => { child.kill(); },
+    };
+    const job: Job = {
+        proc: jobProcess,
+        sink,
+        command: script,
+        name: opts?.name,
+        stdoutBuf: [],
+        stderrBuf: [],
+        flushTimer: null,
+    };
+    activeJobs.set(jobId, job);
+    indexJob(jobId, sink.id);
+
+    child.stdout?.on("data", (data: Buffer) => {
+        job.stdoutBuf.push(data);
+        scheduleFlush(jobId);
+    });
+    child.stderr?.on("data", (data: Buffer) => {
+        job.stderrBuf.push(data);
+        scheduleFlush(jobId);
+    });
+    child.on("exit", (code) => {
+        // A utility process's stdout never emits "end"; all output arrives before "exit".
+        setImmediate(() => {
+            flush(jobId);
+            sink.send(RunnerChannel.exit, { jobId, code, signal: null });
+            cleanup(jobId);
+        });
+    });
+}
+
 /** Write to a job's stdin (no-op if the job/child is gone). */
 export function writeJobStdin(jobId: string, data: string | Uint8Array): void {
     const job = activeJobs.get(jobId);
     if (!job) return;
     try {
-        job.proc.stdin.write(data);
+        job.proc.writeStdin(data);
     } catch {
         // child stdin already closed — ignore
     }
@@ -280,7 +368,7 @@ export function endJobStdin(jobId: string): void {
     const job = activeJobs.get(jobId);
     if (!job) return;
     try {
-        job.proc.stdin.end();
+        job.proc.endStdin();
     } catch {
         // already closed — ignore
     }
@@ -324,20 +412,20 @@ export function killJob(jobId: string, signal?: string): void {
  * via `startJobTo`/`writeJobStdin`/… (see `board-bridge.ts`).
  */
 export function initCommandRunner(): void {
-    ipcMain.on(RunnerChannel.start, (event: IpcMainEvent, msg: RunnerStartMsg) => {
+    guardedIpcOn(RunnerChannel.start, (event: IpcMainEvent, msg: RunnerStartMsg) => {
         wireSenderReaping(event.sender);
         startJobTo(webContentsSink(event.sender), msg);
     });
 
-    ipcMain.on(RunnerChannel.stdin, (_event, msg: RunnerStdinMsg) => {
+    guardedIpcOn(RunnerChannel.stdin, (_event, msg: RunnerStdinMsg) => {
         writeJobStdin(msg.jobId, msg.data);
     });
 
-    ipcMain.on(RunnerChannel.endStdin, (_event, msg: RunnerJobMsg) => {
+    guardedIpcOn(RunnerChannel.endStdin, (_event, msg: RunnerJobMsg) => {
         endJobStdin(msg.jobId);
     });
 
-    ipcMain.on(RunnerChannel.kill, (_event, msg: RunnerKillMsg) => {
+    guardedIpcOn(RunnerChannel.kill, (_event, msg: RunnerKillMsg) => {
         killJob(msg.jobId, msg.signal);
     });
 }

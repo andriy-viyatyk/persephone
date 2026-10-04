@@ -5,6 +5,8 @@ import { appPartition, fileAccessPersistPartition } from "./constants";
 import { getDataFolder } from "./utils";
 import { errMessage } from "../shared/utils";
 import type { BrowserSitePermissionKey } from "../ipc/browser-ipc";
+import { boardTrustService } from "./board-trust-service";
+import { getBoardRootForHost } from "./board-protocol-service";
 
 export type BrowserPermissionKey =
     | "camera" | "microphone" | "geolocation" | "notifications" | "midi" | "midiSysex"
@@ -42,6 +44,28 @@ let appSession: Session;
 let fileAccessSession: Session;
 let promptHandler: PermissionPromptHandler | undefined;
 let initialized = false;
+const recordingMediaGrants = new Map<number, number>();
+
+/** Arm one app-main-frame, video-only permission request for a window source capture. */
+export function armRecordingMediaGrant(webContentsId: number): void {
+    recordingMediaGrants.set(webContentsId, Date.now() + 5000);
+    setTimeout(() => {
+        if ((recordingMediaGrants.get(webContentsId) ?? 0) <= Date.now()) recordingMediaGrants.delete(webContentsId);
+    }, 5100);
+}
+
+export function clearRecordingMediaGrant(webContentsId: number): void {
+    recordingMediaGrants.delete(webContentsId);
+}
+
+function hasRecordingMediaGrant(webContentsId: number): boolean {
+    const expiresAt = recordingMediaGrants.get(webContentsId);
+    if (!expiresAt || expiresAt <= Date.now()) {
+        recordingMediaGrants.delete(webContentsId);
+        return false;
+    }
+    return true;
+}
 
 function normalizeOrigin(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -154,6 +178,55 @@ function requestKeys(permission: string, details: Electron.PermissionRequest): B
     return PROMPTABLE.has(permission as BrowserPermissionKey) ? [permission as BrowserPermissionKey] : undefined;
 }
 
+function requesterOrigin(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    try {
+        const url = new URL(value);
+        if (url.protocol === "board:" && url.hostname && !url.port && !url.username && !url.password) {
+            return `board://${url.hostname.toLowerCase()}`;
+        }
+        return url.origin !== "null" ? url.origin : undefined;
+    } catch { return undefined; }
+}
+
+function boardGrantForOrigin(origin: string | undefined) {
+    if (!origin?.startsWith("board://")) return undefined;
+    const host = origin.slice("board://".length);
+    if (!host || host.includes("/") || host.includes(":")) return undefined;
+    const root = getBoardRootForHost(host);
+    return root ? boardTrustService.getGrantedPermissionsFromSnapshot(root) : undefined;
+}
+
+function boardPermissionAllowed(
+    permission: string,
+    grant: NonNullable<ReturnType<typeof boardTrustService.getGrantedPermissionsFromSnapshot>>,
+    details: Electron.PermissionRequest | Electron.PermissionCheckHandlerHandlerDetails,
+    isRequest: boolean,
+): boolean {
+    if (permission === "fullscreen" || permission === "pointerLock" || permission === "clipboard-sanitized-write") return true;
+    if (grant.kind === "legacy") return APP_ALLOW.has(permission);
+    if (permission === "clipboard-read") return grant.flags.clipboardRead;
+    if (permission === "geolocation") return grant.flags.geolocation;
+    if (permission === "notifications") return grant.flags.notifications;
+    if (permission === "media") {
+        if (isRequest) {
+            const mediaTypes = (details as Electron.MediaAccessPermissionRequest).mediaTypes;
+            if (!mediaTypes?.length || mediaTypes.some((type) => type !== "video" && type !== "audio")) return false;
+            return mediaTypes.every((type) => type === "video" ? grant.flags.camera : grant.flags.microphone);
+        }
+        const mediaType = (details as Electron.PermissionCheckHandlerHandlerDetails).mediaType;
+        if (mediaType === "video") return grant.flags.camera;
+        if (mediaType === "audio") return grant.flags.microphone;
+    }
+    return false;
+}
+
+function appSubframeAllowed(permission: string, origin: string | undefined, details: Electron.PermissionRequest | Electron.PermissionCheckHandlerHandlerDetails, isRequest: boolean): boolean {
+    if (permission === "fullscreen" || permission === "pointerLock") return true;
+    const grant = boardGrantForOrigin(origin);
+    return !!grant && boardPermissionAllowed(permission, grant, details, isRequest);
+}
+
 function denySelection(ses: Session): void {
     ses.on("select-hid-device", (event, _details, callback) => { event.preventDefault(); callback(); });
     ses.on("select-serial-port", (event, _ports, _wc, callback) => { event.preventDefault(); callback(""); });
@@ -162,7 +235,20 @@ function denySelection(ses: Session): void {
 
 function handleCheck(ses: Session, request: PermissionCheck): boolean {
     const { permission, origin, details } = request;
-    if (ses === appSession) return APP_ALLOW.has(permission as string);
+    if (ses === appSession) {
+        if (details.isMainFrame === true) {
+            if (APP_ALLOW.has(permission as string)) return true;
+            return permission === "media" && request.webContents !== null
+                && hasRecordingMediaGrant(request.webContents.id)
+                && details.mediaType === "video";
+        }
+        const requestingOrigin = requesterOrigin(origin);
+        if (permission === "media" && details.securityOrigin) {
+            const securityOrigin = requesterOrigin(details.securityOrigin);
+            if (!requestingOrigin || securityOrigin !== requestingOrigin) return false;
+        }
+        return appSubframeAllowed(permission as string, requestingOrigin, details, false);
+    }
     if (ses === fileAccessSession) return false;
     const name = profileNameFor(ses);
     let top: string | undefined;
@@ -187,7 +273,26 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
 
 function handleRequest(ses: Session, request: PermissionRequest): void {
     const { permission, callback, details, webContents } = request;
-    if (ses === appSession) { callback(APP_ALLOW.has(permission as string)); return; }
+    if (ses === appSession) {
+        if (details.isMainFrame === true) {
+            const media = details as Electron.MediaAccessPermissionRequest;
+            // A chromeMediaSource "desktop" request arrives with an empty `mediaTypes` (verified on
+            // Electron 43), so accept empty or video-only — never audio — while the one-shot grant is armed.
+            const types = media.mediaTypes ?? [];
+            const allowed = permission === "media" && types.every((type) => type === "video")
+                && hasRecordingMediaGrant(webContents.id);
+            if (allowed) clearRecordingMediaGrant(webContents.id);
+            callback(allowed);
+            return;
+        }
+        const urlOrigin = requesterOrigin(details.requestingUrl);
+        if (permission === "media") {
+            const securityOrigin = requesterOrigin((details as Electron.MediaAccessPermissionRequest).securityOrigin);
+            if (!urlOrigin || (securityOrigin && securityOrigin !== urlOrigin)) { callback(false); return; }
+        }
+        callback(appSubframeAllowed(permission as string, urlOrigin, details, true));
+        return;
+    }
     if (ses === fileAccessSession) { callback(false); return; }
     if (permission === "fileSystem") { callback(true); return; }
     if (permission === "mediaKeySystem" || permission === "fullscreen" || permission === "pointerLock" || permission === "clipboard-sanitized-write") { callback(true); return; }
@@ -238,6 +343,7 @@ function installSession(ses: Session): void {
         }
     });
     ses.setDevicePermissionHandler(() => false);
+    if (ses === appSession) ses.setDisplayMediaRequestHandler((_request, callback) => callback({}));
     denySelection(ses);
 }
 

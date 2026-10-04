@@ -25,7 +25,6 @@ ScriptRunner.run(script, page?, language?)
     │       ├── page = PageWrapper      ← wraps `page` global
     │       │     └── Editor facades (28 operation + generic)  ← page.editor
     │       ├── io = IoNamespace        ← wraps `io` global (providers, pipes, events)
-    │       ├── ai = AiNamespace        ← wraps `ai` global (ClaudeSession)
     │       ├── ui getter (lazy, stack-based on globalThis)
     │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
@@ -234,6 +233,7 @@ interface IApp {
     readonly menuFolders: IMenuFolders;
     readonly proc: IProc;
     readonly boards: IBoards;
+    readonly siteExtensions: ISiteExtensions;
     readonly boardVars: IBoardVars;
     readonly capabilities: ICapabilities;
     readonly pages: IPageCollection;
@@ -315,6 +315,23 @@ loading work; use `boards.list()` for complete cold-start discovery. `searchPubl
 `getPublishedVersions()`, and the other published-board operations address the remote catalog and
 are separate from local inventory.
 
+### `app.siteExtensions` — Local site-extension authoring
+
+`app.siteExtensions.list()` reports each installed extension's validation, host-conflict, and trust
+state. `create(id, options)` scaffolds a manifest and starter script in the configured extensions
+folder; it never grants trust. The user approves execution in the matching browser page's trust bar.
+`reload(pageId)` disposes and re-injects the trusted extension in the current browser document,
+preserving that page's navigation and form state. `remove(id)` asks the user to confirm before
+deleting the extension and revoking its trust. The `siteExtensions` AiVision node exposes inventory
+and authoring/removal operations. Its browser-page `trustSiteExtension()` and
+`dismissSiteExtensionTrustPrompt()` methods may answer an active bar only when the user explicitly
+asks.
+
+Trust is owned by the main process and bound to the configured extension folder and the extension's
+exact host list. Editing the script does not invalidate consent; changing its hosts does. Incognito
+and Tor browser pages never run site extensions. See [Browser Editor Architecture](./browser-editor.md#site-extensions)
+for the injection, prompt, and remote-model lifecycle.
+
 ### `app.proc` — Process Execution
 
 Spawn external programs and stream their output. The main process owns the child process registry (including whole-tree kill); `app.proc` is the renderer client.
@@ -333,7 +350,7 @@ h.on("exit", ({ code }) => console.log("done", code));
 const result = await app.proc.execute(cmd).getJson(/@@RESULT@@(.*)/);
 ```
 
-The same channel backs a board's `persephone.execute()` — both the board bridge shim (over its `MessagePort`) and `app.proc` call into the same `command-runner.ts` in the main process. A board additionally has `persephone.executeNode(script, args?, options?)`: the board bridge rewrites it to spawn Persephone's own binary as Node (`process.execPath` with `ELECTRON_RUN_AS_NODE=1`, argv-style, no shell), giving boards a guaranteed Node runtime — including built-in `node:sqlite` — with no Node install on the machine. It returns the same handle.
+The same channel backs a board's `persephone.execute()` — both the board bridge shim (over its `MessagePort`) and `app.proc` call into the same `command-runner.ts` in the main process. A board additionally has `persephone.executeNode(script, args?, options?)`: the board bridge runs it in an Electron utility process through `assets/node-script-host.mjs`, with stdin fed over the process's parent port. Packaged builds disable Electron's `RunAsNode` fuse, so the app executable cannot be used as a Node runtime; the utility process supplies Node, including built-in `node:sqlite`, without a separate Node install. `NODE_OPTIONS` and Node inspector arguments are disabled in packaged builds as well. It returns the same handle.
 
 Type definitions: `/src/renderer/api/types/proc.d.ts` (`IProc`, `IExecuteHandle`, `IExecuteOptions`).
 
@@ -439,55 +456,6 @@ supplied no-op delegate and leaves `handled` unchanged; the parse-hook delegate 
 resolver to rebuild the pipe. See [Content Delivery Pipeline](content-pipeline.md) for the registry
 and dispatch flow.
 
-### `ai` — AI Model Integrations
-
-Provides the `ClaudeSession` class for conversational AI scripting via `@anthropic-ai/sdk`.
-
-```typescript
-interface IAiNamespace {
-    readonly ClaudeSession: new(config: IClaudeSessionConfig) => IClaudeSession;
-}
-```
-
-`ClaudeSession` wraps the raw Anthropic SDK and manages the message list, tool-call loop, and events automatically. The SDK is **lazy-loaded** on first instantiation via `require("@anthropic-ai/sdk")` — no cost if unused.
-
-**Examples:**
-```javascript
-// Basic conversation
-const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
-session.systemMessage("You are a helpful assistant.");
-session.userMessage("What is 2 + 2?");
-const reply = await session.send();
-
-// With tools
-session.tools = [{
-    name: "get_data",
-    description: "Read data from the current page",
-    inputSchema: { type: "object", properties: {} },
-    tool: () => page.content,
-}];
-session.on("tool-call", (name, input) => console.log(`Tool called: ${name}`));
-session.userMessage("Analyze the current page data");
-const reply = await session.send();
-
-// Force a specific tool, multi-turn
-session.userMessage("What's the weather in Paris?");
-await session.send({ toolChoice: "get_weather" });
-session.userMessage("And London?");
-await session.send();
-```
-
-Key features:
-- **`send(options?)`** — runs the full tool-call loop until `end_turn`, returns final text
-- **`toolChoice`** — `"auto"` (default) / `"any"` / specific tool name
-- **Events** — `"tool-call"`, `"tool-result"`, `"assistant-message"`, `"message"`, `"error"`
-- **`maxToolRounds`** (default 20) — safety limit to prevent infinite tool loops
-- **`clear()`** — resets message history, keeps system message and tools
-- **`dangerouslyAllowBrowser: true`** — set internally (Electron renderer is trusted, not a public browser)
-
-See type definitions: [`src/renderer/api/types/ai.d.ts`](../../src/renderer/api/types/ai.d.ts)
-Implementation: [`src/renderer/scripting/api-wrapper/ClaudeSession.ts`](../../src/renderer/scripting/api-wrapper/ClaudeSession.ts)
-
 ### `app.events` — Event Channels
 
 Scripts can both subscribe to and send events. `send()` synchronously freezes the event and invokes
@@ -531,8 +499,8 @@ const config = require("library/config");
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
 - **Context injection — two mechanisms:**
-  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, io=this.io, ai=this.ai, require=this.customRequire, ...`
-  - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, io=__ctx?.io, ai=__ctx?.ai, ...`
+  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
+  - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, io=__ctx?.io, ...`
 - **Context-bound require chain:** Each `ScriptContext` creates a `customRequire` function bound to itself. It's injected as the `require` local var in every script and module. When a module calls `require("library/X")`, it calls the context's `customRequire`, which sets `__activeScriptContext__`, calls native require, and the extension handler injects the same context's properties. Sub-modules get the same `customRequire` injected, so the chain propagates through the entire dependency tree.
 - **Always-fresh cache:** `customRequire()` deletes the specific module from `require.cache` before loading. This ensures fresh compilation with the current context's bindings. Library modules cannot share state across script executions (use `page.data` or `app.settings` for shared state).
 - **Cache clearing on file changes:** Bulk `clearLibraryRequireCache()` only runs when `libraryDirty` is set by the file watcher — not on every execution.
@@ -647,6 +615,18 @@ management; boards add frame selection and board lifecycle state; `window.screen
 current application-window host and has no browser navigation or page-tab operations. Accessibility
 refs are scoped by the host that minted them in `/src/renderer/automation/ref.ts`.
 
+`window.screen.recording` is a separate app-window capability alongside those automation
+operations. Script `start({ region, openPlayer? })` begins capture immediately for the full window,
+active page, or active editor area; page and editor crops stay bound to the page selected at start.
+The returned state reports
+`idle`, `ready`, `recording`, or `paused`; `pause()`, `resume()`, `stop()`, and `cancel()` control the
+same per-window recorder used by the header. `stop()` returns the temporary recording path, duration,
+MIME type, and decoded frame dimensions. `openPlayer` defaults to false for scripts; completed files
+remain in the app data recordings folder until saved or discarded. Closing the last player page for
+an unsaved recording discards it; startup cleanup removes leftovers after seven days. The adapter is
+`/src/renderer/api/window-screen.ts` and the shared capture state machine is
+`/src/renderer/api/window-recording.ts`.
+
 Facade source: `/src/renderer/scripting/api-wrapper/`
 
 `page.editorSwitches` is the script-facing projection of the page toolbar's editor-switch widget. It
@@ -667,10 +647,12 @@ if it exists. **Reading never creates it** — the facade's host-backed state re
 until the page exists, and only a write (`push`, `clear`, `toggleTimestamps`) get-or-creates and
 focuses it. That asymmetry is deliberate: `helpSearch` walks every `node: true` property and every
 declared child, and `logView` is both, so a get-or-create getter made every `helpSearch(...)` open
-and focus the Log View page as a side effect of a search. `push(entries)` renders entries immediately and returns
-entry/dialog IDs; it does not wait for inline dialog answers. `dialogResult(id)` reports whether an
-inline dialog is unresolved or resolved, while the user answers it in the Log View page. The
-The `pages.logView.push` call path remains available for agents and returns immediately; `dialogResult()` reports whether the user has answered an inline dialog.
+and focus the Log View page as a side effect of a search. `push(entries)` renders entries immediately
+and returns entry/dialog IDs; it does not wait for inline dialog answers. `dialogResult(id)` reports
+whether an inline dialog is unresolved or resolved, while the user answers it in the Log View page.
+An unanswered inline dialog is included in MCP attention once per renderer while it remains
+unresolved; subsequent calls do not repeat that message. The attention tracker forgets it when it
+is answered or removed, so a later new dialog can be reported.
 
 The Mermaid, SVG, and Image editors expose `savePngToFile(filePath)` — they rasterise their
 rendered output to PNG and write it to disk. This is the same capability used by each editor's
@@ -686,10 +668,10 @@ data, mimeType: "image/png", width, height, originalWidth, originalHeight }` rec
 defaults to a 2048-pixel maximum longer side, preserves aspect ratio, and does not write a file or
 depend on the active page's viewport. Callers may provide a positive integer `maxDimension`; a
 missing runtime URL is reported as an unavailable/loading error. Because AiVision result shaping
-applies `call.maxLength` before image conversion, callers should allow roughly 1.4 times the PNG
-byte size plus result overhead; an empty or partial record means the bound was too low. `app.call()`
-and a board's `persephone.call()` default to an unbounded transport-size limit for programmatic
-results; an explicit `maxLength` still applies. The MCP `call` tool keeps its 20,000-character
+returns a top-level image result whole, regardless of `call.maxLength`; other string and structured
+results remain bounded. `app.call()` and a board's `persephone.call()` default to an unbounded
+transport-size limit for programmatic results; an explicit `maxLength` still applies to non-image
+results. The MCP `call` tool keeps its 20,000-character
 default because its result is agent-facing text.
 Interface definitions: `/src/renderer/api/types/*.d.ts`
 
@@ -847,8 +829,10 @@ It is fully type-erased (no runtime cost) and names the offender on failure: `Ty
 
 ### AiVision path calls
 
-The `ai-vision` npm package contains the process-neutral descriptor interfaces, path parser, resolver,
-hint builder, help search, and result shaper used by path callers. Renderer wrappers and editor
+The Persephone integration uses `ai-vision` 1.3.0, which contains the process-neutral descriptor
+interfaces, path parser, resolver, hint builder, help search, and result shaper used by path callers.
+Its 1.2.1 release added whole top-level image results; 1.3.0 ranks `helpSearch` hits by query-token
+coverage and hit origin. Renderer wrappers and editor
 facades implement `IAiVisible` with descriptors beside their public members; dynamic pages and
 facades enumerate their own children so discovery does not probe side-effecting getters. Namespace
 objects that cannot carry a descriptor use the shared instance registry.
@@ -960,9 +944,15 @@ overlay is drawn; the user dismisses it afterward.
 The `guides` root is backed by the shared guide index in `/src/shared/guides/`. A page read through
 `guides.<path>` returns Markdown with valid front matter removed; `guides.<path>.layout` returns
 the body of its `## Layout` section or an explicit no-schema message. `guides.search()` searches
-the same corpus independently of descriptor help search. Guide front matter accepts `title`,
+titles, summaries, headings, table rows, and body text independently of descriptor help search.
+It splits identifiers such as `helpSearch` into searchable words, matches word prefixes, ignores
+common query filler when substantive words are present, and ranks hits that cover more query words
+first. Equal-coverage hits prefer titles/summaries/headings/table rows/body by match type, then
+built-in guides over installed-board guides. Guide front matter accepts `title`,
 `audience`, `summary`, optional `screen`, and either one `editorId` or a list of editor IDs. The
 editor mapping is used by the active-page guide entry points, while `screen` remains page metadata.
+The `board` editorId token lets an installed-board guide claim its own board for F1; it is excluded
+from duplicate-editorId diagnostics because the token intentionally appears in multiple boards.
 Trusted installed boards that declare a safe `guides` folder are mounted under
 `guides.installed-boards.<board-id>`; each mount is contained within that board's folder and is
 resolved dynamically so trust, installation, and removal are reflected without an app restart.
@@ -1094,7 +1084,7 @@ ctx.dispose();  // restores previous ui getter, releases ViewModels, unsubscribe
 The constructor:
 
 1. Creates `releaseList` (shared cleanup array)
-2. Creates `AppWrapper` (always), `PageWrapper` (if page provided), `io` namespace (`createIoNamespace()`), and `ai` namespace (`createAiNamespace()`) — stored as instance properties
+2. Creates `AppWrapper` (always), `PageWrapper` (if page provided), and `io` namespace (`createIoNamespace()`) — stored as instance properties
 3. If `consoleLogs` array is provided (MCP mode), sets `this.console` to a capturing console that records `log`, `error`, `warn`, `info` calls. Otherwise uses native `console`. Capture is replaced with full forwarding when `ui` is accessed (see step 6).
    ```typescript
    interface ConsoleLogEntry {
@@ -1330,7 +1320,7 @@ Two injection mechanisms exist:
 - **Top-level scripts:** `SCRIPT_PREFIX` reads from `this` — `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
 - **Library modules (require'd):** `MODULE_CONTEXT_PREFIX` reads from `globalThis.__activeScriptContext__` — set by `customRequire()` during the synchronous `require()` call
 
-Both produce the same result: `app`, `page`, `io`, `ai`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules. The `ui` global remains a separate lazy getter.
+Both produce the same result: `app`, `page`, `io`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules. The `ui` global remains a separate lazy getter.
 
 - **`require()`** — context-bound `customRequire` on `ScriptContext`. Supports `library/` path resolution. Always clears specific module from cache before loading (always-fresh). Falls back to Node.js native `require` for non-library paths.
 - **`ui`** — lazy getter on `globalThis` (not a local variable, not in prefix). Stack-based: each `ScriptContext` saves the previous getter and restores it on dispose. Eagerly accessing `ui` creates a Log View page.

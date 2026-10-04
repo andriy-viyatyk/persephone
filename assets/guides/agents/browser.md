@@ -1,3 +1,9 @@
+---
+title: "Browser automation — drive web pages and boards"
+audience: both
+summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and private-page limits for pages[i].editor and window.screen."
+---
+
 # Browser automation
 
 Use `pages[i].editor` for browser pages and boards. Use `window.screen` for Persephone's own
@@ -21,6 +27,9 @@ use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `
 
 ## Hosts and members
 
+For a page the user will use repeatedly with no `pages[pageId].editor.app` model, read
+[Site extensions](./site-extensions.md) to build a reusable model.
+
 All three hosts share these 21 operations:
 
 | Member | Purpose |
@@ -42,6 +51,12 @@ All three hosts share these 21 operations:
 
 `window.screen` covers the complete visible app window, including the active page. It refuses to
 automate while that page is a user-owned incognito or Tor page. Use `pages` to switch pages.
+
+`window.screen.recording` records the Persephone window, active page, or main editor area. Agent
+`start({ region })` starts immediately; the user can pause or stop it from the app header. The result
+is a temporary video path returned by `stop()`. Copy that path elsewhere to retain it; `openPlayer`
+defaults to false and can be set true to open the built-in player. User-opened incognito and Tor
+pages also block recording.
 
 ## Locators and actions
 

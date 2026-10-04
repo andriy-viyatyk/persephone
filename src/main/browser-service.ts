@@ -10,7 +10,7 @@
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per persephone page tab.
  */
-import { app, BrowserWindow, dialog, ipcMain, IpcMainEvent, IpcMainInvokeEvent, session, webContents, WebContents, WebFrameMain } from "electron";
+import { app, BrowserWindow, dialog, IpcMainEvent, IpcMainInvokeEvent, session, webContents, WebContents, WebFrameMain } from "electron";
 import * as cheerio from "cheerio";
 import {
     BrowserChannel,
@@ -25,8 +25,10 @@ import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
+import { hasRecentRendererRequest } from "./mcp/renderer-bridge";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
+import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
 const CHROMIUM_NAVIGATION_PROTOCOLS = [
@@ -37,6 +39,53 @@ const CHROMIUM_NAVIGATION_PROTOCOLS = [
     "mailto:",
     "tel:",
 ];
+
+/** Chromium's transient user activation lasts 5 s. A page navigation to a non-web scheme
+ *  is passed to the host only within this window after a real click or key press. */
+const USER_ACTIVATION_WINDOW_MS = 5000;
+
+type NavigationScheme = "blocked" | "chromium" | "external" | "invalid";
+
+function getNavigationScheme(url: string): NavigationScheme {
+    try {
+        const protocol = new URL(url).protocol;
+        if (BLOCKED_PROTOCOLS.includes(protocol)) return "blocked";
+        if (CHROMIUM_NAVIGATION_PROTOCOLS.includes(protocol)) return "chromium";
+        return "external";
+    } catch {
+        return "invalid";
+    }
+}
+
+function attachPopupNavigationGuards(contents: WebContents): void {
+    const popupEvents = contents as unknown as EventTarget;
+    popupEvents.on("will-navigate", ((event: Electron.Event, url: string) => {
+        if (getNavigationScheme(url) !== "chromium") event.preventDefault();
+    }) as AnyEventHandler);
+    popupEvents.on("will-redirect", ((event: Electron.Event, details: Electron.WebContentsWillRedirectEventParams) => {
+        if (getNavigationScheme(details.url) === "blocked") event.preventDefault();
+    }) as AnyEventHandler);
+    popupEvents.on("will-frame-navigate", ((details: Electron.Event & Electron.WebContentsWillFrameNavigateEventParams) => {
+        // The main frame is handled by will-navigate.
+        if (!details.isMainFrame && getNavigationScheme(details.url) === "blocked") details.preventDefault();
+    }) as AnyEventHandler);
+}
+
+function destroyPopupWithNodeIntegration(childWindow: BrowserWindow, details: Electron.DidCreateWindowDetails): boolean {
+    const preferences = details.options.webPreferences;
+    if (!preferences?.nodeIntegration && !preferences?.nodeIntegrationInSubFrames) return false;
+
+    console.warn("[browser] Destroying popup with Node integration enabled");
+    childWindow.destroy();
+    return true;
+}
+
+function isPersistentBrowserProfilePartition(partition: unknown): partition is string {
+    return typeof partition === "string"
+        && partition.startsWith("persist:browser-")
+        && partition.length > "persist:browser-".length
+        && partition.length <= 256;
+}
 
 /** Generic event-listener shape — used for storing handlers we attach to
  *  WebContents. WebContents extends EventEmitter; this matches that surface
@@ -106,6 +155,8 @@ interface RegisteredWebview {
     htmlFullscreen: boolean;
     /** A mouse button pressed in the page and not yet released (see releaseLostPress). */
     pressed: { x: number; y: number; button: "left" | "middle" | "right" } | null;
+    /** Time (Date.now()) of the last trusted mouse or key press in the page; 0 = none or consumed. */
+    lastUserActivation: number;
 }
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
@@ -220,6 +271,7 @@ function guardPopupWindow(
     });
 
     const childWc = childWindow.webContents;
+    attachPopupNavigationGuards(childWc);
 
     childWc.setWindowOpenHandler(({ url, disposition, features }) => {
         // Link clicks → open as internal tab in the parent page
@@ -261,7 +313,8 @@ function guardPopupWindow(
     });
 
     // Recursively guard grandchild windows
-    childWc.on("did-create-window", (grandchild) => {
+    childWc.on("did-create-window", (grandchild, details) => {
+        if (destroyPopupWithNodeIntegration(grandchild, details)) return;
         guardPopupWindow(grandchild, sender, tabId, internalTabId);
     });
 }
@@ -356,6 +409,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
             event.preventDefault(); // allow unload — reload without prompting
             return;
         }
+        if (hasRecentRendererRequest()) {
+            event.preventDefault();
+            return;
+        }
         const parentWindow = BrowserWindow.fromWebContents(sender);
         const options: Electron.MessageBoxSyncOptions = {
             type: "question",
@@ -388,8 +445,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         const reg = registrations.get(key);
         if (!reg) return;
         if (mouse.type === "mouseDown") {
+            reg.lastUserActivation = Date.now();
             reg.pressed = { x: mouse.x, y: mouse.y, button: mouse.button ?? "left" };
         } else if (mouse.type === "mouseUp") {
+            reg.lastUserActivation = Date.now();
             reg.pressed = null;
         } else if (mouse.type === "mouseMove" && reg.pressed) {
             reg.pressed.x = mouse.x;
@@ -408,15 +467,16 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         });
     });
 
-    // Block page-initiated navigations to dangerous protocols.
+    // Non-web schemes reach the host only after a user action; the host opens only board-claimed ones.
     // will-navigate fires only for navigations triggered by the page
     // (links, window.location, forms) — NOT for programmatic loadURL().
     // This allows app-initiated file:// navigations (MCP, restore) while
     // blocking third-party sites from redirecting to local files.
     on("will-navigate", (event: Electron.Event, url: string) => {
         try {
-            const parsed = new URL(url);
-            if (BLOCKED_PROTOCOLS.includes(parsed.protocol)) {
+            const scheme = getNavigationScheme(url);
+            if (scheme === "invalid") return;
+            if (scheme === "blocked") {
                 event.preventDefault();
                 sendEvent(
                     sender,
@@ -427,13 +487,26 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
                 );
                 return;
             }
-            if (!CHROMIUM_NAVIGATION_PROTOCOLS.includes(parsed.protocol)) {
+            if (scheme === "external") {
                 event.preventDefault();
-                sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
+                const reg = registrations.get(key);
+                // Consume the activation: one user action hands over at most one URL.
+                const activated = !!reg && Date.now() - reg.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
+                if (reg) reg.lastUserActivation = 0;
+                if (activated) sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
             }
         } catch {
             // Invalid URL
         }
+    });
+
+    on("will-redirect", (event: Electron.Event, details: Electron.WebContentsWillRedirectEventParams) => {
+        if (getNavigationScheme(details.url) === "blocked") event.preventDefault();
+    });
+
+    on("will-frame-navigate", (details: Electron.Event & Electron.WebContentsWillFrameNavigateEventParams) => {
+        // The main frame is handled by will-navigate.
+        if (!details.isMainFrame && getNavigationScheme(details.url) === "blocked") details.preventDefault();
     });
 
     // Intercept right-click context menu — relay params to renderer
@@ -462,6 +535,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // it lives in `preload-webview.ts` instead.
     on("before-input-event", (_e: Electron.Event, input: Electron.Input) => {
         if (input.type !== "keyDown") return;
+        const reg = registrations.get(key);
+        if (reg) reg.lastUserActivation = Date.now();
         // Escape leaves a page's HTML fullscreen, as in Chrome. Electron does not do it for a
         // webview guest, which left a fullscreen video with no keyboard way out.
         if (input.key === "Escape" && registrations.get(key)?.htmlFullscreen) {
@@ -544,7 +619,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // unless the user has activated (focused) them first.
     // Must go through on() — registerWebview re-runs on every dom-ready, and
     // only tracked listeners are removed by the unregisterWebview() above.
-    on("did-create-window", (childWindow: BrowserWindow) => {
+    on("did-create-window", (childWindow: BrowserWindow, details: Electron.DidCreateWindowDetails) => {
+        if (destroyPopupWithNodeIntegration(childWindow, details)) return;
         const reg = registrations.get(key);
         if (reg) releaseLostPress(reg, "a popup window");
         guardPopupWindow(childWindow, sender, tabId, internalTabId);
@@ -584,6 +660,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         bypassUnloadGuard: false,
         htmlFullscreen: false,
         pressed: null,
+        lastUserActivation: 0,
     });
 }
 
@@ -771,14 +848,8 @@ export function initBrowserHandlers(): void {
         return false;
     });
 
-    const isAppRenderer = (event: IpcMainEvent | IpcMainInvokeEvent): boolean =>
-        event.sender.session === session.fromPartition(appPartition)
-        && !event.sender.isDestroyed()
-        && event.sender.mainFrame === event.senderFrame
-        && !!BrowserWindow.fromWebContents(event.sender);
-
     const ownedRegistration = (event: IpcMainInvokeEvent, key: unknown): RegisteredWebview | undefined => {
-        if (!isAppRenderer(event) || typeof key !== "string" || key.length > 240) return undefined;
+        if (typeof key !== "string" || key.length > 240) return undefined;
         const registration = registrations.get(key);
         if (!registration || registration.senderWebContents !== event.sender
             || registration.webContents.isDestroyed()) return undefined;
@@ -788,7 +859,7 @@ export function initBrowserHandlers(): void {
         registration.webContents.session !== session.fromPartition(appPartition)
         && registration.webContents.session !== session.fromPartition(fileAccessPersistPartition);
 
-    ipcMain.handle(BrowserChannel.getSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): BrowserSitePermissions => {
+    guardedIpcHandle(BrowserChannel.getSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): BrowserSitePermissions => {
         const empty: BrowserSitePermissions = { origin: "", entries: [] };
         const registration = ownedRegistration(event, request?.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration)) return empty;
@@ -800,7 +871,7 @@ export function initBrowserHandlers(): void {
         } catch { return empty; }
     });
 
-    ipcMain.handle(BrowserChannel.setSitePermission, (event, request: SetBrowserSitePermissionRequest): boolean => {
+    guardedIpcHandle(BrowserChannel.setSitePermission, (event, request: SetBrowserSitePermissionRequest): boolean => {
         if (!request || typeof request !== "object") return false;
         const registration = ownedRegistration(event, request.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration) || typeof request.key !== "string"
@@ -808,14 +879,14 @@ export function initBrowserHandlers(): void {
         return setSitePermissionDecision(registration.webContents.session, registration.webContents.getURL(), request.key, request.decision);
     });
 
-    ipcMain.handle(BrowserChannel.resetSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): boolean => {
+    guardedIpcHandle(BrowserChannel.resetSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): boolean => {
         const registration = ownedRegistration(event, request?.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration)) return false;
         return resetSitePermissionDecisions(registration.webContents.session, registration.webContents.getURL());
     });
 
-    ipcMain.handle(BrowserChannel.resolvePermissionRequest, (event, request: { requestId: string; decision: "allow" | "block" }) => {
-        if (!isAppRenderer(event) || !request || typeof request.requestId !== "string"
+    guardedIpcHandle(BrowserChannel.resolvePermissionRequest, (event, request: { requestId: string; decision: "allow" | "block" }) => {
+        if (!request || typeof request.requestId !== "string"
             || (request.decision !== "allow" && request.decision !== "block")) return false;
         return resolvePermissionRequest(request.requestId, request.decision);
     });
@@ -823,48 +894,48 @@ export function initBrowserHandlers(): void {
     const validProfileName = (name: unknown): name is string => typeof name === "string"
         && name.trim().length > 0 && name.length <= 80 && !/[\\/]/.test(name)
         && !Array.from(name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
-    ipcMain.handle(BrowserChannel.listPermissionDecisions, (event, profileName: string) => {
-        if (!isAppRenderer(event) || !validProfileName(profileName)) return [];
+    guardedIpcHandle(BrowserChannel.listPermissionDecisions, (_event, profileName: string) => {
+        if (!validProfileName(profileName)) return [];
         if (profileName !== "default" && !hasSavedProfilePermissionDecisions(profileName)) return [];
         return listProfilePermissionDecisions(profileName);
     });
-    ipcMain.handle(BrowserChannel.removePermissionDecision, (event, request: { profileName: string; origin: string; permission: string }) => {
-        if (!isAppRenderer(event) || !request || !validProfileName(request.profileName)
+    guardedIpcHandle(BrowserChannel.removePermissionDecision, (_event, request: { profileName: string; origin: string; permission: string }) => {
+        if (!request || !validProfileName(request.profileName)
             || typeof request.origin !== "string" || typeof request.permission !== "string") return false;
         if (!hasSavedProfilePermissionDecisions(request.profileName)) return false;
         removeProfilePermissionDecision(request.profileName, request.origin, request.permission);
         return true;
     });
-    ipcMain.handle(BrowserChannel.clearPermissionDecisions, (event, profileName: string) => {
-        if (!isAppRenderer(event) || !validProfileName(profileName)) return false;
+    guardedIpcHandle(BrowserChannel.clearPermissionDecisions, (_event, profileName: string) => {
+        if (!validProfileName(profileName)) return false;
         if (!hasSavedProfilePermissionDecisions(profileName)) return false;
         clearProfilePermissionDecisions(profileName);
         return true;
     });
 
-    ipcMain.on(
+    guardedIpcOn(
         BrowserChannel.register,
         (event, request: BrowserRegisterRequest) => {
             registerWebview(event, request);
         },
     );
 
-    ipcMain.on(BrowserChannel.unregister, (_event, key: string) => {
+    guardedIpcOn(BrowserChannel.unregister, (_event, key: string) => {
         unregisterWebview(key);
     });
 
-    ipcMain.on(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => {
+    guardedIpcOn(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => {
         const reg = registrations.get(key);
         if (reg && !reg.webContents.isDestroyed()) {
             reg.webContents.setAudioMuted(muted);
         }
     });
 
-    ipcMain.on(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => {
+    guardedIpcOn(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => {
         exitHtmlFullscreen(key);
     });
 
-    ipcMain.on(BrowserChannel.allowPopups, () => {
+    guardedIpcOn(BrowserChannel.allowPopups, () => {
         globalPopupRateLimiter.allow("popups");
     });
 
@@ -872,7 +943,7 @@ export function initBrowserHandlers(): void {
     // is on the browser UI rather than inside the page). Arm the bypass flag
     // and reload here so the beforeunload guard is skipped without a prompt —
     // mirrors the main-side before-input-event path.
-    ipcMain.on(BrowserChannel.hardReload, (_event, key: string) => {
+    guardedIpcOn(BrowserChannel.hardReload, (_event, key: string) => {
         const reg = registrations.get(key);
         if (reg && !reg.webContents.isDestroyed()) {
             reg.bypassUnloadGuard = true;
@@ -880,13 +951,21 @@ export function initBrowserHandlers(): void {
         }
     });
 
-    ipcMain.handle(BrowserChannel.clearProfileData, async (_event, partition: string) => {
+    guardedIpcHandle(BrowserChannel.clearProfileData, async (_event, partition: string) => {
+        if (!isPersistentBrowserProfilePartition(partition)) {
+            console.warn(`[IPC] Rejected invalid partition for ${BrowserChannel.clearProfileData}`);
+            return;
+        }
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();
         await ses.clearCache();
     });
 
-    ipcMain.handle(BrowserChannel.clearCache, async (_event, partition: string) => {
+    guardedIpcHandle(BrowserChannel.clearCache, async (_event, partition: string) => {
+        if (!isPersistentBrowserProfilePartition(partition)) {
+            console.warn(`[IPC] Rejected invalid partition for ${BrowserChannel.clearCache}`);
+            return;
+        }
         const ses = session.fromPartition(partition);
         await Promise.all([
             ses.clearCache(),
@@ -895,7 +974,7 @@ export function initBrowserHandlers(): void {
         ]);
     });
 
-    ipcMain.handle(BrowserChannel.collectDom, async (_event, key: string) => {
+    guardedIpcHandle(BrowserChannel.collectDom, async (_event, key: string) => {
         return collectDom(key);
     });
 

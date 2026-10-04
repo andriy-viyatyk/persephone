@@ -2,7 +2,7 @@ import { errMessage } from "../../../shared/utils";
 import type { ICallRequest, ICallResult } from "ai-vision";
 import { pagesModel } from "../../api/pages";
 import { LogViewEditor } from "../../editors/log-view";
-import { isDialogEntry } from "../../editors/log-view/logTypes";
+import { isDialogEntry, isDialogResolved } from "../../editors/log-view/logTypes";
 import { dialogsState } from "../../ui/dialogs/DialogsView";
 import { getVisibleAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { DialogsNode, type DialogAdapter } from "./dialogs";
@@ -13,6 +13,9 @@ export const PENDING_DIALOG_GRACE_MS = 250;
 
 export const DIALOG_FALLBACK_TEXT =
     "A blocking dialog is open, but the dialogs node is not available yet; use window.screen.snapshot() and window.screen.click(...) to inspect and answer it.";
+
+// Inline dialog attention is reported once per renderer; later check pages.logView.dialogResult(id) or the [seq] user-answered event.
+const reportedInlineDialogKeys = new Set<string>();
 
 interface PendingSignal {
     pending: true;
@@ -131,16 +134,24 @@ export function collectAttention(): { text: string } | undefined {
 /** Scan parsed Log View model state; inline dialogs are not entries in dialogsState. */
 function collectLogViewAttention(): string[] {
     const sections: string[] = [];
+    const unresolvedKeys = new Set<string>();
     for (const page of pagesModel.pages) {
         const editor = page.mainEditorInstance;
-        if (!(editor instanceof LogViewEditor) || !editor.hasUnresolvedDialogs()) continue;
+        if (!(editor instanceof LogViewEditor)) continue;
         for (const entry of editor.getEntriesSnapshot()) {
-            if (!isDialogEntry(entry) || entry.button !== undefined) continue;
+            if (!isDialogEntry(entry) || isDialogResolved(entry)) continue;
+            const key = `${page.id}:${entry.id}`;
+            unresolvedKeys.add(key);
+            if (reportedInlineDialogKeys.has(key)) continue;
+            reportedInlineDialogKeys.add(key);
             sections.push([
                 `An inline Log View dialog is unanswered on page ${JSON.stringify(page.title)} (id ${JSON.stringify(page.id)}): dialog ${JSON.stringify(entry.id)} of type ${JSON.stringify(entry.type)}.`,
                 `Wait for the user in the Log View page, then read pages.logView.dialogResult(${JSON.stringify(entry.id)}). The agent cannot answer this dialog.`,
             ].join(" "));
         }
+    }
+    for (const key of reportedInlineDialogKeys) {
+        if (!unresolvedKeys.has(key)) reportedInlineDialogKeys.delete(key);
     }
     return sections;
 }

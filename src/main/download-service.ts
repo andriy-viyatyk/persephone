@@ -8,16 +8,28 @@ import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
 import { getDataFolder, preparePath } from "./utils";
 import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
-import { withNativeDialogSync } from "./native-dialog-tracker";
+import { withNativeDialog } from "./native-dialog-tracker";
 import { isRegisteredBrowserWebContents } from "./browser-service";
 import { registerSessionSource } from "./session-src-protocol";
 import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
+import { errMessage } from "../shared/utils";
 
 const PERSIST_FILE = "recentDownloads.json";
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
+const TEMP_DOWNLOAD_FOLDER = "persephone-downloads";
 
+interface DownloadRecord {
+    entry: DownloadEntry;
+    item?: DownloadItem;
+    tempPath: string;
+    targetPath?: string;
+    transferDone: boolean;
+    finishing: boolean;
+    referrerUrl?: string;
+    hostUrl?: string;
+}
 function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, data: unknown): void {
     const hostContents = (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
     try {
@@ -29,14 +41,51 @@ function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, da
     }
 }
 
+/** The http(s) URL to record, without credentials; undefined for anything else
+ *  (data:, blob:, about:), which Chrome records as about:internet. */
+function motwUrl(raw: string): string | undefined {
+    try {
+        const url = new URL(raw);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+        url.username = "";
+        url.password = "";
+        return url.href;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Mark a completed browser download as coming from the internet (Mark-of-the-Web), as Chrome
+ * and Firefox do: Windows then shows SmartScreen for executables, Protected View for Office
+ * files and the "blocked" flag on archives. Electron does not write it (US-1592).
+ * ZoneId=3 is always written: Persephone does not map URLs to the user's IE zones, so
+ * intranet sources are treated as internet too (the stricter side). A filesystem without
+ * alternate data streams (FAT32, exFAT, some network shares) cannot store the mark; the
+ * download itself still succeeds.
+ */
+async function writeMarkOfTheWeb(savePath: string, url: string, referrerUrl: string): Promise<void> {
+    if (process.platform !== "win32") return;
+    const lines = ["[ZoneTransfer]", "ZoneId=3"];
+    const referrer = motwUrl(referrerUrl);
+    if (referrer) lines.push(`ReferrerUrl=${referrer}`);
+    lines.push(`HostUrl=${motwUrl(url) ?? "about:internet"}`);
+    try {
+        await fs.promises.writeFile(`${savePath}:Zone.Identifier`, lines.join("\r\n") + "\r\n", "utf8");
+    } catch {
+        // No alternate data streams on this volume — nothing else to do.
+    }
+}
+
 class DownloadService {
-    private downloads = new Map<string, { entry: DownloadEntry; item?: DownloadItem }>();
+    private downloads = new Map<string, DownloadRecord>();
     private hookedSessions = new WeakSet<Session>();
     private idCounter = 0;
     private browserUrlMaskClaims: BrowserUrlMaskClaim[] = [];
 
     init(): void {
         this.loadPersisted();
+        void this.cleanupTemporaryDownloads();
         app.on("session-created", (ses) => {
             this.hookSession(ses);
         });
@@ -81,14 +130,14 @@ class DownloadService {
 
     showInFolder(id: string): void {
         const dl = this.downloads.get(id);
-        if (dl?.entry.savePath) {
+        if (dl?.entry.status === "completed" && dl.entry.savePath) {
             shell.showItemInFolder(dl.entry.savePath);
         }
     }
 
     clearCompleted(): void {
         for (const [id, dl] of this.downloads) {
-            if (dl.entry.status !== "downloading") {
+            if (dl.entry.status !== "downloading" && dl.entry.status !== "awaitingPath") {
                 this.downloads.delete(id);
             }
         }
@@ -119,11 +168,12 @@ class DownloadService {
         if (claim) {
             item.cancel();
             const torPartition = torService.findActivePartitionForSession(webContents.session);
+            const routed = Boolean(torPartition) || browserNetworkService.isProxiedSession(webContents.session);
             // A proxied profile is persistent but must not hand the board a direct fetch (US-1557).
             const sessionHandle = torPartition
                 || !webContents.session.isPersistent()
-                || browserNetworkService.isProxiedSession(webContents.session)
-                ? registerSessionSource(webContents.session, url, torPartition)
+                || routed
+                ? registerSessionSource(webContents.session, url, torPartition, routed)
                 : undefined;
             sendToBrowserHost(webContents, EventEndpoint.eOpenClaimedBrowserDownload, {
                 url,
@@ -149,89 +199,121 @@ class DownloadService {
 
     private handleOrdinaryDownload(item: DownloadItem, webContents: WebContents): void {
         const id = this.generateId();
-        let lastProgressSent = 0;
-
-        // Show our own save dialog to reliably capture the save path.
-        // Electron's getSavePath() returns empty for webview session downloads.
+        const recordSource = !torService.findActivePartitionForSession(webContents.session);
+        const referrerUrl = recordSource && !webContents.isDestroyed() ? webContents.getURL() : "";
         const parentWindow = this.getParentWindow(webContents);
-        // Downloads share the app-wide "save" folder memory: the Downloads folder is only the
-        // starting point until the user has saved somewhere, after which that folder wins.
-        // The dialog stays sync here — see dialog-folder-memory.ts for why that rules out the
-        // shared handlers in ipc/main/dialog-handlers.
-        const defaultPath = resolveDefaultPath({
-            kind: "save",
-            defaultPath: item.getFilename(),
-            location: "downloads",
-        });
-
-        const savePath = withNativeDialogSync(parentWindow, "file", () => dialog.showSaveDialogSync(
-            parentWindow,
-            { defaultPath },
-        ));
-
-        if (!savePath) {
-            item.cancel();
-            return;
-        }
-
-        rememberDirFromPick("save", savePath);
-        item.setSavePath(savePath);
-
+        const defaultPath = resolveDefaultPath({ kind: "save", defaultPath: item.getFilename(), location: "downloads" });
+        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER);
+        const tempPath = path.join(tempDirectory, id + ".part");
+        if (!preparePath(tempDirectory)) { item.cancel(); return; }
+        item.setSavePath(tempPath);
         const entry: DownloadEntry = {
-            id,
-            filename: path.basename(savePath),
-            url: item.getURL(),
-            savePath,
-            totalBytes: item.getTotalBytes(),
-            receivedBytes: 0,
-            status: "downloading",
-            startTime: Date.now(),
+            id, filename: item.getFilename(), url: item.getURL(), totalBytes: item.getTotalBytes(),
+            receivedBytes: 0, status: "downloading", startTime: Date.now(),
         };
-
-        this.downloads.set(id, { entry, item });
+        const record: DownloadRecord = { entry, item, tempPath, transferDone: false, finishing: false, referrerUrl };
+        this.downloads.set(id, record);
         openWindows.send(EventEndpoint.eDownloadStarted, { ...entry });
+        this.trackDownload(item, record, recordSource, referrerUrl);
+        void this.chooseDownloadPath(parentWindow, record, defaultPath);
+    }
 
+    private async chooseDownloadPath(parentWindow: BrowserWindow | undefined, record: DownloadRecord, defaultPath: string | undefined): Promise<void> {
+        const removeUnselectedDownload = async (): Promise<void> => {
+            if (!record.transferDone) record.item?.cancel();
+            try { await fs.promises.unlink(record.tempPath); } catch { /* The transfer may not have created its temp file yet. */ }
+            this.downloads.delete(record.entry.id);
+            openWindows.send(EventEndpoint.eDownloadRemoved, { id: record.entry.id });
+        };
+        try {
+            const result = await withNativeDialog(parentWindow, "file", () => dialog.showSaveDialog(parentWindow, { defaultPath }));
+            if (result.canceled || !result.filePath) { await removeUnselectedDownload(); return; }
+            rememberDirFromPick("save", result.filePath);
+            record.targetPath = result.filePath;
+            if (record.transferDone) await this.finishDownloadMove(record, record.hostUrl ?? record.entry.url, record.referrerUrl ?? "");
+        } catch (error) {
+            console.warn("[downloads] Save dialog failed: " + errMessage(error));
+            await removeUnselectedDownload();
+        }
+    }
+
+    private trackDownload(item: DownloadItem, record: DownloadRecord, recordSource: boolean, referrerUrl: string): void {
+        let lastProgressSent = 0;
         item.on("updated", (_event, state) => {
-            if (state === "progressing") {
-                entry.receivedBytes = item.getReceivedBytes();
-                entry.totalBytes = item.getTotalBytes();
-
-                const now = Date.now();
-                if (now - lastProgressSent >= PROGRESS_THROTTLE_MS) {
-                    lastProgressSent = now;
-                    openWindows.send(EventEndpoint.eDownloadProgress, {
-                        id,
-                        receivedBytes: entry.receivedBytes,
-                        totalBytes: entry.totalBytes,
-                    });
-                }
+            if (state !== "progressing") return;
+            record.entry.receivedBytes = item.getReceivedBytes();
+            record.entry.totalBytes = item.getTotalBytes();
+            const now = Date.now();
+            if (now - lastProgressSent >= PROGRESS_THROTTLE_MS) {
+                lastProgressSent = now;
+                openWindows.send(EventEndpoint.eDownloadProgress, {
+                    id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
+                });
             }
         });
-
         item.on("done", (_event, state) => {
-            entry.receivedBytes = item.getReceivedBytes();
-            entry.totalBytes = item.getTotalBytes();
-
+            record.entry.receivedBytes = item.getReceivedBytes();
+            record.entry.totalBytes = item.getTotalBytes();
             if (state === "completed") {
-                entry.status = "completed";
-                openWindows.send(EventEndpoint.eDownloadCompleted, { id, savePath: entry.savePath });
+                record.hostUrl = recordSource ? (item.getURLChain().at(-1) ?? item.getURL()) : "";
+            }
+            if (state === "completed" && !record.targetPath) {
+                record.transferDone = true;
+                record.entry.status = "awaitingPath";
+                openWindows.send(EventEndpoint.eDownloadAwaitingPath, {
+                    id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
+                });
+            } else if (state === "completed") {
+                record.transferDone = true;
+                void this.finishDownloadMove(record, record.hostUrl ?? "", referrerUrl);
             } else if (state === "cancelled") {
-                entry.status = "cancelled";
-                openWindows.send(EventEndpoint.eDownloadFailed, { id, error: "Cancelled" });
+                record.entry.status = "cancelled";
+                openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: "Cancelled" });
+                void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             } else {
-                entry.status = "failed";
-                entry.error = "Download interrupted";
-                openWindows.send(EventEndpoint.eDownloadFailed, { id, error: entry.error });
+                record.entry.status = "failed";
+                record.entry.error = "Download interrupted";
+                openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: record.entry.error });
+                void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             }
-
-            // Release DownloadItem reference
-            const dl = this.downloads.get(id);
-            if (dl) {
-                dl.item = undefined;
-            }
-
+            record.item = undefined;
             this.persist();
         });
+    }
+
+    private async finishDownloadMove(record: DownloadRecord, hostUrl: string, referrerUrl: string): Promise<void> {
+        if (record.finishing || !record.targetPath) return;
+        record.finishing = true;
+        const savePath = record.targetPath;
+        try {
+            await fs.promises.rm(savePath, { force: true });
+            try { await fs.promises.rename(record.tempPath, savePath); }
+            catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+                await fs.promises.copyFile(record.tempPath, savePath);
+                await fs.promises.unlink(record.tempPath);
+            }
+            await writeMarkOfTheWeb(savePath, hostUrl, referrerUrl);
+            record.entry.filename = path.basename(savePath);
+            record.entry.savePath = savePath;
+            record.entry.status = "completed";
+            openWindows.send(EventEndpoint.eDownloadCompleted, { id: record.entry.id, savePath });
+            this.persist();
+        } catch (error) {
+            record.entry.status = "failed";
+            record.entry.error = "Failed to save download: " + errMessage(error);
+            openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: record.entry.error });
+            try { await fs.promises.unlink(record.tempPath); } catch { /* Best-effort cleanup. */ }
+        }
+    }
+
+    private async cleanupTemporaryDownloads(): Promise<void> {
+        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER);
+        try {
+            const entries = await fs.promises.readdir(tempDirectory, { withFileTypes: true });
+            await Promise.all(entries.filter(entry => entry.isFile() && entry.name.endsWith(".part"))
+                .map(entry => fs.promises.unlink(path.join(tempDirectory, entry.name)).catch((): void => undefined)));
+        } catch { /* The directory may not exist until the first download. */ }
     }
 
     private loadPersisted(): void {
@@ -242,7 +324,12 @@ class DownloadService {
             const data = fs.readFileSync(filePath, { encoding: "utf-8" });
             const entries: DownloadEntry[] = JSON.parse(data);
             for (const entry of entries) {
-                this.downloads.set(entry.id, { entry });
+                this.downloads.set(entry.id, {
+                    entry,
+                    tempPath: "",
+                    transferDone: true,
+                    finishing: false,
+                });
             }
         } catch {
             // Ignore corrupted data

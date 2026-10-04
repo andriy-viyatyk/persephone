@@ -1,7 +1,7 @@
 ---
 title: "Excalidraw Board"
 audience: both
-summary: "The bundled Excalidraw board for drawing, annotation, screen snips, and image export."
+summary: "Draw or annotate diagrams with the bundled Excalidraw board; capture screen snips and export images."
 ---
 
 # Excalidraw Board

@@ -136,6 +136,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             // user navigated. The probe dedupes per tab and document generation, so this costs at
             // most the one evaluate it would have cost anyway.
             this.model.webview.probeAiVisionOnReady(this.tabId);
+            void this.model.webview.injectSiteExtension(this.tabId);
         };
         this.listenNative("dom-ready", onDomReady);
 
@@ -682,6 +683,32 @@ class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt
     }
 }
 
+class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }> {
+    private readonly copy = createTextElement("");
+    private readonly trust: ButtonView;
+    private readonly notNow: ButtonView;
+    public constructor(props: { model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }) {
+        const root = createPanelElement({ name: "site-extension-trust-prompt", direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs", background: "light", borderBottom: true, shrink: false });
+        super(props, root);
+        const details = createPanelElement({ name: "site-extension-trust-copy", flex: true, direction: "column", gap: "xs" });
+        details.append(this.copy);
+        this.trust = this.child(new ButtonView({ name: "site-extension-trust", size: "sm", variant: "ghost", children: "Trust", onClick: () => void props.model.webview.trustSiteExtensionPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        this.notNow = this.child(new ButtonView({ name: "site-extension-not-now", size: "sm", variant: "ghost", children: "Not now", onClick: () => props.model.webview.dismissSiteExtensionTrustPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        root.append(details, this.trust.root, this.notNow.root);
+    }
+    protected onMount(): void { this.trust.mount(); this.notNow.mount(); this.sync(); }
+    protected onUpdate(props: { model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }): void { this.props = props; this.sync(); }
+    private sync(): void {
+        const { name, host, hosts, available } = this.props.prompt;
+        const otherHosts = hosts.filter((item) => item !== host);
+        this.copy.textContent = available
+            ? `Site extension ${name} wants to run on ${host}${otherHosts.length ? `. It will also run on: ${otherHosts.join(", ")}.` : "."} This script can do anything available to your signed-in site session.`
+            : `Site extension ${name} is no longer valid for ${host}; no trust was granted.`;
+        this.copy.dataset.name = "site-extension-trust-prompt-copy";
+        this.trust.root.hidden = !available;
+    }
+}
+
 class StaticNodeView extends VanillaView<Record<string, never>> { public constructor(root: HTMLElement) { super({}, root); } }
 
 export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
@@ -694,6 +721,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     private readonly pageViewCtor: VanillaViewCtor<PageSlotViewProps>;
     private readonly popupSwap: SubtreeSwap<"blocked">;
     private readonly permissionSwap: SubtreeSwap<"permission">;
+    private readonly siteExtensionTrustSwap: SubtreeSwap<"site-extension-trust">;
     private readonly torSwap: SubtreeSwap<"tor">;
     private readonly networkSwap: SubtreeSwap<"network">;
     private networkView: ProfileNetworkErrorView | undefined;
@@ -708,6 +736,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     private loadingBar: HTMLDivElement;
     private popupView: PopupBlockedView | undefined;
     private permissionView: PermissionPromptBarView | undefined;
+    private siteExtensionTrustView: SiteExtensionTrustPromptBarView | undefined;
     private torView: TorStatusOverlayView | undefined;
     private findView: FindBarView | undefined;
     private drawerView: BookmarksDrawerView | undefined;
@@ -729,8 +758,8 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         this.browserBody = createPanelElement({ name: "browser-body", direction: "row", flex: true, overflow: "hidden", position: "relative" });
         this.pageManager = this.child(new PageManagerView({ pageIds: [], activeId: "", renderPage: () => this.pageViewCtor }));
         this.splitter = this.child(new SplitterView({ name: "tabs-webview-splitter", orientation: "vertical", value: this.model.state.get().tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" }));
-        this.popupSwap = new SubtreeSwap(this.popupHost); this.permissionSwap = new SubtreeSwap(this.popupHost); this.torSwap = new SubtreeSwap(this.webviewArea); this.networkSwap = new SubtreeSwap(this.webviewArea); this.clickSwap = new SubtreeSwap(this.webviewArea); this.findSwap = new SubtreeSwap(this.webviewArea); this.drawerSwap = new SubtreeSwap(this.browserBody); this.suggestionsSwap = new SubtreeSwap(this.root);
-        this.own(() => { this.popupSwap.dispose(); this.permissionSwap.dispose(); this.torSwap.dispose(); this.networkSwap.dispose(); this.clickSwap.dispose(); this.findSwap.dispose(); this.drawerSwap.dispose(); this.suggestionsSwap.dispose(); });
+        this.popupSwap = new SubtreeSwap(this.popupHost); this.permissionSwap = new SubtreeSwap(this.popupHost); this.siteExtensionTrustSwap = new SubtreeSwap(this.popupHost); this.torSwap = new SubtreeSwap(this.webviewArea); this.networkSwap = new SubtreeSwap(this.webviewArea); this.clickSwap = new SubtreeSwap(this.webviewArea); this.findSwap = new SubtreeSwap(this.webviewArea); this.drawerSwap = new SubtreeSwap(this.browserBody); this.suggestionsSwap = new SubtreeSwap(this.root);
+        this.own(() => { this.popupSwap.dispose(); this.permissionSwap.dispose(); this.siteExtensionTrustSwap.dispose(); this.torSwap.dispose(); this.networkSwap.dispose(); this.clickSwap.dispose(); this.findSwap.dispose(); this.drawerSwap.dispose(); this.suggestionsSwap.dispose(); });
         this.buildTree();
     }
 
@@ -779,7 +808,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
                 this.focusTimer = setTimeout(() => this.model.urlBar.focusUrlInput(), 100);
             }
         }
-        this.syncPopup(state); this.syncPermissionPrompt(state); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncFind(state); this.syncDrawer(state); this.syncSuggestions(state);
+        this.syncPopup(state); this.syncPermissionPrompt(state); this.syncSiteExtensionTrustPrompt(state); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncFind(state); this.syncDrawer(state); this.syncSuggestions(state);
     };
 
     private syncPopup(state: BrowserEditorState): void {
@@ -793,6 +822,15 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         this.permissionSwap.set("permission", () => { created = new PermissionPromptBarView({ model: this.model, prompt }); this.permissionView = created; return created; });
         created?.mount();
         this.permissionView?.update({ model: this.model, prompt });
+    }
+    private syncSiteExtensionTrustPrompt(state: BrowserEditorState): void {
+        const documentId = this.model.webview.siteDocumentId(state.activeTabId);
+        const prompt = state.siteExtensionTrustPrompts.find((item) => item.internalTabId === state.activeTabId && item.documentId === documentId);
+        if (!prompt) { this.siteExtensionTrustView = undefined; this.siteExtensionTrustSwap.clear(); return; }
+        let created: SiteExtensionTrustPromptBarView | undefined;
+        this.siteExtensionTrustSwap.set("site-extension-trust", () => { created = new SiteExtensionTrustPromptBarView({ model: this.model, prompt }); this.siteExtensionTrustView = created; return created; });
+        created?.mount();
+        this.siteExtensionTrustView?.update({ model: this.model, prompt });
     }
     private syncTor(state: BrowserEditorState): void {
         if (!state.isTor || !state.torOverlayVisible) { this.torView = undefined; this.torSwap.clear(); return; }

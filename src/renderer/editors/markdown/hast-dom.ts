@@ -1,5 +1,6 @@
 import { find, html, svg, type Info, type Schema } from "property-information";
 import type { Element as HastElement, Properties } from "hast";
+import { isSafeMarkdownUrl } from "./markdown-sanitize";
 
 export type HastNamespace = "html" | "svg";
 export type HastProperties = Record<string, unknown>;
@@ -110,6 +111,13 @@ function setProperty(element: globalThis.Element, info: Info, value: unknown): v
     setNamespacedAttribute(element, info, String(value));
 }
 
+function isBlockedProperty(info: Info, value: unknown): boolean {
+    const attribute = info.attribute.toLowerCase();
+    if (attribute === "srcdoc" || attribute === "formaction" || attribute === "action") return true;
+    if (attribute !== "href" && attribute !== "src" && attribute !== "xlink:href") return false;
+    return !isSafeMarkdownUrl(String(value), attribute === "src" ? "src" : "href");
+}
+
 /** Apply HAST properties to a real DOM element using property-information. */
 export function applyHastProperties(
     element: globalThis.Element,
@@ -124,6 +132,7 @@ export function applyHastProperties(
         const info = find(schema, name);
         const value = serializeValue(info, rawValue);
         if (value == null || isNaNValue(value)) continue;
+        if (isBlockedProperty(info, value)) continue;
         setProperty(element, info, value);
     }
 }
@@ -142,6 +151,7 @@ export function toDomProperties(
         const info = find(schema, name);
         const value = serializeValue(info, rawValue);
         if (value == null || isNaNValue(value)) continue;
+        if (isBlockedProperty(info, value)) continue;
         result[info.property] = info.property === "style" && value && typeof value === "object"
             ? styleObjectToString(value as Record<string, unknown>)
             : value;

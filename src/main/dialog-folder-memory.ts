@@ -12,9 +12,8 @@ import { electronStore } from "./e-store";
  * choice to the OS shell's own per-application history. Saving several files into one folder
  * then meant re-navigating there every time.
  *
- * Lives apart from `ipc/main/dialog-handlers` because the download path cannot use those:
- * Electron's `will-download` requires `setSavePath` before the handler returns, so it calls
- * `dialog.showSaveDialogSync` and needs the same logic synchronously.
+ * Lives apart from `ipc/main/dialog-handlers` because the download handler sets a temporary
+ * path synchronously before opening its picker through the shared asynchronous dialog tracker.
  */
 
 export type DialogKind = "open" | "save" | "folder";

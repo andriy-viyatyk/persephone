@@ -71,10 +71,10 @@ export interface DownloadEntry {
     id: string;
     filename: string;
     url: string;
-    savePath: string;
+    savePath?: string;
     totalBytes: number;
     receivedBytes: number;
-    status: "downloading" | "completed" | "failed" | "cancelled";
+    status: "downloading" | "awaitingPath" | "completed" | "failed" | "cancelled";
     startTime: number;
     error?: string;
 }
@@ -168,6 +168,12 @@ export interface BoardArchiveDownloadRequest {
     /** Expected byte size (from the catalog) — used for the progress bar total. */
     size: number;
 }
+
+export type RecordingRegion = "window" | "page" | "editor";
+export interface RecordingSessionRequest { region: RecordingRegion }
+export interface RecordingSessionStartResult { recordingId: string; chromeMediaSourceId: string; path: string }
+export interface RecordingFinalizeRequest { recordingId: string; extension: "mp4" | "webm" }
+export interface RecordingSessionChunk { recordingId: string; chunk: Uint8Array }
 
 interface VideoStreamSessionConfigOptions {
     /** Custom request headers forwarded to the source URL. */

@@ -54,7 +54,7 @@ export interface IAiCallContext {
 export const RESERVED_ROOT_NAMES: readonly string[] = ["windows", "main", "guides", "script", "pipe"];
 
 const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
-    { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. Also holds pages.logView — the channel for showing the user output or asking them a question." },
+    { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. To show the user a table, grid, or other output, or ask a question, use pages.logView.push; pages.addEditorPage can create a dedicated grid-json table page." },
     { name: "page", kind: "property", summary: "The active page (same as the `page` global in scripts)." },
     { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search the live descriptor graph for object-model paths; use guides.search for documentation text." },
     { name: "version", kind: "property", summary: "Persephone version string." },
@@ -67,6 +67,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "window", kind: "property", node: true, summary: "This window: state, sidebar, zoom, and multi-window actions." },
     { name: "proc", kind: "property", node: true, summary: "Spawn and manage child processes.", caution: "runs processes with the user's privileges" },
     { name: "boards", kind: "property", node: true, summary: "Boards — sandboxed mini web-apps: create, open, trust, install, update, and remove." },
+    { name: "siteExtensions", kind: "property", node: true, summary: "Inspect, scaffold, reload, and remove HTTPS site extensions; only the user can approve execution in the browser Trust bar." },
     { name: "tools", kind: "property", node: true, summary: "Agent Tools: search and execute registered tool scripts, inspect or refresh toolsets, and request user registration or remove one.", caution: "execution runs registered scripts with the user's privileges and registration requires user consent" },
     { name: "boardVars", kind: "property", node: true, summary: "Administer board environment variables and secrets." },
     { name: "editors", kind: "property", node: true, summary: "The editor registry: which editors exist and which languages they take." },
@@ -103,7 +104,7 @@ const SCRIPT_MEMBERS: readonly IAiMember[] = [
 
 const SCRIPT_HELP = `
 script.execute(code, pageId?, language?) runs code in the renderer execution context. The available
-script globals are app, page, io, and ai; app exposes application services, and page is the selected
+script globals are app, page, and io; app exposes application services, and page is the selected
 page's script global. If pageId is omitted, execution targets the active page; pass a page id to
 target that page explicitly. language is optional and may be "javascript" or "typescript"; TypeScript
 is transpiled without type checking.
@@ -160,7 +161,7 @@ What you can do here:
     waitFor / snapshot: Playwright-like automation over a tab the user can watch.
   Build the user a small app - boards are sandboxed offline web-apps you author
     (boards.createBoard); once open, you drive the board's own model at pages[i].editor.app.
-  Run code - script.execute("1 + 1") in the renderer, with the app, page, io and ai globals.
+  Run code - script.execute("1 + 1") in the renderer, with the app, page and io globals.
   Point at Persephone's own UI - ui.elements names the on-screen controls, ui.highlight points at
     one, and ui.guide.step(target, message) walks the user through a screen one control at a time.
   Reach the machine - fs, proc and shell; all cautioned, because they act with the user's rights.
@@ -253,6 +254,7 @@ export class AiRoot implements IAiVisible {
     get window() { return this.app.window; }
     get proc() { return this.app.proc; }
     get boards() { return this.app.boards; }
+    get siteExtensions() { return this.app.siteExtensions; }
     get tools() { return toolsNode; }
     get boardVars() { return this.app.boardVars; }
     get editors() { return this.app.editors; }

@@ -40,6 +40,13 @@
         font-family: inherit;
     }
 
+    [data-part="record-choice"] { padding-inline-start: 28px; }
+    [data-name="record-region-toggle"] [data-part="chevron"] { display: flex; margin-inline-start: auto; opacity: 0.7; transition: transform 0.15s; }
+    [data-name="record-region-toggle"] [data-part="chevron"] svg { width: 14px; height: 14px; }
+    /* The circle glyph draws a small dot in its 24px box; enlarge it to read like the scissors icons. */
+    [data-type="header-quick-settings-snip-row"][data-name="record-region-toggle"] [data-part="icon"] svg { width: 26px; height: 26px; flex-shrink: 0; }
+    [data-name="record-region-toggle"][data-expanded] [data-part="chevron"] { transform: rotate(90deg); }
+
     [data-type="header-quick-settings-snip-row"]:hover,
     [data-type="header-quick-settings-service-row"]:hover {
         background-color: var(--color-bg-selection, currentColor);

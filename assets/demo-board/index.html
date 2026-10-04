@@ -67,9 +67,10 @@
             <ul id="checks" class="checks"></ul>
             <div class="note">
                 The board runs in a cross-origin <code>&lt;iframe&gt;</code> with <code>nodeIntegrationInSubFrames</code> off,
-                isolated from the host by the Same-Origin Policy, behind a CSP that forbids remote network. The board cannot
-                reach Node, the filesystem, the host window, or the internet directly — everything privileged goes through
-                <code>persephone.execute()</code> (your scripts) or the integration tier.
+                isolated from the host by the Same-Origin Policy, behind a CSP that forbids remote network. The manifest
+                explicitly grants <code>execute</code>, <code>service</code>, <code>appScripting</code>, and
+                <code>fileSystem: "board"</code> for the demos below; every other flag is false. Those grants enable
+                only their matching bridge surfaces. A board with <code>fileSystem: false</code> can still use <code>readFile()</code> for the exact document hosted in its frame on bridge <code>1.32.0+</code>; other bridge file reads, writes, and dialogs need a file-system grant. Native same-origin fetches still read this board's assets. This demo declares <code>fileSystem: "board"</code> because its examples use file dialogs and board-scoped paths.
             </div>
         </section>
 
@@ -242,13 +243,17 @@
 
             <h2><code>persephone.call()</code> — inspect the hosting page</h2>
             <p class="muted">
-                A trusted Board can resolve the page-scoped AiVision tree through its hosting page.
+                This demo declares <code>appScripting: true</code> for these board-origin calls. A trusted Board can resolve the page-scoped AiVision tree through its hosting page.
                 Results are JSON-safe; append <code>.$describe</code> to a node path for its structured
                 descriptor, while <code>$help</code> remains the prose form. The hosting page stays fixed
                 if another tab becomes active;
                 process-wide <code>main.*</code> and <code>windows[i].*</code> paths belong to the MCP
                 <code>call</code> tool instead.
             </p>
+            <p class="muted">Without <code>appScripting: true</code>, these calls reject with
+                <code>permission-denied: "appScripting" is not enabled in board-manifest.json</code>.
+                Inspect the call and add only the needed grant. Added permissions ask for approval
+                on the next open/reload; never accept Trust Board unless the user asks.</p>
             <div class="row">
                 <button class="p-btn primary" data-test="callHostPage">read page.title + editor metadata</button>
                 <button class="p-btn primary" data-test="describeHostPage">describe page.editor</button>
@@ -268,9 +273,10 @@
             <p class="muted">
                 Service protocol traffic stays on the host channel. The service writes diagnostics to
                 <code>ui.log</code>; its storage calls are main-routed through <code>persephone.storage</code> and
-                share this board's store. A declared <code>permissions: ["service"]</code> is disclosure and
-                lifecycle hygiene, not a security boundary or privilege grant; trust remains the real
-                code-execution decision.
+                share this board's store. The manifest grants <code>service: true</code> so Persephone may
+                start this background process; <code>execute: true</code> enables this demo's process examples,
+                <code>appScripting: true</code> enables its <code>persephone.call()</code> and capability calls,
+                and <code>fileSystem: "board"</code> enables its file dialogs and board-scoped paths.
             </p>
 
             <div class="row">
@@ -315,6 +321,11 @@
                 The provider also implements <code>readRange</code>; the third button resolves the
                 same service-backed bytes through <code>persephone.content.open()</code> without a page.
             </p>
+            <p class="muted">These are same-origin board assets, not remote
+                <code>persephone.fetch()</code> requests. Native <code>fetch("./data.json")</code> or
+                <code>fetch("board://&lt;host&gt;/data.json")</code> reads this board's files with
+                <code>fileSystem: false</code>; bridge <code>persephone.fetch()</code> needs
+                <code>network</code>. This demo leaves <code>network: false</code>.</p>
             <div class="service-status" id="stream-status" role="status">No stream request made.</div>
             <pre id="stream-readout" class="service-readout">Range response details appear here.</pre>
         </section>
@@ -355,10 +366,10 @@
         <section class="panel" data-panel="build">
             <h2>Anatomy of a board</h2>
             <ul>
-                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence is what marks the folder as a board. Custom-editor behavior fields are optional and trust-gated; see the authoring guide for <code>fileMasks</code>, <code>folderMasks</code>, and direct-folder <code>folderEditorMasks</code>. New independent registration issues produce a toast once and remain listed in Board Info; unchanged issues do not toast again on refresh. This demo also declares <code>minBridgeVersion: "1.8.0"</code>, <code>permissions: ["service", "contentProviders", "capabilities"]</code>, the <code>demo.greet</code> capability, the <code>demo/mem</code> provider, and a <code>stream-host</code> fixture.</li>
+                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence marks the folder as a board. This demo requires <code>minBridgeVersion: "1.30.0"</code> and declares <code>execute: true</code> for process examples, <code>service: true</code> for its background service, <code>appScripting: true</code> for board calls and capability invocation, and <code>fileSystem: "board"</code> for its file dialogs and picked paths. Every other permission is explicitly false. Its <code>contentProviders</code> entry is registered by the service, not a permission flag.</li>
                 <li><code>index.html</code> — your page. Edit it, then choose <strong>… → Reload board</strong> in the board toolbar to apply.</li>
                 <li><code>app.js</code> / <code>style.css</code> — your logic and styling (reference relatively, e.g. <code>./app.js</code>). Boards don't auto-reload — use <strong>… → Reload board</strong> in the board toolbar (or <code>call</code> at <code>pages[i].editor.reload()</code> when an agent is driving) to apply edits.</li>
-                <li><code>scripts/</code> — backend scripts in any language, invoked via <code>persephone.execute("scripts/thing.js")</code>. <code>cwd</code> defaults to the board folder, so relative paths just work. For a <strong>Node</strong> script that must run on any machine, use <code>persephone.executeNode("scripts/thing.mjs")</code> — it runs on Persephone's bundled Node (no install needed). The resident <code>node-server.mjs</code> is page-owned; the declared <code>service.mjs</code> is platform-owned, supervised, lazy, and usable with no page open.</li>
+                <li><code>scripts/</code> — backend scripts in any language, invoked via <code>persephone.execute("scripts/thing.js")</code> (<code>execute: true</code> required). <code>cwd</code> defaults to the board folder, so relative paths just work. For a <strong>Node</strong> script that must run on any machine, use <code>persephone.executeNode("scripts/thing.mjs")</code> — it runs on Persephone's bundled Node (no install needed). The resident <code>node-server.mjs</code> is page-owned; the declared <code>service.mjs</code> requires <code>service: true</code> and is platform-owned, supervised, lazy, and usable with no page open.</li>
                 <li><code>service.mjs</code> — an ESM service entry with a board-root cwd, sanitized environment, standard Node built-ins, and board-root <code>node_modules</code> resolution. Its stdout/stderr diagnostics are captured in <code>ui.log</code>; use <code>persephone.service.request</code> and <code>persephone.storage</code> rather than inventing a persistence file.</li>
             </ul>
 

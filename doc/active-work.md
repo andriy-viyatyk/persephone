@@ -11,11 +11,18 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-_No active work._
+*(none)*
 
 ## Planned
 
-_No planned work._
+*(none)*
+
+## Scheduled
+
+Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or
+**Planned**) and investigate it as usual.
+
+- [ ] **2027-01-03** — [US-1609: Remove the legacy (undeclared) board permission fallback](tasks/US-1609-remove-legacy-board-permissions/README.md) — ends the EPIC-119 / US-1608 deprecation period
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 
@@ -34,6 +41,12 @@ Each section (Active / Planned) lists epics as top-level items and tasks as sub-
 - *(no epic)*
   - [ ] US-AAA: Standalone task
 ```
+
+### Scheduled work
+
+The **Scheduled** section holds tasks with a not-before date, written as `**YYYY-MM-DD**` at the
+start of the entry and sorted by date. Agents reading the dashboard should mention any entry whose
+date has passed. When it is due, move it to Active or Planned.
 
 ### Starting work
 

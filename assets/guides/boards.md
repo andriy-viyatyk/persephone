@@ -111,40 +111,87 @@ Boards can live **anywhere on disk** — any folder containing a `board-manifest
 
 ### Board trust gate
 
-Because `persephone.execute()` runs programs with your full user privileges, **each board must be explicitly trusted** before it renders or any script runs. Persephone shows a warning dialog that states this plainly — exactly like VS Code workspace trust.
+**Each board must be trusted before it renders or runs.** Trust is the first gate; the board's `permissions` in `board-manifest.json` are a second gate that limits what its bridge can do. The Trust board dialog lists the permissions the board requests in plain language. Permissions marked **Full access** can reach everything your user account can. A board with every permission off can still show its own pages, work with the document opened in it, copy to the clipboard, and open links inside Persephone.
 
 - **Boards you create** (via **"New board"**, `app.boards.createBoard()`, or the `boards.createBoard` call path) are **auto-trusted immediately** — no prompt appears.
 - **Foreign boards** (any board Persephone did not create for you) show a **Trust board** dialog on first open:
 
-  > *"Trusting this board lets it run programs on your computer with your full user privileges — including reading and changing your files and using any signed-in command-line tools (cloud CLIs, git, etc.). Only trust boards you created or fully understand. If you're not sure about a board, ask your AI agent to review its scripts before trusting it."*
+  The dialog lists the board's requested permissions, one per line with a check mark, before you decide. Review the list carefully; **Run programs and scripts**, **App scripting**, and unrestricted file or network access are marked **Full access**. Only trust boards you created or fully understand. If you're not sure about a board, ask your AI agent to review its scripts before trusting it.
 
-- **Trust is per board** (per board root folder), remembered across app restarts. Once trusted you are not prompted again. Trust is stored in `%AppData%\persephone\data\trustedBoards.txt`.
+- **Trust is per board** (per board root folder), remembered across app restarts together with the permissions you granted. Once trusted you are not prompted again unless the board asks for new or broader permissions (see below). Trust is stored in `%AppData%\persephone\data\trustedBoards.json`.
 - **Inherited trust** — when a folder is trusted, every board nested inside it is trusted automatically. You are never prompted for a board that lives within an already-trusted folder.
-- **Updates keep the trust you already gave.** Updating an installed board replaces its files under its existing trust, with no new prompt — so a board worth reviewing is worth re-reviewing after an update.
+- **Permission changes need your decision.** If a trusted board adds a permission or raises its access level, the next open or reload shows a **Board permissions changed** dialog. It lists every permission once: a check for kept permissions, **+** for added ones, and a struck-through **−** for removed ones. Choose **Accept** to grant the new set, or **Unregister board** to untrust it (a board installed from the catalog is uninstalled, after a confirmation). Closing the dialog decides nothing: the board is taken off its page (a page left empty closes) and the dialog appears again the next time you open it. Reducing permissions takes effect without a prompt. Updating an installed board does not itself ask again unless its declared permissions change.
 
-> Only trust boards you created or fully understand — trusting lets the board's scripts run programs and access files with your Windows user account's privileges.
+Changing a legacy board to an object-form permissions set also asks for trust once, even if the new
+set is narrower than the old unrestricted access.
+
+Boards whose manifest has no permissions declaration, or uses the old list format, are **Unrestricted** for compatibility and retain broad legacy access. These boards are deprecated and will stop working in a future Persephone release. The first-trust dialog explains this; opening an already-trusted affected board shows a persistent warning toast. Ask the agent that built the board to add a `permissions` object.
+
+> Only trust boards you created or fully understand. The dialog's permission list shows what bridge access you are granting; review any **Full access** entry carefully.
 
 **How to have it reviewed:** [Reviewing a board before you trust it](./agents/board-review.md) is the checklist to hand your AI agent — what trusting actually grants, what to look for in the board's scripts, and why a board that downloads code and runs it cannot be reviewed at all.
 
 ### Service declarations in `board-manifest.json`
 
-Boards may declare `minBridgeVersion`, `permissions`, and a board-relative `service` entry:
+Boards may declare `minBridgeVersion`, an object-form `permissions` set, and a board-relative `service` entry:
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
-  "permissions": ["service", "contentProviders"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "geolocation": false,
+    "notifications": false
+  },
   "service": "scripts/service.mjs"
 }
 ```
 
-The minimum bridge is a compatibility requirement. `permissions` is shown as disclosure and used
-for lifecycle hygiene, not as a security boundary or a grant; trust already gives a board arbitrary
-renderer and Node execution. A declared service is shown in Board Info and in the live
+The minimum bridge is a compatibility requirement. The permissions object is enforced: each enabled
+flag is a grant, and every omitted or false flag is denied. `fileSystem` can be `false`, `"board"`
+(the board folder and files selected in its dialogs), or `"full"` (any file you can access).
+`network` can be `false`, `"internet"` (public internet addresses), or `"full"` (also this computer
+and the local network). A board can read the exact document currently opened in its simple editor
+with `fileSystem: false`; this does not allow it to read another path or write files. Its own
+`board://` assets remain available. Use object-form permissions and set `minBridgeVersion` to at
+least `1.30.0`. A declared service is shown in Board Info and in the live
 `app.boards.list()` status payload.
+
+With `network: "internet"`, Persephone checks every address returned by DNS and connects only to
+those checked addresses. A request is blocked if any answer is a local or private address, which
+prevents a public hostname from being redirected to your local network through DNS rebinding.
+
+The permission list in the trust dialog uses these meanings:
+
+| Permission | Access it grants |
+|---|---|
+| `execute` | Run programs and scripts on this computer. **Full access.** |
+| `service` | Run a background program while Persephone is open. **Full access.** |
+| `fileSystem: "board"` / `"full"` | Read and write the board folder and files selected in its dialogs, or any file you can access. `"full"` is **Full access**. |
+| `openExternal` | Open links or files in your browser or another app. |
+| `appScripting` | Control Persephone, run app scripts, open and change pages, and use agent tools. **Full access.** |
+| `network: "internet"` / `"full"` | Connect to public internet services, or also this computer and your local network. `"full"` is **Full access**. |
+| `clipboardRead` | Read the contents of your clipboard. |
+| `camera`, `microphone`, `geolocation` | Use your camera or microphone, or read this device's location. |
+| `notifications` | Show desktop notifications. |
+
+`fileSystem: false` still allows a simple board to read the exact document currently open in that
+board. It cannot use this exception to read another path or write files. Boards can copy to the
+clipboard and show in-board messages without asking for these permissions; `clipboardRead` only
+controls reading clipboard contents.
+
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.23.0**. Bridge `1.23.0` uses one extension-to-MIME table for
+The current board bridge is **1.33.0**. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
+to read only its currently hosted document through `readFile(getFilePath())`. Bridge `1.23.0` uses one extension-to-MIME table for
 `board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.22.0` adds host-managed module-service lifecycle
 and structured service errors. Bridge `1.21.0` adds optional `representation` to capability
@@ -172,9 +219,9 @@ types and schemes use one-owner registration: the first trusted board wins, and 
 reported with its owner in Board Info. When a board registration is refused, Persephone shows a
 toast the first time that issue appears and lists it in Board Info. This also applies to refused
 capability, settings, and browser URL mask registrations. Boards may not claim `http`, `https`,
-`file`, `data`, `blob`, `mneme`, or any `persephone-*` scheme. Add `"contentProviders"` to
-`permissions` to disclose the surface; that list is not the functional gate, because the
-`contentProviders` declaration itself drives registration.
+`file`, `data`, `blob`, `mneme`, or any `persephone-*` scheme. `service: true` is required to run
+the declared background service. Provider registration is
+controlled by the `contentProviders` declaration itself; it is separate from the permission flags.
 
 Register the implementation from the declared module service, not from the board page:
 
@@ -320,14 +367,19 @@ described above.
 ### Capability handlers and in-memory intents
 
 A board can provide named work without making callers know which board handles it. Declare the
-capability in `board-manifest.json`; the declaration array is the functional trigger. Add
-`"capabilities"` to `permissions` to disclose the surface in trust and Board Info. Like the other
-permission values, this is lifecycle disclosure, not a security grant.
+capability in `board-manifest.json`; the declaration array controls registration. A handler that
+calls Persephone scripts, object model APIs, or agent tools also needs `appScripting: true`; declare
+only the permissions its code uses.
 
 ```json
 {
-  "minBridgeVersion": "1.21.0",
-  "permissions": ["capabilities"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false, "service": false, "fileSystem": false,
+    "openExternal": false, "appScripting": false, "network": false,
+    "clipboardRead": false, "camera": false, "microphone": false,
+    "geolocation": false, "notifications": false
+  },
   "capabilities": [
     { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" },
     { "id": "content.view", "representation": "pdf", "priority": 70 }
@@ -655,8 +707,13 @@ board-relative ESM entry such as:
 
 ```json
 {
-  "minBridgeVersion": "1.8.0",
-  "permissions": ["service"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false, "service": true, "fileSystem": false,
+    "openExternal": false, "appScripting": false, "network": false,
+    "clipboardRead": false, "camera": false, "microphone": false,
+    "geolocation": false, "notifications": false
+  },
   "service": "scripts/service.mjs"
 }
 ```
@@ -685,8 +742,8 @@ const sameValue = await persephone.storage.get("last-result");
 use, and rejects with lifecycle errors such as `untrusted`, `permission-denied`, `service-busy`,
 `service-timeout`, `service-exited`, or `service-failed`. Service status is visible in
 `app.boards.list()` as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The
-`permissions` field is disclosure and lifecycle hygiene, not a security boundary or privilege
-grant: trusting a board already permits arbitrary renderer and Node code.
+The `service` permission controls whether the declared background program can run. The Trust board
+dialog and Board Info show the permission set granted to that board.
 
 The host owns `init`, `ready`, `probe`, request replies, and shutdown for new-API entries. Register
 the request handler and any shutdown callbacks during top-level evaluation, before asynchronous
@@ -763,7 +820,7 @@ These handle in-app effects that `execute()` cannot express:
 
 | Method | Description |
 |--------|-------------|
-| `persephone.notify(message, type)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Errors are also appended to `ui.log`. |
+| `persephone.notify(message, type, options?)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Info, success and warning toasts close after a few seconds; `{ persistent: true }` (bridge 1.33.0) keeps the toast until you close it. Errors and warnings are also appended to `ui.log`. |
 | `persephone.clipboard.writeText(text)` | Write text to the OS clipboard. Useful for board actions triggered from Persephone's own toolbar, where the board page may not be focused. |
 | `persephone.clipboard.writeImage(data)` | Write encoded image bytes (`Uint8Array` or `ArrayBuffer`) to the OS clipboard. |
 | `persephone.icons.forFiles(names)` | Get the icon Persephone shows for each file name, as `{ [name]: dataUrl }` for `<img src>`, so a board's file list can match the Explorer. The file does not need to exist. Single-colour icons follow the current theme; request again after `persephone.onThemeChange` fires. |
@@ -1313,12 +1370,18 @@ A board should never store secrets — connection strings, API keys, passwords �
 
 ### What this does and doesn't protect
 
-This is **not** a sandbox against a malicious board — a trusted board can already run arbitrary code (via `persephone.executeNode`) and could read any file on disk directly if it wanted to. What it actually solves:
+For a board with object-form permissions, the bridge limits the operations it can request. A board
+granted `execute`, `fileSystem: "full"`, or another **Full access** permission can still reach
+sensitive resources, so review its grant list before trusting it. Legacy boards without an object
+permissions declaration remain unrestricted during the deprecation period. This storage feature
+solves:
 
 1. **Secrets no longer live in the shareable board folder.** Copying, zipping, or committing a board no longer leaks its connection strings.
 2. **Optional password encryption protects the file at rest** if the machine or the file itself is stolen.
 
-Per-board isolation (a board can only read/write its own slice) is a convenience boundary that prevents accidental cross-board reads — not a security wall against a board that decided to misbehave. The [board trust dialog](#board-trust-gate) remains the actual gate: once a board is trusted, this feature is about tidy, out-of-folder secret storage, not about restricting a hostile board.
+Per-board isolation keeps each board's variables in its own slice. Permission grants still govern
+what the board can do through Persephone; a board with broad grants may be able to access secrets
+through other means. The [board trust dialog](#board-trust-gate) shows its requested grants.
 
 ### Configuring the storage location
 

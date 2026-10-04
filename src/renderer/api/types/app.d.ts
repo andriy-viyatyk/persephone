@@ -11,6 +11,7 @@ import type { IProc } from "./proc";
 import type { IBoards } from "./boards";
 import type { IBoardVars } from "./board-vars";
 import type { ICapabilities } from "./capabilities";
+import type { ISiteExtensions } from "./site-extensions";
 import type { IPageCollection } from "./pages";
 import type { IAppEvents } from "./events";
 
@@ -66,6 +67,9 @@ export interface IApp {
 
     /** Built-in capability handoffs for opening and editing in-app content. */
     readonly capabilities: ICapabilities;
+
+    /** Inspect, scaffold, reload, and remove site extensions; trust remains user-only. */
+    readonly siteExtensions: ISiteExtensions;
 
     /** Open pages (tabs) in the current window. */
     readonly pages: IPageCollection;

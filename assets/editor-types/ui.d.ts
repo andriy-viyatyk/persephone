@@ -151,6 +151,15 @@ export interface IHighlightResult {
 /** Notification type for toast alerts. */
 export type NotificationType = "info" | "success" | "warning" | "error";
 
+/** Options for `ui.notify()`. */
+export interface INotifyOptions {
+    /**
+     * Keep the toast until the user closes or clicks it, instead of closing it after a few
+     * seconds. Use for messages the user must read in full. Error toasts always stay.
+     */
+    persistent?: boolean;
+}
+
 /** Plain data for one toast alert currently held by the notification bar. */
 export interface IAlert {
     /** Stable key for this alert during the renderer session. */
@@ -231,8 +240,11 @@ export interface IUserInterface {
      *
      * const result = await app.ui.notify("Click me!", "info");
      * if (result === "clicked") { console.log("User clicked the notification"); }
+     *
+     * // Stays on screen until the user closes it
+     * app.ui.notify("Read this carefully", "warning", { persistent: true });
      */
-    notify(message: string, type?: NotificationType): Promise<string | undefined>;
+    notify(message: string, type?: NotificationType, options?: INotifyOptions): Promise<string | undefined>;
 
     /**
      * Show a text dialog with a Monaco editor.

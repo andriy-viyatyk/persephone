@@ -1,7 +1,7 @@
 ---
 title: "Grid Editor"
 audience: both
-summary: "Spreadsheet-like viewing and editing of JSON, CSV, and JSONL data."
+summary: "View and edit tables, rows, and columns in JSON, CSV, and JSONL Grid pages."
 editorId: ["grid-json", "grid-csv", "grid-jsonl"]
 ---
 

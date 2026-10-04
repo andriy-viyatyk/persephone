@@ -27,6 +27,7 @@ import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
+import { siteExtensionTrustService } from "./site-extension-trust-service";
 import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
@@ -40,6 +41,9 @@ export function setupMainProcess() {
     // Load the main-owned board trust state before restored renderer windows can request services.
     void boardTrustService.init().catch((error: unknown) => {
         console.error(`Board trust initialization failed: ${errMessage(error)}`);
+    });
+    void siteExtensionTrustService.init().catch((error: unknown) => {
+        console.error(`Site extension trust initialization failed: ${errMessage(error)}`);
     });
 
     // US-800: recover standard Windows folder/system env vars before any child
@@ -105,6 +109,12 @@ export function setupMainProcess() {
                 supportFetchAPI: true,
             },
         },
+        {
+            // Native HTML preview documents (US-1590). A srcdoc frame would inherit the main window's
+            // strict CSP; this scheme serves each preview with its own (the pre-US-1590 policy).
+            scheme: "html-preview",
+            privileges: { standard: true, secure: true },
+        },
     ]);
 
     controller.init();
@@ -159,6 +169,14 @@ export function setupMainProcess() {
         // US-770) — boards load board://<host> iframes in this session, routed by host.
         const { initBoardProtocol } = await import("./board-protocol-service");
         initBoardProtocol(appPartition);
+        const { initHtmlPreviewProtocol } = await import("./html-preview-protocol");
+        initHtmlPreviewProtocol(appPartition);
+        try {
+            const { initializeRecordingService } = await import("./recording-service");
+            await initializeRecordingService();
+        } catch (error: unknown) {
+            console.error(`Recording cleanup initialization failed: ${errMessage(error)}`);
+        }
         openWindows.restoreState();
         setupTray();
         startPipeServer();

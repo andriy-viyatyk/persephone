@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="script-src 'self' 'unsafe-inline' 'unsafe-eval' file: data: blob: https: http:; worker-src 'self' blob:; child-src 'self' blob: board:;" />
+    content="script-src 'self' 'inline-script-hashes' 'unsafe-eval' file: blob:; worker-src 'self' blob:; child-src 'self' blob: board: html-preview:; object-src 'none'; base-uri 'self';" />
   <title>Persephone</title>
   <style>
     body {
@@ -13,7 +13,8 @@
   </style>
   <script>
     // Apply saved theme background before first paint to avoid flash.
-    // Runs synchronously in <head> before React loads.
+    // Runs synchronously in <head> before the renderer bundle loads.
+    // Its hash is computed by inlineScriptHashesPlugin.
     try {
       const p = require("path");
       const f = require("fs");

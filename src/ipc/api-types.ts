@@ -10,12 +10,17 @@ import {
     PublishedBoardVersions,
     RuntimeVersions,
     SaveFileDialogParams,
+    RecordingFinalizeRequest,
+    RecordingSessionChunk,
+    RecordingSessionRequest,
+    RecordingSessionStartResult,
     UpdateCheckResult,
     VideoStreamSessionConfig,
     VideoStreamSessionResult,
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
 import type { BoardThemePalette } from "./board-bridge-channels";
+import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
 import type {
     ClipboardFileList,
     ClipboardHistoryChanged,
@@ -42,6 +47,7 @@ export enum Endpoint {
     inspectElement = "inspectElement",
     openDevTools = "openDevTools",
     getCommonFolder = "getCommonFolder",
+    getSiteExtensionRuntime = "getSiteExtensionRuntime",
     zoom = "zoom",
     showItemInFolder = "showItemInFolder",
     showFolder = "showFolder",
@@ -84,6 +90,10 @@ export enum Endpoint {
     setClipboardHealthMonitoring = "setClipboardHealthMonitoring",
     restartClipboard = "restartClipboard",
     startScreenSnip = "startScreenSnip",
+    startWindowRecording = "startWindowRecording",
+    appendWindowRecordingChunk = "appendWindowRecordingChunk",
+    finalizeWindowRecording = "finalizeWindowRecording",
+    cancelWindowRecording = "cancelWindowRecording",
     clipboardReadFilePaths = "clipboardReadFilePaths",
     clipboardWriteFilePaths = "clipboardWriteFilePaths",
     startOsFileDrag = "startOsFileDrag",
@@ -115,11 +125,14 @@ export enum Endpoint {
     gitRemoteUrl = "gitRemoteUrl",
     capturePageRegion = "capturePageRegion",
     registerBoard = "registerBoard",
+    setHtmlPreview = "setHtmlPreview",
+    clearHtmlPreview = "clearHtmlPreview",
     appendBoardLog = "appendBoardLog",
     getBoardLogPath = "getBoardLogPath",
     unregisterBoard = "unregisterBoard",
     updateBoardTheme = "updateBoardTheme",
     requestBoardPort = "requestBoardPort",
+    updateBoardHostedPath = "updateBoardHostedPath",
     disposeBoardPort = "disposeBoardPort",
     setBoardBusy = "setBoardBusy",
     setBoardCallTimeout = "setBoardCallTimeout",
@@ -136,7 +149,16 @@ export enum Endpoint {
     cancelBoardDownload = "cancelBoardDownload",
     setBoardTrust = "setBoardTrust",
     getBoardTrustPaths = "getBoardTrustPaths",
+    getBoardPermissionGrants = "getBoardPermissionGrants",
+    getBoardMcpEndpoint = "getBoardMcpEndpoint",
+    authorizeBoardFilePath = "authorizeBoardFilePath",
+    bindBoardSessionSource = "bindBoardSessionSource",
     setDisabledBundledBoards = "setDisabledBundledBoards",
+    getSiteExtensionTrust = "getSiteExtensionTrust",
+    bindSiteExtensionFolder = "bindSiteExtensionFolder",
+    trustSiteExtension = "trustSiteExtension",
+    revokeSiteExtensionTrust = "revokeSiteExtensionTrust",
+    setSiteExtensionEnabled = "setSiteExtensionEnabled",
     getModuleServiceStatuses = "getModuleServiceStatuses",
     requestModuleServicePort = "requestModuleServicePort",
     requestModuleService = "requestModuleService",
@@ -207,11 +229,12 @@ export type Api = {
     [Endpoint.inspectElement]: (x: number, y: number) => Promise<void>;
     [Endpoint.openDevTools]: () => Promise<void>;
     [Endpoint.getCommonFolder]: (folder: CommonFolder) => Promise<string>;
+    [Endpoint.getSiteExtensionRuntime]: () => Promise<string>;
     [Endpoint.zoom]: (delta: number) => Promise<void>;
     [Endpoint.showItemInFolder]: (path: string) => Promise<void>;
     [Endpoint.showFolder]: (path: string) => Promise<void>;
     /** Resolves to Electron's error string — empty when the shell accepted the path. */
-    [Endpoint.openPath]: (path: string) => Promise<string>;
+    [Endpoint.openPath]: (path: string, boardRoot?: string) => Promise<string>;
     [Endpoint.windowReady]: () => Promise<void>;
     [Endpoint.getStartupInputs]: () => Promise<LaunchInput[]>;
     [Endpoint.getWindowIndex]: () => Promise<number>;
@@ -250,6 +273,10 @@ export type Api = {
     [Endpoint.setClipboardHealthMonitoring]: (active: boolean) => Promise<ClipboardStatus>;
     [Endpoint.restartClipboard]: (maxItems: number) => Promise<ClipboardStatus>;
     [Endpoint.startScreenSnip]: (hideWindows: boolean) => Promise<string | null>;
+    [Endpoint.startWindowRecording]: (request: RecordingSessionRequest) => Promise<RecordingSessionStartResult>;
+    [Endpoint.appendWindowRecordingChunk]: (request: RecordingSessionChunk) => Promise<void>;
+    [Endpoint.finalizeWindowRecording]: (request: RecordingFinalizeRequest) => Promise<string>;
+    [Endpoint.cancelWindowRecording]: (recordingId: string) => Promise<void>;
     [Endpoint.clipboardReadFilePaths]: () => Promise<ClipboardFileList>;
     [Endpoint.clipboardWriteFilePaths]: (paths: string[], cut: boolean) => Promise<boolean>;
     [Endpoint.startOsFileDrag]: (paths: string[]) => Promise<void>;
@@ -281,6 +308,8 @@ export type Api = {
     [Endpoint.gitRemoteUrl]: (dir: string, remote: string) => Promise<string>;
     [Endpoint.capturePageRegion]: (rect: CaptureRect) => Promise<Uint8Array>;
     [Endpoint.registerBoard]: (boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>) => Promise<string>;
+    [Endpoint.setHtmlPreview]: (id: string, html: string) => Promise<void>;
+    [Endpoint.clearHtmlPreview]: (id: string) => Promise<void>;
     [Endpoint.appendBoardLog]: (boardRoot: string, level: BoardLogLevel, message: string) => Promise<void>;
     [Endpoint.getBoardLogPath]: (boardRoot: string) => Promise<string>;
     [Endpoint.unregisterBoard]: (host: string) => Promise<void>;
@@ -289,7 +318,8 @@ export type Api = {
     // a postMessage on `eBoardPort` (EPIC-037 / US-771). Resolves once the request
     // is sent; the port arrives asynchronously on the event channel. `ownerId` is
     // the owning BoardEditorModel id — the stable job-retention key (US-799).
-    [Endpoint.requestBoardPort]: (boardId: string, host: string, ownerId: string) => Promise<void>;
+    [Endpoint.requestBoardPort]: (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => Promise<void>;
+    [Endpoint.updateBoardHostedPath]: (boardId: string, token: string, hostedPath: string | null) => Promise<boolean>;
     [Endpoint.disposeBoardPort]: (boardId: string) => Promise<void>;
     // Busy retention (US-799): mirror the renderer's busy flag / tree-kill every
     // job (kept + current) of a board owner on final teardown (model dispose).
@@ -301,18 +331,22 @@ export type Api = {
     // frame after a remount (US-796).
     [Endpoint.registerBoardFrame]: (boardId: string, boardHost: string, frameNonce?: string, tab?: string) => Promise<void>;
     [Endpoint.unregisterBoardFrame]: (boardId: string, tab?: string, frameNonce?: string) => Promise<void>;
-    [Endpoint.registerBoardPipePage]: (pageId: string, host?: string) => Promise<void>;
+    [Endpoint.registerBoardPipePage]: (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => Promise<void>;
     [Endpoint.unregisterBoardPipePage]: (pageId: string) => Promise<void>;
-    [Endpoint.registerBoardPipeResource]: (resourceId: string, host: string) => Promise<void>;
+    [Endpoint.registerBoardPipeResource]: (resourceId: string, host: string, boardRoot?: string, filePath?: string) => Promise<void>;
     [Endpoint.unregisterBoardPipeResource]: (resourceId: string) => Promise<void>;
     [Endpoint.getPublishedBoards]: (force?: boolean) => Promise<PublishedBoardsResult>;
     [Endpoint.getBoardVersions]: (id: string) => Promise<PublishedBoardVersions | null>;
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Request a main-owned trust mutation and return its authoritative path list. */
-    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean) => Promise<string[]>;
+    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions) => Promise<string[]>;
     /** Read the main-owned trusted path list. */
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
+    [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
+    [Endpoint.getBoardMcpEndpoint]: () => Promise<string>;
+    [Endpoint.authorizeBoardFilePath]: (boardRoot: string, requestedPath: string, intent?: "read" | "write") => Promise<string>;
+    [Endpoint.bindBoardSessionSource]: (handle: string, boardRoot: string) => Promise<string>;
     /** Push the renderer's setting value used to filter bundled URL-mask sources. */
     [Endpoint.setDisabledBundledBoards]: (ids: string[]) => Promise<void>;
     /** Snapshot of the main-owned module-service registry for renderer cache hydration. */
@@ -329,7 +363,15 @@ export type Api = {
     [Endpoint.startModuleService]: (boardRoot: string) => Promise<void>;
     /** Explicitly stop a board module service. */
     [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
+    [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.bindSiteExtensionFolder]: (folder: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.trustSiteExtension]: (id: string, hosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.revokeSiteExtensionTrust]: (id: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.setSiteExtensionEnabled]: (id: string, enabled: boolean) => Promise<SiteExtensionTrustSnapshot>;
 };
+
+export interface SiteExtensionTrustGrant { hosts: string[]; enabled: boolean }
+export type SiteExtensionTrustSnapshot = Record<string, SiteExtensionTrustGrant>;
 
 export interface ModuleServicePortPayload {
     boardRoot: string;
@@ -353,8 +395,10 @@ export enum EventEndpoint {
     eOpenExternalUrl = "eOpenExternalUrl",
     eDownloadStarted = "eDownloadStarted",
     eDownloadProgress = "eDownloadProgress",
+    eDownloadAwaitingPath = "eDownloadAwaitingPath",
     eDownloadCompleted = "eDownloadCompleted",
     eDownloadFailed = "eDownloadFailed",
+    eDownloadRemoved = "eDownloadRemoved",
     eDownloadCleared = "eDownloadCleared",
     eMcpStatusChanged = "eMcpStatusChanged",
     eMnemeStatusChanged = "eMnemeStatusChanged",
@@ -376,6 +420,7 @@ export enum EventEndpoint {
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
     eBoardTrustChanged = "eBoardTrustChanged",
+    eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
 }
 
 export interface EventObject<T> {
@@ -393,7 +438,7 @@ export type EventApi = {
     [EventEndpoint.eMovePageOut]: EventObject<string>;
     [EventEndpoint.eZoomChanged]: EventObject<number>;
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
-    [EventEndpoint.eOpenUrl]: EventObject<string>;
+    [EventEndpoint.eOpenUrl]: EventObject<{ url: string; boardRoot?: string; unattributedPopup?: boolean }>;
     [EventEndpoint.eOpenPipelineCandidate]: EventObject<string>;
     [EventEndpoint.eOpenClaimedBrowserDownload]: EventObject<{
         url: string;
@@ -403,8 +448,10 @@ export type EventApi = {
     [EventEndpoint.eOpenExternalUrl]: EventObject<string>;
     [EventEndpoint.eDownloadStarted]: EventObject<DownloadEntry>;
     [EventEndpoint.eDownloadProgress]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
+    [EventEndpoint.eDownloadAwaitingPath]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eDownloadCompleted]: EventObject<{ id: string; savePath: string }>;
     [EventEndpoint.eDownloadFailed]: EventObject<{ id: string; error: string }>;
+    [EventEndpoint.eDownloadRemoved]: EventObject<{ id: string }>;
     [EventEndpoint.eDownloadCleared]: EventObject<DownloadEntry[]>;
     [EventEndpoint.eMcpStatusChanged]: EventObject<McpStatus>;
     [EventEndpoint.eMnemeStatusChanged]: EventObject<MnemeStatus>;
@@ -415,11 +462,13 @@ export type EventApi = {
     [EventEndpoint.eBoardNotify]: EventObject<{
         message: string;
         type?: "info" | "success" | "warning" | "error";
+        /** Keep the toast until the user closes it (bridge 1.33.0). */
+        persistent?: boolean;
     }>;
     // Board `persephone.openRawLink(href, { editor })` → host renderer (US-756 C6).
     // `editor` is an optional registered editor id; the open pipeline falls back to
     // the default editor when omitted/unmatched.
-    [EventEndpoint.eBoardOpenRawLink]: EventObject<{ href: string; editor?: string }>;
+    [EventEndpoint.eBoardOpenRawLink]: EventObject<{ href: string; editor?: string; boardRoot: string }>;
     // Published-boards catalog refresh (US-862): main broadcasts the new catalog when
     // it changes; the renderer catalog model updates reactively.
     [EventEndpoint.ePublishedBoardsUpdated]: EventObject<PublishedBoardsCatalog>;
@@ -428,6 +477,7 @@ export type EventApi = {
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
     [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
+    [EventEndpoint.eSiteExtensionTrustChanged]: EventObject<SiteExtensionTrustSnapshot>;
 };
 
 export enum RendererEvent {

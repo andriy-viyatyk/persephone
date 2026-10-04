@@ -1,7 +1,7 @@
 ---
 title: "Pages & Windows"
 audience: agent
-summary: "Pages and windows reference: page properties, editor types, creating pages, and multi-window object-model paths."
+summary: "Find or open files, create pages, and work with page properties, editor types, and multi-window object-model paths."
 ---
 
 # Pages & Windows
@@ -55,6 +55,20 @@ window.screen.screenshot()                                  // pixels of the app
   synthetic typing into Monaco is unreliable. `window.screen.type` is for simple inputs (dialogs,
   search boxes, settings fields).
 - Combine with `windows[i].window.screen` to target a specific window's UI.
+
+### Record an app demo
+
+`window.screen.recording.start({ region })` starts immediately. Choose `"window"`, `"page"`, or
+`"editor"`; the app header shows shared pause and stop controls while the capture runs. The default
+agent stop leaves the player closed and returns `{ path, durationMs, mimeType, width, height, stoppedBy }`.
+Copy `path` to a durable location if the result should be kept; unsaved recordings are cleaned after
+seven days. Pass `openPlayer: true` to open the built-in video player.
+
+```javascript
+await window.screen.recording.start({ region: "editor" });
+const result = await window.screen.recording.stop();
+await app.fs.copyFile(result.path, "C:/Videos/persephone-demo.mp4");
+```
 
 ## Multi-Window Support
 

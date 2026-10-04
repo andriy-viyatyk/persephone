@@ -462,6 +462,7 @@ registerProvider("http", (config) => new HttpProvider(
         headers: config.headers as Record<string, string> | undefined,
         body: config.body as string | undefined,
         sessionHandle: config.sessionHandle as string | undefined,
+        boardNetworkPolicy: config.boardNetworkPolicy as import("../api/node-fetch").BoardNetworkPolicy | undefined,
     },
 ), { origin: "platform" });
 registerProvider("data", (config) => new DataUrlProvider(config.url as string), { origin: "platform" });

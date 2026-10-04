@@ -59,6 +59,7 @@ import {
     killJob,
     reapJobsBySinkId,
     startJobTo,
+    startNodeJobTo,
     writeJobStdin,
 } from "./command-runner";
 import { errMessage } from "../shared/utils";
@@ -74,6 +75,9 @@ import {
     validateBoardStorageValue,
 } from "./board-storage";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
+import { boardTrustService } from "./board-trust-service";
+import { boardPermissionError } from "../shared/board-manifest-utils";
+import { recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
 
 interface BoardPortEntry {
     /** Main's end of the per-board channel. */
@@ -88,6 +92,10 @@ interface BoardPortEntry {
     ownerId: string;
     /** The host renderer window — owner for dialogs/links/notify/log. */
     hostWebContents: WebContents;
+    /** Exact local file currently exposed to this board frame, if any. */
+    hostedFilePath: string | null;
+    /** Per-load identity prevents delayed updates from changing a replacement port. */
+    token: string;
     /** Set when the shim's "connected" message arrives (mode D, EPIC-037 C11). */
     connected?: boolean;
     /** Mode-D handshake watchdog; cleared on connect / dispose. */
@@ -194,15 +202,6 @@ function portSink(entry: BoardPortEntry, boardId: string): JobSink {
     };
 }
 
-/** Resolve a board file-bridge path (US-756 C4): absolute as-is, else relative to
- *  the board root. NOT sandboxed — a trusted board can already touch any file via
- *  `execute()`; this only removes the "shell a script to read a file" overhead. */
-function resolveBoardFilePath(root: string, p: string | undefined): string {
-    if (!p || typeof p !== "string") throw new Error("A file path is required");
-    if (path.isAbsolute(p)) return p;
-    return path.resolve(root, p);
-}
-
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */
 /** Validate a board's `encoding` argument. Absent → "utf8" (the historical default).
  *  An UNKNOWN value throws rather than falling back: the old code coerced anything that
@@ -232,11 +231,40 @@ type BoardRpcHandler = (entry: BoardPortEntry, args: unknown[]) => Promise<unkno
 
 /** Board RPC handlers are exhaustive over the public bridge contract. */
 const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
-    openFileDialog: (entry, args) => showOpenFileDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFileDialogParams) ?? {}),
-    saveFileDialog: (entry, args) => showSaveFileDialog(ownerWindow(entry.hostWebContents), (args[0] as SaveFileDialogParams) ?? {}),
-    openFolderDialog: (entry, args) => showOpenFolderDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFolderDialogParams) ?? {}),
+    async openFileDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showOpenFileDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFileDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, false, grant);
+        return result;
+    },
+    async saveFileDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showSaveFileDialog(ownerWindow(entry.hostWebContents), (args[0] as SaveFileDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, false, grant);
+        return result;
+    },
+    async openFolderDialog(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        requireDialogPermission(grant);
+        const result = await showOpenFolderDialog(ownerWindow(entry.hostWebContents), (args[0] as OpenFolderDialogParams) ?? {});
+        await recordPickedPaths(entry.root, result, true, grant);
+        return result;
+    },
     async readFile(entry, args) {
-        const filePath = resolveBoardFilePath(entry.root, args[0] as string);
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        const requestedPath = args[0] as string;
+        const filePath = await resolveHostedReadOrAuthorizedPath({
+            boardRoot: entry.root,
+            requestedPath,
+            hostedPath: entry.hostedFilePath,
+            permissions: grant,
+        });
         const encoding = fileEncoding(args[1]);
         const buf = await fs.promises.readFile(filePath);
         if (encoding === "binary") {
@@ -245,14 +273,18 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         return buf.toString(encoding);
     },
     async writeFile(entry, args) {
-        const filePath = resolveBoardFilePath(entry.root, args[0] as string);
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        const requestedPath = args[0] as string;
+        const filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "write" });
         const encoding = fileEncoding(args[2]);
         const data = args[1];
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        const checkedPath = await recheckWriteTarget(entry.root, requestedPath, grant);
         const body = encoding === "binary"
             ? Buffer.from(toBytes(data))
             : Buffer.from((data as string) ?? "", encoding);
-        await fs.promises.writeFile(filePath, body);
+        await fs.promises.writeFile(checkedPath, body);
     },
     getJobs(entry) {
         const owner = ownerSinks.get(entry.ownerId);
@@ -292,6 +324,9 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
 
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */
 async function runRpc(entry: BoardPortEntry, method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
+    if (method === "serviceRequest" || method === "serviceStatus" || method === "serviceStop") {
+        if (!(await boardTrustService.allows(entry.root, "service"))) throw boardPermissionError("service");
+    }
     const handler = boardRpcHandlers[method];
     if (!handler) throw new Error(`Unknown board RPC method: ${method}`);
     return handler(entry, args);
@@ -336,7 +371,7 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
     if (method === "openRawLink") {
         const href = args[0] as string;
         if (!href) return;
-        win?.webContents.send(EventEndpoint.eBoardOpenRawLink, { href, editor: args[1] as string | undefined });
+        win?.webContents.send(EventEndpoint.eBoardOpenRawLink, { href, editor: args[1] as string | undefined, boardRoot: entry.root });
         win?.focus();
         return;
     }
@@ -344,7 +379,8 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
         const message = args[0] as string;
         if (!message) return;
         const type = args[1] as BoardNotifyType | undefined;
-        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type });
+        const persistent = args[2] === true;
+        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type, persistent });
         // Mirror errors/warnings to the board's ui.log (US-726) for author/agent review.
         if (type === "error" || type === "warning") {
             void boardLog.append(entry.root, type, message).catch(() => {});
@@ -352,12 +388,16 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
     }
 }
 
-type BoardRunnerHandler = (entry: BoardPortEntry, boardId: string, msg: unknown) => void;
+type BoardRunnerHandler = (entry: BoardPortEntry, boardId: string, msg: unknown) => Promise<void>;
 
 /** Outbound runner messages are exhaustive over the board side of RunnerChannel. */
 const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandler> = {
-    [RunnerChannel.start](entry, boardId, raw) {
-        let msg = raw as RunnerStartMsg;
+    async [RunnerChannel.start](entry, boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) {
+            portSink(entry, boardId).send(RunnerChannel.error, { jobId: (raw as RunnerStartMsg).jobId, message: boardPermissionError("execute").message });
+            return;
+        }
+        const msg = raw as RunnerStartMsg;
         const opts = { ...(entry.root ? { cwd: entry.root } : {}), ...msg.opts };
         if (msg.node) {
             const script = path.isAbsolute(msg.command) ? msg.command : path.resolve(entry.root, msg.command);
@@ -365,20 +405,22 @@ const boardRunnerHandlers: Record<BoardRunnerOutMsg["channel"], BoardRunnerHandl
                 portSink(entry, boardId).send(RunnerChannel.error, { jobId: msg.jobId, message: `Node script not found: ${script}` });
                 return;
             }
-            opts.shell = false;
-            opts.env = { ...opts.env, ELECTRON_RUN_AS_NODE: "1", NODE_NO_WARNINGS: "1" };
-            msg = { ...msg, command: process.execPath, args: [script, ...(msg.args ?? [])] };
+            startNodeJobTo(portSink(entry, boardId), { ...msg, command: script, opts });
+            return;
         }
         startJobTo(portSink(entry, boardId), { ...msg, opts });
     },
-    [RunnerChannel.stdin](_entry, _boardId, raw) {
+    async [RunnerChannel.stdin](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         const msg = raw as RunnerStdinMsg;
         writeJobStdin(msg.jobId, msg.data);
     },
-    [RunnerChannel.endStdin](_entry, _boardId, raw) {
+    async [RunnerChannel.endStdin](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         endJobStdin((raw as { jobId: string }).jobId);
     },
-    [RunnerChannel.kill](_entry, _boardId, raw) {
+    async [RunnerChannel.kill](entry, _boardId, raw) {
+        if (!(await boardTrustService.allows(entry.root, "execute"))) return;
         const msg = raw as RunnerKillMsg;
         killJob(msg.jobId, msg.signal);
     },
@@ -402,7 +444,9 @@ function handleBoardMessage(boardId: string, data: BoardToMain): void {
     if (data.kind === "runner") {
         // A malformed port message must be ignored like the former switch default.
         const handler = boardRunnerHandlers[data.channel];
-        if (handler) handler(entry, boardId, data.msg);
+        if (handler) void handler(entry, boardId, data.msg).catch((error: unknown) => {
+            portSink(entry, boardId).send(RunnerChannel.error, { jobId: (data.msg as { jobId?: string }).jobId, message: errMessage(error) });
+        });
         return;
     }
     if (data.kind === "fire") {
@@ -503,13 +547,15 @@ export function createBoardPort(
     boardId: string,
     host: string,
     ownerId: string,
+    hostedPath: string | null,
+    token: string,
 ): void {
     // Re-handshake (reload / navigation): drop the superseded port first.
     if (boardPorts.has(boardId)) disposeBoardPort(boardId);
 
     const root = getBoardRootForHost(host) ?? "";
     const { port1, port2 } = new MessageChannelMain();
-    const entry: BoardPortEntry = { port: port2, root, host, ownerId, hostWebContents };
+    const entry: BoardPortEntry = { port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token };
     boardPorts.set(boardId, entry);
     indexOwnerSink(ownerId, boardId, hostWebContents.id);
 
@@ -535,12 +581,28 @@ export function createBoardPort(
     hostWebContents.postMessage(EventEndpoint.eBoardPort, { boardId }, [port1]);
 }
 
+/** Update only the live port created by this host renderer for this exact load. */
+export function updateBoardHostedPath(
+    hostWebContents: WebContents,
+    boardId: string,
+    token: string,
+    hostedPath: string | null,
+): boolean {
+    const entry = boardPorts.get(boardId);
+    if (!entry || entry.hostWebContents !== hostWebContents || entry.token !== token
+        || hostWebContents.isDestroyed()) return false;
+    entry.hostedFilePath = hostedPath;
+    return true;
+}
+
 /** Tear down a board's port (unmount / reload / host crash). Jobs: a BUSY owner's
  *  jobs are KEPT (they outlive the iframe — US-799); otherwise every job of the
  *  owner is reaped (current sink + any kept from prior busy mounts). */
 export function disposeBoardPort(boardId: string): void {
     const entry = boardPorts.get(boardId);
     if (!entry) return;
+    entry.hostedFilePath = null;
+    entry.token = "";
     if (entry.watchdog) {
         clearTimeout(entry.watchdog);
         entry.watchdog = undefined;

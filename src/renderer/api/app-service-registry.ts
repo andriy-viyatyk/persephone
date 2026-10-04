@@ -75,6 +75,10 @@ export const appServiceDescriptors = [
         load: async (): Promise<IApp["boards"]> => (await import("./boards")).boards,
     }),
     defineService({
+        key: "siteExtensions",
+        load: async (): Promise<IApp["siteExtensions"]> => (await import("./site-extensions-agent")).siteExtensions,
+    }),
+    defineService({
         key: "boardVars",
         load: async (): Promise<IApp["boardVars"]> => (await import("./board-vars/admin-api")).boardVarsAdmin,
     }),

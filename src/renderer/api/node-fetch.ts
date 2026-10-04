@@ -16,10 +16,13 @@ import type { IFetchOptions } from "./types/app";
 import { TorChannel } from "../../ipc/tor-ipc";
 import { settings } from "./settings";
 import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
+import { isPrivateAddress, pinnedLookup } from "../../shared/board-network-guard";
 
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
 const zlib = require("zlib") as typeof import("zlib");
+const dns = require("dns").promises as typeof import("dns/promises");
+const net = require("net") as typeof import("net");
 const { ipcRenderer } = require("electron") as typeof import("electron");
 
 /** Default HTTPS agent with keep-alive for connection reuse. */
@@ -42,7 +45,7 @@ const insecureHttpsAgent = new https.Agent({
 
 export function nodeFetch(
     url: string,
-    options?: IFetchOptions,
+    options?: IFetchOptions & { boardNetworkPolicy?: BoardNetworkPolicy },
 ): Promise<Response> {
     const method = options?.method ?? "GET";
     const headers = options?.headers ?? {};
@@ -57,7 +60,7 @@ export function nodeFetch(
         const route = lease?.route ?? (options?.proxy ? parseProxy(options.proxy) : undefined);
         try {
             const response = await doFetch(url, method, headers, body, timeout, maxRedirects,
-                rejectUnauthorized, options?.signal, route);
+                rejectUnauthorized, options?.signal, route, options?.boardNetworkPolicy);
             return lease ? releaseWithBody(response, lease.release, options?.signal) : response;
         } catch (error: unknown) {
             lease?.release();
@@ -70,6 +73,8 @@ interface TorRouteLease {
     route: ProxyRoute;
     release(): void;
 }
+
+export interface BoardNetworkPolicy { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string; boardRoot?: string }
 
 async function acquireTorRoute(signal?: AbortSignal): Promise<TorRouteLease> {
     if (signal?.aborted) throw new Error("The HTTP request was aborted.");
@@ -146,19 +151,59 @@ function doFetch(
     rejectUnauthorized: boolean,
     signal?: AbortSignal,
     route?: ProxyRoute,
+    boardPolicy?: BoardNetworkPolicy,
 ): Promise<Response> {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
         const isHttps = urlObj.protocol === "https:";
 
+        const prepare = async (): Promise<{ addresses?: { address: string; family: number }[] }> => {
+            if (!boardPolicy) return {};
+            if (boardPolicy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            const port = Number(urlObj.port || (isHttps ? 443 : 80));
+            const mcp = new URL(boardPolicy.mcpUrl);
+            const targetHost = urlObj.hostname.replace(/^\[|\]$/g, "");
+            const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
+            if (!boardPolicy.appScripting && targetHost.toLowerCase() === mcpHost.toLowerCase()
+                && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))) {
+                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+            }
+            const family = net.isIP(targetHost);
+            const addresses = family ? [{ address: targetHost, family }]
+                : await dns.lookup(targetHost, { all: true, verbatim: true });
+            if (!addresses.length) throw new Error(`DNS resolution returned no addresses for ${targetHost}.`);
+            const mcpFamily = net.isIP(mcpHost);
+            const mcpAddresses = mcpFamily ? [{ address: mcpHost, family: mcpFamily }]
+                : await dns.lookup(mcpHost, { all: true, verbatim: true })
+                    .catch((): { address: string; family: number }[] => []);
+            if (!boardPolicy.appScripting && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))
+                && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
+                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+            }
+            if (boardPolicy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address, net.isIP))) {
+                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            }
+            return route ? {} : { addresses };
+        };
+
+        void prepare().then((pinned) => {
+
         if (route && !isHttps && urlObj.protocol !== "http:") {
             reject(new TypeError(`Unsupported protocol: ${urlObj.protocol}`));
             return;
         }
+        const isPinnedBoardRequest = Boolean(boardPolicy && !route && pinned.addresses);
         const agent = route
             ? agentFor(route, isHttps, rejectUnauthorized)
-            : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
+            : isPinnedBoardRequest
+                ? isHttps
+                    ? new https.Agent({ keepAlive: false, rejectUnauthorized })
+                    : new http.Agent({ keepAlive: false })
+                : isHttps ? (rejectUnauthorized ? defaultHttpsAgent : insecureHttpsAgent) : undefined;
 
+        const lookup = pinned.addresses
+            ? pinnedLookup(pinned.addresses) as typeof import("dns").lookup
+            : undefined;
         const reqOptions = {
             hostname: urlObj.hostname,
             port: urlObj.port || (isHttps ? 443 : 80),
@@ -167,6 +212,7 @@ function doFetch(
             headers,
             agent,
             timeout,
+            ...(lookup ? { lookup } : {}),
         };
 
         const lib = isHttps ? https : http;
@@ -243,6 +289,7 @@ function doFetch(
                     rejectUnauthorized,
                     signal,
                     route,
+                    boardPolicy,
                 ).then(resolve, reject);
 
                 return;
@@ -411,5 +458,6 @@ function doFetch(
         } else {
             req.end();
         }
+        }).catch(reject);
     });
 }

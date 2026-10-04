@@ -106,6 +106,16 @@ async function releaseBoardFromPage(page: PageModel): Promise<boolean> {
     return true;
 }
 
+/** Take the board at `root` off every page showing it (unsaved content-host changes still get
+ *  their prompt). A page left with no editor at all closes; a page that keeps another editor
+ *  (an Explorer panel, for example) stays open and shows its empty state. */
+export async function removeBoardFromPages(root: string): Promise<void> {
+    for (const page of boardPagesForRoot(root)) {
+        if (!(await releaseBoardFromPage(page))) continue;
+        if (page.editors.length === 0) await page.close();
+    }
+}
+
 /**
  * Ensure the board is idle, taking it off its open pages with the user's consent. A busy board
  * is a hard stop — we never auto-kill running processes. Returns true when clear to swap.

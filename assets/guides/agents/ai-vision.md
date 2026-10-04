@@ -181,8 +181,9 @@ function refreshAiVision() {
 ```
 
 Call it from wherever you re-render. Comparing an empty/non-empty signature keeps it cheap: a
-`refresh()` on every keystroke is wasted work, and the host logs a `shape-changed` event each time
-telling the agent to re-read `pages[id].editor.app`.
+`refresh()` on every keystroke is wasted work, and each time the shape actually changes the host logs
+a `shape-changed` event telling the agent to re-read `pages[id].editor.app` (a refresh that
+republishes an identical shape logs nothing).
 
 ### 4. Point at controls: `createElements`
 
@@ -226,6 +227,15 @@ A short board-authored message that reaches the agent through the event log, lab
 by the board. Trusted boards only, at most 512 characters, five per rolling minute. This is not
 `persephone.notify(text, type)`, which shows a toast to the user.
 
+### Board permission for `persephone.call()`
+
+A board frame needs `appScripting: true` to call `persephone.call()` into its hosting Persephone
+page. If it rejects with exactly `permission-denied: "appScripting" is not enabled in
+board-manifest.json`, inspect the call path, add only `appScripting: true` if the board uses it, and
+tell the user that the next open or reload shows the **Board permissions changed** dialog, where
+they choose **Accept** or **Unregister board**. Never click **Trust Board**, **Accept** or
+**Unregister board** unless the user asked for that outcome.
+
 ### Rules that will bite you
 
 - **Never let an agent-facing method wait on an in-board dialog.** A `confirm()` or a custom
@@ -250,6 +260,10 @@ by the board. Trusted boards only, at most 512 characters, five per rolling minu
 
 ## Web pages in the browser editor
 
+If you can change the site's own code, publish its model as described here. If you cannot change
+the site and want a reusable model for its page, read [Site extensions](./site-extensions.md) for
+the agent-authored extension workflow.
+
 A page the user opens in Persephone's browser can publish the same way. Here the page **does**
 depend on the package:
 
@@ -267,11 +281,13 @@ goes on the object.
 
 The rest of the differences are on the host side:
 
-- **Discovery is a probe, not a handshake.** Persephone looks for `window.__aiVision` after a
-  completed navigation. Publish it as part of page startup rather than behind a user action.
+- **Late model discovery.** If a model is published after page load, call `remote.refresh()` once
+  after `expose()`. Persephone handles the signal and probes again, including a trailing probe if
+  the late-probe rate limit would otherwise defer it.
 - **The model may change without navigation.** `remote.version` starts at 1 and increments on
-  every `refresh()`, which also emits a signal to the host; the host logs a `shape-changed` event
-  naming `pages[id].editor.app` and re-probes. There is a second path for when that signal never
+  every `refresh()`, which also emits a signal to the host; the host re-probes and, when the shape
+  actually changed (or the model is gone), logs a `shape-changed` event naming
+  `pages[id].editor.app`. A same-document navigation under a live model logs no `navigated` event. There is a second path for when that signal never
   arrives: the host revalidates the version before every request, and a mismatch refuses the stale
   proxy and re-probes in the background without logging an event. Either way the agent's move is
   the same — read `pages[id].editor.app` again.

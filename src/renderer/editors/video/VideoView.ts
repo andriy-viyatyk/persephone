@@ -9,6 +9,8 @@ import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarV
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { EditorModel } from "../base/EditorModel";
 import { VideoEditor } from "./VideoEditor";
+import { app } from "../../api/app";
+import { errMessage } from "../../../shared/utils";
 import type { PlayerState, VideoFormat } from "./video-types";
 import { VPlayerView, type VPlayerProps } from "./VPlayer";
 import "../../uikit/Button/Button.css";
@@ -44,6 +46,9 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
     private stateBadge!: HTMLSpanElement;
     private vlcContainer!: HTMLDivElement;
     private vlcButton!: ButtonView;
+    private saveRecordingButton!: ButtonView;
+    private discardRecordingButton!: ButtonView;
+    private recordingActions!: HTMLDivElement;
     private shuffle = false;
 
     public constructor(props: { model: EditorModel }) {
@@ -61,7 +66,9 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
     protected onMount(): void {
         const state = this.surfaceState();
         this.toolbarChildren = createPanelElement({
-            direction: "column",
+            direction: "row",
+            align: "center",
+            gap: "sm",
             flex: 1,
             minWidth: 0,
         });
@@ -78,6 +85,13 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             this.urlInput.root.scrollLeft = 0;
         });
         this.toolbarChildren.append(urlSlot);
+        this.recordingActions = document.createElement("div");
+        this.recordingActions.dataset.name = "temporary-recording-actions";
+        this.recordingActions.className = "video-recording-actions";
+        this.saveRecordingButton = this.child(new ButtonView({ name: "video-recording-save", variant: "default", icon: "save", children: "Save as…", onClick: () => { void this.runTemporaryAction(this.model.saveTemporaryRecording); } }));
+        this.discardRecordingButton = this.child(new ButtonView({ name: "video-recording-discard", variant: "default", icon: "delete", children: "Discard", onClick: () => { void this.runTemporaryAction(this.model.discardTemporaryRecording); } }));
+        this.recordingActions.append(this.saveRecordingButton.root, this.discardRecordingButton.root);
+        this.toolbarChildren.append(this.recordingActions);
 
         this.pageToolbar = this.child(new PageToolbarView(this.pageToolbarProps()));
         this.playerArea = createPanelElement({
@@ -117,6 +131,8 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
         this.urlInput.mount();
         this.player.mount();
         this.vlcButton.mount();
+        this.saveRecordingButton.mount();
+        this.discardRecordingButton.mount();
 
         this.bind(
             this.model.state,
@@ -222,6 +238,12 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
         const showVlcButton = Boolean(state.url)
             && !["loading", "playing", "stopped"].includes(state.playerState);
         this.vlcContainer.hidden = !showVlcButton;
+        this.recordingActions.hidden = !this.model.isTemporaryRecording;
         this.pageToolbar.update(this.pageToolbarProps());
     };
+
+    private async runTemporaryAction(action: () => Promise<void>): Promise<void> {
+        try { await action(); }
+        catch (error: unknown) { app.ui.notify(`Recording action failed: ${errMessage(error)}`, "error"); }
+    }
 }

@@ -39,6 +39,25 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 - Scripts can `require()` any Node.js module or npm package
 - Multi-window support — each window has its own `app` instance
 
+### Main-Process Security Boundaries
+
+Every `ipcMain` event or invoke registration must authorize its sender through the shared
+`src/main/ipc-sender-guard.ts` guard. Use `guardedIpcOn` / `guardedIpcHandle`, or the typed
+`bindEndpoint` registrar (which calls the same guard); direct unguarded registrations are not
+allowed. The guard accepts only a live main frame belonging to a Persephone `BrowserWindow` in the
+application session.
+
+Packaged builds lock Electron fuses in `electron-builder.yml`: `RunAsNode`, `NODE_OPTIONS` (including
+`NODE_EXTRA_CA_CERTS`), and Node inspector arguments are disabled; embedded asar integrity validation
+and load-only-from-asar are enabled; and browser cookie encryption is enabled. Board Node scripts
+therefore run in an Electron utility process via `assets/node-script-host.mjs`, rather than
+relaunching the application executable as Node. Browser downloads are tagged with the Windows
+Mark-of-the-Web (`Zone.Identifier`) so Windows security features can identify internet-origin files.
+
+The main window uses a strict content security policy. HTML previews load through the separate
+`html-preview://` protocol origin, which keeps preview document policy separate from the main
+window. Web pages cannot use page-initiated navigation to open Persephone's internal schemes.
+
 ## Object Model
 
 The **Object Model** is the central architectural concept. It provides a single, typed API (`app.*`) that all consumers use — native views, boards, user scripts, and coding agents all access the same interfaces.
@@ -210,7 +229,7 @@ See [editors.md](./editors.md).
 
 See [scripting.md](./scripting.md).
 
-- JavaScript/TypeScript execution with `page`, `app`, `io`, and `ai` globals
+- JavaScript/TypeScript execution with `page`, `app`, and `io` globals
 - TypeScript transpilation via sucrase (lazy-loaded, type stripping only)
 - Full Node.js access for scripts; renderer UI frameworks are not part of the script context
 - API wrappers (AppWrapper, PageWrapper) provide safe, typed access
@@ -231,13 +250,13 @@ See [scripting.md](./scripting.md).
   is no manifest-trimming flag, because there is nothing left to trim.
 - The `call` MCP tool is routed in main: `main` and `windows[i]` are resolved against main-process descriptors, while the remainder is forwarded to the selected renderer and resolved against its AiVision root. Main-process script evaluation is a separately settings-gated branch (`Settings → MCP Server → Allow main-process scripts`); `AppWrapper.call()` does not provide that branch.
 - MCP `call` result shaping is general-purpose: when any resolved member returns `{ type: "image", data, mimeType }` or `{ image: { data, mimeType }, ...metadata }`, the main-process adapter emits metadata as text plus a native MCP image content block. The capability is not specific to browser screenshots.
-- Renderer `call` results can carry a leading attention block for open renderer dialogs and popup menus. If the action itself opens a blocking renderer dialog, the call returns a pending result while the action continues; a subsequent `call` can inspect `dialogs[i]` and use its adapter's `click(button)` or `cancel()` path. Popup menus are exposed as `menus[0]` with read-only item snapshots and `click(label)` / `close()` actions.
+- Renderer `call` results can carry a leading attention block for open renderer dialogs, popup menus, and unanswered inline Log View dialogs. Each inline dialog is reported once per renderer while unresolved. If the action itself opens a blocking renderer dialog, the call returns a pending result while the action continues; a subsequent `call` can inspect `dialogs[i]` and use its adapter's `click(button)` or `cancel()` path. Popup menus are exposed as `menus[0]` with read-only item snapshots and `click(label)` / `close()` actions.
 - The renderer AiVision root also exposes curated `ui.elements` declarations with live visibility and resolved selectors, plus `ui.highlight(name, message?)`, which delegates to the app highlight overlay and resolves once the overlay is drawn. The element list is intentionally curated rather than an exhaustive DOM inventory.
-- Native file, folder, and message-box dialogs are tracked per application window in main. An ordinary renderer result may carry non-actionable native attention while an asynchronous native dialog remains open; the native-dialog tracker never exposes a driver, and synchronous native dialogs cannot be reported while they block main's event loop. A bridge timeout is converted to `pending` only when the tracker still reports an active native dialog.
+- Native file, folder, and message-box dialogs are tracked per application window in main. An ordinary renderer result may carry non-actionable native attention while an asynchronous native dialog remains open; `windows[i].nativeDialog.dismiss()` can cancel dialogs owned by that window without selecting or confirming a path. Synchronous native dialogs cannot be reported while they block main's event loop. A bridge timeout is converted to `pending` only when the tracker still reports an active native dialog. An in-flight MCP renderer request suppresses the synchronous beforeunload confirmation so an agent-triggered navigation can finish without blocking main.
 - Page and editor reads use the `call` object model: `pages[i].content` returns text, while `pages[i].editor.*` exposes structured editor and image operations. Non-text pages report the relevant editor facade or resource path.
 - Multi-window support: `call` accepts optional `windowIndex` and can address `windows[i]`; `windows[i].open()` reopens a closed window with its persisted pages.
 - Browser profile support: browser pages report `profileName` / `isIncognito` / `isTor` / active-tab `url`; `settings.browserProfiles` and `settings.defaultBrowserProfile` provide profile discovery, and `pages[i].editor.*` provides deterministic automation.
-- App-window automation: `window.screen.*` drives Persephone's own UI, including the tab strip, sidebar, dialogs, and active editor; `windows[i].window.screen` selects another window.
+- App-window automation: `window.screen.*` drives Persephone's own UI, including the tab strip, sidebar, dialogs, and active editor; `window.screen.recording` captures the full app window or crops the active page/editor and returns a temporary video file. `windows[i].window.screen` selects another window.
 - Log View integration: `pages.logView.push()` is the non-blocking MCP output path over the managed `mcp-ui-log` page; it returns dialog IDs for later `dialogResult()` reads, while script `ui` output shares the same page.
 - MCP resources: all 12 focused guides under `assets/guides/agents/` and `assets/guides/formats/` are exposed at `persephone://guides/*`, along with `persephone://guides/full`. Resources are documents; operational discovery comes from `call` hints and `$help`.
 - The shipped guide corpus lives under `assets/guides/` and is indexed by the shared code in `src/shared/guides/`, used by both the main-process `guides` node and the About guide browser. Pages carry `title`, `audience`, and `summary` metadata, with optional `screen` and single- or list-valued `editorId` mappings. `guides.<path>.layout` extracts a page's `## Layout` section for screen-oriented guidance; pages without that section return the explicit no-schema result.
@@ -347,13 +366,17 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 **Security model:**
 - The `board://` handler adds `charset=utf-8` to every text MIME response (HTML, JavaScript, CSS, JSON, Markdown, CSV, XML, YAML, SVG, and plain text). This is explicit because the injected head fragment can precede an author's `<meta charset>` by more than the encoding-sniffing window. Board files and pipe responses use the shared extension-to-MIME table in `/src/shared/mime-types.ts`.
 - The board loads in a plain `<iframe src="board://<host>/index.html">` rendered in the host renderer's DOM — no `sandbox` attribute (a bare `sandbox` forces an opaque origin with no stable per-board storage). Each board gets a **distinct cross-origin** `board://<host>` origin, where `host` is a stable hash of the normalized board root minted by `registerBoard` in the main process. Isolation from the Node-privileged host comes from the Same-Origin Policy (a cross-origin child cannot reach `window.parent`), `nodeIntegrationInSubFrames: false`, and the served CSP — adequate for trusted, user-authorized local code. Because the iframe lives in the DOM, all host overlays (page-tab context menu, dropdowns, dialogs, command palette, tooltips) compose over it naturally. This mirrors VS Code's editor-webview model.
-- The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks all remote network access — CDNs, fetch, XHR to external hosts are all forbidden. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the trade-off is accepted because a board is the user's own trusted code (it can already run arbitrary processes via `execute()`).
-- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. Main owns the persisted decision in `trustedBoards.txt` under `<userData>/data/`; the renderer's `board-trust.ts` is a reactive mirror, and trust is never read from a manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
+- The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks direct remote network access from the frame. Boards with a granted `network` permission can use the `persephone.fetch()` bridge, which routes requests through the app's Node HTTP client. For `network: "internet"`, each redirect hop is DNS-resolved and rejected if any answer is a private address; direct connections pin DNS lookup to those checked addresses, while requests using a configured Browser/Tor route keep that route. `network: "full"` permits private destinations. Requests to the app's MCP endpoint also require `appScripting`. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the bridge remains bounded by the user-granted manifest permissions described below.
+- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. Main owns the persisted decision and grant snapshots in `trustedBoards.json` under `<userData>/data/` (migrating the older `trustedBoards.txt` path list); the renderer's `board-trust.ts` is a reactive mirror, and trust is never read from a manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Trust is inherited down the tree — a board nested inside a trusted folder is trusted automatically, and the registry never holds an ancestor/descendant pair (outer wins). This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
+
+Trust and capability grants are separate. Main persists each trusted root with the normalized permission set granted at trust time in `trustedBoards.json`; legacy path-list data is migrated by reading the current manifest. For object-form `permissions`, the main-process bridge and device-permission policy enforce the grant set. A manifest permission change requires re-trust before the new set is used; reductions can reconcile without a prompt. The trust dialog and Board Info list enabled capabilities and identify broad grants as **Full access**. Manifests without declared permissions still use the legacy unrestricted behavior for now and produce a persistent migration warning; the old string-array form is also supported during this transition. Bundled boards use their shipped manifest permissions as their grant set.
 
 **Module services and trust synchronization:** A board manifest may declare `service` as a Node ESM
 entry resolved from the board root. The related manifest axes are `permissions` and
-`minBridgeVersion`; permissions disclose requested capabilities and guide lifecycle handling, but
-are not a security boundary because trusting a board already authorizes arbitrary code execution.
+`minBridgeVersion`; object-form permissions are enforced capability grants, while the trust
+decision controls whether the board runs at all. The legacy string-array and missing-permissions
+forms retain their transition behavior; legacy services start only when the old array names
+`service`.
 The platform hosts a declared service in an Electron `utilityProcess`, started lazily on the first
 request or explicit start — never at application launch. A board can query
 `persephone.service.status()` without starting the process and explicitly stop it with
@@ -379,14 +402,17 @@ the compatibility transition.
 trusted and enabled bundled boards alongside the service snapshot. Trusted roots retain persisted
 list order, bundled roots sort by bundle id, and the first compatible source to claim a mask wins.
 The main-owned claims feed `download-service.ts` synchronously at Electron's `will-download`
-boundary. On a match, Electron cancels the download before the save dialog and the renderer routes
-the claimed URL to `openRawLink` with the winning board target. For a private or non-persistent
+boundary. On a match, Electron's native download is cancelled and the renderer routes the claimed
+URL to `openRawLink` with the winning board target. Ordinary downloads are staged in a temporary
+file while an asynchronous Save As dialog is open; the UI exposes the completed transfer as
+`awaitingPath` until the user chooses a destination. For a private or non-persistent
 Browser session (Tor, incognito, or a proxied profile), main also issues a short-lived opaque `session-src://` handle bound to that URL and
 session; the provider can fetch through the originating session without exposing its partition
-identity to the renderer. This preserves the page's request session, but does not make later swarm
-connections anonymous. The Browser-download claim flow has been exercised end to end. This is a
-download-only path; ordinary scheme routing remains separate in the Browser webContents handoff and
-the registered-scheme pipeline.
+identity to the renderer. A board-bound handle also carries the board's granted network policy;
+main checks permissions and DNS-pins each request and redirect hop before connecting. This preserves
+the page's request session, but does not make later swarm connections anonymous. The Browser-download
+claim flow has been exercised end to end. This is a download-only path; ordinary scheme routing
+remains separate in the Browser webContents handoff and the registered-scheme pipeline.
 
 **Single-instance boards:** A board may opt into `singleInstance: true` in its manifest. For a
 matching board target, additional claimed-source opens in the same renderer window reveal the
@@ -398,7 +424,7 @@ per-window routing; boards that do not opt in keep the ordinary multi-page behav
 - Board `.app` registration has two lifecycles. The main frame's initial `expose()` (and a new remote after reload or a second `expose()`) sends `reason: "register"`; `remote.refresh()` sends `reason: "refresh"` when the same live remote republishes a changed shape. `BoardEditorModel` increments `token` for every shape publication so the facade rebuilds its proxy, but increments `incarnation` only for a new remote. The token is the proxy-cache/shape-generation key; the incarnation is the in-flight-request validity key, so refresh replaces the cached shape without cancelling requests already using the same live handlers.
 - An `<iframe>` cannot run an Electron preload/`contextBridge`, so the bridge is delivered over a `MessagePort` RPC instead. Main mints a `MessageChannelMain` port pair **per board**; the renderer brokers a one-time handshake — it requests a port on mount and, on the iframe's `load`, transfers `port1` into the frame with explicit `targetOrigin: "board://<host>"`. Thereafter the board talks **directly** to a main-process handler over the duplex port (the host is out of the data path). A small in-board shim (`src/board-shim.ts`, built as a self-contained browser IIFE) rebuilds the `window.persephone` surface over the port and is inlined into served board HTML `<head>` by the `board://` handler — so `window.persephone` exists synchronously before the first author script. Port-dependent calls made before the handshake queue, then flush on connect.
 - `execute(commandLine, opts)` — thin client over `command-runner.ts` in the main process. Returns an `IExecuteHandle` (buffered: `getText`/`getJson`/`getBytes`; streaming: `on("stdout"|"stderr"|"exit"|"error")`, `write`, `kill`). `opts.name` gives a job a caller-chosen name — the re-association key for `getJobs()` (below). The same main-process command runner backs `app.proc.execute()` in scripts.
-- Integration tier: `openRawLink(href, opts?)` (optional `{ editor }` requests a specific editor — e.g. `"md-view"` — routed via `ILinkData.target`), `notify(msg, type)`, `openFileDialog` / `saveFileDialog` / `openFolderDialog`, and `readFile(path, opts?)` / `writeFile(path, data, opts?)` (relative paths resolve against the board root; text or `base64`; a sanctioned persistence primitive that avoids shelling a script).
+- Integration tier: `openRawLink(href, opts?)` (optional `{ editor }` requests a specific editor — e.g. `"md-view"` — routed via `ILinkData.target`), `notify(msg, type)`, `openFileDialog` / `saveFileDialog` / `openFolderDialog`, and `readFile(path, opts?)` / `writeFile(path, data, opts?)`. Object-form `fileSystem` grants scope reads, writes, and dialogs: `false` blocks those operations except that `readFile()` may read the exact local path currently hosted by that board frame; `"board"` allows the board folder and paths picked in its dialogs; `"full"` allows any accessible path. The hosted-file exception is read-only and does not authorize siblings or other cache files. Relative paths resolve against the board root; encodings include text, `base64`, and `binary`.
 - Native clipboard writes: `persephone.clipboard.writeImage(data)` accepts encoded image bytes and `persephone.clipboard.writeText(text)` writes text through Electron's main-process clipboard. This path is focus-independent, which matters when a board action is triggered from Persephone's own toolbar and the board document is not focused; `navigator.clipboard` can reject that same write.
 - Renderer-owned board settings (bridge version **1.13.0**): `persephone.settings.get(id)` reads the effective value of a setting declared by the calling board, and `persephone.settings.onChange(callback)` receives effective values after a user changes or resets one. The board bridge is read-only; Persephone owns both the declarations and stored values. Bridge version **1.14.0** adds `persephone.getSourceUrl()` for non-materializing source identity handoff. Bridge version **1.15.0** adds `persephone.service.stop()` for explicit main-owned service stopping. Bridge version **1.16.0** adds read-only `persephone.service.status()`, which never starts the service. Bridge version **1.17.0** adds runtime `persephone.source.onOpen(callback)` events when another claimed source is routed to a single-instance board page; the event contains `url` and `sourceUrl`, and the initial source remains available through `getSourceUrl()`. Bridge version **1.19.0** adds the optional `discardPage` argument to `persephone.intent.resolve(value, options)` and the `alwaysOpensNewPage` manifest capability field. Bridge version **1.21.0** adds optional `representation` to capability discovery and manifest declarations. Bridge version **1.22.0** adds host-managed module-service request and shutdown handlers with structured service errors. Bridge version **1.24.0** adds optional `privateSession: true` to source-open events and `persephone.source.initialSourcePrivateSession` for the initial source returned by `getSourceUrl()`.
 - Process retention (busy boards): by default, everything a board spawned is tree-killed when its iframe unloads (page navigation or board reload). `setBoardBusy(true)` opts out — main keys job sinks by the owning `BoardEditorModel` id (stable across mounts) and keeps a busy owner's jobs when the port is disposed; the model itself survives navigation as an invisible ownership handle, so page/tab close (or app quit) still kills everything. The renderer is the authoritative busy holder (shim → host-frame `postMessage` → model → IPC mirror to main). On re-open the board reinitializes itself: `getBoardBusy()` (carried in the port handshake) and `getJobs()` — live jobs including previous board lifetimes, re-associated by the `execute()` `name`, control-only (kill/stdin work; no output streaming, output produced while unloaded is dropped). The Boards panel shows a green "running" dot for busy boards; a cross-window page move kills a busy board's processes.
@@ -473,7 +499,7 @@ an isolated guide mount under `installed-boards/<board-id>/`, shared by the Abou
 MCP guide tree, and guide search.
 
 Bundled boards are app-owned rather than user-trusted: they are discovered from the installed
-resources, never copied or written to `trustedBoards.txt`, and do not show a trust dialog. The
+resources, never copied or written to the persisted trusted-board records, and do not show a trust dialog. The
 Built-in tab presents their creatable item and its Disable action; disabling a board removes its
 file masks and capability/provider/scheme registrations through the same reactive rebuild.
 

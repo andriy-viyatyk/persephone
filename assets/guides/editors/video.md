@@ -24,7 +24,7 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 
 ```
 +---------------------------------------------------------------------+
-| [Video URL]                                                         |  Video toolbar at the top of the page
+| [Video URL]                                   [Save as…] [Discard]  |  Save and discard appear only for an unsaved recording
 +---------------------------------------------------------------------+
 | [Player]                                      [Visualizer]          |  media player below the toolbar; visualizer selector at its right
 | [Open in VLC]                                                       |  fallback action below the video player when available
@@ -34,6 +34,7 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 ### User-facing label → `elements` name
 
 - Video URL → `video-url-input`
+- Save as… / Discard → `video-recording-save`, `video-recording-discard` (temporary recordings only)
 - Open in VLC → `video-open-vlc`
 - Play/Pause → `audio-play-pause`
 - Next → `audio-next`
@@ -80,6 +81,12 @@ loading the entire source first. Audio offers Bars, Circular, and None visualize
 play/pause, mute, seek, and track navigation. When opened from Explorer or Links,
 **Next Track** and **Shuffle** can traverse the surrounding folder, category, or tag. If Chromium
 cannot decode a file, **Open in VLC** appears when VLC is configured in Settings.
+
+Recordings opened in Video Player are temporary until saved. Use **Save as…** to choose a permanent
+location, or **Discard** to delete the recording and close its page. Closing an unsaved recording's
+player page also deletes it. Closing Persephone, closing its window, or moving the page to another
+window keeps it available when the page is restored; unsaved recordings are removed automatically
+after seven days.
 
 ## Agent API
 

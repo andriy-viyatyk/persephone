@@ -10,6 +10,8 @@ import type {
 import type { EditorModel } from "../editors/base/EditorModel";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 import { readBoardManifest } from "../editors/board/board-manifest";
+import { LEGACY_BOARD_AGENT_DEPRECATION_NOTE } from "../editors/board/board-permission-copy";
+import { normalizePermissions } from "../../shared/board-manifest-utils";
 import { boardTrust, pathCovers } from "./board-trust";
 import { boardInstallRegistry, InstalledBoardEntry } from "./board-install-registry";
 import { publishedBoards } from "./published-boards";
@@ -206,6 +208,7 @@ function toBoardListing(
     source: BoardListingSource,
     manifest: { name?: string; description?: string } | undefined,
     serviceStatus: BoardServiceStatus | undefined,
+    deprecationNote?: string,
 ): BoardListing {
     // Absent optionals are OMITTED, never set to `undefined`: a key explicitly holding
     // `undefined` crosses the MCP/IPC boundary as `null`, which is exactly the falsy
@@ -216,6 +219,7 @@ function toBoardListing(
         root: source.root,
         ...(manifest?.name !== undefined ? { name: manifest.name } : {}),
         ...(manifest?.description !== undefined ? { description: manifest.description } : {}),
+        ...(deprecationNote !== undefined ? { deprecationNote } : {}),
         trusted: source.trusted,
         ...(installed !== undefined ? { installed } : {}),
         openPageIds: [...source.openPageIds],
@@ -251,11 +255,17 @@ export function getCurrentBoardListingAt(index: number): BoardListing | undefine
 
 async function enumerateBoardListings(): Promise<BoardListing[]> {
     await moduleServiceStatus.refresh();
+    const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
+    await bundledBoardRegistry.ensureInitialized();
     const sources = await readBoardSources();
     const merged = mergeBoardSources(sources);
     return Promise.all(merged.map(async (source) => {
         const manifest = await readBoardManifest(source.root);
-        return toBoardListing(source, manifest ?? undefined, moduleServiceStatus.getStatus(source.root));
+        const deprecationNote = normalizePermissions(manifest?.permissions).kind === "legacy"
+            && !bundledBoardRegistry.isBundled(source.root)
+            ? LEGACY_BOARD_AGENT_DEPRECATION_NOTE
+            : undefined;
+        return toBoardListing(source, manifest ?? undefined, moduleServiceStatus.getStatus(source.root), deprecationNote);
     }));
 }
 

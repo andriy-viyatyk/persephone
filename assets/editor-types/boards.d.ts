@@ -72,6 +72,8 @@ export interface BoardListing {
     /** Optional metadata copied from board-manifest.json. */
     readonly name?: string;
     readonly description?: string;
+    /** Present for non-bundled boards using deprecated missing or historical array permissions. */
+    readonly deprecationNote?: string;
     /** True when the root is covered by a trusted registry path. */
     readonly trusted: boolean;
     /** Present only when the local catalog install registry has this root. */

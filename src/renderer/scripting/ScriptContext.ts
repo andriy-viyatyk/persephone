@@ -8,7 +8,6 @@ import { resolveLibraryModule } from "./library-require";
 import { getOrCreateMcpLogViewEditor } from "../api/mcp/log-view-access";
 import { fpResolve } from "../core/utils/file-path";
 import { createIoNamespace } from "./api-wrapper/IoNamespace";
-import { createAiNamespace } from "./api-wrapper/AiNamespace";
 
 export interface ConsoleLogEntry {
     level: "log" | "error" | "warn" | "info";
@@ -59,7 +58,6 @@ export class ScriptContext {
     readonly app: AppWrapper;
     readonly page: PageWrapper | undefined;
     readonly io = createIoNamespace();
-    readonly ai = createAiNamespace();
     readonly styledText = styledText;
     readonly preventOutput: () => void;
     console: Console | Record<string, unknown>;

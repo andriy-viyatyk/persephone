@@ -19,6 +19,7 @@
 mod capture;
 mod clipboard;
 mod clipboard_watch;
+mod dialogs;
 mod overlay;
 mod sso_cookies;
 
@@ -38,6 +39,8 @@ fn main() {
         Some("clipboard-write") => clipboard::write(std::env::args().any(|a| a == "--cut")),
         Some("clipboard-watch") => clipboard_watch::run(),
         Some("sso-cookies") => sso_cookies::run(std::env::args().nth(2)),
+        Some("dialog-cancel") => dialogs::cancel(std::env::args().nth(2)),
+        Some("dialog-info") => dialogs::info(std::env::args().nth(2)),
         _ => run_snip(),
     }
 }

@@ -294,6 +294,13 @@ available and retry the source. Text and image editors keep their separate file-
 the recovery watch responds only to provider availability. The shared provider-error reporter
 deduplicates repeated notifications when its caller supplies the previous error message.
 
+Window recordings are written as temporary MP4 or WebM files under the app data `recordings`
+folder, then opened through the normal video-editor path when requested by the user. A recorder-
+owned recording page offers Save as… and Discard. Closing that page deletes its unsaved file after
+the last duplicate page closes; app quit, window close, and moving the page to another window keep
+the file. Startup cleanup removes interrupted partials and completed temporary recordings older
+than seven days.
+
 ## Built-in Transformers
 
 | Transformer | Type | Persistent | Description |

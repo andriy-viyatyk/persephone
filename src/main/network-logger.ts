@@ -9,9 +9,10 @@
  * Its onBeforeSendHeaders listener is the only one a session can have, so it also adds the
  * Windows single sign-on proof to Microsoft sign-in navigations (see windows-sso.ts).
  */
-import { app, Session, ipcMain } from "electron";
+import { app, Session } from "electron";
 import { BrowserChannel, NetworkLogEntry, NetworkLogOptions } from "../ipc/browser-ipc";
 import { addWindowsSsoHeaders, redactWindowsSsoHeaders, wantsWindowsSso } from "./windows-sso";
+import { guardedIpcHandle } from "./ipc-sender-guard";
 
 const MAX_LOG_ENTRIES = 200;
 const MAX_BODY_SIZE = 100 * 1024; // 100 KB — skip larger bodies
@@ -205,7 +206,7 @@ export function initNetworkLogger(): void {
         hookSession(ses);
     });
 
-    ipcMain.handle(BrowserChannel.getNetworkLog, async (_event, key: string, options: NetworkLogOptions = {}) => {
+    guardedIpcHandle(BrowserChannel.getNetworkLog, async (_event, key: string, options: NetworkLogOptions = {}) => {
         const entries = pageLogs.get(key) ?? [];
         if (!options.includeBodies) return entries.map(entry => ({ ...entry }));
         const requestedLimit = options.maxBodyBytes ?? 64 * 1024;

@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.28.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.33.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -152,6 +152,51 @@ image.src = icons["movie.mp4"];
 > - **Reference** — keep a short pointer to the canonical Persephone board docs (below /
 >   `persephone://guides/boards`) for the `persephone.*` bridge API; don't re-document it here.
 
+## Board permissions
+
+Trust decides whether the board runs; the manifest's object-form permissions gate capabilities.
+Persephone-created blank boards begin all-false with `minBridgeVersion: "1.30.0"`. Auto-trust
+does not widen those grants. Object-form manifests require `minBridgeVersion >= 1.30.0`. The
+exact hosted-document `readFile()` exception requires bridge `1.32.0`; set that as the minimum
+when a board depends on it. Enable only flags the code uses. Approved permission wording:
+
+> This board can do only what is listed below. Without any permission it can still show its own
+> pages, work with the document you open in it, copy to the clipboard, and open links inside
+> Persephone.
+
+| Enabled declaration | Approved permission line |
+|---|---|
+| `execute: true` | “Run programs and scripts on this computer.” — **Full access** |
+| `service: true` | “Run a background program while Persephone is open.” — **Full access** |
+| `fileSystem: false` | `readFile()` may read only the exact document hosted by this board frame; other bridge file methods and dialogs are unavailable. Own `board://` assets remain available. |
+| `fileSystem: "board"` | “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
+| `fileSystem: "full"` | “Read and write any file you can access.” — **Full access** |
+| `openExternal: true` | “Open links or files in your browser or another app.” |
+| `appScripting: true` | “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
+| `network: "internet"` | “Connect to public internet services; local and private network addresses are blocked.” |
+| `network: "full"` | “Connect to the internet, this computer, and your local network.” — **Full access** |
+| `network: false` | `persephone.fetch()` is denied. |
+| `clipboardRead: true` | “Read the contents of your clipboard.” |
+| `camera: true` | “Use your camera.” |
+| `microphone: true` | “Use your microphone.” |
+| `geolocation: true` | “Read this device's location.” |
+| `notifications: true` | “Show desktop notifications.” |
+
+False flags have no permission line. The all-false summary is “No permissions requested.” The
+legacy label is “Unrestricted”: “This board uses an older manifest without permission settings,
+so it can do anything you can: read and write your files, run programs, and use the network.” Legacy
+service runs only if the old array contains `"service"`. Full access secondary text is “Can reach
+everything your user account can.” `fileSystem: false` blocks writes, dialogs, and other bridge file reads; `readFile()` may read only the exact currently hosted local document (bridge `1.32.0+`). The board's own `board://` assets remain available. Use native
+`fetch("./data.json")` or `fetch("board://<host>/data.json")` for own files; `persephone.fetch()`
+needs `network`. Opening links inside Persephone needs no `openExternal`.
+
+If a call rejects with exactly `permission-denied: "<flag>" is not enabled in board-manifest.json`,
+inspect the call and add only its required flag or level. Added grants prompt for approval on the
+next open/reload; reductions reconcile silently. Never click **Trust Board** unless the user
+expressly asks. Viewer boards for untrusted documents keep `fileSystem: false` and `network: false`
+and never receive `execute` or `appScripting`, while continuing to render their document and own
+assets.
+
 ## Board identity: `board-manifest.json`
 
 This folder is recognized as a board because it contains **`board-manifest.json`** —
@@ -174,8 +219,8 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
   "description": "What this board does.",
   "author": "you",
   "repository": "https://github.com/you/your-board",
-  "minBridgeVersion": "1.11.0",
-  "permissions": ["service", "contentProviders"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
   "service": "scripts/service.mjs",
   "contentProviders": [
     { "type": "acme/mem", "schemes": ["mem"] }
@@ -193,23 +238,22 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
   `name` together are the stable identity described above.
 - `minBridgeVersion` (optional) — the bridge version required by the board. A board above the
   shipped bridge is listed as incompatible and does not register its editors.
-- `permissions` (optional) — an ordered list of requested surfaces shown during trust and in Board
-  Info. This is **disclosure and lifecycle hygiene, not a security boundary**: trust already lets
-  a board run arbitrary renderer and Node code, so `"service"` is not a privilege grant or sandbox.
+- `permissions` — an object of enforced grants. New boards start with every flag false and
+  `minBridgeVersion: "1.30.0"`; set only flags used by reachable code. `service: true` is required
+  to start a background service. Auto-trust on creation does not widen the manifest grants.
 - `service` (optional) — a board-relative ESM entry for a platform-owned module service. A board
   with only this field is still a valid service board even when it has no editor association.
 
 ### Capability handlers
 
-A board that can answer named requests declares handlers in the `capabilities` array. The array is
-the functional registration axis; add `"capabilities"` to `permissions` to disclose the surface in
-trust and Board Info. As with the other board permissions, this is disclosure and lifecycle
-hygiene, not a security boundary or a grant.
+A board that can answer named requests declares handlers in the `capabilities` array. The array
+registers handlers; `appScripting: true` grants access to `persephone.call()` and capability
+invocation from the board frame.
 
 ```json
 {
-  "minBridgeVersion": "1.21.0",
-  "permissions": ["capabilities"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": { "execute": false, "service": false, "fileSystem": false, "openExternal": false, "appScripting": true, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
   "capabilities": [
     {
       "id": "acme.convert",
@@ -328,7 +372,8 @@ Declare a provider in `contentProviders` and give it one or more URL schemes:
 
 ```json
 {
-  "permissions": ["service", "contentProviders"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
   "service": "scripts/service.mjs",
   "contentProviders": [{ "type": "acme/mem", "schemes": ["mem"] }]
 }
@@ -341,9 +386,8 @@ type. Provider types and schemes have one owner. Among trusted boards, the first
 wins; a later board loses and the refusal, including the current owner where applicable, is kept
 in Board Info. New independent registration issues produce a toast once; unchanged issues do not
 toast again on refresh. A board cannot claim the reserved schemes `http`, `https`, `file`, `data`, `blob`,
-`mneme`, or any scheme beginning with `persephone-`. `contentProviders` in `permissions` is
-disclosure and lifecycle hygiene; the provider declaration itself is the functional registration
-axis, unlike the service declaration's service-permission gate.
+`mneme`, or any scheme beginning with `persephone-`. Provider registration is service-owned; there
+is no `contentProviders` permission flag. The service requires `service: true`.
 
 **Custom Editor fields (optional)** — only honored when the board is **trusted**:
 
@@ -450,6 +494,9 @@ the page. Persistence (if you want any) is your choice: write a script that read
 writes a file via `execute()`.
 
 ## The one method: `persephone.execute()`
+
+This method requires `execute: true`; it is disabled in the blank starter. The bundled
+`scripts/hello.js` example is intentionally unwired until the author enables that grant.
 
 ```js
 const handle = persephone.execute(commandLine, { cwd, env, shell });
@@ -687,6 +734,10 @@ page. Persephone closes the tab the return created and leaves the tab the user w
 
 ### `persephone.call(path, options?)`
 
+Board-frame calls require `appScripting: true`. An exact refusal reads
+`permission-denied: "appScripting" is not enabled in board-manifest.json`; inspect the call and
+add only this grant if the board needs it.
+
 Trusted Boards can read and update the AiVision tree through the page that hosts the Board. The
 hosting page is stable even if the user activates another tab. Calls always use `hints: "never"`,
 return a JSON-safe shaped value, and reject `Error` on resolver, transport, timeout, serialization,
@@ -709,8 +760,7 @@ await persephone.call("page.grouped.content", {
 
 Pass `args` to invoke the final method, `value` to assign a writable property, or `maxLength` to
 bound string shaping. Programmatic board calls are unbounded by default so binary/data strings are
-not silently clipped; an explicit `maxLength` is still honored. `args` and `value` cannot be combined. See the bundled regex verification
-Board under `assets/board-call-regex/` for a complete Run/Write example.
+not silently clipped; an explicit `maxLength` is still honored. `args` and `value` cannot be combined.
 
 Append `.$describe` to a node path when a program needs the descriptor as data rather than prose:
 `{ path, kind, summary, members[], children[], overview?, help?, identity?, restricted? }`.
@@ -753,13 +803,17 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
     Tab_ / _Copy Image_ / _Save Image As…_ on images, _Cut_ / _Copy_ / _Paste_ in text fields, and
     _Copy_ on a text selection. To show your own menu instead, call `e.preventDefault()` on the
     `contextmenu` event in your handler (same opt-out as the link router and Ctrl+S).
-- `persephone.notify(message, type)` — toast (`"info" | "success" | "warning" | "error"`).
+- `persephone.notify(message, type, options?)` — toast (`"info" | "success" | "warning" | "error"`).
+  Info, success and warning toasts close after a few seconds; `{ persistent: true }` (bridge 1.33.0)
+  keeps one on screen until the user closes it — use it for a message that needs action.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)`
-  — native dialogs; each returns a path you hand to `execute()`.
+  — native dialogs; each returns a path you hand to `execute()`. They require
+  `fileSystem: "board"` or `fileSystem: "full"`.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file
   directly, no backend script needed. A **relative** `path` resolves against the board folder (the
-  same default as `execute()`'s cwd); an absolute path reads/writes anywhere. `writeFile` creates
-  parent folders. Both return Promises and reject on error. Three encodings:
+  same default as `execute()`'s cwd); access outside the hosted document is limited by
+  `fileSystem`. `writeFile` creates parent folders. Both return Promises and reject on error. Three
+  encodings:
   - **`"utf8"`** (default) — a plain string.
   - **`"binary"`** — a **`Uint8Array`** of the raw bytes. **Use this for any binary file** (an
     image, a PDF, a zip, a spreadsheet). It hands the bytes straight to your parser with no
@@ -785,8 +839,9 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   ```
 - `persephone.getFilePath()` → `Promise<string | undefined>` — when this board is opened as a
   **custom editor** for a file (associated via `fileMasks` in `board-manifest.json`), this resolves
-  to that file's **absolute path**; read/write it with `persephone.readFile()` / `writeFile()`. It
-  resolves to `undefined` for a board opened plainly. Safe to `await` at any time — it waits for the
+  to that file's **absolute path**; `readFile()` can read it with `fileSystem: false` on bridge
+  `1.32.0+`, while writes still require `fileSystem: "board"` or `"full"`. It resolves to
+  `undefined` for a board opened plainly. Safe to `await` at any time — it waits for the
   host handshake, so you never race a missing value:
   ```js
   const filePath = await persephone.getFilePath();
@@ -930,14 +985,21 @@ plain (non-content-host) board `persephone.host.getContent()` / `getLanguage()` 
 handshake answers the question) and a registered `onContentChange` callback never fires, so
 feature-detect with a `try`/`catch` around `getContent()` if a board can open either way.
 
+**Bridge file methods are permission-scoped.** `"board"` scopes bridge file access to the board
+folder and paths returned by its dialogs; `"full"` reaches any accessible path. With
+`fileSystem: false`, `readFile()` may read only the exact hosted document path on bridge
+`1.32.0+`; writes and dialogs remain unavailable. Own board assets remain available. Use native
+`fetch("./data.json")` or `fetch("board://<host>/data.json")` to load those assets without a grant.
+
 **Clipboard:** use `persephone.clipboard.writeImage(data)` for encoded image bytes (`Uint8Array` or
 `ArrayBuffer`) or `persephone.clipboard.writeText(text)` for text. These methods write through
 Electron's native clipboard and do not require the board document to be focused. A click on
 Persephone's own toolbar can leave the board frame unfocused, in which case
 `navigator.clipboard.write*` rejects with `"Document is not focused"`; the Web Clipboard API is
 still suitable when the board document is focused and the browser gesture requirements are met.
-The CSP blocks remote requests made directly from the board frame; use `persephone.fetch()` for
-intentional remote HTTP requests (see *Libraries & assets* below).
+The CSP blocks remote requests made directly from the board frame; `persephone.fetch()` requires
+`network: "internet"` or `network: "full"` for intentional remote HTTP requests (see *Libraries &
+assets* below).
 
 ### Stream-host boards — `persephone.host.streamUrl()`
 

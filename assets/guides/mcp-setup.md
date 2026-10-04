@@ -9,6 +9,8 @@ persephone includes a built-in [Model Context Protocol (MCP)](https://modelconte
 
 > **Two separate servers:** this page covers the **app-control** server (drive Persephone itself). The optional [Mneme knowledge base](./mneme.md) exposes its *own* MCP server on a different port for reading and maintaining a document store. They are configured independently and can both run at once.
 
+> **Browser requests are refused:** both servers reject requests that include an `Origin` header, as browser-based MCP clients send from a web page. This protects the local servers from web-page and DNS-rebinding attacks. Desktop agents and Persephone's in-app MCP Inspector do not send a browser `Origin` header and are unaffected.
+
 ## Quick Start
 
 1. Open persephone Settings (`Ctrl+,` or Settings tab)
@@ -59,7 +61,7 @@ The manifest advertises exactly one tool:
 
 | Tool | Description |
 |------|-------------|
-| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, `maxLength` to bound long strings or structured results, and `timeoutMs` for a slow remote `.app` call. |
+| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, `maxLength` to bound long strings or structured results (image results are returned whole), and `timeoutMs` for a slow remote `.app` call. |
 
 Everything Persephone can do is a path under `call` — pages, editors, windows, boards, settings,
 browser automation, Agent Tools, and scripting. The twelve guide resources are separate from the
@@ -141,6 +143,15 @@ window.screen.snapshot()
 `window.screen.snapshot`, `.click`, `.hover`, `.type`, `.select`, `.pressKey`, `.evaluate`, `.screenshot`,
 `.networkRequests`, and `.waitFor` operate against the app window using refs or CSS selectors, exactly like a browser page,
 provided the active page is not incognito or Tor.
+
+The same host exposes `.recording.start({ region, openPlayer? })`, `.pause()`, `.resume()`, `.stop()`,
+`.cancel()`, and readonly `.state`. Recording starts immediately for agents and is shared with the
+header controls. `stop()` returns the temporary file path plus duration, MIME type, and dimensions;
+copy the path elsewhere to keep it past seven days. `openPlayer` defaults to false.
+
+Native operating-system dialogs are exposed on their owning window as `windows[i].nativeDialog`.
+Read its `open`, `kind`, and optional `title` properties to identify a picker or message box, then
+call `windows[i].nativeDialog.dismiss()` to cancel it. This cannot enter a path or confirm Save/Open.
 
 What's different:
 - The snapshot only ever shows the app **chrome** (tab strip, sidebar, toolbars) plus the **active page's** content — other open tabs stay hidden until you click their tab to activate them.

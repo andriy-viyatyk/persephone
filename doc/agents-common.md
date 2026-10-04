@@ -15,7 +15,8 @@
 
 ### Finding work
 
-On "let's work on tasks": read [active-work.md](active-work.md) (Active/Planned); if empty, ask
+On "let's work on tasks": read [active-work.md](active-work.md) (Active/Planned, plus any
+**Scheduled** entry whose date has passed — mention it); if empty, ask
 the user. Before starting, ask: "The next task is '[Task Title]'. Proceed, or pick a different one?"
 and wait for confirmation.
 
@@ -33,7 +34,8 @@ Work given without a defined task:
 
 Keep [active-work.md](active-work.md) current at every stage:
 - **Task document created:** add a linked entry — `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)` —
-  under **Active** (starting now) or **Planned** (queued). Both sections may hold documented tasks.
+  under **Active** (starting now), **Planned** (queued), or **Scheduled** (not before a date,
+  `**YYYY-MM-DD**` prefix). All three sections may hold documented tasks.
 - **Work starts on a Planned task:** move it to Active.
 - **Task completed:** mark `[x]` and follow completion rules (standalone → completed.md; epic task → stays until epic completes).
 
@@ -221,7 +223,7 @@ const { ArchiveEditorView } = await import("../archive/ArchiveEditorView");
 import { ArchiveEditorView } from "../archive/ArchiveEditorView";
 ```
 
-### 2. Script Context (`page`, `app`, `io`, `ai`)
+### 2. Script Context (`page`, `app`, `io`)
 ```javascript
 const data = JSON.parse(page.content);
 const output = page.grouped;

@@ -1,7 +1,8 @@
-import { BrowserWindow, ipcMain, WebContents } from "electron";
+import { BrowserWindow, WebContents } from "electron";
 import { openWindows } from "../open-windows";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { McpResponse } from "./types";
+import { guardedIpcOn } from "../ipc-sender-guard";
 
 // ── IPC Bridge (main ↔ renderer) ───────────────────────────────────
 // Reuses the same MCP_EXECUTE/MCP_RESULT channels as the old pipe server.
@@ -11,17 +12,22 @@ export const RENDERER_REQUEST_TIMEOUT_MESSAGE = "Request timeout";
 
 let ipcInitialized = false;
 let requestIdGen = 0;
-const pendingRequests = new Map<string, (response: McpResponse) => void>();
+const pendingRequests = new Map<string, { resolve: (response: McpResponse) => void; startedAt: number }>();
+
+export function hasRecentRendererRequest(windowMs = 5000): boolean {
+    const now = Date.now();
+    return Array.from(pendingRequests.values()).some(request => now - request.startedAt <= windowMs);
+}
 
 export function initMcpIpc(): void {
     if (ipcInitialized) return;
     ipcInitialized = true;
 
-    ipcMain.on(MCP_RESULT, (_event, requestId: string, response: McpResponse) => {
-        const resolve = pendingRequests.get(requestId);
-        if (resolve) {
+    guardedIpcOn(MCP_RESULT, (_event, requestId: string, response: McpResponse) => {
+        const request = pendingRequests.get(requestId);
+        if (request) {
             pendingRequests.delete(requestId);
-            resolve(response);
+            request.resolve(response);
         }
     });
 }
@@ -61,10 +67,10 @@ export async function sendToRenderer(method: string, params: unknown, windowInde
             }, effectiveTimeout);
         }
 
-        pendingRequests.set(requestId, (response) => {
+        pendingRequests.set(requestId, { startedAt: Date.now(), resolve: (response) => {
             if (timer) clearTimeout(timer);
             resolve(response);
-        });
+        } });
 
         windowData.window.window.webContents.send(MCP_EXECUTE, requestId, method, params);
     });
@@ -87,8 +93,8 @@ export function sendToRendererForWebContents(
 
 /** Resolve every in-flight renderer request with an error (server shutdown). */
 export function cancelPendingRequests(message: string): void {
-    for (const [, resolve] of pendingRequests) {
-        resolve({ error: { code: -32603, message } });
+    for (const [, request] of pendingRequests) {
+        request.resolve({ error: { code: -32603, message } });
     }
     pendingRequests.clear();
 }

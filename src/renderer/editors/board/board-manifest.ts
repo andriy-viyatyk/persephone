@@ -5,7 +5,7 @@ import {
     normalizeBoardGuidesFolder,
     normalizeBoardRelativePath,
 } from "../../../shared/guides/mounted-source";
-import { normalizeVersionRequirement } from "../../../shared/version-utils";
+import { normalizeVersionRequirement, OBJECT_PERMISSION_BRIDGE_VERSION } from "../../../shared/version-utils";
 import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
 import {
     BOARD_MANIFEST_FILE,
@@ -13,6 +13,8 @@ import {
     normalizeBrowserUrlMasks,
     normalizePermissions,
     normalizeStringList,
+    type BoardPermissionFlags,
+    type NormalizedBoardPermissions,
 } from "../../../shared/board-manifest-utils";
 import type {
     BoardSettingDeclaration,
@@ -110,7 +112,7 @@ export interface BoardManifest {
      * Known disclosure values include `service`, `contentProviders`, and `capabilities`; unknown
      * non-empty values remain visible so newer boards can be inspected by older Persephone builds.
      */
-    permissions?: string[];
+    permissions?: BoardPermissionFlags | string[];
     /** Board-relative Node service entry path, honored only by the service supervisor. */
     service?: string;
     /** Provider types and URL schemes contributed by a trusted board. */
@@ -278,7 +280,7 @@ export interface NormalizedBoardManifest {
     singleInstance?: boolean;
     minAppVersion?: string;
     minBridgeVersion?: string;
-    permissions?: string[];
+    permissions: NormalizedBoardPermissions;
     service?: string;
     contentProviders?: BoardContentProviderDeclaration[];
     capabilities?: BoardCapabilityDeclaration[];
@@ -433,6 +435,20 @@ export function defaultBoardManifest(name = ""): BoardManifest {
     const configuredAuthor = settings.get("boards.default-author");
     return {
         schemaVersion: BOARD_MANIFEST_SCHEMA_VERSION,
+        minBridgeVersion: OBJECT_PERMISSION_BRIDGE_VERSION,
+        permissions: {
+            execute: false,
+            service: false,
+            fileSystem: false,
+            openExternal: false,
+            appScripting: false,
+            network: false,
+            clipboardRead: false,
+            camera: false,
+            microphone: false,
+            geolocation: false,
+            notifications: false,
+        },
         name,
         author: typeof configuredAuthor === "string" ? configuredAuthor : "",
     };
@@ -819,6 +835,7 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     const issues: NormalizedBoardManifest["issues"] = [];
     const normalized: NormalizedBoardManifest = {
         schemaVersion: source.schemaVersion,
+        permissions: normalizePermissions(source.permissions),
         association: null,
         issues,
     };
@@ -831,7 +848,6 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     }
     if (typeof source.standalone === "boolean") normalized.standalone = source.standalone;
     if (typeof source.singleInstance === "boolean") normalized.singleInstance = source.singleInstance;
-    if (has("permissions") && Array.isArray(source.permissions)) normalized.permissions = normalizePermissions(source.permissions);
     if (typeof source.service === "string") {
         const service = normalizeBoardServicePath(source.service);
         if (service !== null) normalized.service = service;
@@ -874,12 +890,12 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
 }
 
 export function boardTrustDisclosure(manifest: NormalizedBoardManifest): {
-    permissions: readonly string[];
+    permissions: NormalizedBoardPermissions;
     serviceDeclared: boolean;
     capabilities: readonly string[];
 } {
     return {
-        permissions: manifest.permissions ?? [],
+        permissions: manifest.permissions,
         serviceDeclared: manifest.service !== undefined,
         capabilities: (manifest.capabilities ?? []).map((declaration) => declaration.id),
     };

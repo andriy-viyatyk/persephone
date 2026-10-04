@@ -7,9 +7,14 @@ import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
+import { requestBoardTrust } from "./request-board-trust";
+import { bundledBoardRegistry } from "./bundled-board-registry";
+import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-notice";
 import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
+import { createPipeFromDescriptor } from "../../content/registry";
+import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
 import {
     decodePersephoneBoardLink,
@@ -46,6 +51,7 @@ export interface ContentResourceInfo {
     readonly resourceId: string;
     readonly size: number;
     readonly contentType: string;
+    readonly filePath?: string;
 }
 
 interface ContentResource {
@@ -695,16 +701,48 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         tabId: string,
         generation: number,
         signal?: AbortSignal,
+        boardNetworkPolicy?: import("../../api/node-fetch").BoardNetworkPolicy,
     ): Promise<ContentResourceInfo> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
         // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
         // retains it for its reads and the source map must no longer authorize another open.
-        const sessionHandle = this.sourceSessionHandles.get(link);
-        if (!sessionHandle && this.sessionBoundSources.has(link)) {
+        const sourceSessionHandle = this.sourceSessionHandles.get(link);
+        const sessionHandle = sourceSessionHandle;
+        if (!sourceSessionHandle && this.sessionBoundSources.has(link)) {
             throw new Error("The private session for this source has expired. Open the link again from its page.");
         }
-        const pipe = await pipeFromLink(link, { sessionHandle });
+        const boardRoot = this.state.get().boardRoot;
+        if (!boardRoot) throw new Error("The board root is unavailable.");
+        const scheme = schemeOf(link);
+        if (scheme && isBoardClaimedScheme(scheme) && !(await boardTrust.allows(boardRoot, "service"))) {
+            throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+        }
+        let pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
         try {
+            const descriptor = pipe.toDescriptor();
+            let filePath: string | undefined;
+            if (descriptor.provider.type === "http" && boardNetworkPolicy?.network === false) {
+                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            }
+            if (descriptor.provider.type === "file") {
+                const configuredPath = descriptor.provider.config.path;
+                if (typeof configuredPath !== "string") throw new Error("The file provider did not expose an authorizable path.");
+                const canonicalPath = await api.authorizeBoardFilePath(boardRoot, configuredPath, "read");
+                descriptor.provider.config.path = canonicalPath;
+                for (const transformer of descriptor.transformers) {
+                    if (transformer.type === "archive" && transformer.config.archivePath === configuredPath) {
+                        transformer.config.archivePath = canonicalPath;
+                    }
+                }
+                pipe.dispose();
+                pipe = createPipeFromDescriptor(descriptor);
+                filePath = canonicalPath;
+            } else if (!["http", "data", "cache", "mneme", "guide"].includes(descriptor.provider.type)) {
+                if (!(await boardTrust.allows(boardRoot, "service"))) {
+                    throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+                }
+                throw new Error("This registered content provider does not expose a path that can be authorized for board access.");
+            }
             const stat = await pipe.stat({ signal });
             if (signal?.aborted) throw new Error("The content resource request was cancelled.");
             if (!stat.exists || stat.size === undefined || !Number.isFinite(stat.size) || stat.size < 0) {
@@ -716,8 +754,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             // Publish to the read path BEFORE returning, so the URL handed to the board is already
             // serviceable — the board may fetch it on the next line.
             const { registerBoardContentResource } = await import("./board-pipe-handler");
-            registerBoardContentResource(resourceId, pipe);
-            if (sessionHandle && this.sourceSessionHandles.get(link) === sessionHandle) {
+            registerBoardContentResource(resourceId, pipe, boardRoot, false);
+            if (sourceSessionHandle && this.sourceSessionHandles.get(link) === sourceSessionHandle) {
                 this.sourceSessionHandles.delete(link);
                 const timer = this.sourceSessionHandleTimers.get(link);
                 if (timer) clearTimeout(timer);
@@ -727,6 +765,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 resourceId,
                 size: stat.size,
                 contentType: contentTypeForPipe(pipe),
+                ...(filePath ? { filePath } : {}),
             };
         } catch (error: unknown) {
             pipe.dispose();
@@ -957,6 +996,20 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (matchingEntry && matchingEntry.boardRoot !== s.boardRoot) {
             this.state.update((state) => { state.boardRoot = matchingEntry.boardRoot; });
         }
+        const restoredRoot = this.state.get().boardRoot;
+        if (restoredRoot && await isBoardFolder(restoredRoot)) {
+            await bundledBoardRegistry.ensureInitialized();
+            await boardTrust.load();
+            await boardTrust.refreshPermissionSnapshot();
+            const snapshot = await boardTrust.getPermissionSnapshot(restoredRoot);
+            if (boardTrust.isTrusted(restoredRoot)
+                && snapshot?.manifestPermissions.kind === "legacy"
+                && !bundledBoardRegistry.isBundled(restoredRoot)) {
+                const manifest = await readNormalizedBoardManifest(restoredRoot);
+                const boardName = manifest?.name?.trim() || fpBasename(restoredRoot);
+                queueLegacyBoardDeprecationNotice(s.id, restoredRoot, boardName);
+            }
+        }
         // A plain board page persisted under its folder name (before pages took the manifest name,
         // or when the manifest was renamed) is retitled; a page carrying a file or folder is not.
         if (!this.currentFilePath() && !s.folderPath) {
@@ -1078,8 +1131,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  (`index.html` / `app.js` / CSS). Re-probes the board icon so a mid-session
      *  `icon.*` change shows on demand (no folder watcher — US-744 live refresh is
      *  intentionally dropped). Also invoked by the board editor's reload path. */
-    reloadBoard(): void {
+    async reloadBoard(): Promise<void> {
         const boardRoot = this.state.get().boardRoot;
+        if (boardRoot && !(await requestBoardTrust(boardRoot))) return;
         if (boardRoot) invalidateBoardIcon(boardRoot);
         this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
@@ -1088,8 +1142,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Wait for the next attachable main board frame after a model-owned reload. */
     reloadAndWait(): Promise<boolean> {
+        return this.runReloadAndWait();
+    }
+
+    private async runReloadAndWait(): Promise<boolean> {
+        const boardRoot = this.state.get().boardRoot;
+        if (boardRoot && !(await requestBoardTrust(boardRoot))) return false;
         const frameReady = this.waitForFrameLoad(BOARD_CDP_TAB);
-        this.reloadBoard();
+        if (boardRoot) invalidateBoardIcon(boardRoot);
+        this.reloadAwaitingRegistration = true;
+        this.clearAiVisionRegistration();
+        this.state.update((s) => { s.reloadToken++; });
         return frameReady;
     }
 

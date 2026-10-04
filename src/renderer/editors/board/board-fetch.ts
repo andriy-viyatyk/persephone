@@ -7,6 +7,8 @@ import type {
 } from "../../../ipc/board-bridge-channels";
 import { errMessage } from "../../../shared/utils";
 import type { IFetchOptions } from "../../api/types/app";
+import { boardTrust } from "../../api/board-trust";
+import { api } from "../../../ipc/renderer/api";
 
 interface ActiveBoardFetch {
     controller: AbortController;
@@ -26,25 +28,32 @@ export class BoardFetchBridge {
 
     start(
         message: BoardFetchRequestMsg,
+        boardRoot: string,
         frame: HTMLIFrameElement,
         generation: number,
         post: ActiveBoardFetch["post"],
     ): void {
         const current: ActiveBoardFetch = { controller: new AbortController(), frame, generation, post };
         this.active.set(message.reqId, current);
-        void this.run(message, current);
+        void this.run(message, boardRoot, current);
     }
 
-    private async run(message: BoardFetchRequestMsg, current: ActiveBoardFetch): Promise<void> {
+    private async run(message: BoardFetchRequestMsg, boardRoot: string, current: ActiveBoardFetch): Promise<void> {
         try {
             if (typeof message.url !== "string") throw new TypeError("persephone.fetch() requires a URL string.");
             const init = this.validateInit(message.init);
+            const grant = await boardTrust.getGrantedPermissions(boardRoot);
+            const network = grant?.kind === "legacy" ? "full" : grant?.flags.network ?? false;
+            const appScripting = grant?.kind === "legacy" || (grant?.kind === "flags" && grant.flags.appScripting);
+            if (network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            const mcpUrl = await api.getBoardMcpEndpoint();
             const { nodeFetch } = await import("../../api/node-fetch");
             const response = await nodeFetch(message.url, {
                 ...init,
                 ...(init.body instanceof ArrayBuffer ? { body: new Blob([init.body]).stream() } : {}),
                 signal: current.controller.signal,
-            } as IFetchOptions);
+                boardNetworkPolicy: { network, appScripting, mcpUrl },
+            } as IFetchOptions & { boardNetworkPolicy: { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string } });
             if (this.active.get(message.reqId) !== current) return;
             const hasBody = response.body !== null;
             const head: BoardFetchHeadMsg = {

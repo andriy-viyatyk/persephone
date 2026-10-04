@@ -7,6 +7,7 @@ import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
 import { appPartition } from "./constants";
 import { debounce } from "../shared/utils";
+import { getBoardRootForHost } from "./board-protocol-service";
 
 interface WindowState {
     width: number;
@@ -51,6 +52,11 @@ export class OpenWindow {
                 partition: appPartition,
                 nodeIntegration: true,
                 contextIsolation: false,
+                // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
+                // Chromium fetch — favicon cache, Image editor, the in-app MCP client (which must send no Origin:
+                // the MCP servers refuse browser requests, US-1588), and user scripts' global fetch — and the dev
+                // origin (http://localhost) loads file:// media. It grants nothing an attacker in this window lacks:
+                // nodeIntegration already bypasses SOP. Guest content stays isolated (sandboxed preview, board://).
                 webSecurity: false,
                 webviewTag: true,
                 plugins: true,
@@ -132,8 +138,17 @@ export class OpenWindow {
             }
         });
 
-        this.window.webContents.setWindowOpenHandler(({ url }) => {
-            this.send(EventEndpoint.eOpenUrl, url);
+        this.window.webContents.setWindowOpenHandler((details) => {
+            let boardRoot: string | undefined;
+            try {
+                const referrer = new URL(details.referrer.url);
+                if (referrer.protocol === "board:") boardRoot = getBoardRootForHost(referrer.host) ?? undefined;
+            } catch { /* Empty or malformed referrer is deliberately unattributed. */ }
+            this.send(EventEndpoint.eOpenUrl, {
+                url: details.url,
+                ...(boardRoot ? { boardRoot } : {}),
+                ...(!boardRoot ? { unattributedPopup: true } : {}),
+            });
             return { action: "deny" };
         });
 
@@ -155,7 +170,7 @@ export class OpenWindow {
                     }
                 }
                 event.preventDefault();
-                this.send(EventEndpoint.eOpenUrl, url);
+                this.send(EventEndpoint.eOpenUrl, { url });
                 return;
             }
 
@@ -188,7 +203,7 @@ export class OpenWindow {
 
             // Block and send to renderer for routing
             event.preventDefault();
-            this.send(EventEndpoint.eOpenUrl, url);
+            this.send(EventEndpoint.eOpenUrl, { url });
         });
 
         // US-884: `will-navigate` above covers only the MAIN frame. A board renders in an
@@ -223,7 +238,9 @@ export class OpenWindow {
             if (targetOrigin && targetOrigin === currentOrigin) return;
 
             details.preventDefault();
-            this.send(EventEndpoint.eOpenUrl, details.url);
+            let boardRoot: string | undefined;
+            try { boardRoot = getBoardRootForHost(new URL(currentUrl).host) ?? undefined; } catch { /* no board origin */ }
+            this.send(EventEndpoint.eOpenUrl, { url: details.url, ...(boardRoot ? { boardRoot } : {}) });
         });
 
         if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

@@ -13,7 +13,20 @@
       "default": ""
     }
   ],
-  "permissions": ["capabilities"],
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": "full",
+    "openExternal": false,
+    "appScripting": true,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "geolocation": false,
+    "notifications": false
+  },
   "capabilities": [
     { "id": "image.edit", "version": 1, "priority": 50, "title": "Edit image", "alwaysOpensNewPage": true },
     { "id": "diagram.edit", "version": 1, "priority": 50, "title": "Edit diagram", "alwaysOpensNewPage": true }

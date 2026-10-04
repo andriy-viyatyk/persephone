@@ -140,7 +140,7 @@ export async function renderMermaidSvg(
     mermaid.initialize({
         startOnLoad: false,
         theme: lightMode ? "default" : "dark",
-        securityLevel: "loose",
+        securityLevel: "strict",
     });
 
     const id = `mermaid-render-${++renderCounter}`;

@@ -5,12 +5,13 @@ import { createLinkData } from "../../../shared/link-data";
 import { signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
-import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
+import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { boardEditorId } from "../../editors/board/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
+import { windowRecording } from "../window-recording";
 
 /**
  * Renderer IPC events service.
@@ -53,11 +54,11 @@ export class RendererEventsService {
         rendererEvents[EventEndpoint.eBoardOpenRawLink].subscribe(this.handleBoardOpenRawLink);
     }
 
-    private handleBoardOpenRawLink = async (msg: { href: string; editor?: string }) => {
+    private handleBoardOpenRawLink = async (msg: { href: string; editor?: string; boardRoot: string }) => {
         if (!msg?.href) return;
         await guard("Failed to open link", () =>
             app.events.openRawLink.sendAsync(
-                createLinkData(msg.href, { sourceId: "board", target: msg.editor }),
+                createLinkData(msg.href, { sourceId: "board", target: msg.editor, boardRoot: msg.boardRoot }),
             ),
         );
     };
@@ -101,15 +102,18 @@ export class RendererEventsService {
         await guard("Failed to move page", () => pagesModel.movePageOut(pageId));
     };
 
-    private handleOpenUrl = async (url: string) => {
+    private handleOpenUrl = async (event: { url: string; boardRoot?: string; unattributedPopup?: boolean }) => {
         await guard("Failed to open URL", () =>
-            app.events.openRawLink.sendAsync(createLinkData(url)),
+            app.events.openRawLink.sendAsync(createLinkData(event.url, {
+                ...(event.boardRoot ? { boardRoot: event.boardRoot, sourceId: "board" } : {}),
+                ...(event.unattributedPopup ? { unattributedPopup: true } : {}),
+            })),
         );
     };
 
     private handlePipelineCandidate = async (url: string) => {
         const scheme = schemeOf(url);
-        if (!scheme || !isSchemeRegistered(scheme)) return;
+        if (!scheme || !isBoardClaimedScheme(scheme)) return;
 
         await guard("Failed to open URL", () =>
             app.events.openRawLink.sendAsync(createLinkData(url)),
@@ -133,6 +137,11 @@ export class RendererEventsService {
 
     private handleBeforeQuit = async () => {
         try {
+            if (windowRecording.state.status === "recording" || windowRecording.state.status === "paused") {
+                await windowRecording.stop("window-close");
+            } else if (windowRecording.state.status === "ready") {
+                await windowRecording.cancel();
+            }
             await Promise.all(
                 pagesModel.state.get().pages.map((model) => model.saveState())
             );
@@ -143,8 +152,8 @@ export class RendererEventsService {
         signalReadyToQuit();
     };
 
-    private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error" }) => {
-        void ui.notify(data.message, data.type ?? "info");
+    private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error"; persistent?: boolean }) => {
+        void ui.notify(data.message, data.type ?? "info", { persistent: data.persistent === true });
     };
 
     private handleUpdateAvailable = async (result: UpdateCheckResult) => {

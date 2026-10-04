@@ -5,6 +5,8 @@
  * that the wire contract can be consumed by the service adapter and US-1468.
  */
 
+import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+
 export const SERVICE_HANDSHAKE_TIMEOUT_MS = 5000;
 export const SERVICE_SHUTDOWN_TIMEOUT_MS = 2000;
 export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
@@ -74,6 +76,10 @@ export interface TrustedBoardSnapshotEntry {
     service?: string;
     /** Result of the US-1466 trusted-plus-permission predicate. */
     canStartService: boolean;
+    permissions: NormalizedBoardPermissions;
+    /** Current normalized manifest declaration; never used for enforcement. */
+    manifestPermissions: NormalizedBoardPermissions;
+    manifestChanged?: boolean;
 }
 
 export interface BoardServiceTrustSnapshot {

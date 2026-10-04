@@ -26,6 +26,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
 | [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar at the top of browser content when present
 | [Origin requests permission for access] [Allow] [Block]             |  prompt bar for the active inner tab when present
+| [Site extension wants to run on this host] [Trust] [Not now]       |  trust bar when an extension matches the regular page
 +---------------------------------------------------------------------+
 ```
 
@@ -161,6 +162,16 @@ be set to **Allow** or **Block**; **Ask** means there is no saved choice. Some p
 show a bar above the page with the requesting site and requested access. Choose **Allow** or
 **Block** to answer. Choices for regular profiles are saved between app runs. Incognito and Tor
 choices stay in memory for that private session and are discarded when it ends.
+
+## Site extensions
+
+When a site extension matches a regular browser page, a bar above the page names the extension
+and the hosts where it may run. **Trust** allows its script to run with the capabilities available
+to that signed-in site's session; **Not now** declines the prompt. Trust only extensions you want
+to run. An agent may choose Trust only when you ask it to. If the extension's host list changes,
+Persephone asks for trust again. Extensions never run in Incognito or Browser (Tor) pages.
+
+Manage the folder, trust, and installed extensions in [Site Extensions](../site-extensions.md).
 
 ## Navigation and tabs
 

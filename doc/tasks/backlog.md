@@ -4,6 +4,19 @@ Ideas and future tasks not yet planned for implementation.
 
 ---
 
+## Demo recording — the parts deferred from US-1618
+
+[US-1618](US-1618-video-recording/README.md) adds window/page/editor recording for the user and
+for agents (`window.screen.recording.*`). Left out:
+
+- [ ] **Visual pointer for agent demos.** While an agent records a demo it drives the app through
+  `call`, so viewers see things change with no cursor to follow. Add an overlay pointer the agent
+  can move (and "click" with a ripple) during a recording, ideally moving automatically to the
+  element an automation action targets. Lives in the app shell above page content so it is part
+  of every recording region.
+
+---
+
 ## Agent cold start — the parts deferred from US-929
 
 [US-929](US-929-agent-cold-start/README.md) covered what an agent can do with filesystem tools
@@ -223,14 +236,6 @@ Scripts stored inside `.link.json` files, organized in a "Scripts" panel and tri
 events (add/update, before open), so a link collection is self-contained and portable. Runs on
 the existing ScriptRunner with an injected scope; each script edits in Monaco over a virtual
 `IProvider` backed by the LinkViewModel. 8 tasks: US-396 … US-403.
-
-### [EPIC-014: Claude AI Chat Panel](../epics/EPIC-014.md)
-
-A right-side chat panel over `@anthropic-ai/claude-agent-sdk` (reusing Claude CLI auth), with
-Persephone MCP auto-registration, active-page context injection, streamed markdown responses and
-conversation persistence. App-level, so conversations survive tab switches. Includes the
-`Ctrl+\`` open-PowerShell-at-cwd shortcut that stands in for a full terminal editor.
-7 tasks: US-385 … US-391.
 
 ### [EPIC-011: Chrome Extension Support for Built-in Browser](../epics/EPIC-011.md)
 
@@ -801,6 +806,36 @@ Either resolve through the same board-aware path, or document the limitation on 
 **Background:** EPIC-021 deferred this task. The automation layer is now stable and this would be a clean insertion point. See [EPIC-021.md](../epics/EPIC-021.md) section US-370 for the original design notes.
 
 **Complexity:** Medium-High
+
+---
+
+## Code signing via SignPath Foundation (shelved US-1585)
+
+Shelved 2026-10-02. SignPath Foundation replied that it could not find enough public references
+(articles, blog posts, forum or community mentions) to verify the project's reputation, and asked
+for such material before a final decision. Revisit once Persephone has that public footprint;
+reply to SignPath's request with the references rather than starting a new application.
+
+What the investigation established (2026-10-01), so it need not be repeated:
+
+- **Scope:** Authenticode-sign `persephone.exe`, `persephone-launcher.exe`, `persephone-snip.exe`,
+  `mneme.exe` and the NSIS installer. Leave upstream Electron DLLs unsigned. The NSIS uninstaller
+  cannot be reached by the SignPath GitHub action (electron-builder signs it mid-build) — accept it
+  unsigned in v1.
+- **Pipeline:** electron-builder `--win --dir` with signing and VMP off → upload the app tree,
+  SignPath action → VMP-sign the returned `persephone.exe` (`scripts/vmp-sign.mjs`, Authenticode
+  must come first) → `--prepackaged <dir> --win nsis zip` with `win.signExecutable: false` →
+  SignPath the installer → `electron-builder publish`. Drop `latest.yml`/blockmaps (stale after
+  signing; nothing consumes them).
+- **Foundation terms:** OSI license, MFA, Authors/Reviewers/Approvers, a "Code signing policy"
+  section on the home and download pages, manual approval of every signing request (two per
+  release here — set a long `wait-for-completion` timeout).
+- **Open eligibility question:** the Castlabs ECS Electron fork, the runtime-downloaded Widevine
+  CDM, and the closed Castlabs EVS VMP service — asked in the application, never answered.
+- **Quota:** Foundation projects have a yearly artifact-size cap; ~350 MB per signed release.
+  Sign only deliberate releases behind a workflow input, not every patch tag.
+- The README "Code signing policy" section was removed when the task was shelved; the privacy
+  statement stays. Restore the policy section (attribution, roles, approval rule) on acceptance.
 
 ---
 

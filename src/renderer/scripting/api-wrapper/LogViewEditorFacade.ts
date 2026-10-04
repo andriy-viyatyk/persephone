@@ -35,7 +35,7 @@ const LOG_VIEW_MEMBERS: readonly IAiMember[] = [
     { name: "entryCount", kind: "property", summary: "The number of parsed entries, including zero, or undefined when detached." },
     { name: "error", kind: "property", summary: "The actual JSONL parse error, or undefined for a valid parse or detached editor." },
     { name: "showTimestamps", kind: "property", summary: "The real timestamp visibility boolean, or undefined when detached." },
-    { name: "push", kind: "method", signature: "push(entries): ILogPushResult", summary: "Append one string or flat entry object, or an array of them, and return ids immediately.", caution: "writes Log View JSONL content; inline dialogs wait for the user in the Log View page" },
+    { name: "push", kind: "method", signature: "push(entries): ILogPushResult", summary: "Show the user a message, table/grid (output.grid), or Markdown (output.markdown), or ask a question: append one string or flat entry object, or an array of them, and return ids immediately.", caution: "writes Log View JSONL content; inline dialogs wait for the user in the Log View page" },
     { name: "dialogResult", kind: "method", signature: "dialogResult(id: string): ILogDialogResult | undefined", summary: "Read a copied resolved or unresolved inline dialog entry." },
     { name: "clear", kind: "method", signature: "clear(): void", summary: "Remove all Log View entries; returns null after clearing.", caution: "deletes the page's JSONL content" },
     { name: "toggleTimestamps", kind: "method", signature: "toggleTimestamps(): void", summary: "Toggle persisted Log View timestamps.", caution: "changes persisted Log View settings" },

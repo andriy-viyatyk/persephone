@@ -12,7 +12,51 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.7 (Upcoming)
 
-*No changes yet.*
+### Breaking Changes
+
+- **Removed the script-level Claude API integration:** scripts no longer expose the `ai` global. Scripts that use it now fail with `ReferenceError: ai is not defined`. Connect external agents to Persephone through the MCP server instead; see the [MCP Server Setup guide](./mcp-setup.md).
+
+- **Markdown preview removes active raw HTML:** scripts, iframes, forms, and styles in Markdown are removed. Documents that relied on those elements may look different.
+
+- **Browser-based MCP clients are refused:** requests sent from web pages include an `Origin` header and are no longer accepted by the Persephone or Mneme MCP servers. Desktop agents and Persephone's in-app MCP Inspector are unaffected; see the [MCP Server Setup guide](./mcp-setup.md).
+
+- **Release builds ignore `NODE_OPTIONS` and `NODE_EXTRA_CA_CERTS`:** Persephone no longer reads these environment variables.
+
+- **Browser cookies are now encrypted:** if you return to an older Persephone version after using 5.0.7, that version cannot read the encrypted cookies and you will need to sign in to websites again.
+
+- **Browser pages cannot open internal Persephone links or schemes:** web pages can no longer launch Persephone's internal links. Popup windows are also blocked from navigating to local files or non-web schemes.
+
+### Security
+
+- **Browser site extensions require your trust:** agents can build reusable page models with scripts, but a script runs with the signed-in site's capabilities only after you choose **Trust**. Manage extension folders and trust in Settings and Tools & Editors. Incognito and Tor pages never run extensions. See the [Site Extensions guide](./site-extensions.md).
+
+- **Boards now enforce declared permissions:** the Trust board dialog shows the requested access, marks broad grants as **Full access**, and when a trusted board adds or expands a permission it shows **Board permissions changed** with the kept, added and removed permissions in one list and two choices: **Accept** or **Unregister board**. Boards without an object-form permissions declaration are marked **Unrestricted** and deprecated; trusted legacy boards show a persistent warning when opened. See the [Boards guide](./boards.md#board-trust-gate).
+
+- **Board file access follows the permissions granted at trust time:** boards can be limited to their own folder or files selected in their dialogs, while object-form boards' `board://` assets stay inside their folder.
+
+- **Internet-only boards are protected from DNS rebinding:** Persephone checks DNS results and connects to the checked public addresses; requests resolving to local or private addresses are blocked. See the [Boards guide](./boards.md#service-declarations-in-board-manifestjson).
+
+- **Markdown and Mermaid previews are safer:** raw HTML in Markdown is filtered; scripts, iframes, forms, and styles are removed. Mermaid diagrams render in strict mode.
+
+- **MCP servers reject browser requests:** Persephone and Mneme refuse requests from web pages to prevent DNS-rebinding and Origin-based attacks. Desktop agents and the in-app MCP Inspector continue to work; see the [MCP Server Setup guide](./mcp-setup.md).
+
+- **Web pages cannot open internal Persephone links or schemes.** Popup windows cannot navigate to local files or non-web schemes.
+
+- **The main window has a stricter security policy, and HTML previews use an isolated `html-preview://` origin.**
+
+- **Electron's security fuses are locked in release builds.** The environment-variable and browser-cookie effects are listed under [Breaking Changes](#breaking-changes).
+
+- **Browser downloads carry Mark-of-the-Web:** Windows SmartScreen and Office Protected View can apply their usual protections to downloaded files.
+
+### Improvements
+
+- **Record the Persephone window, active page, or editor area:** choose a region from quick settings, then control capture in the header. Review the video in Video Player and use **Save as…** or **Discard**; unsaved recordings are cleaned up after seven days. Agents can also record through `window.screen.recording`; see the [Header Strip guide](./screens/header.md), [Video Player guide](./editors/video.md), and [window API reference](./scripting/api/window.md).
+
+- **MCP gives agents clearer hints, better search, and complete screenshots:** image results from `call` are returned as inline images without `maxLength` truncation, guide search and `helpSearch` rank the answers to plain questions such as "show a table to the user" first, and hints no longer repeat the same warning or the same pending-dialog notice on every call. See the [MCP Server Setup guide](./mcp-setup.md) and [AI Vision guide](./agents/ai-vision.md).
+
+- **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.
+
+- **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
 
 ---
 
@@ -139,8 +183,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   that starts lazily under main-process supervision, answers requests without an open board page,
   and shares the board frame's `persephone.storage`. One service handles activity from multiple
   windows, so reloading one window does not interrupt the others. Live state, failures, restart
-  counts, and process identity are visible through `boards.list()`; `permissions` is disclosure and
-  lifecycle hygiene, not a privilege grant or sandbox. Bridge 1.22.0 adds
+  counts, and process identity are visible through `boards.list()`. Board permissions are now
+  enforced; see the [Boards guide](./boards.md#service-declarations-in-board-manifestjson). Bridge 1.22.0 adds
   `persephone.service.onRequest(handler)` and `onShutdown(fn)`; the host owns ready, probe, replies,
   and shutdown, while raw-protocol services remain supported during migration. See [Boards — declared
   services](./boards.md#declared-services-storage-and-lifecycle) and the [service authoring guidance](../board-template/CLAUDE.md#declared-module-services-manifestservice).
@@ -1439,7 +1483,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   });
   ```
 
-  The `stopSequences` value is also exposed as a read-only `session.stopSequences` property. See the [`ai` API reference](./scripting/api/ai.md) for details.
+  The `stopSequences` value is also exposed as a read-only `session.stopSequences` property.
 
 ---
 
@@ -1515,7 +1559,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Script API: `ai.ClaudeSession`** — Scripts now have access to a global `ai` namespace with a `ClaudeSession` class for building multi-turn conversations with Claude via the Anthropic API. Create a session, set a system message, add user messages, define tools, and call `send()` — the session handles the full tool-call loop internally. Supports event callbacks for `"tool-call"`, `"tool-result"`, `"assistant-message"`, and `"error"`. See the [`ai` API reference](./scripting/api/ai.md).
+- **Script API: `ai.ClaudeSession`** — Scripts now have access to a global `ai` namespace with a `ClaudeSession` class for building multi-turn conversations with Claude via the Anthropic API. Create a session, set a system message, add user messages, define tools, and call `send()` — the session handles the full tool-call loop internally. Supports event callbacks for `"tool-call"`, `"tool-result"`, `"assistant-message"`, and `"error"`.
 
   ```javascript
   const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });

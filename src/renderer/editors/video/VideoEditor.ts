@@ -16,8 +16,9 @@ import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { app } from "../../api/app";
+import { pagesModel } from "../../api/pages";
 import { createLinkData } from "../../../shared/link-data";
-import { fpDirname, isPlainLocalPath } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import type { ITreeProvider, ILink } from "../../api/types/io.tree";
 import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
@@ -107,6 +108,40 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     get activeMediaElement(): HTMLMediaElement | null {
         return this.mediaElement;
     }
+
+    get isTemporaryRecording(): boolean {
+        const filePath = this.filePath;
+        if (!filePath) return false;
+        return fpNormalizeForCompare(fpDirname(filePath)) === fpNormalizeForCompare(app.fs.resolveDataPath("recordings"))
+            && /^persephone-recording-[0-9a-f-]{36}\.(?:mp4|webm)$/i.test(fpBasename(filePath));
+    }
+
+    saveTemporaryRecording = async (): Promise<void> => {
+        if (!this.isTemporaryRecording || !this.filePath) throw new Error("This video is not an unsaved recording.");
+        const sourcePath = this.filePath;
+        const extension = fpBasename(sourcePath).toLowerCase().endsWith(".mp4") ? "mp4" : "webm";
+        const destination = await app.fs.showSaveDialog({
+            title: "Save recording as",
+            defaultPath: `Persephone Recording.${extension}`,
+            filters: [{ name: "Video", extensions: ["mp4", "webm"] }],
+        });
+        if (!destination) return;
+        await app.fs.copyFile(sourcePath, destination);
+        await this.submitUrl(destination);
+        this.state.update((state) => { state.filePath = destination; });
+        await app.fs.delete(sourcePath);
+        const { windowRecording } = await import("../../api/window-recording");
+        windowRecording.clearLast(sourcePath);
+    };
+
+    discardTemporaryRecording = async (): Promise<void> => {
+        if (!this.isTemporaryRecording || !this.filePath) throw new Error("This video is not an unsaved recording.");
+        await app.fs.delete(this.filePath);
+        const { windowRecording } = await import("../../api/window-recording");
+        windowRecording.clearLast(this.filePath);
+        const page = this.page ? pagesModel.query.findPage(this.page.id) : undefined;
+        await page?.close();
+    };
 
     /** Keep facade reads attached to the media element owned by this page. */
     setMediaElement = (element: HTMLMediaElement | null): void => {
@@ -530,6 +565,10 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     /** Clean up streaming server sessions when the editor tab is closed. */
     async dispose(): Promise<void> {
+        // Dispose runs when the page is closed or navigated away — not on app quit, window
+        // close or a cross-window tab move — so an unsaved recording is deleted here, while a
+        // restored page keeps its file. Startup cleanup still removes leftovers after 7 days.
+        const unsavedRecording = this.isTemporaryRecording ? this.filePath : undefined;
         this.mediaElement = null;
         // Invalidate in-flight starts before awaiting their IPC creation; each stale request
         // will then delete and invalidate only the session/resource it created.
@@ -544,7 +583,22 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             if (pipe) pipe.dispose();
             this.state.update((s) => { s.streamUrl = ""; });
             await super.dispose();
+            if (unsavedRecording) await this.deleteUnsavedRecording(unsavedRecording);
         }
+    }
+
+    private async deleteUnsavedRecording(filePath: string): Promise<void> {
+        // A duplicated tab may still be playing the same recording.
+        const target = fpNormalizeForCompare(filePath);
+        const stillOpen = pagesModel.state.get().pages.some((page) => page.editors.some((editor) =>
+            editor !== this && editor instanceof VideoEditor && editor.filePath !== undefined
+            && fpNormalizeForCompare(editor.filePath) === target));
+        if (stillOpen) return;
+        try {
+            if (await app.fs.exists(filePath)) await app.fs.delete(filePath);
+            const { windowRecording } = await import("../../api/window-recording");
+            windowRecording.clearLast(filePath);
+        } catch { /* Best effort: the seven-day startup cleanup removes anything left behind. */ }
     }
 
     /** Open the current video in VLC. Uses the local streaming server for HTTP sources. */

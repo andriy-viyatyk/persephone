@@ -1,3 +1,78 @@
+## EPIC-120 — Site extensions: injected AiVision models for web pages
+
+Completed 2026-10-03. A site extension is a script for exact HTTPS hosts that Persephone injects
+into matching browser pages (CDP `Runtime.evaluate` on `dom-ready`) to publish an AiVision model, so
+an agent reads `pages[i].editor.app` instead of snapshotting the page. The Outlook proof of concept
+was a go: the model is up within 0.4 s, and it costs 4–6 times fewer tokens than snapshots for a
+list and about 19 times fewer for a body.
+
+- **Store.** Extensions live in a configurable folder, `site-extensions.path` (default
+  `<userData>/data/site-extensions`), one sub-folder per extension. Exact hosts are matched, and a
+  host claimed by two extensions runs neither.
+- **Trust.** Main owns trust, which is bound to the extension id, its host list and the folder. A
+  trust bar appears in the page, and an agent answers it only when the user asks
+  (`pages[i].editor.trustSiteExtension()`).
+- **Management.** The list is in the Site extensions tab of Tools & Editors; Settings keeps a summary
+  and the folder setting.
+- **Agent tools.** The `siteExtensions` namespace offers create, reload in place (with the script's
+  error returned), list and remove, and an agent authoring guide comes with it.
+- **Events.** Page-model events are quieter: `shape-changed` is logged only for a real change, and
+  `navigated` is not logged for an in-page navigation under a live model.
+- **Accepted limitation.** Path guards are lexical, so a symbolic link inside an extension folder is
+  not resolved. Writing the link needs the same access as writing the script.
+
+[Epic document](EPIC-120.md).
+
+- [x] US-1602: PoC — injection hook + late-model discovery fix
+- [x] US-1603: PoC — Outlook model, reliability matrix, go/no-go report
+- [x] US-1604: Site extension store, manifest, host matching, injection
+- [x] US-1605: Registration and trust
+- [x] US-1606: Agent tools — create, reload in place, list, remove
+- [x] US-1607: Site extension authoring guide and agent workflow
+- [x] US-1612: Quieter page-model events
+- [x] US-1613: Site Extensions tab in Tools & Editors; configurable folder
+- [x] US-1614: Agents can answer the site-extension trust bar on request
+
+## EPIC-119 — Board permissions: least privilege, declared in the manifest
+
+Completed 2026-10-03. Board manifests declare an object-form permission set with every flag off
+by default: `execute`, `service`, `fileSystem` (`"board"` / `"full"`), `openExternal`,
+`appScripting`, `network` (`"internet"` / `"full"`), `clipboardRead` and device flags. Main
+enforces the grant stored with trust. The trust dialog and Board Info list the permissions, mark
+full-access grants, and re-ask when a manifest widens them. Board file access is scoped, device
+permissions follow the grant, and a board can read its own hosted document without file access.
+Manifests without a declaration are deprecated with a warning on every open, and their removal is
+scheduled as US-1609. The catalog boards (on `develop`, publishing after the release) and the
+user's registered boards were migrated. Follow-up: US-1611 (DNS rebinding for
+`network: "internet"`). [Epic document](EPIC-119.md).
+
+- [x] US-1593: Permission model — bridge surface inventory, manifest schema, core enforcement
+- [x] US-1596: Scoped file access for boards
+- [x] US-1597: Device permissions for board frames
+- [x] US-1598: Trust dialog and Board Info show granted permissions; re-trust on change
+- [x] US-1599: Scaffold all-`false` manifest; board guides and agent instructions
+- [x] US-1600: `persephone-boards` catalog permissions + safe viewers; republish all boards
+- [x] US-1601: Migrate the user's registered custom boards (Codex run per board)
+- [x] US-1608: Deprecation notice for boards without declared permissions
+- [x] US-1610: A board can read its own hosted document without `fileSystem`
+
+## EPIC-118 — Security hardening: hostile web pages and files
+
+Completed 2026-10-02. Closes the two code-execution paths from a hostile page or file (raw HTML in
+Markdown, DNS rebinding against the local MCP servers) and adds browser-grade layers: no
+page-initiated jumps into internal schemes, a strict main-window CSP with HTML previews on
+`html-preview://`, locked Electron fuses with board Node scripts in a utility process,
+Mark-of-the-Web on downloads, and a shared IPC sender guard with popup navigation blocking. Finding
+F7 (viewer boards) moved to EPIC-119. [Epic document](EPIC-118.md).
+
+- [x] US-1587: Sanitize Markdown HTML; Mermaid strict mode
+- [x] US-1588: DNS-rebinding and Origin protection for the Persephone and Mneme MCP servers
+- [x] US-1589: Web pages cannot open internal Persephone schemes
+- [x] US-1590: Main-window CSP hardening; HTML previews served from `html-preview://`
+- [x] US-1591: Electron fuses + asar integrity; board Node scripts in a utility process
+- [x] US-1592: Mark-of-the-Web on browser downloads
+- [x] US-1594: IPC sender checks and popup navigation guard
+
 ## EPIC-117 — Trusted browser automation: real input, actionable locators, agent-sized snapshots
 
 Completed 2026-09-30. Browser pages, boards and `window.screen` drive pages with trusted CDP input

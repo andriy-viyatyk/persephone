@@ -6,7 +6,8 @@ summary: "A security review checklist for a board the user did not write: what t
 
 # Reviewing a board before you trust it
 
-The Trust-this-Board dialog tells the user to ask their AI agent to review the board's scripts.
+The Trust board dialog tells the user to ask their AI agent to review the board's scripts and
+permission list.
 This page is that review. It is written for the agent doing it; a user reading along will find
 the same reasoning.
 
@@ -16,8 +17,11 @@ Do this whenever the user asks "can I trust this board?", whenever you are about
 
 ## What trust actually grants
 
-Trust is not a permission scale — it is one switch, and it is all the way on. Review against what
-the board *could* do, not what it appears to do.
+Trust controls whether a board runs. An object-form manifest's permissions also gate bridge
+capabilities, so review both the code and each declared grant. Legacy manifests without object
+permissions remain **Unrestricted** for now, are deprecated, and will stop working in a future
+Persephone release. The first-trust dialog warns about this; opening an already-trusted legacy board
+shows a persistent warning.
 
 **The board's own frame is locked down.** Persephone serves it under a strict CSP:
 `default-src 'none'`, `connect-src 'self'`, no remote scripts or styles, and no JavaScript `eval`
@@ -29,15 +33,14 @@ the HTML.
 
 | Capability | What it means |
 |---|---|
-| `persephone.execute(command)` | Any command line, **through the OS shell by default**, with the user's full privileges and inherited environment. Working directory defaults to the board folder — it is not a boundary. |
-| `persephone.executeNode(script, args)` | The board's own script on Persephone's bundled Node. Argv-style (no shell), but Node has no CSP: unrestricted filesystem and network. |
-| Declared `service` / `scripts/service.mjs` | A platform-owned Node process that can run without a page; inspect its imports, storage, network, handshake, request routing, and failure behavior. |
-| `persephone.readFile` / `writeFile` | **Absolute paths are accepted.** These are not scoped to the board folder; they reach anything the user can read or write. |
-| `persephone.call(path, options)` | The full **renderer** Persephone object model, gated only by trust: `fs`, `proc`, `shell`, `settings`, `tools.execute`, `boardVars` (administration of stored environment variables and secrets across namespaces), and `script.execute` — arbitrary JavaScript in the renderer with Node access. It cannot reach the process-owned `main` or `windows` roots. A board never needs most of this. |
+| `persephone.execute(command)` / `executeNode(script, args)` | Requires `execute: true`. Runs a command through the OS shell or a script on Persephone's bundled Node, with the user's privileges and inherited environment. **Full access.** |
+| Declared `service` / `scripts/service.mjs` | Requires `service: true`. A platform-owned Node process can run without a page; inspect its imports, storage, network, handshake, request routing, and failure behavior. **Full access.** |
+| `persephone.readFile` / `writeFile` | Requires `fileSystem: "board"` for the board folder and files selected in its dialogs, or `"full"` for any accessible file. `"full"` is **Full access**. With `false`, `readFile()` can read only the exact currently hosted document; writes and dialogs remain unavailable. |
+| `persephone.call(path, options)` | The **renderer** Persephone object model, gated by `appScripting: true`: `fs`, `proc`, `shell`, `settings`, `tools.execute`, `boardVars` (administration of stored environment variables and secrets across namespaces), and `script.execute` — arbitrary JavaScript in the renderer with Node access. It cannot reach the process-owned `main` or `windows` roots. A board rarely needs most of this. |
 | Trust scope | Per board-root folder, remembered across restarts, and **inherited**: trusting a folder trusts every board nested inside it, including ones added later. |
 
-So the review question is not "is the UI honest?" It is: **what can run, what does it reach, and
-can it change after the user clicks Trust?**
+So the review question is not "is the UI honest?" It is: **what can run, what grants does it need,
+what does it reach, and can it change after the user clicks Trust?**
 
 ## What to read
 
@@ -51,6 +54,16 @@ can it change after the user clicks Trust?**
 2. **Every file in the folder.** `index.html`, the app scripts, **all of `scripts/`**, and anything
    in `lib/`. Boards are plain files; there is no hidden part.
 3. **Then re-read the entry points**: what runs at load, on a timer, and on each user action.
+4. **Compare declared grants to calls.** Find both missing and unused permissions with this
+   starting search, then inspect every hit and aliases manually:
+
+   ```sh
+   rg -n '(persephone|\bP)\.(execute|executeNode|service|readFile|writeFile|openFileDialog|saveFileDialog|openFolderDialog|call|fetch|capabilities\.invoke)|navigator\.clipboard\.read|navigator\.mediaDevices|getCurrentPosition|new Notification|fetch\(' .
+   ```
+
+   Map each call to the permission table. Inspect `persephone.call()` paths individually: board
+   calls need `appScripting`. Distinguish native same-origin `fetch()` from `persephone.fetch()`.
+   A text hit does not prove runtime reachability or completeness.
 
 ## The signals that matter
 
@@ -69,10 +82,55 @@ board may legitimately spawn a process — but every one of them needs a reason 
 | `eval(`, `new Function(`, `atob(`, `Buffer.from(..., "base64")`, long hex/base64 literals | Code or payloads that only become readable at runtime. In a backend script there is no CSP to stop them. |
 | `child_process`, `spawn`, `exec`, `-Command`, `cmd /c` | Process execution inside a backend script, one level below `persephone.execute`. |
 
-Declaring `service` is **not a security boundary**. `permissions` is disclosure and lifecycle
-hygiene, not a privilege grant or sandbox, because trust already permits arbitrary renderer and
-Node execution. Review the service as another process and supply-chain surface; a trusted board's
-service must be inspected because trust grants it the same user-application execution authority.
+An enabled `service` declaration grants its background process capability. Review it as another
+process and supply-chain surface. `execute`, `service`, and `appScripting` each imply Full access.
+The permission lines use the approved wording:
+
+> This board can do only what is listed below. Without any permission it can still show its own
+> pages, work with the document you open in it, copy to the clipboard, and open links inside
+> Persephone.
+
+| Manifest declaration | Capability and approved permission line |
+|---|---|
+| `execute: true` | Run programs/scripts. “Run programs and scripts on this computer.” — **Full access** |
+| `service: true` | Background program. “Run a background program while Persephone is open.” — **Full access** |
+| `fileSystem: false` | `readFile()` can read only the exact currently hosted document; other reads, writes, and dialogs are denied. Own `board://` assets still work. |
+| `fileSystem: "board"` | Board folder and files picked in its dialogs. “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
+| `fileSystem: "full"` | Any accessible file. “Read and write any file you can access.” — **Full access** |
+| `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Internal Persephone links still work. |
+| `appScripting: true` | `persephone.call`, capabilities, app scripts/agent tools. “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
+| `network: false` | Denies `persephone.fetch()`. |
+| `network: "internet"` | Public services only. “Connect to public internet services; local and private network addresses are blocked.” |
+| `network: "full"` | Internet, computer and LAN. “Connect to the internet, this computer, and your local network.” — **Full access** |
+| `clipboardRead: true` | “Read the contents of your clipboard.” Clipboard writes remain available. |
+| `camera: true` | “Use your camera.” |
+| `microphone: true` | “Use your microphone.” |
+| `geolocation: true` | “Read this device's location.” |
+| `notifications: true` | “Show desktop notifications.” |
+
+An all-false manifest says **“No permissions requested.”** Legacy boards are labelled **“Unrestricted”**
+with this explanation: “This board uses an older manifest without permission settings, so it can do
+anything you can: read and write your files, run programs, and use the network.” Legacy service
+starts only when the old array includes `"service"`. The dialog also warns that legacy permissions
+are deprecated and asks the authoring agent to add an object-form `permissions` block. Full access
+secondary text is “Can reach everything your user account can.”
+
+New blank boards use all-false object manifests and `minBridgeVersion: "1.30.0"`; object-form
+manifests require `minBridgeVersion >= 1.30.0`. Auto-trust on creation does not widen their grants.
+Keep only flags used by reachable code. Native
+`fetch("./data.json")` and `fetch("board://<host>/data.json")` read own board files with
+`fileSystem: false`; `persephone.fetch()` needs `network`. An exact refusal is
+`permission-denied: "<flag>" is not enabled in board-manifest.json`. Inspect the source call and add
+only its required flag/level. Added grants show the **Board permissions changed** dialog at the
+next open/reload (the user chooses **Accept** or **Unregister board**; closing it takes the board off
+its page); reductions reconcile silently. Never click **Trust Board**, **Accept** or
+**Unregister board** unless the user expressly asks for that outcome.
+
+Viewer boards rendering untrusted documents keep `fileSystem: false` and `network: false`, and
+never request `execute` or `appScripting`: injected document code must not rewrite viewer files or
+reach outward. The viewer can read its exact hosted document with `fileSystem: false`; other file
+reads and writes remain denied. Document display and own board assets continue to work.
+
 For the service-versus-`executeNode()` ownership decision, use the canonical wording in the
 [board-authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice)
 instead of creating a second rule here.

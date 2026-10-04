@@ -1,7 +1,8 @@
 import { pagesModel } from "../../../api/pages";
 import type { IBrowserAccessFlags } from "../../../editors/browser/agent-access";
 import { BROWSER_AUTOMATION_MEMBERS } from "../browser-automation-members";
-import type { IAiVisionDescriptor } from "ai-vision";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
+import type { IWindowScreen, IWindowRecording } from "../../../api/types/window";
 
 const WINDOW_SCREEN_HELP = `Persephone's own application window, not a browser page. The shared
 automation operations act on the complete current app-window accessibility tree, including the
@@ -37,20 +38,29 @@ refs and fullPage are unsupported on this host. evaluate() accepts JSON-safe arg
 function-expression strings; arrow strings are invoked. consoleMessages() and pageErrors() read
 Persephone's renderer records; this target has no page JavaScript dialog policy.
 
-summarize() returns host identity only ({ kind: "WindowScreen" }). Because a terminal
-window.screen walk ends before this descriptor's restricted() is consulted by the per-hop resolver
-(node_modules/ai-vision/dist/core/resolver.js:85-87), it never exposes active-page content, title, URL, editor id,
-or privacy state. screenshot() may return undefined when its CDP session is unavailable, and
-unavailable object fields are omitted from call answers rather than represented by undefined or null.
-As verified live by US-1335, snapshots returned no password or ordinary input value; US-1336 found
-that Chromium can omit hidden loaded frame subtrees, and doc/architecture/browser-editor.md explains
-that the app snapshot contains only the active page's content.`;
+recording.start({ region, openPlayer? }) immediately records the current Persephone window, active
+page, or main editor area. Agent recordings stay closed by default; stop() returns the temporary
+file path and media details, and the agent must copy the path elsewhere to retain the result.
+summarize() returns only { kind: "WindowScreen" }; it never exposes the active page's content,
+title, URL, editor id, or privacy state. screenshot() may return undefined when its CDP session is
+unavailable. Unavailable fields are omitted rather than returned as null. Snapshots never include
+password or input values, may omit hidden frame subtrees, and cover only the active page.`;
 
 /**
  * The app-window boundary is stricter than the adjacent browser-page boundary. The latter uses
  * agentMayAccessBrowserPage(state) and its openedByAgent exception; this whole-window host cannot
  * use that exception because its snapshot includes the active private page.
  */
+const recordingMembers: readonly IAiMember[] = [
+    { name: "start", kind: "method", signature: "start({ region, openPlayer? })", summary: "Immediately begin recording the window, active page, or main editor area." },
+    { name: "pause", kind: "method", signature: "pause()", summary: "Pause the current recording." },
+    { name: "resume", kind: "method", signature: "resume()", summary: "Resume the current recording." },
+    { name: "stop", kind: "method", signature: "stop()", summary: "Finalize the recording and return its temporary file path and media details." },
+    { name: "cancel", kind: "method", signature: "cancel()", summary: "Discard the unfinished recording." },
+    { name: "state", kind: "property", summary: "Read-only status, elapsed time, selected region, and latest result." },
+];
+const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer? }) begins immediately; pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;
+
 function restrictedWindowScreen(): string | undefined {
     const activeEditor = pagesModel.activePage?.mainEditorInstance;
     if (!activeEditor || activeEditor.editorId !== "browser-view") return undefined;
@@ -64,12 +74,25 @@ function restrictedWindowScreen(): string | undefined {
 }
 
 export function describeWindowScreen(_instance: unknown): IAiVisionDescriptor {
+    const instance = _instance as IWindowScreen;
     return {
         kind: "WindowScreen",
         summary: "Persephone's own window accessibility and automation host.",
-        members: [...BROWSER_AUTOMATION_MEMBERS],
+        members: [...BROWSER_AUTOMATION_MEMBERS, { name: "recording", kind: "property", summary: "Shared window, page, or editor recording controls.", node: true }],
+        provide: (name) => name === "recording" ? { value: instance.recording } : undefined,
         help: WINDOW_SCREEN_HELP,
         restricted: restrictedWindowScreen,
         summarize: () => ({ kind: "WindowScreen" }),
+    };
+}
+
+export function describeWindowRecording(instance: unknown): IAiVisionDescriptor {
+    const recording = instance as IWindowRecording;
+    return {
+        kind: "WindowRecording",
+        summary: "Shared per-window recording controls and state.",
+        members: recordingMembers,
+        help: recordingHelp,
+        summarize: () => ({ kind: "WindowRecording", status: recording.state.status, elapsedMs: recording.state.elapsedMs }),
     };
 }

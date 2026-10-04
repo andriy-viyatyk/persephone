@@ -351,6 +351,14 @@ The `<webview>` DOM element's event API is unreliable — events like `page-favi
 4. Events are relayed back via `BrowserChannel.event` with `internalTabId` for routing
 5. Main process also sets `windowOpenHandler` to intercept new-window requests
 
+The main process owns navigation policy as well as event forwarding. Page-initiated navigation to
+`file:` and `app-asset:` is denied; other non-Chromium schemes, including Persephone's internal
+schemes, are prevented from navigating the page and are handed to the host only after a recent user
+activation, where only a registered board claim can consume them. App-initiated navigation such as
+restoring a local page is separate from page-initiated navigation. Popup windows receive their own
+guards: they cannot navigate to local files or non-Chromium schemes, and a popup that enables Node
+integration is destroyed.
+
 ## Why the Preload Script?
 
 The main process `page-favicon-updated` event works for most cases, but the preload script provides a complementary detection mechanism using DOM observation. It:
@@ -479,6 +487,12 @@ separately; persistent `persist:browser-<name>` sessions map to that named profi
 non-persistent Incognito and Tor sessions have no profile name. Profile decisions are stored in
 `browser-permissions.json` under the app data folder. Decisions for Incognito and Tor are held in
 memory for the lifetime of their Electron session and are never written to disk.
+
+Window recording has a narrow exception in the app renderer session: main arms a short-lived,
+one-shot grant for the requesting `webContents` when it issues that window's desktop source id.
+Only the matching main-frame video permission request is allowed, including Electron's empty
+`mediaTypes` shape for desktop capture; audio remains disallowed. The corresponding permission
+check accepts video only while the grant is armed, and display-capture requests remain denied.
 
 For browser sessions, permission checks require a valid top-level HTTP(S) origin. They deny file
 system, storage-access, HID, serial, USB, and deprecated synchronous clipboard-read checks;
@@ -652,8 +666,9 @@ The consequences handled explicitly:
 - **Opening a resource out of the page.** "Open Image in New Tab" asks main for a one-URL
   `session-src` handle (`browser-network:session-source`) and opens the image through it; the image
   editor then shows the bytes, not the URL. A routed page whose route is down opens nothing.
-  Board-claimed downloads get a `session-src` handle for proxied persistent sessions as they do for
-  Tor and incognito ones.
+  Board-claimed downloads get a board-bound `session-src` handle for proxied persistent sessions as
+  they do for Tor and incognito ones. The handle carries the board's granted network policy, and
+  main validates permission and pins resolved addresses on every redirect hop.
 - **Resources list.** "Show Resources" opens a standalone Link page that outlives the browser page,
   so on a routed page it is opened without image thumbnails.
 - **WebRTC.** An `app.on("web-contents-created")` hook in `browser-network-service.ts` sets
@@ -1024,6 +1039,44 @@ browser IPC event channel; a shape signal records a host event and triggers a ba
 while a page `notify(text)` becomes a rate-limited, page-attributed event. The proxy sender invokes
 the page's remote handler through CDP with the shared timeout policy and labels the page-authored
 subtree as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
+
+### Site extensions
+
+The renderer-side `SiteExtensionStore` reads immediate child folders from the configured
+`site-extensions.path`, or defaults to `<userData>/data/site-extensions`. Each extension has a
+manifest and a script. The store validates the manifest and exact HTTPS host names, caches the
+manifest index against modification time, and reads the script fresh for each injection. If valid
+extensions claim the same host, none of those claims is selected for injection. A manifest script
+path is resolved relative to its extension folder and rejected when its normalized path leaves that
+folder. This is a lexical check; a symlink inside the extension folder can still point outside it,
+so this path check is not a filesystem sandbox.
+
+`BrowserWebviewModel` checks each completed document's URL and privacy mode before loading an
+extension. Incognito and Tor pages are always skipped. A matching extension runs in the page's
+main world through CDP `Runtime.evaluate`, with the standalone site-extension runtime loaded before
+the extension script; this path is not subject to the site's script CSP. Extensions do not run until
+the user trusts them. Trust is owned by the main process and persisted separately from extension
+folders. A grant records the extension id and its exact host set, so changing that set requires
+consent again. Binding trust to the configured folder means changing the folder clears all grants.
+The browser's in-page prompt offers Trust and Not now; Not now suppresses the prompt for that tab
+until its next navigation. Trusting evaluates the matching extension in that document immediately.
+The prompt is document-scoped, so a stale bar cannot grant trust after navigation or extension
+changes.
+
+The extension script publishes `window.__aiVision` through the injected runtime's `expose()` API.
+The regular page-model probe then registers that shape with the browser editor. `refresh()` signals
+the probe again when an extension exposes its model after the initial load probe. Injection is
+tracked per document to avoid rerunning on duplicate load events. The `app.siteExtensions` agent
+service can scaffold and list extensions, remove one with confirmation, and reload the trusted
+extension in the active browser document without reloading the site. In-place reload runs the old
+script's registered disposers, clears its remote model, reads the script again, and uses the same
+trust, host, enabled, and privacy gates as normal injection. Trust or enabled-state changes do not
+remove code already running in an open document; navigate or reload that document to apply them.
+
+The renderer trust mirror receives authoritative snapshots over IPC. The main-process trust service
+serializes file mutations and broadcasts updates to every application window. Renderer management
+helpers keep folder removal and trust revocation together, while the Tools & Editors hub's Site
+extensions tab lists validation status, host conflicts, trust state, and management actions.
 
 ## Browser Automation (MCP)
 

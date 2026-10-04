@@ -1,4 +1,6 @@
 import type { IWindowScreen } from "./types/window";
+import { windowRecording } from "./window-recording";
+import type { RecordingRegion } from "../../ipc/api-param-types";
 import type {
     IBrowserClickOptions,
     IBrowserElementLocator,
@@ -62,6 +64,14 @@ interface WaitForOption extends TabOption {
 
 /** Thin Object Model adapter over the existing app-window automation target. */
 export class WindowScreen implements IWindowScreen {
+    readonly recording = {
+        start: (options: { region: RecordingRegion; openPlayer?: boolean }) => windowRecording.start(options.region, options),
+        pause: () => windowRecording.pause(),
+        resume: () => windowRecording.resume(),
+        stop: () => windowRecording.stop("agent"),
+        cancel: () => windowRecording.cancel(),
+        get state() { return windowRecording.state; },
+    };
     async snapshot(options?: TabOption & {
         root?: string | { ref: string };
         interactive?: boolean;

@@ -48,9 +48,9 @@ export interface RunnerStartMsg {
     /** Argv-style arguments (no-shell spawns). When present, the runner calls
      *  `spawn(command, args, opts)` instead of `spawn(command, opts)`. */
     args?: string[];
-    /** Board-bridge marker (US-882): run `command` as a Node script on the app's
-     *  own binary (`ELECTRON_RUN_AS_NODE`). Translated by `board-bridge.ts` before
-     *  it reaches the runner; the renderer IPC path never sets it. */
+    /** Board-bridge marker (US-882): run `command` as a Node script in an Electron
+     *  utility process through `startNodeJobTo`. Translated by `board-bridge.ts`;
+     *  the renderer IPC path never sets it. */
     node?: boolean;
     opts?: RunnerSpawnOptions;
 }

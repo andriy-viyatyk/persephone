@@ -4,7 +4,7 @@ import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getStartupInputs, windowReady } from "./window-handlers";
-import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
+import { DownloadEntry, OpenFileDialogParams, RecordingFinalizeRequest, RecordingRegion, RecordingSessionChunk, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { WindowPages, PageDragData } from "../../shared/types";
 import { dragModel } from "../../main/drag-model";
@@ -28,10 +28,15 @@ import {
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
+import fs from "node:fs";
+import path from "node:path";
 import type { BoardEndpoint } from "./board-handlers";
 import type { GitEndpoint } from "./git-handlers";
+import type { SiteExtensionEndpoint } from "./site-extension-handlers";
 
-class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
+let siteExtensionRuntime: string | null = null;
+
+class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint> {
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
         return getAppRootPath();
     }
@@ -105,6 +110,15 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         return app.getPath(folder as Parameters<typeof app.getPath>[0]);
     }
 
+    /** The site-extension runtime bundle (EPIC-120 PoC), built beside `main.js`. Re-read in dev,
+     *  where the watcher rebuilds it without restarting Electron. */
+    getSiteExtensionRuntime = async (): Promise<string> => {
+        if (siteExtensionRuntime === null || !app.isPackaged) {
+            siteExtensionRuntime = await fs.promises.readFile(path.join(__dirname, "site-extension-runtime.js"), "utf8");
+        }
+        return siteExtensionRuntime;
+    }
+
     zoom = async (event: IpcMainEvent, delta: number): Promise<void> => {
         const window = BrowserWindow.fromWebContents(event.sender);
         const currentZoom = window?.webContents.getZoomLevel() || 0;
@@ -131,7 +145,10 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
      *  `showFolder`, but the error string is returned instead of discarded: the shell
      *  reports "no application is registered for this extension" that way, and without
      *  it an unopenable file looks like a menu item that does nothing. Empty = accepted. */
-    openPath = async (event: IpcMainEvent, path: string): Promise<string> => {
+    openPath = async (event: IpcMainEvent, path: string, boardRoot?: string): Promise<string> => {
+        if (boardRoot && !(await (await import("../../main/board-trust-service")).boardTrustService.allows(boardRoot, "openExternal"))) {
+            throw new Error('permission-denied: "openExternal" is not enabled in board-manifest.json');
+        }
         return shell.openPath(path);
     }
 
@@ -301,6 +318,26 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         return startScreenSnip(hideWindows);
     }
 
+    startWindowRecording = async (event: IpcMainEvent, request: { region: RecordingRegion }) => {
+        const { startRecording } = await import("../../main/recording-service");
+        return startRecording(event.sender, request.region);
+    }
+
+    appendWindowRecordingChunk = async (event: IpcMainEvent, request: RecordingSessionChunk): Promise<void> => {
+        const { appendRecordingChunk } = await import("../../main/recording-service");
+        await appendRecordingChunk(event.sender.id, request.recordingId, request.chunk);
+    }
+
+    finalizeWindowRecording = async (event: IpcMainEvent, request: RecordingFinalizeRequest): Promise<string> => {
+        const { finalizeRecording } = await import("../../main/recording-service");
+        return finalizeRecording(event.sender.id, request.recordingId, request.extension);
+    }
+
+    cancelWindowRecording = async (event: IpcMainEvent, recordingId: string): Promise<void> => {
+        const { cancelRecording } = await import("../../main/recording-service");
+        await cancelRecording(event.sender.id, recordingId);
+    }
+
     clipboardReadFilePaths = async (_event: IpcMainEvent): Promise<ClipboardFileList> => {
         const { readClipboardFiles } = await import("../../main/clip-service");
         return readClipboardFiles();
@@ -364,6 +401,16 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         return image.toPNG();
     };
 
+    setHtmlPreview = async (event: IpcMainEvent, id: string, html: string): Promise<void> => {
+        const { setHtmlPreview } = await import("../../main/html-preview-protocol");
+        setHtmlPreview(event.sender, id, html);
+    };
+
+    clearHtmlPreview = async (_event: IpcMainEvent, id: string): Promise<void> => {
+        const { clearHtmlPreview } = await import("../../main/html-preview-protocol");
+        clearHtmlPreview(id);
+    };
+
 
 }
 
@@ -387,6 +434,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.inspectElement, controllerInstance.inspectElement);
     bindEndpoint(Endpoint.openDevTools, controllerInstance.openDevTools);
     bindEndpoint(Endpoint.getCommonFolder, controllerInstance.getCommonFolder);
+    bindEndpoint(Endpoint.getSiteExtensionRuntime, controllerInstance.getSiteExtensionRuntime);
     bindEndpoint(Endpoint.zoom, controllerInstance.zoom);
     bindEndpoint(Endpoint.resetZoom, controllerInstance.resetZoom);
     bindEndpoint(Endpoint.showItemInFolder, controllerInstance.showItemInFolder);
@@ -429,6 +477,10 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setClipboardHealthMonitoring, controllerInstance.setClipboardHealthMonitoring);
     bindEndpoint(Endpoint.restartClipboard, controllerInstance.restartClipboard);
     bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
+    bindEndpoint(Endpoint.startWindowRecording, controllerInstance.startWindowRecording);
+    bindEndpoint(Endpoint.appendWindowRecordingChunk, controllerInstance.appendWindowRecordingChunk);
+    bindEndpoint(Endpoint.finalizeWindowRecording, controllerInstance.finalizeWindowRecording);
+    bindEndpoint(Endpoint.cancelWindowRecording, controllerInstance.cancelWindowRecording);
     bindEndpoint(Endpoint.clipboardReadFilePaths, controllerInstance.clipboardReadFilePaths);
     bindEndpoint(Endpoint.clipboardWriteFilePaths, controllerInstance.clipboardWriteFilePaths);
     bindEndpoint(Endpoint.startOsFileDrag, controllerInstance.startOsFileDrag);
@@ -439,4 +491,6 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.openTerminal, controllerInstance.openTerminal);
     bindEndpoint(Endpoint.detectTerminal, controllerInstance.detectTerminal);
     bindEndpoint(Endpoint.capturePageRegion, controllerInstance.capturePageRegion);
+    bindEndpoint(Endpoint.setHtmlPreview, controllerInstance.setHtmlPreview);
+    bindEndpoint(Endpoint.clearHtmlPreview, controllerInstance.clearHtmlPreview);
 }

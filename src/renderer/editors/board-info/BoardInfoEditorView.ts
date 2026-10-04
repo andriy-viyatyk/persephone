@@ -1,6 +1,9 @@
 import { app } from "../../api/app";
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
+import { requestBoardTrust } from "../board/request-board-trust";
+import { LEGACY_PERMISSION_EXPLANATION, legacyBoardDeprecationWarning } from "../board/board-permission-copy";
+import { createBoardPermissionChangeList, createBoardPermissionList } from "../board/board-permission-list";
 import { publishedBoards } from "../../api/published-boards";
 import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
@@ -104,6 +107,7 @@ export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
         this.bind(this.model.state, selectAutoSwitchState, () => this.maybeAutoSwitch());
         this.own(boardInstallRegistry.subscribeInstalled(() => this.syncSurface()));
         this.own(boardTrust.subscribePaths(() => this.syncSurface()));
+        this.own(boardTrust.subscribeGrants(() => { void this.model.loadProperties(); }));
         this.own(publishedBoards.subscribeCatalog(() => this.syncSurface()));
         this.listen(window, "focus", () => {
             if (this.model.mode === "properties") void this.model.loadProperties();
@@ -398,10 +402,32 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             }
             metadata.append(this.infoRow("Folder editor", masks));
         }
-        if ((info.permissions?.length ?? 0) > 0) {
-            const permissions = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
-            for (const permission of info.permissions ?? []) permissions.append(this.maskChip(permission));
-            metadata.append(this.infoRow("Permissions", permissions));
+        if (!info.trusted && !info.permissions) {
+            metadata.append(text("Not trusted — no permissions granted", { size: "sm", color: "warning" }));
+            if (info.proposedPermissions) {
+                metadata.append(text("Proposed permissions", { size: "sm", bold: true }));
+                metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
+            }
+        } else if (info.permissions) {
+            metadata.append(text("Granted permissions", { size: "sm", bold: true }));
+            metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, info.name));
+        }
+        if (info.permissionChangePending && info.proposedPermissions) {
+            const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
+            pending.append(text("Pending permission change", { size: "sm", bold: true, color: "warning" }));
+            if (info.permissions) {
+                pending.append(createBoardPermissionChangeList(info.permissions, info.proposedPermissions, "sm"));
+            } else {
+                pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
+            }
+            if (info.service) pending.append(text("Service: declared", { size: "sm", color: "light" }));
+            this.addButton(pending, {
+                children: "Review permission change",
+                onClick: () => { void requestBoardTrust(info.root); },
+            });
+            metadata.append(pending);
+        } else if (info.service) {
+            metadata.append(text("Service: declared", { size: "sm", color: "light" }));
         }
         if ((info.contentProviders?.length ?? 0) > 0) {
             const providers = panel({ direction: "column", gap: "xs", align: "stretch" });
@@ -623,6 +649,20 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
 
     private addButton(parent: HTMLElement, props: ButtonViewProps): ButtonView {
         return this.addChild(parent, new ButtonView(props));
+    }
+
+    private permissionList(
+        permissions: NonNullable<BoardPropsInfo["permissions"]>,
+        showDeprecationWarning = false,
+        boardName = "This board",
+    ): HTMLElement {
+        const list = panel({ direction: "column", gap: "xs", align: "stretch" });
+        list.append(createBoardPermissionList(permissions, "sm"));
+        if (permissions.kind === "legacy") {
+            list.append(text(LEGACY_PERMISSION_EXPLANATION, { size: "sm", color: "light" }));
+            if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarning(boardName), { size: "sm", color: "warning" }));
+        }
+        return list;
     }
 
     private addChild<T extends IOwnedView & { mount(): HTMLElement }>(parent: HTMLElement, view: T): T {

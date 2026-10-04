@@ -38,6 +38,7 @@ export function normalizeVersionRequirement(raw: unknown): string | undefined {
 export interface BoardCompatibilityRequirements {
     minAppVersion?: unknown;
     minBridgeVersion?: unknown;
+    requiresMinBridgeVersion?: boolean;
 }
 
 export interface BoardCompatibilityVersions {
@@ -49,6 +50,9 @@ export interface BoardCompatibilityResult {
     compatible: boolean;
     reason?: string;
 }
+
+/** First bridge that understands object-form enforced permissions. */
+export const OBJECT_PERMISSION_BRIDGE_VERSION = "1.30.0";
 
 /** Compare the independent app and bridge requirements of a board. */
 export function getBoardCompatibility(
@@ -65,6 +69,13 @@ export function getBoardCompatibility(
     }
 
     const minBridgeVersion = normalizeVersionRequirement(requirements.minBridgeVersion);
+    if (requirements.requiresMinBridgeVersion
+        && (!minBridgeVersion || compareVersions(minBridgeVersion, OBJECT_PERMISSION_BRIDGE_VERSION) > 0)) {
+        return {
+            compatible: false,
+            reason: `Object-form board permissions require minBridgeVersion ${OBJECT_PERMISSION_BRIDGE_VERSION} or newer.`,
+        };
+    }
     if (minBridgeVersion && versions.bridgeVersion
         && compareVersions(versions.bridgeVersion, minBridgeVersion) > 0) {
         return {

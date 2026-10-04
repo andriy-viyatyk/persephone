@@ -18,6 +18,7 @@ import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { errMessage } from "../../../shared/utils";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
+import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
 import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
 import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
 import { BrowserTargetModel } from "./BrowserTargetModel";
@@ -92,6 +93,14 @@ export class BrowserEditor extends EditorModel<
         this.tor = new BrowserTorModel(this);
         this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
+        this.own(siteExtensionTrust.subscribe((snapshot) => {
+            this.state.update((state) => {
+                state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {
+                    const grant = snapshot[prompt.id];
+                    return !grant || !sameSiteExtensionHostSet(grant.hosts, prompt.hosts);
+                });
+            });
+        }));
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
         this.target = new BrowserTargetModel(this);
@@ -647,6 +656,19 @@ export class BrowserEditor extends EditorModel<
             state.permissionPrompts = state.permissionPrompts.filter((prompt) => prompt.requestId !== requestId);
         });
         this.webview.resolvePermissionRequest(requestId, decision);
+    };
+
+    setSiteExtensionTrustPrompt = (prompt: NonNullable<BrowserEditorState["siteExtensionTrustPrompts"][number]>): void => {
+        this.state.update((state) => {
+            state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) => item.internalTabId !== prompt.internalTabId);
+            state.siteExtensionTrustPrompts.push(prompt);
+        });
+    };
+    clearSiteExtensionTrustPrompt = (internalTabId: string, documentId?: number): void => {
+        this.state.update((state) => {
+            state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) =>
+                item.internalTabId !== internalTabId || (documentId !== undefined && item.documentId !== documentId));
+        });
     };
 
 }

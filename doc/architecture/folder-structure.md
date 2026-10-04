@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version)
+│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -100,7 +100,8 @@ and `/src/renderer/guides/` resolves the corresponding mounts for the About brow
 
 The shared board-pipe helpers are deliberately process-neutral: `/src/shared/range-utils.ts` parses
 inclusive ranges and builds Content-Range values; `/src/shared/board-pipe-constants.ts` holds the
-board-pipe IPC chunk and fallback-buffer limits. `/src/shared/mime-types.ts` maps filename
+board-pipe IPC chunk and fallback-buffer limits. `/src/shared/board-network-guard.ts` contains the
+shared private-address check and DNS-pinned lookup used for board network requests. `/src/shared/mime-types.ts` maps filename
 extensions to MIME types for main and renderer consumers. The main-process
 `/src/main/board-pipe-range-reader.ts` owns board-pipe range resolution, reply validation, and
 bounded continuation reads for both board protocol and video-stream responses.
@@ -141,6 +142,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── archive-service.ts  # ArchiveService — archive I/O (libarchive-wasm for reads, jszip for writes), used by fs.ts for archive paths
 │   ├── window.ts           # IWindow implementation and app.window.screen host
 │   ├── window-screen.ts    # Shared automation adapter for the complete app window
+│   ├── window-recording.ts # Per-window MediaRecorder capture, crop, state, and lifecycle
 │   ├── menu-bar.ts         # MenuBarModel — reactive Menu Bar openness, folder selection, and legacy opener bridge
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
@@ -160,7 +162,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
-│   ├── board-trust.ts      # Reactive mirror of main-owned user-trusted board roots (trustedBoards.txt); bundled boards bypass it. This list IS the known-boards registry
+│   ├── board-trust.ts      # Reactive mirror of main-owned trusted roots and permission grants (trustedBoards.json); bundled boards bypass it. This list IS the known-boards registry
 │   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
 │   ├── module-service.ts   # Renderer client for main-routed service requests and the optional per-window host-renderer lease
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
@@ -318,7 +320,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 ├── ui/                     # Application Shell
 │   ├── app/                # Root shell
 │   │   ├── MainPageView.ts         # Native root layout (header, tabs, editors, sidebar)
-│   │   ├── HeaderQuickSettingsPopover.ts # Header snip actions and live service switches
+│   │   ├── HeaderQuickSettingsPopover.ts # Header snip/record actions and live service switches
 │   │   ├── PagesView.ts            # Native page container/router
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
@@ -606,7 +608,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── storyTypes.ts
 │   │   └── index.ts
 │   ├── video/              # Audio/Video player (non-text, no trait)
-│   │   ├── VideoEditor.ts            # EditorModel — playback state, streaming integration
+│   │   ├── VideoEditor.ts            # EditorModel — playback state, streaming integration, temporary recording save/discard lifecycle
 │   │   ├── VideoView.ts              # Native editor view
 │   │   ├── VPlayer.ts                # Video playback view (video.js + hls.js)
 │   │   ├── AudioPlayer.ts             # Audio file playback with visualizer
@@ -761,6 +763,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       │   └── index.ts     # Namespace registration and descriptor wiring
 │       ├── event-log.ts     # Per-window event ring and producer helpers, including alert-raised events
 │       ├── alert-watch.ts   # Forwards new error/warning toasts into the renderer event log
+│       ├── attention.ts     # Renderer call attention, including once-per-renderer inline Log View dialog notices
 │       ├── page-attention.ts # Agent-addressed page tracking and activation suppression
 │       ├── page-activation.ts # Mount-scoped active-page observer and event producer
 │       ├── root.ts          # Renderer object-model root
@@ -959,15 +962,17 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
 ├── browser-service.ts      # Browser page support (webview management and tracked native message boxes)
 ├── browser-registration.ts # Default browser registration
+├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
+├── html-preview-protocol.ts # Isolated html-preview:// origin and per-preview response registry
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── session-proxy.ts        # Shared session proxy primitives (one proxy, no direct fallback; set direct; geo lookup) for Tor and profile networks
 ├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// handler (token-guarded), guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Download management using main-derived Browser URL claims, and tracked synchronous save dialogs
-├── session-src-protocol.ts # Short-lived URL-bound capability for fetching one source through its private Browser session
-├── native-dialog-tracker.ts # Per-window tracking and non-actionable attention for native dialogs
+├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; completed files receive Mark-of-the-Web from the final redirect URL
+├── session-src-protocol.ts # Short-lived URL-bound capability; board-bound requests enforce granted network policy and DNS-pin every redirect hop
+├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
 ├── search-worker.ts        # File search walk — runs in a worker_thread (bundled separately to .vite/build/search-worker.js); never imports electron
 ├── worker-host.ts          # Worker thread host for app.runAsync (IPC + worker_threads)
@@ -976,8 +981,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
 ├── board-pipe-service.ts     # Main-side board pipe page/resource ownership and renderer range request correlation
 ├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
-├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
-├── board-trust-service.ts # Main owner of persisted board trust, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
+├── board-file-access.ts     # Canonical path validation and manifest-permission-scoped board file access
+├── board-bridge.ts         # Per-board MessagePort bridge (manifest permissions enforced) — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
+├── board-trust-service.ts # Main owner of persisted trust grants, manifest permission snapshots, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
 ├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, status, and teardown
 ├── module-service-record.ts # Per-service state and request/lease records, generation checks, and utility-process cleanup
 ├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing
@@ -989,6 +995,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
+├── recording-service.ts    # Per-webContents video recording files, ordered chunk writes, permission grants, and seven-day cleanup
 ├── clipboard-service.ts    # Opt-in clipboard history — watcher sidecar, payload files/index, duplicate promotion, retention, and status broadcasts
 ├── clip-service.ts         # Windows file-clipboard (CF_HDROP) read/write via the snip exe's clipboard subcommands — Explorer copy/paste interop; degrades to empty result when the exe is missing
 ├── version-service.ts      # Version checking (runs in main, not renderer)
@@ -1007,6 +1014,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 
 ## IPC Layer
+
+All main-process `ipcMain` registrations must pass through the shared sender guard in
+`src/main/ipc-sender-guard.ts`. Use `guardedIpcOn` / `guardedIpcHandle` for event and invoke
+handlers, or register typed API endpoints with `bindEndpoint` in `main/endpoint-registry.ts`, which
+uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handler.
 
 ```
 /src/ipc/

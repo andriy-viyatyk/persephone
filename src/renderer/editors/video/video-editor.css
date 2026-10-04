@@ -1,7 +1,11 @@
 @layer editor {
+    [data-editor="video"] [data-name="temporary-recording-actions"] { display: flex; flex: 0 0 auto; gap: 4px; }
+    [data-editor="video"] [data-name="video-recording-save"] svg { color: var(--color-misc-blue); }
+    [data-editor="video"] [data-name="video-recording-discard"] svg { color: var(--color-misc-red); }
+    [data-editor="video"] [data-name="temporary-recording-actions"][hidden] { display: none; }
     [data-editor="video"] [data-part="video-url-slot"] {
         position: relative;
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         height: 28px;
         min-width: 0;
     }
