@@ -3,9 +3,11 @@ import { PopoverView, type PopoverViewProps } from "../../uikit/Popover/PopoverV
 import { SwitchView } from "../../uikit/Switch/SwitchView";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
 import { createIconElement } from "../../uikit/shared/slots";
+import color from "../../theme/color";
 import type { IconName } from "../../theme/icon-registry";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import type { RecordingRegion } from "../../../ipc/api-param-types";
 import "../../uikit/Switch/Switch.css";
 import "./HeaderQuickSettingsPopover.css";
 
@@ -30,6 +32,7 @@ const QUICK_SERVICE_ENTRIES: readonly QuickServiceEntry[] = [
 interface HeaderQuickSettingsContentProps {
     onClose: () => void;
     onSnip: (hideWindows: boolean) => void;
+    onRecord: (region: RecordingRegion) => void;
 }
 
 interface ServiceSwitchRecord {
@@ -41,6 +44,7 @@ interface ServiceSwitchRecord {
 class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsContentProps> {
     private readonly serviceSwitches: ServiceSwitchRecord[] = [];
     private firstAction: HTMLButtonElement | undefined;
+    private readonly recordChoices: HTMLButtonElement[] = [];
 
     public constructor(props: HeaderQuickSettingsContentProps) {
         super(props, document.createElement("div"));
@@ -51,6 +55,8 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         this.root.append(
             this.createSnipRow("Snip Screen", true),
             this.createSnipRow("Snip Persephone", false),
+            this.createRecordRow(),
+            ...this.createRecordChoices(),
             this.createSeparator(),
         );
         QUICK_SERVICE_ENTRIES.forEach((entry) => this.root.append(this.createServiceRow(entry)));
@@ -81,6 +87,48 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         });
         if (!this.firstAction) this.firstAction = row;
         return row;
+    }
+
+    private createRecordRow(): HTMLButtonElement {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.dataset.type = "header-quick-settings-snip-row";
+        row.dataset.name = "record-region-toggle";
+        const icon = document.createElement("span");
+        icon.dataset.part = "icon";
+        icon.append(createIconElement("circle", { color: color.misc.red }));
+        const labelElement = document.createElement("span");
+        labelElement.dataset.part = "label";
+        labelElement.textContent = "Record…";
+        const chevron = document.createElement("span");
+        chevron.dataset.part = "chevron";
+        chevron.append(createIconElement("chevron-right"));
+        row.append(icon, labelElement, chevron);
+        this.listen(row, "click", () => {
+            const open = this.recordChoices[0]?.hidden ?? false;
+            this.recordChoices.forEach((choice) => { choice.hidden = !open; });
+            row.toggleAttribute("data-expanded", open);
+        });
+        return row;
+    }
+
+    private createRecordChoices(): HTMLButtonElement[] {
+        return ([
+            ["Full window", "window"],
+            ["Active page", "page"],
+            ["Main editor area", "editor"],
+        ] as const).map(([label, region]) => {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.dataset.type = "header-quick-settings-snip-row";
+            row.dataset.name = `record-${region}`;
+            row.dataset.part = "record-choice";
+            row.hidden = true;
+            row.textContent = label;
+            this.listen(row, "click", () => { this.props.onRecord(region); this.props.onClose(); });
+            this.recordChoices.push(row);
+            return row;
+        });
     }
 
     private createSeparator(): HTMLDivElement {
@@ -153,6 +201,7 @@ export interface HeaderQuickSettingsPopoverProps {
     placement: "bottom-end";
     onClose: () => void;
     onSnip: (hideWindows: boolean) => void;
+    onRecord: (region: RecordingRegion) => void;
 }
 
 export class HeaderQuickSettingsPopoverView extends VanillaView<HeaderQuickSettingsPopoverProps> {
@@ -191,6 +240,7 @@ export class HeaderQuickSettingsPopoverView extends VanillaView<HeaderQuickSetti
                 const content = new HeaderQuickSettingsContentView({
                     onClose: props.onClose,
                     onSnip: props.onSnip,
+                    onRecord: props.onRecord,
                 });
                 host.append(content.root);
                 return content;

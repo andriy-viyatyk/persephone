@@ -615,6 +615,18 @@ management; boards add frame selection and board lifecycle state; `window.screen
 current application-window host and has no browser navigation or page-tab operations. Accessibility
 refs are scoped by the host that minted them in `/src/renderer/automation/ref.ts`.
 
+`window.screen.recording` is a separate app-window capability alongside those automation
+operations. Script `start({ region, openPlayer? })` begins capture immediately for the full window,
+active page, or active editor area; page and editor crops stay bound to the page selected at start.
+The returned state reports
+`idle`, `ready`, `recording`, or `paused`; `pause()`, `resume()`, `stop()`, and `cancel()` control the
+same per-window recorder used by the header. `stop()` returns the temporary recording path, duration,
+MIME type, and decoded frame dimensions. `openPlayer` defaults to false for scripts; completed files
+remain in the app data recordings folder until saved or discarded. Closing the last player page for
+an unsaved recording discards it; startup cleanup removes leftovers after seven days. The adapter is
+`/src/renderer/api/window-screen.ts` and the shared capture state machine is
+`/src/renderer/api/window-recording.ts`.
+
 Facade source: `/src/renderer/scripting/api-wrapper/`
 
 `page.editorSwitches` is the script-facing projection of the page toolbar's editor-switch widget. It

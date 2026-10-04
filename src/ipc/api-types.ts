@@ -10,6 +10,10 @@ import {
     PublishedBoardVersions,
     RuntimeVersions,
     SaveFileDialogParams,
+    RecordingFinalizeRequest,
+    RecordingSessionChunk,
+    RecordingSessionRequest,
+    RecordingSessionStartResult,
     UpdateCheckResult,
     VideoStreamSessionConfig,
     VideoStreamSessionResult,
@@ -86,6 +90,10 @@ export enum Endpoint {
     setClipboardHealthMonitoring = "setClipboardHealthMonitoring",
     restartClipboard = "restartClipboard",
     startScreenSnip = "startScreenSnip",
+    startWindowRecording = "startWindowRecording",
+    appendWindowRecordingChunk = "appendWindowRecordingChunk",
+    finalizeWindowRecording = "finalizeWindowRecording",
+    cancelWindowRecording = "cancelWindowRecording",
     clipboardReadFilePaths = "clipboardReadFilePaths",
     clipboardWriteFilePaths = "clipboardWriteFilePaths",
     startOsFileDrag = "startOsFileDrag",
@@ -265,6 +273,10 @@ export type Api = {
     [Endpoint.setClipboardHealthMonitoring]: (active: boolean) => Promise<ClipboardStatus>;
     [Endpoint.restartClipboard]: (maxItems: number) => Promise<ClipboardStatus>;
     [Endpoint.startScreenSnip]: (hideWindows: boolean) => Promise<string | null>;
+    [Endpoint.startWindowRecording]: (request: RecordingSessionRequest) => Promise<RecordingSessionStartResult>;
+    [Endpoint.appendWindowRecordingChunk]: (request: RecordingSessionChunk) => Promise<void>;
+    [Endpoint.finalizeWindowRecording]: (request: RecordingFinalizeRequest) => Promise<string>;
+    [Endpoint.cancelWindowRecording]: (recordingId: string) => Promise<void>;
     [Endpoint.clipboardReadFilePaths]: () => Promise<ClipboardFileList>;
     [Endpoint.clipboardWriteFilePaths]: (paths: string[], cut: boolean) => Promise<boolean>;
     [Endpoint.startOsFileDrag]: (paths: string[]) => Promise<void>;

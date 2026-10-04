@@ -163,7 +163,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser editor facade (browser navigation, inner tabs, shared automation operations, browser chrome elements, and optional page-authored `.app` descriptors) | `/src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts` |
 | Board editor facade (board metadata, trust/render state, secondary views, shared automation operations, conditional trusted-board `.app`, status, busy/frame state, normalized manifest snapshot, and reload; no trust-granting member) | `/src/renderer/scripting/api-wrapper/BoardEditorFacade.ts` |
 | Board manifest facade projections (normalized manifest and nested declarations copied into isolated script-facing snapshots) | `/src/renderer/scripting/api-wrapper/board-manifest-projection.ts` |
-| App-window screen adapter (shared automation operations over the calling renderer's complete visible window) | `/src/renderer/api/window-screen.ts`, `/src/renderer/scripting/ai-vision/namespaces/window-screen.ts` |
+| App-window screen adapter and shared window-recording state machine (automation operations, MediaRecorder capture/crop, and recording lifecycle) | `/src/renderer/api/window-screen.ts`, `/src/renderer/api/window-recording.ts`, `/src/renderer/scripting/ai-vision/namespaces/window-screen.ts` |
 | Board Info editor facade (install/properties snapshots, normalized manifest-backed properties, and safe install-directory/download controls; lifecycle actions remain on `app.boards`) | `/src/renderer/scripting/api-wrapper/BoardInfoEditorFacade.ts` |
 | Toolset editor facade (registered toolset identity/validation state and open/refresh actions) | `/src/renderer/scripting/api-wrapper/ToolsetEditorFacade.ts` |
 | Tools & Editors hub facade (active tab state and tab selection) | `/src/renderer/scripting/api-wrapper/ToolsHubEditorFacade.ts` |
@@ -179,7 +179,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Story prop preparation (single path for managed values, empty enum cleanup, synthetic icon controls, and generated children; shared by the live preview and verification) | `/src/renderer/editors/storybook/story-props.ts` |
 | Renderer entry and application composition root (`bootstrap()` initializes services/pages/events, opens cold-start file/URL input, then returns the native `mount(container)` callback) | `/src/renderer.ts`, `/src/renderer/index.ts` |
 | App shell composition root (header strip, tab strip, page host, sidebar, status and overlay composition) | `/src/renderer/ui/app/MainPageView.ts` |
-| Header quick-settings popover (snip actions, live MCP/Mneme/clipboard switches, settings subscription, and focus/dismissal lifecycle) | `/src/renderer/ui/app/HeaderQuickSettingsPopover.ts`, `/src/renderer/ui/app/HeaderQuickSettingsPopover.css` |
+| Header quick-settings popover (snip/record actions, live MCP/Mneme/clipboard switches, settings subscription, and focus/dismissal lifecycle) | `/src/renderer/ui/app/HeaderQuickSettingsPopover.ts`, `/src/renderer/ui/app/HeaderQuickSettingsPopover.css` |
 | Native page/editor views (page host, editor dispatch, async editor island, and page-content lifecycle) | `/src/renderer/ui/app/PagesView.ts`, `/src/renderer/ui/app/RenderEditorView.ts`, `/src/renderer/ui/app/AsyncEditorView.ts`, `/src/renderer/ui/app/PageContentView.ts` |
 | Native editor failure view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts` |
 | Native tab strip and tab view (keyed DOM reuse, drag behavior, and activation scroll projection) | `/src/renderer/ui/tabs/PageTabsView.ts`, `/src/renderer/ui/tabs/PageTabView.ts` |
@@ -227,7 +227,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native HTML preview body (sandboxed iframe loaded from the isolated `html-preview://` origin, host-content binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
 | Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |
 | Native Markdown body (find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
-| Video/audio editor (pipe-backed media playback, transient range sessions, archive/board sources, and VLC handoff) | `/src/renderer/editors/video/VideoEditor.ts` |
+| Video/audio editor (pipe-backed media playback, transient range sessions, archive/board sources, VLC handoff, and temporary recording save/discard lifecycle) | `/src/renderer/editors/video/VideoEditor.ts` |
 | Markdown body host/model contract reused by embedded guide rendering | `/src/renderer/editors/markdown/MarkdownBodyModel.ts` |
 | Native Markdown block renderer (unified/remark pipeline, HAST overrides, and owned interactive nodes) | `/src/renderer/editors/markdown/MarkdownBlockView.ts` |
 | Hand-written HAST-to-DOM property and namespace conversion | `/src/renderer/editors/markdown/hast-dom.ts` |
@@ -376,6 +376,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Rust launcher            | `/launcher/src/main.rs`                           |
 | Rust screen snip, clipboard, and Windows SSO helper (`clipboard-read`/`clipboard-write`/`clipboard-watch`/`sso-cookies` subcommands; CF_HDROP interop, JSON-lines watcher protocol, and proof-of-possession cookie retrieval) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs`, `/snip-tool/src/sso_cookies.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |
+| Window recording file service (main; owner-checked sessions, serialized chunk writes, one-shot media permission grant, finalization, and seven-day cleanup) | `/src/main/recording-service.ts`, `/src/main/permission-policy-service.ts` |
 | Clipboard history service (main; opt-in watcher sidecar, `.files.txt` path-list payloads with legacy `.json` reads, flavour-aware hashes, on-disk retention, duplicate promotion, renderer events, health monitoring, and native copy-back) | `/src/main/clipboard-service.ts` |
 | File-clipboard service (main; Windows-Explorer copy/paste interop — CF_HDROP read/write via the snip exe; degrades to empty when the exe is missing) | `/src/main/clip-service.ts` |
 | Native OS file drag-out service (main; `startOsFileDrag` via `webContents.startDrag` — real CF_HDROP so Windows Explorer / Teams accept the dragged file; win32-only, shell icon via `app.getFileIcon` + fallback) | `/src/main/os-drag-service.ts` |

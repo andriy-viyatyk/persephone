@@ -52,6 +52,12 @@ All three hosts share these 21 operations:
 `window.screen` covers the complete visible app window, including the active page. It refuses to
 automate while that page is a user-owned incognito or Tor page. Use `pages` to switch pages.
 
+`window.screen.recording` records the Persephone window, active page, or main editor area. Agent
+`start({ region })` starts immediately; the user can pause or stop it from the app header. The result
+is a temporary video path returned by `stop()`. Copy that path elsewhere to retain it; `openPlayer`
+defaults to false and can be set true to open the built-in player. User-opened incognito and Tor
+pages also block recording.
+
 ## Locators and actions
 
 Trusted CDP input is the default. Use `{ synthetic: true }` only when legacy DOM events or value

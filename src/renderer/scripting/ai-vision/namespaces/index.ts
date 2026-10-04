@@ -28,7 +28,7 @@ import { describeEncryptionService, describeShell, describeVersionService } from
 import { describeSettings } from "./settings";
 import { describeUserInterface } from "./ui";
 import { describeWindow } from "./window";
-import { describeWindowScreen } from "./window-screen";
+import { describeWindowRecording, describeWindowScreen } from "./window-screen";
 import { describeProcess } from "./proc";
 import { proc } from "../../../api/proc";
 import { describeTools, toolsNode } from "./tools";
@@ -48,6 +48,7 @@ registerAiVisionFor(encryption, describeEncryptionService);
 registerAiVisionFor(appWindow, describeWindow);
 registerAiVisionFor(appWindow.menuBar, describeMenuBar);
 registerAiVisionFor(appWindow.screen, describeWindowScreen);
+registerAiVisionFor(appWindow.screen.recording, describeWindowRecording);
 registerAiVisionFor(proc, describeProcess);
 registerAiVisionFor(boards, describeBoards);
 registerAiVisionFor(siteExtensions, describeSiteExtensions);

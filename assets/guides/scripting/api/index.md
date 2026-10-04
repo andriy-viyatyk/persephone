@@ -160,6 +160,7 @@ ui.log("Hello");
     - `.isMaximized` / `.windowIndex`
     - `.menuBar` — Menu Bar folders, selection, and controls
     - `.screen` — Automation host for Persephone's own window and active page
+      - `.recording.start({ region, openPlayer? })` / `.pause()` / `.resume()` / `.stop()` / `.cancel()` — video-only app-window, active-page, or editor recording; completed files are temporary until copied or saved
     - `.menuBarOpen` / `.toggleMenuBar()` / `.openMenuBar(panelId?)`
     - `.zoom(delta)` / `.resetZoom()` / `.zoomLevel`
     - `.openNew(filePath?)` — Open new window

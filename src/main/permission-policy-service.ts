@@ -44,6 +44,28 @@ let appSession: Session;
 let fileAccessSession: Session;
 let promptHandler: PermissionPromptHandler | undefined;
 let initialized = false;
+const recordingMediaGrants = new Map<number, number>();
+
+/** Arm one app-main-frame, video-only permission request for a window source capture. */
+export function armRecordingMediaGrant(webContentsId: number): void {
+    recordingMediaGrants.set(webContentsId, Date.now() + 5000);
+    setTimeout(() => {
+        if ((recordingMediaGrants.get(webContentsId) ?? 0) <= Date.now()) recordingMediaGrants.delete(webContentsId);
+    }, 5100);
+}
+
+export function clearRecordingMediaGrant(webContentsId: number): void {
+    recordingMediaGrants.delete(webContentsId);
+}
+
+function hasRecordingMediaGrant(webContentsId: number): boolean {
+    const expiresAt = recordingMediaGrants.get(webContentsId);
+    if (!expiresAt || expiresAt <= Date.now()) {
+        recordingMediaGrants.delete(webContentsId);
+        return false;
+    }
+    return true;
+}
 
 function normalizeOrigin(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -214,7 +236,12 @@ function denySelection(ses: Session): void {
 function handleCheck(ses: Session, request: PermissionCheck): boolean {
     const { permission, origin, details } = request;
     if (ses === appSession) {
-        if (details.isMainFrame === true) return APP_ALLOW.has(permission as string);
+        if (details.isMainFrame === true) {
+            if (APP_ALLOW.has(permission as string)) return true;
+            return permission === "media" && request.webContents !== null
+                && hasRecordingMediaGrant(request.webContents.id)
+                && details.mediaType === "video";
+        }
         const requestingOrigin = requesterOrigin(origin);
         if (permission === "media" && details.securityOrigin) {
             const securityOrigin = requesterOrigin(details.securityOrigin);
@@ -247,7 +274,17 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
 function handleRequest(ses: Session, request: PermissionRequest): void {
     const { permission, callback, details, webContents } = request;
     if (ses === appSession) {
-        if (details.isMainFrame === true) { callback(APP_ALLOW.has(permission as string)); return; }
+        if (details.isMainFrame === true) {
+            const media = details as Electron.MediaAccessPermissionRequest;
+            // A chromeMediaSource "desktop" request arrives with an empty `mediaTypes` (verified on
+            // Electron 43), so accept empty or video-only — never audio — while the one-shot grant is armed.
+            const types = media.mediaTypes ?? [];
+            const allowed = permission === "media" && types.every((type) => type === "video")
+                && hasRecordingMediaGrant(webContents.id);
+            if (allowed) clearRecordingMediaGrant(webContents.id);
+            callback(allowed);
+            return;
+        }
         const urlOrigin = requesterOrigin(details.requestingUrl);
         if (permission === "media") {
             const securityOrigin = requesterOrigin((details as Electron.MediaAccessPermissionRequest).securityOrigin);

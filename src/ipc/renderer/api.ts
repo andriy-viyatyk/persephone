@@ -9,6 +9,8 @@ import {
     PublishedBoardsResult,
     PublishedBoardVersions,
     RuntimeVersions,
+    RecordingRegion,
+    RecordingSessionStartResult,
     SaveFileDialogParams,
     UpdateCheckResult,
     VideoStreamSessionConfig,
@@ -315,6 +317,22 @@ class ApiCalls implements Api {
 
     startScreenSnip = async (hideWindows: boolean): Promise<string | null> => {
         return executeOnce<string | null>(Endpoint.startScreenSnip, hideWindows);
+    }
+
+    startWindowRecording = async (request: { region: RecordingRegion }): Promise<RecordingSessionStartResult> => {
+        return executeOnce<RecordingSessionStartResult>(Endpoint.startWindowRecording, request);
+    }
+
+    appendWindowRecordingChunk = async (request: { recordingId: string; chunk: Uint8Array }): Promise<void> => {
+        return executeOnce<void>(Endpoint.appendWindowRecordingChunk, request);
+    }
+
+    finalizeWindowRecording = async (request: { recordingId: string; extension: "mp4" | "webm" }): Promise<string> => {
+        return executeOnce<string>(Endpoint.finalizeWindowRecording, request);
+    }
+
+    cancelWindowRecording = async (recordingId: string): Promise<void> => {
+        return executeOnce<void>(Endpoint.cancelWindowRecording, recordingId);
     }
 
     clipboardReadFilePaths = async (): Promise<ClipboardFileList> => {

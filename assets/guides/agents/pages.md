@@ -56,6 +56,20 @@ window.screen.screenshot()                                  // pixels of the app
   search boxes, settings fields).
 - Combine with `windows[i].window.screen` to target a specific window's UI.
 
+### Record an app demo
+
+`window.screen.recording.start({ region })` starts immediately. Choose `"window"`, `"page"`, or
+`"editor"`; the app header shows shared pause and stop controls while the capture runs. The default
+agent stop leaves the player closed and returns `{ path, durationMs, mimeType, width, height, stoppedBy }`.
+Copy `path` to a durable location if the result should be kept; unsaved recordings are cleaned after
+seven days. Pass `openPlayer: true` to open the built-in video player.
+
+```javascript
+await window.screen.recording.start({ region: "editor" });
+const result = await window.screen.recording.stop();
+await app.fs.copyFile(result.path, "C:/Videos/persephone-demo.mp4");
+```
+
 ## Multi-Window Support
 
 Persephone supports multiple windows. Each window has a stable `windowIndex` (starting from 0) and its own set of pages.

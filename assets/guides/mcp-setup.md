@@ -144,6 +144,11 @@ window.screen.snapshot()
 `.networkRequests`, and `.waitFor` operate against the app window using refs or CSS selectors, exactly like a browser page,
 provided the active page is not incognito or Tor.
 
+The same host exposes `.recording.start({ region, openPlayer? })`, `.pause()`, `.resume()`, `.stop()`,
+`.cancel()`, and readonly `.state`. Recording starts immediately for agents and is shared with the
+header controls. `stop()` returns the temporary file path plus duration, MIME type, and dimensions;
+copy the path elsewhere to keep it past seven days. `openPlayer` defaults to false.
+
 Native operating-system dialogs are exposed on their owning window as `windows[i].nativeDialog`.
 Read its `open`, `kind`, and optional `title` properties to identify a picker or message box, then
 call `windows[i].nativeDialog.dismiss()` to cancel it. This cannot enter a path or confirm Save/Open.

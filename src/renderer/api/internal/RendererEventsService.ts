@@ -11,6 +11,7 @@ import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
+import { windowRecording } from "../window-recording";
 
 /**
  * Renderer IPC events service.
@@ -136,6 +137,11 @@ export class RendererEventsService {
 
     private handleBeforeQuit = async () => {
         try {
+            if (windowRecording.state.status === "recording" || windowRecording.state.status === "paused") {
+                await windowRecording.stop("window-close");
+            } else if (windowRecording.state.status === "ready") {
+                await windowRecording.cancel();
+            }
             await Promise.all(
                 pagesModel.state.get().pages.map((model) => model.saveState())
             );

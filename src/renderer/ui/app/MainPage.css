@@ -7,6 +7,22 @@
     .app-root .app-header .system-button.darkBackground:hover { background-color: var(--color-bg-light); }
     .app-root .app-header .system-button.close-button:hover { background-color: var(--color-misc-red); }
     .app-root .app-header .system-button.close-button:hover svg { color: var(--color-text-light); }
+    .app-root .app-header .recording-controls { display: flex; align-items: center; gap: 3px; height: 24px; margin-inline-end: 4px; color: var(--color-text-light); -webkit-app-region: no-drag; }
+    .app-root .app-header .recording-controls[hidden] { display: none; }
+    .app-root .app-header .recording-controls [data-name="recording-elapsed"] { min-width: 36px; font: 11px/1 monospace; text-align: center; }
+    .app-root .app-header .recording-controls [data-name="recording-indicator"] { width: 8px; height: 8px; border-radius: 50%; background: var(--color-misc-red); }
+    .app-root .app-header .recording-controls[data-status="ready"] [data-name="recording-indicator"] { background: var(--color-text-light); opacity: 0.5; }
+    .app-root .app-header .recording-controls[data-status="recording"] [data-name="recording-indicator"] { animation: recording-pulse 1.2s ease-in-out infinite; }
+    .app-root .app-header .recording-controls[data-status="paused"] [data-name="recording-indicator"] { background: var(--color-misc-yellow); }
+    .app-root .app-header .recording-controls button { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px 0 5px; border: 1px solid var(--color-border-default); border-radius: 3px; background: var(--color-bg-light); color: var(--color-text-light); font: inherit; cursor: pointer; }
+    .app-root .app-header .recording-controls button[hidden] { display: none; }
+    .app-root .app-header .recording-controls button:hover { background: var(--color-bg-selection); }
+    .app-root .app-header .recording-controls button svg { width: 14px; height: 14px; }
+    .app-root .app-header .recording-controls [data-name="recording-start"] svg,
+    .app-root .app-header .recording-controls [data-name="recording-stop"] svg { color: var(--color-misc-red); fill: var(--color-misc-red); }
+    .app-root .app-header .recording-controls [data-name="recording-pause"] svg { color: var(--color-misc-yellow); }
+    .app-root .app-header .recording-controls [data-name="recording-resume"] svg { color: var(--color-misc-green); }
+    @keyframes recording-pulse { 50% { opacity: 0.25; } }
     .app-root .app-content { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     .app-root .app-content .pages-container { flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     .app-root .autoload-reload button { padding: 2px 4px; color: var(--color-warning-text); }

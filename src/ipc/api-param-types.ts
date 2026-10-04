@@ -169,6 +169,12 @@ export interface BoardArchiveDownloadRequest {
     size: number;
 }
 
+export type RecordingRegion = "window" | "page" | "editor";
+export interface RecordingSessionRequest { region: RecordingRegion }
+export interface RecordingSessionStartResult { recordingId: string; chromeMediaSourceId: string; path: string }
+export interface RecordingFinalizeRequest { recordingId: string; extension: "mp4" | "webm" }
+export interface RecordingSessionChunk { recordingId: string; chunk: Uint8Array }
+
 interface VideoStreamSessionConfigOptions {
     /** Custom request headers forwarded to the source URL. */
     headers?: Record<string, string>;

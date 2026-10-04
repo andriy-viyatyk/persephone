@@ -4,7 +4,7 @@ import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getStartupInputs, windowReady } from "./window-handlers";
-import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
+import { DownloadEntry, OpenFileDialogParams, RecordingFinalizeRequest, RecordingRegion, RecordingSessionChunk, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { WindowPages, PageDragData } from "../../shared/types";
 import { dragModel } from "../../main/drag-model";
@@ -318,6 +318,26 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return startScreenSnip(hideWindows);
     }
 
+    startWindowRecording = async (event: IpcMainEvent, request: { region: RecordingRegion }) => {
+        const { startRecording } = await import("../../main/recording-service");
+        return startRecording(event.sender, request.region);
+    }
+
+    appendWindowRecordingChunk = async (event: IpcMainEvent, request: RecordingSessionChunk): Promise<void> => {
+        const { appendRecordingChunk } = await import("../../main/recording-service");
+        await appendRecordingChunk(event.sender.id, request.recordingId, request.chunk);
+    }
+
+    finalizeWindowRecording = async (event: IpcMainEvent, request: RecordingFinalizeRequest): Promise<string> => {
+        const { finalizeRecording } = await import("../../main/recording-service");
+        return finalizeRecording(event.sender.id, request.recordingId, request.extension);
+    }
+
+    cancelWindowRecording = async (event: IpcMainEvent, recordingId: string): Promise<void> => {
+        const { cancelRecording } = await import("../../main/recording-service");
+        await cancelRecording(event.sender.id, recordingId);
+    }
+
     clipboardReadFilePaths = async (_event: IpcMainEvent): Promise<ClipboardFileList> => {
         const { readClipboardFiles } = await import("../../main/clip-service");
         return readClipboardFiles();
@@ -457,6 +477,10 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setClipboardHealthMonitoring, controllerInstance.setClipboardHealthMonitoring);
     bindEndpoint(Endpoint.restartClipboard, controllerInstance.restartClipboard);
     bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
+    bindEndpoint(Endpoint.startWindowRecording, controllerInstance.startWindowRecording);
+    bindEndpoint(Endpoint.appendWindowRecordingChunk, controllerInstance.appendWindowRecordingChunk);
+    bindEndpoint(Endpoint.finalizeWindowRecording, controllerInstance.finalizeWindowRecording);
+    bindEndpoint(Endpoint.cancelWindowRecording, controllerInstance.cancelWindowRecording);
     bindEndpoint(Endpoint.clipboardReadFilePaths, controllerInstance.clipboardReadFilePaths);
     bindEndpoint(Endpoint.clipboardWriteFilePaths, controllerInstance.clipboardWriteFilePaths);
     bindEndpoint(Endpoint.startOsFileDrag, controllerInstance.startOsFileDrag);

@@ -1,12 +1,15 @@
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
+import type { IconName } from "../../theme/icon-registry";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { themeState } from "../../theme/theme-state";
 import { app } from "../../api/app";
 import { autoloadService } from "../../api/autoload-service";
 import { mnemeStatusModel } from "../../api/mneme-status";
 import { pagesModel } from "../../api/pages";
+import { windowRecording, type WindowRecordingState } from "../../api/window-recording";
+import type { RecordingRegion } from "../../../ipc/api-param-types";
 import { showMcpRequestLog } from "../../api/mcp-handler";
 import { errMessage } from "../../../shared/utils";
 import { PageTabsView } from "../tabs/PageTabsView";
@@ -45,6 +48,7 @@ export class MainPageView extends VanillaView<object> {
     private readonly zoomButton = document.createElement("button");
     private readonly toggleWindowButton = document.createElement("button");
     private readonly statusIndicators = document.createElement("div");
+    private readonly recordingControls = document.createElement("div");
     private readonly mnemeIndicator = document.createElement("span");
     private readonly mcpIndicator = document.createElement("span");
     private readonly snipButton = document.createElement("button");
@@ -55,6 +59,7 @@ export class MainPageView extends VanillaView<object> {
     /** Bound once: the props pump must not hand the popover a fresh callback identity on every
      *  update (see the props-pump convention in `uikit/CLAUDE.md`). */
     private readonly runQuickSettingsSnip = (hideWindows: boolean): void => { void runSnip(hideWindows); };
+    private readonly runQuickSettingsRecord = (region: RecordingRegion): void => { void this.prepareRecording(region); };
     private readonly closeQuickSettingsPopover = (): void => {
         if (!this.quickSettingsOpen) return;
         this.quickSettingsOpen = false;
@@ -74,6 +79,7 @@ export class MainPageView extends VanillaView<object> {
             placement: "bottom-end",
             onClose: this.closeQuickSettingsPopover,
             onSnip: this.runQuickSettingsSnip,
+            onRecord: this.runQuickSettingsRecord,
         }));
     }
 
@@ -104,6 +110,7 @@ export class MainPageView extends VanillaView<object> {
             (state) => this.updateMneme(state),
         );
         this.bindMenuGlyphToTheme();
+        this.own(windowRecording.subscribe((state) => this.updateRecordingControls(state)));
         this.quickSettingsPopover.mount();
     }
 
@@ -117,7 +124,10 @@ export class MainPageView extends VanillaView<object> {
         this.header.append(this.menuButton, this.pageTabs.root);
         this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
         this.autoloadWrap.className = "autoload-reload";
-        this.header.append(this.autoloadWrap, this.buildZoomButton(), this.createSystemButton("window-minimize", createIconElement("window-minimize"), "Minimize", () => app.window.minimize()), this.toggleWindowButton, this.createSystemButton("window-close", createIconElement("close"), "Close", () => app.window.close()));
+        this.recordingControls.className = "recording-controls";
+        this.recordingControls.dataset.name = "window-recording-controls";
+        this.recordingControls.hidden = true;
+        this.header.append(this.autoloadWrap, this.buildZoomButton(), this.recordingControls, this.createSystemButton("window-minimize", createIconElement("window-minimize"), "Minimize", () => app.window.minimize()), this.toggleWindowButton, this.createSystemButton("window-close", createIconElement("close"), "Close", () => app.window.close()));
         this.toggleWindowButton.className = "system-button darkBackground";
         this.toggleWindowButton.type = "button";
         this.toggleWindowButton.dataset.name = "window-toggle";
@@ -222,6 +232,7 @@ export class MainPageView extends VanillaView<object> {
         placement: "bottom-end";
         onClose: () => void;
         onSnip: (hideWindows: boolean) => void;
+        onRecord: (region: RecordingRegion) => void;
     } {
         return {
             anchor: this.snipButton,
@@ -229,6 +240,68 @@ export class MainPageView extends VanillaView<object> {
             placement: "bottom-end",
             onClose: this.closeQuickSettingsPopover,
             onSnip: this.runQuickSettingsSnip,
+            onRecord: this.runQuickSettingsRecord,
         };
+    }
+
+    private async prepareRecording(region: RecordingRegion): Promise<void> {
+        try { await windowRecording.prepare(region, true); }
+        catch (error: unknown) { app.ui.notify(`Could not prepare recording: ${errMessage(error)}`, "error"); }
+    }
+
+    private recordingParts: { dot: HTMLSpanElement; elapsed: HTMLSpanElement; start: HTMLButtonElement; cancel: HTMLButtonElement; pause: HTMLButtonElement; resume: HTMLButtonElement; stop: HTMLButtonElement } | undefined;
+
+    /** Built once and updated in place: the elapsed timer ticks every 200 ms, and rebuilding the
+     *  buttons on each tick would swallow a click whose target is replaced mid-press. */
+    private updateRecordingControls(state: WindowRecordingState): void {
+        const parts = this.recordingParts ??= this.buildRecordingControls();
+        this.recordingControls.hidden = state.status === "idle";
+        this.recordingControls.dataset.status = state.status;
+        const seconds = Math.floor(state.elapsedMs / 1000);
+        parts.elapsed.textContent = `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+        parts.start.hidden = parts.cancel.hidden = state.status !== "ready";
+        parts.pause.hidden = state.status !== "recording";
+        parts.resume.hidden = state.status !== "paused";
+        parts.stop.hidden = state.status !== "recording" && state.status !== "paused";
+    }
+
+    private buildRecordingControls(): NonNullable<MainPageView["recordingParts"]> {
+        const dot = document.createElement("span");
+        dot.dataset.name = "recording-indicator";
+        const elapsed = document.createElement("span");
+        elapsed.dataset.name = "recording-elapsed";
+        const parts = {
+            dot,
+            elapsed,
+            start: this.recordingButton("recording-start", "circle", "Start", () => this.startPreparedRecording()),
+            cancel: this.recordingButton("recording-cancel", "close", "Cancel", () => { void windowRecording.cancel(); }),
+            pause: this.recordingButton("recording-pause", "pause", "Pause", () => { void windowRecording.pause(); }),
+            resume: this.recordingButton("recording-resume", "play", "Resume", () => { void windowRecording.resume(); }),
+            stop: this.recordingButton("recording-stop", "stop", "Stop", () => {
+                void windowRecording.stop("user").catch((error: unknown) => app.ui.notify(`Could not finish recording: ${errMessage(error)}`, "error"));
+            }),
+        };
+        this.recordingControls.append(dot, elapsed, parts.start, parts.pause, parts.resume, parts.stop, parts.cancel);
+        return parts;
+    }
+
+    private recordingButton(name: string, icon: IconName, label: string, action: () => void): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.name = name;
+        button.title = label;
+        const text = document.createElement("span");
+        text.textContent = label;
+        button.append(createIconElement(icon), text);
+        this.listen(button, "click", action);
+        return button;
+    }
+
+    private startPreparedRecording(): void {
+        try { windowRecording.startPrepared(); }
+        catch (error: unknown) {
+            void windowRecording.cancel();
+            app.ui.notify(`Could not start recording: ${errMessage(error)}`, "error");
+        }
     }
 }

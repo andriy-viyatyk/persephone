@@ -4,6 +4,19 @@ Ideas and future tasks not yet planned for implementation.
 
 ---
 
+## Demo recording — the parts deferred from US-1618
+
+[US-1618](US-1618-video-recording/README.md) adds window/page/editor recording for the user and
+for agents (`window.screen.recording.*`). Left out:
+
+- [ ] **Visual pointer for agent demos.** While an agent records a demo it drives the app through
+  `call`, so viewers see things change with no cursor to follow. Add an overlay pointer the agent
+  can move (and "click" with a ripple) during a recording, ideally moving automatically to the
+  element an automation action targets. Lives in the app shell above page content so it is part
+  of every recording region.
+
+---
+
 ## Agent cold start — the parts deferred from US-929
 
 [US-929](US-929-agent-cold-start/README.md) covered what an agent can do with filesystem tools

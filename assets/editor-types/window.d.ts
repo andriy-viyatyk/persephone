@@ -74,6 +74,8 @@ export interface IMenuBar {
  * this host intentionally has no browser navigation or tab operations.
  */
 export interface IWindowScreen {
+    /** Shared recording controls for Persephone's visible window, active page, or editor area. */
+    readonly recording: IWindowRecording;
     /** Build the complete current app-window accessibility snapshot. */
     /** Get the app-window snapshot; `root`, `interactive`, `maxNodes`, and `maxChars` narrow or bound the tree. */
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
@@ -117,6 +119,31 @@ export interface IWindowScreen {
     consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
     /** Read uncaught exceptions from Persephone's top-level renderer. */
     pageErrors(options?: { tabId?: string }): Promise<IBrowserPageError[]>;
+}
+
+export type WindowRecordingRegion = "window" | "page" | "editor";
+export interface IWindowRecordingResult {
+    readonly path: string;
+    readonly durationMs: number;
+    readonly mimeType: string;
+    readonly width: number;
+    readonly height: number;
+    readonly stoppedBy: "user" | "agent" | "page-closed" | "window-close";
+}
+export interface IWindowRecording {
+    /** Prepare and immediately start a video-only recording. Agent recordings stay closed by default. */
+    start(options: { region: WindowRecordingRegion; openPlayer?: boolean }): Promise<void>;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    /** Finalize and return the recording path, duration, MIME type, and dimensions. */
+    stop(): Promise<IWindowRecordingResult>;
+    cancel(): Promise<void>;
+    readonly state: {
+        readonly status: "idle" | "ready" | "recording" | "paused";
+        readonly elapsedMs: number;
+        readonly region?: WindowRecordingRegion;
+        readonly last?: IWindowRecordingResult;
+    };
 }
 
 export interface IWindow {

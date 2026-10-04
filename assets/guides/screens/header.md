@@ -21,7 +21,7 @@ every state.
 ```
 +---------------------------------------------------------------------+
 | [P] [tab] [tab] [tab] … [+ ▾]                          [–] [□] [×]  |  header strip: Persephone menu far left, then the tab strip
-|                                                  [Snip][Mneme][MCP] |  and + button; window controls top-right, status bottom-right
+|                                                  [Snip][Mneme][MCP] |  status cluster bottom-right
 +---------------------------------------------------------------------+
 | Page area                                                           |  everything below the header strip
 +---------------------------------------------------------------------+
@@ -43,6 +43,10 @@ every state.
 - Close → `window-close`
 - Status indicators → `status-indicators`
 - Quick settings → `header-snip-button`
+- Record… → `record-region-toggle`; region choices → `record-window`, `record-page`, `record-editor` (shown after expanding Record…)
+- Recording controls → `window-recording-controls` (while a recording is being prepared or captured)
+- Recording indicator / elapsed time → `recording-indicator`, `recording-elapsed`
+- Start / Cancel / Pause / Resume / Stop → `recording-start`, `recording-cancel`, `recording-pause`, `recording-resume`, `recording-stop` (shown according to recording state)
 - Mneme → `mneme-indicator`
 - MCP → `mcp-indicator`
 
@@ -76,6 +80,7 @@ every state.
 +---------------------------------------------------------------------+
 |                                          [Snip Screen]              |  quick-settings surface opened from the bottom-right status cluster
 |                                          [Snip Persephone]          |
+|                                          [●] Record…          [›]   |
 |                                          ------------------------   |
 |                                          [MCP]                [on]  |
 |                                          [Mneme]              [on]  |
@@ -83,9 +88,29 @@ every state.
 +---------------------------------------------------------------------+
 ```
 
+### When Record… is expanded
+
+```
++---------------------------------------------------------------------+
+|                                          [●] Record…          [⌄]   |
+|                                            Full window              |
+|                                            Active page              |
+|                                            Main editor area         |  region choices under Record…
++---------------------------------------------------------------------+
+```
+
+### When a recording is prepared or active
+
+```
++---------------------------------------------------------------------+
+| [Start] [Cancel] [● 00:00]                         [–] [□] [×]      |  prepared recording, just before Minimize
+| [Pause] [Stop]   [● 00:12]                         [–] [□] [×]      |  active recording; Resume replaces Pause while paused
++---------------------------------------------------------------------+
+```
+
 ### Drawn controls without `elements`
 
-- Quick-settings rows and switches — no entry: transient popover surface, outside the shell contract.
+- Quick-settings snip and service rows — no entry: transient popover surface, outside the shell contract.
 - Split primary and split caret — no entry: internal parts of the addressable `page-tabs-add` split control.
 - Header spacer — no entry: structural spacer, not a user control.
 
@@ -122,7 +147,10 @@ conditional.
 | MCP indicator | Appears while the MCP server is running; it shows idle status or the connected-client count and opens the MCP request log | `[data-name="mcp-indicator"]` |
 
 The indicators are entry points, not the screen guides for their destinations. Quick settings contains
-the two snip actions and live switches for MCP, Mneme, and the clipboard listener. Click anywhere on a
+the two snip actions, **Record…**, and live switches for MCP, Mneme, and the clipboard listener. Expand
+**Record…** to choose **Full window**, **Active page**, or **Main editor area**. While the recording is
+being prepared or captured, controls appear immediately before Minimize. They provide Start/Cancel
+before capture begins, then Pause or Resume and Stop with the elapsed time. Click anywhere on a
 service row to toggle it; the popover stays open so you can change several services at once. Mneme's Config &
 monitoring and root search editors are documented in [Mneme](../mneme.md), and MCP connection
 inspection is documented in [MCP Inspector](./mcp-inspector.md). The Snip actions open an Image View

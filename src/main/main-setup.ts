@@ -171,6 +171,12 @@ export function setupMainProcess() {
         initBoardProtocol(appPartition);
         const { initHtmlPreviewProtocol } = await import("./html-preview-protocol");
         initHtmlPreviewProtocol(appPartition);
+        try {
+            const { initializeRecordingService } = await import("./recording-service");
+            await initializeRecordingService();
+        } catch (error: unknown) {
+            console.error(`Recording cleanup initialization failed: ${errMessage(error)}`);
+        }
         openWindows.restoreState();
         setupTray();
         startPipeServer();

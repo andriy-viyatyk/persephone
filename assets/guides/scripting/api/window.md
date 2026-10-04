@@ -81,6 +81,29 @@ when the capture is available.
 The app-window host follows the browser privacy guard: it cannot automate a user-opened incognito or
 Tor page while that page is active. Agent-opened private pages remain available to that agent.
 
+### `window.screen.recording`
+
+Record the visible Persephone window, active page, or its main editor area. Agent `start()` prepares
+and starts immediately; the shared header controls remain available to the user. `openPlayer` defaults
+to `false`, so the finished file remains temporary and closed. Copy the returned path elsewhere to
+keep it beyond the seven-day cleanup window. With `openPlayer: true`, closing the player page without
+**Save as…** deletes the recording, so copy it first.
+
+```javascript
+await app.window.screen.recording.start({ region: "editor" });
+await app.window.screen.recording.pause();
+await app.window.screen.recording.resume();
+const result = await app.window.screen.recording.stop();
+// result: { path, durationMs, mimeType, width, height, stoppedBy }
+await app.fs.copyFile(result.path, "C:/Videos/persephone-demo.mp4");
+```
+
+Use `cancel()` to discard an unfinished capture. `state` is a read-only snapshot with `status`,
+`elapsedMs`, the active `region`, and the most recent finished result in `last`. `stop()` can retrieve
+that result if the user stopped an agent-started recording. Set `openPlayer: true` to open playback;
+temporary player pages offer **Save as…** and **Discard**. Capture is video-only at 30 fps and refuses
+to run while a user-opened incognito or Tor page is active.
+
 ## Zoom
 
 | Member | Type | Description |

@@ -142,6 +142,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── archive-service.ts  # ArchiveService — archive I/O (libarchive-wasm for reads, jszip for writes), used by fs.ts for archive paths
 │   ├── window.ts           # IWindow implementation and app.window.screen host
 │   ├── window-screen.ts    # Shared automation adapter for the complete app window
+│   ├── window-recording.ts # Per-window MediaRecorder capture, crop, state, and lifecycle
 │   ├── menu-bar.ts         # MenuBarModel — reactive Menu Bar openness, folder selection, and legacy opener bridge
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
@@ -319,7 +320,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 ├── ui/                     # Application Shell
 │   ├── app/                # Root shell
 │   │   ├── MainPageView.ts         # Native root layout (header, tabs, editors, sidebar)
-│   │   ├── HeaderQuickSettingsPopover.ts # Header snip actions and live service switches
+│   │   ├── HeaderQuickSettingsPopover.ts # Header snip/record actions and live service switches
 │   │   ├── PagesView.ts            # Native page container/router
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
@@ -607,7 +608,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── storyTypes.ts
 │   │   └── index.ts
 │   ├── video/              # Audio/Video player (non-text, no trait)
-│   │   ├── VideoEditor.ts            # EditorModel — playback state, streaming integration
+│   │   ├── VideoEditor.ts            # EditorModel — playback state, streaming integration, temporary recording save/discard lifecycle
 │   │   ├── VideoView.ts              # Native editor view
 │   │   ├── VPlayer.ts                # Video playback view (video.js + hls.js)
 │   │   ├── AudioPlayer.ts             # Audio file playback with visualizer
@@ -994,6 +995,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
+├── recording-service.ts    # Per-webContents video recording files, ordered chunk writes, permission grants, and seven-day cleanup
 ├── clipboard-service.ts    # Opt-in clipboard history — watcher sidecar, payload files/index, duplicate promotion, retention, and status broadcasts
 ├── clip-service.ts         # Windows file-clipboard (CF_HDROP) read/write via the snip exe's clipboard subcommands — Explorer copy/paste interop; degrades to empty result when the exe is missing
 ├── version-service.ts      # Version checking (runs in main, not renderer)

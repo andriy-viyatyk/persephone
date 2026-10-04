@@ -50,6 +50,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Record the Persephone window, active page, or editor area:** choose a region from quick settings, then control capture in the header. Review the video in Video Player and use **Save as…** or **Discard**; unsaved recordings are cleaned up after seven days. Agents can also record through `window.screen.recording`; see the [Header Strip guide](./screens/header.md), [Video Player guide](./editors/video.md), and [window API reference](./scripting/api/window.md).
+
 - **MCP gives agents clearer hints, better search, and complete screenshots:** image results from `call` are returned as inline images without `maxLength` truncation, guide search and `helpSearch` rank the answers to plain questions such as "show a table to the user" first, and hints no longer repeat the same warning or the same pending-dialog notice on every call. See the [MCP Server Setup guide](./mcp-setup.md) and [AI Vision guide](./agents/ai-vision.md).
 
 - **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.

@@ -488,6 +488,12 @@ non-persistent Incognito and Tor sessions have no profile name. Profile decision
 `browser-permissions.json` under the app data folder. Decisions for Incognito and Tor are held in
 memory for the lifetime of their Electron session and are never written to disk.
 
+Window recording has a narrow exception in the app renderer session: main arms a short-lived,
+one-shot grant for the requesting `webContents` when it issues that window's desktop source id.
+Only the matching main-frame video permission request is allowed, including Electron's empty
+`mediaTypes` shape for desktop capture; audio remains disallowed. The corresponding permission
+check accepts video only while the grant is armed, and display-capture requests remain denied.
+
 For browser sessions, permission checks require a valid top-level HTTP(S) origin. They deny file
 system, storage-access, HID, serial, USB, and deprecated synchronous clipboard-read checks;
 media-key-system, fullscreen, pointer-lock, and sanitized clipboard-write checks are allowed.
