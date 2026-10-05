@@ -911,3 +911,16 @@ Feel free to add ideas here with:
 - Brief description
 - Rough complexity estimate
 - Any initial thoughts on approach
+
+---
+
+## Native JS dialogs in a board frame wedge every board (found 2026-10-05, EPIC-121 / US-1624)
+
+A `window.confirm()` raised from a bundled board's secondary-view frame left all board frames in
+the app unresponsive (`frameReady` false, automation "WebContents not found or destroyed"), including
+newly opened boards of a different board, and a renderer `location.reload()` did not recover; only a
+main-process restart did. Automation `dialogs()` / `handleDialog()` did not see the dialog. Boards now
+document "never use native dialogs" (`assets/board-template/CLAUDE.md`), but the platform should
+either intercept JS dialogs for board frames (e.g. a `will-prevent-unload` / dialog handler that
+auto-dismisses and logs) or isolate them so one frame cannot wedge the rest. Repro: any board with a
+button calling `window.confirm("x")` in a secondary view; click it.

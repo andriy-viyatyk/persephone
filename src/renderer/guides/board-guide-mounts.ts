@@ -1,7 +1,8 @@
 /**
  * Resolves the board corpora mounted into the renderer's guide index (US-1406 / EPIC-100 D7).
  *
- * Only TRUSTED boards are enumerated. Trust is the gate because a board's guides are Markdown
+ * Only TRUSTED boards, plus the boards bundled with the app (US-1626), are enumerated. A bundled
+ * board ships with Persephone, the same footing as `assets/guides`. Trust is the gate because a board's guides are Markdown
  * written by the board's author and rendered by Persephone's own Markdown pipeline (which permits
  * raw HTML) inside the About page: a trusted board already runs arbitrary code through
  * `persephone.execute`, so mounting its documentation adds no capability, while an untrusted board
@@ -14,6 +15,7 @@ import { fpJoin, fpNormalizeForCompare } from "../core/utils/file-path";
 import { normalizeBoardGuidesFolder, readBoardManifest } from "../editors/board/board-manifest";
 import { boardGuideIdFromRoot, uniqueMountId, type BoardGuideMount } from "../../shared/guides/mounted-source";
 import { RendererGuideSource } from "./guide-source";
+import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
 
 /** How long a resolved mount list is reused. Trust changes invalidate it immediately; this only
  *  bounds how stale a manifest edit (a board updated in place on disk) can be. */
@@ -38,7 +40,9 @@ async function resolve(): Promise<readonly ResolvedBoardGuides[]> {
     if (!boardTrust.isLoaded()) await boardTrust.load();
     // Deterministic order: sorted by the comparison key, so mount ids (and the duplicate-name
     // suffixes below) are stable across runs, and so are the tree and `guides.search()`.
-    const roots = [...boardTrust.listPaths()].sort((left, right) =>
+    await bundledBoardRegistry.ensureInitialized();
+    const roots = [...new Map([...boardTrust.listPaths(), ...bundledBoardRegistry.list().map(board => board.root)]
+        .map(root => [fpNormalizeForCompare(root), root])).values()].sort((left, right) =>
         fpNormalizeForCompare(left) < fpNormalizeForCompare(right) ? -1 : 1);
     const taken = new Set<string>();
     const resolved: ResolvedBoardGuides[] = [];

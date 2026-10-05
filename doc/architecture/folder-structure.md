@@ -24,6 +24,7 @@ persephone/
 │   ├── dev.mjs             # Dev orchestrator (npm start) — Vite renderer dev server + HMR, Node-targeted main build, watch-builds main/preload/preload-webview/board-shim/search-worker, launches Electron with restart-on-change
 │   ├── build-prod.mjs      # Vite production build — Node-targeted main plus preload, preload-webview, renderer, board-shim, search-worker
 │   ├── build-board-lib.mjs # Manual Excalidraw vendor-graph snapshot generator (run only when its pinned version changes)
+│   ├── build-rest-client-lib.mjs # Build the REST Client board's committed CodeMirror browser module
 │   └── vmp-sign.mjs        # electron-builder afterPack hook for Widevine VMP signing
 ├── assets/                 # Static assets
 │   ├── editor-types/       # GENERATED — Vite plugin auto-copies .d.ts files from src/renderer/api/types/ (never hand-edit)
@@ -41,7 +42,8 @@ persephone/
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
 │   ├── boards/             # Boards shipped inside the installer resources
-│   │   └── excalidraw/     # Bundled Excalidraw board, manifest, library fetcher, and committed prebuilt lib/
+│   │   ├── excalidraw/     # Bundled Excalidraw board, manifest, library fetcher, and committed prebuilt lib/
+│   │   └── rest-client/    # Bundled REST Client board (plain JavaScript)
 │   ├── tool-template/      # Scaffold copied into every new toolset
 │   │   ├── tools-manifest.json # Example manifest (one echo tool)
 │   │   ├── echo.js         # Example stdin-JSON tool with the ##PERSEPHONE_RESULT## contract
@@ -263,7 +265,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── svg-editor.d.ts     # ISvgEditor
 │       ├── html-editor.d.ts    # IHtmlEditor
 │       ├── mermaid-editor.d.ts # IMermaidEditor
-│       ├── rest-client-editor.d.ts # IRestClientEditor — REST request/response surface
 │       ├── env-vars-editor.d.ts # IEnvVarsEditor — environment-variable state and actions
 │       ├── archive-editor.d.ts # IArchiveEditor — archive entries and extraction
 │       ├── folder-view-editor.d.ts # IFolderViewEditor — provider-backed folder navigation
@@ -521,23 +522,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── logConstants.ts
 │   │   ├── items/                    # Dialog and output entry renderers (15 files)
 │   │   └── index.ts
-│   ├── rest-client/        # Rest Client editor (text-bearing, IContentHost + TRAIT)
-│   │   ├── RestClientEditor.ts       # EditorModel — collections, requests, responses
-│   │   ├── RestClientBodyView.ts      # Native request/response composition
-│   │   ├── RestClientShared.ts        # Shared request/response helpers and types
-│   │   ├── RequestBuilderView.ts      # Native request builder
-│   │   ├── ResponseViewerView.ts      # Native response viewer
-│   │   ├── KeyValueEditorView.ts      # Native key/value editor
-│   │   ├── multipartBuilder.ts
-│   │   ├── httpConstants.ts
-│   │   ├── open-in-rest-client.ts
-│   │   ├── panels/                   # Secondary view panel components
-│   │   │   └── RestPanelSecondaryView.ts         # "rest" panel
-│   │   └── index.ts
-│   ├── env-vars/           # Board environment-variables editor (text-bearing, IContentHost + TRAIT)
-│   │   ├── EnvVarsEditor.ts          # EditorModel — namespace/profile selection, CRUD over the namespace's profile data
+│   ├── env-vars/           # Environment variables editor (text-bearing, IContentHost + TRAIT)
+│   │   ├── EnvVarsEditor.ts           # EditorModel — namespace/profile selection
 │   │   ├── EnvVarsBodyView.ts         # Native environment-variable grid body
-│   │   ├── open-env-vars.ts          # openEnvVarsPage(namespace) — used by persephone.var.show() and app.boardVars.show(namespace)
+│   │   ├── open-env-vars.ts          # openEnvVarsPage(namespace)
 │   │   └── index.ts
 │   ├── image/              # Image viewer (non-text, no trait)
 │   │   ├── ImageEditor.ts            # EditorModel — pipe-backed image state

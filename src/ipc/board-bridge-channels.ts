@@ -467,6 +467,13 @@ export interface BoardOpenContentRequestMsg {
     openContent: BoardOpenContentRequest;
 }
 
+export interface BoardPageStateGetRequestMsg { __persephone: "board:pageState:get"; reqId: number; key: string }
+export interface BoardPageStateSetRequestMsg { __persephone: "board:pageState:set"; reqId: number; key: string; value: string }
+export interface BoardPageStateRemoveRequestMsg { __persephone: "board:pageState:remove"; reqId: number; key: string }
+export interface BoardPageStateGetResultMsg { __persephone: "pageState:get:result"; reqId: number; value?: string; error?: string }
+export interface BoardPageStateSetResultMsg { __persephone: "pageState:set:result"; reqId: number; error?: string }
+export interface BoardPageStateRemoveResultMsg { __persephone: "pageState:remove:result"; reqId: number; error?: string }
+
 /** Board-to-host window messages. Each discriminator has its own exact payload. */
 export type BoardToHostMsg =
     | BoardInteractMsg
@@ -494,6 +501,9 @@ export type BoardToHostMsg =
     | BoardFilePathRequestMsg
     | BoardFileIconsRequestMsg
     | BoardOpenContentRequestMsg
+    | BoardPageStateGetRequestMsg
+    | BoardPageStateSetRequestMsg
+    | BoardPageStateRemoveRequestMsg
     | BoardContentOpenRequestMsg
     | BoardAiVisionRegistrationMsg
     | BoardAiVisionNotifyMsg
@@ -704,6 +714,9 @@ export type BoardHostFrameMsg =
     | BoardSourceOpenedMsg
     | BoardStateSyncMsg
     | BoardFilePathResultMsg
+    | BoardPageStateGetResultMsg
+    | BoardPageStateSetResultMsg
+    | BoardPageStateRemoveResultMsg
     | BoardFileIconsResultMsg
     | BoardContentOpenResultMsg
     | BoardOpenContentResultMsg

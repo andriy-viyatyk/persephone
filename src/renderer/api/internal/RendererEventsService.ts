@@ -56,6 +56,15 @@ export class RendererEventsService {
 
     private handleBoardOpenRawLink = async (msg: { href: string; editor?: string; boardRoot: string }) => {
         if (!msg?.href) return;
+        if (msg.editor === "image-view" && msg.href.startsWith("data:image/")) {
+            // Open from a cached blob URL, as the built-in viewers do. Routed as a link, the whole
+            // data URL would become the page's file path and title and be persisted with the session.
+            await guard("Failed to open image", async () => {
+                const blob = await (await fetch(msg.href)).blob();
+                await pagesModel.openImageInNewTab(URL.createObjectURL(blob), "Image");
+            });
+            return;
+        }
         await guard("Failed to open link", () =>
             app.events.openRawLink.sendAsync(
                 createLinkData(msg.href, { sourceId: "board", target: msg.editor, boardRoot: msg.boardRoot }),

@@ -92,7 +92,7 @@ await page.tab.highlight("page-tab");
 ```
 
 The operation-bearing ids are `monaco`, `grid-json`, `grid-csv`, `grid-jsonl`, `notebook-view`,
-`rest-client`, `env-vars-view`, `archive-view`, `log-view`, `category-view`, `git-tree`,
+`env-vars-view`, `archive-view`, `log-view`, `category-view`, `git-tree`,
 `link-view`, `md-view`, `svg-view`, `html-view`, `mermaid-view`,
 `browser-view`, `mcp-view`, `image-view`, `video-view`, `file-diff`, `board-view`, `board-info`,
 `toolset-view`, `tools-hub-view`, `mneme-config`, and `mneme-root`. A custom board secondary view
@@ -161,7 +161,6 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
 - `video-view`: video/audio source and playback state, playback controls, next-track and
   visualizer settings, and VLC handoff.
 - `file-diff`: selected original/modified revisions, staged-state detection, and read-only state.
-- `rest-client`: REST requests, the selected response, request organization, and sending requests.
 - `env-vars-view`: environment-variable namespaces, profiles, values, and encryption state.
 - `archive-view`: archive entries, selection, entry opening, and extraction.
 - `log-view`: Log View entries, non-blocking output/dialog pushes, dialog results, and timestamps.

@@ -30,7 +30,6 @@ All editor code lives in `/src/renderer/editors/`.
 | `notebook-view` | `NotebookEditor` | `.note.json` | ✓ | ✓ |
 | `link-view` | `LinkEditor` | `.link.json` | ✓ | ✓ |
 | `log-view` | `LogViewEditor` | `.log.jsonl` | ✓ | ✓ |
-| `rest-client` | `RestClientEditor` | `.rest.json` | ✓ | ✓ |
 | `env-vars-view` | `EnvVarsEditor` | `.env.json` | ✓ | ✓ |
 | `file-diff` | `FileDiffEditor` | (switch — "Git Diff", offered for files in a git repo) | ✓ | ✓ |
 | `image-view` | `ImageEditor` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` | — | — |
@@ -49,6 +48,8 @@ All editor code lives in `/src/renderer/editors/`.
 | `toolset-view` | `ToolsetEditorModel` | folders carrying `tools-manifest.json` (opened via `persephone-toolset://`) | — | — |
 | `board-info` | `BoardInfoEditorModel` | (none — "+" switch entry / board toolbar … → Board properties / Tools & Editors hub / update toast) | holder | ✓ |
 | `tools-hub-view` | `ToolsHubEditor` | (none — Tools & Editors panel "Open in new tab" / tab-bar "+" dropdown "Show All…") | — | — |
+
+> **REST Client board:** REST collections are handled by the bundled board in `/assets/boards/rest-client/`, outside the native editor registry. Its manifest claims `.rest.json` files and JSON content with the `rest-client` collection marker. Board pages use the `board-editor:<root>` page editor id; scripts reach the board model through `pages[i].editor.app`.
 
 > **Toolset editor:** `ToolsetEditorModel` is a lightweight read-only viewer for one registered *toolset* (a folder holding `tools-manifest.json` + tool scripts — the Agent Tools registry). Like the board and git-tree editors it is a **no-host target editor** (`hasContentHost: false`, `accepts: () => -1`): it is never resolved from a filename, but opened by the `persephone-toolset://` link scheme (encode/decode in `content/persephone-toolset-link.ts`, parsed in `parsers.ts` → `target: "toolset-view"`, built by its module's `newEditorModel` through `PagesLifecycleModel.buildEditorById`, and restored via the `NO_HOST_EDITOR_IDS` allow-list in `PagesPersistenceModel`). Opening it from a normal click on `tools-manifest.json` is deliberately *not* wired — that still opens the JSON in Monaco; instead the file gets an "Open Toolset" trailing icon in the Explorer tree (register-gated via `RegisterToolsetDialog` when the folder is untrusted), mirroring `board-manifest.json`'s "Open Board" icon. The view shows the manifest's metadata, a registered chip, Open-Folder / Open-Log buttons, and a card per declared tool. The registry/trust/executor layer it reads (`api/tools/`) is intentionally kept off the `app` model and every script `.d.ts`, so scripts can neither self-register nor execute tools — the same rule that keeps `board-trust.ts` unscriptable.
 
@@ -132,7 +133,7 @@ miss can therefore fail during synchronous `attachEditorToPage`, while a later v
 is reported by the native error host. A guard around `createEditorFromFile` cannot be treated as
 coverage for either later boundary; each caller or view owner must handle the boundary it owns.
 
-The rest-client, env-vars, file-diff, and board editor bodies are native `VanillaView`s. A board
+The env-vars, file-diff, and board editor bodies are native `VanillaView`s. A board
 host introduced by a native view must have explicit geometry in its scoped CSS when the hosted
 widget cannot establish its own size.
 
@@ -221,7 +222,7 @@ abstract class EditorModel<TState extends IEditorState = IEditorState> {
 Every text-bearing editor that wraps a `TextFileModel` host extends
 `TextHostEditorModel` (`/src/renderer/editors/base/TextHostEditorModel.ts`), a layer between
 `EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML,
-Link, Notebook, Rest Client, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
+Link, Notebook, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
 lifecycle those editors would otherwise each reimplement:
 
 - `CONTENT_HOST_TRAIT` registration (host transfer on editor switch), `switchFrom`,
@@ -516,13 +517,12 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 | `page.editor` | `FolderViewEditorFacade` | `CategoryEditorModel` |
 | `page.editor` | `GitTreeEditorFacade` | `GitTreeEditorModel` |
 | `page.editor` | `LogViewEditorFacade` | `LogViewEditor` |
-| `page.editor` | `RestClientEditorFacade` | `RestClientEditor` |
 | `page.editor` | `GenericEditorFacade` | Any registered editor without an operation facade |
 
 Facades live in `/src/renderer/scripting/api-wrapper/`. Interfaces in `/src/renderer/api/types/*.d.ts`.
 
 The structured-data and navigation facades expose copied model snapshots and model-owned actions;
-they do not inspect mounted views or hand out live state arrays. Grid, Notebook, REST Client,
+they do not inspect mounted views or hand out live state arrays. Grid, Notebook,
 Environment Variables, Archive, Folder View, Git Tree, and Log View also publish curated
 `elements` and `highlight(name, message?)` descriptors where the surface has addressable controls.
 The Log View facade is also available as the `pages.logView` collection node, which points at the
@@ -548,7 +548,7 @@ File path → editorRegistry.resolve(filePath) → EditorModule → createEditor
 |----------|-----------|------------|
 | 0 | `monaco` | everything — the floor that guarantees a file always resolves |
 | 10 | `md-view` | any extension the Monaco language table maps to `markdown` |
-| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `rest-client`, `link-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
+| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `link-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
 | 100 | `image-view`, `archive-view`, `video-view` | binary-format extensions |
 | 200 | `category-view` | `tree-category://` links |
 
@@ -735,12 +735,11 @@ but not for a named `.xml` file, which is not assumed to be SVG.
 
 ### Content-Based Editor Detection
 
-Structured JSON editors (notebook, link, rest-client) embed a `"type"` property in their JSON content:
+Structured JSON editors (notebook and link) embed a `"type"` property in their JSON content:
 - `"type": "note-editor"` → notebook-view
 - `"type": "link-editor"` → link-view
-- `"type": "rest-client"` → rest-client
 
-This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorModule`. Trusted boards can provide the same switch-only behavior through `contentMasks`; board content detection never participates in file-open resolution.
+This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorModule`. The bundled REST Client board independently recognizes its collection marker through its manifest `contentMasks`; board content detection never participates in file-open resolution.
 
 `TextFileModel` runs detection:
 - **Immediately** on `restore()` and `changeEditor()`

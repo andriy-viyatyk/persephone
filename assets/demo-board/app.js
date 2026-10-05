@@ -133,6 +133,24 @@
 
     // ── Demo actions (wired to [data-test] buttons) ─────────────────────
     const tests = {
+        // --- opaque page-scoped UI state -----------------------------------
+        async pageStateSave() {
+            header("persephone.pageState.set");
+            const value = JSON.stringify({ savedAt: new Date().toISOString(), sample: "response cache" });
+            await P.pageState.set("demo-cache", value);
+            print("Saved string: " + value);
+        },
+        async pageStateRead() {
+            header("persephone.pageState.get");
+            const value = await P.pageState.get("demo-cache");
+            print(value === undefined ? "No sample saved." : JSON.stringify(JSON.parse(value), null, 2));
+        },
+        async pageStateRemove() {
+            header("persephone.pageState.remove");
+            await P.pageState.remove("demo-cache");
+            print("Removed demo-cache (safe when already absent).");
+        },
+
         // --- capabilities ---------------------------------------------------
         async capabilityInvoke() {
             header("persephone.capabilities.invoke → demo.greet");

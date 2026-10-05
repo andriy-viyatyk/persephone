@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "name": "REST Client",
+  "description": "The bundled REST Client editor.",
+  "author": "Persephone",
+  "minBridgeVersion": "1.34.0",
+  "minAppVersion": "4.0.21",
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": "full",
+    "openExternal": false,
+    "appScripting": false,
+    "network": "full",
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "geolocation": false,
+    "notifications": false
+  },
+  "fileMasks": ["*.rest.json"],
+  "contentMasks": [
+    "(?=[\\s\\S]*\"type\")(?=[\\s\\S]*\"requests\")\"type\"\\s*:\\s*\"rest-client\""
+  ],
+  "editorKind": "content-host",
+  "editorPriority": 21,
+  "guides": "guides",
+  "capabilities": [
+    {
+      "id": "http.request.open",
+      "version": 1,
+      "priority": 50,
+      "title": "Open HTTP request",
+      "alwaysOpensNewPage": true
+    }
+  ],
+  "standalone": true,
+  "secondaryViews": [
+    { "id": "requests", "title": "Requests" }
+  ]
+}

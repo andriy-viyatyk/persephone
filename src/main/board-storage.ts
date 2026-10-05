@@ -137,6 +137,11 @@ function contextForRoot(boardRoot: string): BoardStorageContext {
     };
 }
 
+/** Return the canonical identity used to namespace storage for this board root. */
+export function getBoardStorageKey(boardRoot: string): string {
+    return contextForRoot(boardRoot).boardKey;
+}
+
 function bundledBoardId(normalizedRoot: string): string | undefined {
     const boardsRoot = path.resolve(getAssetPath("boards"));
     const relativePath = path.relative(boardsRoot, normalizedRoot);

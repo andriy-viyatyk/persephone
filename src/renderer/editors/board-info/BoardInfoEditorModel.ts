@@ -294,7 +294,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!isTextFileModel(host)) {
             throw new Error("BoardInfoEditorModel.switchFrom: extracted host is not a TextFileModel");
         }
-        // Preserve cache-file id across the swap (<id>-host.txt etc.).
+        // Preserve the editor id across the host swap so editor-owned cache files remain associated.
         this.state.update((s) => { s.id = oldEditor.id; });
         this.adoptHost(host);
     }

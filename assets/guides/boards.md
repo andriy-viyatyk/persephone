@@ -190,7 +190,7 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.33.0**. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
+The current board bridge is **1.34.0**. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
 to read only its currently hosted document through `readFile(getFilePath())`. Bridge `1.23.0` uses one extension-to-MIME table for
 `board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.22.0` adds host-managed module-service lifecycle
@@ -899,15 +899,29 @@ board panel and runs in the panel's frame. If no model is published, use the boa
 `snapshot()` and refs instead. See the [AI Vision guide](./agents/ai-vision.md) for how to publish
 one, and the [agent board guide](./agents/boards.md) for the rest of the board authoring surface.
 
-Use `readFile`/`writeFile` to persist small board state (last filter, column layout, selected item) or load a board-local config — no backend script needed:
+### Page-scoped board UI state: `persephone.pageState`
+
+Use `persephone.state` for small structured values selected to be part of the page descriptor.
+Use `persephone.pageState` for larger or opaque board UI data such as response caches, drafts, or
+serialized layouts. Values are strings (serialize JSON in the board when useful), each capped at
+10 MiB UTF-8. Keys are 1–32 ASCII characters matching `[A-Za-z0-9][A-Za-z0-9._-]*`. This app-owned
+cache API needs no `fileSystem` permission; keep `readFile`/`writeFile` for board files and
+configuration. It requires bridge 1.34.0; declare `minBridgeVersion: "1.34.0"` when the board
+depends on it.
 
 ```js
-// Persist UI state
-await persephone.writeFile("state.json", JSON.stringify(state));
-// Restore on next launch (handle first-run "file not found")
-let state = {};
-try { state = JSON.parse(await persephone.readFile("state.json")); } catch {}
+const serialized = await persephone.pageState.get("response-cache");
+const cache = serialized === undefined ? {} : JSON.parse(serialized);
+await persephone.pageState.set("response-cache", JSON.stringify(cache));
+await persephone.pageState.remove("response-cache"); // missing keys are fine
 ```
+
+The host stores these values outside the page descriptor under both the editor id and a stable
+board identity. Main and secondary frames share the API, and another board cannot see this board's
+same-named key. Values survive app restart, content-host editor switches, and moving the page to
+another window. Replacing a simple file-association board deletes its cache; a duplicated page
+starts with fresh state. Closing the page removes its page-state cache files through normal editor
+cleanup.
 
 Pair the dialog methods with `execute()`: the dialog returns a path, your script does the work:
 

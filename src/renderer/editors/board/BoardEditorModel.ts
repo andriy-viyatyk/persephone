@@ -159,6 +159,22 @@ export interface BoardEditorState extends EditorStateBase {
     sourceRestoreBlocked?: boolean;
 }
 
+const BOARD_PAGE_STATE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}(?![\s\S])/;
+const BOARD_PAGE_STATE_MAX_BYTES = 10 * 1024 * 1024;
+
+function validateBoardPageStateKey(key: unknown): asserts key is string {
+    if (typeof key !== "string" || !BOARD_PAGE_STATE_KEY_PATTERN.test(key)) {
+        throw new TypeError("Board page-state keys must be 1–32 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*.");
+    }
+}
+
+function validateBoardPageStateValue(value: unknown): asserts value is string {
+    if (typeof value !== "string") throw new TypeError("Board page-state values must be strings.");
+    if (new TextEncoder().encode(value).byteLength > BOARD_PAGE_STATE_MAX_BYTES) {
+        throw new RangeError("Board page-state values cannot exceed 10 MiB in UTF-8.");
+    }
+}
+
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
     // Per-instance UUID — keys this editor in `page.editors[]`.
     id: crypto.randomUUID(),
@@ -213,6 +229,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private readonly pendingSourceUrls: Array<{ sourceUrl: string; privateSession: boolean }> = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    private readonly pageStateQueues = new Map<string, Promise<void>>();
+    private boardStorageKeyPromise: Promise<string> | undefined;
     /** Sources that arrived with a private session. They are never fetched on the default one. */
     private readonly sessionBoundSources = new Set<string>();
     private initialSourcePrivateSessionValue = false;
@@ -580,6 +598,52 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  `BoardContentEditorModel` inherits this, so content-host board pages are covered too. */
     get boardRoot(): string | undefined {
         return this.state.get().boardRoot;
+    }
+
+    private getBoardPageStateNamespace(): Promise<string> {
+        if (this.boardStorageKeyPromise) return this.boardStorageKeyPromise;
+        const boardRoot = this.boardRoot;
+        if (!boardRoot) return Promise.reject(new Error("Board page state requires a board root."));
+        const pending = api.getBoardStorageKey(boardRoot).then((boardKey) => {
+            if (!/^[0-9a-f]{64}$/.test(boardKey)) throw new Error("The host returned an invalid board storage key.");
+            return boardKey;
+        });
+        this.boardStorageKeyPromise = pending;
+        void pending.catch(() => {
+            if (this.boardStorageKeyPromise === pending) this.boardStorageKeyPromise = undefined;
+        });
+        return pending;
+    }
+
+    private enqueuePageStateOperation<T>(key: string, operation: (cacheName: string) => Promise<T>): Promise<T> {
+        validateBoardPageStateKey(key);
+        return this.getBoardPageStateNamespace().then((boardKey) => {
+            const queueKey = `${boardKey}:${key}`;
+            const previous = this.pageStateQueues.get(queueKey) ?? Promise.resolve();
+            const result = previous.then(() => operation(`board-state-${boardKey}-${key}`));
+            const tail: Promise<void> = result.then((): void => undefined, (): void => undefined);
+            this.pageStateQueues.set(queueKey, tail);
+            void tail.then(() => {
+                if (this.pageStateQueues.get(queueKey) === tail) this.pageStateQueues.delete(queueKey);
+            });
+            return result;
+        });
+    }
+
+    /** Read one serialized page-scoped value owned by this board. */
+    getPageState(key: string): Promise<string | undefined> {
+        return this.enqueuePageStateOperation(key, (cacheName) => appFs.getCacheFile(this.id, cacheName));
+    }
+
+    /** Persist one serialized page-scoped value after validating its UTF-8 size. */
+    setPageState(key: string, value: string): Promise<void> {
+        validateBoardPageStateValue(value);
+        return this.enqueuePageStateOperation(key, (cacheName) => appFs.saveCacheFile(this.id, value, cacheName));
+    }
+
+    /** Remove one page-scoped value; a missing cache file is already removed. */
+    removePageState(key: string): Promise<void> {
+        return this.enqueuePageStateOperation(key, (cacheName) => appFs.deleteCacheFile(this.id, cacheName));
     }
 
     /** Absolute folder claimed by this board, or undefined for plain/file-only boards. */

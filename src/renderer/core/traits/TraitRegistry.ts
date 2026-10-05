@@ -9,7 +9,6 @@ export enum TraitTypeId {
     ILink = "ILink",
     Note = "Note",
     NotebookCategory = "NotebookCategory",
-    RestRequest = "RestRequest",
     BrowserTab = "BrowserTab",
     PinnedLink = "PinnedLink",
     // Added in :

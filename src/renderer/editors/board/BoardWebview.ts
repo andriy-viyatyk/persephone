@@ -24,6 +24,9 @@ import type {
     BoardSourceOpenedMsg,
     BoardOpenContentRequest,
     BoardOpenContentResultMsg,
+    BoardPageStateGetRequestMsg,
+    BoardPageStateSetRequestMsg,
+    BoardPageStateRemoveRequestMsg,
     BoardNavigationCreateReturnUrlMsg,
     BoardNavigationReturnUrlResultMsg,
     BoardPortInitMsg,
@@ -304,6 +307,18 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 }
             },
         },
+        "board:pageState:get": {
+            gate: { kind: "trusted", rejectionLog: "Ignored page-state request from an untrusted board." },
+            handle: (message, current) => { void this.resolvePageStateGet(message, current); },
+        },
+        "board:pageState:set": {
+            gate: { kind: "trusted", rejectionLog: "Ignored page-state request from an untrusted board." },
+            handle: (message, current) => { void this.resolvePageStateSet(message, current); },
+        },
+        "board:pageState:remove": {
+            gate: { kind: "trusted", rejectionLog: "Ignored page-state request from an untrusted board." },
+            handle: (message, current) => { void this.resolvePageStateRemove(message, current); },
+        },
         "board:contentOpen": {
             handle: (message, current) => {
                 if (typeof message.reqId === "number") {
@@ -379,6 +394,17 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                         || ("text" in message && typeof message.text === "string"));
             if (!gatePassed) {
                 if (gate.rejectionLog) this.appendLog("warn", gate.rejectionLog);
+                if ("reqId" in message && typeof message.reqId === "number") {
+                    const error = "This board is no longer trusted.";
+                    const reply: BoardHostFrameMsg | undefined = type === "board:pageState:get"
+                        ? { __persephone: "pageState:get:result", reqId: message.reqId, error }
+                        : type === "board:pageState:set"
+                        ? { __persephone: "pageState:set:result", reqId: message.reqId, error }
+                        : type === "board:pageState:remove"
+                        ? { __persephone: "pageState:remove:result", reqId: message.reqId, error }
+                        : undefined;
+                    if (reply) this.replyToFrame(context.frame, context.generation, reply);
+                }
                 return;
             }
         }
@@ -803,6 +829,39 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         };
         this.dispatchBoardMessage(discriminator as BoardToHostType, data as BoardToHostMsg, context);
     };
+
+    private async resolvePageStateGet(message: BoardPageStateGetRequestMsg, context: BoardMessageContext): Promise<void> {
+        let reply: BoardHostFrameMsg;
+        try {
+            const value = await context.model.getPageState(message.key);
+            reply = { __persephone: "pageState:get:result", reqId: message.reqId, ...(value === undefined ? {} : { value }) };
+        } catch (error: unknown) {
+            reply = { __persephone: "pageState:get:result", reqId: message.reqId, error: errMessage(error, "Failed to read board page state.") };
+        }
+        this.replyToFrame(context.frame, context.generation, reply);
+    }
+
+    private async resolvePageStateSet(message: BoardPageStateSetRequestMsg, context: BoardMessageContext): Promise<void> {
+        let reply: BoardHostFrameMsg;
+        try {
+            await context.model.setPageState(message.key, message.value);
+            reply = { __persephone: "pageState:set:result", reqId: message.reqId };
+        } catch (error: unknown) {
+            reply = { __persephone: "pageState:set:result", reqId: message.reqId, error: errMessage(error, "Failed to write board page state.") };
+        }
+        this.replyToFrame(context.frame, context.generation, reply);
+    }
+
+    private async resolvePageStateRemove(message: BoardPageStateRemoveRequestMsg, context: BoardMessageContext): Promise<void> {
+        let reply: BoardHostFrameMsg;
+        try {
+            await context.model.removePageState(message.key);
+            reply = { __persephone: "pageState:remove:result", reqId: message.reqId };
+        } catch (error: unknown) {
+            reply = { __persephone: "pageState:remove:result", reqId: message.reqId, error: errMessage(error, "Failed to remove board page state.") };
+        }
+        this.replyToFrame(context.frame, context.generation, reply);
+    }
 
     /** Deliver one catalog interaction to the current main board frame. */
     public sendStatusBarAction(event: { id: string }, generation: number): void {

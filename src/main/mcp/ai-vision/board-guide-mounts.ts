@@ -4,13 +4,14 @@
  *
  * Main owns the grant record at `<userData>/data/trustedBoards.json`, so this
  * process reads it directly rather than round-tripping to a window that may not be open. Only
- * TRUSTED boards are mounted — an untrusted board contributes no documentation, exactly as it
- * contributes no editor association.
+ * TRUSTED boards and the boards BUNDLED under `<appRoot>/assets/boards` are mounted (US-1626): a
+ * bundled board ships with the app, the same footing as `assets/guides`. An untrusted board
+ * contributes no documentation, exactly as it contributes no editor association.
  */
 import fs from "node:fs";
 import path from "node:path";
 
-import { getDataFolder } from "../../utils";
+import { getAppRootPath, getDataFolder } from "../../utils";
 import { errMessage } from "../../../shared/utils";
 import {
     boardGuideIdFromRoot,
@@ -47,6 +48,17 @@ function readTrustedRoots(): readonly string[] {
     }
 }
 
+function readBundledRoots(): readonly string[] {
+    try {
+        const boardsRoot = path.join(getAppRootPath(), "assets", "boards");
+        return fs.readdirSync(boardsRoot, { withFileTypes: true })
+            .filter(entry => entry.isDirectory())
+            .map(entry => path.join(boardsRoot, entry.name));
+    } catch {
+        return [];
+    }
+}
+
 function readGuidesFolder(boardRoot: string): string | null {
     try {
         const manifest = JSON.parse(fs.readFileSync(path.join(boardRoot, BOARD_MANIFEST_FILE), "utf-8"));
@@ -65,7 +77,8 @@ export async function resolveMainBoardGuideMounts(): Promise<readonly BoardGuide
     try {
         // Deterministic order: sorted by comparison key, so mount ids (and the duplicate-name
         // suffixes) are stable, and so are the tree and `guides.search()`.
-        const roots = [...readTrustedRoots()].sort((left, right) =>
+        const roots = [...new Map([...readTrustedRoots(), ...readBundledRoots()]
+            .map(root => [comparisonKey(root), root])).values()].sort((left, right) =>
             comparisonKey(left) < comparisonKey(right) ? -1 : 1);
         const taken = new Set<string>();
         const mounts: BoardGuideMount[] = [];

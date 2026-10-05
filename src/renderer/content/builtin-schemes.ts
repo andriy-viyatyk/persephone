@@ -279,9 +279,29 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         return;
     }
 
-    if (data.target === "rest-client") {
-        const { openInRestClient } = await import("../editors/rest-client/open-in-rest-client");
-        await openInRestClient(data.url, data);
+    if (data.target === "http.request.open") {
+        const { capabilities } = await import("../api/capabilities");
+        const title = requestTitle(data.url);
+        const payload = {
+            url: data.url,
+            ...(data.method !== undefined ? { method: data.method } : {}),
+            ...(data.headers !== undefined ? { headers: data.headers } : {}),
+            ...(data.body !== undefined ? { body: data.body } : {}),
+            title,
+        };
+        try {
+            await capabilities.invoke("http.request.open", payload, { version: 1 });
+        } catch (error: unknown) {
+            const { CapabilityError } = await import("../api/capability-bus");
+            if (error instanceof CapabilityError && error.code === "no-handler") {
+                await notifyUser(
+                    "No REST Client board is registered. Enable it in Tools & Editors or install a replacement.",
+                    "warning",
+                );
+            } else {
+                await notifyUser(`Failed to open request in REST Client: ${errMessage(error)}`, "error");
+            }
+        }
         data.handled = true;
         return;
     }
@@ -347,6 +367,14 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     data.pipeDescriptor = pipeDescriptor;
     data.pipe = context.createPipe(pipeDescriptor);
     await context.handoff();
+}
+
+function requestTitle(url: string): string {
+    try {
+        return `${new URL(url).hostname}.rest.json`;
+    } catch {
+        return "request.rest.json";
+    }
 }
 
 // ── Built-in scheme declarations ────────────────────────────────────────────

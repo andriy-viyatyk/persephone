@@ -594,7 +594,6 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `FolderViewEditorFacade` | `CategoryEditorModel` | provider/listing snapshots, category navigation, refresh |
 | `page.editor` | `GitTreeEditorFacade` | `GitTreeEditorModel` | bounded history, changes/ref snapshots, refresh, open change |
 | `page.editor` | `LogViewEditorFacade` | `LogViewEditor` | entry snapshots, non-blocking push, dialog read-back, clear |
-| `page.editor` | `RestClientEditorFacade` | `RestClientEditor` | request/response snapshots, request metadata actions, send |
 | `page.editor` | `GenericEditorFacade` | Any registered editor without an operation facade | `id`, `name` only |
 
 The Board and Board Info facades expose observations and screen-local actions only. Board Info's
@@ -1219,7 +1218,6 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `folder-view-editor.d.ts` | `IFolderViewEditor` — provider-backed folder navigation |
 | `git-tree-editor.d.ts` | `IGitTreeEditor` — Git history, refs, and changes |
 | `log-view-editor.d.ts` | `ILogViewEditor` — Log View entries and non-blocking output |
-| `rest-client-editor.d.ts` | `IRestClientEditor` — REST request/response surface |
 | `window.d.ts` | `IWindow`, `IWindowScreen`, `IMenuBar` — window, app-window automation, and Menu Bar controls |
 | `common.d.ts` | `IDisposable`, `IEvent`, `Language`, `EditorView` |
 | `boards.d.ts` | `IBoards` — `app.boards` board lifecycle + published-catalog operations |

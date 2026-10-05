@@ -843,7 +843,8 @@ tab there is nothing to attach an indicator to. US-1517 already did the half tha
 which editor a link deserves is now resolved from the link alone, before any byte is read. See
 EPIC-113's "a consequence of D6" note for the measurement and the cited lines.
 
-Video and REST client extraction as ordinary epics using Phases B–D; `ProxyTreeProvider` so a
+Video and REST client extraction as ordinary epics using Phases B–D (REST client:
+[EPIC-121](epics/EPIC-121.md), planned 2026-10-05); `ProxyTreeProvider` so a
 module's contents appear in Explorer; `persephone.fetch` / network permission; `persephone.events.on`;
 board-contributed tools; command / shortcut / menu registry with an open `ContextMenuTargetKind`;
 open settings namespace; storefront over the catalog.

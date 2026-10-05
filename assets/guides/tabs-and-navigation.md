@@ -290,7 +290,7 @@ The page sidebar is shared across editors. Different editors contribute their ow
 - **Link Editor panels** — When a `.link.json` file is open, the sidebar is always open and shows **Collections**, **Tags**, and **Hostnames** panels for filtering links. The sidebar cannot be closed while a link file is open. Click a panel header to expand it; click an item to filter the link list. The breadcrumb in the Link Editor toolbar shows the current filter path. A File Explorer panel is also added automatically for the link file's folder.
 - **Links panel** — When a standalone link collection page is open (created by multi-file drop, `app.pages.openLinks()`, or "Show Resources"), a **Collections** panel appears in the sidebar. Click a link to navigate the page's main area to that file or URL. Hover a non-directory link to see a rich tooltip with title, URL, and image preview. Right-click a non-directory link for an **Edit Link** context menu.
 - **Notebook panels** — When a `.note.json` file is open, the sidebar shows **Categories** and **Tags** panels.
-- **Rest Client panel** — When a `.rest.json` file is open, the sidebar shows a **Rest** panel containing the request collection tree.
+- **REST Client board Requests view** — The bundled REST Client board provides its request collection tree as a board secondary view.
 
 ## File Explorer Panel
 

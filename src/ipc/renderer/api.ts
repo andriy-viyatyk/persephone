@@ -481,6 +481,10 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.getBoardLogPath, boardRoot);
     };
 
+    getBoardStorageKey = async (boardRoot: string) => {
+        return executeOnce<string>(Endpoint.getBoardStorageKey, boardRoot);
+    };
+
     unregisterBoard = async (host: string) => {
         return executeOnce<void>(Endpoint.unregisterBoard, host);
     };

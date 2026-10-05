@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.33.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.34.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
@@ -1004,6 +1004,28 @@ persephone.state.onChange((s) => highlight(s.selectedId));
 
 - **Inspect a secondary view** with `pages[pageId].editor.switchTab("board-secondary:<viewId>")` — see
   [Inspecting secondary views](#inspecting-secondary-views) under "Test it".
+
+### Page-scoped UI state: `persephone.pageState`
+
+Use `persephone.pageState` for larger or opaque UI data that should stay outside the page
+descriptor. `get(key)` returns a string or `undefined`; `set(key, value)` stores a string; and
+`remove(key)` succeeds when the key is already absent. JSON serialization is an option for
+structured values. Keys are 1–32 ASCII characters matching `[A-Za-z0-9][A-Za-z0-9._-]*`; each
+value is limited to 10 MiB UTF-8. It requires no `fileSystem` permission. Keep descriptor-backed
+`persephone.state` for small selected values and file APIs for board files/configuration.
+This API requires bridge 1.34.0; declare `minBridgeVersion: "1.34.0"` when the board depends on it.
+
+```js
+const serialized = await persephone.pageState.get("response-cache");
+const cache = serialized === undefined ? {} : JSON.parse(serialized);
+await persephone.pageState.set("response-cache", JSON.stringify(cache));
+await persephone.pageState.remove("response-cache");
+```
+
+Page state is isolated by stable board identity, including when content-host switches reuse an
+editor id. Main and secondary frames share it; it survives restart, content-host editor switches,
+and cross-window moves. Switching a simple file-association board away deletes its state; duplicate
+pages start independently; closing the page removes its cache files.
 
 ### Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 

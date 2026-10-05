@@ -264,6 +264,21 @@ interface PersephoneStorageApi {
     keys(): Promise<string[]>;
 }
 
+/** Opaque, page-scoped string state stored in Persephone's cache, outside the page descriptor.
+ * Keys must be 1–32 ASCII characters matching `[A-Za-z0-9][A-Za-z0-9._-]*`; each value is capped
+ * at 10 MiB measured as UTF-8 bytes. This API needs no `fileSystem` permission and is available
+ * from main and secondary board frames. Files are namespaced by board identity, survive restart,
+ * content-host editor switches, and cross-window moves, and are removed when the page closes or
+ * when a simple file-association editor is replaced. Duplicated pages start with independent state. */
+interface PersephonePageStateApi {
+    /** Read a value, or `undefined` when no value has been stored for this key. */
+    get(key: string): Promise<string | undefined>;
+    /** Persist a UTF-8 string. Rejects invalid keys, non-strings, values over 10 MiB, or I/O errors. */
+    set(key: string, value: string): Promise<void>;
+    /** Remove a value. Removing a missing value succeeds. */
+    remove(key: string): Promise<void>;
+}
+
 type PersephoneServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
 
 interface PersephoneServiceStatus {
@@ -525,6 +540,8 @@ interface PersephoneBoardApi {
     readonly settings: PersephoneSettingsApi;
     /** Main-owned per-board storage; see {@link PersephoneStorageApi}. */
     readonly storage: PersephoneStorageApi;
+    /** Opaque state belonging to this board on this page; see {@link PersephonePageStateApi}. */
+    readonly pageState: PersephonePageStateApi;
     /** Lazily-started request/reply access to this board's trusted module service. */
     readonly service: PersephoneServiceApi;
     /** Service-only provider registration guard. */

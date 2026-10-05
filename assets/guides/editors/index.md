@@ -22,7 +22,7 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 | Grid Editor | `grid-json`, `grid-csv`, `grid-jsonl` | JSON, CSV, and JSONL tables | [Grid Editor](./grid.md) |
 | Notebook Editor | `notebook-view` | Structured `.note.json` notes | [Notebook](./notebook.md) |
 | Link Editor | `link-view` | `.link.json` link collections | [Links](./links.md) |
-| REST Client | `rest-client` | `.rest.json` HTTP collections | [REST Client](./rest-client.md) |
+| REST Client board | `board-editor:<root>` | `.rest.json` HTTP collections | [REST Client](./rest-client.md) |
 | Environment Variables | `env-vars-view` | Board environment profiles | [Environment Variables](./env-vars.md) |
 | Log View | `log-view` | `.log.jsonl` structured log output | [Log View](./log-view.md) |
 | Markdown Preview | `md-view` | Markdown documents | [Markdown Preview](./markdown.md) |
@@ -62,7 +62,7 @@ integration is enabled. Archives, images, and audio/video normally have one spec
 
 Content detection can add a switch without a special filename: Notebook requires JSON with
 `"type": "note-editor"` and `"notes"`; Links requires `"type": "link-editor"` and `"links"`;
-REST Client requires `"type": "rest-client"` and `"requests"`. Log View is narrower: it accepts `.log.jsonl`, or JSONL
+The REST Client board recognizes `.rest.json` files and JSON content with `"type": "rest-client"` and `"requests"`. Log View is narrower: it accepts `.log.jsonl`, or JSONL
 content carrying a `"type": "log.*"` marker, not arbitrary JSONL.
 
 App and tool pages are not editor pages in this catalogue. Open their dedicated routes from the
@@ -86,13 +86,14 @@ for search, thumbnails, outline, and zoom. Boards are installed from **Tools & E
 
 ## Errors & verification
 
-If `pages.addEditorPage` reports an unknown editor, use an id from this table and the matching
-language/suffix guidance in [the scripting page guide](../scripting/api/page.md). A standalone
-editor such as Browser, Image Viewer, Archive, or Video Player is opened through its specialized
-route rather than an arbitrary add-page call. Parse errors usually mean the content does not match
-the editor's format; the detailed page and the linked format guide are the next check. If a switch
-is missing, verify the filename suffix and the content marker listed above. Git and Mneme are both
-off by default; enable them in Settings when their pages are absent.
+If `pages.addEditorPage` reports an unknown editor, use a supported built-in id and the matching
+language/suffix guidance in [the scripting page guide](../scripting/api/page.md). Bundled board
+pages, including REST Client, are opened through their file or board entry rather than
+`pages.addEditorPage`. A standalone editor such as Browser, Image Viewer, Archive, or Video Player
+is opened through its specialized route rather than an arbitrary add-page call. Parse errors usually
+mean the content does not match the editor's format; the detailed page and the linked format guide
+are the next check. If a switch is missing, verify the filename suffix and the content marker listed
+above. Git and Mneme are both off by default; enable them in Settings when their pages are absent.
 
 The editor pages own the `editorId` mappings. The detailed agent and format references link back to
 their user-facing editor pages without claiming those IDs, so F1 and the guide browser have one

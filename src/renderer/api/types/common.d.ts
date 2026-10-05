@@ -43,7 +43,6 @@ export type EditorView =
     | "mneme-config"
     | "archive-view"
     | "category-view"
-    | "rest-client"
     | "video-view"
     | "storybook-view"
     | "git-tree"

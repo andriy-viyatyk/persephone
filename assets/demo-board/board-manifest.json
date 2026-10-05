@@ -4,7 +4,7 @@
   "description": "Self-documenting demo board showcasing the persephone bridge, theming, and capabilities.",
   "author": "Persephone",
   "repository": "https://github.com/andriy-viyatyk/persephone",
-  "minBridgeVersion": "1.30.0",
+  "minBridgeVersion": "1.34.0",
   "permissions": {
     "execute": true,
     "service": true,

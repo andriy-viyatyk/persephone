@@ -72,41 +72,6 @@ when no note is expanded. `notes` entries carry `language`, `createdDate` and `u
 `editor` is absent rather than empty when the note has none. The Categories and Tags controls are
 **not** in `editor.elements`: they belong to `page.panels`, and `$help` says so.
 
-## Test D.5: REST client — the surface shows what the page text shows
-
-**Preparation:** A `.rest.json` page with one request that has a URL, at least one header and a
-body.
-
-**Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
-
-**Call:** Read `pages[id].content`, then `pages[id].editor.selectedRequest`.
-
-**Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
-
-**Verify:** The facade returns the same URL, header values and body the page text already contains.
-This is deliberate: the REST client is a content-host editor, so a redaction in the facade would
-protect nothing while claiming to. Confirm `$help` says so plainly rather than implying a
-guarantee. Then confirm the other half of the rule holds: there is **no** `setHeaderValue`, no
-`setBody`, no `setFormDataValue`, no generic `updateRequest(id, Partial)` and no paste — a member
-that *accepts* a secret would write it into the call transcript.
-
-## Test D.6: REST client elements and `send`
-
-**Preparation:** The same page, with no response yet.
-
-**Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
-
-**Call:** Read `editor.elements`; then `editor.highlight("kv-row-key")` with two header rows
-present.
-
-**Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
-
-**Verify:** 21 declarations, page-scoped. The `response-*` entries are invisible until a response
-exists, and `form-data-*` entries are invisible while the body type is raw. The repeated
-`kv-row-*` highlight reports `count` and `highlighted` equal to the row count. Confirm `send`
-carries a caution naming the network effect, and do **not** run it against a real service during
-QA unless a throwaway endpoint is available.
-
 ## Test D.7: Env vars — locked is not empty
 
 **Preparation:** An unencrypted env-vars page with at least one namespace, and if available an

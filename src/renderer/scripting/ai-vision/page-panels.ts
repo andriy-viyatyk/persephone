@@ -45,7 +45,7 @@ const SIDEBAR_ELEMENTS: readonly IAiElementDeclaration[] = [
 
 const ALIAS_TO_PANEL_ID: Readonly<Record<string, string>> = {
     explorer: "explorer", search: "search", boards: "boards", git: "git-changes",
-    notebookCategories: "notebook-categories", notebookTags: "notebook-tags", rest: "rest-panel",
+    notebookCategories: "notebook-categories", notebookTags: "notebook-tags",
     archive: "archive-tree", fileHistory: "git-diff-revisions",
 };
 

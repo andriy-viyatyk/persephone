@@ -9,7 +9,7 @@ import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
 import {
-    GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
+    GridIcon, IncognitoIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
@@ -51,7 +51,7 @@ export interface CreatableItem {
 // =============================================================================
 
 export const DEFAULT_PINNED_EDITORS = [
-    "open-folder", "open-file", "script-js", "bundled-board:excalidraw", "grid-csv", "browser",
+    "open-folder", "open-file", "script-js", "bundled-board:excalidraw", "bundled-board:rest-client", "grid-csv", "browser",
 ];
 
 // =============================================================================
@@ -135,13 +135,6 @@ const staticItems: CreatableItem[] = [
         icon: LinkIcon.createElement(),
         create: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
         category: "editor",
-    },
-    {
-        id: "rest-client",
-        label: "Rest Client",
-        icon: RestClientIcon.createElement(),
-        create: () => pagesModel.addEditorPage("rest-client", "json", "untitled.rest.json"),
-        category: "tool",
     },
     {
         id: "browser",

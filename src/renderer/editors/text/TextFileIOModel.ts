@@ -159,7 +159,8 @@ export class TextFileIOModel {
             }
         }
 
-        await appFs.deleteCacheFile(id);
+        // The file is already saved; a cache file that cannot be removed must not fail the save.
+        await appFs.deleteCacheFile(id).catch((): void => undefined);
         this.model.state.update((s) => {
             s.modified = false;
             s.temp = false;

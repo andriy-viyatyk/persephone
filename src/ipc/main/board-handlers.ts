@@ -15,6 +15,7 @@ export type BoardEndpoint =
     | Endpoint.registerBoard
     | Endpoint.appendBoardLog
     | Endpoint.getBoardLogPath
+    | Endpoint.getBoardStorageKey
     | Endpoint.unregisterBoard
     | Endpoint.updateBoardTheme
     | Endpoint.requestBoardPort
@@ -71,6 +72,9 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.getBoardLogPath, async (_event, boardRoot: string): Promise<string> => {
         return (await import("../../main/board-log")).getBoardLogPath(boardRoot);
+    });
+    bindEndpoint(Endpoint.getBoardStorageKey, async (_event, boardRoot: string): Promise<string> => {
+        return (await import("../../main/board-storage")).getBoardStorageKey(boardRoot);
     });
     bindEndpoint(Endpoint.unregisterBoard, async (_event, host: string): Promise<void> => {
         (await import("../../main/board-protocol-service")).unregisterBoard(host);

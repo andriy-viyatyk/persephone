@@ -37,7 +37,7 @@ export function registerTreeContextMenuHandlers(): void {
             label: "Open in Rest Client",
             onClick: () =>
                 app.events.openRawLink.sendAsync(
-                    createLinkData(href, { target: "rest-client" }),
+                    createLinkData(href, { target: "http.request.open" }),
                 ),
         });
     });

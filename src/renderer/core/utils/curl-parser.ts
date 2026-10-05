@@ -3,7 +3,7 @@
  *
  * Shared utility used by:
  * - Content pipeline cURL parser (Layer 1 on openRawLink)
- * - Rest Client editor (paste into request builder)
+ * - REST Client board request parsing
  */
 
 export interface ParsedHttpRequest {

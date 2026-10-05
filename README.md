@@ -80,7 +80,7 @@ Everything else is network traffic you start yourself: web pages in the built-in
 | **Notebook** | `.note.json` | Structured notes with categories, tags, and search |
 | **Drawing** | `.excalidraw` | Excalidraw-based drawing editor with library persistence, export, and screen snip |
 | **Links** | `.link.json` | Bookmark/link manager with tiles, list view, categories, and pinned links |
-| **Rest Client** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |
+| **REST Client board** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |
 | **Board** | folder w/ `board-manifest.json` | Sandboxed custom HTML mini-app — dashboard, tool, viewer, or custom editor |
 | **Browser** | — | Web browser with profiles, incognito, Tor, bookmarks, and DRM support |
 | **Git Tree** | — | Commit-history graph with branches & tags, staging, commit, and pull/push *(Git integration)* |

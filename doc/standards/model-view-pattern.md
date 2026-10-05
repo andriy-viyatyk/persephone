@@ -33,7 +33,7 @@ Export a native main view as `EditorModule.View`, or an embeddable native body a
 native child views and DOM slots.
 
 The native main-view shape is used by the text-bearing editor set, including `svg`, `html`,
-`markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the rest-client, env-vars, board, and
+`markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the env-vars, board, and
 file-diff bodies follow the same `VanillaView` shape. The five embeddable
 bodies (`svg`, `html`, `markdown`, `grid`, and `mermaid`) also expose `BodyView`, so notebook note
 dispatch can mount them without page chrome.

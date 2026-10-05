@@ -556,15 +556,24 @@ class FileSystem implements IFileSystem {
     saveCacheFile = async (id: string, content: string, name?: string): Promise<void> =>
         await this._writeFile(await this._cacheFileName(id, name), content);
 
-    deleteCacheFile = async (id: string, name?: string): Promise<void> =>
-        await this._removeFile(await this._cacheFileName(id, name));
+    deleteCacheFile = async (id: string, name?: string): Promise<void> => {
+        const filePath = await this._cacheFileName(id, name);
+        await this.wait();
+        if (!this._unlinkFile(filePath)) {
+            throw new Error(`Failed to delete cache file: ${path.basename(filePath)}`);
+        }
+    };
 
     deleteCacheFiles = async (id: string): Promise<void> => {
         await this.wait();
-        const files = this._listDirFiles(
-            this._cachePath,
-            new RegExp(`^${id}`, "i")
-        );
+        const lowerId = id.toLowerCase();
+        const files = this._listDirFiles(this._cachePath).filter((file) => {
+            const lowerFile = file.toLowerCase();
+            return lowerFile.startsWith(lowerId)
+                && (lowerFile.length === lowerId.length
+                    || lowerFile[lowerId.length] === "_"
+                    || lowerFile[lowerId.length] === ".");
+        });
         for (const file of files) {
             await this._removeFile(path.join(this._cachePath, file));
         }

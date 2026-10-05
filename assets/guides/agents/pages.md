@@ -204,7 +204,7 @@ folder Explorer or is browsing an archive.
 **Creatable with `pages.addEditorPage`** (content-hosting editors — see the table below for the
 required `language` and title suffix):
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"`
 
 **Standalone editors** — `pages.addEditorPage` rejects these with a hint; open them the way listed:
 
@@ -212,6 +212,7 @@ required `language` and title suffix):
 |--------|------------|-------------|
 | `browser-view` | Built-in web browser | `pages.openUrlInBrowserTab(url, options)` |
 | `board-view` | A Board (your mini web-app) | `boards.openBoard(root)` |
+| REST Client board | HTTP request collections | Open a `.rest.json` file or the bundled REST Client board from the **+** menu |
 | `image-view` / `archive-view` / `video-view` | File viewers | `script.execute`: `await app.pages.openFile(path)` |
 | `mcp-view` | MCP Inspector | `script.execute`: `await app.pages.showMcpInspectorPage()` |
 | `about-view` / `settings-view` | App pages | `script.execute`: `app.pages.showAboutPage()` / `app.pages.showSettingsPage()`; pass `{ atContents: true }` to reset About to guide contents |
@@ -236,71 +237,17 @@ optional initial content as its fourth positional argument.
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 | `grid-jsonl` | **`jsonl`** | — | `"Logs"` |
 | `log-view` | **`jsonl`** | `.log.jsonl` (optional) | `"Output.log.jsonl"` |
-| `rest-client` | **`json`** | `.rest.json` (**required**) | `"API Collection.rest.json"` |
 
 **Initial content:** Structured editors expect valid JSON content on creation. **Read the dedicated resource guide BEFORE creating pages with these editors** — incorrect JSON will crash the editor:
 - **Notebook:** Read `persephone://guides/notebook` for NoteItem format. Empty: `{"notes":[],"state":{}}`
 - **Links:** Read `persephone://guides/links` for LinkItem format. Empty: `{"links":[],"state":{}}`
-- **Rest Client:** Empty: `{"type":"rest-client","requests":[]}`
+### REST Client board
 
-### Rest Client Format (`rest-client`)
-
-The Rest Client editor displays a collection of HTTP requests organized in collections. Content is JSON:
-
-```json
-{
-  "type": "rest-client",
-  "requests": [
-    {
-      "id": "unique-id-1",
-      "name": "Get Users",
-      "collection": "User API",
-      "method": "GET",
-      "url": "https://api.example.com/users",
-      "headers": [
-        { "key": "Authorization", "value": "Bearer token123", "enabled": true },
-        { "key": "Accept", "value": "application/json", "enabled": true }
-      ],
-      "body": "",
-      "bodyType": "none",
-      "bodyLanguage": "plaintext",
-      "formData": []
-    },
-    {
-      "id": "unique-id-2",
-      "name": "Create User",
-      "collection": "User API",
-      "method": "POST",
-      "url": "https://api.example.com/users",
-      "headers": [
-        { "key": "Content-Type", "value": "application/json", "enabled": true }
-      ],
-      "body": "{ \"name\": \"John\", \"email\": \"john@example.com\" }",
-      "bodyType": "raw",
-      "bodyLanguage": "json",
-      "formData": []
-    }
-  ]
-}
-```
-
-**Request properties:**
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | string (required) | Unique identifier (use `crypto.randomUUID()` or any unique string) |
-| `name` | string | Display name (empty string allowed — shows as italic "(empty)") |
-| `collection` | string | Collection group name (empty string = ungrouped) |
-| `method` | string | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` |
-| `url` | string | Request URL |
-| `headers` | array | Array of `{ key, value, enabled }` objects |
-| `body` | string | Request body text (used when `bodyType` is `"raw"`) |
-| `bodyType` | string | `"none"`, `"raw"`, or `"form-urlencoded"` |
-| `bodyLanguage` | string | Language for raw body: `"plaintext"`, `"json"`, `"javascript"`, `"html"`, `"xml"` |
-| `formData` | array | Array of `{ key, value, enabled }` for form-urlencoded body |
-
-**Live REST creation and send behavior:** inspect `pages[i].editor.$help` after narrowing the
-editor id to `rest-client`. The full request field table and example remain in this resource.
+REST Client is a bundled board, not an editor accepted by `pages.addEditorPage`. Open a `.rest.json`
+file or choose REST Client from the **+** menu. For collection format, request editing, and live
+agent operations, read the [REST Client board guide](../installed-boards/rest-client/index.md).
+Scripts should select its page by the `board-editor:` editor id prefix, then use
+`pages[i].editor.app` for the board model.
 
 ## Grouped Pages (Script Output)
 
@@ -321,7 +268,7 @@ Access `page.grouped` to auto-create a grouped page. Set `page.grouped.language`
 What failures actually look like, and how to check your work (verified against the app):
 
 - **`pages.addEditorPage` does NOT validate content.** Creating a structured-editor page (notebook,
-  links, rest-client) with broken content returns a normal `{ id, title }` success — the
+  links) with broken content returns a normal `{ id, title }` success — the
   failure happens at render time, in the editor:
   - **Unparseable JSON** → the editor shows a parse error in place of content (e.g.
     `Unexpected token 'h', "this is not"… is not valid JSON`).

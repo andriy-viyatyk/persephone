@@ -129,6 +129,7 @@ export enum Endpoint {
     clearHtmlPreview = "clearHtmlPreview",
     appendBoardLog = "appendBoardLog",
     getBoardLogPath = "getBoardLogPath",
+    getBoardStorageKey = "getBoardStorageKey",
     unregisterBoard = "unregisterBoard",
     updateBoardTheme = "updateBoardTheme",
     requestBoardPort = "requestBoardPort",
@@ -312,6 +313,7 @@ export type Api = {
     [Endpoint.clearHtmlPreview]: (id: string) => Promise<void>;
     [Endpoint.appendBoardLog]: (boardRoot: string, level: BoardLogLevel, message: string) => Promise<void>;
     [Endpoint.getBoardLogPath]: (boardRoot: string) => Promise<string>;
+    [Endpoint.getBoardStorageKey]: (boardRoot: string) => Promise<string>;
     [Endpoint.unregisterBoard]: (host: string) => Promise<void>;
     [Endpoint.updateBoardTheme]: (theme: BoardThemePalette) => Promise<void>;
     // Mint a per-board MessagePort in main and deliver port1 to this renderer via

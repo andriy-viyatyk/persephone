@@ -110,17 +110,6 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
         switchOption: (lang) => (lang === "mermaid" ? 10 : -1),
         validForLanguage: (lang) => lang === "mermaid",
     },
-    "rest-client": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.rest\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "json" && !!fn && matchesPattern(fn, /\.rest\.json$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "json",
-        detectsContent: (lang, content) =>
-            lang === "json"
-            && content.includes('"type"')
-            && /"type"\s*:\s*"rest-client"/.test(content)
-            && content.includes('"requests"'),
-    },
     "link-view": {
         acceptFile: (fn) => (matchesPattern(fn, /\.link\.json$/i) ? 20 : -1),
         switchOption: (lang, fn) =>

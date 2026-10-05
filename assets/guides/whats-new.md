@@ -12,6 +12,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.8 (Upcoming)
 
+### Breaking Changes
+
+- **REST Client is now a bundled board:** scripts that used `pages[i].editor.id === "rest-client"`
+  must select the REST Client board page (whose editor id starts with `board-editor:`) and use
+  `pages[i].editor.app` for its model. The old built-in editor id and facade are removed; the
+  `.rest.json` collection format remains supported. Tabs saved by an older version may restore
+  empty or be dropped, and old REST Client pins are ignored; reopen the collection file to continue.
+
 ### Improvements
 
 - **Agents can automate Persephone more reliably:** script execution returns a pollable run ID when

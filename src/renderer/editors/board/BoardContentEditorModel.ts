@@ -99,7 +99,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
                 "BoardContentEditorModel.switchFrom: extracted host is not a TextFileModel",
             );
         }
-        // Preserve cache-file id across the swap (<id>-host.txt etc.) — like Monaco.
+        // Preserve the editor id across the host swap so editor-owned cache files remain associated.
         this.state.update((s) => { s.id = oldEditor.id; });
         // `host.state.editor` is stamped "board-view" inside `adoptHost` (Concern C1).
         this.adoptHost(host);

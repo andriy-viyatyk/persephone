@@ -34,6 +34,7 @@ Two things these files are for:
 | [editors/data.md](editors/data.md) | Grid, notebook, REST client, env vars, archive and the Log View output channel | EPIC-087 (US-1318 to US-1322) |
 | [panels.md](panels.md) | Sidebar panel nodes under `page.panels`, Folder View and Git Tree | EPIC-087 (US-1323) |
 | [editors/boards.md](editors/boards.md) | The board page, Board Info, and the `boards` node's local enumeration | EPIC-088 (US-1325 to US-1327) |
+| [editors/rest-client-board.md](editors/rest-client-board.md) | Bundled REST Client board model, controls, guides, and request flows | EPIC-121 (US-1626) |
 | [tools.md](tools.md) | Agent Tools, the toolset editor, Tools hub, MCP Inspector and Mneme | EPIC-088 (US-1328 to US-1331) |
 | [editors/browser.md](editors/browser.md) | The three automation hosts: a browser page, a board's frames, and Persephone's own window | EPIC-089 (US-1334 to US-1339) |
 | [editors/browser-gmail.md](editors/browser-gmail.md) | Gmail compose/send automation — user-prepared, Claude-run sanctioned exception | EPIC-117 (US-1574) |

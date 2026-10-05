@@ -152,7 +152,6 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Image editor facade (source state, bounded headless PNG read for inline MCP results, PNG/original export, image-edit board, and clipboard actions) | `/src/renderer/scripting/api-wrapper/ImageEditorFacade.ts` |
 | Video/audio editor facade (model state, live media state, playback and source actions) | `/src/renderer/scripting/api-wrapper/VideoEditorFacade.ts` |
 | File Diff editor facade (revision identity and shared text controls) | `/src/renderer/scripting/api-wrapper/FileDiffEditorFacade.ts` |
-| REST client editor facade (collection, selected request, response, send; no member accepts a header/body value) | `/src/renderer/scripting/api-wrapper/RestClientEditorFacade.ts` |
 | Env vars editor facade (namespaces, profiles, variables, lock status; a locked file returns no variables) | `/src/renderer/scripting/api-wrapper/EnvVarsEditorFacade.ts` |
 | Archive editor facade (entry listing, open, cautioned extract) | `/src/renderer/scripting/api-wrapper/ArchiveEditorFacade.ts` |
 | Log View editor facade — the agent output channel (`push`, `dialogResult`), reachable as `pages.logView` | `/src/renderer/scripting/api-wrapper/LogViewEditorFacade.ts` |
@@ -271,7 +270,6 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Windows SSO adapter (global opt-in policy, eligible-session/origin checks, snip-tool process invocation, header mapping, and request-log redaction) | `/src/main/windows-sso.ts` |
 | Browser download interception (main-process `will-download`; generation-checked accepted browser-URL claims are matched before download UI, bytes stage in a temp file while an async Save As dialog is open, and completed downloads carry Windows Mark-of-the-Web from the final redirected URL) | `/src/main/download-service.ts` |
 | Browser-session source capability (`session-src://` binds one HTTP(S) URL to its session; board-bound handles enforce the granted network policy and DNS-pin each redirect hop; renderer receives only an opaque handle) | `/src/main/session-src-protocol.ts` |
-| Rest Client editor and native request/response views | `/src/renderer/editors/rest-client/RestClientEditor.ts`, `/src/renderer/editors/rest-client/RestClientBodyView.ts`, `/src/renderer/editors/rest-client/RequestBuilderView.ts`, `/src/renderer/editors/rest-client/ResponseViewerView.ts`, `/src/renderer/editors/rest-client/KeyValueEditorView.ts` |
 | Environment variables editor and native grid body | `/src/renderer/editors/env-vars/EnvVarsEditor.ts`, `/src/renderer/editors/env-vars/EnvVarsBodyView.ts` |
 | File diff editor and native revision/diff views | `/src/renderer/editors/file-diff/FileDiffEditor.ts`, `/src/renderer/editors/file-diff/FileDiffBodyView.ts`, `/src/renderer/editors/file-diff/RevisionPickerView.ts`, `/src/renderer/editors/file-diff/FileDiffToolbarView.ts` |
 | Native Git tree view used by revision selection | `/src/renderer/components/git-tree/GitTreeView.ts` |
@@ -536,6 +534,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Tools & Editors pin drag session (document-scoped active ref and `pin`/`unpin` mode shared by both rail instances and tab-body drop targets) | `/src/renderer/ui/sidebar/pinned-drag-session.ts` |
 | Board authoring guide (bridge surface, reload, MCP debugging, --p-* contract, chrome classes) | `/assets/board-template/CLAUDE.md` |
 | Bundled Excalidraw board (manifest, board bootstrap, library downloader, and committed prebuilt vendor `lib/`) | `/assets/boards/excalidraw/` |
+| Bundled REST Client board (manifest, request/response model, views, and board guide) | `/assets/boards/rest-client/` |
 | Agent-facing boards resource | `/assets/guides/agents/boards.md` |
 | Agent-facing AI Vision authoring resource | `/assets/guides/agents/ai-vision.md` |
 | Shared board stylesheet, copied into every board at creation (theme defaults + the opt-in `.p-*` chrome layer) | `/assets/board-base.css` |

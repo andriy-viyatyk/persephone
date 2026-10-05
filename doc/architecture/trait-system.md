@@ -106,7 +106,6 @@ export enum TraitTypeId {
     ILink             = "ILink",
     Note              = "Note",
     NotebookCategory  = "NotebookCategory",
-    RestRequest       = "RestRequest",
     BrowserTab        = "BrowserTab",
     PinnedLink        = "PinnedLink",
 
@@ -129,7 +128,7 @@ Registration happens once, at module load time, in the file that defines the tra
 traitRegistry.register(TraitTypeId.ILink, linkTraits);
 ```
 
-> **Registered TraitSets:** `ILink` (`LINK` *and* `FILE_LINK` — a link to a local file also yields its bytes), `OsFile` (the `FILE_LINK` trait), and `MnemeLink` (both `LINK` *and* `FILE_LINK`). The remaining `TraitTypeId` values (`Note`, `RestRequest`, etc.) are type discriminators only — their TraitSets are not registered. Cross-type drops include dropping links into the Notes category tree, dropping **OS files, file-tree nodes, or links into a link collection**, and dropping **OS files, local-file links, or Mneme nodes into the Mneme tree** via the `FILE_LINK` trait (see "File content drops" below).
+> **Registered TraitSets:** `ILink` (`LINK` *and* `FILE_LINK` — a link to a local file also yields its bytes), `OsFile` (the `FILE_LINK` trait), and `MnemeLink` (both `LINK` *and* `FILE_LINK`). The remaining `TraitTypeId` values (`Note`, etc.) are type discriminators only — their TraitSets are not registered. Cross-type drops include dropping links into the Notes category tree, dropping **OS files, file-tree nodes, or links into a link collection**, and dropping **OS files, local-file links, or Mneme nodes into the Mneme tree** via the `FILE_LINK` trait (see "File content drops" below).
 
 ---
 
@@ -182,7 +181,7 @@ interface TraitDragPayload {
 
 ## Pattern: Adding a New Draggable Type
 
-Follow these steps when introducing a new draggable data item (e.g., a new "RestRequest" drag).
+Follow these steps when introducing a new draggable data item.
 
 ### Step 1 — Add a TraitTypeId
 
@@ -473,7 +472,6 @@ The `LINK`/`FILE_LINK` split keeps each trait single-purpose: identity lives in 
 | `ILink` | `LinksList`, `LinksTiles`, `TreeProviderView` | `TreeProviderView` (link collection, Mneme tree), `NotebookEditor` | Yes — `LINK` + `FILE_LINK` traits |
 | `Note` | `NoteItemView` | `NotebookEditor` category tree | No |
 | `NotebookCategory` | `NotebookEditor` category tree (via Tree) | `NotebookEditor` category tree | No |
-| `RestRequest` | `RestClientEditor` | `RestClientEditor` (reorder) | No |
 | `BrowserTab` | `BrowserTabsPanel` | `BrowserTabsPanel` (reorder) | No |
 | `PinnedLink` | `PinnedLinksPanel` | `PinnedLinksPanel` (reorder) | No |
 | `PageTab` | `PageTab` | `PageTab` (reorder) | No |

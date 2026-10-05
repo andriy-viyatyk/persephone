@@ -52,7 +52,7 @@ export abstract class TextHostEditorModel<
 > extends EditorModel<T, R, E> {
     override readonly deferRestoreOnOpen = true;
     /** Human-readable editor name for error/notify strings ("Mermaid",
-     *  "Rest Client", "Environment Variables"). */
+     *  "REST Client board", "Environment Variables"). */
     protected abstract readonly displayName: string;
 
     protected _host: TextFileModel | null = null;

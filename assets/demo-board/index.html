@@ -157,6 +157,19 @@
 
         <!-- ════════════════════════ CAPABILITIES ════════════════════════ -->
         <section class="panel" data-panel="capabilities">
+            <h2><code>persephone.pageState</code> — opaque page-scoped UI data</h2>
+            <p class="muted">
+                Store larger values without adding them to the page descriptor or requesting a
+                <code>fileSystem</code> permission. Values are strings, so JSON-encode structured
+                data. This demo's saved value survives reload and restart; main and secondary board
+                frames share the same page state. Requires bridge <code>1.34.0</code>.
+            </p>
+            <div class="row">
+                <button class="p-btn primary" data-test="pageStateSave">save sample</button>
+                <button class="p-btn primary" data-test="pageStateRead">read sample</button>
+                <button class="p-btn" data-test="pageStateRemove">remove sample</button>
+            </div>
+
             <h2><code>persephone.toolbar</code> — host-rendered toolbar controls</h2>
             <p class="muted">
                 The editor toolbar above this frame contains a live segmented control declared by this
@@ -366,7 +379,7 @@
         <section class="panel" data-panel="build">
             <h2>Anatomy of a board</h2>
             <ul>
-                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence marks the folder as a board. This demo requires <code>minBridgeVersion: "1.30.0"</code> and declares <code>execute: true</code> for process examples, <code>service: true</code> for its background service, <code>appScripting: true</code> for board calls and capability invocation, and <code>fileSystem: "board"</code> for its file dialogs and picked paths. Every other permission is explicitly false. Its <code>contentProviders</code> entry is registered by the service, not a permission flag.</li>
+                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence marks the folder as a board. This demo requires <code>minBridgeVersion: "1.34.0"</code> and declares <code>execute: true</code> for process examples, <code>service: true</code> for its background service, <code>appScripting: true</code> for board calls and capability invocation, and <code>fileSystem: "board"</code> for its file dialogs and picked paths. Every other permission is explicitly false. Its <code>contentProviders</code> entry is registered by the service, not a permission flag.</li>
                 <li><code>index.html</code> — your page. Edit it, then choose <strong>… → Reload board</strong> in the board toolbar to apply.</li>
                 <li><code>app.js</code> / <code>style.css</code> — your logic and styling (reference relatively, e.g. <code>./app.js</code>). Boards don't auto-reload — use <strong>… → Reload board</strong> in the board toolbar (or <code>call</code> at <code>pages[i].editor.reload()</code> when an agent is driving) to apply edits.</li>
                 <li><code>scripts/</code> — backend scripts in any language, invoked via <code>persephone.execute("scripts/thing.js")</code> (<code>execute: true</code> required). <code>cwd</code> defaults to the board folder, so relative paths just work. For a <strong>Node</strong> script that must run on any machine, use <code>persephone.executeNode("scripts/thing.mjs")</code> — it runs on Persephone's bundled Node (no install needed). The resident <code>node-server.mjs</code> is page-owned; the declared <code>service.mjs</code> requires <code>service: true</code> and is platform-owned, supervised, lazy, and usable with no page open.</li>

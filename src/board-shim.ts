@@ -62,6 +62,9 @@ import type {
     BoardNavigationReturnUrlResultMsg,
     BoardOpenContentRequest,
     BoardOpenContentResultMsg,
+    BoardPageStateGetResultMsg,
+    BoardPageStateSetResultMsg,
+    BoardPageStateRemoveResultMsg,
     BoardRpcMethod,
     BoardStateSyncMsg,
     BoardSettingsChangedMsg,
@@ -420,6 +423,9 @@ type BoardHostRequestReply =
     | BoardFileIconsResultMsg
     | BoardContentOpenResultMsg
     | BoardOpenContentResultMsg
+    | BoardPageStateGetResultMsg
+    | BoardPageStateSetResultMsg
+    | BoardPageStateRemoveResultMsg
     | BoardVarResultMsg
     | BoardSettingsResultMsg
     | BoardNavigationReturnUrlResultMsg
@@ -435,7 +441,10 @@ type BoardHostRequestPayload =
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:openContent" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "navigation:createReturnUrl" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:list" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">;
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:get" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:set" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:remove" }>, "reqId">;
 
 const pendingHostRequests = new Map<number, {
     requestType: BoardHostRequestPayload["__persephone"];
@@ -540,6 +549,22 @@ if (!toolbarDocumentLoaded) {
 function postAfterDocumentLoad(send: () => void): void {
     if (toolbarDocumentLoaded) send();
     else pendingDocumentMessages.push(send);
+}
+
+const PAGE_STATE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}(?![\s\S])/;
+const PAGE_STATE_MAX_BYTES = 10 * 1024 * 1024;
+
+function validatePageStateKey(key: unknown): asserts key is string {
+    if (typeof key !== "string" || !PAGE_STATE_KEY_PATTERN.test(key)) {
+        throw new TypeError("Board page-state keys must be 1–32 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*.");
+    }
+}
+
+function validatePageStateValue(value: unknown): asserts value is string {
+    if (typeof value !== "string") throw new TypeError("Board page-state values must be strings.");
+    if (new TextEncoder().encode(value).byteLength > PAGE_STATE_MAX_BYTES) {
+        throw new RangeError("Board page-state values cannot exceed 10 MiB in UTF-8.");
+    }
 }
 
 function hostRequest<T>(
@@ -1186,7 +1211,11 @@ onHostMessage((event) => {
             start(controller) { pending.controller = controller; },
             async pull() {
                 if (!pendingBoardFetches.has(data.reqId)) return;
-                const chunk = await new Promise<BoardFetchChunkMsg>((resolve) => { pending.pullResolve = resolve; });
+                const chunk = await new Promise<BoardFetchChunkMsg>((resolve) => {
+                    pending.pullResolve = resolve;
+                    // The host reads the next chunk only when asked; without this request the body never arrives.
+                    window.parent.postMessage({ __persephone: "board:fetch:pull", reqId: data.reqId }, hostPostTarget);
+                });
                 pending.pullResolve = undefined;
                 if (chunk.done) {
                     pendingBoardFetches.delete(data.reqId);
@@ -1550,6 +1579,9 @@ function createHandle(
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
     // 1.28.0 adds the `segmented` board toolbar control (US-1577).
+    // 1.34.0 adds page-scoped board UI state in the host cache (US-1621), and fixes
+    //   persephone.fetch() response bodies, which never arrived since 1.25.0 because the shim did
+    //   not request chunks (US-1623). A board that reads response bodies needs 1.34.0.
     version: BOARD_BRIDGE_VERSION,
 
     icons: {
@@ -1776,6 +1808,38 @@ function createHandle(
         },
         keys(): Promise<string[]> {
             return rpc("storageKeys", []) as Promise<string[]>;
+        },
+    },
+
+    /** Page-scoped opaque string values, stored in the host cache and removed with this page. */
+    pageState: {
+        get(key: string): Promise<string | undefined> {
+            try { validatePageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
+            return hostRequest({ __persephone: "board:pageState:get", key }, "pageState:get:result", (reply) => {
+                const data = reply as BoardPageStateGetResultMsg;
+                if (data.error != null) throw new Error(data.error);
+                if (data.value !== undefined && typeof data.value !== "string") throw new Error("Malformed persephone.pageState.get() response.");
+                return data.value;
+            });
+        },
+        set(key: string, value: string): Promise<void> {
+            try {
+                validatePageStateKey(key);
+                validatePageStateValue(value);
+            } catch (error: unknown) {
+                return Promise.reject(error);
+            }
+            return hostRequest({ __persephone: "board:pageState:set", key, value }, "pageState:set:result", (reply) => {
+                const data = reply as BoardPageStateSetResultMsg;
+                if (data.error != null) throw new Error(data.error);
+            });
+        },
+        remove(key: string): Promise<void> {
+            try { validatePageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
+            return hostRequest({ __persephone: "board:pageState:remove", key }, "pageState:remove:result", (reply) => {
+                const data = reply as BoardPageStateRemoveResultMsg;
+                if (data.error != null) throw new Error(data.error);
+            });
         },
     },
 

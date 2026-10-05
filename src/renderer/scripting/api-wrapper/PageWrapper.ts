@@ -11,7 +11,6 @@ import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEdi
 import { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import { GridEditor } from "../../editors/grid/GridEditor";
 import { NotebookEditor } from "../../editors/notebook/NotebookEditor";
-import { RestClientEditor } from "../../editors/rest-client/RestClientEditor";
 import { EnvVarsEditor } from "../../editors/env-vars/EnvVarsEditor";
 import { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
 import { LinkEditor } from "../../editors/link-editor/LinkEditor";
@@ -39,7 +38,6 @@ import type { IAiCallContext } from "../ai-vision/root";
 import { McpInspectorFacade } from "./McpInspectorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
 import { NotebookEditorFacade } from "./NotebookEditorFacade";
-import { RestClientEditorFacade } from "./RestClientEditorFacade";
 import { EnvVarsEditorFacade } from "./EnvVarsEditorFacade";
 import { ArchiveEditorFacade } from "./ArchiveEditorFacade";
 import { PageEditorSwitchesNode } from "../ai-vision/page-editor-switches";
@@ -73,7 +71,7 @@ type EditorFacade =
     | TextEditorFacade | GridEditorFacade | NotebookEditorFacade | LinkEditorFacade
     | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
     | BrowserEditorFacade | McpInspectorFacade
-    | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade | RestClientEditorFacade
+    | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade
     | EnvVarsEditorFacade | ArchiveEditorFacade
     | LogViewEditorFacade | FolderViewEditorFacade | GitTreeEditorFacade | BoardEditorFacade
     | BoardInfoEditorFacade | ToolsetEditorFacade | ToolsHubEditorFacade
@@ -93,7 +91,6 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "grid-csv": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
     "grid-jsonl": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
     "notebook-view": (editor, id, name) => new NotebookEditorFacade(editor as NotebookEditor, id, name),
-    "rest-client": (editor, id, name) => new RestClientEditorFacade(editor as RestClientEditor, id as "rest-client", name),
     "env-vars-view": (editor, id, name) => new EnvVarsEditorFacade(editor as EnvVarsEditor, id as "env-vars-view", name),
     "archive-view": (editor, id, name) => new ArchiveEditorFacade(editor as ArchiveEditor, id as "archive-view", name),
     "link-view": (editor, id, name) => new LinkEditorFacade(editor as LinkEditor, id, name),

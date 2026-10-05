@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.33.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.34.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -927,7 +927,11 @@ const model = { aiVision: {
 const remote = persephone.aiVision.expose(model);
 ```
 
-Only the main frame registers the model with Persephone. The published shape is a snapshot, so call
+Only the main frame registers the model with Persephone. A secondary-view frame still calls
+`persephone.aiVision.createElements(declarations)` with the same declarations (it does not call
+`expose`): `elements` and `highlight` for a `view: "notes"` control are answered by the `notes` frame
+from its own registry, and a frame without one fails with "no unambiguous root element provider".
+The published shape is a snapshot, so call
 the returned remote's `refresh()` after changing its structure or metadata. `refresh()` also tells
 the host that the board shape changed; the agent should read `pages[i].editor.app` again after the
 resulting `shape-changed` event. A board can send a short board-authored message with the same
@@ -1123,6 +1127,28 @@ row.onclick = () => persephone.state.merge({ selectedId: row.dataset.id });
 The bundled Demo board has a live **Secondary Views** showcase demonstrating both the
 one-file (`persephone.view`) and dedicated-file styles — see *More examples* below.
 
+## Opaque page UI data — `persephone.pageState.*`
+
+Use `persephone.pageState` for large or opaque UI data that should stay out of the page descriptor.
+Use `persephone.state` with `restorableKeys` for small structured values selected for descriptor
+persistence. Values are strings; JSON serialization is an option. Keys are 1–32 ASCII characters
+matching `[A-Za-z0-9][A-Za-z0-9._-]*`, and each value is capped at 10 MiB measured in UTF-8 bytes.
+This API needs no `fileSystem` permission; `readFile`/`writeFile` remain for board files and
+configuration. It requires bridge 1.34.0; declare `minBridgeVersion: "1.34.0"` when the board
+depends on it.
+
+```js
+const serialized = await persephone.pageState.get("response-cache");
+const cache = serialized === undefined ? {} : JSON.parse(serialized);
+await persephone.pageState.set("response-cache", JSON.stringify(cache));
+await persephone.pageState.remove("response-cache"); // idempotent when absent
+```
+
+The cache is namespaced by page editor id and stable board identity. Main and secondary frames share
+it, while another board on the same page stays isolated. Values survive restart, content-host
+editor switches, and cross-window moves. Replacing a simple file-association board deletes its
+state, duplicated pages start independently, and page close removes its cache files.
+
 ## Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 
 By default, everything a board spawned is **killed when the board unloads** — the user
@@ -1195,6 +1221,14 @@ palette + metric set you can use:
     the list/button hover background, `--p-tree-selection` the selected-row background.
 - **Metrics** (constants): `--p-space-*`, `--p-gap-*`, `--p-radius-*`, `--p-size-*`,
   `--p-font-*` (e.g. `--p-space-md`, `--p-radius-sm`, `--p-font-base`).
+
+### Confirmations and prompts — never `window.confirm` / `alert` / `prompt`
+
+A native JavaScript dialog raised from a board frame can leave **every** board frame in the app
+unresponsive until Persephone restarts, and automation cannot see or dismiss it. Build modals on
+the native `<dialog>` element with `showModal()` instead, skinned by the recommended
+`dialog.css` from the components catalog (`boards-assets/`, see the manifest). The bundled REST
+Client board's `src/components/confirm.js` is a small promise-returning example.
 
 ### Toolbars and buttons — use the `.p-*` classes, don't invent your own
 

@@ -1,3 +1,38 @@
+## EPIC-121 — REST client as a bundled board
+
+Completed 2026-10-05. The REST client moved out of the core into a bundled board
+(`assets/boards/rest-client/`, plain JS with a committed CodeMirror 6 bundle built by
+`scripts/build-rest-client-lib.mjs`), and the built-in editor was deleted.
+
+- **Platform.** Boards gained per-page state in the cache folder (`persephone.pageState`, 10 MiB
+  per key, deleted when the page closes; bridge 1.34.0). The same bridge version fixes
+  `persephone.fetch()` bodies, which never arrived for any board since 1.25.0. Bundled boards now
+  mount their own `guides` folder in About, F1 and MCP `guides`. A board's `openRawLink(data:image…,
+  { editor: "image-view" })` opens a blob-URL Image Viewer page instead of persisting the data URL.
+- **Board.** Default editor for `*.rest.json` and REST-shaped JSON; request tree in a `requests`
+  secondary view; all body types through `persephone.fetch` (32 MiB upload cap); text response
+  cache in page state (9 MiB); Copy as and cURL/fetch paste; in-board confirm dialog; styled to
+  match the old built-in. The `http.request.open` capability serves the Explorer menu, cURL links
+  and the browser network log.
+- **Agents (D7, breaking).** The model is at `pages[i].editor.app` with every member of the old
+  facade, plus `duplicateRequest` and `copyAs`; `send()` now returns the response. Scripts that
+  checked `editor.id === "rest-client"` must change; the release note is in What's New.
+- **No restore migration (user decision).** A page saved by the built-in editor restores as an
+  empty tab, and an old pinned new-page entry is hidden.
+- **Lessons recorded.** `window.confirm`/`alert`/`prompt` in a board frame wedges every board until
+  the main process restarts (template rule + backlog entry); a secondary-view frame must call
+  `aiVision.createElements` for its own elements (template rule).
+
+[Epic document](EPIC-121.md).
+
+- [x] US-1621: Platform — per-page board state in the cache folder, cleaned up on page close
+- [x] US-1622: Board skeleton — bundled registration, masks, content-host load/save, CodeMirror `lib/`
+- [x] US-1623: Request execution through `persephone.fetch` — body types, response viewer, cache
+- [x] US-1624: Request tree and collections, secondary view, Copy as, paste parsing, new-page entry
+- [x] US-1625: "Open in REST client" capability routing for the three entry points
+- [x] US-1626: `aiVision` model parity, guide moved to the board, QA surface
+- [x] US-1627: Removal — delete `editors/rest-client` and its seams, without migration
+
 ## EPIC-120 — Site extensions: injected AiVision models for web pages
 
 Completed 2026-10-03. A site extension is a script for exact HTTPS hosts that Persephone injects

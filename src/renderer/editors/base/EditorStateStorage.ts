@@ -4,8 +4,7 @@
  * - `TextFileModel.stateStorage` — file-based via `fs.getCacheFile` / `fs.saveCacheFile`.
  * - `NoteItemEditModel.stateStorage` — backed by the notebook's per-note state map.
  *
- * Consumed by editors that need to read/write a per-page cache (e.g.
- * `RestClientEditor.restoreResponseCache` / `saveResponseCache`).
+ * Consumed by editors that need to read or write a per-page cache.
  */
 export interface EditorStateStorage {
     /**

@@ -47,7 +47,7 @@ js-notepad is an Electron application with the following structure:
   /renderer          # React frontend
     /api             # Object Model — app.settings, app.pages, app.fs, app.events, etc.
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
-    /editors         # ALL editors (text, grid, markdown, pdf, browser, rest-client, etc.)
+    /editors         # ALL editors (text, grid, markdown, pdf, browser, etc.)
     /scripting       # Script execution, context, library require, autoload
     /components      # Reusable UI components
     /core            # State primitives, utilities

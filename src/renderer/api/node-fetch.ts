@@ -7,7 +7,7 @@
  *
  * Used by:
  *  - `app.fetch()` — script API for HTTP requests
- *  - Rest Client editor — for executing requests
+ *  - the bundled REST Client board — for executing requests
  *
  * Based on the proven implementation in av-player/src/main/network/nodeHttpFetch.ts.
  */

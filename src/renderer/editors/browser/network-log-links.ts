@@ -124,8 +124,8 @@ export function networkLogToLinks(entries: NetworkLogEntry[]): ILink[] {
             category: `Network/${entry.method}`,
             tags: [entry.resourceType, String(entry.statusCode ?? "pending")],
             isDirectory: false,
-            // Non-GET methods should open in RestClient (wired in )
-            target: isReadOnly(entry.method) ? undefined : "rest-client",
+            // Non-read-only methods open in the REST Client capability.
+            target: isReadOnly(entry.method) ? undefined : "http.request.open",
         });
     }
 

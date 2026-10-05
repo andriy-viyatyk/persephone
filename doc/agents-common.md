@@ -155,7 +155,7 @@ developer-focused data tooling; the app is a container — users bring integrati
 
 **Key features:** Monaco editor (IntelliSense, multi-cursor, compare), script executor (`page`
 object transforms content), grid editors (JSON/CSV with sorting/filtering/Excel paste), markdown
-preview, REST client (`.rest.json` collections).
+preview, and the bundled REST Client board for `.rest.json` collections.
 
 ## Tech Stack
 
