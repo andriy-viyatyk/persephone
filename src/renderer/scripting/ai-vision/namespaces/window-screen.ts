@@ -7,7 +7,7 @@ import type { IWindowScreen, IWindowRecording } from "../../../api/types/window"
 const WINDOW_SCREEN_HELP = `Persephone's own application window, not a browser page. The shared
 automation operations act on the complete current app-window accessibility tree, including the
 active page's visible content. snapshot() returns refs that must be passed explicitly as
-{ ref: "..." }; plain strings are always CSS selectors. App navigation, browser tabs, and JavaScript
+{ ref: "..." }; strings may be CSS selectors or text= locators. App navigation, browser tabs, and JavaScript
 dialog policy are absent because this target has none; open and switch Persephone pages through pages and
 pages.showPage(pageId). Prefer ui.elements for a named, curated shell control and its purpose;
 window.screen.snapshot() is the complete, purpose-free fallback for everything currently on screen,
@@ -15,6 +15,12 @@ including content or controls not in the curated list. Inactive page content is 
 appear. HTML-preview and trusted board iframe accessibility trees are joined to their own iframe
 nodes; browser webviews and their frames are excluded. Use snapshot({ interactive: true }) or
 snapshot({ root: selectorOrRef }) to narrow a large tree. The app window has no elements inventory.
+
+Quoted text= matches exactly and case-sensitively after whitespace normalization; unquoted text=
+matches a case-insensitive substring. Nested visible matches prefer the smallest element, and nth
+selects within that list. This shared locator works on browser pages and boards as well. clickAt({x,y})
+and dragTo({from,to}) use trusted renderer viewport CSS pixels from the top-left. clickAt bypasses
+actionability; dragTo shares drag() dispatch.
 
 click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
 to 5 seconds. More than one visible selector match fails immediately; use a snapshot ref, narrow
@@ -59,7 +65,11 @@ const recordingMembers: readonly IAiMember[] = [
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Discard the unfinished recording." },
     { name: "state", kind: "property", summary: "Read-only status, elapsed time, selected region, and latest result." },
 ];
-const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer? }) begins immediately; pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;
+const WINDOW_COORDINATE_MEMBERS: readonly IAiMember[] = [
+    { name: "clickAt", kind: "method", signature: "clickAt({ x, y })", summary: "Trusted coordinate click in app-window viewport CSS pixels from the top-left; bypasses locator actionability." },
+    { name: "dragTo", kind: "method", signature: "dragTo({ from: { x, y }, to: { x, y } })", summary: "Drag between app-window viewport CSS pixel coordinates through the shared trusted drag path." },
+];
+const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer?, hideStatusChrome? }) begins immediately; hideStatusChrome: true omits recording controls and the MCP indicator, restoring their prior visibility on stop, cancel, and errors. pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;
 
 function restrictedWindowScreen(): string | undefined {
     const activeEditor = pagesModel.activePage?.mainEditorInstance;
@@ -78,7 +88,7 @@ export function describeWindowScreen(_instance: unknown): IAiVisionDescriptor {
     return {
         kind: "WindowScreen",
         summary: "Persephone's own window accessibility and automation host.",
-        members: [...BROWSER_AUTOMATION_MEMBERS, { name: "recording", kind: "property", summary: "Shared window, page, or editor recording controls.", node: true }],
+        members: [...BROWSER_AUTOMATION_MEMBERS, ...WINDOW_COORDINATE_MEMBERS, { name: "recording", kind: "property", summary: "Shared window, page, or editor recording controls.", node: true }],
         provide: (name) => name === "recording" ? { value: instance.recording } : undefined,
         help: WINDOW_SCREEN_HELP,
         restricted: restrictedWindowScreen,

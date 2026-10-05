@@ -49,6 +49,7 @@ const BOARD_INFO_MEMBERS: readonly IAiMember[] = [
     { name: "versions", kind: "property", summary: "Copied published version snapshots, undefined until history loads successfully." },
     { name: "versionsState", kind: "property", summary: "Published-version loading state, or undefined when version history does not apply." },
     { name: "changeInstallDir", kind: "method", signature: "changeInstallDir(): Promise<void>", summary: "Open the native install-location folder picker and retain its selected directory." },
+    { name: "setInstallDir", kind: "method", signature: "setInstallDir(dir: string): void", summary: "Set the install directory to an explicit filesystem path; installDir remains readable." },
     { name: "cancelDownload", kind: "method", signature: "cancelDownload(catalogId: string): void", summary: "Cancel the model-owned archive download after validating its current catalog id." },
 ];
 
@@ -62,7 +63,8 @@ size, and the visible available/downloading/error/downloaded/registered state, b
 URLs, hashes, or live model objects. properties recalculates trusted from the app trust registry.
 versions is undefined until a catalog history succeeds, and [] means a successful empty history;
 versionsState is undefined when catalog history does not apply. installDir is the selected download
-parent and changeInstallDir() delegates to the native folder picker. cancelDownload(catalogId)
+parent; setInstallDir(dir) selects an explicit filesystem path and changeInstallDir() opens the native
+folder picker. Displayed paths remain real and copyable. cancelDownload(catalogId)
 delegates to the model's private board-install cancellation path and rejects ids not in current
 matches; a valid id without an active download remains idempotent.
 
@@ -247,6 +249,10 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
 
     changeInstallDir(): Promise<void> {
         return this.editor.changeInstallDir();
+    }
+
+    setInstallDir(dir: string): void {
+        this.editor.setInstallDir(dir);
     }
 
     async reviewPermissionChange(): Promise<void> {

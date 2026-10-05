@@ -125,7 +125,10 @@ const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
 const BROWSER_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "browser-view".
 Use elements for Persephone browser chrome (address bar, toolbar, tabs host, and blocked-popup bar);
 those controls are not in snapshot(). Use snapshot() for the web page inside the webview and pass its
-returned refs as { ref: "e52" } to supported target methods. Plain strings are always CSS selectors.
+returned refs as { ref: "e52" } to supported target methods. Plain strings are CSS selectors or
+text= locators: quoted text matches exactly and case-sensitively after whitespace normalization;
+unquoted text matches a case-insensitive substring. Nested visible matches prefer the smallest
+element, and nth selects within those matches.
 snapshot() may begin with # <overlay> when a modal covers the page. The editor's tabs map to
 tabs/addTab/closeTab/switchTab, closeTab closes the active browser tab, and screenshot() returns
 metadata plus an inline image block through call. Transient menus, drawers, dialogs, suggestions,

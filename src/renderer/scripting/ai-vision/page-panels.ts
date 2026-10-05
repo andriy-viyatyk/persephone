@@ -19,7 +19,7 @@ interface RenderedPanel extends IPagePanel { model: EditorModel; panelId: string
 const PAGE_PANELS_MEMBERS: readonly IAiMember[] = [
     { name: "items", kind: "property", summary: "Live sidebar panel records in renderer order, including bare id, label, owner identity, and expanded state." },
     { name: "isOpen", kind: "property", summary: "Whether the page sidebar is open; read-only model state, false before the lazy sidebar model exists." },
-    { name: "width", kind: "property", summary: "Current sidebar width; read-only and null before the lazy sidebar model exists." },
+    { name: "width", kind: "property", writable: true, summary: "Current sidebar width; setting it resizes and persists the sidebar." },
     { name: "expand", kind: "method", signature: "expand(panelId: string)", summary: "Expand a panel by bare id; duplicate ids resolve to the first rendered owner and composite ids are rejected.", caution: "changes the visible UI" },
     { name: "toggleSidebar", kind: "method", signature: "toggleSidebar()", summary: "Flip the whole sidebar container open or closed; never creates an Explorer. Throws when the page has no panels, and when closing is refused because a non-Explorer panel keeps the sidebar open.", caution: "changes the visible UI" },
 ];
@@ -181,8 +181,11 @@ function panelSpecificMembers(kind: ReturnType<typeof panelKind>): readonly IAiM
         { name: "providerType", kind: "property", summary: "The Explorer provider type, or undefined without a provider." }, { name: "items", kind: "property", summary: "A promise of copied root items; [] is a real empty directory." },
         { name: "itemCount", kind: "property", summary: "A promise of the copied root item count." }, { name: "listItems", kind: "method", signature: "listItems()", summary: "List copied Explorer items." },
         { name: "openItem", kind: "method", signature: "openItem(item)", summary: "Open an Explorer item through the model path.", caution: "navigates the current page" }, { name: "revealItem", kind: "method", signature: "revealItem(href)", summary: "Reveal an Explorer item when its mounted panel is active." },
+        { name: "expand", kind: "method", signature: "expand(path: string)", summary: "Expand a folder by path, loading ancestors as needed." },
+        { name: "collapse", kind: "method", signature: "collapse(path: string)", summary: "Collapse a folder by path." },
         { name: "navigateUp", kind: "method", signature: "navigateUp()", summary: "Navigate the Explorer root upward." }, { name: "openSearch", kind: "method", signature: "openSearch(folder?)", summary: "Open Search for the Explorer root." },
-        { name: "openBoards", kind: "method", signature: "openBoards()", summary: "Open Boards for the Explorer root." }, { name: "close", kind: "method", signature: "close()", summary: "Close the Explorer sidebar." },
+        { name: "openBoards", kind: "method", signature: "openBoards()", summary: "Open Boards for the Explorer root." },
+        { name: "close", kind: "method", signature: "close()", summary: "Close the Explorer sidebar." },
     ];
     if (kind === "search") return [
         { name: "query", kind: "property", summary: "The current search query." }, { name: "includePattern", kind: "property", summary: "The current include pattern." }, { name: "excludePattern", kind: "property", summary: "The current exclude pattern." },
@@ -233,6 +236,8 @@ export class PagePanelNode implements IAiVisible {
     listItems(): Promise<Record<string, unknown>[] | undefined> { const owner = this.owner; return owner instanceof ExplorerEditor ? owner.listItems().then(items => items?.map(item => ({ ...item, tags: [...item.tags] }))) : Promise.resolve(undefined); }
     openItem(item: Record<string, unknown>): Promise<void> { const owner = this.requireExplorer(); return owner.openItem(item as unknown as ITreeProviderItem); }
     revealItem(href: string): void { this.requireExplorer().revealItem(href); }
+    expand(path: string): Promise<void> { return this.requireExplorer().expandPath(path); }
+    collapse(path: string): Promise<void> { return this.requireExplorer().collapsePath(path); }
     navigateUp(): void { this.requireExplorer().navigateUp(); }
     openSearch(folder?: string): void { this.requireExplorer().openSearch(folder); }
     openBoards(): void { this.requireExplorer().openBoards(); }
@@ -295,6 +300,13 @@ export class PagePanelsNode implements IAiVisible {
     get items(): readonly IPagePanel[] { const host = this.hostProvider(); return host ? this.projectItems(host).map(({ model: _model, panelId: _panelId, ...item }) => item) : []; }
     get isOpen(): boolean { return this.hostProvider()?.secondaryViewsModel?.state.get().open ?? false; }
     get width(): number | null { return this.hostProvider()?.secondaryViewsModel?.state.get().width ?? null; }
+    set width(value: number | null) {
+        if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) throw new Error("Sidebar width must be a positive finite number.");
+        const host = this.hostProvider();
+        if (!host) throw new Error("Page is no longer attached.");
+        host.setSecondaryViewsState({ width: value });
+        host.rememberSecondaryViewsWidth?.(value);
+    }
     expand(panelId: string): void { if (isCompositePanelKey(panelId)) throw new Error("Page panel expansion accepts bare panel ids, not composite panel keys."); const host = this.hostProvider(); if (!host) throw new Error("Page is no longer attached."); host.expandPanel(panelId); }
     toggleSidebar(): void {
         const host = this.hostProvider();
@@ -320,7 +332,7 @@ export class PagePanelsNode implements IAiVisible {
     children(): readonly IAiChild[] { const host = this.hostProvider(); if (!host) return []; const records = this.projectItems(host); const children: IAiChild[] = []; const aliases = new Set<string>(); for (const record of records) { const alias = Object.keys(ALIAS_TO_PANEL_ID).find(key => ALIAS_TO_PANEL_ID[key] === record.panelId); if (alias && !aliases.has(alias)) { aliases.add(alias); children.push({ segment: `.${alias}`, kind: `${panelKind(record)}Panel`, summary: `${record.label} panel` }); } children.push({ segment: `[${JSON.stringify(record.panelId)}]`, kind: `${panelKind(record)}Panel`, summary: `${record.label} panel owned by ${record.editorId}` }); } return children; }
     index(key: string | number): PagePanelNode | undefined { if (typeof key !== "string") return undefined; const panelId = ALIAS_TO_PANEL_ID[key] ?? key; const host = this.hostProvider(); if (!host || !this.projectItems(host).some(item => item.panelId === panelId)) return undefined; return new PagePanelNode(this.hostProvider, () => this.resolveRecord(panelId)); }
     provide(name: string): { value: unknown } | undefined { if (name === "elements" || name === "highlight") return this.sidebarElements().provide(name); const panelId = ALIAS_TO_PANEL_ID[name]; if (!panelId) return undefined; const host = this.hostProvider(); if (!host || !this.projectItems(host).some(item => item.panelId === panelId)) return undefined; return { value: new PagePanelNode(this.hostProvider, () => this.resolveRecord(panelId)) }; }
-    get aiVision(): IAiVisionDescriptor { const elements = this.sidebarElements(); return { kind: "PagePanels", summary: "The page's live sidebar panels, whole-sidebar state, and sidebar controls.", members: [...PAGE_PANELS_MEMBERS, ...PANEL_NODE_MEMBERS, ...elements.members], children: () => this.children(), index: key => this.index(key), provide: name => this.provide(name), elements: SIDEBAR_ELEMENTS, help: `items is a live renderer-order projection of registered panels. Alias children resolve only while present; exact registered ids are indexable with page.panels["id"]. Duplicate owners remain visible in items and bare alias/index access chooses the first rendered owner. isOpen and width retain their false/null lazy-model contracts. children(), provide(), and index() are cheap and side-effect free; they never provision Explorer or a sidebar. Use each panel's own close control/lifecycle.`, summarize: () => ({ kind: "PagePanels", items: this.items, isOpen: this.isOpen, width: this.width }) }; }
+    get aiVision(): IAiVisionDescriptor { const elements = this.sidebarElements(); return { kind: "PagePanels", summary: "The page's live sidebar panels, whole-sidebar state, and sidebar controls.", members: [...PAGE_PANELS_MEMBERS, ...PANEL_NODE_MEMBERS, ...elements.members], children: () => this.children(), index: key => this.index(key), provide: name => this.provide(name), elements: SIDEBAR_ELEMENTS, help: `items is a live renderer-order projection of registered panels. Alias children resolve only while present; exact registered ids are indexable with page.panels["id"]. Duplicate owners remain visible in items and bare alias/index access chooses the first rendered owner. isOpen and width retain their false/null lazy-model contracts. Assign a positive number to width to resize and persist the sidebar width. The Explorer panel's expand(path) and collapse(path) resolve filesystem paths, load ancestors, and update folder expansion. children(), provide(), and index() are cheap and side-effect free; they never provision Explorer or a sidebar. Use each panel's own close control/lifecycle.`, summarize: () => ({ kind: "PagePanels", items: this.items, isOpen: this.isOpen, width: this.width }) }; }
     private sidebarElements() { const host = this.hostProvider(); return createElements(SIDEBAR_ELEMENTS, ui.highlightElement.bind(ui), { scopeSelector: host ? pageScopeSelector(host.id) : undefined, beforeHighlight: host ? () => activatePageAndWaitForLayout(host.id) : undefined }); }
     private resolveRecord(panelId: string): RenderedPanel | undefined { const host = this.hostProvider(); return host ? this.projectItems(host).find(item => item.panelId === panelId) : undefined; }
 }

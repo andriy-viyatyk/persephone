@@ -1269,6 +1269,10 @@ pages[pageId].editor.click({ ref: "e12" }) / .type(...) / .evaluate(...)  → in
 - Mouse and keyboard actions use trusted input and check visibility, enabled state, stability, and
   hit-testing before dispatch. Use `{ nth }` to disambiguate matching selectors, or `{ force: true }`
   to skip actionability checks. Arm `waitForResponse()` before an action that sends the request.
+- String locators also accept `text=`: quoted text is exact and case-sensitive after whitespace
+  normalization; unquoted text is a case-insensitive substring. Nested visible matches prefer the
+  smallest element, and `{ nth }` selects within those matches. The same behavior applies to
+  browser pages and `window.screen`.
 - **Verify UI visually.** The accessibility snapshot includes elements that are invisible on
   screen (zero-height, overridden `display`), so it can look right while the render is broken.
   After UI changes, check `pages[pageId].editor.screenshot()` before declaring the UI correct.

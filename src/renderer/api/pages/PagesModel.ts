@@ -6,6 +6,7 @@ import type { EditorModel } from "../../editors/base";
 import type { HubTab } from "../../editors/tools-hub";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { createLinkData } from "../../../shared/link-data";
+import { fpIsAbsolute, fpResolve, isPlainLocalPath } from "../../core/utils/file-path";
 import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
 import type { NavigatePageToOptions } from "./PageNavigator";
@@ -237,13 +238,14 @@ export class PagesModel extends TModel<OpenFilesState> {
     openFile = async (filePath?: string) => {
         if (!filePath) return undefined;
         const { app } = await import("../app");
-        const data = createLinkData(filePath);
+        const normalizedPath = isPlainLocalPath(filePath) && fpIsAbsolute(filePath) ? fpResolve(filePath) : filePath;
+        const data = createLinkData(normalizedPath);
         await app.events.openRawLink.sendAsync(data);
         // A folder opens an empty page carrying an Explorer panel rooted at it, which is not
         // bound to the folder as a file path — so the lookup below misses and this returned
         // `undefined` for an open that had in fact succeeded. The handler hands that page's
         // id back through `openedPageId`; prefer the path lookup, which is the normal case.
-        const page = this.query.findPageByFilePath(filePath)
+        const page = this.query.findPageByFilePath(normalizedPath)
             ?? (data.openedPageId
                 ? this.query.findPage(data.openedPageId)
                 : undefined);

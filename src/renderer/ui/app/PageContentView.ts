@@ -120,6 +120,12 @@ export class PageContentView extends VanillaView<PageContentProps> {
             return;
         }
         const views = page.panelEditors;
+        // The sidebar model outlives its panels (e.g. leaving Archive view for a board editor);
+        // with no panel left there is nothing to show, so render no sidebar rather than an empty one.
+        if (!views.length) {
+            this.clearSecondary();
+            return;
+        }
         const props = {
             views,
             nav,

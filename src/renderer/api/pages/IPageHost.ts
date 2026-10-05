@@ -34,6 +34,7 @@ export interface IPageHost {
     expandPanel(panelId: string): void;
     setActivePanel(panel: string): void;
     setSecondaryViewsState(patch: Partial<ISecondaryViewsState>): void;
+    rememberSecondaryViewsWidth?(width?: number): void;
     secondaryViewsModel: SecondaryViewsModel | null;
     ensureSecondaryViewsModel(): SecondaryViewsModel;
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean;

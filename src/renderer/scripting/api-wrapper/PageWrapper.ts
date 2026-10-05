@@ -132,7 +132,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations. A tab left open after its editor was closed reports an empty id and no .editor child — open a file into it with pages.navigatePageTo, or close it." },
     { name: "editorSwitches", kind: "property", node: true, summary: "The current editor, toolbar-identical switch options, and unrestricted editor switching." },
     { name: "data", kind: "property", summary: "Free-form per-page data bag shared between scripts." },
-    { name: "panels", kind: "property", node: true, summary: "Live sidebar panels, read-only open/width state, bare-id expansion, and whole-sidebar toggle." },
+    { name: "panels", kind: "property", node: true, summary: "Live sidebar panels, writable persistent width, bare-id expansion, and whole-sidebar toggle." },
     { name: "grouped", kind: "property", summary: "The page shown beside this one.", caution: "reading it CREATES a grouped page if none exists" },
     { name: "runScript", kind: "method", signature: "runScript()", summary: "Run this page's JavaScript/TypeScript content as a script; returns the output text." },
 ];

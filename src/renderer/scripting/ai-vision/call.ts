@@ -20,6 +20,8 @@ export async function aiCall(
 ): Promise<ICallResult> {
     const context = new ScriptContext(undefined, []);
     try {
+        // script.execute owns a retained run registry and its dialog/running pending handles;
+        // resolveWithAttention decorates it with events but skips the generic early dialog race.
         return await resolveWithAttention(
             request,
             () => resolveAiCall(context, request, seenKinds, { callContext: { eventCursor } }),

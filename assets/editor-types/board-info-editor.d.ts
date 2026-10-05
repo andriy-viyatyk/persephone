@@ -121,6 +121,7 @@ export interface IBoardInfoEditor {
     readonly versions: readonly IBoardInfoVersion[] | undefined;
     readonly versionsState: "idle" | "loading" | "error" | undefined;
     changeInstallDir(): Promise<void>;
+    setInstallDir(dir: string): void;
     cancelDownload(catalogId: string): void;
     /** Open the permission-change dialog for the current board without choosing its result. */
     reviewPermissionChange(): Promise<void>;

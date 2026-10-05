@@ -78,19 +78,31 @@ and check target actionability by default. See [Browser, board, and window page 
 for locator, wait, screenshot, and response details. The `screenshot()` result is an image object
 when the capture is available.
 
+String locators also support `text=`. Quoted text is an exact, case-sensitive match after whitespace
+normalization (`text="Open File"`); unquoted text is a case-insensitive substring after trimming and
+collapsing whitespace (`text=Open File`). Nested visible matches prefer the smallest element, and
+`nth` selects within that list. The shared locator works on app-window, browser-page, and board
+targets.
+
+`clickAt({ x, y })` and `dragTo({ from, to })` use trusted input at renderer viewport CSS pixels,
+originating at the top-left. Get coordinates from `window.screen.evaluate()` and
+`getBoundingClientRect()`. `clickAt()` bypasses locator actionability; ordinary `click()` keeps its
+checks. `dragTo()` uses the same dispatch path as `drag()` and preserves HTML5 drag data.
+
 The app-window host follows the browser privacy guard: it cannot automate a user-opened incognito or
 Tor page while that page is active. Agent-opened private pages remain available to that agent.
 
 ### `window.screen.recording`
 
 Record the visible Persephone window, active page, or its main editor area. Agent `start()` prepares
-and starts immediately; the shared header controls remain available to the user. `openPlayer` defaults
+and starts immediately; `hideStatusChrome: true` hides recording controls and the MCP indicator and
+restores their prior visibility on stop, cancel, and error. `openPlayer` defaults
 to `false`, so the finished file remains temporary and closed. Copy the returned path elsewhere to
 keep it beyond the seven-day cleanup window. With `openPlayer: true`, closing the player page without
 **Save as…** deletes the recording, so copy it first.
 
 ```javascript
-await app.window.screen.recording.start({ region: "editor" });
+await app.window.screen.recording.start({ region: "editor", hideStatusChrome: true });
 await app.window.screen.recording.pause();
 await app.window.screen.recording.resume();
 const result = await app.window.screen.recording.stop();

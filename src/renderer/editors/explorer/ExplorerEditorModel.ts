@@ -8,7 +8,7 @@ import {
 } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
-import type { TreeProviderViewSavedState } from "../../components/tree-provider";
+import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider";
 import type { FileSearchState } from "../../components/file-search";
 import type { NavigationState } from "../base/navigation-state";
 import type { IPageHost } from "../../api/pages/IPageHost";
@@ -72,6 +72,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     /** Tree expansion state — persisted via `ExplorerEditorState.treeState`. */
     treeState: TreeProviderViewSavedState | undefined = undefined;
+    treeProviderViewModel: TreeProviderViewModel | undefined;
 
     /** Selection state — reactive. The Explorer view subscribes for highlight. */
     readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
@@ -136,6 +137,16 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         if (!this.treeProvider) throw new Error("Explorer reveal unavailable: no provider is attached.");
         this.setSelectedHref(href);
         this.revealVersion.update((s) => { s.version++; });
+    }
+
+    expandPath(path: string): Promise<void> {
+        if (!this.treeProviderViewModel) throw new Error("Explorer tree is not mounted.");
+        return this.treeProviderViewModel.expandPath(path);
+    }
+
+    collapsePath(path: string): Promise<void> {
+        if (!this.treeProviderViewModel) throw new Error("Explorer tree is not mounted.");
+        return this.treeProviderViewModel.collapsePath(path);
     }
 
     // ── Tree state ───────────────────────────────────────────────────

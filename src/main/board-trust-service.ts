@@ -13,6 +13,7 @@ import {
     type NormalizedBoardPermissions,
 } from "../shared/board-manifest-utils";
 import { getBoardCompatibility } from "../shared/version-utils";
+import { normalizeBoardRoot } from "./board-root-key";
 import { EventEndpoint } from "../ipc/api-types";
 import { downloadService } from "./download-service";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
@@ -35,8 +36,7 @@ interface BoardSource {
 }
 
 function normalizePathForCompare(filePath: string): string {
-    const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
-    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+    return normalizeBoardRoot(filePath).replace(/\/+$/, "");
 }
 
 function pathCovers(ancestor: string, descendant: string): boolean {
@@ -94,7 +94,7 @@ function parseTrustRecords(data: string): TrustedBoardGrant[] | null {
                 console.warn("[BoardTrustService] Skipping malformed trusted board record", { index, root: record.root, reason });
                 continue;
             }
-            result.push({ root: record.root as string, permissions: permissions as NormalizedBoardPermissions });
+            result.push({ root: path.resolve(record.root as string), permissions: permissions as NormalizedBoardPermissions });
         }
         return result;
     } catch { return null; }
@@ -162,7 +162,7 @@ class BoardTrustService {
                     try { legacy = await fs.readFile(legacyFile, "utf8"); } catch { /* first run */ }
                     const oldPaths = parseTrustedPaths(legacy);
                     this.grants = await Promise.all(oldPaths.map(async (root) => ({
-                        root,
+                        root: path.resolve(root),
                         permissions: normalizePermissions((await readManifest(root))?.permissions),
                     })));
                     await this.writeGrantsAtomically(this.grants);
@@ -241,7 +241,8 @@ class BoardTrustService {
                 if (expectedPermissions && JSON.stringify(permissions) !== JSON.stringify(expectedPermissions)) {
                     throw new Error("Board permissions changed while the trust dialog was open. Review the updated permissions and try again.");
                 }
-                const grant = { root: boardRoot, permissions };
+                // Stored and shown as the resolved path (backslashes, original case); compare with the key.
+                const grant = { root: path.resolve(boardRoot), permissions };
                 const kept = nextGrants.filter(({ root }) => !pathCovers(key, normalizePathForCompare(root))
                     && normalizePathForCompare(root) !== key);
                 nextGrants.splice(0, nextGrants.length, ...kept, grant);

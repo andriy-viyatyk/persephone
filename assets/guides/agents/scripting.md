@@ -489,7 +489,14 @@ const https = require('https');
 When using `main.script.execute`, a caught error returns `{ result: <error text>, isError: true,
 consoleLogs }` and never escapes as an MCP unhandled rejection. The timeout response sets
 `timedOut: true`; an async evaluation may still be running. These semantics are separate from the
-renderer `script.execute` 30-second request timeout described in `script.$help`.
+renderer `script.execute` lifecycle described below.
+
+Renderer `script.execute` returns before the 30-second bridge deadline. It waits up to 25 seconds;
+a long-running script returns `{ pending: true, runId, pendingReason: "running" }`, while a script
+blocked by a renderer dialog returns `pendingReason: "dialog"` with attention instructions. Answer
+the dialog through `dialogs[0]`, then call `script.result(runId, { timeoutMs })`. Polling waits at
+most 25 seconds and returns the same run id while the script continues. A completed result is
+consumed once. Pending results expire after five minutes and the renderer keeps at most 32 runs.
 
 ## Errors & verification
 

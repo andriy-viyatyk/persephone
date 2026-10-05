@@ -18,8 +18,8 @@ export interface IPagePanels {
     readonly items: readonly IPagePanel[];
     /** Observation of the sidebar's current visibility; readonly. */
     readonly isOpen: boolean;
-    /** Measured sidebar width, or null until the lazy sidebar model exists; readonly. */
-    readonly width: number | null;
+    /** Sidebar width, or null until the lazy sidebar model exists. Setting persists it. */
+    width: number | null;
     /**
      * Expand a bare panel id. If multiple owners contribute that id, the first rendered
      * owner is selected; use each item's editorId to see the distinct owners. Composite
@@ -70,6 +70,8 @@ export interface IExplorerPanel extends IPagePanelNode {
     listItems(): Promise<Record<string, unknown>[] | undefined>;
     openItem(item: Record<string, unknown>): Promise<void>;
     revealItem(href: string): void;
+    expand(path: string): Promise<void>;
+    collapse(path: string): Promise<void>;
     navigateUp(): void;
     openSearch(folder?: string): void;
     openBoards(): void;

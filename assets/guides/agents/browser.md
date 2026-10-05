@@ -19,7 +19,11 @@ await pages[id].editor.fillForm([
 ]);
 ```
 
-Snapshot refs must be passed as `{ ref: "e12" }`; a plain string always means a CSS selector.
+Snapshot refs must be passed as `{ ref: "e12" }`; a plain string means a CSS selector, or may
+use `text=`. Quoted text matches exactly and case-sensitively after whitespace normalization;
+unquoted text matches a case-insensitive substring. Nested visible matches prefer the smallest
+element, and `nth` selects from that resulting list. This behavior is shared by browser pages,
+boards, and `window.screen`.
 Clickable roleless nodes carry `[cursor=pointer]`. The default snapshot budget is 18,000 characters
 and the outer `call` result cap is 20,000. `# Shortened … Not shown: …` means lines were omitted;
 use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `maxNodes`, or

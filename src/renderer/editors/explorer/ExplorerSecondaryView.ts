@@ -104,6 +104,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
 
     protected onDispose(): void {
         this.cancelReveal();
+        this.model.treeProviderViewModel = undefined;
         this.treeProviderModel = undefined;
         this.treeProviderView = undefined;
         this.provider = undefined;
@@ -220,6 +221,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         const oldTree = this.treeProviderView;
         this.treeProviderView = undefined;
         this.treeProviderModel = undefined;
+        this.model.treeProviderViewModel = undefined;
         if (oldTree) this.releaseChild(oldTree);
 
         if (this.provider && this.model.treeProvider === this.provider) {
@@ -244,6 +246,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             this.root.append(tree.root);
             tree.mount();
             this.treeProviderModel = tree.model;
+            this.model.treeProviderViewModel = tree.model;
         }
         this.updateHeader(this.props);
     }

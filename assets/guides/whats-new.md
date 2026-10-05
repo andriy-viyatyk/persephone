@@ -12,7 +12,21 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.8 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Agents can automate Persephone more reliably:** script execution returns a pollable run ID when
+  it is waiting on a dialog or a long-running script, and shared UI automation supports text
+  locators plus coordinate clicks and drags. Scripts can resize the sidebar, expand Explorer
+  folders, set a Board Info install directory, and hide recording controls and the MCP indicator
+  during capture. See the [Page API](./scripting/api/page.md), [window API](./scripting/api/window.md),
+  and [editor API](./scripting/api/editors.md).
+
+### Bug Fixes
+
+- **Automation and navigation edge cases are fixed:** board paths work with either slash style,
+  local folder labels use canonical Windows paths, search results stay visible below sticky scroll,
+  and switching away from Archive no longer leaves an empty sidebar. Tooltips no longer block
+  automation clicks, and Explorer folders can be expanded by path.
 
 ---
 

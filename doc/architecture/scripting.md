@@ -597,10 +597,11 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `RestClientEditorFacade` | `RestClientEditor` | request/response snapshots, request metadata actions, send |
 | `page.editor` | `GenericEditorFacade` | Any registered editor without an operation facade | `id`, `name` only |
 
-The Board and Board Info facades expose observations and screen-local actions only. They do not
-accept secrets or trust decisions, and Board Info leaves lifecycle operations on `app.boards`, where
-trust and registration remain user-mediated. Toolset and Mneme facades expose copied state rather
-than live models; Agent Tool credentials remain outside the scripting surface.
+The Board and Board Info facades expose observations and screen-local actions only. Board Info's
+`setInstallDir(dir)` selects an explicit filesystem path for installation, while trust and
+registration remain user-mediated through `app.boards`; it does not accept secrets or trust
+decisions. Toolset and Mneme facades expose copied state rather than live models; Agent Tool
+credentials remain outside the scripting surface.
 
 `page.editor.getManifest()` reads and parses the board's current manifest on each call, then returns
 a defensive projection of the normalized values Persephone applies. Optional fields remain absent
@@ -615,9 +616,25 @@ management; boards add frame selection and board lifecycle state; `window.screen
 current application-window host and has no browser navigation or page-tab operations. Accessibility
 refs are scoped by the host that minted them in `/src/renderer/automation/ref.ts`.
 
+String locators may use `text=` on all three hosts. A quoted value matches exact text after
+whitespace normalization and is case-sensitive; an unquoted value matches a case-insensitive
+substring after trimming and whitespace normalization. Nested matches resolve to the innermost
+visible element, and `nth` indexes that visible result list. `force` bypasses actionability checks
+for an otherwise valid match. The app-window host also exposes `clickAt({ x, y })` and
+`dragTo({ from, to })` in renderer viewport CSS pixels from the top-left; coordinate clicks bypass
+locator actionability, while coordinate drags use the shared trusted drag dispatch.
+
+`script.execute` and `script.result(runId, { timeoutMs? })` keep renderer script execution inside
+the default bridge timeout: each waits at most 25 seconds, below the 30-second bridge timeout.
+Execution that is still running or paused on a renderer dialog returns a pending handle; dialog
+pending results include attention, and repeated `script.result` polls keep the same `runId` until a
+completed result is consumed. The renderer retains a bounded set of handles with a five-minute TTL.
+
 `window.screen.recording` is a separate app-window capability alongside those automation
-operations. Script `start({ region, openPlayer? })` begins capture immediately for the full window,
+operations. Script `start({ region, openPlayer?, hideStatusChrome? })` begins capture immediately for the full window,
 active page, or active editor area; page and editor crops stay bound to the page selected at start.
+When `hideStatusChrome` is true, recording controls and the MCP indicator are hidden for capture
+and their prior visibility is restored when the session ends or errors.
 The returned state reports
 `idle`, `ready`, `recording`, or `paused`; `pause()`, `resume()`, `stop()`, and `cancel()` control the
 same per-window recorder used by the header. `stop()` returns the temporary recording path, duration,
@@ -1010,7 +1027,9 @@ surface aligned with the visible tab strip. `pages.openFile(path)` accepts a fol
 file; a folder opens an editorless page whose Explorer is rooted there. Persephone has no separate
 workspace feature, workspace files, workspace settings, or multi-root workspaces: a page with a
 project-folder Explorer root is the equivalent workspace, exposed as `page.workspaceFolder` (and
-omitted for pages without a local-folder Explorer or for archive browsing).
+omitted for pages without a local-folder Explorer or for archive browsing). Local absolute
+filesystem paths are normalized before they become link data, so Windows paths display with their
+canonical separators; URL schemes and archive inner paths keep their own spelling.
 
 ## Script Execution
 

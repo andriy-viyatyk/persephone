@@ -23,6 +23,7 @@ import type {
 import { appTarget } from "../automation/AppTargetModel";
 import {
     clickElement,
+    clickAtCoordinates,
     checkElement,
     clearElement,
     ensureTargetReady,
@@ -43,6 +44,7 @@ import {
     uncheckElement,
     waitFor,
     dragElements,
+    dragCoordinates,
     fillForm as fillFormOperation,
     setInputFiles as setInputFilesOperation,
     waitForResponse as waitForResponseOperation,
@@ -65,7 +67,7 @@ interface WaitForOption extends TabOption {
 /** Thin Object Model adapter over the existing app-window automation target. */
 export class WindowScreen implements IWindowScreen {
     readonly recording = {
-        start: (options: { region: RecordingRegion; openPlayer?: boolean }) => windowRecording.start(options.region, options),
+        start: (options: { region: RecordingRegion; openPlayer?: boolean; hideStatusChrome?: boolean }) => windowRecording.start(options.region, options),
         pause: () => windowRecording.pause(),
         resume: () => windowRecording.resume(),
         stop: () => windowRecording.stop("agent"),
@@ -85,6 +87,10 @@ export class WindowScreen implements IWindowScreen {
     async click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> {
         await ensureTargetReady(appTarget, options?.tabId);
         await clickElement(appTarget, resolveElementLocator(locator), options);
+    }
+    async clickAt(position: { x: number; y: number }): Promise<void> {
+        await ensureTargetReady(appTarget);
+        await clickAtCoordinates(appTarget, position);
     }
 
     async hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> {
@@ -177,6 +183,10 @@ export class WindowScreen implements IWindowScreen {
         await ensureTargetReady(appTarget, options?.tabId);
         await dragElements(appTarget, resolveElementLocator(source), resolveElementLocator(destination), options);
     }
+    async dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }): Promise<void> {
+        await ensureTargetReady(appTarget);
+        await dragCoordinates(appTarget, options.from, options.to);
+    }
 
     async fillForm(fields: IBrowserFormField[]): Promise<void> {
         await ensureTargetReady(appTarget, fields.find(field => field.options?.tabId)?.options?.tabId);
@@ -210,5 +220,5 @@ export class WindowScreen implements IWindowScreen {
 
 installAutomationActivity(WindowScreen.prototype, [
     "snapshot", "click", "hover", "type", "select", "check", "uncheck", "clear", "pressKey", "keyDown", "keyUp",
-    "evaluate", "waitFor", "screenshot", "networkRequests", "waitForResponse", "consoleMessages", "pageErrors", "drag", "fillForm", "setInputFiles",
+    "evaluate", "waitFor", "screenshot", "networkRequests", "waitForResponse", "consoleMessages", "pageErrors", "drag", "dragTo", "clickAt", "fillForm", "setInputFiles",
 ], () => appTarget);

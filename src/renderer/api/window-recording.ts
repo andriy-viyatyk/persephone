@@ -18,6 +18,7 @@ export interface WindowRecordingState {
     readonly elapsedMs: number;
     readonly region?: RecordingRegion;
     readonly last?: RecordingResult;
+    readonly hideStatusChrome?: boolean;
 }
 interface Session {
     id: string;
@@ -34,6 +35,7 @@ interface Session {
     width: number;
     height: number;
     chunkWrites: Promise<void>;
+    cancelled?: boolean;
     stopPromise?: Promise<RecordingResult>;
     elapsedMs: number;
     startedAt?: number;
@@ -43,6 +45,8 @@ interface Session {
 class WindowRecordingModel {
     private current: Session | undefined;
     private value: WindowRecordingState = { status: "idle", elapsedMs: 0 };
+    /** Set by `start({ hideStatusChrome })` before capture begins; cleared when the session returns to idle. */
+    private hideChrome = false;
     private readonly listeners = new Set<(state: WindowRecordingState) => void>();
     private timer: ReturnType<typeof setInterval> | undefined;
     // Subscribed per page/editor session, never at module load: this module is reached from `app`
@@ -62,7 +66,7 @@ class WindowRecordingModel {
         return () => this.listeners.delete(listener);
     }
 
-    async prepare(region: RecordingRegion, openPlayer: boolean): Promise<void> {
+    async prepare(region: RecordingRegion, openPlayer: boolean, hideStatusChrome = false): Promise<void> {
         if (this.current) throw new Error("A recording is already active or ready in this window.");
         let target: HTMLElement | undefined;
         let pageId: string | undefined;
@@ -74,10 +78,18 @@ class WindowRecordingModel {
             target = region === "page" ? slot ?? undefined : slot?.querySelector<HTMLElement>('[data-name="page-editor"]') ?? undefined;
             if (!target || !isVisible(target)) throw new Error(region === "page" ? "The active page is not visible." : "The active page has no visible editor area.");
         }
-        const capture = await api.startWindowRecording({ region });
         let media: MediaStream | undefined;
         let extraTracks: MediaStreamTrack[] = [];
+        let capture: Awaited<ReturnType<typeof api.startWindowRecording>> | undefined;
         try {
+            if (hideStatusChrome) {
+                // Hide before capture starts, so the first frame is already clean. Still idle here,
+                // so publish directly: setState() treats idle as the end of a session.
+                this.hideChrome = true;
+                this.value = { ...this.value, hideStatusChrome: true };
+                this.publish();
+            }
+            capture = await api.startWindowRecording({ region });
             media = await navigator.mediaDevices.getUserMedia({ audio: false, video: { mandatory: {
                 chromeMediaSource: "desktop", chromeMediaSourceId: capture.chromeMediaSourceId, maxFrameRate: 30,
             } } as MediaTrackConstraints });
@@ -124,17 +136,18 @@ class WindowRecordingModel {
             this.current = undefined;
             media?.getTracks().forEach((track) => track.stop());
             extraTracks.forEach((track) => track.stop());
-            await api.cancelWindowRecording(capture.recordingId).catch((_error: unknown): void => undefined);
+            if (capture) await api.cancelWindowRecording(capture.recordingId).catch((_error: unknown): void => undefined);
+            this.setState({ status: "idle", elapsedMs: 0 });
             throw error;
         }
     }
 
-    async start(region: RecordingRegion, options?: { openPlayer?: boolean }): Promise<void> {
+    async start(region: RecordingRegion, options?: { openPlayer?: boolean; hideStatusChrome?: boolean }): Promise<void> {
         // A start refused because a recording is already running must leave that recording alone:
         // clean up only a session this call created.
         const existing = this.current;
         try {
-            await this.prepare(region, options?.openPlayer ?? false);
+            await this.prepare(region, options?.openPlayer ?? false, options?.hideStatusChrome ?? false);
             this.startPrepared();
             // Resolve once the recorder's `start` event has run, so `state` already reads "recording".
             const recorder = this.current?.recorder;
@@ -160,6 +173,8 @@ class WindowRecordingModel {
         recorder.ondataavailable = (event) => {
             if (!event.data.size) return;
             session.chunkWrites = session.chunkWrites.then(async () => {
+                // The recorder flushes a last chunk after cancel(), when main has already dropped the session.
+                if (session.cancelled) return;
                 const bytes = new Uint8Array(await event.data.arrayBuffer());
                 await api.appendWindowRecordingChunk({ recordingId: session.id, chunk: bytes });
             });
@@ -208,6 +223,7 @@ class WindowRecordingModel {
     async cancel(): Promise<void> {
         const session = this.current;
         if (!session) return;
+        session.cancelled = true;
         this.current = undefined;
         this.stopTimer();
         this.unwatchPages();
@@ -307,7 +323,11 @@ class WindowRecordingModel {
     private stopTimer(): void { if (this.timer) clearInterval(this.timer); this.timer = undefined; }
     private requireSession(): Session { if (!this.current) throw new Error("No recording is active."); return this.current; }
     private setState(state: WindowRecordingState): void {
-        this.value = { ...state, ...(state.last ? { last: { ...state.last } } : {}) };
+        if (state.status === "idle") this.hideChrome = false;
+        this.value = { ...state, hideStatusChrome: this.hideChrome, ...(state.last ? { last: { ...state.last } } : {}) };
+        this.publish();
+    }
+    private publish(): void {
         for (const listener of this.listeners) listener(this.state);
     }
 }

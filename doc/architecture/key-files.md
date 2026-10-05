@@ -127,7 +127,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | AiVision core package (help search, result shaping, and path resolution; external npm dependency 1.3.0) | `ai-vision` npm package |
-| Renderer AiVision root and namespace descriptors (the renderer side of path calls) | `/src/renderer/scripting/ai-vision/` |
+| Renderer AiVision root and namespace descriptors (the renderer side of path calls, including bounded `script.execute`/`script.result` handles) | `/src/renderer/scripting/ai-vision/` |
 | AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations with optional spatial phrases) | `ai-vision` npm package |
 | Remote AiVision timeout precedence (per-call, remote-declared, session `boards.callTimeoutMs`, and built-in fallback) | `/src/shared/ai-vision-timeout.ts` |
 | Renderer dialog AiVision adapters (safe fields, button actions, cancellation, password privacy) | `/src/renderer/scripting/ai-vision/dialogs/` |
@@ -135,7 +135,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Menu Bar AiVision descriptor (live folders/selection, strict ID-based open, and curated Menu Bar elements) | `/src/renderer/scripting/ai-vision/namespaces/menu-bar.ts` |
 | Settings AiVision descriptor (catalog sections/keys, lifecycle-aware highlighting, browser-profile projections, and call-only self-severing guards) | `/src/renderer/scripting/ai-vision/namespaces/settings.ts` |
 | Clipboard AiVision namespace (opt-in stored history discovery, paged previews, payload reads, and explicit destructive removal) | `/src/renderer/scripting/ai-vision/namespaces/clipboard.ts` |
-| Page sidebar-panels AiVision node (live panel projection, bare-ID expansion, sidebar state/actions, and curated elements) | `/src/renderer/scripting/ai-vision/page-panels.ts` |
+| Page sidebar-panels AiVision node (live panel projection, bare-ID expansion, persisted width control, Explorer path expansion/collapse, and curated elements) | `/src/renderer/scripting/ai-vision/page-panels.ts` |
 | Page editor-switches AiVision node (current editor, toolbar-identical options, verified switching, and switch control elements) | `/src/renderer/scripting/ai-vision/page-editor-switches.ts` |
 | Page compare-mode AiVision node (active pairs, enter/exit actions, and page-scoped compare controls) | `/src/renderer/scripting/ai-vision/page-compare.ts` |
 | Page content-pipe AiVision status node (`stages` and `summary`) | `/src/renderer/scripting/ai-vision/content-pipe.ts` |
@@ -163,8 +163,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser editor facade (browser navigation, inner tabs, shared automation operations, browser chrome elements, and optional page-authored `.app` descriptors) | `/src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts` |
 | Board editor facade (board metadata, trust/render state, secondary views, shared automation operations, conditional trusted-board `.app`, status, busy/frame state, normalized manifest snapshot, and reload; no trust-granting member) | `/src/renderer/scripting/api-wrapper/BoardEditorFacade.ts` |
 | Board manifest facade projections (normalized manifest and nested declarations copied into isolated script-facing snapshots) | `/src/renderer/scripting/api-wrapper/board-manifest-projection.ts` |
-| App-window screen adapter and shared window-recording state machine (automation operations, MediaRecorder capture/crop, and recording lifecycle) | `/src/renderer/api/window-screen.ts`, `/src/renderer/api/window-recording.ts`, `/src/renderer/scripting/ai-vision/namespaces/window-screen.ts` |
-| Board Info editor facade (install/properties snapshots, normalized manifest-backed properties, and safe install-directory/download controls; lifecycle actions remain on `app.boards`) | `/src/renderer/scripting/api-wrapper/BoardInfoEditorFacade.ts` |
+| App-window screen adapter and shared window-recording state machine (automation operations, viewport-coordinate click/drag, MediaRecorder capture/crop, status-chrome visibility, and recording lifecycle) | `/src/renderer/api/window-screen.ts`, `/src/renderer/api/window-recording.ts`, `/src/renderer/scripting/ai-vision/namespaces/window-screen.ts` |
+| Board Info editor facade (install/properties snapshots, normalized manifest-backed properties, explicit install-directory selection and download controls; lifecycle actions remain on `app.boards`) | `/src/renderer/scripting/api-wrapper/BoardInfoEditorFacade.ts` |
 | Toolset editor facade (registered toolset identity/validation state and open/refresh actions) | `/src/renderer/scripting/api-wrapper/ToolsetEditorFacade.ts` |
 | Tools & Editors hub facade (active tab state and tab selection) | `/src/renderer/scripting/api-wrapper/ToolsHubEditorFacade.ts` |
 | Mneme configuration facade (connection, roots, model, reindex state and model-backed actions) | `/src/renderer/scripting/api-wrapper/MnemeConfigEditorFacade.ts` |
@@ -335,7 +335,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process AiVision roots and service descriptors, including the settings-gated main script node | `/src/main/mcp/ai-vision/` |
 | MCP tool definitions (the `call` tool — the whole manifest — as data) | `/src/main/mcp/tools/` |
 | MCP server factory (manifest assembly and guide-resource registration) | `/src/main/mcp/server-factory.ts` |
-| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, path prefixing, native image content blocks, and recent-request tracking for beforeunload handling) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
+| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, pending script results, path prefixing, native image content blocks, and recent-request tracking for beforeunload handling) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
 | Per-window native dialog tracking, attention snapshots, and cancellation through the native dialog helper | `/src/main/native-dialog-tracker.ts` |
 | Audio/Video player editor view | `/src/renderer/editors/video/VideoView.ts` |
 | Video playback view (video.js + hls.js and stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |
@@ -365,7 +365,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer MCP `call` command and page-scoped Board call command | `/src/renderer/api/mcp/call-command.ts`, `/src/renderer/api/mcp/board-call-command.ts` |
 | Agent Tools call-tree node and shared search/execute/create handlers | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/mcp/tool-commands.ts` |
 | Renderer MCP request history and server-log page integration | `/src/renderer/api/mcp/request-log.ts` |
-| Shared browser-like automation operations (target-neutral snapshot, navigation waits, locator/actionability, input, screenshot, drag, forms, and event reads) | `/src/renderer/automation/operations.ts` |
+| Shared browser-like automation operations (target-neutral snapshot, navigation waits, CSS/text locator actionability, input, screenshot, locator/coordinate drag, coordinate click, forms, and event reads) | `/src/renderer/automation/operations.ts` |
 | Shared browser-like AiVision members (common automation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
 | Browser input dispatch   | `/src/renderer/automation/input.ts`                |
 | Browser ref resolution and per-host iframe-session stores (a snapshot ref is a `backendDOMNodeId`; `StaticText` refs are coerced to their nearest element, and frame maps are keyed by the host registration key) | `/src/renderer/automation/ref.ts` |

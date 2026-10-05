@@ -10,6 +10,7 @@ import type { AppWrapper } from "../api-wrapper/AppWrapper";
 import type { PageCollectionWrapper } from "../api-wrapper/PageCollectionWrapper";
 import type { PageWrapper } from "../api-wrapper/PageWrapper";
 import { scriptRunner } from "../ScriptRunner";
+import { watchForPendingDialog } from "./attention";
 import { resolveRendererScriptEditor } from "../renderer-script-target";
 import { helpSearch as searchHelp, IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor, IHelpSearchHit, numberRule, stringRule, validateCallArguments } from "ai-vision";
 
@@ -99,7 +100,8 @@ const HELP_SEARCH_ARGUMENTS = [
 ] as const;
 
 const SCRIPT_MEMBERS: readonly IAiMember[] = [
-    { name: "execute", kind: "method", signature: "execute(code, pageId?, language?)", summary: "Execute JavaScript or TypeScript in the renderer and return text with captured console logs; failures inside code set isError: true.", caution: SCRIPT_EXECUTION_CAUTION },
+    { name: "execute", kind: "method", signature: "execute(code, pageId?, language?)", summary: "Execute JavaScript or TypeScript; long runs and dialogs return a runId for script.result().", caution: SCRIPT_EXECUTION_CAUTION },
+    { name: "result", kind: "method", signature: "result(runId: string, options?: { timeoutMs?: number })", summary: "Wait for and consume a pending renderer script result; a timeout returns the same pending runId." },
 ];
 
 const SCRIPT_HELP = `
@@ -109,8 +111,9 @@ page's script global. If pageId is omitted, execution targets the active page; p
 target that page explicitly. language is optional and may be "javascript" or "typescript"; TypeScript
 is transpiled without type checking.
 
-The last expression is returned as text. The result always contains text, language, isError, and
-consoleLogs. console.log, console.info, console.warn, and console.error are captured in consoleLogs.
+For a completed run, the last expression is returned as text and the result contains text, language,
+isError, and consoleLogs. console.log, console.info, console.warn, and console.error are captured in
+consoleLogs. Pending runs return a runId envelope instead of a completed result.
 The \`code\` argument must be a string: a wrong code-parameter type is an MCP/tool error. A syntax
 or runtime error thrown by a string of code is not an MCP/tool error; the call succeeds with
 isError: true, error text, and any consoleLogs captured before the failure. Renderer failures include
@@ -119,9 +122,11 @@ Side effects performed before an error or timeout remain performed.
 
 This is full-privilege renderer/Node.js execution with no sandbox. Code can read and write files,
 spawn processes, access the network, and change the application. require() is context-bound, but
-otherwise has full Node.js access. A renderer bridge request waits up to 30 seconds; a timeout does
-not cancel JavaScript that is already running. A newly opened blocking renderer dialog may instead
-return pending with an attention instruction; answer it and re-read the relevant state.
+otherwise has full Node.js access. script.execute waits at most 25 seconds, below the normal
+30-second renderer bridge timeout. Long runs and scripts blocked on a dialog return
+{ pending: true, runId, pendingReason }; dialog results include attention. Answer the dialog, then
+call script.result(runId, { timeoutMs? }). result waits at most 25 seconds and returns the same id
+while execution continues.
 
 The call resolver may cut long result text or a console argument at maxLength (20,000 by default).
 Raise call's maxLength to return the rest. For detailed API operations, use the app and page paths
@@ -301,13 +306,72 @@ export class AiRoot implements IAiVisible {
     }
 }
 
+interface PendingScriptRun {
+    createdAt: number;
+    promise: ReturnType<typeof scriptRunner.runWithCapture>;
+    result?: Awaited<ReturnType<typeof scriptRunner.runWithCapture>>;
+}
+
+const pendingScriptRuns = new Map<string, PendingScriptRun>();
+const MAX_PENDING_SCRIPT_RUNS = 32;
+const PENDING_SCRIPT_RUN_TTL_MS = 5 * 60_000;
+const SCRIPT_RUN_WAIT_MS = 25_000;
+
 class ScriptNode implements IAiVisible {
-    execute(code: string, pageId?: string, language?: string) {
+
+    async execute(code: string, pageId?: string, language?: string) {
         if (typeof code !== "string" || !code) {
             throw new Error("Missing or invalid 'script' parameter");
         }
         const editor = resolveRendererScriptEditor(pageId);
-        return scriptRunner.runWithCapture(code, editor, language);
+        this.pruneRuns();
+        const runId = globalThis.crypto.randomUUID();
+        const watcher = watchForPendingDialog();
+        const promise = scriptRunner.runWithCapture(code, editor, language);
+        const entry: PendingScriptRun = { createdAt: Date.now(), promise };
+        pendingScriptRuns.set(runId, entry);
+        void promise.then(result => { entry.result = result; }, (): undefined => undefined);
+        while (pendingScriptRuns.size > MAX_PENDING_SCRIPT_RUNS) {
+            const oldestRunId = pendingScriptRuns.keys().next().value;
+            if (!oldestRunId) break;
+            pendingScriptRuns.delete(oldestRunId);
+        }
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const raced = await Promise.race([
+                promise.then(result => ({ kind: "result" as const, result })),
+                watcher.pending.then(signal => ({ kind: "dialog" as const, attention: signal.attention })),
+                new Promise<{ kind: "running" }>(resolve => { timeout = setTimeout(() => resolve({ kind: "running" }), SCRIPT_RUN_WAIT_MS); }),
+            ]);
+            if (raced.kind === "result") { pendingScriptRuns.delete(runId); return raced.result; }
+            if (raced.kind === "dialog") return { pending: true, runId, pendingReason: "dialog", attention: raced.attention };
+            return { pending: true, runId, pendingReason: "running", message: `Script is still running; await script.result(${JSON.stringify(runId)}).` };
+        } finally {
+            watcher.dispose();
+            if (timeout) clearTimeout(timeout);
+        }
+    }
+
+    async result(runId: string, options?: { timeoutMs?: number }) {
+        this.pruneRuns();
+        const entry = pendingScriptRuns.get(runId);
+        if (!entry) throw new Error(`No pending script run exists for ${JSON.stringify(runId)}.`);
+        const timeoutMs = Math.min(SCRIPT_RUN_WAIT_MS, Math.max(0, options?.timeoutMs ?? SCRIPT_RUN_WAIT_MS));
+        if (entry.result) { pendingScriptRuns.delete(runId); return entry.result; }
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const result = await Promise.race([
+                entry.promise,
+                new Promise<undefined>(resolve => { timeout = setTimeout(() => resolve(undefined), timeoutMs); }),
+            ]);
+            if (result) { pendingScriptRuns.delete(runId); return result; }
+            return { pending: true, runId, pendingReason: "running", message: `Script is still running; await script.result(${JSON.stringify(runId)}).` };
+        } finally { if (timeout) clearTimeout(timeout); }
+    }
+
+    private pruneRuns(): void {
+        const cutoff = Date.now() - PENDING_SCRIPT_RUN_TTL_MS;
+        for (const [runId, entry] of pendingScriptRuns) if (entry.createdAt < cutoff) pendingScriptRuns.delete(runId);
     }
 
     get aiVision(): IAiVisionDescriptor {

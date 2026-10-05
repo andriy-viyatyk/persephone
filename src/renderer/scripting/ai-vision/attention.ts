@@ -19,15 +19,16 @@ const reportedInlineDialogKeys = new Set<string>();
 
 interface PendingSignal {
     pending: true;
+    attention: { text: string };
 }
 
-interface DialogWatcher {
+export interface DialogWatcher {
     readonly pending: Promise<PendingSignal>;
     dispose(): void;
 }
 
 /** Watch only for dialogs that were opened by the action being resolved. */
-function watchForPendingDialog(): DialogWatcher {
+export function watchForPendingDialog(): DialogWatcher {
     const initialDialogs = dialogsState.get();
     let candidate = initialDialogs[0] as typeof initialDialogs[number] | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -60,7 +61,7 @@ function watchForPendingDialog(): DialogWatcher {
         timer = setTimeout(() => {
             timer = undefined;
             if (candidate && dialogsState.get().includes(candidate)) {
-                resolvePending?.({ pending: true });
+                resolvePending?.({ pending: true, attention: collectAttention() ?? { text: DIALOG_FALLBACK_TEXT } });
             }
         }, PENDING_DIALOG_GRACE_MS);
     };
@@ -83,6 +84,9 @@ export async function resolveWithAttention(
     resolve: () => Promise<ICallResult>,
     eventCursor = 0,
 ): Promise<ICallResult> {
+    if (request.path === "script.execute" || request.path.startsWith("script.execute(")) {
+        return withAttentionAndEvents(await resolve(), eventCursor);
+    }
     const watcher = watchForPendingDialog();
     try {
         const original = resolve();

@@ -102,7 +102,8 @@ function prefixAttentionPaths(text: string, prefix: string): string {
  * Renderer calls that deliberately block until the user acts. They need a bridge timeout longer
  * than the renderer's own wait bound, so `{ pending: true }` is always the host's decision and
  * never `sendToRenderer`'s 30 s default firing first. The invariant the whole long-poll rests on
- * is: renderer bound (50 s default, 110 s clamp) < bridge timeout (125 s) < client tool timeout.
+ * is: renderer bound for script.execute/script.result (25 s) < default bridge timeout (30 s).
+ * The 125-second bridge timeout remains only for the blocking paths declared below.
  *
  * Matched on the leading segments, because the same call arrives spelled either as
  * `events.wait` with `args: []` or as `events.wait()` written into the path itself.
@@ -329,23 +330,36 @@ function callImageResult(value: unknown): ICallImageResult | undefined {
  * markedly harder for small models to follow.
  */
 function toCallResult(response: McpResponse): IMcpToolResult {
-    if (response.error) return toToolResult(response);
+    if (response.error) {
+        if (response.error.message?.trim()) return toToolResult(response);
+        return { content: [{ type: "text", text: "Error: MCP call failed without an error message." }], isError: true };
+    }
     const envelope = response.result as ICallEnvelope | undefined;
     if (!envelope) return toToolResult(response);
     const { hint, attention, events, warning, ...rest } = envelope;
     const content: IMcpToolResult["content"] = [];
+    const scriptResult = rest.result && typeof rest.result === "object" ? rest.result as { pending?: unknown; pendingReason?: unknown; runId?: unknown; attention?: { text?: unknown }; message?: unknown } : undefined;
     if (rest.pending) {
         content.push({ type: "text", text: "Pending: the action is waiting on a dialog. Answer it, then re-read state." });
     }
-    if (attention) content.push({ type: "text", text: attention.text });
+    if (scriptResult?.pending === true) {
+        const reason = scriptResult.pendingReason === "dialog" ? "a dialog" : "script execution";
+        content.push({ type: "text", text: `Pending: ${reason} is still in progress. ${typeof scriptResult.message === "string" ? scriptResult.message : ""}`.trim() });
+        if (scriptResult.pendingReason === "dialog" && scriptResult.attention && typeof scriptResult.attention.text === "string") {
+            content.push({ type: "text", text: scriptResult.attention.text });
+        }
+        content.push({ type: "text", text: JSON.stringify({ pending: true, runId: scriptResult.runId, pendingReason: scriptResult.pendingReason }, null, 2) });
+    }
+    if (attention && attention.text !== scriptResult?.attention?.text) content.push({ type: "text", text: attention.text });
     // Delimited like the hint block: content blocks arrive concatenated in some clients, and an
     // event line ending in a path followed immediately by the result body reads as one path.
     if (events) content.push({ type: "text", text: `--- events ---\n${events.text}\n--- end events ---` });
     if (!rest.pending && rest.error !== undefined) {
         const where = rest.resolvedUpTo ? ` (resolved up to "${rest.resolvedUpTo}")` : "";
-        content.push({ type: "text", text: `Error: ${rest.error}${where}` });
+        const message = typeof rest.error === "string" && rest.error.trim() ? rest.error : "MCP call failed without an error message.";
+        content.push({ type: "text", text: `Error: ${message}${where}` });
         if (rest.result !== undefined) content.push({ type: "text", text: JSON.stringify(rest.result, null, 2) });
-    } else if (!rest.pending) {
+    } else if (!rest.pending && scriptResult?.pending !== true) {
         const imageResult = callImageResult(rest.result);
         if (imageResult) {
             content.push({ type: "text", text: JSON.stringify(imageResult.metadata, null, 2) });
@@ -363,5 +377,6 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     }
     if (warning) content.push({ type: "text", text: `Warning: ${warning}` });
     if (hint) content.push({ type: "text", text: `--- hint (${hint.kind}) ---\n${hint.text}` });
+    if (content.length === 0) content.push({ type: "text", text: "null" });
     return { content, isError: !rest.pending && rest.error !== undefined };
 }

@@ -274,6 +274,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
 
         const button = document.createElement("button");
         button.className = "tree-chevron";
+        button.dataset.name = "explorer-folder-expand";
         button.type = "button";
         button.tabIndex = -1;
         // Read the handler from the live props at event time: this element outlives the row it was

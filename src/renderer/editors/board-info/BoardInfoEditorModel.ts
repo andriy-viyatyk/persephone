@@ -600,6 +600,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (picked?.[0]) this.state.update((s) => { s.installDir = picked[0]; });
     }
 
+    setInstallDir(dir: string): void {
+        if (typeof dir !== "string" || !dir.trim()) throw new Error("Install directory must be a non-empty path.");
+        this.state.update((s) => { s.installDir = dir; });
+    }
+
     async download(entry: PublishedBoardInfo): Promise<void> {
         await this.ensureInstallDir();
         const dir = this.state.get().installDir;
@@ -703,7 +708,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this.installed.send(root); // resolves app.boards.installPublished's interactive flow
         if (source.kind === "folder") {
             await this.page?.switchMainEditor(boardEditorId(root));
-        } else if (this._host) {
+        } else if (this._host || source.path !== this.title) {
             // File page ("+"): lossless host transfer into the board editor.
             await this.page?.switchMainEditor(boardEditorId(root));
         } else {

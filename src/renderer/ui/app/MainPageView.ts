@@ -51,6 +51,7 @@ export class MainPageView extends VanillaView<object> {
     private readonly recordingControls = document.createElement("div");
     private readonly mnemeIndicator = document.createElement("span");
     private readonly mcpIndicator = document.createElement("span");
+    private hiddenChromeState: { controlsHidden: boolean; controlsDisplay: string; mcpHidden: boolean; mcpDisplay: string } | undefined;
     private readonly snipButton = document.createElement("button");
     private readonly toggleMenuBar = (): void => app.window.toggleMenuBar();
     private readonly closeMenuBar = (): void => app.window.menuBar.close();
@@ -192,7 +193,7 @@ export class MainPageView extends VanillaView<object> {
         this.zoomButton.textContent = `${Math.round(Math.pow(1.2, state.zoomLevel) * 100)}%`;
         this.toggleWindowButton.replaceChildren(createIconElement(state.isMaximized ? "window-restore" : "window-maximize"));
         this.toggleWindowButton.title = state.isMaximized ? "Restore" : "Maximize";
-        this.mcpIndicator.style.display = state.mcpRunning ? "" : "none";
+        this.mcpIndicator.style.display = this.hiddenChromeState ? "none" : state.mcpRunning ? "" : "none";
         this.mcpIndicator.dataset.name = "mcp-indicator";
         this.mcpIndicator.className = "mcp-indicator";
         this.mcpIndicator.title = state.mcpClientCount > 0 ? `MCP is active, ${state.mcpClientCount} active connection${state.mcpClientCount !== 1 ? "s" : ""} — click to view request log` : "MCP server is running — click to view request log";
@@ -254,8 +255,22 @@ export class MainPageView extends VanillaView<object> {
     /** Built once and updated in place: the elapsed timer ticks every 200 ms, and rebuilding the
      *  buttons on each tick would swallow a click whose target is replaced mid-press. */
     private updateRecordingControls(state: WindowRecordingState): void {
+        const restoringChrome = !state.hideStatusChrome && this.hiddenChromeState !== undefined;
+        if (state.hideStatusChrome && !this.hiddenChromeState) {
+            this.hiddenChromeState = {
+                controlsHidden: this.recordingControls.hidden, controlsDisplay: this.recordingControls.style.display,
+                mcpHidden: this.mcpIndicator.hidden, mcpDisplay: this.mcpIndicator.style.display,
+            };
+        } else if (!state.hideStatusChrome && this.hiddenChromeState) {
+            const previous = this.hiddenChromeState;
+            this.hiddenChromeState = undefined;
+            this.recordingControls.hidden = previous.controlsHidden;
+            this.recordingControls.style.display = previous.controlsDisplay;
+            this.mcpIndicator.hidden = previous.mcpHidden;
+            this.mcpIndicator.style.display = previous.mcpDisplay;
+        }
         const parts = this.recordingParts ??= this.buildRecordingControls();
-        this.recordingControls.hidden = state.status === "idle";
+        if (!restoringChrome) this.recordingControls.hidden = state.status === "idle";
         this.recordingControls.dataset.status = state.status;
         const seconds = Math.floor(state.elapsedMs / 1000);
         parts.elapsed.textContent = `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
@@ -263,6 +278,10 @@ export class MainPageView extends VanillaView<object> {
         parts.pause.hidden = state.status !== "recording";
         parts.resume.hidden = state.status !== "paused";
         parts.stop.hidden = state.status !== "recording" && state.status !== "paused";
+        if (this.hiddenChromeState) {
+            this.recordingControls.hidden = true;
+            this.mcpIndicator.style.display = "none";
+        }
     }
 
     private buildRecordingControls(): NonNullable<MainPageView["recordingParts"]> {

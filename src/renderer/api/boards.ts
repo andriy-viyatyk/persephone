@@ -8,7 +8,7 @@ import type {
     BoardUpdateInfo,
 } from "./types/boards";
 import type { EditorModel } from "../editors/base/EditorModel";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
+import { fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../core/utils/file-path";
 import { readBoardManifest } from "../editors/board/board-manifest";
 import { LEGACY_BOARD_AGENT_DEPRECATION_NOTE } from "../editors/board/board-permission-copy";
 import { normalizePermissions } from "../../shared/board-manifest-utils";
@@ -304,12 +304,13 @@ export const boards: IBoards = {
     // path move (renameBoard — no privilege gain) / a privilege reduction (unregisterBoard).
 
     registerBoard: async (boardRoot: string): Promise<boolean> => {
+        const normalizedRoot = fpIsAbsolute(boardRoot) ? fpResolve(boardRoot) : boardRoot;
         const { isBoardFolder } = await import("../editors/board/board-manifest");
-        if (!(await isBoardFolder(boardRoot))) {
-            throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
+        if (!(await isBoardFolder(normalizedRoot))) {
+            throw new Error(`Not a board: "${normalizedRoot}" is missing or has no board-manifest.json.`);
         }
         const { requestBoardTrust } = await import("../editors/board/request-board-trust");
-        return requestBoardTrust(boardRoot);
+        return requestBoardTrust(normalizedRoot);
     },
 
     unregisterBoard: async (boardRoot: string): Promise<void> => {

@@ -6,7 +6,7 @@ import type { RowAlign } from "../../uikit/DataGrid";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
-import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpIsAbsolute, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import {
     copyPathsToOsClipboard,
@@ -129,6 +129,7 @@ interface TreeController {
     getExpandedMap: () => Record<string | number, boolean>;
     collapseAll: () => void;
     expandItem: (value: string | number) => void;
+    toggleItem: (value: string | number) => void;
     revealItem: (value: string | number, align?: RowAlign) => Promise<void>;
 }
 
@@ -728,6 +729,23 @@ export class TreeProviderViewModel extends TComponentModel<
 
         // UIKit Tree's revealItem expands ancestors found in the loaded tree, then scrolls.
         await this.treeModel?.revealItem(href);
+    };
+
+    /** Tree items are keyed by the provider's href, so an agent's "C:/a/b" must become "C:\a\b". */
+    private toItemHref = (path: string): string => (fpIsAbsolute(path) ? fpResolve(path) : path);
+
+    expandPath = async (path: string): Promise<void> => {
+        const href = this.toItemHref(path);
+        await this.revealItem(href);
+        // revealItem loads the ancestors' children only; the folder's own children load here.
+        await this.loadChildrenForPaths([href]);
+        this.treeModel?.expandItem(href);
+    };
+
+    collapsePath = async (path: string): Promise<void> => {
+        const href = this.toItemHref(path);
+        await this.revealItem(href);
+        if (this.treeModel?.getExpandedMap()[href]) this.treeModel.toggleItem(href);
     };
 
     // ── Click handlers ───────────────────────────────────────────────────

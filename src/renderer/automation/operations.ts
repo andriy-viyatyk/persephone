@@ -115,25 +115,53 @@ function actionabilityFunction(): string {
             const style = getComputedStyle(el);
             return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
         };
+        const displayed = el => { const style = getComputedStyle(el); return style.visibility !== 'hidden' && style.display !== 'none'; };
         let el = this;
         if (selector !== null) {
-            const matches = [...document.querySelectorAll(selector)].filter(visible);
+            let matches;
+            if (selector.startsWith('text=')) {
+                const source = selector.slice(5).trim();
+                const quoted = source.startsWith('"') && source.endsWith('"');
+                const wanted = (quoted ? JSON.parse(source) : source).replace(/\s+/g, ' ').trim();
+                const normalize = value => value.replace(/\s+/g, ' ').trim();
+                const candidates = [...document.querySelectorAll('body *')].filter(el => {
+                    const text = normalize(el.innerText || el.textContent || '');
+                    if (quoted ? text !== wanted : !text.toLocaleLowerCase().includes(wanted.toLocaleLowerCase())) return false;
+                    return force || displayed(el);
+                });
+                const innermost = candidates.filter(el => !candidates.some(candidate => candidate !== el && el.contains(candidate)));
+                const sized = innermost.filter(visible);
+                matches = (force ? innermost : sized.length ? sized : innermost)
+                    .sort((a, b) => {
+                        const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+                        const area = ar.width * ar.height - br.width * br.height;
+                        if (area) return area;
+                        const depth = el => { let value = 0; for (let node = el; node; node = node.parentElement) value++; return value; };
+                        return depth(b) - depth(a);
+                    });
+            } else {
+                const allMatches = [...document.querySelectorAll(selector)];
+                const displayedMatches = allMatches.filter(displayed);
+                if (!force && allMatches.length > 0 && displayedMatches.length === 0) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
+                const sizedMatches = displayedMatches.filter(visible);
+                matches = force ? allMatches : sizedMatches.length ? sizedMatches : displayedMatches;
+            }
             if (matches.length > 1 && nth == null)
                 throw new Error('ACTIONABILITY_FATAL: Ambiguous selector ' + JSON.stringify(selector) + ': ' + matches.length + ' visible matches (' + matches.slice(0, 5).map((m, i) => i + ': ' + describe(m)).join('; ') + (matches.length > 5 ? '; …' : '') + '). Use a ref, narrow the selector, or pass { nth } (zero-based among visible matches).');
             if (nth != null && (!Number.isInteger(nth) || nth < 0))
                 throw new Error('ACTIONABILITY_FATAL: { nth } must be a non-negative integer.');
             el = matches[nth ?? 0];
         }
-        if (!el) throw new Error('ACTIONABILITY_TRANSIENT: Element not found or not visible.');
+        if (!el) throw new Error('ACTIONABILITY_TRANSIENT: Element not found.');
         if (!force) {
             if (!el.isConnected) throw new Error('ACTIONABILITY_TRANSIENT: Element is detached.');
-            if (!visible(el)) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
+            if (!displayed(el)) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
             const beforeScroll = el.getBoundingClientRect();
             if (beforeScroll.top < 0 || beforeScroll.left < 0 || beforeScroll.bottom > innerHeight || beforeScroll.right > innerWidth) {
                 el.scrollIntoView({ block: 'center', inline: 'center' });
             }
             const rect = el.getBoundingClientRect();
-            if (!rect.width || !rect.height) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
+            if (!rect.width || !rect.height) throw new Error('ACTIONABILITY_TRANSIENT: Element has zero size.');
             const waitFrame = () => Promise.race([
                 new Promise(resolve => requestAnimationFrame(resolve)),
                 new Promise(resolve => setTimeout(resolve, 50)),
@@ -155,6 +183,14 @@ function actionabilityFunction(): string {
         if (!force && hitTest) {
             const x = localX + bounds.left, y = localY + bounds.top;
             let hit = document.elementFromPoint(x, y);
+            /* A Persephone tooltip left open by the previous action is not an obstruction. Make it
+               click-through and leave it so, or the trusted click itself would land on it; it
+               closes on its own once the pointer leaves its trigger. */
+            const tooltip = hit?.closest('[data-type="tooltip"]');
+            if (tooltip) {
+                tooltip.style.pointerEvents = 'none';
+                hit = document.elementFromPoint(x, y);
+            }
             while (hit?.shadowRoot?.elementFromPoint) {
                 const inner = hit.shadowRoot.elementFromPoint(x, y);
                 if (!inner || inner === hit) break;
@@ -734,6 +770,35 @@ export async function dragElements(
 ): Promise<void> {
     const from = await resolveActionablePoint(target, source, options);
     const to = await resolveActionablePoint(target, destination, { ...options, position: options.targetPosition });
+    await dispatchDragPoints(from, to, options);
+}
+
+/** Dispatch a trusted click at viewport CSS pixels without locator actionability. */
+export async function clickAtCoordinates(target: IBrowserTarget, position: MousePosition, options: { tabId?: string; button?: "left" | "right" | "middle"; clickCount?: number } = {}): Promise<void> {
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || position.x < 0 || position.y < 0) {
+        throw new Error("clickAt coordinates must be non-negative finite viewport CSS pixels.");
+    }
+    const input = target.inputCdp(options.tabId);
+    const point = input.mapPoint(position, []);
+    const button = options.button ?? "left";
+    const clickCount = options.clickCount ?? 1;
+    await input.cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", ...point }, input.sessionId);
+    await input.cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", ...point, button, buttons: button === "left" ? 1 : 0, clickCount }, input.sessionId);
+    await input.cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...point, button, buttons: 0, clickCount }, input.sessionId);
+}
+
+export async function dragCoordinates(target: IBrowserTarget, fromPosition: MousePosition, toPosition: MousePosition, options: DragOptions = {}): Promise<void> {
+    const input = target.inputCdp(options.tabId);
+    const from = { ...input.mapPoint(fromPosition, []), cdp: input.cdp, sessionId: input.sessionId };
+    const to = { ...input.mapPoint(toPosition, []), cdp: input.cdp, sessionId: input.sessionId };
+    await dispatchDragPoints(from, to, options);
+}
+
+async function dispatchDragPoints(
+    from: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">,
+    to: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">,
+    options: DragOptions,
+): Promise<void> {
     if (from.sessionId !== to.sessionId) throw new Error("drag source and target must be in the same frame");
     const cdp = from.cdp;
     const sessionId = from.sessionId;

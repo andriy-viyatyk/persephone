@@ -41,6 +41,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     private editor: monaco.editor.IStandaloneCodeEditor | undefined;
     private decorations: monaco.editor.IEditorDecorationsCollection | undefined;
     private hostCleanups: Array<() => void> = [];
+    private revealCleanup: (() => void) | undefined;
 
     private hostSubscription: (() => void) | undefined;
     private modelSubscription: (() => void) | undefined;
@@ -90,6 +91,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     }
 
     protected onDispose(): void {
+        this.cancelRevealFollowUp();
         this.releaseQueueSubscriptions();
         this.modelSubscription?.();
         this.modelSubscription = undefined;
@@ -263,9 +265,11 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         if (!editor || !this.hostView?.isReady) return;
         switch (event.type) {
             case "revealLine":
+                this.cancelRevealFollowUp();
                 editor.revealLineInCenter(event.line);
                 editor.setPosition({ lineNumber: event.line, column: 1 });
                 editor.focus();
+                this.scheduleRevealFollowUp(editor, event.line);
                 break;
             case "highlightText":
                 this.applyFindMatchDecorations(event.text);
@@ -281,6 +285,60 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
                 break;
         }
     };
+
+    private scheduleRevealFollowUp(editor: monaco.editor.IStandaloneCodeEditor, line: number): void {
+        const startedAt = performance.now();
+        const subscriptions: { layout?: monaco.IDisposable; cursor?: monaco.IDisposable; timeout?: ReturnType<typeof setTimeout> } = {};
+        let frameId = 0;
+        let completed = false;
+        const domNode = editor.getDomNode();
+        const cancel = (): void => {
+            if (completed) return;
+            completed = true;
+            subscriptions.layout?.dispose();
+            subscriptions.cursor?.dispose();
+            if (frameId) cancelAnimationFrame(frameId);
+            if (subscriptions.timeout) clearTimeout(subscriptions.timeout);
+            domNode?.removeEventListener("wheel", cancel);
+            domNode?.removeEventListener("touchstart", cancel);
+            this.revealCleanup = undefined;
+        };
+        const reveal = (): void => {
+            if (completed) return;
+            if (performance.now() - startedAt > 500 || this.editor !== editor || !this.hostView?.isReady) {
+                cancel();
+                return;
+            }
+            completed = true;
+            subscriptions.layout?.dispose();
+            subscriptions.cursor?.dispose();
+            if (frameId) cancelAnimationFrame(frameId);
+            if (subscriptions.timeout) clearTimeout(subscriptions.timeout);
+            domNode?.removeEventListener("wheel", cancel);
+            domNode?.removeEventListener("touchstart", cancel);
+            editor.revealLineNearTop(line);
+            const stickyHeight = domNode?.querySelector<HTMLElement>(".sticky-widget")?.getBoundingClientRect().height ?? 0;
+            editor.setScrollTop(Math.max(0, editor.getTopForLineNumber(line) - stickyHeight));
+            this.revealCleanup = undefined;
+        };
+        this.revealCleanup = cancel;
+        subscriptions.layout = editor.onDidLayoutChange(reveal);
+        frameId = requestAnimationFrame(() => {
+            frameId = 0;
+            if (!completed) reveal();
+        });
+        subscriptions.timeout = setTimeout(cancel, 500);
+        domNode?.addEventListener("wheel", cancel, { once: true, passive: true });
+        domNode?.addEventListener("touchstart", cancel, { once: true, passive: true });
+        subscriptions.cursor = editor.onDidChangeCursorPosition((event) => {
+            if (event.source !== "api") cancel();
+        });
+    }
+
+    private cancelRevealFollowUp(): void {
+        this.revealCleanup?.();
+        this.revealCleanup = undefined;
+    }
 
     private readonly handleQueueRequest = (request: MonacoQueueRequest): unknown => {
         const editor = this.editor;

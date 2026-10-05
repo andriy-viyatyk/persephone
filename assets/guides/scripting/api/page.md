@@ -147,8 +147,9 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
   views, busy/frame status, and `reload()` for the open board. A folder board also exposes
   `folderPath`, the claimed folder; its installed `boardRoot` is a separate value, and
   the board bridge's `getFilePath()` remains undefined for folder mode.
-- `board-info`: published-board matches, install/properties state, version history, and the
-  install-directory picker or download cancellation. Trust and registration remain user actions.
+- `board-info`: published-board matches, install/properties state, version history, an explicit
+  install-directory setter and native picker, and download cancellation. Trust and registration
+  remain user actions.
 - `toolset-view`: registered toolset identity, validity and errors, plus `refresh()`, `openFolder()`
   and `openLog()`.
 - `tools-hub-view`: the active hub tab (`builtin`, `boards`, `search`, or `tools`) and `setTab()`.
@@ -185,7 +186,10 @@ const appTree = await app.window.screen.snapshot({ interactive: true });
 ```
 
 Snapshots return an accessibility tree with refs. Pass a ref as `{ ref: "e12" }`; a string
-locator is interpreted as a CSS selector. Snapshots can be narrowed to a subtree with `root`,
+locator is interpreted as a CSS selector, or may use `text=` for exact quoted / substring unquoted
+text matching with normalized whitespace. Quoted text is case-sensitive; unquoted text is
+case-insensitive. Nested visible matches prefer the smallest element and `nth` selects within that
+list. This shared locator works on app-window, browser-page, and board targets. Snapshots can be narrowed to a subtree with `root`,
 filtered to actionable items with `interactive: true`, or bounded with `maxNodes` and `maxChars`.
 The returned tree can omit content beyond its size budget, so use the suggested scope or interactive
 view when the snapshot reports that it was truncated.
@@ -271,6 +275,8 @@ declarations are copied. Manifest fields are normalized before they are returned
 paths are omitted. Optional fields stay absent when the manifest does not declare them; an absent
 manifest returns `undefined`.
 
+### Board Info editor facade
+
 An open Board Info page exposes `properties` as a copied installed-board snapshot. It includes the
 same normalized manifest-backed fields where present, plus Board Info state such as `root`,
 `trusted`, install status, compatibility, and registration issues. Find that page through
@@ -281,8 +287,13 @@ const boardInfoPage = app.pages.all.find(candidate => candidate.editor.id === "b
 if (boardInfoPage?.editor.id === "board-info") {
     const properties = boardInfoPage.editor.properties;
     console.log(properties?.fileMasks, properties?.contentMasks, properties?.capabilities);
+    boardInfoPage.editor.setInstallDir("C:/Demo/board-installs");
+    console.log(boardInfoPage.editor.installDir);
 }
 ```
+
+`setInstallDir(dir)` selects an explicit download parent; `changeInstallDir()` keeps the native
+folder picker. Board Info and trust UI continue to show the real, copyable filesystem path.
 
 Arrays and capability payload schemas in this snapshot are copied. See [Boards — Inspecting board
 metadata from scripts](../../boards.md#inspecting-board-metadata-from-scripts) for the normalized
@@ -345,7 +356,8 @@ highlight result reports both the number found and the number drawn.
 
 `page.panels` describes the sidebar belonging to this page. `items` lists rendered panels in order,
 with each panel's `id`, `label`, owner, and `expanded` state. The node also exposes `isOpen`,
-`width`, `expand(panelId)`, `toggleSidebar()`, `elements`, and `highlight(...)`.
+`width`, `expand(panelId)`, `toggleSidebar()`, `elements`, and `highlight(...)`. Assigning a positive
+number to `width` resizes the sidebar and persists it.
 
 Use the named child nodes when present: `explorer`, `search`, `boards`, `git`,
 `notebookCategories`, `notebookTags`, `rest`, `archive`, and `fileHistory`. Explorer, Search,
@@ -364,7 +376,10 @@ console.log(panels.items.map(panel => `${panel.id}: ${panel.label}`));
 if (panels.explorer) {
     console.log(await panels.explorer.listItems());
     panels.explorer.openSearch();
+    await panels.explorer.expand("C:/Projects/persephone/src");
+    await panels.explorer.collapse("C:/Projects/persephone/src");
 }
+page.panels.width = 320;
 await panels.highlight("secondary-views-container", "This page's sidebar");
 ```
 

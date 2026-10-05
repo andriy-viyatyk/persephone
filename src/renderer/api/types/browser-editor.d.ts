@@ -21,6 +21,7 @@
  * await browser.waitForNavigation({ tabId: newTab });
  * const title = await browser.getText("h1", { tabId: newTab });
  */
+/** CSS selector or text= locator string, or a host-local accessibility snapshot ref. */
 export type IBrowserElementLocator = string | { ref: string };
 export type IBrowserJsonValue = null | boolean | number | string | IBrowserJsonValue[] | { [key: string]: IBrowserJsonValue };
 export type IBrowserEvaluateFunction = (...args: never[]) => unknown;

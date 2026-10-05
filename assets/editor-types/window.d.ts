@@ -81,6 +81,8 @@ export interface IWindowScreen {
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
     /** Click an app-window element by CSS selector or explicit snapshot ref. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
+    /** Trusted click at app-window renderer viewport CSS pixels from the top-left. */
+    clickAt(position: { x: number; y: number }): Promise<void>;
     /** Hover an app-window element by CSS selector or explicit snapshot ref. */
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
     /** Type into an app-window input, clearing its existing value first. */
@@ -92,6 +94,8 @@ export interface IWindowScreen {
     uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
     drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    /** Drag between app-window viewport CSS pixel coordinates using the shared drag dispatch. */
+    dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }): Promise<void>;
     fillForm(fields: IBrowserFormField[]): Promise<void>;
     setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
     pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
@@ -132,7 +136,7 @@ export interface IWindowRecordingResult {
 }
 export interface IWindowRecording {
     /** Prepare and immediately start a video-only recording. Agent recordings stay closed by default. */
-    start(options: { region: WindowRecordingRegion; openPlayer?: boolean }): Promise<void>;
+    start(options: { region: WindowRecordingRegion; openPlayer?: boolean; hideStatusChrome?: boolean }): Promise<void>;
     pause(): Promise<void>;
     resume(): Promise<void>;
     /** Finalize and return the recording path, duration, MIME type, and dimensions. */
@@ -142,6 +146,7 @@ export interface IWindowRecording {
         readonly status: "idle" | "ready" | "recording" | "paused";
         readonly elapsedMs: number;
         readonly region?: WindowRecordingRegion;
+        readonly hideStatusChrome?: boolean;
         readonly last?: IWindowRecordingResult;
     };
 }

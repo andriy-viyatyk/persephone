@@ -336,10 +336,11 @@ expanded state. Composite accordion keys are used only internally by the rendere
 `expand(panelId)` accepts bare ids and resolves duplicates to the first rendered owner, matching
 `PageModel.expandPanel`. The limitation is visible through each item's distinct `editorId`.
 
-The node's `isOpen` and `width` values are read-only observations of `SecondaryViewsModel`. They
-report `false` and `null` while that model is still lazy and absent. `toggleSidebar()` requires a
-current panel, then flips only the model's `open` state; it never calls `toggleNavigator()` and
-therefore cannot create an Explorer as a side effect. This node deliberately has no `close` action:
+The node's `isOpen` and `width` values observe `SecondaryViewsModel`; they report `false` and `null`
+while that model is still lazy and absent. Assigning a positive finite number to `width` resizes the
+sidebar and persists the preferred width. `toggleSidebar()` requires a current panel, then flips
+only the model's `open` state; it never calls `toggleNavigator()` and therefore cannot create an
+Explorer as a side effect. This node deliberately has no `close` action:
 individual panel header controls remain with their owning editors because Pattern A and Pattern B
 editors have different hide/dispose lifecycles. The node exposes the four curated sidebar shell
 elements (`page-nav-panel`, `secondary-views-container`, `secondary-views-stack`, and
@@ -348,7 +349,9 @@ optional live child nodes for the fixed aliases `explorer`, `search`, `boards`, 
 `notebookCategories`, `notebookTags`, `rest`, `archive`, and `fileHistory`. A child exists only
 while its registered panel is present on that page; its `id` remains the registered panel ID and
 its `ownerEditorId` identifies the contributing editor instance. Specialized Explorer, Search,
-Boards, and Git children expose copied state, model-backed actions, and curated panel elements.
+Boards, and Git children expose copied state, model-backed actions, and curated panel elements. The
+Explorer child can expand or collapse a folder by filesystem path; expansion loads the ancestor
+folders needed to reach it.
 The remaining known panel types expose the generic node contract until their specialized projections
 are added. Dynamic board-secondary children are indexed by their exact registered IDs. Enumeration
 and lookup read existing page state only and never create a sidebar or an absent panel.

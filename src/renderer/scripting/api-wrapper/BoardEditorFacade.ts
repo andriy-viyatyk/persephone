@@ -131,7 +131,10 @@ When a trusted board registers an AiVision shape, app is its board-owned remote 
 
 Board content is rendered in a cross-origin iframe, and the shared automation members reach that
 content. Use snapshot() for the iframe's complete accessibility content and pass its returned refs
-as { ref: "..." }; plain strings are always CSS selectors. The board page's own chrome--toolbar
+as { ref: "..." }; plain strings are CSS selectors or text= locators. Quoted text matches exactly
+and case-sensitively after whitespace normalization; unquoted text matches a case-insensitive
+substring. Nested visible matches prefer the smallest element, and nth selects within those matches.
+The board page's own chrome--toolbar
 controls, the Trust-this-Board prompt, and secondary-view controls--is what elements names and
 highlight points at, not iframe content. Everything rendered inside the iframe is reachable only
 through snapshot() and its returned refs and never appears in elements; a board control absent from

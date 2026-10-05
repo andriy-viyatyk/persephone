@@ -237,6 +237,7 @@ Boards group is not rendered.
 | Sidebar panel container (only when a page has panels open) | `[data-name="secondary-views-container"]` |
 | Sidebar panel stack | `[data-name="secondary-views-stack"]` |
 | Sidebar width splitter | `[data-name="secondary-views-splitter"]` |
+| Explorer folder expand/collapse chevron | `[data-name="explorer-folder-expand"]` (scope to the Explorer panel) |
 
 These names repeat when pages are grouped. Scope a page's trigger through its containing
 `[data-name="page-slot"][data-page-id="<page id>"]`. The popover is a transient overlay; it

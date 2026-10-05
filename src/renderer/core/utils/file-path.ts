@@ -244,6 +244,11 @@ export function fpResolve(...paths: string[]): string {
     return path.resolve(...paths);
 }
 
+/** Check an ordinary filesystem path without importing Node's path module in a renderer caller. */
+export function fpIsAbsolute(filePath: string): boolean {
+    return path.isAbsolute(filePath);
+}
+
 /**
  * Normalize an absolute path for *identity comparison* — resolves to absolute,
  * unifies separators to "/", strips a trailing slash, and lowercases on Windows
