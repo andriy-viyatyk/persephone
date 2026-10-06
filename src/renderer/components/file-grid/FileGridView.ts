@@ -1,7 +1,7 @@
 import type { Column, DataGridProps } from "../../uikit/DataGrid";
 import { DataGridView } from "../../uikit/DataGrid/DataGridView";
 import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
-import { fpExtname } from "../../core/utils/file-path";
+import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { createFileIconElement, createFolderIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { prepareFileIcon } from "../icons/language-icon-resolver";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -109,7 +109,7 @@ export class FileGridView extends VanillaView<FileGridProps> {
 
     private prepareIcons(items: FileGridItem[]): void {
         for (const item of items) {
-            if (!item.isFolder) prepareFileIcon(item.filePath);
+            if (!item.isFolder) prepareFileIcon(fpBasename(item.filePath));
         }
     }
 }

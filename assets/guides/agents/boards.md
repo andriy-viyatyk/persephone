@@ -790,8 +790,7 @@ page. Persephone closes the tab the return created and leaves the tab the user w
 
   Size is eager: without a deadline, `open()` may wait for provider metadata or a transformed read.
   Pass `{ timeoutMs: 5000 }` when an escape hatch is needed; the timeout aborts and disposes the
-  pending resource. The URL is not an HTTP/127.0.0.1 URL for external consumers; that media-player
-  form is deferred to US-1519.
+  pending resource. The URL is not an HTTP/127.0.0.1 URL for external consumers.
   ```js
   const resource = await persephone.content.open("https://example.com/report.pdf", { timeoutMs: 10000 });
   const response = await fetch(resource.url, { headers: { Range: "bytes=0-1023" } });
@@ -973,9 +972,12 @@ Persephone's own toolbar can leave the board frame unfocused, in which case
 still suitable when the board document is focused and the browser gesture requirements are met.
 
 **File icons:** `await persephone.icons.forFiles(names)` returns `{ [name]: dataUrl }` — the icon
-Persephone's Explorer shows for each file name (a language icon, the claiming board's icon, the
-Windows shell icon, or the default), as a `data:` URL for `<img src>`. Only the name matters; the
-file need not exist. The shim caches per name, so a re-render does not round-trip. Single-colour
+Persephone uses for each supplied name, as a `data:` URL for `<img src>`. Only the name matters;
+the file need not exist. Since a name-only lookup has no folder path, it does not use icons from
+boards with non-empty `folderMasks`. Local file rows with a full path can use a scoped board icon
+when the file is inside a matching folder. The **Open with** menu offers boards based on matching
+`fileMasks` even when their `folderMasks` do not match; folder scope still determines the default
+editor. The shim caches per name, so a re-render does not round-trip. Single-colour
 icons are drawn in the current theme's icon colour: request again from `persephone.onThemeChange`
 (the shim drops its cache on a theme change). Bridge 1.18.0.
 The CSP blocks remote requests made directly from the board frame; use `persephone.fetch()` for
@@ -1222,7 +1224,8 @@ the manifest's `loadOrder`.
   optional `folderMasks` to scope those masks to certain folders (e.g. `"fileMasks": ["DASHBOARD.md"]`
   + `"folderMasks": ["*/tasks"]` claims only `…/dev/tasks/DASHBOARD.md`; matched against the parent
   folder as a case-insensitive path *suffix* — `*`/`?` stop at a separator, `**` crosses them; omit
-  for any folder; the file **icon** deliberately ignores it, since icon lookups have no path),
+  for any folder; path-based file icons honor the folder scope while name-only icon lookups omit
+  folder-scoped boards),
   optional `contentMasks` (**regex** sources tested against the page's text *content* — the way to
   claim an **untitled, in-memory** page that no file name can match, e.g.
   `["\"type\"\s*:\s*\"force-graph\""]`; case-insensitive, tested against the first 64 KB,

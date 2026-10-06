@@ -50,7 +50,8 @@ async function boardIconUrl(boardRoot: string, iconColor: string): Promise<strin
 }
 
 async function iconUrlFor(name: string, iconColor: string): Promise<{ key: string; url: () => Promise<string> }> {
-    await prepareFileIconAsync(name);
+    // The OS icon cache is keyed by extension: ask by name only, never by a real path.
+    await prepareFileIconAsync(fpBasename(name));
     const resolved = resolveFileIcon(name);
     switch (resolved.kind) {
         case "board":

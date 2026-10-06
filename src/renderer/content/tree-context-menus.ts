@@ -1,6 +1,6 @@
 import { app } from "../api/app";
 import { createLinkData } from "../../shared/link-data";
-import { openWithDefaultApp } from "./open-with-default-app";
+import { createOpenWithMenuItem } from "./open-with-editor";
 
 /**
  * Register default context menu handlers for ILink items.
@@ -85,12 +85,7 @@ export function registerTreeContextMenuHandlers(): void {
                     },
                 },
                 {
-                    // Files only. A folder's "Show in File Explorer" below is ALREADY this
-                    // same `shell.openPath` call (it opens an Explorer window on the folder),
-                    // so a second entry there would just duplicate it.
-                    label: "Open with Default App",
-                    icon: "open-link",
-                    onClick: () => openWithDefaultApp(item.href),
+                    ...createOpenWithMenuItem(item.href),
                 },
                 {
                     label: "Show in File Explorer",

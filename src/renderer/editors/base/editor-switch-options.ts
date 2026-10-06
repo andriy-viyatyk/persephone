@@ -1,10 +1,12 @@
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { publishedBoards } from "../../api/published-boards";
-import { fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { fpBasename, fpExtname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import {
     customEditorRegistry,
     getFolderEditorsForFolder,
     parseBoardEditorId,
+    resolveEditorIdForFile,
 } from "../board/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
@@ -16,6 +18,54 @@ export interface IEditorSwitchOption {
     readonly id: string;
     readonly label: string;
     readonly title?: string;
+}
+
+/** Compatible targets for opening a file before a page/editor has been created. */
+export function getFileOpenEditorOptions(path: string): IEditorSwitchOption[] {
+    const fileName = fpBasename(path);
+    const language = getLanguageByExtension(fpExtname(fileName))?.id ?? "plaintext";
+    const switchOptions = editorRegistry.getSwitchOptions(language, fileName);
+    const builtInIds = [...switchOptions.options];
+    for (const definition of editorRegistry.getAll()) {
+        if ((definition.match?.acceptFile?.(fileName) ?? -1) >= 0 && !builtInIds.includes(definition.id)) {
+            builtInIds.push(definition.id);
+        }
+    }
+
+    const defaultEditorId = resolveEditorIdForFile(path) ?? "monaco";
+    const matchingBoards = customEditorRegistry.getBoardsForFileName(fileName);
+    const local = isPlainLocalPath(path);
+    const eligibleBoards = matchingBoards.filter((board) =>
+        local || hostOwnsPipe(board.editorKind) || board.editorSources === "any"
+    );
+    const defaultBoard = eligibleBoards.find((board) => board.editorId === defaultEditorId);
+    const builtInOptions = builtInIds
+        .filter((id) => id !== defaultEditorId)
+        .flatMap((id) => {
+            const definition = editorRegistry.getById(id);
+            if (!definition) return [];
+            const label = switchOptions.options.includes(id)
+                ? switchOptions.getOptionLabel(id)
+                : definition.name;
+            return [{ id, label }];
+        });
+
+    const boardOptions = eligibleBoards
+        .filter((board) => board.editorId !== defaultEditorId)
+        .map((board) => ({
+            id: board.editorId,
+            label: `Board: ${board.name}`,
+        }));
+
+    const defaultOption = defaultBoard
+        ? { id: defaultBoard.editorId, label: `Board: ${defaultBoard.name} (Default)` }
+        : {
+            id: defaultEditorId,
+            label: `${switchOptions.options.includes(defaultEditorId)
+                ? switchOptions.getOptionLabel(defaultEditorId)
+                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId} (Default)`,
+        };
+    return [defaultOption, ...builtInOptions, ...boardOptions];
 }
 
 /** The exact candidate projection used by the page toolbar and page scripting node. */

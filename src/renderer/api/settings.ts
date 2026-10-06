@@ -147,6 +147,11 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
+/** Items in the "+" new-page menu on a fresh install, in order (see `pinned-editors`). */
+export const DEFAULT_PINNED_EDITORS: readonly string[] = [
+    "open-folder", "open-file", "script-ts", "bundled-board:excalidraw", "grid-csv", "browser",
+];
+
 const defaultAppSettingsState = {
     settings: {
         "tab-recent-languages": ["plaintext"] as string[],
@@ -173,7 +178,7 @@ const defaultAppSettingsState = {
         "mneme.port": 7700,
         "script-library.path": "",
         "site-extensions.path": "",
-        "pinned-editors": ["script-js", "script-ts", "bundled-board:excalidraw", "grid-json", "grid-csv", "browser"] as string[],
+        "pinned-editors": [...DEFAULT_PINNED_EDITORS],
         "disabled-bundled-boards": [] as string[],
         "tor.exe-path": "",
         "tor.socks-port": 9050,

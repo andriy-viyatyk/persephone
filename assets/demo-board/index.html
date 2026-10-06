@@ -408,7 +408,9 @@ persephone.source.onOpen(({ url, sourceUrl, privateSession }) =&gt; {
             <p>
                 File lists can use the same icons as Persephone's Explorer without opening the files.
                 Pass basenames (or paths) to <code>persephone.icons.forFiles()</code>; the result maps
-                each requested name to a <code>data:</code> URL suitable for an image. Request again
+                each requested name to a <code>data:</code> URL suitable for an image. A full local
+                path lets folder-scoped board icons follow their folder rule; basename-only requests
+                omit those icons because the folder cannot be checked. Request again
                 after <code>persephone.onThemeChange</code> because single-colour icons follow the theme.
             </p>
             <pre><code>const names = ["movie.mp4", "package.json"];

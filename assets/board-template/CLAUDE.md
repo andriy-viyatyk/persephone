@@ -406,10 +406,11 @@ is no `contentProviders` permission flag. The service requires `service: true`.
   above `tasks`, `tasks` = a folder of that name at any depth, `**/dev/tasks` = `dev/tasks`
   anywhere, `c:/projects/acme/**` = anything *under* that tree (the tree root itself is not
   matched — add it as a second mask if you need it). Narrowing only: `folderMasks` with no
-  `fileMasks` registers nothing. One exception, by design — the **file icon** ignores
-  `folderMasks` (icon lookups have only a file name, no path), so every name-matching file
-  shows this board's icon even outside the folder scope; only the editor that actually *opens*
-  the file respects the scope.
+  `fileMasks` registers nothing. File icons honor folder scope when Persephone has a full local
+  file path, and show this board's icon only inside a matching folder. Name-only icon lookups,
+  including `persephone.icons.forFiles(names)`, cannot check the folder and exclude boards with
+  `folderMasks`. The explicit **Open with** menu can still offer boards whose `fileMasks` match,
+  regardless of folder scope; default-editor resolution honors the scope.
 - `contentMasks` (optional) — **regex** sources tested against the page's text **content**, so a
   board can claim a page that has no file name at all. `fileMasks` can only match a name; an
   **untitled, in-memory** page (an agent-generated document, a script's output, pasted JSON) has

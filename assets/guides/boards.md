@@ -1212,7 +1212,7 @@ This claims only a `DASHBOARD.md` that lives directly inside a folder named `tas
   - `**/dev/tasks` — `dev/tasks` anywhere in the path, with any number of segments in between.
   - `c:/projects/acme/**` — anything under that tree (the tree root itself, `c:/projects/acme`, is not matched — only what's inside it).
 - **Narrowing only.** `folderMasks` with no `fileMasks` registers nothing — there's nothing to narrow.
-- **The board icon is the one exception.** A file-icon lookup (File Explorer tree, other file lists, page tabs) often has only a file *name*, no path, so it can't evaluate a folder scope — a folder-scoped board's icon still shows for every name-matching file, even outside the folder. Only the editor that actually **opens** the file (the default-editor choice and the editor-switch control) honors `folderMasks`; the icon is cosmetic.
+- **Icons follow folder scope when a path is available.** Path-based file lists and local File Explorer rows show a folder-scoped board icon only when the file is inside a matching folder. A name-only icon lookup (including `persephone.icons.forFiles(names)`) cannot check the folder and uses the ordinary file icon for boards with `folderMasks`. The explicit **Open with** menu can still offer a board whose `fileMasks` match, regardless of folder scope; default editor resolution continues to honor `folderMasks`.
 - The Board Info page's **"Editor for"** row shows both `fileMasks` and, when present, `folderMasks`, and folder masks are carried through the [published-boards catalog](#published-boards-catalog--discover-install-update) alongside `fileMasks`.
 
 ### Simple editors — reading the file directly

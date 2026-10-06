@@ -174,7 +174,7 @@ field on the shared `ContextMenuEvent`: only this one consumer would ever set it
 
 The folder-content view (`CategoryView`, shown on a page when a folder is opened from
 the Explorer) fires the **same** `linkContextMenu` channel for its file/folder items. So
-the href-based items ("Open in New Tab", "Open in New Window", "Open with Default App",
+the href-based items ("Open in New Tab", "Open in New Window", "Open with",
 "Show in File Explorer", "Open in Browser", …) are defined once in
 `content/tree-context-menus.ts`
 and appear identically in the Explorer tree and the folder page. The Categories list/tiles (`LinkItemList` /
@@ -189,8 +189,13 @@ a single `event.target`, so letting a plural menu through would invite singular 
 that acts on N. The per-row hover action buttons stay singular for the same reason, and always
 confirm.
 
-"Open with Default App" (`shell.openPath` via `Endpoint.openPath`) is offered on **files
-only**. A folder's "Show in File Explorer" is already that same `shell.openPath` call — on a
+"Open with" is offered on **files only**. It contains the resolved default editor first,
+other compatible built-in editors, eligible file-mask board matches, and a final **Default App**
+leaf (`shell.openPath` via `Endpoint.openPath`). The file target is revalidated when a leaf is
+chosen; a fresh open passes the chosen editor as the explicit content target, while an already-open
+file page is activated and switched in place. Recent Files builds the same submenu through its
+separate `RecentFileListView` context-menu callback. A folder's "Show in File Explorer" is already
+that same `shell.openPath` call — on a
 directory it opens an Explorer window there — so a second entry would duplicate it. On a file
 "Show in File Explorer" is `shell.showItemInFolder`, which reveals rather than opens, hence
 the separate item. `shell.openPath` does not throw on failure; it resolves with an error
@@ -198,7 +203,7 @@ string (typically "no application is registered for this extension"), which is w
 `Endpoint.openPath` returns that string instead of discarding it as the older `showFolder`
 endpoint does — otherwise an unopenable file looks like a menu item that does nothing.
 
-Double-clicking a file in the Explorer tree runs the same action, giving the panel
+Double-clicking a file in the Explorer tree continues to run the OS action directly, giving the panel
 Windows-Explorer behavior for formats Persephone has no editor for. The first of the two
 clicks has already opened the file in a Persephone tab, so it opens in both places: the
 alternative is debouncing every single click, and single-click navigation is the tree's hot

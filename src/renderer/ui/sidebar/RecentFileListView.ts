@@ -9,6 +9,7 @@ import type { MenuItem } from "../../uikit/Menu";
 import { api } from "../../../ipc/renderer/api";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createIconElement } from "../../uikit/shared/slots";
+import { createOpenWithMenuItem } from "../../content/open-with-editor";
 
 export interface RecentFileListProps {
     onClose?: () => void;
@@ -82,6 +83,10 @@ export class RecentFileListView extends VanillaView<RecentFileListProps> {
                 label: "Open",
                 icon: createIconElement("open-file"),
                 onClick: () => this.openItem(item),
+            },
+            {
+                ...createOpenWithMenuItem(item.filePath),
+                invisible: item.isFolder,
             },
             {
                 label: "Open in New Window",

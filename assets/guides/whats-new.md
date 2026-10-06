@@ -14,6 +14,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Choose an editor before opening a file:** right-click a file in Explorer or Recent Files and choose **Open with**. Compatible built-in editors and matching boards appear beneath the default choice; **Default App** hands the file to Windows.
 - **View HTTPS certificates in Browser:** open the site-info popover and choose **View certificate**.
   Install the **Certificate Viewer** board from the Boards catalog to see decoded certificate details;
   without it, Persephone opens the certificate chain as PEM text.
@@ -34,6 +35,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   folders, set a Board Info install directory, and hide recording controls and the MCP indicator
   during capture. See the [Page API](./scripting/api/page.md), [window API](./scripting/api/window.md),
   and [editor API](./scripting/api/editors.md).
+- **New installations start with Open Folder and Open File pinned:** the **+** new-page menu now
+  opens with **Open Folder**, **Open File**, TypeScript script, **Excalidraw**, CSV grid, and Browser.
+  An existing pinned list is kept; pin the new items from **Tools & Editors**.
 
 ### Bug Fixes
 

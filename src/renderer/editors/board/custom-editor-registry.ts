@@ -42,6 +42,7 @@ import {
 import { createBoardProvider } from "../../content/board-provider-factory";
 import {
     matchesBoardMasks,
+    matchesFileMask,
     matchesContentMasks,
     matchesFolderEditorMasks,
     hostOwnsPipe,
@@ -597,6 +598,15 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         return this.state
             .get()
             .entries.filter((e) => matchesBoardMasks(fileName, e.fileMasks, e.folderMasks));
+    }
+
+    /** File-mask claims for an explicit file-open choice, independent of folder scope. */
+    getBoardsForFileName(filePathOrName: string): CustomEditorMatch[] {
+        if (!filePathOrName) return [];
+        const fileName = fpBasename(filePathOrName);
+        return this.state.get().entries.filter((entry) =>
+            entry.fileMasks.some((mask) => matchesFileMask(fileName, mask))
+        );
     }
 
     /** Boards whose distinct direct folder claims match `folderPath`, in source order. */

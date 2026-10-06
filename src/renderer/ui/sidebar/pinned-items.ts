@@ -1,5 +1,4 @@
-import { settings } from "../../api/settings";
-import { DEFAULT_PINNED_EDITORS } from "./tools-editors-registry";
+import { DEFAULT_PINNED_EDITORS, settings } from "../../api/settings";
 
 /**
  * Unified pinned-item model for the "Tools & Editors" sidebar and the header
@@ -37,7 +36,7 @@ export function decodePin(stored: string): PinnedRef {
 
 /** Current raw pinned-items array (editor ids + `board:<root>` entries). */
 export function getPinnedStrings(): string[] {
-    return settings.get("pinned-editors") ?? DEFAULT_PINNED_EDITORS;
+    return settings.get("pinned-editors") ?? [...DEFAULT_PINNED_EDITORS];
 }
 
 function setPinnedStrings(items: string[]): void {

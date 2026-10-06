@@ -47,14 +47,6 @@ export interface CreatableItem {
 
 
 // =============================================================================
-// Default pinned IDs
-// =============================================================================
-
-export const DEFAULT_PINNED_EDITORS = [
-    "open-folder", "open-file", "script-js", "bundled-board:excalidraw", "bundled-board:rest-client", "grid-csv", "browser",
-];
-
-// =============================================================================
 // Static items (always available)
 // =============================================================================
 

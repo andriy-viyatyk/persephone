@@ -199,8 +199,12 @@ export function resolveFileIcon(fileName: string, language?: string): ResolvedFi
     const lang = getLanguageById(language || "") || (ext ? getLanguageByExtension(ext) : undefined);
     const staticIcon = getFilePatternIcon(fileName) || (lang ? languageIconMap[lang.id] : undefined);
     const boardMatches = customEditorRegistry.getBoardsForFile(fileName);
-    const boardRoot = boardMatches.length
-        ? parseBoardEditorId(resolveEditorIdForFile(fileName) ?? "")
+    const iconBoardMatches = /[\\/]/.test(fileName)
+        ? boardMatches
+        : boardMatches.filter((board) => board.folderMasks.length === 0);
+    const resolvedEditorId = resolveEditorIdForFile(fileName);
+    const boardRoot = iconBoardMatches.some((board) => board.editorId === resolvedEditorId)
+        ? parseBoardEditorId(resolvedEditorId ?? "")
         : null;
     if (boardRoot) return { kind: "board", boardRoot };
     if (staticIcon) return { kind: "component", Icon: staticIcon };

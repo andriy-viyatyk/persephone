@@ -3,7 +3,7 @@ import { createBoardGlyphElement } from "../../editors/board/board-glyph-element
 import { GitIcon, MemoryIcon, type SvgIconComponent, type SvgIconProps } from "../../theme/icons";
 import { DefaultIcon } from "../../theme/language-icons";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
-import { fpExtname, fpBasename } from "../../core/utils/file-path";
+import { fpBasename, fpExtname, isPlainLocalPath } from "../../core/utils/file-path";
 import { getHostname, getFaviconPathSync } from "./favicon-cache";
 import {
     prepareFileIcon,
@@ -49,19 +49,21 @@ export function createFileTypeIconElement(
         return createImage(resolved.url, width ?? 14, height ?? 14);
     }
 
+    // The OS icon cache is keyed by extension, so ask for the type's icon by name only: a full
+    // path would let the first file seen (an .exe's own icon) stand in for every file of its type.
     const ext = fpExtname(fileName ?? "").toLowerCase();
-    if (ext) prepareFileIcon(fileName ?? "");
+    if (ext) prepareFileIcon(fpBasename(fileName ?? ""));
     return createSvg(DefaultIcon, { ...svgProps, width, height });
 }
 
-/** Create a file icon from a path, preserving the basename-only resolution contract. */
+/** Create a file icon from a path so folder-scoped board icons can be resolved. */
 export function createFileIconElement(options: {
     path: string;
     width?: number;
     height?: number;
 }): Element {
     return createFileTypeIconElement({
-        fileName: fpBasename(options.path),
+        fileName: options.path,
         width: options.width,
         height: options.height,
     });
@@ -109,7 +111,8 @@ export function createTreeProviderItemIconElement(item: ITreeProviderItem): Elem
             : createFaviconOrFallback(item.href);
     }
 
-    return createFileTypeIconElement({ fileName: item.title, width: 16, height: 16 });
+    const fileName = isPlainLocalPath(item.href) ? item.href : item.title;
+    return createFileTypeIconElement({ fileName, width: 16, height: 16 });
 }
 
 /** Resolve an editor icon into a native element. */
