@@ -253,7 +253,9 @@ they choose **Accept** or **Unregister board**. Never click **Trust Board**, **A
   awaited, so they can return promises.
 - **Mind the timeout.** A remote call is bounded by, in order: the caller's `timeoutMs`, the
   member's declared `timeoutMs`, the session knob `boards.callTimeoutMs`, then a 30-second
-  fallback. A long-running action should start work and return, not block.
+  fallback. A long-running action should start work and return, not block. For MCP callers, the
+  server waits up to 125 seconds when no per-call `timeoutMs` is supplied; callers can pass a longer
+  per-call value when needed.
 - **Results are shaped and bounded.** A leaf result is shaped inside your own frame before it
   crosses to the host (20,000 characters by default), carrying `truncated`/`shown`/`total`
   metadata. Return summaries, not dumps.

@@ -891,6 +891,8 @@ Remote `.app` calls use the same four-level host timeout policy: a per-call `tim
 remote method's declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, then the
 30-second built-in fallback. The selected level and full path are included in a timeout error;
 `boards.callTimeoutMs` is not persisted. The per-call option applies only to a remote `.app` leaf.
+For MCP calls, the server waits five seconds beyond a supplied per-call `timeoutMs`; if omitted,
+it waits up to 125 seconds total. Pass `timeoutMs` for a slower operation that needs more time.
 
 #### A board's own model: `.app`
 

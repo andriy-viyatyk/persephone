@@ -931,11 +931,18 @@ AiVision binding before the signal enters the existing browser event route. The 
 page's `refresh()` visible; lazy version revalidation remains the correctness check before each
 remote request.
 
-Both transports use the same host-side timeout precedence: per-call `timeoutMs`, the remote method's
-declared `timeoutMs`, the session-only `boards.callTimeoutMs`, then the 30-second built-in fallback.
-The shared helper in `/src/shared/ai-vision-timeout.ts` resolves the level, while the host emits the
-timeout error with the full agent path. The `boards.callTimeoutMs` setting is in renderer memory and
-also bounds browser-page `.app` calls; it is not persisted.
+The Board and browser facade transports use the same timeout precedence: per-call `timeoutMs`, the
+remote method's declared `timeoutMs`, the session-only `boards.callTimeoutMs`, then the 30-second
+built-in fallback. The shared helper in `/src/shared/ai-vision-timeout.ts` resolves the level, while
+the host emits the timeout error with the full agent path. The `boards.callTimeoutMs` setting is in
+renderer memory and also bounds browser-page `.app` calls; it is not persisted.
+
+The MCP `call` tool has a separate main-to-renderer IPC deadline. For paths into
+`pages[i].editor.app`, main gives the renderer the per-call `timeoutMs` plus five seconds, or 125
+seconds when the caller omits it. This leaves time for the renderer's policy to honor a method's
+declared timeout, the session setting, or its 30-second fallback and return its own result. Other
+forwarded calls continue to use the renderer bridge's 30-second default (with existing longer
+deadlines for blocking calls and automation waits).
 
 Positional arguments for shared call-surface operations are checked by the package's
 process-neutral `argument-validation` module. It reports the rejected value and runtime type, validates required

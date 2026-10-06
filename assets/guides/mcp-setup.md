@@ -127,7 +127,10 @@ for authoring and targeting details.
 
 Calls under `.app` use timeout precedence of per-call `timeoutMs`, remote-declared `timeoutMs`,
 the session-only in-memory `boards.callTimeoutMs`, then the built-in 30-second fallback. The
-selected level and full path appear in timeout errors; the session knob is not persisted.
+selected level and full path appear in timeout errors; the session knob is not persisted. The MCP
+server allows five seconds beyond the per-call `timeoutMs` before it stops waiting. When you omit
+`timeoutMs`, it waits up to 125 seconds total. Set `timeoutMs` for a slower call that needs a longer
+wait.
 
 ### Automating Persephone's own UI
 

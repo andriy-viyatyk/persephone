@@ -45,6 +45,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   local folder labels use canonical Windows paths, search results stay visible below sticky scroll,
   and switching away from Archive no longer leaves an empty sidebar. Tooltips no longer block
   automation clicks, and Explorer folders can be expanded by path.
+- **Slow board methods no longer time out at 30 seconds over MCP:** an agent's `call` into a board's
+  or web page's `.app` model now honors its `timeoutMs` and the method's declared timeout, so a
+  board can offer waits such as "wait for the user's move".
 
 ---
 

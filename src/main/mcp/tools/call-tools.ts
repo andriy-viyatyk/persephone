@@ -142,6 +142,21 @@ export function automationWaitBridgeTimeout(path: string, args: unknown[]): numb
     return Math.min(600_000, requested + 5_000);
 }
 
+/**
+ * A remote `.app` call (a board's or a web page's own AiVision model) is timed by the renderer's
+ * four-level policy: per-call `timeoutMs`, the member's declared `timeoutMs`, `boards.callTimeoutMs`,
+ * then 30 s. The bridge must outlast that policy or its own 30 s default cuts a slower call short
+ * with "Request timeout". Main sees only the per-call value, so without one the bridge allows
+ * 125 s — enough for a declared wait such as a board's `waitForTurn()` (at most 115 s).
+ */
+export function remoteAppBridgeTimeout(path: string, perCallTimeoutMs: unknown): number | undefined {
+    if (!/(^|\.)editor\.app(?=$|[.[(])/.test(path.trim())) return undefined;
+    const requested = typeof perCallTimeoutMs === "number" && Number.isFinite(perCallTimeoutMs) && perCallTimeoutMs > 0
+        ? perCallTimeoutMs
+        : 120_000;
+    return requested + 5_000;
+}
+
 /** Event text is renderer-relative until a forwarded response is returned to the caller. */
 function prefixEventPaths(text: string, prefix: string): string {
     return text.replaceAll("pages[", `${prefix}pages[`);
@@ -222,7 +237,8 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                         : eventCursors.get(targetWindowIndex) ?? 0;
                     const bridgeTimeoutMs = isBlockingRendererCall(forward.path)
                         ? 125_000
-                        : automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
+                        : remoteAppBridgeTimeout(forward.path, params.timeoutMs)
+                            ?? automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
                     response = await sendToRenderer(
                         "call",
                         { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor },

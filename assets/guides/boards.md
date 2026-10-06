@@ -895,7 +895,9 @@ shape, restrictions, and confirmation rules for boards that expose actions.
 Remote `.app` calls use four timeout levels, in order: per-call `timeoutMs`, the remote method's
 declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, and the built-in 30-second
 fallback. Timeout errors name the selected level and full path. `boards.callTimeoutMs` is not
-persisted, and the per-call option affects only a remote `.app` leaf.
+persisted, and the per-call option affects only a remote `.app` leaf. MCP waits five seconds beyond
+the per-call `timeoutMs`; when it is omitted, MCP waits up to 125 seconds total. Pass `timeoutMs` for
+a slower call that needs a longer wait.
 
 ### A board's own model: `page.editor.app`
 
