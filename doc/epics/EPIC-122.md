@@ -112,7 +112,7 @@ an older Persephone would ignore the declaration harmlessly.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1628](../tasks/US-1628-certificate-view/README.md) | Platform: `certificate.view` contract, browser chain retrieval, site-popover button with PEM fallback, `getCertificate()` | Completed |
+| US-1628 | Platform: `certificate.view` contract, browser chain retrieval, site-popover button with PEM fallback, `getCertificate()` | Completed |
 | BT-031 *(persephone-boards)* | Certificate Viewer claims `certificate.view`: render from the request payload, restore from page state | Completed |
 
 ## Risks
