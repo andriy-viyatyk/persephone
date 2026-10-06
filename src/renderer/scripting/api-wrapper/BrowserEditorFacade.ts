@@ -83,6 +83,7 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "url", kind: "property", summary: "Current URL of the active tab." },
     { name: "title", kind: "property", summary: "Current page title of the active tab." },
+    { name: "getCertificate", kind: "method", signature: "getCertificate(): Promise<{ url: string; certificates: string[] } | undefined>", summary: "Read Chromium's base64 DER certificate chain for the active HTTPS tab, leaf first. Returns undefined for non-HTTPS pages or when Chromium has no chain for that tab yet." },
     { name: "navigate", kind: "method", signature: "navigate(url: string): Promise<void>", summary: "Navigate the active tab to a URL. Supports URLs and search queries." },
     { name: "navigateAndWait", kind: "method", signature: "navigateAndWait(url: string, options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Navigate and wait for a main-frame lifecycle event. HTTP errors resolve with their status; network failures and timeouts reject." },
     { name: "back", kind: "method", signature: "back(options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Navigate back and wait for the main-frame result. Rejects immediately with No back history when unavailable." },
@@ -107,6 +108,7 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
 const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "url-input", purpose: "Browser address bar input", where: "middle of the browser toolbar" },
     { name: "url-navigate", purpose: "Navigate to the address-bar URL", where: "right edge of the browser address field" },
+    { name: "site-certificate-view", purpose: "View the active HTTPS page's certificate chain", where: "right side of the header in the site-info popover on HTTPS pages" },
     { name: "url-bookmark-toggle", purpose: "Toggle a bookmark for the current URL", where: "right edge of the browser address field, after Navigate" },
     { name: "toolbar-back", purpose: "Go back in browser history", where: "left side of the browser toolbar, after Home" },
     { name: "toolbar-forward", purpose: "Go forward in browser history", where: "left side of the browser toolbar, after Back" },
@@ -131,7 +133,9 @@ unquoted text matches a case-insensitive substring. Nested visible matches prefe
 element, and nth selects within those matches.
 snapshot() may begin with # <overlay> when a modal covers the page. The editor's tabs map to
 tabs/addTab/closeTab/switchTab, closeTab closes the active browser tab, and screenshot() returns
-metadata plus an inline image block through call. Transient menus, drawers, dialogs, suggestions,
+metadata plus an inline image block through call. getCertificate() returns the active HTTPS page's
+URL and leaf-first base64 DER chain, or undefined for non-HTTPS pages or when Chromium has no chain.
+Transient menus, drawers, dialogs, suggestions,
 the downloads popup, and popup actions are not part of the default curated elements list; use the chrome control
 that opens them first. snapshot() reports a field's role, accessible name and ref but never its
 value — verified for password and ordinary text inputs alike — so read a value with getValue() or
@@ -606,6 +610,11 @@ export class BrowserEditorFacade implements IAiVisible {
     async networkRequests(options?: IBrowserNetworkRequestsOptions): Promise<IBrowserNetworkRequest[]> {
         await ensureTargetReady(this.model.target, options?.tabId);
         return networkRequests(this.model.target, options?.tabId, options);
+    }
+
+    /** Read the active HTTPS tab's Chromium certificate chain, or undefined when unavailable. */
+    getCertificate(): Promise<{ url: string; certificates: string[] } | undefined> {
+        return this.model.getCertificate();
     }
 
     async check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> {

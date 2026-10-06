@@ -146,7 +146,7 @@ session.
 ### Drawn controls without `elements`
 
 - Page navigation and Editor switch — no entry: the measured browser toolbar draws neither generic control.
-- URL suggestion, search-engine, site-permissions popover, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces; the stable toolbar controls are listed above.
+- URL suggestion, search-engine, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces. The browser facade separately lists `site-certificate-view`, which is available in the HTTPS site-info popover.
 - Webview page controls — no entry: third-party browser content.
 
 ## URL Bar
@@ -168,6 +168,17 @@ be set to **Allow** or **Block**; **Ask** means there is no saved choice. Some p
 show a bar above the page with the requesting site and requested access. Choose **Allow** or
 **Block** to answer. Choices for regular profiles are saved between app runs. Incognito and Tor
 choices stay in memory for that private session and are discarded when it ends.
+
+On HTTPS pages, the site-info popover also has **View certificate**. It opens the certificate chain
+Chromium received for that tab in the highest-priority `certificate.view` board. If no viewer board
+is installed, Persephone opens the leaf-first PEM bundle as text in Monaco; the button tooltip
+explains that a certificate viewer board can decode it. Install the **Certificate Viewer** board
+from the Boards catalog for a decoded certificate view. A restored browser tab may not yet have a
+certificate chain available from Chromium; if you see the “not available yet” message, reload the
+page and try **View certificate** again. Agents can inspect the same chain with
+`pages[i].editor.getCertificate()`, which returns `{ url, certificates }` (base64 DER, leaf first)
+or `undefined` for a non-HTTPS page or when Chromium has no chain yet. The curated browser element
+`site-certificate-view` targets this button while the HTTPS site-info popover is open.
 
 ## Site extensions
 

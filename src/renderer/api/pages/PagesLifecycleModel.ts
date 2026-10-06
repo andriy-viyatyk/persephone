@@ -382,6 +382,10 @@ export class PagesLifecycleModel {
         if (!page) {
             throw new Error(`The capability handler board did not open: ${boardRoot}`);
         }
+        // Title the page by its request, as the bundled path above does. A plain board page is
+        // otherwise titled by the manifest name, which `applyManifestTitle` sets only while the
+        // title is still its own fallback, so this title is not overwritten later.
+        if (title) page.mainEditor?.state.update((state) => { state.title = title; });
         return page;
     };
 

@@ -156,6 +156,10 @@ export interface IBrowserEditor {
     /** Current page title of the active tab. */
     readonly title: string | undefined;
 
+    /** Read Chromium's leaf-first base64 DER certificate chain for the active HTTPS page.
+     *  Returns undefined for non-HTTPS pages or when Chromium has no chain for the tab yet. */
+    getCertificate(): Promise<{ url: string; certificates: string[] } | undefined>;
+
     // --- Navigation ---
 
     /** Dispatch navigation without waiting for completion. Supports URLs and search queries. */

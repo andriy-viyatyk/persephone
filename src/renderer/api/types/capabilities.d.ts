@@ -66,6 +66,13 @@ export interface DiagramEditPayload {
     title: string;
 }
 
+/** Chromium's certificate chain for an HTTPS page, encoded as base64 DER leaf first. */
+export interface CertificateViewPayload {
+    title: string;
+    certificates: string[];
+    source?: { url: string };
+}
+
 export interface CapabilityPageResult {
     readonly pageId: string;
 }
@@ -80,6 +87,7 @@ export interface ICapabilities {
     invoke(id: "content.view", payload: ContentViewPayload): Promise<CapabilityPageResult>;
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
     invoke(id: "diagram.edit", payload: DiagramEditPayload): Promise<DiagramEditResult>;
+    invoke(id: "certificate.view", payload: CertificateViewPayload): Promise<unknown>;
     invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
     list(): readonly CapabilityInfo[];
     handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[];

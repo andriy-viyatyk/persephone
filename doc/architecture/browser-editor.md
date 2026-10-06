@@ -1051,6 +1051,21 @@ teardown, tab removal, and disposal. The view only combines that marker with a l
 and suppresses the indicator in Incognito and Tor modes. A trust grant, prompt, or failed injection
 alone is not evidence that a model came from an extension.
 
+The same site-info popover offers certificate viewing for HTTPS pages. `BrowserEditor.getCertificate()`
+uses the active or requested internal tab's current URL and asks that tab's existing
+`CdpSession` for `Network.getCertificate` with the URL origin. It returns the current URL and
+Chromium's base64 DER certificate chain in leaf-first order; non-HTTPS tabs and empty Chromium
+results return `undefined`. The browser view passes the tab id it captured when the popover action
+started, so a tab switch during retrieval cannot redirect the request to another webview. No
+certificate chain is cached or persisted. A restored HTTPS tab may initially have no chain because
+Chromium has not yet performed the restored navigation; navigate or reload the tab, then request the
+certificate again.
+
+When a `certificate.view` capability handler is available, the popover sends the chain to it. If
+there is no handler, the browser opens a PEM bundle in the text editor. See
+[`capability-bus.md`](capability-bus.md#well-known-capability-certificateview) for the capability
+payload and validation contract.
+
 ### Site extensions
 
 The renderer-side `SiteExtensionStore` reads immediate child folders from the configured

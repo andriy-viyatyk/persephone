@@ -141,6 +141,28 @@ export class BrowserEditor extends EditorModel<
         internalTabId = this.state.get().activeTabId,
     ): BrowserAiVisionRegistration | undefined => this.aiVisionByTab.get(internalTabId);
 
+    /** Return Chromium's leaf-first DER certificate chain for the selected HTTPS tab. */
+    getCertificate = async (
+        internalTabId = this.state.get().activeTabId,
+    ): Promise<{ url: string; certificates: string[] } | undefined> => {
+        const state = this.state.get();
+        const tab = state.tabs.find((item) => item.id === internalTabId);
+        const currentUrl = this.tabs.currentUrls.get(internalTabId) || tab?.url;
+        if (!currentUrl || !URL.canParse(currentUrl)) return undefined;
+        const url = new URL(currentUrl);
+        if (url.protocol !== "https:") return undefined;
+
+        const response = await this.target.cdp(internalTabId).send(
+            "Network.getCertificate",
+            { origin: url.origin },
+        ) as { tableNames?: unknown };
+        if (!Array.isArray(response?.tableNames) || response.tableNames.length === 0
+            || !response.tableNames.every((certificate: unknown) => typeof certificate === "string")) {
+            return undefined;
+        }
+        return { url: currentUrl, certificates: response.tableNames };
+    };
+
     hasAiVisionRegisteredTab = (internalTabId: string): boolean => this.aiVisionRegisteredTabs.has(internalTabId);
 
     getAiVisionDocumentGeneration = (internalTabId: string): number | undefined => {

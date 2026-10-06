@@ -1,3 +1,34 @@
+## EPIC-122 — Site certificates in the browser, shown by a `certificate.view` board
+
+Completed 2026-10-06. The browser can show a site's TLS certificate, without a certificate viewer
+in the core: Persephone defines the `certificate.view` capability and the entry point, and a board
+renders the chain.
+
+- **Contract.** `certificate.view` v1 is typed (`CertificateViewPayload`: `title`, `certificates` as
+  base64 DER leaf first, optional `source.url`) and validated at one boundary,
+  `invokeCapabilityOutcome`, via `src/renderer/api/certificate-view.ts` (canonical base64, DER
+  `0x30`, 256 KiB cap). The board and scripting guides list the well-known capabilities.
+- **Retrieval.** `BrowserEditor.getCertificate()` sends `Network.getCertificate({ origin })` through
+  the tab's existing `CdpSession`; no main-process or IPC change. Verified live: it needs no
+  `Network.enable`, returns Chromium's leaf-first chain, and is empty for an origin the tab has not
+  committed. **Limitation:** a tab restored at startup has no certificate until it navigates or
+  reloads; the button then says so.
+- **UI.** **View certificate** sits at the right of the site-info popover's header row, beside the
+  ai-vision badge, on HTTPS pages only (user decision). With a handler it invokes the capability;
+  without one it opens the chain as PEM in Monaco (user-chosen fallback over a disabled button).
+  Agents get `pages[i].editor.getCertificate()` and the `site-certificate-view` element.
+- **Fix found in verification.** `openBoardHandlerPage` applied the request title only for bundled
+  content-host boards, so a catalog board's capability page was titled with the manifest name; it
+  now titles every capability page by its request.
+- **Board.** The Certificate Viewer board (`persephone-boards`, BT-030/BT-031) claims the capability,
+  renders the chain in order and keeps it in page state for restore; published as
+  `cert-viewer` 1.0.0 (requires Persephone 5.0.8).
+
+[Epic document](EPIC-122.md).
+
+- [x] US-1628: Platform — `certificate.view` contract, browser chain retrieval, site-popover button with PEM fallback, `getCertificate()`
+- [x] BT-031 *(persephone-boards)*: Certificate Viewer claims `certificate.view` and renders from the request payload
+
 ## EPIC-121 — REST client as a bundled board
 
 Completed 2026-10-05. The REST client moved out of the core into a bundled board

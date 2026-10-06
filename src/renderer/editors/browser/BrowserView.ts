@@ -1,6 +1,10 @@
 const { ipcRenderer } = require("electron");
 import { EditorToolbarView } from "../base/EditorToolbarView";
 import { BrowserEditor } from "./BrowserEditor";
+import { capabilities } from "../../api/capabilities";
+import { ui } from "../../api/ui";
+import { certificatesToPem } from "../../api/certificate-view";
+import { errMessage } from "../../../shared/utils";
 import type { BrowserEditorState, BrowserTabData } from "./BrowserEditorModel";
 import { BrowserChannel, type BrowserRegisterRequest, type BrowserSitePermissionEntry, type BrowserSitePermissionKey, type BrowserSitePermissions } from "../../../ipc/browser-ipc";
 import { PageManagerView } from "../../components/page-manager/PageManagerView";
@@ -328,9 +332,12 @@ interface SitePermissionsContentProps {
     permissions: BrowserSitePermissions;
     changed: boolean;
     aiVisionIndicator: AiVisionIndicator;
+    certificateVisible: boolean;
+    certificateHandlerAvailable: boolean;
     onSet: (key: BrowserSitePermissionKey, decision: "allow" | "block") => void;
     onReset: () => void;
     onReload: () => void;
+    onViewCertificate: () => void;
 }
 
 const SITE_PERMISSION_LABELS: Record<string, string> = {
@@ -351,6 +358,9 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
     private readonly contentRoot = document.createElement("div");
     private readonly aiVisionBadge: TagView;
     private aiVisionBadgeTooltip: TooltipAttachment | undefined;
+    private certificateButtonTooltip: TooltipAttachment | undefined;
+    private readonly headerRow = document.createElement("div");
+    private readonly certificateButton: ButtonView;
     private readonly heading = createTextElement("", { size: "md", bold: true });
     private readonly rows = document.createElement("div");
     private readonly reset: ButtonView;
@@ -364,11 +374,16 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.reset = this.child(new ButtonView({ name: "site-permissions-reset", variant: "ghost", size: "sm", children: "Reset permissions", onClick: () => this.props.onReset() }));
         this.reload = this.child(new ButtonView({ name: "site-permissions-reload", variant: "link", size: "sm", children: "Reload", onClick: () => this.props.onReload() }));
         this.aiVisionBadge = this.child(new TagView({ name: "site-permissions-ai-vision-badge", label: "", variant: "outlined", size: "sm" }));
+        this.certificateButton = this.child(new ButtonView({ name: "site-certificate-view", size: "sm", children: "View certificate", onClick: () => this.props.onViewCertificate() }));
     }
 
     protected onMount(): void {
         this.contentRoot.dataset.type = "browser-site-permissions";
-        this.contentRoot.append(this.heading, this.rows, this.reset.root);
+        this.headerRow.dataset.part = "header";
+        this.headerRow.append(this.aiVisionBadge.root, this.certificateButton.root);
+        this.certificateButtonTooltip = attachTooltip(this.certificateButton.root, { content: "" });
+        this.own(() => this.certificateButtonTooltip?.dispose());
+        this.contentRoot.append(this.headerRow, this.heading, this.rows, this.reset.root);
         const reloadRow = document.createElement("div");
         reloadRow.dataset.part = "reload-hint";
         reloadRow.append(this.reloadHint, this.reload.root);
@@ -377,6 +392,7 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.reset.mount();
         this.reload.mount();
         this.aiVisionBadge.mount();
+        this.certificateButton.mount();
         this.aiVisionBadgeTooltip = attachTooltip(this.aiVisionBadge.root, { content: null });
         this.own(() => this.aiVisionBadgeTooltip?.dispose());
         this.sync(this.props);
@@ -391,7 +407,7 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.contentRoot.dataset.changed = props.changed ? "" : "false";
         const indicator = props.aiVisionIndicator;
         if (indicator.source === "none") {
-            this.aiVisionBadge.root.remove();
+            this.aiVisionBadge.root.hidden = true;
         } else {
             const isPage = indicator.source === "page";
             const extensionName = indicator.source === "extension" ? indicator.extensionName : "";
@@ -408,8 +424,19 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
                     ? "This site publishes its own ai-vision model, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page."
                     : `The "${extensionName}" site extension adds an ai-vision model to this site, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page.`,
             });
-            this.contentRoot.insertBefore(this.aiVisionBadge.root, this.heading);
+            this.aiVisionBadge.root.hidden = false;
         }
+        this.headerRow.hidden = indicator.source === "none" && !props.certificateVisible;
+        this.certificateButton.root.hidden = !props.certificateVisible;
+        this.certificateButton.update({
+            name: "site-certificate-view",
+            size: "sm",
+            children: "View certificate",
+            onClick: () => this.props.onViewCertificate(),
+        });
+        this.certificateButtonTooltip?.update({ content: props.certificateHandlerAvailable
+            ? "View the decoded certificate chain for this site"
+            : "Install a certificate viewer board to see the decoded certificate" });
         const entries = props.permissions.entries;
         const entryKeys = new Set(entries.map((entry) => entry.key));
         for (const [key, row] of this.rowViews) {
@@ -480,6 +507,10 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private permissionsData: BrowserSitePermissions = { origin: "", entries: [] };
     private permissionsRegistrationKey = "";
     private permissionsOrigin = "";
+    private permissionsTabId = "";
+    private permissionsUrl = "";
+    private certificateHandlerAvailable = false;
+    private certificateActionBusy = false;
     private permissionsLoadGeneration = 0;
     private spinner: SpinnerView | undefined;
     private dot: DotView | undefined;
@@ -586,7 +617,9 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         if (state.isIncognito) this.startSlot.append(IncognitoIcon.createElement({ color: color.icon.light }));
         if (state.networkLabel) { this.proxyChip.title = `Proxy: ${state.networkLabel} — click for connection info`; this.startSlot.append(this.proxyChip); }
         const registrationKey = `${state.id}/${state.activeTabId}`;
-        const activeUrl = state.tabs.find((tab) => tab.id === state.activeTabId)?.url ?? "";
+        const activeUrl = this.model.tabs.currentUrls.get(state.activeTabId)
+            || state.tabs.find((tab) => tab.id === state.activeTabId)?.url
+            || "";
         let origin = "";
         try {
             const url = new URL(activeUrl);
@@ -607,8 +640,55 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
 
     private readonly toggleSitePermissions = (): void => {
         this.permissionsOpen = !this.permissionsOpen;
-        if (this.permissionsOpen) void this.loadSitePermissions();
+        if (this.permissionsOpen) {
+            const state = this.props.state;
+            const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+            this.permissionsTabId = state.activeTabId;
+            this.permissionsUrl = this.model.tabs.currentUrls.get(state.activeTabId) || active?.url || "";
+            this.certificateHandlerAvailable = capabilities.handlers("certificate.view").length > 0;
+            void this.loadSitePermissions();
+        }
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
+    };
+
+    private readonly viewCertificate = async (): Promise<void> => {
+        if (this.certificateActionBusy) return;
+        this.certificateActionBusy = true;
+        try {
+            const tabId = this.permissionsTabId;
+            const sourceUrl = this.permissionsUrl;
+            const certificate = await this.model.getCertificate(tabId);
+            if (!certificate) {
+                await ui.notify("The certificate for this page is not available yet. Reload the page and try again.", "warning");
+                return;
+            }
+
+            if (!URL.canParse(sourceUrl) || new URL(sourceUrl).origin !== new URL(certificate.url).origin) {
+                await ui.notify("This page changed while the certificate was being read. Reopen the site-info popover and try again.", "warning");
+                return;
+            }
+
+            const title = new URL(sourceUrl).hostname;
+            if (this.certificateHandlerAvailable) {
+                await capabilities.invoke("certificate.view", {
+                    title,
+                    certificates: certificate.certificates,
+                    source: { url: certificate.url },
+                }, { version: 1 });
+            } else {
+                await capabilities.invoke("text.open", {
+                    content: certificatesToPem(certificate.certificates),
+                    language: "plaintext",
+                    title,
+                });
+            }
+            this.permissionsOpen = false;
+            this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
+        } catch (error) {
+            await ui.notify(`Failed to view certificate: ${errMessage(error)}`, "error");
+        } finally {
+            this.certificateActionBusy = false;
+        }
     };
 
     private async loadSitePermissions(): Promise<void> {
@@ -642,7 +722,19 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     };
 
     private sitePermissionsContentProps(): SitePermissionsContentProps {
-        return { permissions: this.permissionsData, changed: this.permissionsChanged, aiVisionIndicator: this.getAiVisionIndicator(this.props.state), onSet: this.setSitePermission, onReset: this.resetSitePermissions, onReload: this.reloadAfterPermissionChange };
+        const certificateVisible = URL.canParse(this.permissionsUrl)
+            && new URL(this.permissionsUrl).protocol === "https:";
+        return {
+            permissions: this.permissionsData,
+            changed: this.permissionsChanged,
+            aiVisionIndicator: this.getAiVisionIndicator(this.props.state),
+            certificateVisible,
+            certificateHandlerAvailable: this.certificateHandlerAvailable,
+            onSet: this.setSitePermission,
+            onReset: this.resetSitePermissions,
+            onReload: this.reloadAfterPermissionChange,
+            onViewCertificate: this.viewCertificate,
+        };
     }
 
     private getAiVisionIndicator(state: BrowserEditorState): AiVisionIndicator {

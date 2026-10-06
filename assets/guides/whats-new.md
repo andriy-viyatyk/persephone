@@ -12,6 +12,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.8 (Upcoming)
 
+### New Features
+
+- **View HTTPS certificates in Browser:** open the site-info popover and choose **View certificate**.
+  Install the **Certificate Viewer** board from the Boards catalog to see decoded certificate details;
+  without it, Persephone opens the certificate chain as PEM text.
+
 ### Breaking Changes
 
 - **REST Client is now a bundled board:** scripts that used `pages[i].editor.id === "rest-client"`

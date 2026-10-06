@@ -71,6 +71,21 @@ discovery is exposed in `CapabilityInfo`; renderer `handlers(id, { representatio
 that field. Board authors using this manifest field must set `minBridgeVersion: "1.21.0"`, the
 bridge version that introduced the additive manifest and discovery behavior.
 
+## Well-known capability: `certificate.view`
+
+Persephone defines `certificate.view` version 1 for a board that renders a Chromium TLS certificate
+chain. Trusted and enabled bundled boards claim it with an ordinary manifest declaration such as
+`{ "id": "certificate.view", "version": 1, "alwaysOpensNewPage": true, "title": "View certificate" }`.
+The invocation payload is `{ title: string, certificates: string[], source?: { url: string } }`:
+`title` is a non-empty requested page title (the browser supplies the page hostname),
+`certificates` is a non-empty leaf-first array of canonical base64 DER strings, and `source.url` is
+the HTTPS page URL when known. The platform validates the object and optional source shape, each
+canonical base64 value, the DER sequence tag (`0x30`), and a 256 KiB maximum total decoded chain
+before resolving any handler. Invalid payloads reject with a typed `rejected` capability error.
+When the winning handler needs a new page, the page uses the invocation's requested title for both
+bundled content-host boards and ordinary trusted or bundled boards; the board manifest name must
+not replace that request title. This contract requires no board bridge version change.
+
 ## Request routing
 
 Resolution and service happen in the caller's renderer window. For a board handler, the transport

@@ -5,6 +5,7 @@ import type {
     CapabilityInfo,
     CapabilityInvokeOptions,
     CapabilityPageResult,
+    CertificateViewPayload,
     DiagramEditResult,
     ContentRepresentation,
     ICapabilities,
@@ -19,6 +20,7 @@ import type {
     CapabilityRegistration,
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError, capabilityBus } from "./capability-bus";
+import { validateCertificateViewPayload } from "./certificate-view";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
@@ -307,6 +309,7 @@ class Capabilities implements ICapabilities {
     invoke(id: "content.view", payload: { representation: ContentRepresentation; content: string; language: string; title: string }): Promise<CapabilityPageResult>;
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
     invoke(id: "diagram.edit", payload: { source: string; title: string }): Promise<DiagramEditResult>;
+    invoke(id: "certificate.view", payload: CertificateViewPayload): Promise<unknown>;
     invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
     async invoke(id: CapabilityId, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown> {
         const invocation = await invokeCapabilityOutcome(id, payload, opts);
@@ -350,6 +353,7 @@ export async function invokeCapabilityOutcome(
         const values = parsed.bareId === "content.view"
             ? asRecord(payload, parsed.bareId)
             : undefined;
+        if (parsed.bareId === "certificate.view") validateCertificateViewPayload(payload);
         const representation = values?.representation;
         if (parsed.bareId === "content.view" && (
             typeof representation !== "string"

@@ -398,6 +398,14 @@ breaks board-to-board ties. A caller may pin a major version with `invoke("demo.
 `representation` is an open string. `content.view` requires a non-empty value; use one declaration
 per supported format and set `minBridgeVersion: "1.21.0"`. Other capability ids may omit it.
 
+Well-known platform capabilities include `http.request.open` (open a REST request collection),
+`image.edit` (open an image in an editor), and `certificate.view` (render a site's TLS certificate
+chain). A board may claim `certificate.view` with a normal manifest declaration and handle v1
+requests through `persephone.intent.onRequest()`. Its payload is `{ title, certificates, source? }`:
+`title` is the hostname, `certificates` is a leaf-first array of base64 DER strings, and optional
+`source.url` identifies the HTTPS page. Persephone validates the shape and limits decoded DER to
+256 KiB before dispatch.
+
 The winning board is served in the caller's window. Persephone reuses an already-open handler page
 there or opens one there and delivers the initial request in its handshake. Later requests to that
 page use the host-frame channel. This applies to any trusted board that declares the winning

@@ -388,6 +388,24 @@ const opened = await app.capabilities.invoke("text.open", {
 console.log(opened.pageId);
 ```
 
+Well-known capability ids include `http.request.open` (open a REST request collection), `image.edit`
+(open an image in an editor), and `certificate.view` (render a site's certificate chain). A
+`certificate.view` v1 payload has a hostname `title`, a non-empty leaf-first `certificates` array
+of base64 DER strings, and optional `source: { url }`. Persephone validates the certificate data
+and limits decoded chains to 256 KiB before invoking a handler:
+
+```javascript
+// Assuming pages[0] is a browser page.
+const certificate = await pages[0].editor.getCertificate();
+if (certificate) {
+    await app.capabilities.invoke("certificate.view", {
+        title: new URL(certificate.url).hostname,
+        certificates: certificate.certificates,
+        source: { url: certificate.url },
+    }, { version: 1 });
+}
+```
+
 ### Methods
 
 | Method | Returns | Description |

@@ -638,6 +638,13 @@ handler page.
 one entry for every format the board supports and set `minBridgeVersion` to `1.21.0`. Other
 capability ids may omit it.
 
+Well-known platform capabilities include `http.request.open` (open a REST request collection),
+`image.edit` (open an image in an editor), and `certificate.view` (render a site's TLS certificate
+chain). A board may declare `certificate.view` normally and handle v1 requests through
+`persephone.intent.onRequest()`. The payload is `{ title, certificates, source? }`, where
+`certificates` is a leaf-first array of base64 DER strings and optional `source.url` is the HTTPS
+page URL. Persephone validates the payload and limits decoded DER to 256 KiB before dispatch.
+
 The winning declaration is served in the caller's window. An existing handler page there is reused;
 otherwise the platform opens one there and sends the first request in the handshake. Later requests
 use the host-frame channel. The handler receives a structured value and must always settle it:

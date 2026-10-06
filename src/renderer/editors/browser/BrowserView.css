@@ -22,6 +22,10 @@
     .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="extension"],
     .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="extension"]:hover { color: var(--color-primary-text); }
     [data-type="browser-site-permissions"] { display: flex; flex-direction: column; gap: var(--space-sm, 4px); padding: var(--space-md, 8px) var(--space-lg, 12px); width: max-content; max-width: calc(100vw - var(--space-xl, 16px) - var(--space-xl, 16px)); }
+    [data-type="browser-site-permissions"] [data-part="header"] { display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg, 12px); }
+    [data-type="browser-site-permissions"] [data-part="header"][hidden] { display: none; }
+    [data-type="browser-site-permissions"] [data-name="site-permissions-ai-vision-badge"][hidden],
+    [data-type="browser-site-permissions"] [data-name="site-certificate-view"][hidden] { display: none; }
     [data-type="browser-site-permissions"] > [data-type="text"] { overflow-wrap: anywhere; }
     /* An outlined pill in the source colour (green: the page's own model, blue: a site extension's). */
     /* The theme's success/primary bg and border tokens are not badge colours, so the border takes the text colour. */
