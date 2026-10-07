@@ -12,7 +12,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.9 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Browser find-in-page keeps searches responsive:** typing updates the current search without
+  freezing the app, and Enter/F3 or Shift+Enter/Shift+F3 moves through matches in the same search.
+- **Boards can open web links without external-launch permission:** when link behavior is set to
+  the OS default browser, HTTP(S) links from boards without `openExternal` open in an internal
+  Browser tab and are noted in the board log. Other external schemes remain blocked.
 
 ---
 

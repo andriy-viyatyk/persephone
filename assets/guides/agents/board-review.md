@@ -97,7 +97,7 @@ The permission lines use the approved wording:
 | `fileSystem: false` | `readFile()` can read only the exact currently hosted document; other reads, writes, and dialogs are denied. Own `board://` assets still work. |
 | `fileSystem: "board"` | Board folder and files picked in its dialogs. “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
 | `fileSystem: "full"` | Any accessible file. “Read and write any file you can access.” — **Full access** |
-| `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Internal Persephone links still work. |
+| `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Internal Persephone links still work. Without this permission, an HTTP(S) link using the OS-default-browser setting falls back to an internal Browser tab and is noted in the board log; other external schemes are blocked. |
 | `appScripting: true` | `persephone.call`, capabilities, app scripts/agent tools. “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
 | `network: false` | Denies `persephone.fetch()`. |
 | `network: "internet"` | Public services only. “Connect to public internet services; local and private network addresses are blocked.” |

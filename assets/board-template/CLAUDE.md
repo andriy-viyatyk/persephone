@@ -188,7 +188,11 @@ so it can do anything you can: read and write your files, run programs, and use 
 service runs only if the old array contains `"service"`. Full access secondary text is “Can reach
 everything your user account can.” `fileSystem: false` blocks writes, dialogs, and other bridge file reads; `readFile()` may read only the exact currently hosted local document (bridge `1.32.0+`). The board's own `board://` assets remain available. Use native
 `fetch("./data.json")` or `fetch("board://<host>/data.json")` for own files; `persephone.fetch()`
-needs `network`. Opening links inside Persephone needs no `openExternal`.
+needs `network`. Opening links inside Persephone needs no `openExternal`. When the app is
+configured to use the OS default browser, an HTTP(S) link opened by a board without
+`openExternal` falls back to an internal Browser tab and is noted in the board log; other
+external schemes remain blocked. Grant `openExternal` when the board must launch links outside
+Persephone.
 
 If a call rejects with exactly `permission-denied: "<flag>" is not enabled in board-manifest.json`,
 inspect the call and add only its required flag or level. Added grants prompt for approval on the

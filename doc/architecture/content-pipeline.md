@@ -131,6 +131,11 @@ Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `reso
 
 `openLinkInBrowser()` is the single browser-routing path shared by both resolvers, so `target: "browser"` / `browserMode` works identically for local files and remote URLs. It honors `browserPageId` (route to a specific browser page), `browserMode` (`os-default` → `shell.openExternal`; `internal` / `profile:<name>` / `incognito` → `pagesModel.lifecycle.openUrlInBrowserTab()`), and otherwise the `link-open-behavior` setting.
 
+When an OS-default launch originates from a board, the board's `openExternal` permission gates
+launching outside Persephone. Without that permission, HTTP(S) links open in an internal Browser
+tab and an info entry is appended to the board log; other schemes remain blocked and are logged as
+warnings.
+
 The `resolveUrlToPipeDescriptor()` utility is also used by tree providers to create pipes from URLs without going through the event channel system.
 
 ### Layer 3 — Open Handler

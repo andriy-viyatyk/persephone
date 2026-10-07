@@ -183,6 +183,11 @@ The permission list in the trust dialog uses these meanings:
 | `camera`, `microphone`, `geolocation` | Use your camera or microphone, or read this device's location. |
 | `notifications` | Show desktop notifications. |
 
+When **Settings → Link Open Behavior** is set to the OS default browser, an HTTP(S) link opened by a
+board without `openExternal` opens in Persephone's internal Browser tab instead, with an info line
+in the board log. Other external schemes remain blocked and show the existing warning. Grant
+`openExternal` when a board needs to open links in the OS browser or another app.
+
 `fileSystem: false` still allows a simple board to read the exact document currently open in that
 board. It cannot use this exception to read another path or write files. Boards can copy to the
 clipboard and show in-board messages without asking for these permissions; `clipboardRead` only

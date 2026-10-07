@@ -206,7 +206,9 @@ export class BrowserWebviewModel {
         const webview = this.getActiveWebview();
         if (!webview) return;
         if (text) {
-            webview.findInPage(text);
+            // Electron's `findNext` means "begin a new find session" — true for changed text,
+            // false for stepping through the matches of the current one.
+            webview.findInPage(text, { findNext: true });
         } else {
             webview.stopFindInPage("clearSelection");
             this.model.state.update((s) => {
@@ -220,14 +222,14 @@ export class BrowserWebviewModel {
         const { findText } = this.model.state.get();
         if (!findText) return;
         const webview = this.getActiveWebview();
-        webview?.findInPage(findText, { forward: true, findNext: true });
+        webview?.findInPage(findText, { forward: true, findNext: false });
     };
 
     findPrev = () => {
         const { findText } = this.model.state.get();
         if (!findText) return;
         const webview = this.getActiveWebview();
-        webview?.findInPage(findText, { forward: false, findNext: true });
+        webview?.findInPage(findText, { forward: false, findNext: false });
     };
 
     handleFoundInPage = (result: Electron.FoundInPageResult) => {

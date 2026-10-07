@@ -108,9 +108,7 @@ export async function openLinkInBrowser(data: ILinkData): Promise<void> {
     }
 
     if (browserMode === "os-default") {
-        if (!(await allowBoardExternalLaunch(data))) return;
-        const { shell } = await import("../api/shell");
-        shell.openExternal(data.url);
+        await launchExternal(data);
     } else if (browserMode === "incognito") {
         const { pagesModel } = await import("../api/pages");
         await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { incognito: true });
@@ -128,28 +126,48 @@ export async function openLinkInBrowser(data: ILinkData): Promise<void> {
             const { pagesModel } = await import("../api/pages");
             await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { external: openInBrowser });
         } else {
-            if (!(await allowBoardExternalLaunch(data))) return;
-            const { shell } = await import("../api/shell");
-            shell.openExternal(data.url);
+            await launchExternal(data);
         }
     }
 }
 
-async function allowBoardExternalLaunch(data: ILinkData): Promise<boolean> {
+/** Open the link in the OS default handler, subject to the source board's permission. */
+async function launchExternal(data: ILinkData): Promise<void> {
+    const decision = await externalLaunchDecision(data);
+    if (decision === "deny") return;
+    if (decision === "internal") {
+        const { pagesModel } = await import("../api/pages");
+        await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { external: true });
+        return;
+    }
+    const { shell } = await import("../api/shell");
+    shell.openExternal(data.url);
+}
+
+/**
+ * A board without the `openExternal` permission cannot hand a link to another app. A web
+ * link still opens, in an internal Browser tab, since that stays inside Persephone; any
+ * other scheme is blocked. Both outcomes are noted in the board's log.
+ */
+async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "internal" | "deny"> {
     if (!data.boardRoot) {
-        if (!data.unattributedPopup) return true;
+        if (!data.unattributedPopup) return "allow";
         const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
         return await showConfirmationDialog({
             title: "Open external link?",
             message: `This popup has no trusted board origin. Open ${data.url} outside Persephone?`,
             buttons: ["Open", "Cancel"],
-        }) === "Open";
+        }) === "Open" ? "allow" : "deny";
     }
     const { boardTrust } = await import("../api/board-trust");
-    if (await boardTrust.allows(data.boardRoot, "openExternal")) return true;
+    if (await boardTrust.allows(data.boardRoot, "openExternal")) return "allow";
+    const isWebLink = /^https?:\/\//i.test(data.url ?? "");
     const { api } = await import("../../ipc/renderer/api");
-    void api.appendBoardLog(data.boardRoot, "warning", `Blocked external launch: ${data.url}`).catch(() => {});
-    return false;
+    const message = isWebLink
+        ? `"openExternal" is not enabled in board-manifest.json; opened in an internal Browser tab: ${data.url}`
+        : `Blocked external launch: ${data.url}`;
+    void api.appendBoardLog(data.boardRoot, isWebLink ? "info" : "warning", message).catch(() => {});
+    return isWebLink ? "internal" : "deny";
 }
 
 const httpContentExtensions = new Set([
