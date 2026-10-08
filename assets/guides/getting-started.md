@@ -113,18 +113,18 @@ The About page also shows:
 
 ## Changing the Theme
 
-persephone includes 9 color themes (6 dark, 3 light) inspired by VSCode:
+persephone includes 11 color themes (7 dark, 4 light) inspired by VSCode:
 
 1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
 2. Click the Settings button (gear icon) to open the Settings page
 3. Click a theme card to switch instantly
 
-**Dark themes:** Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue
-**Light themes:** Light Modern, Solarized Light, Quiet Light
+**Dark themes:** Persephone, Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue
+**Light themes:** Persephone Light, Light Modern, Solarized Light, Quiet Light
 
 You can also cycle through themes with `Ctrl+Alt+]` (next) and `Ctrl+Alt+[` (previous).
 
-Your theme preference is saved automatically and applied on next launch.
+Your theme preference is saved automatically and applied on next launch. New settings start with the Persephone theme; a valid theme already saved in your settings continues to be used.
 
 The Settings page also has a "View Settings File" button to open the raw `appSettings.json` for manual editing (`%APPDATA%\persephone\data\appSettings.json`). Edits to the file — made by hand, by a script, or by an AI agent — take effect immediately, with no restart needed, including settings that start or stop something (the MCP server, Mneme). The file carries a header comment plus a per-setting comment (accepted values, default, and any gotcha — for example, changing a port only moves a running server if you also toggle the feature off and on). Persephone rewrites these comments on every save, so they always match the current version.
 

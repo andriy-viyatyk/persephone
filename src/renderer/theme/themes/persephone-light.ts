@@ -1,13 +1,13 @@
-// Light companion to the Persephone theme: the same icon and banner colors on a pale mint ground.
+// Light companion to the Persephone theme: the same icon and banner colors on a pale slate ground.
 
 import { ThemeDefinition } from "./types";
 
 // Persephone Light palette reference:
-// bg:       #fbfdfc  bg-dark:  #eef6f1  bg-light: #e4f0e9
-// fg:       #2c3e50 (the icon's circle)  fg-light: #5d7466  fg-bright:#10201a
+// bg:       #fbfcfd  bg-dark:  #ecf0f1 (icon petal, Flat UI "clouds")  bg-light: #e3e9ed
+// fg:       #2c3e50 (the icon's circle)  fg-light: #5d6d7e  fg-bright:#151f29 (dark theme bg-dark)
 // accent:   #1e8449 (the banner's "AI agents" green, deepened to read on white)
-// stamens:  #9a6700 / #c0611a (darkened for contrast)  web: #2874a6 (graph nodes)
-// success:  #4d7c0f (olive, kept apart from the accent)  border: #d3e4da
+// stamens:  #9a6700 / #c0611a (darkened for contrast)  web: #2874a6 (graph nodes), links #1f6fa8
+// success:  #4d7c0f (olive, kept apart from the accent)  border: #d0d9e0
 
 export const persephoneLight: ThemeDefinition = {
     id: "persephone-light",
@@ -15,14 +15,14 @@ export const persephoneLight: ThemeDefinition = {
     isDark: false,
     colors: {
         // background
-        "--color-bg-default": "#fbfdfc",
-        "--color-bg-dark": "#eef6f1",
-        "--color-bg-light": "#e4f0e9",
+        "--color-bg-default": "#fbfcfd",
+        "--color-bg-dark": "#ecf0f1",
+        "--color-bg-light": "#e3e9ed",
         "--color-bg-selection": "#1e8449",
         "--color-bg-tree-selection": "#1e8449",
-        "--color-bg-scrollbar": "#e4f0e9",
+        "--color-bg-scrollbar": "#e3e9ed",
         "--color-bg-scrollbar-thumb": "rgba(44, 62, 80, 0.3)",
-        "--color-bg-message": "#e4f0e9",
+        "--color-bg-message": "#e3e9ed",
         "--color-bg-overlay": "rgba(255, 255, 255, 0.8)",
         "--color-bg-overlay-hover": "rgba(255, 255, 255, 0.9)",
         "--color-bg-webview": "#ffffff",
@@ -31,41 +31,42 @@ export const persephoneLight: ThemeDefinition = {
         // text
         "--color-text-default": "#2c3e50",
         "--color-text-dark": "#2c3e50",
-        "--color-text-light": "#5d7466",
+        "--color-text-light": "#5d6d7e",
         "--color-text-selection": "#ffffff",
-        "--color-text-strong": "#10201a",
+        "--color-text-strong": "#151f29",
 
         // icon
         "--color-icon-default": "#2c3e50",
         "--color-icon-dark": "#2c3e50",
-        "--color-icon-light": "#5d7466",
-        "--color-icon-disabled": "#b7c9be",
+        "--color-icon-light": "#5d6d7e",
+        "--color-icon-disabled": "#b4c0ca",
         "--color-icon-selection": "#ffffff",
         "--color-icon-active": "#1e8449",
 
         // border
         "--color-border-active": "#1e8449",
-        "--color-border-default": "#d3e4da",
-        "--color-border-light": "#e6f0ea",
+        "--color-border-default": "#d0d9e0",
+        "--color-border-light": "#e6ecf0",
 
         // shadow
-        "--color-shadow-default": "rgba(16, 32, 26, 0.16)",
+        "--color-shadow-default": "rgba(21, 31, 41, 0.16)",
 
         // grid
-        "--color-grid-header-bg": "#eef6f1",
+        "--color-grid-header-bg": "#ecf0f1",
         "--color-grid-header-color": "#2c3e50",
-        "--color-grid-data-bg": "#fbfdfc",
-        "--color-grid-border": "#d3e4da",
+        "--color-grid-data-bg": "#fbfcfd",
+        "--color-grid-border": "#d0d9e0",
         "--color-grid-data-color": "#2c3e50",
         "--color-grid-sel-selected": "rgba(30, 132, 73, 0.15)",
         "--color-grid-sel-hovered": "rgba(30, 132, 73, 0.08)",
         "--color-grid-sel-border": "#1e8449",
-        "--color-grid-sel-border-light": "#d3e4da",
+        "--color-grid-sel-border-light": "#d0d9e0",
 
         // misc
         // misc.blue is the app-wide accent, so it takes the accent green (see persephone.ts).
         "--color-misc-blue": "#1e8449",
-        "--color-misc-link": "#145a32",
+        // Links stay blue, as everywhere else: the banner's "Web pages" blue, darkened for white.
+        "--color-misc-link": "#1f6fa8",
         "--color-misc-green": "#4d7c0f",
         "--color-misc-red": "#c0392b",
         "--color-misc-yellow": "#9a6700",
@@ -105,16 +106,16 @@ export const persephoneLight: ThemeDefinition = {
         "--color-minimap-active-bg": "rgba(30, 132, 73, 0.3)",
 
         // graph
-        "--color-graph-bg": "#fbfdfc",
+        "--color-graph-bg": "#fbfcfd",
         "--color-graph-node-default": "#2874a6",
         "--color-graph-node-highlight": "#1e8449",
         "--color-graph-node-selected": "#c0611a",
         "--color-graph-border-default": "#2874a6",
         "--color-graph-border-highlight": "#145a32",
         "--color-graph-border-selected": "#c0611a",
-        "--color-graph-link-default": "#a9bdb1",
+        "--color-graph-link-default": "#aab7c4",
         "--color-graph-link-selected": "#c0611a",
-        "--color-graph-label-bg": "rgba(228, 240, 233, 0.85)",
+        "--color-graph-label-bg": "rgba(227, 233, 237, 0.85)",
         "--color-graph-label-text": "#2c3e50",
         "--color-graph-group-border": "#1e8449",
         "--color-graph-node-special": "#7c3aed",
@@ -123,13 +124,13 @@ export const persephoneLight: ThemeDefinition = {
     monaco: {
         base: "vs",
         colors: {
-            "editor.background": "#fbfdfc",
-            "menu.background": "#fbfdfc",
+            "editor.background": "#fbfcfd",
+            "menu.background": "#fbfcfd",
             "menu.foreground": "#2c3e50",
             "menu.selectionBackground": "#1e8449",
             "menu.selectionForeground": "#ffffff",
-            "menu.separatorBackground": "#d3e4da",
-            "menu.border": "#c2d6ca",
+            "menu.separatorBackground": "#d0d9e0",
+            "menu.border": "#c5d0d8",
         },
     },
 };

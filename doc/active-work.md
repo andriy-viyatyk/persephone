@@ -11,7 +11,7 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 ## Active
 
-- [ ] US-1634: Persephone and Persephone Light themes, from the app icon and r/PersephoneNotepad banner colors
+*(none)*
 
 ## Planned
 

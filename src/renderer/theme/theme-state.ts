@@ -11,6 +11,6 @@ export interface ThemeState {
  * to the same synchronous notification path as other renderer views.
  */
 export const themeState = new TOneState<ThemeState>({
-    id: "default-dark",
+    id: "persephone",
     isDark: true,
 });

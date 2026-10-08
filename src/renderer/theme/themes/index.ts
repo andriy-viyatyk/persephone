@@ -48,7 +48,7 @@ function readStartupThemeId(): string {
     } catch {
         // File doesn't exist yet or parse error — use default
     }
-    return defaultDark.id;
+    return persephone.id;
 }
 
 export function getAvailableThemes(): ThemeDefinition[] {

@@ -12,6 +12,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.9 (Upcoming)
 
+### New Features
+
+- **Persephone themes and a new starting theme:** Choose the dark **Persephone** theme or the light
+  **Persephone Light** theme. New settings use Persephone by default; an existing valid saved theme
+  remains selected.
+
 ### Bug Fixes
 
 - **Browser find-in-page keeps searches responsive:** typing updates the current search without

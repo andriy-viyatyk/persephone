@@ -311,10 +311,10 @@ See [trait-system.md](./trait-system.md).
 
 - CSS Custom Properties — `color.ts` returns `var()` references, and theme definitions set actual values on `:root`
 - Theme-independent design tokens are emitted as `--space-*`, `--gap-*`, `--radius-*`, `--size-*`, and `--font-*` variables on `:root`; numeric exports remain available for JavaScript calculations
-- Theme definitions in `src/renderer/theme/themes/` (one file per theme, 9 themes)
+- Theme definitions in `src/renderer/theme/themes/` (one file per theme, 11 themes: 7 dark and 4 light)
 - `themeState` in `src/renderer/theme/theme-state.ts` is the shared `{ id, isDark }` snapshot; Monaco, canvas, webview, and other native consumers use `get()` and `subscribe()`
 - `resolveColor()` in `src/renderer/theme/themes/index.ts` is the single JavaScript path for resolving a theme color to a concrete value; CSS continues to use `var(--color-...)`
-- Startup: synchronous `fs.readFileSync` + inline `<script>` in `index.html` for flash-free startup
+- Startup: synchronous `fs.readFileSync` + inline `<script>` in `index.html` for flash-free startup. A saved theme is applied immediately; fresh or invalid settings fall back to Persephone, the default for new settings files.
 
 ### 8. Mneme Knowledge-Base Service
 

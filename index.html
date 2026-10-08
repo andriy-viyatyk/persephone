@@ -6,9 +6,9 @@
   <meta http-equiv="Content-Security-Policy"
     content="script-src 'self' 'inline-script-hashes' 'unsafe-eval' file: blob:; worker-src 'self' blob:; child-src 'self' blob: board: html-preview:; object-src 'none'; base-uri 'self';" />
   <title>Persephone</title>
-  <style>
+  <style id="startup-background">
     body {
-      background-color: #1f1f1f;
+      background-color: #1b2935;
     }
   </style>
   <script>
@@ -25,11 +25,11 @@
         // Theme definition files map --color-bg-default to the editor background.
         // We inline a minimal lookup to avoid importing the full theme module.
         const bgs = {
-          "default-dark": "#1f1f1f", "persephone": "#10201a", "solarized-dark": "#002b36", "monokai": "#272822",
+          "default-dark": "#1f1f1f", "persephone": "#1b2935", "solarized-dark": "#002b36", "monokai": "#272822",
           "abyss": "#000c18", "red": "#390000", "tomorrow-night-blue": "#002451",
-          "light-modern": "#FFFFFF", "persephone-light": "#fbfdfc","solarized-light": "#FDF6E3", "quiet-light": "#F5F5F5"
+          "light-modern": "#FFFFFF", "persephone-light": "#fbfcfd", "solarized-light": "#FDF6E3", "quiet-light": "#F5F5F5"
         };
-        if (bgs[t]) document.querySelector("style").textContent = "body{background-color:" + bgs[t] + "}";
+        if (bgs[t]) document.getElementById("startup-background").textContent = "body{background-color:" + bgs[t] + "}";
       }
     } catch (e) { /* use default */ }
   </script>

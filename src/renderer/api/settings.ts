@@ -106,7 +106,7 @@ const settingsFileHeader = [
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tab-recent-languages":
         "Languages recently chosen from a tab's language menu, most recent first.\nMaintained automatically; they sort to the top of that menu. Safe to trim or clear.",
-    "theme": "Application color theme. Applies as soon as this file is saved.\nOne of: default-dark, persephone, solarized-dark, monokai, abyss, red,\ntomorrow-night-blue, light-modern, persephone-light, solarized-light, quiet-light. Default: default-dark.",
+    "theme": "Application color theme. Applies as soon as this file is saved.\nOne of: default-dark, persephone, solarized-dark, monokai, abyss, red,\ntomorrow-night-blue, light-modern, persephone-light, solarized-light, quiet-light. Default: persephone.",
     "search-extensions": "File extensions to include in file content search.\nAdd or remove extensions to customize which files are searchable.",
     "search-exclude": "Folders and globs always skipped by file content search.\nA plain name skips any folder with that name; a glob (with / * ?) is matched against the path relative to the search root.\nNever applied to the search root itself — searching inside node_modules works, while nested ones are still skipped.",
     "search-max-file-size": "Maximum file size (in bytes) for file content search.\nFiles larger than this are skipped. Default: 1048576 (1 MB).",
@@ -155,7 +155,7 @@ export const DEFAULT_PINNED_EDITORS: readonly string[] = [
 const defaultAppSettingsState = {
     settings: {
         "tab-recent-languages": ["plaintext"] as string[],
-        "theme": "default-dark",
+        "theme": "persephone",
         "search-extensions": defaultSearchableExtensions as string[],
         "search-exclude": defaultExcludePatterns as string[],
         "search-max-file-size": defaultMaxFileSize,

@@ -97,7 +97,7 @@ its own effective values through `persephone.settings.get(id)` and
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `theme` | `string` | `"default-dark"` | Color theme name |
+| `theme` | `string` | `"persephone"` | Color theme name |
 | `mcp.enabled` | `boolean` | `false` | Enable the MCP HTTP server for AI agent integration. When `true`, external tools (e.g., Claude Desktop, Claude Code, ChatGPT) can connect to persephone and run scripts, read content, and list open tabs. The server listens on `http://127.0.0.1:{mcp.port}/mcp`. See [What's New](../../whats-new.md) for details. |
 | `mcp.port` | `number` | `7865` | Port for the MCP HTTP server. The server URL will be `http://127.0.0.1:{port}/mcp`. Changing this setting requires toggling `mcp.enabled` off and on to take effect. |
 | `main.scripting.enabled` | `boolean` | `false` in packaged builds | Allow the MCP `call` tool to run code in Persephone's main process. This can freeze the app; enable it only for trusted MCP clients. Development builds enable it by default. |

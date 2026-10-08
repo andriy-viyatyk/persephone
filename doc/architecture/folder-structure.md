@@ -902,7 +902,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── root.css            # Static #root geometry, before renderer mount
 │   ├── theme-state.ts      # Shared active-theme snapshot and subscriptions
 │   ├── token-vars.ts       # App token CSS-variable generation and installation
-│   └── themes/             # Theme definitions and color resolution (9 themes)
+│   └── themes/             # Theme definitions and color resolution (11 themes: 7 dark, 4 light)
 │
 ├── types/                  # Global Type Declarations
 │   ├── window.d.ts         # Window interface extension
