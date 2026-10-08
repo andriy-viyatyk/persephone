@@ -25,6 +25,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Boards can open web links without external-launch permission:** when link behavior is set to
   the OS default browser, HTTP(S) links from boards without `openExternal` open in an internal
   Browser tab and are noted in the board log. Other external schemes remain blocked.
+- **Lists and trees fit their scrollbar right away:** when expanding or collapsing items in Explorer
+  (or any list or grid) shows or hides the scrollbar, the rows and the selection resize at once
+  instead of on the next mouse move.
 
 ---
 
