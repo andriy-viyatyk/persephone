@@ -1,6 +1,7 @@
 import { api } from "../../../ipc/renderer/api";
 import { ThemeDefinition } from "./types";
 import { defaultDark } from "./default-dark";
+import { persephone } from "./persephone";
 import { solarizedDark } from "./solarized-dark";
 import { monokai } from "./monokai";
 import { abyss } from "./abyss";
@@ -9,6 +10,7 @@ import { tomorrowNightBlue } from "./tomorrow-night-blue";
 import { lightModern } from "./light-modern";
 import { solarizedLight } from "./solarized-light";
 import { quietLight } from "./quiet-light";
+import { persephoneLight } from "./persephone-light";
 import { fpJoin } from "../../core/utils/file-path";
 import { installAppTokenVars } from "../token-vars";
 import { installPVarBridge } from "../p-vars";
@@ -16,12 +18,14 @@ import { themeState } from "../theme-state";
 
 const themes: ThemeDefinition[] = [
     defaultDark,
+    persephone,
     solarizedDark,
     monokai,
     abyss,
     red,
     tomorrowNightBlue,
     lightModern,
+    persephoneLight,
     solarizedLight,
     quietLight,
 ];

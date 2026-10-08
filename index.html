@@ -25,9 +25,9 @@
         // Theme definition files map --color-bg-default to the editor background.
         // We inline a minimal lookup to avoid importing the full theme module.
         const bgs = {
-          "default-dark": "#1f1f1f", "solarized-dark": "#002b36", "monokai": "#272822",
+          "default-dark": "#1f1f1f", "persephone": "#10201a", "solarized-dark": "#002b36", "monokai": "#272822",
           "abyss": "#000c18", "red": "#390000", "tomorrow-night-blue": "#002451",
-          "light-modern": "#FFFFFF", "solarized-light": "#FDF6E3", "quiet-light": "#F5F5F5"
+          "light-modern": "#FFFFFF", "persephone-light": "#fbfdfc","solarized-light": "#FDF6E3", "quiet-light": "#F5F5F5"
         };
         if (bgs[t]) document.querySelector("style").textContent = "body{background-color:" + bgs[t] + "}";
       }
