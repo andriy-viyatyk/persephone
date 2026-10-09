@@ -106,7 +106,10 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
   a menu item or button by id *or* displayed label. This is done before any string is translated.
 - **D5 — Switching language reloads the windows.** Views are `VanillaView`s that build their DOM once;
   making every view re-render on a language change would touch every view for a rare action. The
-  Settings picker applies the language and offers "Reload now". Startup reads the setting
+  Settings picker saves the language and reloads every window at once, without asking (user
+  decision, 2026-10-10): each window saves its pages first and the main process keeps running, so
+  pages come back as they were. A change made elsewhere (script, MCP, editing `appSettings.json`)
+  does not reload; it applies on the next reload. Startup reads the setting
   synchronously, like `readStartupThemeId()`, so nothing paints in the old language.
 - **D6 — Default is the OS language.** Setting `language`: `"auto"` (default; Electron's
   `app.getPreferredSystemLanguages()` matched against available packs, else English) or a BCP-47

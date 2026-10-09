@@ -9,12 +9,8 @@ import type { LanguagePack } from "../../../../shared/i18n/pack";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { showConfirmationDialog } from "../../../ui/dialogs/ConfirmationDialog";
 import { createSectionRoot, panel, text } from "./settings-native";
 import "../../../uikit/Select/Select.css";
-
-const RELOAD_NOW_ID = "reload-now";
-const LATER_ID = "later";
 
 interface LanguageOption extends IListBoxItem {
     readonly nativeName: string;
@@ -112,7 +108,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
     protected onMount(): void {
         this.root.append(
             panel({ paddingBottom: "lg" }, text("Language", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Choose the language used by Persephone. Changes apply after reloading windows.", { color: "light", size: "xs" })),
+            panel({ paddingBottom: "md" }, text("Choose the language used by Persephone. Choosing one reloads the windows; open pages are kept.", { color: "light", size: "xs" })),
         );
         this.select = this.child(new SelectView(this.selectProps()));
         this.root.append(panel({ maxWidth: 420, paddingBottom: "sm" }, this.select.root));
@@ -174,15 +170,9 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
         try {
             settings.set("language", value);
             await flushSettingsSave();
-            const choice = await showConfirmationDialog({
-                title: "Reload Persephone",
-                message: "The language changes after reloading windows.",
-                buttons: [
-                    { id: RELOAD_NOW_ID, label: "Reload now" },
-                    { id: LATER_ID, label: "Later" },
-                ],
-            });
-            if (choice === RELOAD_NOW_ID) await api.reloadAllWindows();
+            // Reload at once: each window saves its pages first (saveWindowStateForShutdown),
+            // the main process keeps running, and the pages are restored after the reload.
+            await api.reloadAllWindows();
         } catch (error: unknown) {
             ui.notify(errMessage(error, "Could not apply the language setting."), "error");
         } finally {

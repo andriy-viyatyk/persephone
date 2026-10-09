@@ -143,7 +143,7 @@ task starts.
 - `language` setting (`"auto"` | BCP-47 code) in `api/settings.ts`; `"auto"` matches
   `app.getPreferredSystemLanguages()` exact → base → English.
 - Settings section: languages by native and English name with completeness percentage; on change,
-  "Reload now / Later"; reload covers every window.
+  every window reloads at once without a prompt (user decision 2026-10-10); pages are saved first.
 - Main process reads the same setting for the tray menu and the unsaved-changes box.
 - `app.settings.language` in the script API types; ai-vision settings namespace lists it.
 - **Acceptance:** switching to `en-XA` and reloading shows the Settings page and dialogs in the

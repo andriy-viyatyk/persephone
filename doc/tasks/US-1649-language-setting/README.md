@@ -75,6 +75,13 @@ The ai-vision Settings namespace builds its setting rows from `SETTINGS_CATALOG`
    - Main tray labels and the unsaved-navigation confirmation follow the latest renderer-reported locale; a normal reload-all makes every window report the same resolved locale. The browser confirmation still chooses `Leave` by button index after translation.
    - In two open windows, edit an untitled page less than one second before choosing `Reload now`; confirm the edit survives in the initiating window and in the second window after both reload.
 
+## Follow-up (2026-10-10, user decision)
+
+The `Reload now` / `Later` prompt was removed after implementation: choosing a language in the
+picker saves it and calls `api.reloadAllWindows()` at once. Each window still saves its pages
+through `saveWindowStateForShutdown()` before reloading, and main keeps running. Changes made outside
+the picker still do not reload and show `Applies after reload`.
+
 ## Concerns
 
 - **Pack list refresh:** renderer startup has already loaded packs once, but `src/renderer/i18n/startup.ts` currently keeps its directory reader private. Export a small refresh/list helper so the Settings picker reuses exactly the same JSON5 parsing, warning, validation, and D15/D16 filtering rules. Do not duplicate pack validation in the view.
