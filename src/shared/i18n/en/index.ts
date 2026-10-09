@@ -8,7 +8,7 @@ export const englishCatalog = {
     common: Object.fromEntries(Object.entries(commonCatalog).map(([key, entry]) => [key, entry.message])),
     main: Object.fromEntries(Object.entries(mainCatalog).map(([key, entry]) => [key, entry.message])),
     settings: Object.fromEntries(Object.entries(settingsCatalog).map(([key, entry]) => [key, entry.message])),
-    dialogs: {},
+    dialogs: Object.fromEntries(Object.entries(dialogsCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;

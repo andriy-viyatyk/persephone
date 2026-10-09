@@ -67,7 +67,7 @@ export class TorInfoDialogModel extends TDialogModel<TorInfoDialogState, void> {
         if (!result.success) {
             this.state.update((draft) => {
                 draft.reconnecting = false;
-                draft.note = result.error || "Reconnect failed.";
+                draft.note = result.error || "tor-reconnect-failed";
             });
             return;
         }
@@ -77,11 +77,11 @@ export class TorInfoDialogModel extends TDialogModel<TorInfoDialogState, void> {
         this.state.update((draft) => {
             draft.reconnecting = false;
             if (!newIp) {
-                draft.note = "Reconnected, but the exit IP could not be looked up.";
+                draft.note = "tor-reconnected-lookup-failed";
             } else if (newIp === previousIp) {
-                draft.note = "Tor selected the same exit node \u2014 click Reconnect again for a different one.";
+                draft.note = "tor-same-exit-node";
             } else {
-                draft.note = "Reconnected with a new exit node.";
+                draft.note = "tor-new-exit-node";
             }
         });
     };

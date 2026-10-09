@@ -9,6 +9,7 @@ import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { LibrarySetupDialogView } from "./LibrarySetupDialogView";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 export const librarySetupDialogId = Symbol("librarySetupDialog");
 
@@ -23,7 +24,7 @@ export interface LibrarySetupDialogState extends LibrarySetupDialogProps {
 }
 
 const defaultProps: LibrarySetupDialogState = {
-    title: "Link Script Library",
+    title: undefined,
     folderPath: "",
     copyExamples: true,
     linking: false,
@@ -42,7 +43,7 @@ export class LibrarySetupDialogModel extends TDialogModel<LibrarySetupDialogStat
 
     browse = async () => {
         const result = await api.showOpenFolderDialog({
-            title: "Select Script Library Folder",
+            title: t("dialogs.libraryChooseFolder"),
         });
         if (this.viewDisposed) return;
         if (result && result.length > 0) this.setFolderPath(result[0]);
@@ -69,7 +70,7 @@ export class LibrarySetupDialogModel extends TDialogModel<LibrarySetupDialogStat
             await this.close(trimmed);
         } catch (error) {
             if (this.viewDisposed) return;
-            ui.notify(`Failed to link library: ${errMessage(error)}`, "error");
+            ui.notify(t("dialogs.libraryLinkError", { error: errMessage(error) }), "error");
             this.state.update((state) => { state.linking = false; });
         }
     };

@@ -15,6 +15,7 @@ import { api } from "../../../../ipc/renderer/api";
 import type { DialogViewProps } from "../dialog-view-registry";
 import type { IPopperViewData } from "./types";
 import { registerDialogView } from "../dialog-view-registry";
+import { t } from "../../../../shared/i18n/t";
 
 const defaultAppPopupMenuState = {
     x: 0,
@@ -52,7 +53,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
         this.state.update((s) => {
             if (clipboardText) {
                 s.items.unshift({
-                    label: "Paste",
+                    label: t("dialogs.popupPaste"),
                     onClick: () => {
                         if (
                             activeElement instanceof HTMLInputElement ||
@@ -100,7 +101,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
 
             if (selText) {
                 s.items.unshift({
-                    label: "Copy",
+                    label: t("dialogs.popupCopy"),
                     onClick: () => {
                         toClipboard(selText ?? "");
                     },
@@ -111,7 +112,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
 
             if (!s.skipInspect) {
                 s.items.push({
-                    label: "Inspect",
+                    label: t("dialogs.popupInspect"),
                     startGroup: s.items.length > 0,
                     onClick: () => {
                         const { x, y } = this.state.get();

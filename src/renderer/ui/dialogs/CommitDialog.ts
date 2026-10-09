@@ -21,7 +21,7 @@ export interface CommitDialogProps {
 export type CommitAction = (result: CommitResult) => Promise<boolean>;
 
 const defaultCommitDialogProps: CommitDialogProps = {
-    title: "Commit",
+    title: undefined,
     branch: undefined,
     message: "",
     name: "",

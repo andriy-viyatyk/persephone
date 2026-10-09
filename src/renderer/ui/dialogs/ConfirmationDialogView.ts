@@ -9,7 +9,8 @@ import type { DialogViewProps } from "./dialog-view-registry";
 import type { ConfirmationDialogProps } from "./ConfirmationDialog";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
-import type { DialogButtonDefinition } from "./dialog-buttons";
+import { dialogButtonLabel, type DialogButtonDefinition } from "./dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 type ConfirmationDialogModel = TDialogModel<ConfirmationDialogProps, string>;
 
@@ -36,7 +37,7 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(messagePanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: state.title,
+            title: state.title ?? t("dialogs.confirmationTitle"),
             icon: "confirm",
             onClose: () => model.close(undefined),
             minWidth: 300,
@@ -68,7 +69,7 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
             this.messageElement.textContent = message;
         });
         this.bind(this.model.state, (state) => state.title, (title) => {
-            this.contentView.setTitle(title);
+            this.contentView.setTitle(title ?? t("dialogs.confirmationTitle"));
         });
         this.bind(this.model.state, (state) => state.buttons ?? [], (buttons) => {
             this.syncButtons(buttons as DialogButtonDefinition[]);
@@ -88,14 +89,14 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
             if (!buttonView) {
                 buttonView = new ButtonView({
                     onClick: () => this.model.close((this.model.state.get().buttons?.[index] as DialogButtonDefinition | undefined)?.id),
-                    children: button.label,
+                    children: dialogButtonLabel(button),
                 });
                 buttonView.mount();
                 this.buttonViews.set(index, buttonView);
             } else {
                 buttonView.update({
                     onClick: () => this.model.close((this.model.state.get().buttons?.[index] as DialogButtonDefinition | undefined)?.id),
-                    children: button.label,
+                    children: dialogButtonLabel(button),
                 });
             }
             const currentChild = this.buttonsPanel.children[index];

@@ -41,11 +41,11 @@ class PasswordDialogModel extends TDialogModel<PasswordDialogState, string> {
     submit = () => {
         const { password, confirm, mode } = this.state.get();
         if (!password) {
-            this.setError("Password cannot be empty");
+            this.setError("password-empty");
             return;
         }
         if (mode !== "decrypt" && password !== confirm) {
-            this.setError("Passwords do not match");
+            this.setError("password-mismatch");
             return;
         }
         void this.close(password);

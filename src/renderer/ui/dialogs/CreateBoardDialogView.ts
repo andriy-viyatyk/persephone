@@ -10,6 +10,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { fpJoin } from "../../core/utils/file-path";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { CreateBoardDialogState, CreateBoardResult } from "./CreateBoardDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -43,26 +44,26 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
             name: "create-board-folder",
             value: state.folder,
             invalid: !state.folder.trim(),
-            placeholder: "Board location",
+            placeholder: t("dialogs.createBoardLocationPlaceholder"),
             onChange: model.setFolder,
         });
         const nameInput = new InputView({
             name: "create-board-name",
             value: state.name,
             invalid: !state.name.trim(),
-            placeholder: "Board name (becomes the folder name)",
+            placeholder: t("dialogs.createBoardNamePlaceholder"),
             onChange: model.setName,
         });
         const browseButton = new ButtonView({
             name: "create-board-browse",
             icon: "folder-open",
             onClick: () => { void model.browse(); },
-            children: "Browse…",
+            children: t("dialogs.createBoardBrowse"),
         });
         const folderRow = createPanelElement(
             { direction: "row", gap: "sm", align: "center" },
             [
-                createTextElement("Folder:", { color: "light", nowrap: true }),
+                        createTextElement(t("dialogs.createBoardFolderLabel"), { color: "light", nowrap: true }),
                 createPanelElement({ flex: 1 }, [folderInput.root]),
                 browseButton.root,
             ],
@@ -70,7 +71,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
         const nameRow = createPanelElement(
             { direction: "row", gap: "sm", align: "center" },
             [
-                createTextElement("Name:", { color: "light", nowrap: true }),
+                        createTextElement(t("dialogs.createBoardNameLabel"), { color: "light", nowrap: true }),
                 createPanelElement({ flex: 1 }, [nameInput.root]),
             ],
         );
@@ -80,21 +81,21 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
             [folderRow, nameRow],
         );
         if (state.folder.trim() && state.name.trim()) {
-            statusElement.textContent = `Will be created at: ${fpJoin(state.folder.trim(), state.name.trim())}`;
+            statusElement.textContent = t("dialogs.createBoardLocationStatus", { path: fpJoin(state.folder.trim(), state.name.trim()) });
             statusPanel.append(statusElement);
         }
 
         const cancelButton = new ButtonView({
             name: "create-board-cancel",
             onClick: () => { void model.close(undefined); },
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const createButton = new ButtonView({
             name: "create-board-submit",
             variant: "primary",
             disabled: !state.folder.trim() || !state.name.trim() || state.creating,
             onClick: () => { void model.submit(); },
-            children: "Create",
+            children: t("dialogs.buttonCreate"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -103,7 +104,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(statusPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: state.title,
+            title: state.title ?? t("dialogs.createBoardTitle"),
             icon: "board",
             onClose: () => { void model.close(undefined); },
             width: 520,
@@ -149,7 +150,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
                 name: "create-board-folder",
                 value: folder,
                 invalid: !folder.trim(),
-                placeholder: "Board location",
+                placeholder: t("dialogs.createBoardLocationPlaceholder"),
                 onChange: this.model.setFolder,
             });
             this.syncStatus();
@@ -160,7 +161,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
                 name: "create-board-name",
                 value: name,
                 invalid: !name.trim(),
-                placeholder: "Board name (becomes the folder name)",
+                placeholder: t("dialogs.createBoardNamePlaceholder"),
                 onChange: this.model.setName,
             });
             this.syncStatus();
@@ -177,7 +178,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
         const state = this.model.state.get();
         const hasValues = !!state.folder.trim() && !!state.name.trim();
         if (hasValues) {
-            this.statusElement.textContent = `Will be created at: ${fpJoin(state.folder.trim(), state.name.trim())}`;
+        this.statusElement.textContent = t("dialogs.createBoardLocationStatus", { path: fpJoin(state.folder.trim(), state.name.trim()) });
             if (this.statusElement.parentElement !== this.statusPanel) this.statusPanel.append(this.statusElement);
         } else {
             this.statusElement.remove();
@@ -191,7 +192,7 @@ export class CreateBoardDialogView extends VanillaView<DialogViewProps> {
             variant: "primary",
             disabled: !state.folder.trim() || !state.name.trim() || state.creating,
             onClick: () => { void this.model.submit(); },
-            children: "Create",
+                children: t("dialogs.buttonCreate"),
         });
     }
 }

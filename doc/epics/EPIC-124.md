@@ -90,7 +90,7 @@ task starts.
 | [US-1649](../tasks/US-1649-language-setting/README.md) | `language` setting, Settings picker, reload on switch, startup locale, main-process strings | Implemented |
 | [US-1650](../tasks/US-1650-locale-formatting/README.md) | Locale-aware formatting through `Intl` (`core/utils/format.ts`) | Implemented |
 | [US-1651](../tasks/US-1651-i18n-conventions/README.md) | Localization conventions doc, ESLint rule (warning), `npm run i18n:check` | Implemented |
-| [US-1652](../tasks/US-1652-pilot-extraction/README.md) | Pilot extraction: Settings page and all dialogs, verified under `en-XA` | In Progress |
+| [US-1652](../tasks/US-1652-pilot-extraction/README.md) | Pilot extraction: Settings page and all dialogs, verified under `en-XA` | Implemented |
 
 ### US-1647 — i18n core
 
@@ -195,6 +195,18 @@ Implemented and checked live by Claude through MCP; these are the things worth a
   kilobyte unit is now `kB` (Intl's spelling) and a 1-day-old clipboard item says "yesterday".
 - **US-1651.** `npm run lint` now prints ~1,100 `no-hardcoded-ui-strings` warnings (by design, warning
   level until phase 2); `npm run i18n:check` validates packs.
+- **US-1652 — Settings and dialogs under `en-XA`.** In a dev build (`npm start`), pick
+  *Pseudo-English* in Settings > General > Language; everything app-owned on the Settings page and
+  in dialogs should read like `[šéţţíñĝš · · ·]`. Checked live by Claude: every Settings section,
+  `app.ui.confirm` (default and custom buttons), `app.ui.input`, `app.ui.password`,
+  `app.ui.textDialog`; agents still resolve buttons by their English ids. **Not opened live** (they
+  need real workflows with side effects), please glance at them: Commit (Git Changes), Create
+  Board, board env-vars storage, Script Library setup, Open URL, Namespace Collision, Register
+  Toolset, Trust Board, Tor/Proxy info. Known leftovers outside the pilot scope: the uikit tree's
+  `Collapse`/`Expand` aria-labels, browser-profile color names (`Dodger Blue`…), and board-supplied
+  setting labels (board-owned, phase 3). Long section names in the Settings tree are ellipsized
+  under `en-XA` — acceptable, but say if you want the tree wider. A script button whose label equals
+  a built-in id (e.g. `"Delete"`) is shown translated; the returned id is unchanged.
 
 ## Notes
 

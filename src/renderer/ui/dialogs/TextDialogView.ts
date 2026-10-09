@@ -9,7 +9,7 @@ import type { DialogViewProps } from "./dialog-view-registry";
 import type {
     TextDialogModel,
 } from "./TextDialog";
-import type { DialogButtonDefinition } from "./dialog-buttons";
+import { dialogButtonLabel, type DialogButtonDefinition } from "./dialog-buttons";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -118,9 +118,9 @@ export class TextDialogView extends VanillaView<DialogViewProps> {
         buttons.forEach((button, index) => {
             const nextProps = {
                 onClick: () => {
-                    void this.model.close({ text: this.model.editorText, button: button.id, buttonLabel: button.label });
+                    void this.model.close({ text: this.model.editorText, button: button.id, buttonLabel: dialogButtonLabel(button) });
                 },
-                children: button.label,
+                children: dialogButtonLabel(button),
             };
             let buttonView = this.buttonViews.get(index);
             if (!buttonView) {

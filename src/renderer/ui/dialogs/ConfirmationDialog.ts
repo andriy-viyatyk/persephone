@@ -14,7 +14,7 @@ export interface ConfirmationDialogProps {
 }
 
 const defaultConfirmationDialogProps: ConfirmationDialogProps = {
-    title: "Confirmation",
+    title: undefined,
     message: "",
     buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)],
 };

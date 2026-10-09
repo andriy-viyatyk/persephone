@@ -7,6 +7,7 @@ import { errMessage } from "../../../shared/utils";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { CreateBoardDialogView } from "./CreateBoardDialogView";
+import { t } from "../../../shared/i18n/t";
 
 export const createBoardDialogId = Symbol("createBoardDialog");
 
@@ -29,7 +30,7 @@ export interface CreateBoardDialogProps {
 export type CreateBoardResult = string | undefined;
 
 export interface CreateBoardDialogState {
-    title: string;
+    title?: string;
     template: string;
     folder: string;
     name: string;
@@ -54,7 +55,7 @@ class CreateBoardDialogModel extends TDialogModel<CreateBoardDialogState, Create
     browse = async () => {
         const state = this.state.get();
         const picked = await fs.showFolderDialog({
-            title: "Choose board location",
+            title: t("dialogs.createBoardChooseLocation"),
             defaultPath: state.folder.trim() || undefined,
         });
         if (this.viewDisposed) return;
@@ -76,7 +77,7 @@ class CreateBoardDialogModel extends TDialogModel<CreateBoardDialogState, Create
             await this.close(root);
         } catch (error) {
             if (this.viewDisposed) return;
-            ui.notify(errMessage(error), "error");
+            ui.notify(t("dialogs.createBoardError", { error: errMessage(error) }), "error");
             this.state.update((draft) => { draft.creating = false; });
         }
     };
@@ -91,7 +92,7 @@ registerDialogView(createBoardDialogId, CreateBoardDialogView);
 export function showCreateBoardDialog(props?: CreateBoardDialogProps): Promise<CreateBoardResult> {
     const model = new CreateBoardDialogModel(
         new TComponentState({
-            title: props?.title ?? "Create board",
+            title: props?.title,
             template: props?.template ?? "board-template",
             folder: props?.defaultFolder ?? "",
             name: props?.defaultName ?? "",

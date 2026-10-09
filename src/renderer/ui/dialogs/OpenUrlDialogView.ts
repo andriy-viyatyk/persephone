@@ -7,6 +7,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { OpenUrlDialogResult, OpenUrlDialogState } from "./OpenUrlDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/Textarea/Textarea.css";
@@ -35,7 +36,7 @@ export class OpenUrlDialogView extends VanillaView<DialogViewProps> {
             autoFocus: true,
             value: state.value,
             onChange: model.setValue,
-            placeholder: "Paste file path, URL, or cURL command",
+            placeholder: t("dialogs.openUrlPlaceholder"),
             minHeight: 80,
             maxHeight: 300,
             size: "sm",
@@ -48,18 +49,18 @@ export class OpenUrlDialogView extends VanillaView<DialogViewProps> {
             name: "open-url-file",
             icon: "open-file",
             onClick: model.openFile,
-            children: "Open File",
+            children: t("dialogs.openUrlFile"),
         });
         const cancelButton = new ButtonView({
             name: "open-url-cancel",
             onClick: () => model.close(undefined),
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const submitButton = new ButtonView({
             name: "open-url-submit",
             onClick: model.submit,
             disabled: !state.value.trim(),
-            children: "Open",
+            children: t("dialogs.buttonOpen"),
         });
         const rightButtonsPanel = createPanelElement(
             { direction: "row", gap: "sm" },
@@ -72,7 +73,7 @@ export class OpenUrlDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(inputPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: "Open",
+            title: t("dialogs.openUrlTitle"),
             icon: "open-file",
             onClose: () => model.close(undefined),
             minWidth: 500,
@@ -110,7 +111,7 @@ export class OpenUrlDialogView extends VanillaView<DialogViewProps> {
                 autoFocus: true,
                 value,
                 onChange: this.model.setValue,
-                placeholder: "Paste file path, URL, or cURL command",
+                placeholder: t("dialogs.openUrlPlaceholder"),
                 minHeight: 80,
                 maxHeight: 300,
                 size: "sm",
@@ -119,7 +120,7 @@ export class OpenUrlDialogView extends VanillaView<DialogViewProps> {
                 name: "open-url-submit",
                 onClick: this.model.submit,
                 disabled: !value.trim(),
-                children: "Open",
+                children: t("dialogs.buttonOpen"),
             });
         });
     }

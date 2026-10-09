@@ -12,6 +12,7 @@ import type {
     CreateBoardVarsStorageDialogState,
     CreateBoardVarsStorageResult,
 } from "./CreateBoardVarsStorageDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -43,26 +44,26 @@ export class CreateBoardVarsStorageDialogView extends VanillaView<DialogViewProp
             name: "create-board-vars-storage-path",
             value: state.path,
             invalid: !state.path.trim(),
-            placeholder: "Environment variables file path",
+            placeholder: t("dialogs.createBoardVarsPlaceholder"),
             onChange: model.setPath,
         });
         const browseButton = new ButtonView({
             name: "create-board-vars-storage-browse",
             icon: "folder-open",
             onClick: () => { void model.browse(); },
-            children: "Browse…",
+            children: t("dialogs.createBoardBrowse"),
         });
         const bodyPanel = createPanelElement(
             { direction: "column", paddingX: "xxl", paddingTop: "xl", paddingBottom: "sm", gap: "md" },
             [
                 createTextElement(
-                    "Boards read/write their variables (connection strings, keys, passwords) from this file — kept outside board folders, so copying or sharing a board never leaks them.",
+                    t("dialogs.createBoardVarsExplanation"),
                     { color: "light" },
                 ),
                 createPanelElement(
                     { direction: "row", gap: "sm", align: "center" },
                     [
-                        createTextElement("Path:", { color: "light", nowrap: true }),
+                        createTextElement(t("dialogs.createBoardVarsPathLabel"), { color: "light", nowrap: true }),
                         createPanelElement({ flex: 1 }, [pathInput.root]),
                         browseButton.root,
                     ],
@@ -72,14 +73,14 @@ export class CreateBoardVarsStorageDialogView extends VanillaView<DialogViewProp
         const cancelButton = new ButtonView({
             name: "create-board-vars-storage-cancel",
             onClick: () => { void model.close(undefined); },
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const createButton = new ButtonView({
             name: "create-board-vars-storage-submit",
             variant: "primary",
             disabled: !state.path.trim() || state.creating,
             onClick: () => { void model.submit(); },
-            children: "Create",
+            children: t("dialogs.buttonCreate"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -88,7 +89,7 @@ export class CreateBoardVarsStorageDialogView extends VanillaView<DialogViewProp
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: "Create environment variables storage",
+            title: t("dialogs.createBoardVarsTitle"),
             icon: "lock",
             onClose: () => { void model.close(undefined); },
             width: 520,
@@ -126,7 +127,7 @@ export class CreateBoardVarsStorageDialogView extends VanillaView<DialogViewProp
                 name: "create-board-vars-storage-path",
                 value: path,
                 invalid: !path.trim(),
-                placeholder: "Environment variables file path",
+                placeholder: t("dialogs.createBoardVarsPlaceholder"),
                 onChange: this.model.setPath,
             });
             this.syncCreateButton();
@@ -144,7 +145,7 @@ export class CreateBoardVarsStorageDialogView extends VanillaView<DialogViewProp
             variant: "primary",
             disabled: !state.path.trim() || state.creating,
             onClick: () => { void this.model.submit(); },
-            children: "Create",
+            children: t("dialogs.buttonCreate"),
         });
     }
 }

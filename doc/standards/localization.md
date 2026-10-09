@@ -77,6 +77,18 @@ scrambles the configured Russian letters throughout that user pack. Built-in pac
 filtered at runtime; they must pass the checker’s no-false-hit gate, which rejects a built-in pack
 if applying D16 would change any message.
 
+## Pilot lessons
+
+- The hardcoded UI lint rule is a useful scan, but it misses some positions, including `emptyText:`
+  and visible strings passed through helpers such as `settingsFieldLabel()`. Review each scoped file
+  for app-owned text in helper arguments, defaults, descriptions, messages, and accessibility
+  attributes in addition to fixing lint findings.
+- If agent-only catalog data files contain English source messages that should not trigger UI-copy
+  warnings, exempt those files in the ESLint configuration rather than adding inline disable
+  comments beside catalog entries.
+- Resolve `t()` lazily while building view props or rendering. Module-level translated constants can
+  capture the English fallback before the active language pack is ready.
+
 The pack validator in [`validate-pack.ts`](../../src/shared/i18n/validate-pack.ts) checks the pack
 filename/code, known keys, message forms, placeholders, and D15 restrictions. Keep keys in the
 current flat shape and include hashes for translated entries when maintaining a pack.

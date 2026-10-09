@@ -13,6 +13,7 @@ import type {
     LibrarySetupDialogModel,
     LibrarySetupDialogState,
 } from "./LibrarySetupDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Checkbox/Checkbox.css";
 import "../../uikit/Dialog/Dialog.css";
@@ -38,20 +39,20 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
             name: "library-setup-folder",
             value: state.folderPath,
             onChange: model.setFolderPath,
-            placeholder: "Select or type a folder path...",
+            placeholder: t("dialogs.libraryFolderPlaceholder"),
         });
         const browseButton = new ButtonView({
             name: "library-setup-browse",
             onClick: () => { void model.browse(); },
-            children: "Browse...",
+            children: t("dialogs.createBoardBrowse"),
         });
         const copyExamplesCheckbox = new CheckboxView({
             name: "library-setup-copy-examples",
             checked: state.copyExamples,
             onChange: model.setCopyExamples,
-            children: "Copy example scripts",
+            children: t("dialogs.libraryCopyExamples"),
         });
-        const folderLabel = new LabelView({ children: "Folder:" });
+        const folderLabel = new LabelView({ children: t("dialogs.libraryFolderLabel") });
         const bodyPanel = createPanelElement(
             { direction: "column", paddingX: "xxl", paddingY: "xl", gap: "lg" },
             [
@@ -71,7 +72,7 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
                         copyExamplesCheckbox.root,
                         createPanelElement(
                             { paddingLeft: "xxl" },
-                            [createTextElement("Won't overwrite existing files", { size: "xs", color: "light" })],
+                            [createTextElement(t("dialogs.libraryReassurance"), { size: "xs", color: "light" })],
                         ),
                     ],
                 ),
@@ -81,12 +82,12 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
             name: "library-setup-link",
             onClick: () => { void model.link(); },
             disabled: !state.folderPath.trim() || state.linking,
-            children: state.linking ? "Linking..." : "Link",
+            children: state.linking ? t("dialogs.libraryLinking") : t("dialogs.libraryLink"),
         });
         const cancelButton = new ButtonView({
             name: "library-setup-cancel",
             onClick: () => { void model.close(undefined); },
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -95,7 +96,7 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: state.title,
+            title: state.title ?? t("dialogs.libraryTitle"),
             icon: "folder-open",
             onClose: () => { void model.close(undefined); },
             minWidth: 400,
@@ -141,7 +142,7 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
                 name: "library-setup-folder",
                 value: folderPath,
                 onChange: this.model.setFolderPath,
-                placeholder: "Select or type a folder path...",
+                placeholder: t("dialogs.libraryFolderPlaceholder"),
             });
             this.syncLinkButton();
         });
@@ -150,7 +151,7 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
                 name: "library-setup-copy-examples",
                 checked: copyExamples,
                 onChange: this.model.setCopyExamples,
-                children: "Copy example scripts",
+                children: t("dialogs.libraryCopyExamples"),
             });
         });
         this.bind(this.model.state, (state) => state.linking, () => this.syncLinkButton());
@@ -163,7 +164,7 @@ export class LibrarySetupDialogView extends VanillaView<DialogViewProps> {
             name: "library-setup-link",
             onClick: () => { void this.model.link(); },
             disabled: !state.folderPath.trim() || state.linking,
-            children: state.linking ? "Linking..." : "Link",
+            children: state.linking ? t("dialogs.libraryLinking") : t("dialogs.libraryLink"),
         });
     }
 }

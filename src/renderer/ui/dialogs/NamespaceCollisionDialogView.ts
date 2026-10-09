@@ -7,6 +7,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { NamespaceCollisionDialogProps } from "./NamespaceCollisionDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -32,18 +33,18 @@ export class NamespaceCollisionDialogView extends VanillaView<DialogViewProps> {
                 collisionElement,
                 rootElement,
                 createTextElement(
-                    "If that's intentional (e.g. a shared configuration), register anyway. Otherwise, cancel and give this board a distinct author/name in its board-manifest.json, then register again.",
+                    t("dialogs.namespaceCollisionGuidance"),
                 ),
             ],
         );
         const cancelButton = new ButtonView({
             onClick: () => model.close(false),
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const registerButton = new ButtonView({
             variant: "primary",
             onClick: () => model.close(true),
-            children: "Register Anyway",
+            children: t("dialogs.namespaceRegisterAnyway"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -52,7 +53,7 @@ export class NamespaceCollisionDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: "Environment variables namespace already registered",
+            title: t("dialogs.namespaceCollisionTitle"),
             icon: "warning",
             onClose: () => model.close(false),
             minWidth: 420,
@@ -81,7 +82,7 @@ export class NamespaceCollisionDialogView extends VanillaView<DialogViewProps> {
         this.contentView.mount();
         this.dialogView.mount();
         this.bind(this.model.state, (state) => state.namespace, (namespace) => {
-            this.collisionElement.textContent = `Another registered board already uses the namespace "${namespace}" for its environment variables. Registering this board too means they'll share the same stored variables.`;
+            this.collisionElement.textContent = t("dialogs.namespaceCollisionMessage", { namespace });
         });
         this.bind(this.model.state, (state) => state.collidingRoot, (collidingRoot) => {
             this.rootElement.textContent = collidingRoot;

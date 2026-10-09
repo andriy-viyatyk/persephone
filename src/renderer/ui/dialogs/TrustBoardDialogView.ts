@@ -15,13 +15,11 @@ import {
     permissionChangeMessage,
 } from "../../editors/board/board-permission-copy";
 import { createBoardPermissionChangeList, createBoardPermissionList } from "../../editors/board/board-permission-list";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
 type TrustBoardDialogModel = TDialogModel<TrustBoardDialogProps, TrustBoardDialogResult>;
-
-const REVIEW_HINT = "If you're not sure about a board, ask your AI agent to review its scripts before trusting it. "
-    + "The review checklist is in the guides (F1): \"Reviewing a board before you trust it\".";
 
 /** One dialog, two modes: "Trust this board?" for a new board (Cancel / Trust Board), and
  *  "Board permissions changed" for a trusted board whose manifest widened its permissions
@@ -42,14 +40,14 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const body = change
             ? [
                 createTextElement(permissionChangeMessage(state.boardName)),
-                createTextElement(REVIEW_HINT, { color: "warning" }),
+                createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createBoardPermissionChangeList(change.granted, change.proposed),
             ]
             : [
                 createTextElement(BOARD_PERMISSION_INTRODUCTION),
-                createTextElement("Only trust boards you created or fully understand."),
-                createTextElement(REVIEW_HINT, { color: "warning" }),
+                createTextElement(t("dialogs.trustOnlyBoards")),
+                createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createPanelElement({ direction: "column", gap: "sm" }, [
                     createBoardPermissionList(state.permissions),
@@ -60,7 +58,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                         ]
                         : []),
                     ...(state.capabilities.length > 0
-                        ? [createTextElement(`Capabilities: ${state.capabilities.map((id) => id || "<empty id>").join(", ")}`, { color: "light" })]
+                        ? [createTextElement(t("dialogs.trustCapabilities", { capabilities: state.capabilities.map((id) => id || "<empty id>").join(", ") }), { color: "light" })]
                         : []),
                 ]),
             ];
@@ -68,12 +66,12 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
 
         const buttons = change
             ? [
-                new ButtonView({ variant: "danger", onClick: () => model.close("unregister"), children: "Unregister board" }),
-                new ButtonView({ variant: "primary", onClick: () => model.close("accept"), children: "Accept" }),
+                new ButtonView({ variant: "danger", onClick: () => model.close("unregister"), children: t("dialogs.trustUnregister") }),
+                new ButtonView({ variant: "primary", onClick: () => model.close("accept"), children: t("dialogs.trustAccept") }),
             ]
             : [
-                new ButtonView({ onClick: () => model.close(false), children: "Cancel" }),
-                new ButtonView({ variant: "primary", onClick: () => model.close(true), children: "Trust Board" }),
+                new ButtonView({ onClick: () => model.close(false), children: t("dialogs.trustCancel") }),
+                new ButtonView({ variant: "primary", onClick: () => model.close(true), children: t("dialogs.trustBoard") }),
             ];
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -82,7 +80,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: change ? PERMISSION_CHANGE_TITLE : "Trust this board?",
+            title: change ? PERMISSION_CHANGE_TITLE : t("dialogs.trustTitle"),
             icon: "warning",
             // Closing the change dialog takes the board off its page (see requestBoardTrust).
             onClose: () => model.close(change ? undefined : false),

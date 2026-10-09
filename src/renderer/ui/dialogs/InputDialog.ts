@@ -3,7 +3,7 @@ import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { InputDialogView } from "./InputDialogView";
-import { DialogButton, dialogButton, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
+import { DialogButton, dialogButton, dialogButtonLabel, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
 
 export const inputDialogId = Symbol("inputDialog");
 
@@ -21,7 +21,7 @@ export interface InputDialogProps {
 }
 
 const defaultInputDialogProps: InputDialogProps = {
-    title: "Input",
+    title: undefined,
     message: "",
     value: "",
     buttons: [dialogButton(DialogButton.ok), dialogButton(DialogButton.cancel)],
@@ -47,7 +47,7 @@ class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | unde
             const buttons = (state.buttons ?? []).map(normalizeDialogButton);
             const defBt = state.defaultButton || buttons[0]?.id || DialogButton.ok;
             const selected = buttons.find(({ id }) => id === defBt);
-            this.close({ value: state.value || "", button: defBt, buttonLabel: selected?.label ?? defBt, selectedOption: state.selectedOption });
+            this.close({ value: state.value || "", button: defBt, buttonLabel: selected ? dialogButtonLabel(selected) : defBt, selectedOption: state.selectedOption });
         }
     };
 

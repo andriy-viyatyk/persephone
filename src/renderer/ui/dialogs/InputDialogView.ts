@@ -14,7 +14,8 @@ import type { InputDialogProps, InputResult } from "./InputDialog";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/RadioGroup/RadioGroup.css";
-import type { DialogButtonDefinition } from "./dialog-buttons";
+import { dialogButtonLabel, type DialogButtonDefinition } from "./dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 type InputDialogModel = TDialogModel<InputDialogProps, InputResult | undefined> & {
     handleKeyDown(event: KeyboardEvent): void;
@@ -76,7 +77,7 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
         if (radioPanel) contentChildren.append(radioPanel);
         contentChildren.append(buttonsPanel);
         const contentView = new DialogContentView({
-            title: state.title,
+            title: state.title ?? t("dialogs.inputTitle"),
             icon: "confirm",
             onClose: () => { void model.close(undefined); },
             minWidth: 340,
@@ -170,11 +171,11 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
                 void this.model.close({
                     value: state.value ?? "",
                     button: button.id,
-                    buttonLabel: button.label,
+                    buttonLabel: dialogButtonLabel(button),
                     selectedOption: state.selectedOption,
                 });
             },
-            children: button.label,
+            children: dialogButtonLabel(button),
         };
     }
 }

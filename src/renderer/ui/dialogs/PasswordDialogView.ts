@@ -10,6 +10,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { PasswordDialogState } from "./PasswordDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -45,7 +46,7 @@ export class PasswordDialogView extends VanillaView<DialogViewProps> {
             value: state.password,
             onChange: model.setPassword,
         });
-        const passwordLabel = new LabelView({ children: "Password" });
+        const passwordLabel = new LabelView({ children: t("dialogs.passwordLabel") });
         const passwordPanel = createPanelElement(
             { direction: "column", gap: "xs" },
             [passwordLabel.root, passwordInput.root],
@@ -61,7 +62,7 @@ export class PasswordDialogView extends VanillaView<DialogViewProps> {
                 value: state.confirm,
                 onChange: model.setConfirm,
             });
-            confirmLabel = new LabelView({ children: "Confirm Password" });
+            confirmLabel = new LabelView({ children: t("dialogs.confirmPasswordLabel") });
             confirmPanel = createPanelElement(
                 { direction: "column", gap: "xs" },
                 [confirmLabel.root, confirmInput.root],
@@ -84,12 +85,12 @@ export class PasswordDialogView extends VanillaView<DialogViewProps> {
             name: "password-submit",
             variant: "primary",
             onClick: model.submit,
-            children: isDecrypt ? "Decrypt" : "Encrypt",
+            children: isDecrypt ? t("dialogs.passwordDecrypt") : t("dialogs.passwordEncrypt"),
         });
         const cancelButton = new ButtonView({
             name: "password-cancel",
             onClick: () => { void model.close(undefined); },
-            children: "Cancel",
+            children: t("dialogs.buttonCancel"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -98,7 +99,7 @@ export class PasswordDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: isDecrypt ? "Decrypt File" : "Encrypt File",
+            title: isDecrypt ? t("dialogs.passwordTitleDecrypt") : t("dialogs.passwordTitleEncrypt"),
             icon: "lock",
             onClose: () => { void model.close(undefined); },
             minWidth: 340,
@@ -171,7 +172,11 @@ export class PasswordDialogView extends VanillaView<DialogViewProps> {
             this.errorElement = createTextElement(error, { color: "error", size: "sm" });
             this.bodyPanel.append(this.errorElement);
         }
-        this.errorElement.textContent = error;
+        this.errorElement.textContent = error === "password-empty"
+            ? t("dialogs.passwordEmpty")
+            : error === "password-mismatch"
+                ? t("dialogs.passwordMismatch")
+                : error;
     }
 
     private readonly handleInputKeyDown = (event: KeyboardEvent): void => {

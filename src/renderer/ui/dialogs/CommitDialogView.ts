@@ -14,7 +14,8 @@ import {
     type CommitDialogProps,
     type CommitResult,
 } from "./CommitDialog";
-import { DialogButton } from "./dialog-buttons";
+import { DialogButton, builtInDialogButtonLabel } from "./dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/Textarea/Textarea.css";
@@ -40,25 +41,25 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
             value: state.branch ?? "",
             onChange: model.setBranch,
             invalid: !state.branch?.trim(),
-            placeholder: "Branch name",
+            placeholder: t("dialogs.commitBranchPlaceholder"),
         });
         const nameInput = new InputView({
             name: "commit-author-name",
             value: state.name ?? "",
             onChange: model.setName,
-            placeholder: "Name",
+            placeholder: t("dialogs.commitNamePlaceholder"),
         });
         const emailInput = new InputView({
             name: "commit-author-email",
             value: state.email ?? "",
             onChange: model.setEmail,
-            placeholder: "Email",
+            placeholder: t("dialogs.commitEmailPlaceholder"),
         });
         const messageInput = new TextareaView({
             name: "commit-message",
             value: state.message ?? "",
             onChange: model.setMessage,
-            placeholder: "Commit message",
+            placeholder: t("dialogs.commitMessagePlaceholder"),
             minHeight: 120,
             maxHeight: 300,
             autoFocus: true,
@@ -69,14 +70,14 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
                 createPanelElement(
                     { direction: "row", gap: "sm", align: "center" },
                     [
-                        createTextElement("Branch:", { color: "light", nowrap: true }),
+                        createTextElement(t("dialogs.commitBranchLabel"), { color: "light", nowrap: true }),
                         createPanelElement({ flex: 1 }, [branchInput.root]),
                     ],
                 ),
                 createPanelElement(
                     { direction: "row", gap: "sm", align: "center" },
                     [
-                        createTextElement("Author:", { color: "light", nowrap: true }),
+                        createTextElement(t("dialogs.commitAuthorLabel"), { color: "light", nowrap: true }),
                         createPanelElement({ flex: 1 }, [nameInput.root]),
                         createPanelElement({ flex: 1 }, [emailInput.root]),
                     ],
@@ -90,7 +91,7 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: state.title ?? "Commit",
+            title: state.title ?? t("dialogs.commitTitle"),
             icon: "git",
             onClose: () => { void model.close(undefined); },
             width: 520,
@@ -134,7 +135,7 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
                 value: branch,
                 onChange: this.model.setBranch,
                 invalid: !branch.trim(),
-                placeholder: "Branch name",
+                placeholder: t("dialogs.commitBranchPlaceholder"),
             });
             this.syncButtons();
         });
@@ -143,7 +144,7 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
                 name: "commit-author-name",
                 value: name,
                 onChange: this.model.setName,
-                placeholder: "Name",
+                placeholder: t("dialogs.commitNamePlaceholder"),
             });
         });
         this.bind(this.model.state, (state) => state.email ?? "", (email) => {
@@ -151,7 +152,7 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
                 name: "commit-author-email",
                 value: email,
                 onChange: this.model.setEmail,
-                placeholder: "Email",
+                placeholder: t("dialogs.commitEmailPlaceholder"),
             });
         });
         this.bind(this.model.state, (state) => state.message ?? "", (message) => {
@@ -159,7 +160,7 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
                 name: "commit-message",
                 value: message,
                 onChange: this.model.setMessage,
-                placeholder: "Commit message",
+                placeholder: t("dialogs.commitMessagePlaceholder"),
                 minHeight: 120,
                 maxHeight: 300,
                 autoFocus: true,
@@ -187,7 +188,15 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
         buttons.forEach((button, index) => {
             const disabled = button !== DialogButton.cancel && (!canCommit || !!state.committing);
             let buttonView = this.buttonViews.get(index);
-            const label = button === DialogButton.cancel ? button : actionButtonLabel(button, branchChanged);
+            const defaultLabel = builtInDialogButtonLabel(button) ?? button;
+            const actionLabel = actionButtonLabel(button, branchChanged);
+            const label = button === DialogButton.cancel
+                ? defaultLabel
+                : actionLabel === "Create Branch & Commit"
+                    ? t("dialogs.commitCreateBranch")
+                    : actionLabel === "& Push"
+                        ? t("dialogs.commitPush")
+                        : actionLabel === button ? defaultLabel : actionLabel;
             const nextProps = {
                 onClick: button === DialogButton.cancel
                     ? () => { void this.model.close(undefined); }

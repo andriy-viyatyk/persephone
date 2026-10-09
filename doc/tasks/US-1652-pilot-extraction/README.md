@@ -10,8 +10,11 @@ Extract app-owned, user-visible copy from src/renderer/editors/settings/** and e
 
 - [x] Slice A, step 1: register the Settings and Dialogs catalog areas.
 - [x] Slice A, step 2: extract Settings UI messages and preserve the AI-vision English catalog shape.
-- [ ] Slice A validation: `npm run i18n:check` could not start because esbuild's child process was denied with `spawn EPERM`; the final `npm run build-prod` retry hit the same process restriction during renderer path resolution.
+- [x] Slice B, step 3: extract dialog defaults, built-in button labels and popup actions; preserve caller-owned copy and IDs/results.
+- [x] Slice B validation: `npm run typecheck`, `npm run lint`, scoped dialog ESLint, and `npm run build-prod` completed. The scoped dialog ESLint reported zero warnings.
+- [ ] Catalog validation: `npm run i18n:check` could not start because esbuild's child process was denied with `spawn EPERM`.
 - [ ] Live Settings verification under en-XA (performed by the user outside the sandbox).
+- [ ] Live dialog and popup verification under en-XA (performed by the user outside the sandbox).
 
 ## Background
 

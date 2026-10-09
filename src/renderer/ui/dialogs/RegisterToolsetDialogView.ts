@@ -7,6 +7,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { RegisterToolsetDialogProps } from "./RegisterToolsetDialog";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -24,16 +25,16 @@ export class RegisterToolsetDialogView extends VanillaView<DialogViewProps> {
     public constructor(props: DialogViewProps) {
         const model = props.model as RegisterToolsetDialogModel;
         const state = model.state.get();
-        const detailsElement = createTextElement(`${state.toolsetName}  —  ${state.toolsetRoot}`, { color: "light" });
+        const detailsElement = createTextElement(t("dialogs.toolsetDetails", { name: state.toolsetName, root: state.toolsetRoot }), { color: "light" });
         const bodyPanel = createPanelElement(
             { direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" },
             [
                 createTextElement(
-                    "An AI agent wants to register a toolset. Once registered, its tools run as programs on your computer with your full user privileges — headlessly, whenever the agent calls them, and after the agent edits them, with no further prompt.",
+                    t("dialogs.toolsetIntroduction"),
                 ),
-                createTextElement("Only register toolsets you created or fully understand."),
+                createTextElement(t("dialogs.toolsetCaution")),
                 createTextElement(
-                    "If you're not sure, ask your AI agent to explain what these tools do before registering.",
+                    t("dialogs.toolsetReviewHint"),
                     { color: "warning" },
                 ),
                 detailsElement,
@@ -41,12 +42,12 @@ export class RegisterToolsetDialogView extends VanillaView<DialogViewProps> {
         );
         const cancelButton = new ButtonView({
             onClick: () => model.close(false),
-            children: "Cancel",
+            children: t("dialogs.toolsetCancel"),
         });
         const registerButton = new ButtonView({
             variant: "primary",
             onClick: () => model.close(true),
-            children: "Register toolset",
+            children: t("dialogs.toolsetRegister"),
         });
         const buttonsPanel = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -55,7 +56,7 @@ export class RegisterToolsetDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: "Register this toolset?",
+            title: t("dialogs.toolsetTitle"),
             icon: "warning",
             onClose: () => model.close(false),
             minWidth: 440,
@@ -82,7 +83,7 @@ export class RegisterToolsetDialogView extends VanillaView<DialogViewProps> {
         this.registerButton.mount();
         this.contentView.mount();
         this.dialogView.mount();
-        this.bind(this.model.state, (state) => `${state.toolsetName}  —  ${state.toolsetRoot}`, (value) => {
+        this.bind(this.model.state, (state) => t("dialogs.toolsetDetails", { name: state.toolsetName, root: state.toolsetRoot }), (value) => {
             this.detailsElement.textContent = value;
         });
         this.bind(this.model.state, (state) => state.tools, (tools) => {
@@ -104,7 +105,7 @@ export class RegisterToolsetDialogView extends VanillaView<DialogViewProps> {
                 this.toolElements.set(tool.name, element);
                 this.detailsElement.parentElement?.append(element);
             }
-            element.textContent = `• ${tool.name} — ${tool.description}`;
+            element.textContent = t("dialogs.toolsetEntry", { name: tool.name, description: tool.description });
             this.detailsElement.parentElement?.append(element);
         });
     }

@@ -7,6 +7,7 @@ import { errMessage } from "../../../shared/utils";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { CreateBoardVarsStorageDialogView } from "./CreateBoardVarsStorageDialogView";
+import { t } from "../../../shared/i18n/t";
 
 export const createBoardVarsStorageDialogId = Symbol("createBoardVarsStorageDialog");
 
@@ -37,7 +38,7 @@ class CreateBoardVarsStorageDialogModel extends TDialogModel<
     browse = async () => {
         const state = this.state.get();
         const picked = await fs.showSaveDialog({
-            title: "Environment variables file",
+            title: t("dialogs.createBoardVarsFileTitle"),
             defaultPath: state.path.trim() || undefined,
             filters: [
                 { name: "Env JSON", extensions: ["env.json"] },
@@ -64,7 +65,7 @@ class CreateBoardVarsStorageDialogModel extends TDialogModel<
             await this.close(true);
         } catch (error) {
             if (this.viewDisposed) return;
-            ui.notify(errMessage(error), "error");
+            ui.notify(t("dialogs.createBoardVarsError", { error: errMessage(error) }), "error");
             this.state.update((draft) => { draft.creating = false; });
         }
     };
