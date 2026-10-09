@@ -8,6 +8,47 @@ import type { McpParams, McpResponse } from "./types";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import { boardTrust } from "../board-trust";
 import { boardPermissionError } from "../../../shared/board-manifest-utils";
+import { app } from "../app";
+import { getPreviewGeneration } from "../../theme/themes";
+import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
+
+const BOARD_THEME_METHODS = new Set([
+    "list", "get", "current", "derive", "contrast", "fork", "file", "save", "rename", "delete", "apply", "preview", "endPreview",
+]);
+
+function cloneJson(value: unknown): unknown {
+    const seen = new Set<object>();
+    const validate = (item: unknown): void => {
+        if (item === null || typeof item === "string" || typeof item === "boolean") return;
+        if (typeof item === "number" && Number.isFinite(item)) return;
+        if (typeof item !== "object") throw new Error("Theme bridge accepts JSON values only.");
+        if (seen.has(item)) throw new Error("Theme bridge accepts JSON values only.");
+        seen.add(item);
+        if (Array.isArray(item)) {
+            for (let index = 0; index < item.length; index++) {
+                if (!Object.prototype.hasOwnProperty.call(item, index)) throw new Error("Theme bridge accepts JSON arrays only.");
+                validate(item[index]);
+            }
+            if (Reflect.ownKeys(item).some((key) => key !== "length" && (typeof key !== "string" || !/^\d+$/.test(key)))) {
+                throw new Error("Theme bridge accepts JSON arrays only.");
+            }
+        } else {
+            const prototype = Object.getPrototypeOf(item);
+            if (prototype !== Object.prototype && prototype !== null) throw new Error("Theme bridge accepts plain JSON objects only.");
+            for (const key of Reflect.ownKeys(item)) {
+                if (typeof key !== "string") throw new Error("Theme bridge accepts plain JSON objects only.");
+                const descriptor = Object.getOwnPropertyDescriptor(item, key);
+                if (!descriptor?.enumerable || !("value" in descriptor)) throw new Error("Theme bridge accepts plain JSON objects only.");
+                validate(descriptor.value);
+            }
+        }
+        seen.delete(item);
+    };
+    validate(value);
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error("Theme bridge accepts JSON values only.");
+    return JSON.parse(encoded) as unknown;
+}
 
 /** Internal renderer command used only by the Board MessagePort call envelope. */
 export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
@@ -54,6 +95,28 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
 
     const context = new ScriptContext(contextEditor);
     try {
+        const themeMatch = /^themes\.([a-zA-Z]+)$/.exec(request.path);
+        if (themeMatch) {
+            const method = themeMatch[1];
+            if (!BOARD_THEME_METHODS.has(method)) return { error: { code: -32603, message: `Unknown board themes method: ${method}` } };
+            if (!(await boardTrust.allows(boardRoot, "themes"))) {
+                return { error: { code: -32603, message: boardPermissionError("themes").message } };
+            }
+            const boardId = typeof params?.boardId === "string" ? params.boardId : "";
+            const args = cloneJson(request.args ?? []) as unknown[];
+            const value = Object.prototype.hasOwnProperty.call(request, "value") ? cloneJson(request.value) : undefined;
+            let result: unknown;
+            if (method === "current") result = app.themes.current;
+            else {
+                const service = app.themes as unknown as Record<string, (...values: unknown[]) => unknown>;
+                result = await service[method](...(value !== undefined ? [value] : args));
+            }
+            if (method === "preview" && boardId) {
+                (boardEditor as BoardEditorModel).recordBoardThemePreview(boardId, getPreviewGeneration());
+            }
+            const safeResult = cloneJson(result === undefined ? null : result);
+            return { result: safeResult };
+        }
         if (!(await boardTrust.allows(boardRoot, "appScripting"))) {
             return { error: { code: -32603, message: boardPermissionError("appScripting").message } };
         }

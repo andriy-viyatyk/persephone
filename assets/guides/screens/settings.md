@@ -83,6 +83,17 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 +---------------------------------------------------------------------+
 ```
 
+## Theme
+
+The Theme panel groups built-in themes under **Dark** and **Light**, and saved custom themes under
+**Custom**. Select a tile to apply and save that theme as the app's active theme. Each tile has an
+Edit pencil action; Edit first activates the selected theme, then opens it in the Theme Editor board.
+Custom tiles also have a delete action that asks for confirmation. The Custom group ends with a **+**
+tile for creating a theme from the active theme without changing the current appearance. Edit and
+New use the installed Theme Editor board capability. If no handler is available, Persephone opens
+**Tools & Editors → Search boards** and explains how to find and install Theme Editor. If the board
+does not respond, Settings reports a timeout separately.
+
 ## Editor Behavior
 
 The **Editor Behavior** section contains **Enable Word Wrap by default**, which is off by default.

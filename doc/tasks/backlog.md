@@ -11,6 +11,20 @@ Ideas and future tasks not yet planned for implementation.
 
 ---
 
+## `window.screen` automation on board-frame refs (found 2026-10-09, US-1640 verification)
+
+Seen while driving the Theme Editor board through `window.screen.*` with `f1-eNN` refs from the
+merged accessibility tree. The board page's own facade (`pages[i].editor.type/click/...` with CSS
+selectors) works correctly, so this is the app-window path only.
+
+- [ ] **`type()` / `clear()` do not replace a board input's value.** `window.screen.type({ ref:
+  "f1-e5" }, "Rose Test")` on a text input holding "Persephone copy" produced "PersephoRose Testne
+  copy" — text inserted at the click point; `clear()` left the value unchanged. Expected: the same
+  select-all-and-replace the board facade's `type()` does.
+- [ ] **A snapshot rooted inside a frame drops the frame mapping.** After
+  `window.screen.snapshot({ root: { ref: "f1-e86" } })`, every `f1-*` ref fails with "the last
+  snapshot of this host had 0 frames" until an unrooted snapshot is taken again.
+
 ## Demo recording — the parts deferred from US-1618
 
 [US-1618](US-1618-video-recording/README.md) adds window/page/editor recording for the user and

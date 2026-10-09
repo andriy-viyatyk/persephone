@@ -60,6 +60,7 @@ logic, loops, or Node.js.
 | `app.pages` | Open tabs — create, open, close, navigate, group |
 | `app.fs` | File system — read, write, dialogs, paths |
 | `app.settings` | Application configuration — get/set settings; `call` also exposes the section/key catalog and highlighting |
+| `app.themes` | Inspect, derive, contrast-check, preview, save, rename, delete, and apply themes |
 | `app.ui` | Dialogs — confirm, input, password, notifications |
 | `app.shell` | OS integration — open URLs, encryption |
 | `app.window` | Window management — minimize, maximize, zoom |
@@ -169,6 +170,41 @@ const dir = await app.fs.commonFolder("downloads")    // OS folders: documents, 
 app.fs.showInExplorer(filePath)                       // Show file in explorer
 app.fs.showFolder(folderPath)                         // Open folder
 ```
+
+### app.themes
+
+When the user describes a palette, inspect `app.themes.list()` and choose a close built-in or saved
+theme. Use `app.themes.fork(id)` when preserving its full palette matters, or
+`app.themes.derive(base, isDark?)` for a new palette from background, text, and accent colors.
+`fork()` returns an id-less draft; edit the draft's name, base, and overrides, then inspect
+`app.themes.contrast(draft)` before making it visible. To change a saved custom theme in place, start
+from `app.themes.file(id)` — its stored base intent, `isDark` and overrides, with the id — and pass
+it back to `save()`.
+
+Preview only to let the user inspect the result. `app.themes.preview(draft)` changes this window's
+appearance in renderer memory and writes neither settings nor files. Preview is window-local and
+survives settings/theme-file reloads, but ends on window reload or app restart. In a running
+renderer it stays active until `app.themes.endPreview()`, `app.themes.apply(id)`, or explicit
+selection through the Settings picker or theme cycling. A preview started through a board ends when
+that board closes or reloads, unless a later preview or theme selection has replaced it.
+
+```javascript
+const draft = app.themes.fork("persephone");
+draft.name = "Moss at midnight";
+draft.base.accent = "#6aa88b";
+const contrast = app.themes.contrast(draft);
+const preview = app.themes.preview(draft);
+// Save only after the user asks to keep the palette.
+const saved = await app.themes.save(draft);
+// Apply only when the user asks to select it.
+await app.themes.apply(saved.id);
+```
+
+MCP exposes the same calls as `call themes.list`, `call themes.preview(args: [draft])`, and
+`call themes.endPreview`. `preview` changes this window's appearance; `save` and `rename` write
+custom theme files, `delete` removes one (and persists the `persephone` fallback if selected), and
+`apply` immediately changes this window and persists the selected theme. Inspect those cautions
+and ask before saving, deleting, or applying when the user has not requested that action.
 
 ### app.settings
 

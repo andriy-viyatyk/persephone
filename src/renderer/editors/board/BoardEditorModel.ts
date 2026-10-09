@@ -27,6 +27,9 @@ import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { createIconElement } from "../../uikit/shared/slots";
 import { app } from "../../api/app";
+import { ui } from "../../api/ui";
+import { pagesModel } from "../../api/pages";
+import { errMessage } from "../../../shared/utils";
 import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
@@ -225,6 +228,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private reloadAwaitingRegistration = false;
     private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
+    private readonly boardThemePreviewGenerations = new Map<string, number>();
     private readonly contentResources = new Map<string, ContentResource>();
     private readonly pendingSourceUrls: Array<{ sourceUrl: string; privateSession: boolean }> = [];
     private readonly sourceSessionHandles = new Map<string, string>();
@@ -240,12 +244,30 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
     private statusBarFrameGeneration: number | undefined;
     private liveStatusBarElements: readonly BoardToolbarElementDeclaration[] = [];
+    private saveRequestBoardId: string | undefined;
+    private saveRequestGeneration: number | undefined;
+    private saveHandlerId: number | undefined;
+    private requestBoardSave: ((discard?: boolean) => Promise<{ success: boolean; error?: string }>) | undefined;
+    private releaseCancelled = false;
+    private releaseError: string | undefined;
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
      *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
      *  view — EPIC-044 / US-858). Set on each frame's mount effect (the ELEMENT, for
      *  automation focus), cleared on unmount. Transient (not persisted). */
     readonly frames = new Map<string, HTMLIFrameElement>();
+
+    /** Track the theme overlay generation owned by one mounted board frame. */
+    recordBoardThemePreview(boardId: string, generation: number): void {
+        this.boardThemePreviewGenerations.set(boardId, generation);
+    }
+
+    /** Retire and return the preview generation associated with a closing/reloaded frame. */
+    takeBoardThemePreviewGeneration(boardId: string): number | undefined {
+        const generation = this.boardThemePreviewGenerations.get(boardId);
+        this.boardThemePreviewGenerations.delete(boardId);
+        return generation;
+    }
 
     constructor(modelState: IState<BoardEditorState>) {
         super(modelState);
@@ -579,7 +601,71 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  skip the release prompt. Boards are never `modified`, so this is
      *  semantic hygiene rather than a behavior change. */
     override survivesNavigation(): boolean {
-        return !!this.state.get().busy;
+        return !!this.state.get().busy && !this.modified;
+    }
+
+    /** Runtime-only save callback owned by the current main-frame generation. */
+    setSaveRequestHandler(
+        boardId: string,
+        generation: number,
+        handlerId: number | undefined,
+        request: ((discard?: boolean) => Promise<{ success: boolean; error?: string }>) | undefined,
+    ): void {
+        this.saveRequestBoardId = boardId;
+        this.saveRequestGeneration = generation;
+        this.saveHandlerId = handlerId;
+        this.requestBoardSave = request;
+    }
+
+    clearSaveRequestHandler(boardId: string, generation: number, handlerId?: number): void {
+        if (this.saveRequestBoardId !== boardId || this.saveRequestGeneration !== generation
+            || (handlerId !== undefined && this.saveHandlerId !== handlerId)) return;
+        this.saveRequestBoardId = undefined;
+        this.saveRequestGeneration = undefined;
+        this.saveHandlerId = undefined;
+        this.requestBoardSave = undefined;
+    }
+
+    setBoardModified(modified: boolean): void {
+        if (this.state.get().modified === modified) return;
+        this.state.update((state) => { state.modified = modified; });
+    }
+
+    override async confirmRelease(_closing?: boolean): Promise<boolean> {
+        this.releaseCancelled = false;
+        this.releaseError = undefined;
+        if (!this.modified) return true;
+        const pageId = this.page?.id;
+        if (pageId) pagesModel.showPage(pageId);
+        const choice = await ui.confirm(
+            `Do you want to save the changes you made to "${this.title}"?`,
+            { title: "Unsaved Changes", buttons: ["Save", "Don't Save", "Cancel"] },
+        );
+        if (choice === "Don't Save") {
+            // Best effort: let the board drop page-scoped drafts it keeps for app restarts before teardown.
+            if (this.requestBoardSave) await this.requestBoardSave(true);
+            this.setBoardModified(false);
+            return true;
+        }
+        if (choice !== "Save") {
+            this.releaseCancelled = true;
+            return false;
+        }
+
+        try {
+            if (this.saveRequestBoardId === undefined || this.saveRequestGeneration === undefined
+                || this.saveHandlerId === undefined || !this.requestBoardSave) {
+                throw new Error("The board has no active Save handler. Reload the board to restore it, or choose Don't Save.");
+            }
+            const result = await this.requestBoardSave();
+            if (!result.success) throw new Error(result.error || "The board reported that saving failed.");
+            this.setBoardModified(false);
+            return true;
+        } catch (error: unknown) {
+            this.releaseError = errMessage(error, "The board did not finish saving.");
+            void ui.notify(`Failed to save board changes: ${this.releaseError}`, "error");
+            return false;
+        }
     }
 
     /** Per-page singleton: re-navigating to the SAME board reuses this instance
@@ -981,6 +1067,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             toolbarTextFrameGeneration: undefined,
             contentPath: undefined,
             sourceRestoreBlocked: s.sourceRestoreBlocked === true ? true : undefined,
+            modified: false,
         };
         return data;
     }
@@ -1032,6 +1119,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     async restore(): Promise<void> {
         const s = this.state.get();
         if (!s.boardRoot) throw new Error("legacy project-mode board editor — dropped on restore");
+        if (s.modified) this.state.update((state) => { state.modified = false; });
         this.sourceRestoreBlockedOnRestore = s.sourceRestoreBlocked === true;
         // Busy is transient (US-799): processes never survive an app restart
         // (`will-quit` kills every child), so a persisted flag is always stale.
@@ -1196,6 +1284,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  `icon.*` change shows on demand (no folder watcher — US-744 live refresh is
      *  intentionally dropped). Also invoked by the board editor's reload path. */
     async reloadBoard(): Promise<void> {
+        if (!(await this.confirmRelease())) return;
         const boardRoot = this.state.get().boardRoot;
         if (boardRoot && !(await requestBoardTrust(boardRoot))) return;
         if (boardRoot) invalidateBoardIcon(boardRoot);
@@ -1205,19 +1294,27 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     /** Wait for the next attachable main board frame after a model-owned reload. */
-    reloadAndWait(): Promise<boolean> {
+    reloadAndWait(): Promise<{ frameReady: boolean; cancelled?: boolean }> {
         return this.runReloadAndWait();
     }
 
-    private async runReloadAndWait(): Promise<boolean> {
+    private async runReloadAndWait(): Promise<{ frameReady: boolean; cancelled?: boolean }> {
+        const released = await this.confirmRelease();
+        if (!released) {
+            if (this.releaseError) throw new Error(this.releaseError);
+            return {
+                frameReady: this.getFrame(BOARD_CDP_TAB) !== undefined && this.loadedTabs.has(BOARD_CDP_TAB),
+                cancelled: this.releaseCancelled || this.modified,
+            };
+        }
         const boardRoot = this.state.get().boardRoot;
-        if (boardRoot && !(await requestBoardTrust(boardRoot))) return false;
+        if (boardRoot && !(await requestBoardTrust(boardRoot))) return { frameReady: false };
         const frameReady = this.waitForFrameLoad(BOARD_CDP_TAB);
         if (boardRoot) invalidateBoardIcon(boardRoot);
         this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
         this.state.update((s) => { s.reloadToken++; });
-        return frameReady;
+        return { frameReady: await frameReady };
     }
 
     /** Read the current board manifest through the board model's path authority. */

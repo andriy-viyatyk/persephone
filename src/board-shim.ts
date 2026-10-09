@@ -57,6 +57,9 @@ import type {
     BoardStatusBarSetMsg,
     BoardStatusBarUpdateMsg,
     BoardStatusBarActionMsg,
+    BoardSaveRequestMsg,
+    BoardSaveHandlerSyncMsg,
+    BoardSaveResultMsg,
     BoardFileIconsResultMsg,
     BoardNavigationReturnMsg,
     BoardNavigationReturnUrlResultMsg,
@@ -91,6 +94,82 @@ import type { IAiVisionRemote } from "ai-vision/remote";
 import { installBoardDiagnostics } from "./board-console-mirror";
 import { installBoardContextMenu } from "./board-context-menu";
 import { errMessage } from "./shared/utils";
+import type { ThemeDefinition, ThemeDraft, ContrastReport, CustomThemeFile, CustomThemeBase } from "./renderer/api/types/themes";
+
+type BoardThemes = {
+    list(): Promise<ThemeDefinition[]>;
+    get(id: string): Promise<ThemeDefinition | null>;
+    current(): Promise<ThemeDefinition>;
+    derive(base: CustomThemeBase, isDark?: boolean | null): Promise<ThemeDefinition>;
+    contrast(input: ThemeDefinition | CustomThemeFile | ThemeDraft): Promise<ContrastReport>;
+    fork(id: string): Promise<ThemeDraft>;
+    file(id: string): Promise<CustomThemeFile | null>;
+    save(draft: ThemeDraft): Promise<CustomThemeFile>;
+    rename(id: string, name: string): Promise<CustomThemeFile>;
+    delete(id: string): Promise<void>;
+    apply(id: string): Promise<void>;
+    preview(draft: ThemeDraft): Promise<ThemeDefinition>;
+    endPreview(): Promise<void>;
+};
+
+function cloneBoardJson<T>(value: T): T {
+    const seen = new Set<object>();
+    const validate = (item: unknown): void => {
+        if (item === null || typeof item === "string" || typeof item === "boolean") return;
+        if (typeof item === "number" && Number.isFinite(item)) return;
+        if (typeof item !== "object" || seen.has(item)) throw new Error("persephone.themes accepts JSON values only.");
+        seen.add(item);
+        if (Array.isArray(item)) {
+            for (let index = 0; index < item.length; index++) {
+                if (!Object.prototype.hasOwnProperty.call(item, index)) throw new Error("persephone.themes accepts JSON arrays only.");
+                validate(item[index]);
+            }
+            if (Reflect.ownKeys(item).some((key) => key !== "length" && (typeof key !== "string" || !/^\d+$/.test(key)))) {
+                throw new Error("persephone.themes accepts JSON arrays only.");
+            }
+        }
+        else {
+            const prototype = Object.getPrototypeOf(item);
+            if (prototype !== Object.prototype && prototype !== null) throw new Error("persephone.themes accepts plain JSON objects only.");
+            for (const key of Reflect.ownKeys(item)) {
+                if (typeof key !== "string") throw new Error("persephone.themes accepts plain JSON objects only.");
+                const descriptor = Object.getOwnPropertyDescriptor(item, key);
+                if (!descriptor?.enumerable || !("value" in descriptor)) throw new Error("persephone.themes accepts plain JSON objects only.");
+                validate(descriptor.value);
+            }
+        }
+        seen.delete(item);
+    };
+    validate(value);
+    const encoded = JSON.stringify(value);
+    if (encoded === undefined) throw new Error("persephone.themes accepts JSON values only.");
+    return JSON.parse(encoded) as T;
+}
+
+function boardThemeCall<T>(method: string, args: unknown[] = []): Promise<T> {
+    let safeArgs: unknown[];
+    try { safeArgs = cloneBoardJson(args); }
+    catch (error: unknown) { return Promise.reject(error); }
+    return call(`themes.${method}`, { args: safeArgs }).then((result) => cloneBoardJson(result) as T);
+}
+
+function createBoardThemes(): BoardThemes {
+    return {
+        list: () => boardThemeCall("list"),
+        get: (id) => boardThemeCall("get", [id]),
+        current: () => boardThemeCall("current"),
+        derive: (base: CustomThemeBase, isDark?: boolean | null) => boardThemeCall("derive", isDark === undefined ? [base] : [base, isDark]),
+        contrast: (input) => boardThemeCall<ContrastReport>("contrast", [input]),
+        fork: (id) => boardThemeCall("fork", [id]),
+        file: (id) => boardThemeCall("file", [id]),
+        save: (draft: ThemeDraft) => boardThemeCall("save", [draft]),
+        rename: (id, name) => boardThemeCall("rename", [id, name]),
+        delete: (id) => boardThemeCall("delete", [id]),
+        apply: (id) => boardThemeCall("apply", [id]),
+        preview: (draft: ThemeDraft) => boardThemeCall("preview", [draft]),
+        endPreview: () => boardThemeCall("endPreview"),
+    };
+}
 
 class ProviderRegistrationServiceOnlyError extends Error {
     readonly code = "provider-registration-service-only";
@@ -455,6 +534,14 @@ const pendingHostRequests = new Map<number, {
 }>();
 let hostRequestId = Math.floor(Math.random() * 0x80000000);
 const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
+let saveHandlerId = 0;
+const saveHandlers = new Map<number, () => void | boolean | Promise<void | boolean>>();
+const discardHandlers = new Set<() => void | Promise<void>>();
+
+function activeSaveRegistration(): { id: number; handler: () => void | boolean | Promise<void | boolean> } | undefined {
+    const entry = [...saveHandlers.entries()].at(-1);
+    return entry ? { id: entry[0], handler: entry[1] } : undefined;
+}
 
 interface BoardFetchInitInput extends Omit<BoardFetchInit, "body"> {
     body?: string | ArrayBuffer | ArrayBufferView | Blob;
@@ -1144,6 +1231,48 @@ function onHostMessage(handler: (event: MessageEvent) => void): void {
 }
 
 onHostMessage((event) => {
+    const message = event.data as BoardSaveRequestMsg | BoardSaveHandlerSyncMsg | undefined;
+    if (message?.__persephone === "board:saveHandlerSync") {
+        const active = activeSaveRegistration();
+        if (active) window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: active.id, registered: true }, hostPostTarget);
+        return;
+    }
+    if (!message || message.__persephone !== "board:saveRequest"
+        || typeof message.requestId !== "number") return;
+    if (message.discard) {
+        const requestId = message.requestId;
+        void Promise.allSettled([...discardHandlers].map((handler) => Promise.resolve().then(handler))).then(() => {
+            const reply: BoardSaveResultMsg = { __persephone: "board:saveResult", requestId, success: true };
+            window.parent.postMessage(reply, hostPostTarget);
+        });
+        return;
+    }
+    const registration = activeSaveRegistration();
+    if (!registration) {
+        const reply: BoardSaveResultMsg = {
+            __persephone: "board:saveResult", requestId: message.requestId,
+            success: false, error: "The board has no active Save handler.",
+        };
+        window.parent.postMessage(reply, hostPostTarget);
+        return;
+    }
+    Promise.resolve().then(() => registration.handler()).then((result) => {
+        const current = activeSaveRegistration();
+        const reply: BoardSaveResultMsg = current?.id === registration.id
+            ? { __persephone: "board:saveResult", requestId: message.requestId, success: result !== false }
+            : { __persephone: "board:saveResult", requestId: message.requestId, success: false,
+                error: "The board's Save handler changed while it was saving." };
+        window.parent.postMessage(reply, hostPostTarget);
+    }).catch((error: unknown) => {
+        const reply: BoardSaveResultMsg = {
+            __persephone: "board:saveResult", requestId: message.requestId,
+            success: false, error: errMessage(error, "The board failed to save its changes."),
+        };
+        window.parent.postMessage(reply, hostPostTarget);
+    });
+});
+
+onHostMessage((event) => {
     const data = event.data as
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
@@ -1579,10 +1708,48 @@ function createHandle(
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
     // 1.28.0 adds the `segmented` board toolbar control (US-1577).
+    // 1.35.0 adds the themes bridge (EPIC-123), the plain-page unsaved-changes protocol (US-1641),
+    //   text toolbar buttons (a labelled button/menu) and `placement: "board-menu"` (US-1642).
     // 1.34.0 adds page-scoped board UI state in the host cache (US-1621), and fixes
     //   persephone.fetch() response bodies, which never arrived since 1.25.0 because the shim did
     //   not request chunks (US-1623). A board that reads response bodies needs 1.34.0.
     version: BOARD_BRIDGE_VERSION,
+
+    /** Lifecycle state for this board's own page (main frame only). */
+    page: {
+        setModified(modified: boolean): void {
+            window.parent.postMessage({ __persephone: "board:setModified", modified: modified === true }, hostPostTarget);
+        },
+    },
+
+    /** Run when the user chooses Don't Save, before the frame is torn down (3-second budget). Use it to
+     *  drop drafts kept in pageState for app restarts. Requires an onSaveRequest registration. */
+    onDiscardRequest(handler: () => void | Promise<void>): () => void {
+        if (typeof handler !== "function") throw new TypeError("persephone.onDiscardRequest expects a function.");
+        discardHandlers.add(handler);
+        return () => { discardHandlers.delete(handler); };
+    },
+
+    /** Register the current frame's asynchronous Save action. The latest active registration wins. */
+    onSaveRequest(handler: () => void | boolean | Promise<void | boolean>): () => void {
+        if (typeof handler !== "function") throw new TypeError("persephone.onSaveRequest expects a function.");
+        const id = ++saveHandlerId;
+        saveHandlers.set(id, handler);
+        window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: id, registered: true }, hostPostTarget);
+        return () => {
+            if (!saveHandlers.has(id)) return;
+            const wasActive = activeSaveRegistration()?.id === id;
+            saveHandlers.delete(id);
+            window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: id, registered: false }, hostPostTarget);
+            const active = activeSaveRegistration();
+            if (wasActive && active) {
+                window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: active.id, registered: true }, hostPostTarget);
+            }
+        };
+    },
+
+    /** Promise-based bridge to app.themes; requires the themes board permission. */
+    themes: createBoardThemes(),
 
     icons: {
         /** Persephone's icon for each file name, as a `data:` URL for `<img src>`, keyed by the

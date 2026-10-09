@@ -44,7 +44,7 @@ export function ensureBoardThemeSubscription(): void {
         () => {
             void api.updateBoardTheme(computeBoardThemePalette());
         },
-        (state) => ({ id: state.id, isDark: state.isDark }),
+        (state) => ({ id: state.id, isDark: state.isDark, revision: state.revision }),
     );
 }
 

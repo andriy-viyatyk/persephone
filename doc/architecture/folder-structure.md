@@ -131,6 +131,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capabilities.ts      # Built-in capability lookup and invocation (`app.capabilities`)
+│   ├── themes.ts           # Script/MCP application theme service (`app.themes`)
+│   ├── custom-theme-storage.ts # Validated custom theme persistence and cross-window watching
 │   ├── settings.ts         # ISettings implementation
 │   ├── board-namespace.ts  # Stable board settings/vars namespace resolution and collision checks
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
@@ -240,6 +242,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── index.d.ts      # Global `app` and `page` declarations
 │       ├── app.d.ts        # IApp interface
 │       ├── capabilities.d.ts # ICapabilities and built-in handoff payloads
+│       ├── themes.d.ts      # IThemes and custom theme data contracts
 │       ├── common.d.ts     # IDisposable, IEvent, Language
 │       ├── pages.d.ts      # IPageCollection interface
 │       ├── page.d.ts       # IPage interface (with `editor` and `editorSwitches`)
@@ -902,7 +905,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── root.css            # Static #root geometry, before renderer mount
 │   ├── theme-state.ts      # Shared active-theme snapshot and subscriptions
 │   ├── token-vars.ts       # App token CSS-variable generation and installation
-│   └── themes/             # Theme definitions and color resolution (11 themes: 7 dark, 4 light)
+│   ├── custom-theme-types.ts # Saved theme schema and color derivation types
+│   ├── custom-theme.ts     # Custom theme validation, derivation, forking, and contrast reports
+│   ├── custom-theme-palette.ts # Per-token derivation recipes
+│   ├── color-math.ts       # OKLCH color operations and contrast measurements
+│   ├── theme-color-vars.ts # Color variable contract used by built-ins and custom themes
+│   └── themes/             # Eight built-in themes, registry, startup loading, and color resolution
 │
 ├── types/                  # Global Type Declarations
 │   ├── window.d.ts         # Window interface extension

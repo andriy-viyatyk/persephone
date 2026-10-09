@@ -48,6 +48,7 @@ shell.d.ts
 site-extensions.d.ts
 svg-editor.d.ts
 text-editor.d.ts
+themes.d.ts
 tools-hub-editor.d.ts
 tools.d.ts
 toolset-editor.d.ts

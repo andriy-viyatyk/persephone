@@ -448,6 +448,7 @@ export function defaultBoardManifest(name = ""): BoardManifest {
             microphone: false,
             geolocation: false,
             notifications: false,
+            themes: false,
         },
         name,
         author: typeof configuredAuthor === "string" ? configuredAuthor : "",

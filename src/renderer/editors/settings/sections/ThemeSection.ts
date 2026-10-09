@@ -1,9 +1,16 @@
 import { settings } from "../../../api/settings";
+import { ui } from "../../../api/ui";
+import { app } from "../../../api/app";
+import { deleteCustomTheme } from "../../../api/custom-theme-storage";
+import { getMissingEditCapabilityMessage, isCapabilityErrorWithCode } from "../../../api/capability-feedback";
+import { errMessage } from "../../../../shared/utils";
 import { applyTheme, getAvailableThemes } from "../../../theme/themes";
 import type { ThemeDefinition } from "../../../theme/themes/types";
 import { themeState } from "../../../theme/theme-state";
 import { applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
+import "../../../uikit/IconButton/IconButton.css";
 import { createSectionRoot, panel, text } from "./settings-native";
 
 interface ThemePreviewProps {
@@ -69,52 +76,132 @@ class ThemePreviewView extends VanillaView<ThemePreviewProps> {
 
 interface ThemeOption {
     theme: ThemeDefinition;
+    /** The clickable wrapper — the element placed in the grid. */
+    element: HTMLDivElement;
     panel: HTMLDivElement;
     view: ThemePreviewView;
+    name: HTMLSpanElement;
+    /** The edit action on every theme tile. */
+    editButton: IconButtonView;
+    /** The × button on a custom theme's tile. */
+    removeButton?: IconButtonView;
+    disposeClick: () => void;
+    disposeKeydown: () => void;
 }
 
+const THEME_EDITOR_MISSING_MESSAGE = "The Theme Editor board is not installed. Search for and install the Theme Editor board in Tools & Editors.";
+
 export class ThemeSectionView extends VanillaView<Record<string, never>> {
-    private readonly options: ThemeOption[] = [];
+    private readonly options = new Map<string, ThemeOption>();
+    private createThemeButton: IconButtonView | undefined;
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
     }
 
     protected onMount(): void {
-        const themes = getAvailableThemes();
-        const darkThemes = themes.filter((theme) => theme.isDark);
-        const lightThemes = themes.filter((theme) => !theme.isDark);
-        this.root.append(
-            panel({ paddingBottom: "lg" }, text("Theme", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Dark", { variant: "uppercased", color: "light", bold: true, size: "xs" })),
-            this.createGrid(darkThemes),
-            panel({ paddingBottom: "md" }, text("Light", { variant: "uppercased", color: "light", bold: true, size: "xs" })),
-            this.createGrid(lightThemes),
-        );
-        this.applySelection(themeState.get().id);
+        this.renderThemes();
         this.own(themeState.subscribe(
-            (themeId: string) => this.applySelection(themeId),
-            (state) => state.id,
+            () => this.renderThemes(),
+            (state) => ({ id: state.id, revision: state.revision }),
         ));
     }
 
     protected onDispose(): void {
-        this.options.length = 0;
+        for (const option of this.options.values()) {
+            option.view.dispose();
+            option.editButton.dispose();
+            option.removeButton?.dispose();
+            option.disposeClick();
+            option.disposeKeydown();
+        }
+        this.createThemeButton?.dispose();
+        this.createThemeButton = undefined;
+        this.options.clear();
     }
 
-    private createGrid(themes: ThemeDefinition[]): HTMLDivElement {
-        const grid = panel({ direction: "row", wrap: true, gap: "lg", justify: "center", paddingBottom: "xl" });
-        themes.forEach((theme) => {
-            const option = document.createElement("div");
-            option.dataset.type = "settings-theme-option";
-            this.listen(option, "click", () => this.handleThemeChange(theme.id));
-            const preview = this.child(new ThemePreviewView({
-                bgDefault: theme.colors["--color-bg-default"],
-                bgDark: theme.colors["--color-bg-dark"],
-                textDefault: theme.colors["--color-text-default"],
-                accentColor: theme.colors["--color-misc-blue"],
-            }));
-            const themePanel = panel({
+    private createGrid(): HTMLDivElement {
+        const grid = panel({ direction: "row", wrap: true, gap: "lg", justify: "start", paddingBottom: "xl" });
+        return grid;
+    }
+
+    private renderThemes(): void {
+        const themes = getAvailableThemes();
+        const customThemes = themes.filter((theme) => theme.id.startsWith("custom-")).sort((left, right) =>
+            left.name.localeCompare(right.name, undefined, { sensitivity: "base" }) || left.id.localeCompare(right.id)
+        );
+        const groups = [
+            { name: "Dark", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && theme.isDark) },
+            { name: "Light", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && !theme.isDark) },
+            { name: "Custom", themes: customThemes },
+        ];
+        const activeIds = new Set(themes.map((theme) => theme.id));
+        for (const [id, option] of this.options) {
+            if (activeIds.has(id)) continue;
+            option.view.dispose();
+            option.editButton.dispose();
+            option.removeButton?.dispose();
+            option.disposeClick();
+            option.disposeKeydown();
+            option.element.remove();
+            this.options.delete(id);
+        }
+        this.root.replaceChildren(panel({ paddingBottom: "lg" }, text("Theme", { bold: true, size: "sm" })));
+        groups.forEach(({ name, themes: groupThemes }) => {
+            this.root.append(panel({ paddingBottom: "md" }, text(name, { variant: "uppercased", color: "light", bold: true, size: "xs" })));
+            const grid = this.createGrid();
+            groupThemes.forEach((theme) => {
+                let option = this.options.get(theme.id);
+                if (!option) option = this.createOption(theme);
+                option.theme = theme;
+                option.view.update(this.previewProps(theme));
+                option.name.textContent = theme.name;
+                option.element.setAttribute("aria-label", `${theme.name} theme`);
+                option.panel.setAttribute("aria-label", `Apply ${theme.name} theme`);
+                option.editButton.update({
+                    size: "sm", icon: "edit", title: `Edit ${theme.name}`,
+                    "aria-label": `Edit ${theme.name}`,
+                    onClick: (event) => {
+                        event.stopPropagation();
+                        void this.handleThemeEdit(theme.id);
+                    },
+                });
+                option.removeButton?.update({
+                    size: "sm", icon: "close", title: `Delete ${theme.name}`,
+                    "aria-label": `Delete ${theme.name}`,
+                    onClick: (event) => {
+                        event.stopPropagation();
+                        void this.handleThemeDelete(theme.id);
+                    },
+                });
+                this.applySelection(option);
+                grid.append(option.element);
+            });
+            if (name === "Custom") {
+                const createButton = this.getCreateThemeButton();
+                grid.append(createButton.root);
+            }
+            this.root.append(grid);
+        });
+    }
+
+    private previewProps(theme: ThemeDefinition): ThemePreviewProps {
+        return {
+            bgDefault: theme.colors["--color-bg-default"],
+            bgDark: theme.colors["--color-bg-dark"],
+            textDefault: theme.colors["--color-text-default"],
+            accentColor: theme.colors["--color-misc-blue"],
+        };
+    }
+
+    private createOption(theme: ThemeDefinition): ThemeOption {
+        const option = document.createElement("div");
+        option.dataset.type = "settings-theme-option";
+        option.setAttribute("role", "group");
+        option.setAttribute("aria-label", `${theme.name} theme`);
+        const preview = this.child(new ThemePreviewView(this.previewProps(theme)));
+        const name = text(theme.name, { size: "sm", align: "center" });
+        const themePanel = panel({
                 direction: "column",
                 align: "center",
                 justify: "center",
@@ -128,13 +215,53 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
                 borderColor: "default",
                 rounded: "md",
             });
-            option.append(themePanel);
-            themePanel.append(preview.root, text(theme.name, { size: "sm", align: "center" }));
-            preview.mount();
-            grid.append(option);
-            this.options.push({ theme, panel: themePanel, view: preview });
+        themePanel.setAttribute("role", "button");
+        themePanel.tabIndex = 0;
+        themePanel.setAttribute("aria-label", `Apply ${theme.name} theme`);
+        const disposeClick = this.listen(themePanel, "click", () => this.handleThemeChange(theme.id));
+        const disposeKeydown = this.listen(themePanel, "keydown", (event: KeyboardEvent) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            this.handleThemeChange(theme.id);
         });
-        return grid;
+        option.append(themePanel);
+        themePanel.append(preview.root, name);
+        preview.mount();
+        const actions = document.createElement("div");
+        actions.dataset.part = "actions";
+        const editButton = this.child(new IconButtonView({
+            size: "sm",
+            icon: "edit",
+            title: `Edit ${theme.name}`,
+            "aria-label": `Edit ${theme.name}`,
+            onClick: (event) => {
+                event.stopPropagation();
+                void this.handleThemeEdit(theme.id);
+            },
+        }));
+        actions.append(editButton.root);
+        editButton.mount();
+
+        let removeButton: IconButtonView | undefined;
+        if (theme.id.startsWith("custom-")) {
+            removeButton = this.child(new IconButtonView({
+                size: "sm", icon: "close", title: `Delete ${theme.name}`,
+                "aria-label": `Delete ${theme.name}`,
+                onClick: (event) => {
+                    event.stopPropagation();
+                    void this.handleThemeDelete(theme.id);
+                },
+            }));
+            actions.append(removeButton.root);
+            removeButton.mount();
+        }
+        option.append(actions);
+        const result = {
+            theme, element: option, panel: themePanel, view: preview, name, editButton,
+            removeButton, disposeClick, disposeKeydown,
+        };
+        this.options.set(theme.id, result);
+        return result;
     }
 
     private handleThemeChange(themeId: string): void {
@@ -142,8 +269,82 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         settings.set("theme", themeId);
     }
 
-    private applySelection(themeId: string): void {
-        this.options.forEach(({ theme, panel: themePanel }) => {
+    private async handleThemeEdit(themeId: string): Promise<void> {
+        this.handleThemeChange(themeId);
+        try {
+            await app.capabilities.invoke("theme.edit", { mode: "edit", themeId }, {
+                version: 1,
+                deadlineMs: 30_000,
+            });
+        } catch (error) {
+            await this.reportThemeEditFailure(error);
+        }
+    }
+
+    private async handleThemeCreate(): Promise<void> {
+        try {
+            await app.capabilities.invoke("theme.edit", { mode: "new" }, {
+                version: 1,
+                deadlineMs: 30_000,
+            });
+        } catch (error) {
+            await this.reportThemeEditFailure(error);
+        }
+    }
+
+    private async reportThemeEditFailure(error: unknown): Promise<void> {
+        if (isCapabilityErrorWithCode(error, "timeout")) {
+            ui.notify("Theme editor did not respond", "warning");
+            return;
+        }
+
+        const missingMessage = getMissingEditCapabilityMessage(error, "theme.edit");
+        if (missingMessage === THEME_EDITOR_MISSING_MESSAGE) {
+            try {
+                await app.pages.showToolsHubPage({ tab: "search" });
+            } catch (navigationError) {
+                ui.notify(`Could not open Tools & Editors: ${errMessage(navigationError)}`, "error");
+            }
+            ui.notify(missingMessage, "warning");
+            return;
+        }
+
+        ui.notify(`Failed to open Theme Editor: ${errMessage(error)}`, "error");
+    }
+
+    private getCreateThemeButton(): IconButtonView {
+        if (this.createThemeButton) return this.createThemeButton;
+        const button = this.child(new IconButtonView({
+            size: "md",
+            icon: "plus",
+            title: "Create a new theme",
+            "aria-label": "Create a new theme",
+            onClick: (event) => {
+                event.stopPropagation();
+                void this.handleThemeCreate();
+            },
+        }));
+        button.root.dataset.part = "create";
+        button.mount();
+        this.createThemeButton = button;
+        return button;
+    }
+
+    private async handleThemeDelete(themeId: string): Promise<void> {
+        const name = this.options.get(themeId)?.theme.name ?? themeId;
+        const result = await ui.confirm(
+            `Delete the custom theme "${name}"? This cannot be undone.`,
+            { title: "Delete Theme", buttons: ["Delete", "Cancel"] },
+        );
+        if (result !== "Delete") return;
+        try {
+            await deleteCustomTheme(themeId);
+        } catch (error) {
+            ui.notify(errMessage(error, `Failed to delete theme "${name}".`), "warning");
+        }
+    }
+
+    private applySelection({ theme, panel: themePanel }: ThemeOption): void {
             applyPanelAttributes(themePanel, resolvePanelAttributes({
                 direction: "column",
                 align: "center",
@@ -155,10 +356,9 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
                 height: 100,
                 background: "dark",
                 border: true,
-                borderColor: theme.id === themeId ? "active" : "default",
+                borderColor: theme.id === themeState.get().id ? "active" : "default",
                 rounded: "md",
             }));
-        });
     }
 }
 

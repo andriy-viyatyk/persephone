@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.34.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.35.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
@@ -62,7 +62,10 @@ const off = persephone.toolbar.onAction(({ id, type, value }) => {
 Inputs send one string event after 500 ms of quiet time; menus send their item id, selects and
 segmented controls their option value, and toggles their new boolean. A `segmented` control is a
 row of joined buttons like the editor switch; its options are `{ value, label?, icon?, title?,
-disabled? }`, each with a `label`, an `icon`, or both. Every live control is addressed by
+disabled? }`, each with a `label`, an `icon`, or both. A `button` or `menu` likewise takes an
+`icon`, a `label`, or both: with a `label` it is a text button (icon optional, bridge `1.35.0`),
+without one an icon button that should carry a `title`. A `menu` with `placement: "board-menu"`
+puts its items at the top of Persephone's own **…** menu instead of drawing a button. Every live control is addressed by
 `data-name="board-toolbar-control-${id}"` in `BoardEditor.elements`, while host/window automation
 is the correct way to operate it (the board iframe methods target iframe content).
 
@@ -181,6 +184,7 @@ when a board depends on it. Enable only flags the code uses. Approved permission
 | `microphone: true` | “Use your microphone.” |
 | `geolocation: true` | “Read this device's location.” |
 | `notifications: true` | “Show desktop notifications.” |
+| `themes: true` | “Create, change, delete, and apply app themes.” |
 
 False flags have no permission line. The all-false summary is “No permissions requested.” The
 legacy label is “Unrestricted”: “This board uses an older manifest without permission settings,
@@ -194,10 +198,19 @@ configured to use the OS default browser, an HTTP(S) link opened by a board with
 external schemes remain blocked. Grant `openExternal` when the board must launch links outside
 Persephone.
 
+`themes: true` enables only `persephone.themes.*`, not `persephone.call()` or app scripting. Its
+methods are `list`, `get`, `current`, `derive`, `contrast`, `fork`, `file`, `save`, `rename`, `delete`,
+`apply`, `preview`, and `endPreview`. `persephone.themes.current()` returns a Promise because the
+board transport is asynchronous; `app.themes.current` is a synchronous property. Theme bridge
+signatures, JSON rules, preview cleanup, the exact denial text, and the required
+`minBridgeVersion: "1.35.0"` are maintained in the canonical
+[Boards guide](../guides/boards.md#persephone-themes-bridge).
+
 If a call rejects with exactly `permission-denied: "<flag>" is not enabled in board-manifest.json`,
 inspect the call and add only its required flag or level. Added grants prompt for approval on the
-next open/reload; reductions reconcile silently. Never click **Trust Board** unless the user
-expressly asks. Viewer boards for untrusted documents keep `fileSystem: false` and `network: false`
+next open/reload; reductions reconcile silently. While you build this board at the user's request,
+answer that prompt yourself (**Accept**) — it is your own code; never click **Unregister board**
+unless the user asks. Viewer boards for untrusted documents keep `fileSystem: false` and `network: false`
 and never receive `execute` or `appScripting`, while continuing to render their document and own
 assets.
 
@@ -224,7 +237,7 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
   "author": "you",
   "repository": "https://github.com/you/your-board",
   "minBridgeVersion": "1.30.0",
-  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
+  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false, "themes": false },
   "service": "scripts/service.mjs",
   "contentProviders": [
     { "type": "acme/mem", "schemes": ["mem"] }
@@ -257,7 +270,7 @@ invocation from the board frame.
 ```json
 {
   "minBridgeVersion": "1.30.0",
-  "permissions": { "execute": false, "service": false, "fileSystem": false, "openExternal": false, "appScripting": true, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
+  "permissions": { "execute": false, "service": false, "fileSystem": false, "openExternal": false, "appScripting": true, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false, "themes": false },
   "capabilities": [
     {
       "id": "acme.convert",
@@ -287,6 +300,20 @@ the caller's window: an already-open winning handler page is reused, otherwise P
 that board there. `representation` is an open string; `content.view` requires a non-empty value.
 Declare one entry per supported representation and set `minBridgeVersion: "1.21.0"` when using
 it. Other capability ids may omit the field.
+
+#### Settings Theme Editor handoff
+
+Persephone Settings invokes the platform-provided `theme.edit@1` capability for Edit and New on its
+theme tiles. A Theme Editor board claims it with
+`{ "id": "theme.edit", "version": 1, "priority": 50, "title": "Theme Editor" }`. The payload is
+`{ mode: "edit", themeId: string }` or `{ mode: "new" }`; Persephone validates it before resolving
+a handler, requiring a non-empty `themeId` only for edit. Settings applies and persists the selected
+theme before Edit; New does not change the active theme. Receive both the initial request and later
+requests to a reused page with `persephone.intent.onRequest()`. Validate the intent and resolve it
+before loading sources or opening a dialog, since the invocation deadline includes cold board
+startup. If no handler is installed, Settings opens Tools & Editors → Search boards and shows
+installation instructions; timeout has a separate warning. The `themes: true` permission gates the
+board's `persephone.themes.*` bridge and is not required for the platform handoff itself.
 
 ### In-memory intents: `persephone.intent.*`
 
@@ -377,7 +404,7 @@ Declare a provider in `contentProviders` and give it one or more URL schemes:
 ```json
 {
   "minBridgeVersion": "1.30.0",
-  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false },
+  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false, "themes": false },
   "service": "scripts/service.mjs",
   "contentProviders": [{ "type": "acme/mem", "schemes": ["mem"] }]
 }
@@ -957,6 +984,37 @@ registration must call the returned remote's `refresh()` when they first become 
 `items[0]` will not resolve for an agent. Agent-facing methods must not block on an in-board confirm
 dialog; keep confirmation in the interactive UI and make the exposed method complete immediately.
 
+### Unsaved changes for plain boards
+
+Simple and stream-host boards can report their board-owned draft through the main frame. The
+existing tab dot and Save / Don't Save / Cancel release prompt then cover tab close, navigation,
+editor switching and reload. Secondary views cannot register competing handlers.
+
+```js
+persephone.page.setModified(true);
+const offSave = persephone.onSaveRequest(async () => {
+  await saveDraft();
+  persephone.page.setModified(false);
+});
+// Call offSave() when this frame no longer owns the Save action.
+```
+
+`page.setModified(modified: boolean)` reports the page's state. `onSaveRequest(handler)` accepts a
+handler returning `void`, `boolean`, or a promise of either, and returns an unsubscribe function.
+The latest active registration wins. A `false` result, rejection, absent handler, or 30-second
+timeout keeps the page open and reports an error. Persephone clears modified state after a
+successful release Save; clear it after a manual save only when the draft is safely persisted.
+Registration and dirty state are runtime-only and must be restored by the new frame.
+
+`persephone.onDiscardRequest(handler)` runs when the user chooses **Don't Save**, before the frame is
+torn down (best effort, 3 seconds); use it to delete a draft the board keeps in `persephone.pageState`
+for app restarts, or the reloaded board would restore the discarded work. It returns an unsubscribe
+function and takes effect only while an `onSaveRequest` handler is registered.
+
+Window/app close does not prompt. Persist drafts in board-local storage and report modified again
+after recovering a draft. The API ships under bridge 1.35.0 and adds no manifest permission. A
+content-host board continues to use Persephone's file-save flow instead.
+
 ### Content-host boards — `persephone.host.*`
 
 When your board sets `"editorKind": "content-host"` in the manifest, **Persephone owns the file**,
@@ -1309,7 +1367,7 @@ label plate and text, and the group outline — as `--p-graph-bg`, `--p-graph-no
 `--p-graph-border-default`, `--p-graph-border-highlight`, `--p-graph-border-selected`,
 `--p-graph-border-special`, `--p-graph-link-default`, `--p-graph-link-selected`,
 `--p-graph-label-bg`, `--p-graph-label-text` and `--p-graph-group-border`. They are per-theme
-values tuned across all ten themes — a palette derived from the general `--p-*` set loses that
+values tuned across all built-in themes — a palette derived from the general `--p-*` set loses that
 fidelity. Because a `<canvas>` cannot consume `var(...)`, the same values arrive as concrete
 strings on `persephone.getTheme().graph`, keyed by the camelCased suffix (`bg`, `nodeDefault`,
 `nodeHighlight`, `nodeSelected`, `nodeSpecial`, `borderDefault`, `borderHighlight`,

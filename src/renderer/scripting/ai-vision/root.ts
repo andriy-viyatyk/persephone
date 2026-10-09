@@ -60,6 +60,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search the live descriptor graph for object-model paths; use guides.search for documentation text." },
     { name: "version", kind: "property", summary: "Persephone version string." },
     { name: "settings", kind: "property", node: true, summary: "Application settings (read/write)." },
+    { name: "themes", kind: "property", node: true, summary: "Inspect, derive, preview, and manage themes." },
     { name: "fs", kind: "property", node: true, summary: "File system access (read/write files, list folders).", caution: "writes touch the user's disk" },
     { name: "ui", kind: "property", node: true, summary: "Dialogs, notifications, progress overlays, screen locks — and ui.elements, which names the on-screen shell controls and what each is for. Asked WHERE something is, or to SHOW the user something, start there and point at it with ui.highlight. Asked to WALK the user THROUGH a screen, use ui.guide.step, which points at a control and then waits for them. A writable property that changes the same thing is a different question." },
     { name: "dialogs", kind: "property", node: true, summary: "Open renderer dialogs in live display order; use dialogs[i] to inspect and answer one." },
@@ -250,6 +251,7 @@ export class AiRoot implements IAiVisible {
 
     get version() { return this.app.version; }
     get settings() { return this.app.settings; }
+    get themes() { return this.app.themes; }
     get fs() { return this.app.fs; }
     get ui() { return this.app.ui; }
     get dialogs(): DialogsNode { return this.dialogsNode; }

@@ -120,7 +120,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "title", kind: "property", summary: "Tab title." },
     { name: "filePath", kind: "property", summary: "Backing file path, or nothing for an unsaved page." },
     { name: "workspaceFolder", kind: "property", summary: "The project folder this page's Explorer is rooted at — this page's workspace (Persephone's equivalent of a VS Code workspace folder). Nothing when the page has no folder Explorer." },
-    { name: "modified", kind: "property", summary: "Whether there are unsaved changes." },
+    { name: "modified", kind: "property", summary: "Whether there are unsaved changes, including a board-reported draft." },
     { name: "pinned", kind: "property", summary: "Whether the tab is pinned." },
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
     { name: "pipe", kind: "property", node: true, summary: "The current primary content pipe and its live provider/transformer status." },

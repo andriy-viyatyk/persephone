@@ -236,6 +236,7 @@ interface IApp {
     readonly siteExtensions: ISiteExtensions;
     readonly boardVars: IBoardVars;
     readonly capabilities: ICapabilities;
+    readonly themes: IThemes;
     readonly pages: IPageCollection;
     readonly events: IAppEvents;
 
@@ -251,6 +252,19 @@ interface IApp {
     ): Promise<TResult>;
 }
 ```
+
+`app.themes` is the script and MCP interface for application themes. `list()` and `get(id)` return
+theme definitions; `current` is the active definition. `derive(base, isDark?)` computes a complete
+palette, `contrast(themeOrFile)` reports text contrast, and `fork(id)` creates an editable draft
+from a built-in or saved theme. `file(id)` returns the saved custom-theme intent (`null` for
+built-ins). `save`, `rename`, `delete`, and `apply` persist or select custom themes. `preview(draft)`
+applies a temporary definition, and `endPreview()` restores the selected saved theme. Definitions
+and saved files are copied at the API boundary so callers cannot mutate registry state by reference.
+
+The board bridge exposes corresponding asynchronous `persephone.themes.*` methods to boards that
+request the `themes` manifest permission. The permission gates theme operations only; platform
+capability dispatch for `theme.edit` is a separate route. See [Capability bus](capability-bus.md#well-known-capability-themeedit)
+and the [board authoring guide](../../assets/guides/agents/boards.md#the-persephonethemes-bridge).
 
 `IFetchOptions` controls the Node.js HTTP request: `method`, `headers`, `body`, `timeout`,
 `maxRedirects`, `signal`, and `rejectUnauthorized` retain their usual meanings. `headers` are sent

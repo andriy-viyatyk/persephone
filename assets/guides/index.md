@@ -54,7 +54,7 @@ editor when one is available, or the guide contents otherwise.
 - Multiple tabs with session restore
 - Recent files and folder bookmarks
 - Drag-and-drop file opening
-- 11 color themes — 7 dark + 4 light (Persephone, Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue, Persephone Light, Light Modern, Solarized Light, Quiet Light)
+- 8 color themes — 4 dark + 4 light (Persephone, Default Dark, Solarized Dark, Monokai, Persephone Light, Light Modern, Solarized Light, Quiet Light), plus custom themes you create
 
 ### For Developers
 - Run JavaScript or TypeScript to transform content, with Log View for structured output and inline dialogs

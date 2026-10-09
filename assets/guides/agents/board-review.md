@@ -107,6 +107,7 @@ The permission lines use the approved wording:
 | `microphone: true` | “Use your microphone.” |
 | `geolocation: true` | “Read this device's location.” |
 | `notifications: true` | “Show desktop notifications.” |
+| `themes: true` | “Create, change, delete, and apply app themes.” This grants only `persephone.themes.*`, not `appScripting`. |
 
 An all-false manifest says **“No permissions requested.”** Legacy boards are labelled **“Unrestricted”**
 with this explanation: “This board uses an older manifest without permission settings, so it can do
@@ -122,9 +123,16 @@ Keep only flags used by reachable code. Native
 `fileSystem: false`; `persephone.fetch()` needs `network`. An exact refusal is
 `permission-denied: "<flag>" is not enabled in board-manifest.json`. Inspect the source call and add
 only its required flag/level. Added grants show the **Board permissions changed** dialog at the
-next open/reload (the user chooses **Accept** or **Unregister board**; closing it takes the board off
-its page); reductions reconcile silently. Never click **Trust Board**, **Accept** or
-**Unregister board** unless the user expressly asks for that outcome.
+next open/reload (**Accept** or **Unregister board**; closing it takes the board off its page);
+reductions reconcile silently. When you are reviewing a board for the user, never click
+**Trust Board**, **Accept** or **Unregister board** unless the user expressly asks for that outcome.
+(A board you are building at the user's request is different — you answer its dialogs yourself; see
+the Boards guide, "Who answers the trust dialogs".)
+
+For theme operations, verify the board declares `themes: true` and uses only the finite
+`persephone.themes.*` methods documented in the [board guide](./boards.md#the-persephone-themes-bridge).
+The bridge passes plain JSON values and does not require `appScripting`. Boards using it must set
+`minBridgeVersion: "1.35.0"`. Review preview cleanup and saved-theme changes as user-visible effects.
 
 Viewer boards rendering untrusted documents keep `fileSystem: false` and `network: false`, and
 never request `execute` or `appScripting`: injected document code must not rewrite viewer files or

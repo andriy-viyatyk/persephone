@@ -321,6 +321,9 @@ export type BoardToolbarControlDescriptor =
         icon?: BoardToolbarIcon;
         items: readonly { id: string; label: string; disabled?: boolean }[];
         disabled?: boolean;
+        /** `"board-menu"` adds the items to the top of Persephone's own … menu instead of drawing a
+         *  menu button. Fixed at `set()`; `update()` cannot move a control. */
+        placement?: "toolbar" | "board-menu";
     }
     | {
         id: string;
@@ -404,6 +407,13 @@ export interface BoardLogMsg { __persephone: "board:log"; message: string; level
 export interface BoardBusyMsg { __persephone: "board:busy"; busy: boolean }
 export interface BoardSetContentMsg { __persephone: "board:setContent"; content: string }
 export interface BoardSaveMsg { __persephone: "board:save" }
+export interface BoardSetModifiedMsg { __persephone: "board:setModified"; modified: boolean }
+export interface BoardSaveHandlerMsg { __persephone: "board:saveHandler"; handlerId: number; registered: boolean }
+/** `discard: true` tells the board the user chose Don't Save, so it can drop drafts kept for app restarts. */
+export interface BoardSaveRequestMsg { __persephone: "board:saveRequest"; requestId: number; discard?: boolean }
+/** Host asks a freshly loaded main frame to re-announce its active Save handler (registered before load). */
+export interface BoardSaveHandlerSyncMsg { __persephone: "board:saveHandlerSync" }
+export interface BoardSaveResultMsg { __persephone: "board:saveResult"; requestId: number; success: boolean; error?: string }
 export interface BoardSetStateMsg { __persephone: "board:setState"; state: Record<string, unknown> }
 export interface BoardMergeStateMsg { __persephone: "board:mergeState"; partial: Record<string, unknown> }
 export interface BoardStateInitMsg {
@@ -482,6 +492,9 @@ export type BoardToHostMsg =
     | BoardBusyMsg
     | BoardSetContentMsg
     | BoardSaveMsg
+    | BoardSetModifiedMsg
+    | BoardSaveHandlerMsg
+    | BoardSaveResultMsg
     | BoardSetStateMsg
     | BoardMergeStateMsg
     | BoardStateInitMsg
@@ -739,6 +752,8 @@ export type BoardHostFrameMsg =
     | BoardCapabilityInvokeResultMsg
     | BoardNavigationCreateReturnUrlMsg
     | BoardNavigationReturnUrlResultMsg
+    | BoardSaveRequestMsg
+    | BoardSaveHandlerSyncMsg
     | BoardNavigationReturnMsg
     | BoardToolbarControlEventMsg
     | BoardStatusBarActionMsg;

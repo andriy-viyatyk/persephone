@@ -1,3 +1,32 @@
+## EPIC-123 — Custom themes, derived from three colors and edited in a Theme Editor board
+
+Completed 2026-10-09. A user can make their own themes: pick a background, a text color and an
+accent, let Persephone derive the rest of the palette, adjust any color, and save it as a custom
+theme. Editing happens in the Theme Editor board (`persephone-boards`, BT-034/035/036), not in core.
+
+- **Model and storage (US-1636, US-1637).** `deriveTheme()` / `contrastReport()` in
+  `src/renderer/theme/custom-theme.ts` (OKLCH color math in `color-math.ts`); custom themes are
+  validated `custom-*.theme.json` files under `%APPDATA%/persephone/data/themes`
+  (`custom-theme-storage.ts`), loaded synchronously at startup, watched across windows, listed in
+  Settings and in theme cycling.
+- **APIs (US-1638, US-1639).** `app.themes` for scripts and MCP (`list/get/current/derive/contrast/
+  fork/file/save/rename/delete/apply/preview/endPreview`), and the `themes: true` board permission
+  with the `persephone.themes` bridge; bridge `1.35.0`.
+- **Board protocols (US-1641, US-1642).** Plain board pages get the unsaved-changes protocol
+  (`page.setModified`, `onSaveRequest`/`onDiscardRequest`); page-toolbar buttons and menus take a
+  `label` (text buttons), and a menu with `placement: "board-menu"` adds its items to the page "…" menu.
+- **Settings and `theme.edit` (US-1643, US-1644).** 4 dark + 4 light built-ins (Abyss, Red, Tomorrow
+  Night Blue removed), Persephone themes first, tiles left-aligned. Custom tiles delete with
+  confirmation; every tile has Edit and the Custom row ends with "+". Both invoke the new
+  `theme.edit@1` capability (validated in `src/renderer/api/theme-edit.ts`); with no claimant,
+  Tools & Editors opens on Search boards with install guidance. The Theme Editor claims it and
+  guards a dirty draft with Save / Discard / Cancel.
+- **Verified live** through Persephone MCP: toolbar text buttons and board-menu items, Theme Editor
+  dirty-state round trip, Edit → reused board → dirty dialog → Cancel keeping the draft, payload
+  validation. Not verified live: the no-handler fallback (needs the board uninstalled).
+- **Completion.** `/review`, `/document`, `/userdoc` run by Codex; review replaced non-null
+  assertions in the theme color code with explicit guards.
+
 ## EPIC-122 — Site certificates in the browser, shown by a `certificate.view` board
 
 Completed 2026-10-06. The browser can show a site's TLS certificate, without a certificate viewer

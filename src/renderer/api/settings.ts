@@ -5,7 +5,7 @@ import { parseJSON5 } from "../core/utils/parse-utils";
 import { createEchoGuard } from "../core/utils/echo-guard";
 import { fs } from "./fs";
 import { FileWatcher } from "../core/utils/file-watcher";
-import { applyTheme } from "../theme/themes";
+import { applyThemePreservingPreview } from "../theme/themes";
 import { defaultSearchableExtensions, defaultMaxFileSize, defaultExcludePatterns } from "../../ipc/search-ipc";
 import { wrapSubscription } from "./internal";
 import type { BrowserNetwork } from "../../ipc/browser-network-ipc";
@@ -106,7 +106,7 @@ const settingsFileHeader = [
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tab-recent-languages":
         "Languages recently chosen from a tab's language menu, most recent first.\nMaintained automatically; they sort to the top of that menu. Safe to trim or clear.",
-    "theme": "Application color theme. Applies as soon as this file is saved.\nOne of: default-dark, persephone, solarized-dark, monokai, abyss, red,\ntomorrow-night-blue, light-modern, persephone-light, solarized-light, quiet-light. Default: persephone.",
+    "theme": "Application color theme. Applies as soon as this file is saved. Built-in ids and custom theme ids are accepted; custom choices are stored in the data/themes folder. Default: persephone.",
     "search-extensions": "File extensions to include in file content search.\nAdd or remove extensions to customize which files are searchable.",
     "search-exclude": "Folders and globs always skipped by file content search.\nA plain name skips any folder with that name; a glob (with / * ?) is matched against the path relative to the search root.\nNever applied to the search root itself — searching inside node_modules works, while nested ones are still skipped.",
     "search-max-file-size": "Maximum file size (in bytes) for file content search.\nFiles larger than this are skipped. Default: 1048576 (1 MB).",
@@ -345,7 +345,7 @@ class Settings implements ISettings {
 
             if (migratedPinnedEditors) this.saveSettingsDebounced();
 
-            applyTheme(newSettings["theme"]);
+            applyThemePreservingPreview(newSettings["theme"]);
 
             if (emitChanges) {
                 const next = newSettings as Record<string, unknown>;

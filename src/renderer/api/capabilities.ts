@@ -10,6 +10,7 @@ import type {
     ContentRepresentation,
     ICapabilities,
     ImageEditPayload,
+    ThemeEditPayload,
 } from "./types/capabilities";
 import { editorRegistry, type EditorCapabilityDeclaration } from "../editors/base/editorRegistry";
 import type { EditorView } from "../../shared/types";
@@ -21,6 +22,7 @@ import type {
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError, capabilityBus } from "./capability-bus";
 import { validateCertificateViewPayload } from "./certificate-view";
+import { validateThemeEditPayload } from "./theme-edit";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
@@ -310,6 +312,7 @@ class Capabilities implements ICapabilities {
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
     invoke(id: "diagram.edit", payload: { source: string; title: string }): Promise<DiagramEditResult>;
     invoke(id: "certificate.view", payload: CertificateViewPayload): Promise<unknown>;
+    invoke(id: "theme.edit", payload: ThemeEditPayload, opts?: CapabilityInvokeOptions): Promise<unknown>;
     invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
     async invoke(id: CapabilityId, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown> {
         const invocation = await invokeCapabilityOutcome(id, payload, opts);
@@ -354,6 +357,7 @@ export async function invokeCapabilityOutcome(
             ? asRecord(payload, parsed.bareId)
             : undefined;
         if (parsed.bareId === "certificate.view") validateCertificateViewPayload(payload);
+        if (parsed.bareId === "theme.edit") validateThemeEditPayload(payload);
         const representation = values?.representation;
         if (parsed.bareId === "content.view" && (
             typeof representation !== "string"

@@ -2,18 +2,26 @@ import { CapabilityError } from "./capability-bus";
 import { errMessage } from "../../shared/utils";
 import type { CapabilityPageResult } from "./types/capabilities";
 
-export type EditCapabilityId = "image.edit" | "diagram.edit";
+export type EditCapabilityId = "image.edit" | "diagram.edit" | "theme.edit";
+
+export function isCapabilityErrorWithCode(
+    error: unknown,
+    code: CapabilityError["code"],
+): error is CapabilityError {
+    return error instanceof CapabilityError && error.code === code;
+}
 
 const missingEditCapabilityMessages: Record<EditCapabilityId, string> = {
     "image.edit": "No image editor is registered. Enable the board in Tools & Editors or install a replacement.",
     "diagram.edit": "No diagram editor is registered. Enable the board in Tools & Editors or install a replacement.",
+    "theme.edit": "The Theme Editor board is not installed. Search for and install the Theme Editor board in Tools & Editors.",
 };
 
 export function getMissingEditCapabilityMessage(
     error: unknown,
     capability: EditCapabilityId,
 ): string | undefined {
-    if (!(error instanceof CapabilityError) || error.code !== "no-handler") return undefined;
+    if (!isCapabilityErrorWithCode(error, "no-handler")) return undefined;
     return missingEditCapabilityMessages[capability];
 }
 

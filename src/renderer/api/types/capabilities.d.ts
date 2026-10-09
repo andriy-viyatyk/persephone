@@ -73,6 +73,11 @@ export interface CertificateViewPayload {
     source?: { url: string };
 }
 
+/** Settings request for the platform-provided Theme Editor capability. */
+export type ThemeEditPayload =
+    | { mode: "edit"; themeId: string }
+    | { mode: "new" };
+
 export interface CapabilityPageResult {
     readonly pageId: string;
 }
@@ -88,6 +93,7 @@ export interface ICapabilities {
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
     invoke(id: "diagram.edit", payload: DiagramEditPayload): Promise<DiagramEditResult>;
     invoke(id: "certificate.view", payload: CertificateViewPayload): Promise<unknown>;
+    invoke(id: "theme.edit", payload: ThemeEditPayload, opts?: CapabilityInvokeOptions): Promise<unknown>;
     invoke(id: string, payload: unknown, opts?: CapabilityInvokeOptions): Promise<unknown>;
     list(): readonly CapabilityInfo[];
     handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[];

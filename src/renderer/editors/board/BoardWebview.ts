@@ -39,6 +39,7 @@ import type {
     BoardStatusBarPatch,
     BoardToHostMsg,
     BoardHostFrameMsg,
+    BoardSaveResultMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import { isCapabilityErrorCode, type CapabilityErrorCode, type CapabilityOutcome, type IntentRequest } from "../../../ipc/capability-bus-channels";
@@ -62,6 +63,7 @@ import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { boardTrust, pathCovers } from "../../api/board-trust";
 import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
 import { boardPermissionError } from "../../../shared/board-manifest-utils";
+import { getPreviewGeneration } from "../../theme/themes";
 import { errMessage } from "../../../shared/utils";
 import { CapabilityError } from "../../api/capability-bus";
 import { invokeCapabilityOutcome } from "../../api/capabilities";
@@ -186,6 +188,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private lastBoardContent: string | undefined;
     private live = false;
     private generation = 0;
+    private hasLoaded = false;
     private portDeliveryUnsubscribe: (() => void) | undefined;
     private contentHostUnsubscribe: (() => void) | undefined;
     private sharedStateUnsubscribe: (() => void) | undefined;
@@ -210,6 +213,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }>();
     private capabilityFrame: BoardCapabilityFrame | undefined;
     private readonly pendingContentOpen = new Set<AbortController>();
+    private saveHandlerId: number | undefined;
+    private nextSaveRequestId = 0;
+    private readonly pendingSaveRequests = new Map<number, {
+        generation: number;
+        resolve: (result: { success: boolean; error?: string }) => void;
+        timer: ReturnType<typeof setTimeout>;
+    }>();
 
     private readonly boardMessageHandlers: BoardMessageHandlers = {
         "board:interact": { handle: () => dismissOverlays() },
@@ -220,6 +230,23 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             },
         },
         "board:busy": { handle: (message, current) => current.model.setBusy(!!message.busy) },
+        "board:setModified": {
+            gate: { kind: "mainTrusted", rejectionLog: "Ignored dirty-state update from a secondary or unavailable board frame." },
+            handle: (message, current) => current.model.setBoardModified(message.modified === true),
+        },
+        "board:saveHandler": {
+            gate: { kind: "mainTrusted", rejectionLog: "Ignored Save handler registration from a secondary or unavailable board frame." },
+            handle: (message, current) => {
+                if (message.registered) {
+                    this.saveHandlerId = message.handlerId;
+                    current.model.setSaveRequestHandler(this.boardId, current.generation, message.handlerId, (discard) => this.requestSave(current.generation, discard));
+                } else if (this.saveHandlerId === message.handlerId) {
+                    this.saveHandlerId = undefined;
+                    current.model.clearSaveRequestHandler(this.boardId, current.generation, message.handlerId);
+                }
+            },
+        },
+        "board:saveResult": { handle: (message, current) => this.resolveSaveRequest(message, current.generation) },
         "board:setContent": {
             handle: (message, current) => {
                 const content = typeof message.content === "string" ? message.content : "";
@@ -463,7 +490,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onDispose(): void {
         this.live = false;
+        void this.endOwnedThemePreview();
         const retiredGeneration = this.generation;
+        if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, retiredGeneration);
+        this.saveHandlerId = undefined;
+        this.rejectSaveRequests(retiredGeneration, "The board frame was replaced.");
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
@@ -553,6 +584,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const iframe = this.iframe;
         this.iframe = undefined;
         this.iframeGrant = grant;
+        if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, this.generation);
+        this.saveHandlerId = undefined;
+        this.rejectSaveRequests(this.generation, "The board permissions changed while it was saving.");
         this.generation++;
         this.fetchBridge.dispose();
         this.fetchBridge = new BoardFetchBridge();
@@ -708,7 +742,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
+        if (this.hasLoaded) void this.endOwnedThemePreview();
+        this.hasLoaded = true;
         const retiredGeneration = this.generation;
+        if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, retiredGeneration);
+        this.saveHandlerId = undefined;
+        this.rejectSaveRequests(retiredGeneration, "The board frame was reloaded.");
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
@@ -750,6 +789,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             const message: BoardHostContentMsg = { __persephone: "host:content", content, language };
             win.postMessage(message, `board://${host}`);
         }
+        if (this.isMain && win) {
+            // A board registers its Save handler while its script runs, before this load event retires
+            // the previous generation — ask the frame to announce it again under the current one.
+            const sync: BoardHostFrameMsg = { __persephone: "board:saveHandlerSync" };
+            win.postMessage(sync, `board://${host}`);
+        }
         const currentFilePath = model.currentFilePath();
         const hostedLocalPath = currentFilePath && isPlainLocalPath(currentFilePath) ? currentFilePath : null;
         void api.requestBoardPort(this.boardId, host, model.id, hostedLocalPath, this.hostedPathToken);
@@ -780,6 +825,16 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.flushPendingSourceUrls();
         if (this.isMain) this.focusFrame();
     };
+
+    private async endOwnedThemePreview(): Promise<void> {
+        const previewGeneration = this.props.model.takeBoardThemePreviewGeneration(this.boardId);
+        if (previewGeneration === undefined || getPreviewGeneration() !== previewGeneration) return;
+        try {
+            await app.themes.endPreview();
+        } catch (error) {
+            this.appendLog("warn", `Could not restore the theme after board preview: ${errMessage(error)}`);
+        }
+    }
 
     /** Push queued runtime source identities to the live main board frame in FIFO order. */
     private flushPendingSourceUrls(): void {
@@ -1105,6 +1160,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private readonly handleFrameError = (): void => {
+        if (this.isMain) {
+            this.props.model.clearSaveRequestHandler(this.boardId, this.generation);
+            this.saveHandlerId = undefined;
+            this.rejectSaveRequests(this.generation, "The board frame failed to load.");
+        }
         this.props.model.clearStatusBarItemsForFrame(this.generation);
         this.props.onStatusBarClear?.(this.generation);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(this.generation);
@@ -1132,6 +1192,46 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             return true;
         } catch {
             return false;
+        }
+    }
+
+    private requestSave(generation: number, discard = false): Promise<{ success: boolean; error?: string }> {
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        const requestId = ++this.nextSaveRequestId;
+        if (!this.live || !this.isMain || generation !== this.generation || !frame || !contentWindow
+            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame || this.saveHandlerId === undefined) {
+            return Promise.resolve({ success: false, error: "The board has no live Save handler. Reload the board to restore it, or choose Don't Save." });
+        }
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                this.pendingSaveRequests.delete(requestId);
+                resolve({ success: false, error: "The board did not finish saving within 30 seconds." });
+            }, discard ? 3_000 : 30_000);
+            this.pendingSaveRequests.set(requestId, { generation, resolve, timer });
+            const request: BoardHostFrameMsg = { __persephone: "board:saveRequest", requestId, ...(discard ? { discard } : {}) };
+            if (!this.replyToFrame(frame, generation, request)) {
+                clearTimeout(timer);
+                this.pendingSaveRequests.delete(requestId);
+                resolve({ success: false, error: "The board frame is no longer available." });
+            }
+        });
+    }
+
+    private resolveSaveRequest(message: BoardSaveResultMsg, generation: number): void {
+        const pending = this.pendingSaveRequests.get(message.requestId);
+        if (!pending || pending.generation !== generation || generation !== this.generation) return;
+        clearTimeout(pending.timer);
+        this.pendingSaveRequests.delete(message.requestId);
+        pending.resolve({ success: message.success === true, ...(message.error ? { error: message.error } : {}) });
+    }
+
+    private rejectSaveRequests(generation: number, error: string): void {
+        for (const [requestId, pending] of this.pendingSaveRequests) {
+            if (pending.generation !== generation) continue;
+            clearTimeout(pending.timer);
+            this.pendingSaveRequests.delete(requestId);
+            pending.resolve({ success: false, error });
         }
     }
 

@@ -80,7 +80,54 @@
     [data-type="settings-theme-preview"] [data-part="line"][data-kind="line-short"] { width: 45%; }
 
     [data-type="settings-theme-option"] {
+        position: relative;
         cursor: pointer;
+    }
+
+    [data-type="settings-theme-option"] > [data-type="panel"]:focus-visible {
+        outline: 1px solid var(--color-border-active);
+        outline-offset: 2px;
+    }
+
+    /* Theme tile actions share one top-right row; keyboard focus reveals it as well as hover. */
+    [data-type="settings-theme-option"] > [data-part="actions"] {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        display: flex;
+        gap: var(--gap-xs, 2px);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    [data-type="settings-theme-option"]:hover > [data-part="actions"],
+    [data-type="settings-theme-option"] > [data-part="actions"]:has(> [data-type="icon-button"]:focus-visible) {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    [data-type="settings-theme-option"] > [data-part="actions"] > [data-type="icon-button"] {
+        background-color: var(--color-bg-dark);
+    }
+
+    [data-type="icon-button"][data-part="create"] {
+        box-sizing: border-box;
+        width: 160px;
+        height: 100px;
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-md, 6px);
+        background-color: var(--color-bg-dark);
+        color: var(--color-icon-light);
+    }
+
+    [data-type="icon-button"][data-part="create"]:hover {
+        border-color: var(--color-border-active);
+        color: var(--color-icon-default);
+    }
+
+    [data-type="icon-button"][data-part="create"]:focus-visible {
+        outline: 1px solid var(--color-border-active);
+        outline-offset: 2px;
     }
 
     [data-type="settings-path"] {

@@ -92,7 +92,7 @@ const BOARD_MEMBERS: readonly IAiMember[] = [
     { name: "busy", kind: "property", summary: "The model-backed busy flag, or undefined when the board is unresolved." },
     { name: "frameReady", kind: "property", summary: "Whether the mounted main board frame is registered and ready." },
     { name: "contentHostError", kind: "property", summary: "The trusted content-host restore error, when present." },
-    { name: "reload", kind: "method", signature: "reload(): Promise<IBoardReloadResult>", summary: "Reload the board and report whether its main frame became ready." },
+    { name: "reload", kind: "method", signature: "reload(): Promise<IBoardReloadResult>", summary: "Reload the board and report whether its main frame became ready.", caution: "unsaved changes prompt the user" },
     { name: "dialogs", kind: "method", signature: "dialogs(options?: { tabId?: string; policy?: 'accept' | 'dismiss' | 'manual' }): Promise<{ policy: string; dialogs: object[] }>", summary: "Read recent dialogs for the selected board frame and its policy, or set the policy. Default dismiss for automation activity; dialogs opened while idle remain user-controlled." },
     { name: "handleDialog", kind: "method", signature: "handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>", summary: "Accept or dismiss the pending JavaScript dialog in the selected board frame." },
 ];
@@ -458,12 +458,9 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         if (renderState !== "trusted" && renderState !== "bundled") {
             return Promise.resolve({ refreshed: true, pageId, frameReady: false, renderState });
         }
-        return this.editor.reloadAndWait().then((frameReady) => ({
-            refreshed: true,
-            pageId,
-            frameReady,
-            renderState,
-        }));
+        return this.editor.reloadAndWait().then((result) => result.cancelled
+            ? { refreshed: false, cancelled: true, pageId, frameReady: result.frameReady, renderState }
+            : { refreshed: true, pageId, frameReady: result.frameReady, renderState });
     }
 
     private isResolvedBoard(): boolean {

@@ -14,6 +14,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Create and manage custom themes:** Persephone derives a full palette from background, text, and
+  accent colors. Install the Theme Editor board from **Tools & Editors** to create, edit, export,
+  and import themes; saved themes appear in Settings and theme cycling. Scripts and MCP can also
+  inspect, preview, save, and apply themes through [`app.themes`](./scripting/api/themes.md).
 - **Persephone themes and a new starting theme:** Choose the dark **Persephone** theme or the light
   **Persephone Light** theme. New settings use Persephone by default; an existing valid saved theme
   remains selected.

@@ -12,7 +12,8 @@
     "camera": false,
     "microphone": false,
     "geolocation": false,
-    "notifications": false
+    "notifications": false,
+    "themes": false
   },
   "description": "",
   "author": "",

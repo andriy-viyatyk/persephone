@@ -181,6 +181,12 @@ sidebar-only page invariant; an editorless page that never had a panel is not cl
 
 For multi-window transfer, `movePageOut()` calls `detachPage()` WITHOUT calling `dispose()`. Cache files survive for the target window.
 
+Plain board pages participate in this same release gate. The board frame reports `modified` state
+and registers an asynchronous save callback; close, navigation, editor switch, and explicit board
+reload use the normal Save / Don't Save / Cancel prompt. Save failure, rejection, timeout, or Cancel
+keeps the page open. The board owns its non-file draft persistence, so window close does not add a
+second app-level confirmation protocol.
+
 **Native placeholder rendering:** Pages are hosted by `AppPageManagerView` in
 `src/renderer/components/page-manager/`. The native view owns one stable `data-name="page-slot"`
 placeholder per page and appends each placeholder directly to its manager root. A page view is

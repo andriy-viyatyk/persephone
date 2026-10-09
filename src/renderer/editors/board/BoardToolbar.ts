@@ -179,8 +179,11 @@ export class BoardToolbarView extends VanillaView<{
         const hasUpdate = !!boardRoot && listBoardUpdates().some((update) =>
             fpNormalizeForCompare(update.root) === fpNormalizeForCompare(boardRoot),
         );
+        // The board's own entries come first; Persephone's recovery actions follow in their own group.
+        const boardItems = this.boardControls.boardMenuItems();
         return [
-            { label: "Reload board", icon: "refresh", onClick: () => this.model.reloadBoard() },
+            ...boardItems,
+            { label: "Reload board", icon: "refresh", startGroup: boardItems.length > 0, onClick: () => this.model.reloadBoard() },
             { label: "Open board log", icon: "log", onClick: () => void this.openLog() },
             {
                 label: hasUpdate ? "Board properties — update available" : "Board properties",

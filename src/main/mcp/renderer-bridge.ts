@@ -33,6 +33,10 @@ export function initMcpIpc(): void {
 }
 
 export async function sendToRenderer(method: string, params: unknown, windowIndex?: number, timeoutMs?: number): Promise<McpResponse> {
+    // The reply listener must exist before any request goes out. Board bridge calls use this
+    // transport too, and can arrive before (or without) the MCP HTTP server starting — a restored
+    // board calls at once — so their replies were dropped and the call timed out.
+    initMcpIpc();
     const windowData = windowIndex !== undefined
         ? openWindows.windows.find(w => w.index === windowIndex)
         : openWindows.windows.find(w => w.window);

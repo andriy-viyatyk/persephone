@@ -198,7 +198,7 @@ export function installGlobalStyles(): () => void {
         () => {
             style.textContent = buildGlobalStyles();
         },
-        (s) => s.id
+        (s) => ({ id: s.id, revision: s.revision })
     );
 
     return () => {

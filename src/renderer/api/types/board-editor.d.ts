@@ -98,12 +98,18 @@ export interface IBoardSecondaryView {
     readonly expanded?: boolean;
 }
 
-export interface IBoardReloadResult {
+export type IBoardReloadResult = {
     readonly refreshed: true;
     readonly pageId: string;
     readonly frameReady: boolean;
     readonly renderState: BoardRenderState;
-}
+} | {
+    readonly refreshed: false;
+    readonly cancelled: true;
+    readonly pageId: string;
+    readonly frameReady: boolean;
+    readonly renderState: BoardRenderState;
+};
 
 export interface IBoardEditor {
     readonly id: "board-view" | `board-editor:${string}`;

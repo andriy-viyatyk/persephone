@@ -149,7 +149,8 @@ Boards may declare `minBridgeVersion`, an object-form `permissions` set, and a b
     "camera": false,
     "microphone": false,
     "geolocation": false,
-    "notifications": false
+    "notifications": false,
+    "themes": false
   },
   "service": "scripts/service.mjs"
 }
@@ -182,6 +183,7 @@ The permission list in the trust dialog uses these meanings:
 | `clipboardRead` | Read the contents of your clipboard. |
 | `camera`, `microphone`, `geolocation` | Use your camera or microphone, or read this device's location. |
 | `notifications` | Show desktop notifications. |
+| `themes` | Create, change, delete, and apply app themes. This does not grant `appScripting`. |
 
 When **Settings → Link Open Behavior** is set to the OS default browser, an HTTP(S) link opened by a
 board without `openExternal` opens in Persephone's internal Browser tab instead, with an info line
@@ -195,7 +197,7 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.34.0**. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
+The current board bridge is **1.35.0**. Bridge `1.35.0` adds the permission-gated `persephone.themes.*` API described below. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
 to read only its currently hosted document through `readFile(getFilePath())`. Bridge `1.23.0` uses one extension-to-MIME table for
 `board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.22.0` adds host-managed module-service lifecycle
@@ -383,7 +385,7 @@ only the permissions its code uses.
     "execute": false, "service": false, "fileSystem": false,
     "openExternal": false, "appScripting": false, "network": false,
     "clipboardRead": false, "camera": false, "microphone": false,
-    "geolocation": false, "notifications": false
+    "geolocation": false, "notifications": false, "themes": false
   },
   "capabilities": [
     { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" },
@@ -410,6 +412,18 @@ requests through `persephone.intent.onRequest()`. Its payload is `{ title, certi
 `title` is the hostname, `certificates` is a leaf-first array of base64 DER strings, and optional
 `source.url` identifies the HTTPS page. Persephone validates the shape and limits decoded DER to
 256 KiB before dispatch.
+
+Settings also uses the platform-provided `theme.edit@1` capability to open an installed Theme Editor
+board. The payload is `{ mode: "edit", themeId: string }` or `{ mode: "new" }`. Persephone validates
+that shape before handler resolution: edit requires a non-empty theme id and new must not include a
+`themeId`. A board claims it with `{ "id": "theme.edit", "version": 1, "priority": 50,
+"title": "Theme Editor" }` and receives fresh or reused requests through
+`persephone.intent.onRequest()`. Settings applies the selected theme before edit; new leaves the
+active theme unchanged. Accept a valid intent before loading its source or showing UI, because the
+caller deadline covers board startup. Without `alwaysOpensNewPage`, an existing page is focused and
+reused. The `themes: true` permission is needed only for the board's `persephone.themes.*` access,
+not for capability dispatch. If no handler is registered, Settings opens Tools & Editors → Search
+boards and explains how to install Theme Editor; timeout is reported separately.
 
 The winning board is served in the caller's window. Persephone reuses an already-open handler page
 there or opens one there and delivers the initial request in its handshake. Later requests to that
@@ -593,22 +607,28 @@ Every open board displays a thin toolbar above the board's content area. The too
 |---------|-------------|
 | **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. |
 | **Text slot** | Empty unless the open board fills it with `persephone.toolbar.setText()`. A non-interactive label; the board's own folder path is under **… → Board properties** and the tab's **Copy Board Path**. |
-| **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. An update-available dot appears here when a newer catalog version is ready. |
+| **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. A board can add its own actions at the top of this menu. An update-available dot appears here when a newer catalog version is ready. |
 | **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns, segmented choice buttons and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
 
 Trusted and bundled boards can declare these controls with `persephone.toolbar.set()` and handle
 their picks with `persephone.toolbar.onAction()`. A `segmented` control shows joined choice buttons
 with one value selected; use it for a few short, always-visible options. Each option needs a label,
-an icon, or both:
+an icon, or both. Buttons and menus work the same way: give one a `label` for a text button, an
+`icon` for an icon button, or both. A menu with `placement: "board-menu"` adds its items to the top
+of the **…** menu instead of showing a button of its own:
 
 ```js
 persephone.toolbar.set([
+  { id: "save", type: "button", label: "Save" },
+  { id: "refresh", type: "button", title: "Refresh", icon: { name: "refresh" } },
+  { id: "more", type: "menu", placement: "board-menu", items: [{ id: "export", label: "Export JSON" }] },
   { id: "scope", type: "segmented", value: "active", options: [
     { value: "active", label: "Active" },
     { value: "all", label: "All" },
   ] },
 ]);
 persephone.toolbar.onAction(({ id, type, value }) => {
+  if (id === "save") save();
   if (id === "scope" && type === "segmented") showScope(value);
 });
 ```
@@ -725,7 +745,7 @@ board-relative ESM entry such as:
     "execute": false, "service": true, "fileSystem": false,
     "openExternal": false, "appScripting": false, "network": false,
     "clipboardRead": false, "camera": false, "microphone": false,
-    "geolocation": false, "notifications": false
+    "geolocation": false, "notifications": false, "themes": false
   },
   "service": "scripts/service.mjs"
 }
@@ -903,6 +923,35 @@ fallback. Timeout errors name the selected level and full path. `boards.callTime
 persisted, and the per-call option affects only a remote `.app` leaf. MCP waits five seconds beyond
 the per-call `timeoutMs`; when it is omitted, MCP waits up to 125 seconds total. Pass `timeoutMs` for
 a slower call that needs a longer wait.
+
+### `persephone.themes.*` (bridge 1.35.0)
+
+The `themes: true` manifest permission exposes the existing `app.themes` service through a narrow
+JSON-only bridge. It does not grant `appScripting` or make other `persephone.call()` paths available.
+Without the grant, each method rejects with exactly
+`permission-denied: "themes" is not enabled in board-manifest.json`.
+
+```js
+const definitions = await persephone.themes.list();
+const current = await persephone.themes.current(); // Promise because board calls cross an async transport
+const draft = await persephone.themes.fork(current.id);
+const preview = await persephone.themes.preview(draft);
+await persephone.themes.endPreview();
+```
+
+Available methods: `list()`, `get(id)`, `current()`, `derive(base, isDark?)`, `contrast(input)`,
+`fork(id)`, `file(id)`, `save(draft)`, `rename(id, name)`, `delete(id)`, `apply(id)`, `preview(draft)`, and
+`endPreview()`. Arguments and results are plain JSON values; a missing theme from `get(id)` is
+returned as `null`. `file(id)` returns a saved custom theme's stored file — base intent, `isDark`
+(`null` = automatic), overrides and id — or `null` for built-ins; use it, not `fork()`, to edit a
+saved theme in place. `app.themes.current` remains a synchronous property in the app service, while
+the board's `persephone.themes.current()` is a Promise-returning method.
+
+A preview is temporary and restores the latest persisted theme when ended. Closing, reloading, or
+navigating away from the requesting frame ends its preview only if no later preview or theme
+selection replaced it. Other boards, scripts, Settings changes, cycling, and explicit apply all
+replace the preview safely. Boards using this API must declare
+`minBridgeVersion: "1.35.0"`.
 
 ### A board's own model: `page.editor.app`
 
@@ -1235,6 +1284,43 @@ if (filePath) {
 ```
 
 **Local files only.** Because the board handles the file itself, this only works for a real local file — a simple board is never offered as an editor for a file opened over `https://` or from inside an archive.
+
+### Plain board pages — reporting unsaved work
+
+A simple or stream-host board can report its own non-file draft as modified. Only the main board
+frame owns this state and the optional Save handler; secondary views cannot register competing
+handlers. A dirty page shows the existing tab dot and uses Persephone's Save / Don't Save / Cancel
+prompt when it is closed, navigated away from, switched to another editor, or reloaded.
+
+```js
+persephone.page.setModified(true);
+const offSave = persephone.onSaveRequest(async () => {
+    await saveDraft();
+    persephone.page.setModified(false);
+});
+// Call offSave() when this view no longer owns the save action.
+```
+
+`onSaveRequest()` handlers may return `false` to keep the page open; a rejected promise, missing
+handler, or handler that does not finish within 30 seconds also keeps it open and reports the error.
+The latest active registration wins. Persephone clears modified state after a successful release
+Save; a board can clear it after a manual save with `page.setModified(false)`. Use this API for a
+board-owned draft such as settings or a custom theme. It needs no manifest permission because it
+only affects that board page. The API ships with bridge **1.35.0** and does not require another
+version bump.
+
+`persephone.onDiscardRequest(handler)` runs when the user chooses **Don't Save**, before the frame is
+torn down (best effort, 3 seconds); use it to delete a draft the board keeps in `persephone.pageState`
+for app restarts, or the reloaded board would restore the discarded work. It returns an unsubscribe
+function and takes effect only while an `onSaveRequest` handler is registered.
+
+Window/app close does not prompt. Persist non-file drafts in board-local storage and call
+`page.setModified(true)` again after restoring a draft. For example, a Theme Editor should save and
+apply its theme in the registered handler, and clear modified only after both operations succeed.
+
+This differs from a **content-host** editor: Persephone owns that file's pipe, auto-save cache,
+dirty state and file-save prompt. Use `persephone.host.setContent()` and `persephone.host.save()`
+for that file rather than the plain-board draft API.
 
 ### Content-host editors — sharing Persephone's file with the board
 

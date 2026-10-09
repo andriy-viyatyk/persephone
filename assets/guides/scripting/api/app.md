@@ -22,6 +22,7 @@ app.pages.activePage.content;
 |----------|------|-------------|
 | `version` | `string` | Application version (e.g. `"1.0.17"`). Read-only. |
 | [settings](./settings.md) | `ISettings` | Application configuration. |
+| [themes](./themes.md) | `IThemes` | Inspect, derive, preview, and manage built-in and custom themes. |
 | [pages](./pages.md) | `IPageCollection` | Open pages (tabs) in the current window. |
 | [fs](./fs.md) | `IFileSystem` | File system operations and dialogs. |
 | [ui](./ui.md) | `IUserInterface` | Dialogs, notifications, progress, and app-window highlights. |

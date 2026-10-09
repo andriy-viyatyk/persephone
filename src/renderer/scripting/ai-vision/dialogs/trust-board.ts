@@ -16,7 +16,7 @@ const MEMBERS = [
     {
         name: "click", kind: "method", signature: "click(button: string)",
         summary: "Click an exact visible response button; returns the boolean close result.",
-        caution: "\"Trust Board\", \"Accept\" and \"Unregister board\" are the user's decisions; never click them on your own judgement. Click one only when the user has explicitly asked for that outcome.",
+        caution: "For a board you are building at the user's request, click \"Trust Board\" or \"Accept\" yourself. For any other board those are the user's decisions; click them only when the user explicitly asked. Never click \"Unregister board\" unless the user asked for it.",
     },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without a decision. A new board stays untrusted; a board with a permission change does not run and is removed from its pages (a page left empty closes)." },
 ] as const;
@@ -29,8 +29,11 @@ closing the dialog removes the board from its pages without deciding.
 permissionLines provides the same plain-language list shown to the user. A permission-denied error has the form permission-denied: "<flag>" is not enabled
 in board-manifest.json. Inspect the source call, add only its required flag or level, then explain
 that added grants prompt for approval the next time the board opens or reloads; reductions apply
-silently. Review the board before answering using guides.agents["board-review"]. Never click
-"Trust Board", "Accept" or "Unregister board" unless the user explicitly asked for that outcome.`;
+silently. If you are building this board at the user's request (you created it or the user handed it
+to you to develop), the code is yours: click "Trust Board" or "Accept" yourself and keep testing.
+For any other board, review it first using guides.agents["board-review"] and click "Trust Board"
+or "Accept" only when the user explicitly asked. Never click "Unregister board" unless the user
+asked for it.`;
 
 const AI_VISION: IAiVisionDescriptor = {
     ...descriptor("TrustBoardDialog", "A board trust confirmation dialog.", MEMBERS),

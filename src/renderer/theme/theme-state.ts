@@ -3,6 +3,7 @@ import { TOneState } from "../core/state/state";
 export interface ThemeState {
     id: string;
     isDark: boolean;
+    revision: number;
 }
 
 /**
@@ -13,4 +14,5 @@ export interface ThemeState {
 export const themeState = new TOneState<ThemeState>({
     id: "persephone",
     isDark: true,
+    revision: 0,
 });

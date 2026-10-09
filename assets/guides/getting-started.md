@@ -113,13 +113,14 @@ The About page also shows:
 
 ## Changing the Theme
 
-persephone includes 11 color themes (7 dark, 4 light) inspired by VSCode:
+Persephone includes 8 built-in color themes (4 dark, 4 light) inspired by VSCode, and supports
+custom themes:
 
 1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
 2. Click the Settings button (gear icon) to open the Settings page
 3. Click a theme card to switch instantly
 
-**Dark themes:** Persephone, Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue
+**Dark themes:** Persephone, Default Dark, Solarized Dark, Monokai
 **Light themes:** Persephone Light, Light Modern, Solarized Light, Quiet Light
 
 You can also cycle through themes with `Ctrl+Alt+]` (next) and `Ctrl+Alt+[` (previous).

@@ -135,6 +135,15 @@ class App {
         await initModuleServiceStatus();
         this._reportServiceFailures();
 
+        // Custom definitions and their shared-directory watcher must be ready before Settings mounts.
+        const [{ fs }, { settings }, { initCustomThemeStorage }] = await Promise.all([
+            import("./fs"),
+            import("./settings"),
+            import("./custom-theme-storage"),
+        ]);
+        await Promise.all([fs.wait(), settings.wait()]);
+        await initCustomThemeStorage();
+
         // Subscribe the published-boards catalog model to main's broadcast and pull the
         // initial catalog (US-862). Fire-and-forget — no view blocks on it, and a fetch
         // failure is named but does not block startup (cached catalog / empty).
@@ -189,6 +198,11 @@ class App {
         // With explicit bootstrap, we properly await readiness.
         const { fs: appFs } = await import("./fs");
         await appFs.wait();
+
+        // Listen for main-process requests before restoring pages: a restored board calls the bridge
+        // at once. Requests queue until initEvents() marks the handler ready.
+        const { initMcpHandler } = await import("./mcp-handler");
+        initMcpHandler();
 
         const { pages } = await import("./pages");
         this._pages = pages;
@@ -252,7 +266,7 @@ class App {
             { KeyboardService },
             { WindowStateService },
             { RendererEventsService },
-            { initMcpHandler },
+            { initMcpHandler, markMcpHandlerReady },
         ] = await Promise.all([
             import("./internal/GlobalEventService"),
             import("./internal/KeyboardService"),
@@ -276,8 +290,10 @@ class App {
             rendererEvents.init(),
         ]);
 
-        // Initialize MCP command handler (listens for IPC from main process)
+        // Initialize MCP command handler (listens for IPC from main process; already registered by
+        // initPages() unless that was skipped) and start serving requests queued during startup.
         initMcpHandler();
+        markMcpHandlerReady();
 
         // Ensure settings are loaded from disk before checking mcp.enabled
         const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");

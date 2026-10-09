@@ -26,10 +26,31 @@
         // We inline a minimal lookup to avoid importing the full theme module.
         const bgs = {
           "default-dark": "#1f1f1f", "persephone": "#1b2935", "solarized-dark": "#002b36", "monokai": "#272822",
-          "abyss": "#000c18", "red": "#390000", "tomorrow-night-blue": "#002451",
           "light-modern": "#FFFFFF", "persephone-light": "#fbfcfd", "solarized-light": "#FDF6E3", "quiet-light": "#F5F5F5"
         };
-        if (bgs[t]) document.getElementById("startup-background").textContent = "body{background-color:" + bgs[t] + "}";
+        let background = bgs[t];
+        if (!background && /^custom-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(t)) {
+          const themePath = p.join(process.env.APPDATA, "persephone", "data", "themes", t + ".theme.json");
+          const theme = JSON.parse(f.readFileSync(themePath, "utf-8"));
+          const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
+          const supportedColor = value => {
+            if (typeof value !== "string") return false;
+            if (/^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i.test(value)) return true;
+            const rgb = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.exec(value);
+            if (!rgb || [rgb[1], rgb[2], rgb[3]].some(channel => Number(channel) > 255)) return false;
+            const alpha = rgb[4] === undefined ? undefined : Number(rgb[4]);
+            if (alpha !== undefined && (alpha < 0 || alpha > 1)) return false;
+            return value.trim().toLowerCase().startsWith("rgba(") ? alpha !== undefined : alpha === undefined;
+          };
+          if (theme.schemaVersion === 1 && theme.id === t && typeof theme.name === "string" && theme.name.trim()
+            && isObject(theme.base) && isObject(theme.overrides)
+            && supportedColor(theme.base.background) && supportedColor(theme.base.text) && supportedColor(theme.base.accent)) {
+            const overrideBackground = theme.overrides["--color-bg-default"];
+            const candidate = supportedColor(overrideBackground) ? overrideBackground : theme.base.background;
+            if (supportedColor(candidate)) background = candidate;
+          }
+        }
+        if (background) document.getElementById("startup-background").textContent = "body{background-color:" + background + "}";
       }
     } catch (e) { /* use default */ }
   </script>

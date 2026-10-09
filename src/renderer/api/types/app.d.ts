@@ -14,6 +14,7 @@ import type { ICapabilities } from "./capabilities";
 import type { ISiteExtensions } from "./site-extensions";
 import type { IPageCollection } from "./pages";
 import type { IAppEvents } from "./events";
+import type { IThemes } from "./themes";
 
 /**
  * Root application object. Entry point to all app functionality.
@@ -23,6 +24,8 @@ import type { IAppEvents } from "./events";
  * @example
  * console.log(app.version);
  * app.settings.set("theme", "monokai");
+ * const draft = app.themes.fork("persephone");
+ * app.themes.preview(draft);
  * app.pages.all.forEach(p => console.log(p.title));
  */
 export interface IApp {
@@ -31,6 +34,9 @@ export interface IApp {
 
     /** Application configuration. */
     readonly settings: ISettings;
+
+    /** Inspect, derive, preview, and manage built-in and custom themes. */
+    readonly themes: IThemes;
 
     /** Read-only registry of all editors. */
     readonly editors: IEditorRegistry;

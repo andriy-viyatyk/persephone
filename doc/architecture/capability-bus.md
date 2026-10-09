@@ -86,6 +86,39 @@ When the winning handler needs a new page, the page uses the invocation's reques
 bundled content-host boards and ordinary trusted or bundled boards; the board manifest name must
 not replace that request title. This contract requires no board bridge version change.
 
+## Well-known capability: `theme.edit`
+
+Persephone provides `theme.edit` version 1 for Settings to hand a theme to an installed Theme Editor
+board. Its payload is `{ mode: "edit", themeId: string }` or `{ mode: "new" }`. The platform
+validates the object and mode before resolving a handler; edit requires a non-empty `themeId`, and
+new rejects any `themeId` property. Manifest `payloadSchema` remains descriptive metadata, so this
+validation is part of Persephone's public contract. A caller can pin the version and allow extra
+time for a cold board startup:
+
+```ts
+await app.capabilities.invoke("theme.edit", { mode: "edit", themeId }, {
+    version: 1,
+    deadlineMs: 30_000,
+});
+await app.capabilities.invoke("theme.edit", { mode: "new" }, { version: 1, deadlineMs: 30_000 });
+```
+
+A trusted installed board claims the id in its manifest with version 1; the ordinary registry
+priority and trust checks still decide whether it wins. Settings applies and persists the selected
+theme before an edit request, while a new request leaves the active theme alone. An absent handler
+opens Tools & Editors on Search boards and shows installation guidance. A timeout is reported as
+“Theme editor did not respond”; it is not treated as absence. Other capability errors retain their
+actual failure message. The `themes: true` board permission is independently required only when a
+board uses `persephone.themes.*` to read or change themes; it does not gate platform-to-board
+dispatch.
+
+The Theme Editor receives fresh and reused requests through `persephone.intent.onRequest()`. It
+should validate id/version/payload, resolve a valid request promptly before source loading or any
+dialog, then handle the accepted request. Since the manifest omits `alwaysOpensNewPage`, an existing
+page for the winning board is focused and reused. The intent receive and settlement contract above
+applies unchanged, including FIFO delivery and request-bound `resolve`/`reject` methods. This
+capability does not require a bridge version change.
+
 ## Request routing
 
 Resolution and service happen in the caller's renderer window. For a board handler, the transport

@@ -18,6 +18,8 @@ ui.log("Hello");
 
 ## API Tree
 
+- **[app.themes](./themes.md)** - Inspect, derive, preview, and manage built-in and custom themes.
+
 - **[page](./page.md)** — Current page (tab)
   - `.id` — Unique page identifier
   - `.title` — Display title

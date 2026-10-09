@@ -8,6 +8,8 @@ import type {
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
+import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
+import "../../uikit/Button/Button.css";
 import { InputView } from "../../uikit/Input/InputView";
 import { SelectView, type SelectViewProps } from "../../uikit/Select/SelectView";
 import { SwitchView, type SwitchProps } from "../../uikit/Switch/SwitchView";
@@ -45,7 +47,7 @@ type ToolbarWarning = (message: string) => void;
 type BoardToolbarToggleDescriptor = Extract<BoardToolbarControlDescriptor, { type: "toggle" }>;
 type BoardToolbarSelectDescriptor = Extract<BoardToolbarControlDescriptor, { type: "select" }>;
 type BoardToolbarSegmentedDescriptor = Extract<BoardToolbarControlDescriptor, { type: "segmented" }>;
-type ToolbarRecordView = IconButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
+type ToolbarRecordView = IconButtonView | ButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value);
@@ -162,7 +164,12 @@ export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning)
             warning(`Ignored board toolbar menu "${id}" without an items array.`);
             return undefined;
         }
-        return { ...common, type, items, ...(icon ? { icon } : {}) };
+        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "board-menu") {
+            warning(`Ignored board toolbar menu "${id}" with an unknown placement; use "toolbar" or "board-menu".`);
+            return undefined;
+        }
+        const placement = value.placement === "board-menu" ? { placement: "board-menu" as const } : {};
+        return { ...common, type, items, ...(icon ? { icon } : {}), ...placement };
     }
     if (type === "select") {
         const options = normalizeOptions(value.options, warning);
@@ -263,6 +270,14 @@ function titleOf(descriptor: BoardToolbarControlDescriptor): string {
     return descriptor.title ?? descriptor.label ?? descriptor.id;
 }
 
+function inBoardMenu(descriptor: BoardToolbarControlDescriptor): boolean {
+    return descriptor.type === "menu" && descriptor.placement === "board-menu";
+}
+
+function hasTextLabel(descriptor: BoardToolbarControlDescriptor): boolean {
+    return (descriptor.type === "button" || descriptor.type === "menu") && !!descriptor.label;
+}
+
 function labelOf(descriptor: BoardToolbarControlDescriptor): string {
     return descriptor.label ?? descriptor.title ?? descriptor.id;
 }
@@ -332,6 +347,8 @@ class ToolbarControlRecord {
     private readonly labelElement: HTMLSpanElement | undefined;
     private readonly iconHost: HTMLSpanElement | undefined;
     private iconRef: IconRef = createToolbarIconFallback();
+    /** The declared icon resolved; until then a text button shows its label alone. */
+    private iconResolved = false;
     /** Resolved segment icons by option value; a segment renders without its icon until resolved. */
     private segmentIcons = new Map<string, IconRef>();
     private menu: MenuHandle | undefined;
@@ -349,9 +366,9 @@ class ToolbarControlRecord {
         this.boardRoot = boardRoot;
         this.emit = emit;
         this.warning = warning;
-        const label = descriptor.type === "button" || descriptor.type === "menu" || descriptor.type === "toggle"
-            ? descriptor.label
-            : undefined;
+        // A labelled button or menu is a text button (its icon optional), so the label is part of the
+        // clickable control; only a toggle keeps its label beside the switch.
+        const label = descriptor.type === "toggle" ? descriptor.label : undefined;
         this.labelElement = label === undefined ? undefined : createTextElement(label, { size: "sm" });
         this.iconHost = descriptor.type === "toggle" ? document.createElement("span") : undefined;
         if (this.iconHost) this.iconHost.dataset.part = "icon";
@@ -376,6 +393,10 @@ class ToolbarControlRecord {
             if (this.iconHost) this.root.append(this.iconHost);
             this.root.append(toggle.root);
             if (this.labelElement) this.root.append(this.labelElement);
+        } else if (hasTextLabel(descriptor)) {
+            const button = new ButtonView(this.textButtonProps());
+            this.view = button;
+            this.root = button.root;
         } else {
             const button = new IconButtonView(this.buttonProps());
             this.view = button;
@@ -389,6 +410,20 @@ class ToolbarControlRecord {
         this.startIconResolution();
     }
 
+    /** Whether `descriptor` can be shown by this record's view; otherwise the record is rebuilt. */
+    accepts(descriptor: BoardToolbarControlDescriptor): boolean {
+        return descriptor.type === this.descriptor.type && hasTextLabel(descriptor) === hasTextLabel(this.descriptor)
+            && inBoardMenu(descriptor) === inBoardMenu(this.descriptor);
+    }
+
+    /** Items this control adds to Persephone's … menu (a `placement: "board-menu"` menu only). */
+    boardMenuItems(): MenuItem[] {
+        const descriptor = this.descriptor;
+        if (descriptor.type !== "menu" || !inBoardMenu(descriptor)) return [];
+        return menuItems(descriptor, (id) => this.menuChanged(id))
+            .map((item) => descriptor.disabled ? { ...item, disabled: true } : item);
+    }
+
     updateDescriptor(descriptor: BoardToolbarControlDescriptor): void {
         const previousDescriptor = this.descriptor;
         this.descriptor = descriptor;
@@ -398,6 +433,7 @@ class ToolbarControlRecord {
             this.inputDebounce = undefined;
         }
         if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
+        else if (this.view instanceof ButtonView) this.view.update(this.textButtonProps());
         else if (this.view instanceof SwitchView && descriptor.type === "toggle") this.view.update(this.switchProps(descriptor));
         else if (this.view instanceof SelectView && descriptor.type === "select") {
             this.view.update(this.selectProps(descriptor));
@@ -502,6 +538,17 @@ class ToolbarControlRecord {
         };
     }
 
+    private textButtonProps(): ButtonViewProps {
+        const descriptor = this.descriptor;
+        const hasIcon = "icon" in descriptor && descriptor.icon !== undefined;
+        return {
+            name: this.dataName(), icon: hasIcon && this.iconResolved ? this.iconRef : undefined,
+            children: descriptor.label ?? "", title: descriptor.title, disabled: descriptor.disabled,
+            size: "sm", variant: "ghost",
+            onClick: descriptor.type === "menu" ? this.openMenu : this.buttonClicked,
+        };
+    }
+
     private startIconResolution(): void {
         const request = ++this.iconRequest;
         this.startSegmentIconResolution(request);
@@ -510,7 +557,9 @@ class ToolbarControlRecord {
         void resolveBoardToolbarIcon(icon, this.boardRoot).then((resolved) => {
             if (this.disposed || request !== this.iconRequest || !resolved) return;
             this.iconRef = resolved;
+            this.iconResolved = true;
             if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
+            else if (this.view instanceof ButtonView) this.view.update(this.textButtonProps());
             else if (this.iconHost) fillSlot(this.iconHost, resolved);
         }).catch((error: unknown) => {
             if (!this.disposed && request === this.iconRequest) this.warning(`Ignored board toolbar icon for "${descriptor.id}": ${errMessage(error, "invalid icon")}.`);
@@ -598,24 +647,16 @@ export class BoardToolbarControls extends VanillaView<{
         const next = new Map<string, ToolbarControlRecord>();
         for (const descriptor of controls) {
             const existing = this.records.get(descriptor.id);
-            if (existing) {
+            if (existing && existing.accepts(descriptor)) {
                 existing.updateDescriptor(descriptor);
                 next.set(descriptor.id, existing);
             } else {
-                const record = new ToolbarControlRecord(
-                    descriptor, this.model.boardRoot ?? "", (event) => this.emit(event), warning,
-                );
-                this.child(record.view);
-                record.mount();
-                next.set(descriptor.id, record);
+                if (existing) this.disposeRecord(existing);
+                next.set(descriptor.id, this.createRecord(descriptor, warning));
             }
         }
         for (const [id, record] of this.records) {
-            if (!next.has(id)) {
-                record.disposeResources();
-                this.releaseChild(record.view);
-                record.root.remove();
-            }
+            if (next.get(id) !== record && record.root.isConnected) this.disposeRecord(record);
         }
         this.records.clear();
         for (const [id, record] of next) {
@@ -635,10 +676,40 @@ export class BoardToolbarControls extends VanillaView<{
                 continue;
             }
             const next = mergePatch(record.descriptor, patch, warning);
-            if (next) record.updateDescriptor(next);
+            if (!next) continue;
+            if (record.accepts(next)) {
+                record.updateDescriptor(next);
+            } else {
+                // Adding or removing a label switches between an icon button and a text button.
+                const replacement = this.createRecord(next, warning);
+                record.root.replaceWith(replacement.root);
+                this.disposeRecord(record);
+                this.records.set(patch.id, replacement);
+            }
         }
         this.restoreFocus(previousFocus);
         this.publishDeclarations();
+    }
+
+    /** The board's own entries for Persephone's … menu, in declaration order. */
+    boardMenuItems(): MenuItem[] {
+        return [...this.records.values()].flatMap((record) => record.boardMenuItems());
+    }
+
+    private createRecord(descriptor: BoardToolbarControlDescriptor, warning: ToolbarWarning): ToolbarControlRecord {
+        const record = new ToolbarControlRecord(
+            descriptor, this.model.boardRoot ?? "", (event) => this.emit(event), warning,
+        );
+        this.child(record.view);
+        record.mount();
+        record.root.hidden = inBoardMenu(descriptor);
+        return record;
+    }
+
+    private disposeRecord(record: ToolbarControlRecord): void {
+        record.disposeResources();
+        this.releaseChild(record.view);
+        record.root.remove();
     }
 
     clear(frameGeneration: number): void {
@@ -709,7 +780,8 @@ export class BoardToolbarControls extends VanillaView<{
 
     private publishDeclarations(): void {
         if (this.frameGeneration === undefined) return;
-        const declarations = [...this.records.values()].map((record) => ({
+        // Board-menu items live inside Persephone's … menu, so they have no element of their own.
+        const declarations = [...this.records.values()].filter((record) => !inBoardMenu(record.descriptor)).map((record) => ({
             name: `board-toolbar-control-${record.descriptor.id}`,
             selector: `[data-name="board-toolbar-control-${record.descriptor.id}"]`,
             purpose: `Locate the board toolbar ${record.descriptor.type} "${record.descriptor.label ?? record.descriptor.id}" control.`,

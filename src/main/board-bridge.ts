@@ -346,7 +346,7 @@ async function runBoardCall(boardId: string, entry: BoardPortEntry, id: number, 
         const timeout = resolveBoardCallTimeout(request.timeoutMs, undefined, boardCallTimeoutMs);
         const response = await sendToRendererForWebContents(
             "board_call",
-            { ownerId: entry.ownerId, request },
+            { ownerId: entry.ownerId, boardId, request },
             entry.hostWebContents,
             timeout.ms,
         );

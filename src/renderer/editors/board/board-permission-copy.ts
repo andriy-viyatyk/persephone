@@ -28,6 +28,7 @@ const FLAG_COPY: Record<keyof BoardPermissionFlags, string> = {
     microphone: "Use your microphone.",
     geolocation: "Read this device's location.",
     notifications: "Show desktop notifications.",
+    themes: "Create, change, delete, and apply app themes.",
 };
 
 export interface BoardPermissionLine {

@@ -35,6 +35,7 @@ export interface BoardPermissionFlags {
     microphone: boolean;
     geolocation: boolean;
     notifications: boolean;
+    themes: boolean;
 }
 
 export type NormalizedBoardPermissions =
@@ -64,6 +65,7 @@ export function normalizePermissions(raw: unknown): NormalizedBoardPermissions {
             microphone: source.microphone === true,
             geolocation: source.geolocation === true,
             notifications: source.notifications === true,
+            themes: source.themes === true,
         },
     };
 }

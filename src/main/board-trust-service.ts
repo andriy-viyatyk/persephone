@@ -59,12 +59,13 @@ function parseTrustedPaths(data: string): string[] {
 
 interface TrustedBoardGrant { root: string; permissions: NormalizedBoardPermissions; manifestChanged?: boolean }
 
-function parseTrustRecords(data: string): TrustedBoardGrant[] | null {
+function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrated: boolean } | null {
     try {
         const value: unknown = JSON.parse(data);
         if (!value || typeof value !== "object" || !Array.isArray((value as { boards?: unknown }).boards)) return null;
         const boards = (value as { boards: unknown[] }).boards;
         const result: TrustedBoardGrant[] = [];
+        let migrated = false;
         for (const [index, item] of boards.entries()) {
             let reason: string | undefined;
             if (!item || typeof item !== "object") reason = "record is not an object";
@@ -88,7 +89,13 @@ function parseTrustRecords(data: string): TrustedBoardGrant[] | null {
                     || !(flags.network === false || flags.network === "internet" || flags.network === "full")
                     || typeof flags.clipboardRead !== "boolean" || typeof flags.camera !== "boolean"
                     || typeof flags.microphone !== "boolean" || typeof flags.geolocation !== "boolean"
-                    || typeof flags.notifications !== "boolean") reason = "permission flags are invalid";
+                    || typeof flags.notifications !== "boolean"
+                    || (flags.themes !== undefined && typeof flags.themes !== "boolean")) reason = "permission flags are invalid";
+                else if (flags.themes === undefined) {
+                    // Trust snapshots written before US-1639 must keep their old grant set.
+                    (flags as { themes?: boolean }).themes = false;
+                    migrated = true;
+                }
             } else if (!reason) reason = "permission kind is invalid";
             if (reason) {
                 console.warn("[BoardTrustService] Skipping malformed trusted board record", { index, root: record.root, reason });
@@ -96,7 +103,7 @@ function parseTrustRecords(data: string): TrustedBoardGrant[] | null {
             }
             result.push({ root: path.resolve(record.root as string), permissions: permissions as NormalizedBoardPermissions });
         }
-        return result;
+        return { records: result, migrated };
     } catch { return null; }
 }
 
@@ -155,7 +162,13 @@ class BoardTrustService {
                 let data = "";
                 try { data = await fs.readFile(trustFile, "utf8"); } catch { /* migrate legacy file below */ }
                 const records = parseTrustRecords(data);
-                if (records) this.grants = records;
+                if (records) {
+                    this.grants = records.records;
+                    if (records.migrated) {
+                        // Persist normalized old grants through the existing atomic write path.
+                        await this.writeGrantsAtomically(this.grants);
+                    }
+                }
                 else {
                     const legacyFile = path.join(dataFolder, "trustedBoards.txt");
                     let legacy = "";

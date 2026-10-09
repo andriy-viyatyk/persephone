@@ -34,6 +34,10 @@ export const appServiceDescriptors = [
         load: async (): Promise<IApp["settings"]> => (await import("./settings")).settings,
     }),
     defineService({
+        key: "themes",
+        load: async (): Promise<IApp["themes"]> => (await import("./themes")).themes,
+    }),
+    defineService({
         key: "editors",
         load: async (): Promise<IApp["editors"]> => (await import("./editors")).editors,
     }),
