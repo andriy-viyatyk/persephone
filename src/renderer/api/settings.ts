@@ -105,7 +105,7 @@ const settingsFileHeader = [
  * (a change that needs a toggle, a dependency on an external program, a security implication).
  */
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
-    "language": "Application language code. Use \"auto\" to follow the system's preferred languages, or a BCP-47 code such as \"uk\" or \"en-XA\". Changes take effect after restarting Persephone. Default: auto.",
+    "language": "Application language code. Use \"auto\" to follow the system's preferred languages, or a BCP-47 code such as \"uk\" or \"en-XA\". Changes apply after reloading windows. Default: auto.",
     "tab-recent-languages":
         "Languages recently chosen from a tab's language menu, most recent first.\nMaintained automatically; they sort to the top of that menu. Safe to trim or clear.",
     "theme": "Application color theme. Applies as soon as this file is saved. Built-in ids and custom theme ids are accepted; custom choices are stored in the data/themes folder. Default: persephone.",
@@ -263,6 +263,14 @@ class Settings implements ISettings {
         return this.state.get().settings["theme"];
     }
 
+    get language(): string {
+        return this.state.get().settings["language"];
+    }
+
+    set language(value: string) {
+        this.set("language", value);
+    }
+
     get<K extends AppSettingsKey>(key: K): AppSettingsState["settings"][K];
     /**
      * Arbitrary-key escape hatch. The default stays `unknown` **deliberately** — do not widen it
@@ -363,7 +371,7 @@ class Settings implements ISettings {
         }
     };
 
-    private saveSettings = () => {
+    private saveSettings = async (): Promise<void> => {
         const content = JSON.stringify(this.state.get().settings, null, 4);
         const lines = content.split("\n");
 
@@ -395,10 +403,19 @@ class Settings implements ISettings {
 
         const contentWithComments = `${settingsFileHeader}\n${lines.join("\n")}`;
         this.echoGuard.arm(contentWithComments);
-        fs.saveDataFile(settingsFileName, contentWithComments);
+        await fs.saveDataFile(settingsFileName, contentWithComments);
     };
 
     private saveSettingsDebounced = debounce(this.saveSettings, 300);
+
+    flushSave = async (): Promise<void> => {
+        this.saveSettingsDebounced.cancel();
+        await this.saveSettings();
+    };
 }
 
 export const settings = new Settings();
+
+export async function flushSettingsSave(): Promise<void> {
+    await settings.flushSave();
+}

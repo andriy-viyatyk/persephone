@@ -17,6 +17,9 @@ export interface ISettings {
     /** Current theme name. */
     readonly theme: string;
 
+    /** Application language: "auto" or a BCP-47 language code. Changes apply after window reload. */
+    language: string;
+
     /** Get a setting value by key. Returns `undefined` for unknown keys. */
     get<T = any>(key: string): T;
 

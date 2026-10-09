@@ -87,8 +87,8 @@ task starts.
 |------|-------|--------|
 | [US-1647](../tasks/US-1647-i18n-core/README.md) | i18n core: catalogs, `t()`, plurals, pack loading and layering, `en-XA` | Implemented |
 | [US-1648](../tasks/US-1648-stable-ui-ids/README.md) | Stable ids for dialog buttons and menu items; split mixed UI/agent text | Implemented |
-| [US-1649](../tasks/US-1649-language-setting/README.md) | `language` setting, Settings picker, reload on switch, startup locale, main-process strings | In Progress |
-| US-1650 | Locale-aware formatting through `Intl` (`core/utils/format.ts`) | Planned |
+| [US-1649](../tasks/US-1649-language-setting/README.md) | `language` setting, Settings picker, reload on switch, startup locale, main-process strings | Implemented |
+| [US-1650](../tasks/US-1650-locale-formatting/README.md) | Locale-aware formatting through `Intl` (`core/utils/format.ts`) | In Progress |
 | US-1651 | Localization conventions doc, ESLint rule (warning), `npm run i18n:check` | Planned |
 | US-1652 | Pilot extraction: Settings page and all dialogs, verified under `en-XA` | Planned |
 

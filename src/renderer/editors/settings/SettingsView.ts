@@ -16,6 +16,7 @@ import { DefaultBrowserSectionView } from "./sections/DefaultBrowserSection";
 import { FileSearchSectionView } from "./sections/FileSearchSection";
 import { McpSectionView } from "./sections/McpSection";
 import { ThemeSectionView } from "./sections/ThemeSection";
+import { LanguageSectionView } from "./sections/LanguageSection";
 import { BoardSettingsSectionView } from "./sections/BoardSettingsSection";
 import {
     BoardVarsSectionView,
@@ -61,6 +62,7 @@ type SettingsBuiltInView = VanillaView<Record<string, never>>;
 
 const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>> = {
     theme: () => new ThemeSectionView({}),
+    language: () => new LanguageSectionView({}),
     "window-behavior": () => new WindowBehaviorSectionView({}),
     clipboard: () => new ClipboardSectionView({}),
     terminal: () => new TerminalSectionView({}),

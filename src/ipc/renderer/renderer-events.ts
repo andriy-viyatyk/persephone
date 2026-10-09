@@ -54,6 +54,9 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eBeforeQuit] = new RendererEventObject<void>(
         EventEndpoint.eBeforeQuit
     );
+    [EventEndpoint.eReloadForLanguage] = new RendererEventObject<void>(
+        EventEndpoint.eReloadForLanguage
+    );
 
     [EventEndpoint.eOpenFile] = new RendererEventObject<string>(
         EventEndpoint.eOpenFile

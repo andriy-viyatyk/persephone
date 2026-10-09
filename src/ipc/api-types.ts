@@ -35,6 +35,7 @@ export enum Endpoint {
     getAssetsPath = "getAssetsPath",
     getDataFolder = "getDataFolder",
     setActiveLocale = "setActiveLocale",
+    reloadAllWindows = "reloadAllWindows",
     getUiPreferences = "getUiPreferences",
     setUiPreference = "setUiPreference",
     maximizeWindow = "maximizeWindow",
@@ -210,6 +211,7 @@ export type Api = {
     [Endpoint.getAssetsPath]: (fileName: string) => Promise<string>;
     [Endpoint.getDataFolder]: () => Promise<string>;
     [Endpoint.setActiveLocale]: (code: string) => Promise<void>;
+    [Endpoint.reloadAllWindows]: () => Promise<void>;
     [Endpoint.getUiPreferences]: () => Promise<Record<string, string | number | boolean>>;
     [Endpoint.setUiPreference]: (
         key: string,
@@ -386,6 +388,7 @@ export interface ModuleServicePortPayload {
 export enum EventEndpoint {
     eWindowMaximized = "eWindowMaximized",
     eBeforeQuit = "eBeforeQuit",
+    eReloadForLanguage = "eReloadForLanguage",
     eOpenFile = "eOpenFile",
     eOpenDiff = "eOpenDiff",
     eShowPage = "eShowPage",
@@ -435,6 +438,7 @@ export interface EventObject<T> {
 export type EventApi = {
     [EventEndpoint.eWindowMaximized]: EventObject<boolean>;
     [EventEndpoint.eBeforeQuit]: EventObject<void>;
+    [EventEndpoint.eReloadForLanguage]: EventObject<void>;
     [EventEndpoint.eOpenFile]: EventObject<string>;
     [EventEndpoint.eOpenDiff]: EventObject<{ firstPath: string; secondPath: string }>;
     [EventEndpoint.eShowPage]: EventObject<string>;

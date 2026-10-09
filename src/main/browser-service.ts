@@ -21,6 +21,7 @@ import {
     BrowserEvent,
 } from "../ipc/browser-ipc";
 import { EventEndpoint } from "../ipc/api-types";
+import { t } from "../shared/i18n/t";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
@@ -416,11 +417,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         const parentWindow = BrowserWindow.fromWebContents(sender);
         const options: Electron.MessageBoxSyncOptions = {
             type: "question",
-            buttons: ["Leave", "Cancel"],
+            buttons: [t("main.unsavedChangesLeave"), t("main.unsavedChangesCancel")],
             defaultId: 1,
             cancelId: 1,
-            title: "Unsaved changes",
-            message: "You have unsaved changes. Leave the page and discard them?",
+            title: t("main.unsavedChangesTitle"),
+            message: t("main.unsavedChangesMessage"),
         };
         const choice = withNativeDialogSync(parentWindow, "messageBox", () => parentWindow
             ? dialog.showMessageBoxSync(parentWindow, options)

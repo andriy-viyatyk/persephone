@@ -52,7 +52,8 @@ export function validateLanguagePack(input: unknown, filename: string): PackVali
     if (candidate.direction !== undefined && candidate.direction !== "ltr") return { warnings: [`${filename}: direction must be "ltr".`] };
     const messages: Partial<Record<MessageKey, PackMessage>> = {};
     for (const [key, raw] of Object.entries(candidate.messages as Record<string, unknown>)) {
-        if (!Object.hasOwn(englishCatalog.common, key.startsWith("common.") ? key.slice(7) : key) || !key.startsWith("common.")) {
+        const [area, name] = key.split(".");
+        if (!area || !name || !Object.hasOwn(englishCatalog[area as keyof typeof englishCatalog] ?? {}, name)) {
             warnings.push(`${filename}: unknown message key ${key}; ignored.`);
             continue;
         }

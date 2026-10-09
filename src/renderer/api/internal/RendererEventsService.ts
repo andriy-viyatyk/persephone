@@ -11,7 +11,8 @@ import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
-import { windowRecording } from "../window-recording";
+import { saveWindowStateForShutdown } from "./save-window-state";
+import { errMessage } from "../../../shared/utils";
 
 /**
  * Renderer IPC events service.
@@ -43,6 +44,7 @@ export class RendererEventsService {
 
         // Quit handler
         rendererEvents.eBeforeQuit.subscribe(this.handleBeforeQuit);
+        rendererEvents.eReloadForLanguage.subscribe(this.handleReloadForLanguage);
 
         // Update check notification
         rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(this.handleUpdateAvailable);
@@ -146,19 +148,20 @@ export class RendererEventsService {
 
     private handleBeforeQuit = async () => {
         try {
-            if (windowRecording.state.status === "recording" || windowRecording.state.status === "paused") {
-                await windowRecording.stop("window-close");
-            } else if (windowRecording.state.status === "ready") {
-                await windowRecording.cancel();
-            }
-            await Promise.all(
-                pagesModel.state.get().pages.map((model) => model.saveState())
-            );
-            await pagesModel.saveState();
+            await saveWindowStateForShutdown();
         } catch (err) {
-            console.error("Failed to save pages on quit:", err);
+            console.error("Failed to save pages on quit:", errMessage(err));
         }
         signalReadyToQuit();
+    };
+
+    private handleReloadForLanguage = async () => {
+        try {
+            await saveWindowStateForShutdown();
+            window.location.reload();
+        } catch (err: unknown) {
+            console.error("Failed to save pages before language reload:", errMessage(err));
+        }
     };
 
     private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error"; persistent?: boolean }) => {

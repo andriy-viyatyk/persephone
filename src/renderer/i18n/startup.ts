@@ -85,6 +85,29 @@ const pseudoPack = activeLocale === "en-XA" ? createPseudoLocalePack() : undefin
 setActiveLocale(activeLocale);
 setLocalePacks(userPack ?? pseudoPack, builtInPack);
 
+export interface RefreshedLanguagePacks {
+    readonly builtInPacks: LanguagePack[];
+    readonly userPacks: LanguagePack[];
+    readonly preferredLanguages: string[];
+}
+
+/** Re-scan the same pack directories used during startup, applying the shared validator. */
+export async function refreshLanguagePacks(): Promise<RefreshedLanguagePacks> {
+    const [assetDirectory, userDataDirectory] = await Promise.all([
+        api.getAssetsPath("languages"),
+        api.getCommonFolder("userData"),
+    ]);
+    return {
+        builtInPacks: readDirectory(assetDirectory, true),
+        userPacks: readDirectory(fpJoin(userDataDirectory, "data", "languages"), false),
+        preferredLanguages: [...startupArguments.preferred],
+    };
+}
+
+export function getStartupPreferredLanguages(): readonly string[] {
+    return startupArguments.preferred;
+}
+
 if (import.meta.env.DEV) {
     Object.defineProperty(globalThis, "__persephoneI18nDebug", {
         configurable: false,

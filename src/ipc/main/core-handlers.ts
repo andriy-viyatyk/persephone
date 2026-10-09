@@ -54,6 +54,10 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         setMainLocale(code);
     }
 
+    reloadAllWindows = async (_event: IpcMainEvent): Promise<void> => {
+        openWindows.send(EventEndpoint.eReloadForLanguage, undefined);
+    }
+
     getUiPreferences = async (_event: IpcMainEvent) => {
         return getUiPreferences();
     }
@@ -427,6 +431,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.getAssetsPath, controllerInstance.getAssetsPath);
     bindEndpoint(Endpoint.getDataFolder, controllerInstance.getDataFolder);
     bindEndpoint(Endpoint.setActiveLocale, controllerInstance.setActiveLocale);
+    bindEndpoint(Endpoint.reloadAllWindows, controllerInstance.reloadAllWindows);
     bindEndpoint(Endpoint.getUiPreferences, controllerInstance.getUiPreferences);
     bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);

@@ -1,6 +1,7 @@
 import { app, Menu, Tray } from 'electron';
 import { getAssetPath } from './utils';
 import { openWindows } from './open-windows';
+import { t } from '../shared/i18n/t';
 
 let tray: Tray | null = null;
 
@@ -20,13 +21,13 @@ export function rebuildTray(): void {
     if (!tray) return;
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show App',
+            label: t('main.trayShowApp'),
             click: () => {
                 openWindows.showWindows();
             },
         },
         {
-            label: 'Quit',
+            label: t('main.trayQuit'),
             click: () => {
                 openWindows.doQuit = true;
                 app.quit();

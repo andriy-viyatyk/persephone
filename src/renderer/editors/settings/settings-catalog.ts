@@ -34,6 +34,19 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     {
         groupId: "general",
         groupTitle: "General",
+        id: "language",
+        title: "Language",
+        description: "Choose the language used by Persephone.",
+        elementName: "settings-section-language",
+        panelName: "settings-panel-language",
+        where: "Settings > General > Language",
+        rows: [
+            { key: "language", label: "Language", purpose: "Application language; use auto to follow system preferences or a BCP-47 language code. Changes apply after reloading windows." },
+        ],
+    },
+    {
+        groupId: "general",
+        groupTitle: "General",
         id: "window-behavior",
         title: "Window Behavior",
         description: "Controls what happens when the last Persephone window closes.",
