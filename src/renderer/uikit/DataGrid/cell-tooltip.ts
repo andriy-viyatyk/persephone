@@ -61,6 +61,7 @@
 import { attachTooltip, type TooltipAttachment } from "../Tooltip/attach-tooltip";
 import { overlayRegistry } from "../shared/overlayRegistry";
 import { DisposableStore, type Cleanup, type IDisposable } from "../../core/utils/DisposableStore";
+import { formatNumber } from "../../core/utils/format";
 import { columnDisplayValue, formatDisplayValue } from "av-grid";
 import type { Column, DataGridInstance } from "./types";
 
@@ -110,7 +111,7 @@ function displayText<R>(column: Column<R>, row: R): string {
 function truncate(text: string): string {
     if (text.length <= MAX_TEXT) return text;
     const dropped = text.length - MAX_TEXT;
-    return `${text.slice(0, MAX_TEXT)}… +${dropped.toLocaleString()} more characters`;
+    return `${text.slice(0, MAX_TEXT)}… +${formatNumber(dropped)} more characters`;
 }
 
 /**

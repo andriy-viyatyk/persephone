@@ -134,7 +134,8 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
 - **D8 — Formatting goes through `Intl`** with the active locale: dates, times, relative times
   ("3 days ago"), numbers and byte sizes, consolidated into one `core/utils/format.ts` and the
   duplicates removed. ISO dates that are data (file names, logs, `YYYY-MM-DD` in grids where the user
-  sorts text) stay ISO.
+  sorts text) stay ISO. Language-neutral numeric date/time formats (ISO-style `YYYY-MM-DD`, 24-hour
+  `HH:mm`) stay as they are; localization applies to words, decimal/grouping separators and units.
 - **D9 — Monaco follows when it can.** Load `monaco-editor/esm/nls.messages.<lang>.js` before
   Monaco for the languages it ships (of the proposed set: de, es, fr, it, ja, ko, pl, pt-br, zh-cn);
   other languages leave Monaco's own widgets (find, command palette) in English. Because of D5,

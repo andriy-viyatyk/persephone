@@ -1,6 +1,7 @@
 import type { DownloadEntry } from "../../../ipc/api-param-types";
 import { downloads } from "../../api/downloads";
 import { TComponentState } from "../../core/state/state";
+import { formatBytes } from "../../core/utils/format";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import "../../uikit/Button/Button.css";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -317,11 +318,3 @@ export const isDownloadsPopupOpen = (): boolean =>
 // =============================================================================
 // Module-private helpers
 // =============================================================================
-
-function formatBytes(bytes: number): string {
-    if (bytes <= 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB"];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    const value = bytes / Math.pow(1024, i);
-    return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
-}

@@ -10,5 +10,6 @@ export const commonCatalog = {
     ok: { message: "OK" },
     cancel: { message: "Cancel" },
     loading: { message: "Loading…", note: "Shown while content is being loaded." },
+    todayAt: { message: "Today at {time}" },
     items: { message: { one: "{count} item", other: "{count} items" } },
 } satisfies Record<string, EnglishCatalogEntry>;

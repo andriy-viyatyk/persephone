@@ -7,6 +7,7 @@ import { createPseudoLocalePack } from "../../shared/i18n/pseudo-locale";
 import { getActiveLocale, setActiveLocale } from "../../shared/i18n/active-locale";
 import { setLocalePacks, t, getPluralCategories } from "../../shared/i18n/t";
 import { hashEnglishMessage } from "../../shared/i18n/hash";
+import { formatDate, formatDateTime, formatTime, formatRelativeTime, formatNumber, formatUnit, formatBytes } from "../core/utils/format";
 import { api } from "../../ipc/renderer/api";
 import type { LanguagePack } from "../../shared/i18n/pack";
 
@@ -118,6 +119,13 @@ if (import.meta.env.DEV) {
             getActiveLocale,
             pluralCategories: getPluralCategories,
             hashEnglishMessage,
+            formatDate,
+            formatDateTime,
+            formatTime,
+            formatRelativeTime,
+            formatNumber,
+            formatUnit,
+            formatBytes,
         }),
     });
 }

@@ -9,6 +9,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
 import { formatBytes } from "../../core/utils/format-bytes";
+import { formatDateTime } from "../../core/utils/format";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import type { EditorModel } from "../base/EditorModel";
 import {
@@ -497,7 +498,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 if (status.reason) serviceDetails.append(text(`Reason: ${status.reason}`, { size: "sm" }));
                 if (status.pid !== undefined) serviceDetails.append(text(`PID: ${status.pid}`, { size: "sm" }));
                 if (status.startedAt !== undefined) {
-                    serviceDetails.append(text(`Started: ${new Date(status.startedAt).toISOString()}`, { size: "sm" }));
+                    serviceDetails.append(text(`Started: ${formatDateTime(status.startedAt)}`, { size: "sm" }));
                 }
                 serviceDetails.append(text(`Restarts: ${status.restartCount}`, { size: "sm" }));
             }

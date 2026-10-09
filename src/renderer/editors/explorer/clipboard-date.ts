@@ -1,3 +1,6 @@
+import { formatRelativeTime, formatUnit } from "../../core/utils/format";
+import { t } from "../../../shared/i18n/t";
+
 const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
 const MINUTES_PER_DAY = MINUTES_PER_HOUR * HOURS_PER_DAY;
@@ -27,11 +30,11 @@ export function clipboardTimeLabel(capturedAt: number, now = new Date()): Clipbo
     const dayDifference = Math.max(0, Math.round((today - capturedDay) / (MINUTES_PER_DAY * 60 * 1000)));
 
     if (dayDifference === 0) {
-        return { badge: time, tooltip: `Today at ${time}` };
+        return { badge: time, tooltip: t("common.todayAt", { time }) };
     }
 
     return {
-        badge: `-${dayDifference}d ${time}`,
-        tooltip: dayDifference === 1 ? "1 day ago" : `${dayDifference} days ago`,
+        badge: `-${formatUnit(dayDifference, "day", "narrow")} ${time}`,
+        tooltip: formatRelativeTime(-dayDifference, "day"),
     };
 }
