@@ -26,6 +26,7 @@ not through `app.settings`.
 | [Content]                  | [Theme panel]                         |  fixed tree at left; panels scroll at right
 |   General                   | [Window Behavior panel]               |  one outlined panel per section
 |     Theme                   | [Editor Behavior panel]               |
+|     Language                | [Language panel]                      |
 |     Window Behavior         | [Browser Profiles panel]               |
 |     Clipboard               | [Links panel]                          |
 |     Terminal                | [MCP Server / Mneme panel]             |
@@ -55,6 +56,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Content tree → `settings-content-tree`
 - Settings content → no entry: two-pane region containing the tree and panel scroll surface
 - Theme → `theme`
+- Language → `language`
 - Window Behavior → `window.close-to-tray`
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
@@ -93,6 +95,19 @@ tile for creating a theme from the active theme without changing the current app
 New use the installed Theme Editor board capability. If no handler is available, Persephone opens
 **Tools & Editors → Search boards** and explains how to find and install Theme Editor. If the board
 does not respond, Settings reports a timeout separately.
+
+## Language
+
+In **General → Language**, choose **Automatic** to use the first supported language from your
+system preferences, or choose a language pack from the list. Each pack shows its native and English
+names and translation completeness percentage. To load a compatible pack, place its
+`<code>.lang.json` file in `%APPDATA%\persephone\data\languages\`, then reopen Settings or restart
+Persephone to refresh the list. Choosing a language saves the setting and immediately reloads all
+open windows; their pages are restored afterward. If no preferred language is available, Automatic
+uses English. Russian language packs are blocked.
+
+Additional language packs and the Language Editor are planned for later phases. Number formatting,
+byte sizes, and relative day labels use the active locale when one is available.
 
 ## Editor Behavior
 
@@ -149,6 +164,7 @@ file. Section names are containers for highlighting rather than individual setti
 | Content tree | `[data-name="settings-content-tree"]` |
 | Settings panels | `[data-name="settings-panels"]` |
 | View Settings File | `[data-name="settings-view-file"]` |
+| Language | `[data-name="settings-section-language"]` |
 | Theme | `[data-name="settings-section-theme"]` |
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
 | Editor Behavior | `[data-name="settings-section-editor"]` |
@@ -195,6 +211,7 @@ example.
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
+| `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |
 | `theme` | Applies when saved; the settings file comments list the accepted theme names |

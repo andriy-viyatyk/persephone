@@ -83,6 +83,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | JSON parsing helpers (`tryParseJson<T>` parse-or-fall-back; `parseObject` / `parseJSON5`) | `/src/renderer/core/utils/parse-utils.ts` |
 | Toast-on-failure wrapper (`guard(label, fn, level?)` — the "try, notify, carry on" handler shape) | `/src/renderer/core/utils/guard.ts` |
 | App settings             | `/src/renderer/api/settings.ts`                   |
+| Shared localization runtime (typed English catalogs, `t()` and stable agent-facing English lookup, pack validation/layering, pseudo-locale, and active locale) | `/src/shared/i18n/` |
+| Renderer startup locale and language-pack loading (before first UI paint) | `/src/renderer/i18n/startup.ts` |
+| Main-process locale and pack loading (tray and native dialogs) | `/src/main/i18n-locale.ts` |
+| Locale-aware date, relative-time, number, unit, and byte-size formatting | `/src/renderer/core/utils/format.ts` |
+| Language setting and picker (including completeness and reload-all) | `/src/renderer/editors/settings/sections/LanguageSection.ts`, `/src/renderer/api/settings.ts` |
+| Language pack validation command (`npm run i18n:check`) | `/scripts/i18n-check.mjs`, `/scripts/i18n-check-entry.ts` |
 | Site-extension store (manifest validation, exact-host index/conflicts, configured/default root, and fresh script reads) | `/src/renderer/api/site-extensions.ts` |
 | Site-extension trust mirror (renderer snapshot, host-set comparison, folder binding, enable/revoke/trust operations) | `/src/renderer/api/site-extension-trust.ts` |
 | Site-extension agent API (`app.siteExtensions`: list/create/reload/remove; scaffold never grants trust) | `/src/renderer/api/site-extensions-agent.ts` |
@@ -538,7 +544,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Catalog board screenshot (shared by the Search boards cards and both Board Info modes; a plain remote `<img>` at a fixed 200×125 16:10 footprint — no URL, a 404 or no network all fall back to a same-size placeholder so card heights never jump. Loaded straight from the catalog repo over `https` (the app renderer sets no `img-src`/`default-src` CSP) and deliberately NOT fetched through main or disk-cached, so screenshots are the one part of the catalog that does not work offline. A raw `<img>` rather than a UIKit primitive — Rule 7 governs Emotion in app code and `style`/`className` on UIKit *components*, not raw elements) | `/src/renderer/editors/board-info/BoardScreenshotView.ts` |
 | Creatable-items registry (`CreatableItem` list shared by the Tools & Editors panel and the `+` new-page dropdown; always-available Clipboard item; the default pinned set is `DEFAULT_PINNED_EDITORS` in `api/settings.ts`) | `/src/renderer/ui/sidebar/tools-editors-registry.ts` |
 | Trusted-boards sidebar tab (native list with open/pin/remove and catalog update actions) | `/src/renderer/ui/sidebar/TrustedBoardsListView.ts` |
-| Human-readable byte size (`formatBytes`) | `/src/renderer/core/utils/format-bytes.ts` |
+| Legacy byte-size formatter entry point (`formatBytes`, re-exported from the locale-aware formatter) | `/src/renderer/core/utils/format-bytes.ts` |
 | Unified pin model (`PinnedRef` over `pinned-editors`; editors + `board:<root>`; indexed insertion and duplicate-safe moves) | `/src/renderer/ui/sidebar/pinned-items.ts` |
 | Tools & Editors pin drag session (document-scoped active ref and `pin`/`unpin` mode shared by both rail instances and tab-body drop targets) | `/src/renderer/ui/sidebar/pinned-drag-session.ts` |
 | Board authoring guide (bridge surface, reload, MCP debugging, --p-* contract, chrome classes) | `/assets/board-template/CLAUDE.md` |

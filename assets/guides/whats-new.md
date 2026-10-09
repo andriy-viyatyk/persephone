@@ -12,7 +12,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.10 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Choose the interface language:** In Settings > General > Language, select Automatic or an
+  available language pack. A selection reloads all open windows and restores their pages. Compatible
+  packs can be placed in `%APPDATA%\persephone\data\languages\`; the picker shows each pack's
+  completeness. Russian packs are blocked. Built-in translations arrive in a later release; this
+  version lays the groundwork and ships English only.
+- **Locale-aware formatting:** Numbers, byte sizes, and relative day labels follow the active
+  language where available.
 
 ---
 

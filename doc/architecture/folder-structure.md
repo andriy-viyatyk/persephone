@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy)
+│   ├── shared/             # Shared types, constants, cross-process helpers, and i18n runtime/catalogs (errMessage, execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -25,6 +25,8 @@ persephone/
 │   ├── build-prod.mjs      # Vite production build — Node-targeted main plus preload, preload-webview, renderer, board-shim, search-worker
 │   ├── build-board-lib.mjs # Manual Excalidraw vendor-graph snapshot generator (run only when its pinned version changes)
 │   ├── build-rest-client-lib.mjs # Build the REST Client board's committed CodeMirror browser module
+│   ├── i18n-check.mjs      # Bundle and run the language-pack validation command
+│   ├── i18n-check-entry.ts # Check pack completeness/source hashes and generated en-XA
 │   └── vmp-sign.mjs        # electron-builder afterPack hook for Widevine VMP signing
 ├── assets/                 # Static assets
 │   ├── editor-types/       # GENERATED — Vite plugin auto-copies .d.ts files from src/renderer/api/types/ (never hand-edit)
