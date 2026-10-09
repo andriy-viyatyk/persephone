@@ -13,6 +13,7 @@
     "dist:zip": "node scripts/build-prod.mjs && electron-builder --win zip",
     "dist:publish": "node scripts/build-prod.mjs && electron-builder --win --publish always",
     "lint": "eslint .",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "typecheck": "tsc --noEmit",
     "mneme:build": "cargo build --release --manifest-path mneme/Cargo.toml",
     "mneme:model": "node scripts/dev-mneme-model.mjs",

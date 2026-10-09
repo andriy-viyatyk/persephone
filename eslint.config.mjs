@@ -6,6 +6,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
 import globals from "globals";
+import { dirname, resolve } from "node:path";
 
 const vanillaViewPlugin = {
     rules: {
@@ -173,8 +174,96 @@ const vanillaViewPlugin = {
                 });
             },
         },
+        "no-hardcoded-ui-strings": {
+            meta: {
+                type: "problem",
+                schema: [],
+                messages: {
+                    hardcoded: "Hardcoded UI text; add it to the English i18n catalog and call t().",
+                },
+            },
+            create(context) {
+                const filename = context.filename.replace(/\\/g, "/");
+                if (isExcludedI18nFile(filename)) return {};
+
+                const settingsNativeTextBindings = new Set();
+                const textElementBindings = new Set(["createTextElement"]);
+                const literalHasLetters = (node) => {
+                    if (node.type === "Literal") {
+                        return typeof node.value === "string" && /\p{L}/u.test(node.value);
+                    }
+                    return node.type === "TemplateLiteral"
+                        && node.quasis.some((quasi) => /\p{L}/u.test(quasi.value.cooked ?? quasi.value.raw));
+                };
+                const report = (node) => {
+                    if (literalHasLetters(node)) context.report({ node, messageId: "hardcoded" });
+                };
+
+                return {
+                    ImportDeclaration(node) {
+                        if (typeof node.source.value !== "string") return;
+                        const source = resolve(dirname(filename), node.source.value).replace(/\\/g, "/");
+                        if (source.endsWith("/src/renderer/editors/settings/sections/settings-native")
+                            || source.endsWith("/src/renderer/editors/settings/sections/settings-native.ts")) {
+                            for (const specifier of node.specifiers) {
+                                if (specifier.type !== "ImportSpecifier") continue;
+                                const imported = specifier.imported.name ?? specifier.imported.value;
+                                if (imported === "text") settingsNativeTextBindings.add(specifier.local.name);
+                            }
+                        }
+                        for (const specifier of node.specifiers) {
+                            if (specifier.type !== "ImportSpecifier") continue;
+                            const imported = specifier.imported.name ?? specifier.imported.value;
+                            if (imported === "createTextElement") textElementBindings.add(specifier.local.name);
+                        }
+                    },
+                    Property(node) {
+                        const key = node.key.type === "Identifier"
+                            ? node.key.name
+                            : node.key.type === "Literal" && typeof node.key.value === "string"
+                                ? node.key.value
+                                : undefined;
+                        if (["label", "title", "placeholder", "tooltip", "children"].includes(key)) {
+                            report(node.value);
+                        }
+                    },
+                    AssignmentExpression(node) {
+                        if (node.left.type !== "MemberExpression" || memberName(node.left) === undefined) return;
+                        if (["textContent", "title", "placeholder"].includes(memberName(node.left))) report(node.right);
+                    },
+                    CallExpression(node) {
+                        const argument = node.arguments[0];
+                        if (!argument || argument.type === "SpreadElement") return;
+                        const callee = node.callee;
+                        const name = callee.type === "Identifier" ? callee.name : undefined;
+                        const isUiNotify = callee.type === "MemberExpression"
+                            && memberName(callee) === "notify"
+                            && ((callee.object.type === "Identifier" && callee.object.name === "ui")
+                                || (callee.object.type === "MemberExpression"
+                                    && memberName(callee.object) === "ui"
+                                    && callee.object.object.type === "Identifier"
+                                    && callee.object.object.name === "app"));
+                        if ((name && textElementBindings.has(name))
+                            || (name && settingsNativeTextBindings.has(name))
+                            || isUiNotify) report(argument);
+                    },
+                };
+            },
+        },
     },
 };
+
+function isExcludedI18nFile(filename) {
+    return filename.includes("/src/shared/i18n/")
+        || filename.includes("/src/renderer/automation/")
+        || filename.includes("/src/renderer/scripting/ai-vision/")
+        || filename.includes("/src/renderer/scripting/api-wrapper/")
+        || filename.includes("/src/main/mcp/")
+        || filename.includes("/src/renderer/api/mcp/")
+        || filename.includes("/src/renderer/api/types/")
+        || /\/(?:test|tests|__tests__|stories)\//.test(filename)
+        || /(?:^|\/)[^/]*(?:\.test|\.spec|\.story)\.[jt]sx?$/.test(filename);
+}
 
 function createConstructorCallRule(matcher, message) {
     return {
@@ -582,6 +671,7 @@ export default tseslint.config(
             "vanilla-view/no-child-claim-twice": "error",
             "vanilla-view/no-indirect-view-subclass": "error",
             "vanilla-view/bind-handle-outside-mount": "error",
+            "vanilla-view/no-hardcoded-ui-strings": "warn",
         },
     },
 

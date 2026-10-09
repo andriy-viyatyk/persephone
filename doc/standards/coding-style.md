@@ -2,6 +2,9 @@
 
 ## TypeScript
 
+For translated UI strings, catalog keys, and language-pack conventions, see the
+[localization standard](localization.md).
+
 ### Use TypeScript for All New Code
 
 ```typescript

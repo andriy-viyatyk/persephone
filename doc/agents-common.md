@@ -137,6 +137,7 @@ epic closes.
 | Add sidebar panels            | [architecture/secondary-views.md](architecture/secondary-views.md) |
 | Work with scripting system    | [architecture/scripting.md](architecture/scripting.md) |
 | Check coding style            | [standards/coding-style.md](standards/coding-style.md) |
+| Add or update translated UI text | [standards/localization.md](standards/localization.md) |
 | Styling / inline-style inventory | [architecture/styling-inventory.md](architecture/styling-inventory.md) |
 | See active/planned work       | [active-work.md](active-work.md) |
 | Find the file that owns a behavior | [architecture/key-files.md](architecture/key-files.md) |
