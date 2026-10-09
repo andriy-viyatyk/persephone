@@ -314,6 +314,7 @@ const nodefs = require("fs");
 - `content/tree-providers/ArchiveTreeProvider.ts` — archive tree provider, uses `path.basename`/`path.extname` on plain filenames (not archive-aware path operations)
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
 - `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized
+- `i18n/startup.ts` — reads the language setting and language packs synchronously before UI startup
 - Other files that use `require("fs")` for low-level operations not covered by `app.fs` (e.g., `fs.watch`, `fs.createReadStream`)
 
 When in doubt: if `app.fs` or `file-path` can do the job, use them.

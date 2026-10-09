@@ -1,5 +1,6 @@
 // Keep this first so the shared cascade layer order is established before any component stylesheet.
 import "./renderer/theme/style-layers.css";
+import "./renderer/i18n/startup";
 import "./renderer/theme/root.css";
 import { app } from "./renderer/api/app";
 import { api } from "./ipc/renderer/api";

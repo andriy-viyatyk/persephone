@@ -1,4 +1,4 @@
-import { BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, screen } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,6 +52,10 @@ export class OpenWindow {
                 partition: appPartition,
                 nodeIntegration: true,
                 contextIsolation: false,
+                additionalArguments: [
+                    `--persephone-preferred-languages=${JSON.stringify(app.getPreferredSystemLanguages())}`,
+                    `--persephone-languages-dir=${getAssetPath("languages")}`,
+                ],
                 // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
                 // Chromium fetch — favicon cache, Image editor, the in-app MCP client (which must send no Origin:
                 // the MCP servers refuse browser requests, US-1588), and user scripts' global fetch — and the dev

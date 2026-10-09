@@ -5,7 +5,19 @@ import { openWindows } from './open-windows';
 let tray: Tray | null = null;
 
 export function setupTray() {
-    tray = new Tray(getAssetPath('icon.png'));
+    if (!tray) tray = new Tray(getAssetPath('icon.png'));
+    rebuildTray();
+    tray.on('click', () => {
+        if (openWindows.anyVisible()) {
+            openWindows.hideWindows();
+        } else {
+            openWindows.showWindows();
+        }
+    });
+}
+
+export function rebuildTray(): void {
+    if (!tray) return;
     const contextMenu = Menu.buildFromTemplate([
         {
             label: 'Show App',
@@ -23,11 +35,4 @@ export function setupTray() {
     ]);
     tray.setToolTip('Persephone');
     tray.setContextMenu(contextMenu);
-    tray.on('click', () => {
-        if (openWindows.anyVisible()) {
-            openWindows.hideWindows();
-        } else {
-            openWindows.showWindows();
-        }
-    });
 }

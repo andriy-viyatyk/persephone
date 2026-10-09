@@ -28,6 +28,7 @@ import {
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
+import { setMainLocale } from "../../main/i18n-locale";
 import fs from "node:fs";
 import path from "node:path";
 import type { BoardEndpoint } from "./board-handlers";
@@ -47,6 +48,10 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
 
     getDataFolder = async (_event: IpcMainEvent): Promise<string> => {
         return getDataFolder();
+    }
+
+    setActiveLocale = async (_event: IpcMainEvent, code: string): Promise<void> => {
+        setMainLocale(code);
     }
 
     getUiPreferences = async (_event: IpcMainEvent) => {
@@ -421,6 +426,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.getAppRootPath, controllerInstance.getAppRootPath);
     bindEndpoint(Endpoint.getAssetsPath, controllerInstance.getAssetsPath);
     bindEndpoint(Endpoint.getDataFolder, controllerInstance.getDataFolder);
+    bindEndpoint(Endpoint.setActiveLocale, controllerInstance.setActiveLocale);
     bindEndpoint(Endpoint.getUiPreferences, controllerInstance.getUiPreferences);
     bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);

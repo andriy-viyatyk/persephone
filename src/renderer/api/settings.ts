@@ -25,6 +25,7 @@ export interface BrowserProfile {
 
 export type AppSettingsKey =
     | "tab-recent-languages"
+    | "language"
     | "theme"
     | "search-extensions"
     | "search-exclude"
@@ -104,6 +105,7 @@ const settingsFileHeader = [
  * (a change that needs a toggle, a dependency on an external program, a security implication).
  */
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
+    "language": "Application language code. Use \"auto\" to follow the system's preferred languages, or a BCP-47 code such as \"uk\" or \"en-XA\". Changes take effect after restarting Persephone. Default: auto.",
     "tab-recent-languages":
         "Languages recently chosen from a tab's language menu, most recent first.\nMaintained automatically; they sort to the top of that menu. Safe to trim or clear.",
     "theme": "Application color theme. Applies as soon as this file is saved. Built-in ids and custom theme ids are accepted; custom choices are stored in the data/themes folder. Default: persephone.",
@@ -155,6 +157,7 @@ export const DEFAULT_PINNED_EDITORS: readonly string[] = [
 const defaultAppSettingsState = {
     settings: {
         "tab-recent-languages": ["plaintext"] as string[],
+        "language": "auto",
         "theme": "persephone",
         "search-extensions": defaultSearchableExtensions as string[],
         "search-exclude": defaultExcludePatterns as string[],

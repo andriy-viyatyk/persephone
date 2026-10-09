@@ -34,6 +34,7 @@ export enum Endpoint {
     getAppRootPath = "getAppRootPath",
     getAssetsPath = "getAssetsPath",
     getDataFolder = "getDataFolder",
+    setActiveLocale = "setActiveLocale",
     getUiPreferences = "getUiPreferences",
     setUiPreference = "setUiPreference",
     maximizeWindow = "maximizeWindow",
@@ -208,6 +209,7 @@ export type Api = {
     [Endpoint.getAppRootPath]: () => Promise<string>;
     [Endpoint.getAssetsPath]: (fileName: string) => Promise<string>;
     [Endpoint.getDataFolder]: () => Promise<string>;
+    [Endpoint.setActiveLocale]: (code: string) => Promise<void>;
     [Endpoint.getUiPreferences]: () => Promise<Record<string, string | number | boolean>>;
     [Endpoint.setUiPreference]: (
         key: string,

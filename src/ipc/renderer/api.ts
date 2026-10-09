@@ -84,6 +84,10 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.getDataFolder);
     };
 
+    setActiveLocale = async (code: string) => {
+        return executeOnce<void>(Endpoint.setActiveLocale, code);
+    };
+
     getUiPreferences = async () => {
         return executeOnce<Record<string, string | number | boolean>>(Endpoint.getUiPreferences);
     };
