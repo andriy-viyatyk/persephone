@@ -88,9 +88,9 @@ task starts.
 | [US-1647](../tasks/US-1647-i18n-core/README.md) | i18n core: catalogs, `t()`, plurals, pack loading and layering, `en-XA` | Implemented |
 | [US-1648](../tasks/US-1648-stable-ui-ids/README.md) | Stable ids for dialog buttons and menu items; split mixed UI/agent text | Implemented |
 | [US-1649](../tasks/US-1649-language-setting/README.md) | `language` setting, Settings picker, reload on switch, startup locale, main-process strings | Implemented |
-| [US-1650](../tasks/US-1650-locale-formatting/README.md) | Locale-aware formatting through `Intl` (`core/utils/format.ts`) | In Progress |
-| US-1651 | Localization conventions doc, ESLint rule (warning), `npm run i18n:check` | Planned |
-| US-1652 | Pilot extraction: Settings page and all dialogs, verified under `en-XA` | Planned |
+| [US-1650](../tasks/US-1650-locale-formatting/README.md) | Locale-aware formatting through `Intl` (`core/utils/format.ts`) | Implemented |
+| [US-1651](../tasks/US-1651-i18n-conventions/README.md) | Localization conventions doc, ESLint rule (warning), `npm run i18n:check` | Implemented |
+| [US-1652](../tasks/US-1652-pilot-extraction/README.md) | Pilot extraction: Settings page and all dialogs, verified under `en-XA` | In Progress |
 
 ### US-1647 — i18n core
 
@@ -177,6 +177,24 @@ task starts.
 - Update the conventions doc with anything the pilot taught.
 - **Acceptance:** under `en-XA` no plain-English text remains on the Settings page or in any
   dialog; lint warnings for those folders are zero; agents still drive both through MCP.
+
+## For the user to test (overnight run, 2026-10-10)
+
+Implemented and checked live by Claude through MCP; these are the things worth a human look.
+
+- **US-1649 — language picker.** Settings > General > Language: choosing a language reloads every
+  window at once, with no prompt, and open pages (including unsaved edits) come back. Choose
+  *Automatic* to return to English.
+- **US-1650 — formatting.** With a language pack active, numbers, byte sizes and relative days follow
+  that language (German `1.234,5`, Ukrainian `3 дні тому`, `1,2 МБ`). To try it without a real
+  translation, drop a stub pack in `%APPDATA%\persephone\data\languages\`, e.g. `uk.lang.json`:
+  `{"schemaVersion":1,"code":"uk","name":"Українська","englishName":"Ukrainian","messages":{}}`,
+  then pick it in Settings. Where to look: the Explorer clipboard-history badges/tooltips
+  (`-3д`, `3 дні тому`, `учора`), browser downloads popup sizes, Mneme config sizes, board-info
+  service start time. Intentional: git and notebook dates stay `YYYY-MM-DD HH:mm`; in English the
+  kilobyte unit is now `kB` (Intl's spelling) and a 1-day-old clipboard item says "yesterday".
+- **US-1651.** `npm run lint` now prints ~1,100 `no-hardcoded-ui-strings` warnings (by design, warning
+  level until phase 2); `npm run i18n:check` validates packs.
 
 ## Notes
 
