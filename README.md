@@ -39,7 +39,7 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 
 ## Also inside
 
-- **Web browser** — tabs with profiles, incognito mode, Tor routing, bookmarks, and DRM video support. Links from Markdown and code open in the nearest browser tab.
+- **Web browser** — tabs with profiles, incognito mode, Tor routing, bookmarks, DRM video support, and [WebMCP](https://developer.chrome.com/docs/ai/webmcp): tools a site registers with `document.modelContext` become callable methods for your agent. Links from Markdown and code open in the nearest browser tab.
 - **Git integration** *(off by default)* — a commit-graph editor across all branches, staging and committing, push/pull, and revision diffs for any tracked file.
 - **Mneme — vector memory** *(off by default)* — turns any folder of Markdown notes into a locally indexed knowledge base with hybrid full-text + semantic search, exposed over MCP so agents remember across sessions. See the [Mneme guide](assets/guides/mneme.md).
 - **Scripting** — the `app.*` API behind the agent's object model is yours too, in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
@@ -82,7 +82,7 @@ Everything else is network traffic you start yourself: web pages in the built-in
 | **Links** | `.link.json` | Bookmark/link manager with tiles, list view, categories, and pinned links |
 | **REST Client board** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |
 | **Board** | folder w/ `board-manifest.json` | Sandboxed custom HTML mini-app — dashboard, tool, viewer, or custom editor |
-| **Browser** | — | Web browser with profiles, incognito, Tor, bookmarks, and DRM support |
+| **Browser** | — | Web browser with profiles, incognito, Tor, bookmarks, DRM support, and WebMCP site tools for agents |
 | **Git Tree** | — | Commit-history graph with branches & tags, staging, commit, and pull/push *(Git integration)* |
 | **Git Diff** | — | Side-by-side revision comparison for any tracked file *(Git integration)* |
 | **Compare** | any two files | Side-by-side diff view |

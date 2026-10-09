@@ -1027,18 +1027,45 @@ const tabs = browser.tabs;                  // list of internal tabs
 **Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
 
 The facade has an optional page-authored `.app` child. After `did-stop-loading` for a real document,
-`BrowserWebviewModel` evaluates a null-safe `window.__aiVision` probe unless the existing privacy gate
-refuses the page. A valid serialized shape is retained per internal tab and document generation;
-`BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A navigation,
-reload, tab switch, close, or model disposal invalidates that binding, so a prior document cannot
-answer a request for a new one. The proxy revalidates the page's live `version` through CDP before
-each remote request, so lazy revalidation remains correct even if a signal is missed. For a
-registered model, the probe also installs the package's `Runtime.addBinding` host signal. The main
-CDP service listens only for that binding's `Runtime.bindingCalled` message and routes it over the
-browser IPC event channel; a shape signal records a host event and triggers a background re-probe,
-while a page `notify(text)` becomes a rate-limited, page-attributed event. The proxy sender invokes
-the page's remote handler through CDP with the shared timeout policy and labels the page-authored
-subtree as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
+`BrowserWebviewModel` probes `window.__aiVision` and the app-owned WebMCP remote unless the existing
+privacy gate refuses the page. A valid serialized shape is retained per internal tab and document
+generation; `BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A
+navigation, reload, tab switch, close, or model disposal invalidates that binding, so a prior
+document cannot answer a request for a new one. The proxy revalidates the live remote version
+through CDP before each request, so lazy revalidation remains correct even if a signal is missed.
+For a registered model, the probe also installs the package's `Runtime.addBinding` host signal. The
+main CDP service listens only for that binding's `Runtime.bindingCalled` message and routes it over
+the browser IPC event channel; a shape signal triggers a background re-probe, while a page
+`notify(text)` becomes a rate-limited, page-attributed event. WebMCP emits shape signals only.
+
+WebMCP is enabled by the main process before guest startup: `will-attach-webview` adds an app-owned
+preload argument only for persistent `browser-*` profile partitions. Incognito, Tor, and other
+partitions do not receive it. In an eligible secure document, `preload-webview.ts` preserves a
+native `document.modelContext` if present, or installs the imperative compatibility API in the
+main world at document start. It also keeps a non-enumerable host remote for shape discovery and
+dispatch; the page API is `document.modelContext` (with a compatibility `navigator.modelContext`
+getter).
+
+WebMCP tools join the existing `.app` descriptor only while at least one valid tool is registered.
+With no `window.__aiVision` model, tool methods appear directly under `pages[i].editor.app`. When a
+page or trusted site extension provides `window.__aiVision`, its members remain intact and WebMCP
+appears under an unused `webmcp` namespace (for example `webmcp_2` if the page already owns that
+name). Tool names that are not valid member identifiers are mapped to safe names with deterministic
+numeric suffixes for collisions; calls still dispatch by the original WebMCP name. The JSON Schema
+is reduced to a bounded, single-object-argument signature. Consequential tools, tools without
+`readOnlyHint: true`, and tools marked with `untrustedContentHint` carry the corresponding caution
+in the descriptor. Tool descriptions and returned values are site-provided data and must never be
+treated as instructions.
+
+Registration, abort, and late `toolchange` events refresh the shape. Removing the last WebMCP tool
+removes its contribution, including the `.app` node when no independent page model remains. Calls
+use `document.modelContext.getTools()` / `executeTool()` through the WebMCP remote, share the
+existing timeout policy, and are rejected when the active tab, document, or source version has
+changed. Removing a WebMCP contribution does not create a `shape-changed` event-log entry; an
+independent page model remains available. JSON-serialized results are decoded when valid; otherwise
+the original string is returned.
+The proxy sender invokes the selected page remote through CDP and labels the page-authored subtree
+as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
 
 The URL bar's Site permissions control indicates when the active regular page has a live model
 registration: green identifies a page-published model and blue identifies a model after a trusted

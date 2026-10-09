@@ -43,8 +43,14 @@ export type BrowserQueueRequest = never;
 
 export interface BrowserAiVisionRegistration {
     readonly internalTabId: string;
+    /** Combined descriptor shape exposed to the resolver. */
     readonly shape: IAiVisionShape;
+    readonly siteShape?: IAiVisionShape;
+    readonly webMcpShape?: IAiVisionShape;
     readonly version?: number;
+    readonly siteVersion?: number;
+    readonly webMcpVersion?: number;
+    readonly webMcpNamespace?: string;
     readonly generation: number;
     readonly token: number;
 }
@@ -182,6 +188,11 @@ export class BrowserEditor extends EditorModel<
         generation: number,
         shape: IAiVisionShape,
         version?: number,
+        siteShape?: IAiVisionShape,
+        siteVersion?: number,
+        webMcpShape?: IAiVisionShape,
+        webMcpVersion?: number,
+        webMcpNamespace?: string,
     ): boolean => {
         if (this.aiVisionDisposed
             || this.getAiVisionDocumentGeneration(internalTabId) !== generation) return false;
@@ -189,6 +200,11 @@ export class BrowserEditor extends EditorModel<
             internalTabId,
             shape,
             version,
+            siteShape,
+            siteVersion,
+            webMcpShape,
+            webMcpVersion,
+            webMcpNamespace,
             generation,
             token: ++this.aiVisionToken,
         };

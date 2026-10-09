@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Persephone WebMCP fixture</title>
+</head>
+<body>
+  <h1>Persephone WebMCP fixture</h1>
+  <p>Register tools, wait for a delayed registration, then unregister all tools to check discovery invalidation.</p>
+  <button id="register">Register tools</button>
+  <button id="register-later">Register a tool after 2 seconds</button>
+  <button id="unregister">Abort and unregister all tools</button>
+  <pre id="status">No tools registered.</pre>
+  <script>
+    const controllers = [];
+    const status = document.querySelector("#status");
+
+    async function registerTools() {
+      const controller = new AbortController();
+      controllers.push(controller);
+      await document.modelContext.registerTool({
+        name: "confirm-order",
+        description: "Create a sample order and return its confirmation.",
+        inputSchema: {
+          type: "object",
+          properties: { item: { type: "string", description: "Item to order" } },
+          required: ["item"],
+        },
+        annotations: { consequentialHint: true, readOnlyHint: false },
+        execute: async ({ item }) => `Order created for ${item}.`,
+      }, { signal: controller.signal });
+
+      await document.modelContext.registerTool({
+        name: "read-status",
+        description: "Read the fixture status without changing it.",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: true },
+        execute: async () => "Fixture is ready.",
+      }, { signal: controller.signal });
+
+      await document.modelContext.registerTool({
+        name: "search-products",
+        description: "Search the sample product list.",
+        inputSchema: {
+          type: "object",
+          properties: { query: { type: "string" } },
+          required: ["query"],
+        },
+        annotations: { readOnlyHint: true, untrustedContentHint: true },
+        execute: async ({ query }) => JSON.stringify({ query, products: ["sample product"] }),
+      }, { signal: controller.signal });
+
+      status.textContent = "Registered confirm-order, read-status, and search-products.";
+    }
+
+    document.querySelector("#register").addEventListener("click", () => void registerTools());
+    document.querySelector("#register-later").addEventListener("click", () => {
+      status.textContent = "Registering a delayed tool in two seconds…";
+      setTimeout(async () => {
+        const controller = new AbortController();
+        controllers.push(controller);
+        await document.modelContext.registerTool({
+          name: "late-tool",
+          description: "A tool registered after page load.",
+          inputSchema: { type: "object", properties: {} },
+          annotations: { readOnlyHint: true },
+          execute: async () => "Registered late.",
+        }, { signal: controller.signal });
+        status.textContent = "Registered late-tool.";
+      }, 2000);
+    });
+    document.querySelector("#unregister").addEventListener("click", () => {
+      for (const controller of controllers.splice(0)) controller.abort();
+      status.textContent = "Aborted and unregistered all tools.";
+    });
+  </script>
+</body>
+</html>

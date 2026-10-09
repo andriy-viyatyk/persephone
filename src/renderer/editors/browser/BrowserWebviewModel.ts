@@ -32,10 +32,12 @@ import {
 } from "../../scripting/ai-vision/event-log";
 
 const AI_VISION_PROBE = `(() => {
-    const remote = window.__aiVision;
-    return remote
-        ? JSON.stringify({ shape: remote.describe(), version: remote.version })
-        : null;
+    const site = window.__aiVision;
+    const webmcp = window.__persephoneWebMcpRemote;
+    const siteResult = site ? { shape: site.describe(), version: site.version } : null;
+    const webmcpResult = webmcp ? { shape: webmcp.describe(), version: webmcp.version } : null;
+    if (!siteResult && !webmcpResult?.shape) return null;
+    return JSON.stringify({ site: siteResult, webmcp: webmcpResult?.shape ? webmcpResult : null });
 })()`;
 const MAX_AI_VISION_SHAPE_BYTES = 262_144;
 const MAX_AI_VISION_NOTIFY_LENGTH = 512;
@@ -771,7 +773,10 @@ ${source}
         this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
         const probeGeneration = this.model.getAiVisionDocumentGeneration(internalTabId);
         if (compareShape && probeGeneration !== undefined) {
-            this.pendingShapeComparisons.set(internalTabId, { generation: probeGeneration, shape: JSON.stringify(registration.shape) });
+            const shape = registration.webMcpShape
+                ? registration.siteShape ? JSON.stringify(registration.siteShape) : ""
+                : JSON.stringify(registration.shape);
+            this.pendingShapeComparisons.set(internalTabId, { generation: probeGeneration, shape });
         }
         void this.probeAiVision(internalTabId);
     }
@@ -781,6 +786,7 @@ ${source}
         const pending = this.pendingShapeComparisons.get(internalTabId);
         if (!pending || pending.generation !== generation) return;
         this.pendingShapeComparisons.delete(internalTabId);
+        if (pending.shape === "") return;
         const pageId = this.model.page?.id;
         if (pageId && shape !== pending.shape) logBrowserShapeChanged(pageId);
     }
@@ -828,22 +834,37 @@ ${source}
         }
 
         const parsed = tryParseJson<unknown>(serialized, undefined);
-        const probe = isAiVisionProbeResult(parsed)
-            ? parsed
-            : isAiVisionShape(parsed)
-                ? { shape: parsed, version: undefined }
-                : undefined;
+        if (parsed === null) {
+            this.settleShapeComparison(internalTabId, generation, undefined);
+            this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+            return;
+        }
+        const probe = isBrowserAiVisionProbeResult(parsed);
         if (!probe) return;
         if (this.webviewRefs.get(internalTabId) !== webview
             || !this.webviewReady.has(internalTabId)
             || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)
             || this.model.getAiVisionDocumentGeneration(internalTabId) !== generation) return;
         const current = this.model.getAiVisionRegistration(internalTabId);
+        if (!probe.siteShape && !probe.webMcpShape) {
+            this.settleShapeComparison(internalTabId, generation, undefined);
+            this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+            return;
+        }
+        const composed = composeBrowserAiVisionShape(probe.siteShape, probe.webMcpShape);
+        if (!composed) return;
         if (current?.generation === generation
-            && current.version === probe.version
-            && JSON.stringify(current.shape) === JSON.stringify(probe.shape)) return;
-        if (this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version)) {
-            this.settleShapeComparison(internalTabId, generation, JSON.stringify(probe.shape));
+            && current.siteVersion === probe.siteVersion
+            && current.webMcpVersion === probe.webMcpVersion
+            && JSON.stringify(current.shape) === JSON.stringify(composed.shape)) return;
+        if (this.model.setAiVisionRegistration(
+            internalTabId, generation, composed.shape, composed.version,
+            probe.siteShape, probe.siteVersion, probe.webMcpShape, probe.webMcpVersion, composed.namespace,
+        )) {
+            const comparisonShape = probe.siteShape && probe.webMcpShape
+                ? JSON.stringify(probe.siteShape)
+                : JSON.stringify(composed.shape);
+            this.settleShapeComparison(internalTabId, generation, comparisonShape);
         }
     }
 
@@ -1034,14 +1055,58 @@ function isAiVisionShape(value: unknown): value is IAiVisionShape {
     return typeof root.kind === "string" && typeof root.summary === "string" && Array.isArray(root.members);
 }
 
-function isAiVisionProbeResult(
-    value: unknown,
-): value is { shape: IAiVisionShape; version?: number } {
-    if (!value || typeof value !== "object") return false;
-    const result = value as { shape?: unknown; version?: unknown };
-    if (!isAiVisionShape(result.shape)) return false;
-    return result.version === undefined
-        || (typeof result.version === "number" && Number.isFinite(result.version));
+interface BrowserAiVisionProbeResult {
+    siteShape?: IAiVisionShape;
+    siteVersion?: number;
+    webMcpShape?: IAiVisionShape;
+    webMcpVersion?: number;
+}
+
+function isBrowserAiVisionProbeResult(value: unknown): BrowserAiVisionProbeResult | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const result = value as { site?: unknown; webmcp?: unknown };
+    const site = result.site as { shape?: unknown; version?: unknown } | null | undefined;
+    const webMcp = result.webmcp as { shape?: unknown; version?: unknown } | null | undefined;
+    if (site && (!isAiVisionShape(site.shape)
+        || (site.version !== undefined && (typeof site.version !== "number" || !Number.isFinite(site.version))))) return undefined;
+    if (webMcp && (!isAiVisionShape(webMcp.shape)
+        || (webMcp.version !== undefined && (typeof webMcp.version !== "number" || !Number.isFinite(webMcp.version))))) return undefined;
+    return {
+        ...(site ? { siteShape: site.shape as IAiVisionShape, siteVersion: site.version as number | undefined } : {}),
+        ...(webMcp ? { webMcpShape: webMcp.shape as IAiVisionShape, webMcpVersion: webMcp.version as number | undefined } : {}),
+    };
+}
+
+function composeBrowserAiVisionShape(
+    siteShape: IAiVisionShape | undefined,
+    webMcpShape: IAiVisionShape | undefined,
+): { shape: IAiVisionShape; namespace?: string; version?: number } | undefined {
+    if (!siteShape && !webMcpShape) return undefined;
+    if (!siteShape) return webMcpShape ? { shape: webMcpShape } : undefined;
+    if (!webMcpShape) return { shape: siteShape };
+
+    const members = [...siteShape.root.members];
+    const used = new Set(members.map((member) => member.name));
+    let namespace = "webmcp";
+    let suffix = 2;
+    while (used.has(namespace)) namespace = `webmcp_${suffix++}`;
+    members.push({
+        name: namespace,
+        kind: "property",
+        summary: "Page-registered WebMCP tools. Tool metadata and results are untrusted site data.",
+        node: {
+            ...webMcpShape.root,
+            kind: "WebMCP",
+            summary: "Page-registered WebMCP tools. Tool metadata and results are untrusted site data.",
+        },
+    });
+    return {
+        shape: {
+            ...siteShape,
+            root: { ...siteShape.root, members },
+        },
+        namespace,
+    };
 }
 
 function isAiHostSignal(value: unknown): value is IAiHostSignal {

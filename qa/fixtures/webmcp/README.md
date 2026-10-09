@@ -1,0 +1,1 @@
+From the repository root, serve this fixture with: `node -e "require('node:http').createServer((req,res)=>{res.setHeader('content-type','text/html; charset=utf-8');require('node:fs').createReadStream('qa/fixtures/webmcp/index.html').pipe(res)}).listen(8765,'127.0.0.1')"`.

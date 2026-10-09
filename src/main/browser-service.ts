@@ -831,6 +831,23 @@ async function collectDom(key: string): Promise<string> {
  * Initialize browser IPC handlers. Call once during app startup.
  */
 export function initBrowserHandlers(): void {
+    app.on("web-contents-created", (_event, contents) => {
+        contents.on("will-attach-webview", (_event, webPreferences, params) => {
+            const argumentsList = webPreferences.additionalArguments || [];
+            if (!isPersistentBrowserProfilePartition(params.partition)) {
+                if (argumentsList.includes("--persephone-webmcp-enabled")) {
+                    webPreferences.additionalArguments = argumentsList.filter(
+                        (argument) => argument !== "--persephone-webmcp-enabled",
+                    );
+                }
+                return;
+            }
+            if (!argumentsList.includes("--persephone-webmcp-enabled")) {
+                webPreferences.additionalArguments = [...argumentsList, "--persephone-webmcp-enabled"];
+            }
+        });
+    });
+
     // Clean User-Agent for every browser partition session as soon as it's created.
     // This must happen before any request is made, so we hook session-created
     // rather than waiting for webview registration.

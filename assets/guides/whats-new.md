@@ -21,6 +21,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Persephone themes and a new starting theme:** Choose the dark **Persephone** theme or the light
   **Persephone Light** theme. New settings use Persephone by default; an existing valid saved theme
   remains selected.
+- **Browser pages can provide WebMCP tools to agents:** tools registered through
+  `document.modelContext` appear in the page's agent model, with cautions for tools that may have
+  side effects. This integration is disabled in Incognito and Tor.
 
 ### Bug Fixes
 

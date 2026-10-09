@@ -290,12 +290,18 @@ export class BrowserEditorFacade implements IAiVisible {
         const timeoutError = new Error(
             `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
         );
-        const requestJson = JSON.stringify(request);
         const missingRemoteError = JSON.stringify(this.aiVisionMissingRefusal());
+        const webMcp = isWebMcpRequest(request, registration);
+        const routedRequest = webMcp && registration.siteShape && registration.webMcpNamespace
+            ? { ...request, path: request.path.slice(registration.webMcpNamespace.length).replace(/^\./, "") }
+            : request;
+        const remoteExpression = webMcp
+            ? "window.__persephoneWebMcpRemote"
+            : "window.__aiVision";
         const expression = `(() => {
-    const remote = window.__aiVision;
+    const remote = ${remoteExpression};
     if (!remote) return { ok: false, error: ${missingRemoteError} };
-    return remote.handle(JSON.parse(${JSON.stringify(requestJson)}));
+    return remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))}));
 })()`;
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
@@ -335,20 +341,24 @@ export class BrowserEditorFacade implements IAiVisible {
         }
 
         const expression = `(() => {
-    const remote = window.__aiVision;
-    return remote ? { present: true, version: remote.version } : null;
+    const site = window.__aiVision;
+    const webmcp = window.__persephoneWebMcpRemote;
+    return {
+        site: site ? { present: true, version: site.version } : null,
+        webmcp: webmcp ? { present: true, version: webmcp.version } : null,
+    };
 })()`;
         try {
             await ensureTargetReady(this.model.target, registration.internalTabId);
             const result = await evaluateInTarget(this.model.target, expression, registration.internalTabId);
-            if (result === null) return this.aiVisionMissingRefusal();
-            if (!isAiVisionVersionResult(result)) return this.aiVisionUnavailableRefusal();
-            const version = typeof result.version === "number" && Number.isFinite(result.version)
-                ? result.version
-                : undefined;
-            const versionsMatch = registration.version === undefined && version === undefined
-                || registration.version !== undefined && version !== undefined && registration.version === version;
-            if (!versionsMatch) {
+            if (!isAiVisionVersionsResult(result)) return this.aiVisionUnavailableRefusal();
+            const versionMatches = (expected: number | undefined, actual: number | undefined): boolean =>
+                expected === undefined && actual === undefined
+                || expected !== undefined && actual !== undefined && expected === actual;
+            const currentSiteVersion = result.site?.version;
+            const currentWebMcpVersion = result.webmcp?.version;
+            if (!versionMatches(registration.siteVersion, currentSiteVersion)
+                || !versionMatches(registration.webMcpVersion, currentWebMcpVersion)) {
                 this.model.webview.reprobeAiVision(
                     registration.internalTabId,
                     registration.generation,
@@ -793,10 +803,24 @@ function isAiVisionResponse(value: unknown): value is IAiRemoteResponse {
     return response.ok === false && typeof response.error === "string";
 }
 
-function isAiVisionVersionResult(value: unknown): value is { present: true; version?: number } {
+function isAiVisionVersionsResult(value: unknown): value is {
+    site: { present: true; version?: number } | null;
+    webmcp: { present: true; version?: number } | null;
+} {
     if (!value || typeof value !== "object") return false;
-    const result = value as { present?: unknown; version?: unknown };
-    return result.present === true
-        && (result.version === undefined
-            || (typeof result.version === "number" && Number.isFinite(result.version)));
+    const result = value as { site?: unknown; webmcp?: unknown };
+    const valid = (entry: unknown): boolean => entry === null
+        || (!!entry && typeof entry === "object"
+            && (entry as { present?: unknown }).present === true
+            && ((entry as { version?: unknown }).version === undefined
+                || (typeof (entry as { version?: unknown }).version === "number"
+                    && Number.isFinite((entry as { version: number }).version))));
+    return valid(result.site) && valid(result.webmcp);
+}
+
+function isWebMcpRequest(request: Pick<IAiRemoteRequest, "path">, registration: BrowserAiVisionRegistration): boolean {
+    if (!registration.webMcpShape) return false;
+    if (!registration.siteShape) return true;
+    const namespace = registration.webMcpNamespace;
+    return !!namespace && (request.path === namespace || request.path.startsWith(`${namespace}.`));
 }
