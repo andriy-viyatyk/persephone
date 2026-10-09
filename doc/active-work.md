@@ -13,12 +13,12 @@ The [platform roadmap](platform-roadmap.md) (phases A–F, EPIC-105 to EPIC-114)
 
 - **EPIC-124** — [Localization foundation](epics/EPIC-124.md) (phase 1 of the
   [localization roadmap](localization-roadmap.md); phases 2–4 get epic numbers when they start)
-  - [ ] [US-1647: i18n core — catalogs, `t()`, plurals, pack loading and layering, `en-XA`](tasks/US-1647-i18n-core/README.md)
-  - [ ] [US-1648: Stable ids for dialog buttons and menu items; split mixed UI/agent text](tasks/US-1648-stable-ui-ids/README.md)
-  - [ ] [US-1649: `language` setting, Settings picker, reload on switch, startup locale](tasks/US-1649-language-setting/README.md)
-  - [ ] [US-1650: Locale-aware formatting through `Intl`](tasks/US-1650-locale-formatting/README.md)
-  - [ ] [US-1651: Localization conventions doc, ESLint rule, `npm run i18n:check`](tasks/US-1651-i18n-conventions/README.md)
-  - [ ] [US-1652: Pilot extraction — Settings page and all dialogs, verified under `en-XA`](tasks/US-1652-pilot-extraction/README.md)
+  - [x] [US-1647: i18n core — catalogs, `t()`, plurals, pack loading and layering, `en-XA`](tasks/US-1647-i18n-core/README.md)
+  - [x] [US-1648: Stable ids for dialog buttons and menu items; split mixed UI/agent text](tasks/US-1648-stable-ui-ids/README.md)
+  - [x] [US-1649: `language` setting, Settings picker, reload on switch, startup locale](tasks/US-1649-language-setting/README.md)
+  - [x] [US-1650: Locale-aware formatting through `Intl`](tasks/US-1650-locale-formatting/README.md)
+  - [x] [US-1651: Localization conventions doc, ESLint rule, `npm run i18n:check`](tasks/US-1651-i18n-conventions/README.md)
+  - [x] [US-1652: Pilot extraction — Settings page and all dialogs, verified under `en-XA`](tasks/US-1652-pilot-extraction/README.md)
 
 ## Planned
 
