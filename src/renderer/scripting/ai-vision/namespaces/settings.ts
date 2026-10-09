@@ -3,6 +3,7 @@ import { ui } from "../../../api/ui";
 import type { BrowserProfile } from "../../../api/settings";
 import type { ISettings } from "../../../api/types/settings";
 import { createElements } from "ai-vision/dom";
+import { englishMessage } from "../../../../shared/i18n/t";
 import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
 import { SETTINGS_CATALOG, type SettingsCatalogRow, type SettingsCatalogSection } from "../../../editors/settings/settings-catalog";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
@@ -22,6 +23,17 @@ function createSettingsElements(catalog: readonly SettingsCatalogSection[]): rea
 }
 
 const SETTINGS_ELEMENTS = createSettingsElements(SETTINGS_CATALOG);
+const SETTINGS_AGENT_SECTIONS = SETTINGS_CATALOG.map((section) => ({
+    groupId: section.groupId,
+    groupTitle: englishMessage(section.groupTitleKey),
+    id: section.id,
+    title: englishMessage(section.titleKey),
+    description: section.description,
+    elementName: section.elementName,
+    panelName: section.panelName,
+    where: section.where,
+    rows: section.rows,
+}));
 
 const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
     "tab-recent-languages": "Setting \"tab-recent-languages\" is a real setting, but it has no row on the Settings page. Use settings.get(\"tab-recent-languages\") or settings.set(\"tab-recent-languages\", value); it is owned by each page tab's language menu.",
@@ -122,7 +134,7 @@ export function describeSettings(instance: unknown): IAiVisionDescriptor {
         members: SETTINGS_MEMBERS,
         elements: SETTINGS_ELEMENTS,
         provide: (name) => {
-            if (name === "sections") return { value: SETTINGS_CATALOG };
+            if (name === "sections") return { value: SETTINGS_AGENT_SECTIONS };
             if (name === "set") {
                 return {
                     value: (key: string, value: unknown): void => {

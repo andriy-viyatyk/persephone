@@ -1,5 +1,6 @@
 import { api } from "../../../../ipc/renderer/api";
 import { errMessage } from "../../../../shared/utils";
+import { t } from "../../../../shared/i18n/t";
 import { siteExtensionStore } from "../../../api/site-extensions";
 import { siteExtensionTrust } from "../../../api/site-extension-trust";
 import { settings } from "../../../api/settings";
@@ -30,15 +31,15 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         super(props, root);
         this.browseButton = this.child(new ButtonView({
             name: "site-extensions-folder-browse", variant: "link", size: "sm", background: "light",
-            children: "Browse...", onClick: () => void this.browse(),
+            children: t("settings.siteExtensionsFolderBrowse"), onClick: () => void this.browse(),
         }));
         this.resetButton = this.child(new ButtonView({
             name: "site-extensions-folder-reset", variant: "link", size: "sm", background: "light",
-            children: "Use default", onClick: () => settings.set("site-extensions.path", ""),
+            children: t("settings.siteExtensionsUseDefault"), onClick: () => settings.set("site-extensions.path", ""),
         }));
         this.openButton = this.child(new ButtonView({
             name: "site-extensions-open", variant: "ghost", size: "sm", background: "light",
-            children: "Open site extensions",
+            children: t("settings.siteExtensionsOpenList"),
             onClick: () => void pagesModel.showToolsHubPage({ tab: "site-extensions" }),
         }));
         this.folderValue.dataset.name = "site-extensions-folder";
@@ -46,9 +47,9 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         this.problems.hidden = true;
         this.folderRow.append(this.folderValue, this.browseButton.root, this.resetButton.root);
         root.append(
-            panel({ paddingBottom: "lg" }, text("Site Extensions", { bold: true, size: "sm" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.siteExtensionsTitle"), { bold: true, size: "sm" })),
             panel({ flex: true, paddingBottom: "md" }, text(
-                "Scripts that give agents a model of a website. Each runs only on its own hosts, and only after you trust it.",
+                t("settings.siteExtensionsAgentDescription"),
                 { color: "light", size: "xs" },
             )),
             this.folderRow,
@@ -72,10 +73,10 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
 
     private async browse(): Promise<void> {
         try {
-            const result = await api.showOpenFolderDialog({ title: "Select Site Extensions Folder", defaultPath: await siteExtensionStore.getRoot() });
+            const result = await api.showOpenFolderDialog({ title: t("settings.siteExtensionsFolderTitle"), defaultPath: await siteExtensionStore.getRoot() });
             if (result?.[0]) settings.set("site-extensions.path", result[0]);
         } catch (error) {
-            ui.notify(errMessage(error, "Failed to choose the site extensions folder."), "warning");
+            ui.notify(errMessage(error, t("settings.siteExtensionsFolderFailed")), "warning");
         }
     }
 
@@ -87,7 +88,7 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
             const [listings, folderStat] = await Promise.all([siteExtensionStore.list(), fs.stat(root), siteExtensionTrust.load()]);
             if (generation !== this.refreshGeneration) return;
             this.folderValue.replaceChildren(settingsPath(root));
-            if (!configured) this.folderValue.append(text(" (default)", { size: "xs", color: "light" }));
+            if (!configured) this.folderValue.append(text(t("settings.siteExtensionsDefaultSuffix"), { size: "xs", color: "light" }));
             this.resetButton.root.hidden = !configured;
 
             const grants = siteExtensionTrust.snapshot;
@@ -95,18 +96,19 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
             const trusted = listings.filter((listing) => grants[listing.id]).length;
             const broken = listings.filter((listing) => listing.status !== "valid").length
                 + Object.keys(grants).filter((id) => !listed.has(id)).length;
+            const summaryParams = { count: listings.length, trusted };
             this.summary.textContent = listings.length === 0
-                ? "No site extensions installed."
-                : `${listings.length} installed, ${trusted} trusted.`;
+                ? t("settings.noSiteExtensions")
+                : t("settings.siteExtensionInstalledTrusted", summaryParams);
             const problems = [
                 // The default folder is created on first use; a configured one should already exist.
-                ...(configured && !folderStat.exists ? ["The folder does not exist."] : []),
-                ...(broken > 0 ? [`${broken} need attention.`] : []),
+                ...(configured && !folderStat.exists ? [t("settings.siteExtensionFolderMissing")] : []),
+                ...(broken > 0 ? [t("settings.siteExtensionNeedsAttention", { count: broken })] : []),
             ];
             this.problems.textContent = problems.join(" ");
             this.problems.hidden = problems.length === 0;
         } catch (error) {
-            if (generation === this.refreshGeneration) this.summary.textContent = errMessage(error, "Site extensions could not be loaded.");
+            if (generation === this.refreshGeneration) this.summary.textContent = errMessage(error, t("settings.siteExtensionsLoadFailed"));
         }
     }
 }

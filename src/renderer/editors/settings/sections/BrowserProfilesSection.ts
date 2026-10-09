@@ -18,6 +18,7 @@ import type { MenuItem } from "../../../uikit/Menu/types";
 import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
+import { t } from "../../../../shared/i18n/t";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
@@ -68,19 +69,19 @@ class BookmarksFileLineView extends VanillaView<BookmarksFileLineProps> {
         }
         this.root.replaceChildren();
         const filename = props.filePath ? fpBasename(props.filePath) : "";
-        if (filename) this.root.append(settingsLabel("Bookmark file:"));
+        if (filename) this.root.append(settingsLabel(t("settings.bookmarkFileLabel")));
         this.root.append(settingsLabel("📁"));
         if (filename) {
             const link = settingsLink(filename);
             link.title = props.filePath;
             this.root.append(link);
             this.clearButton = this.child(new IconButtonView({
-                size: "sm", icon: "close", title: "Remove bookmarks file", onClick: props.onClear,
+                size: "sm", icon: "close", title: t("settings.removeBookmarksFile"), onClick: props.onClear,
             }));
             this.root.append(this.clearButton.root);
             this.clearButton.mount();
         } else {
-            const placeholder = settingsPlaceholder("No bookmarks file");
+            const placeholder = settingsPlaceholder(t("settings.noBookmarksFile"));
             this.root.append(placeholder);
         }
     }
@@ -151,39 +152,39 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
             size: "md", color: props.color, bordered: true, onClick: props.name
                 ? (event) => this.openColorMenu(event.currentTarget as Element)
                 : undefined,
-            title: props.name ? "Change color" : undefined,
+            title: props.name ? t("settings.changeColor") : undefined,
         }));
         this.colorDot = colorDot;
         this.header.append(colorDot.root);
         colorDot.mount();
         const namePanel = panel({ flex: true });
-        namePanel.append(text(props.name || "Default", { size: "sm" }));
+        namePanel.append(text(props.name || t("settings.defaultProfile"), { size: "sm" }));
         this.header.append(namePanel);
         if (props.isDefault) {
-            this.header.append(this.badge("default"));
+            this.header.append(this.badge(t("settings.defaultBadge")));
         } else {
             this.defaultButton = this.child(new ButtonView({
-                variant: "ghost", size: "sm", background: "light", onClick: () => props.model.handleSetDefault(props.name), children: "set default",
+                variant: "ghost", size: "sm", background: "light", onClick: () => props.model.handleSetDefault(props.name), children: t("settings.setDefault"),
             }));
             this.header.append(this.defaultButton.root);
             this.defaultButton.mount();
         }
-        if (props.cleared) this.header.append(text("Cleared", { color: "success", size: "xs" }));
+        if (props.cleared) this.header.append(text(t("settings.profileCleared"), { color: "success", size: "xs" }));
         this.clearButton = this.child(new ButtonView({
-            variant: "ghost", size: "sm", background: "light", onClick: () => void props.model.handleClearData(props.name), children: "clear data",
+            variant: "ghost", size: "sm", background: "light", onClick: () => void props.model.handleClearData(props.name), children: t("settings.clearData"),
         }));
         this.header.append(this.clearButton.root);
         this.clearButton.mount();
         const permissionsButton: ButtonView = this.child(new ButtonView({
             name: "browser-profile-permissions", variant: "ghost", size: "sm", background: "light",
-            onClick: (): void => { void this.openPermissionsMenu(permissionsButton.root); }, children: "site permissions",
+            onClick: (): void => { void this.openPermissionsMenu(permissionsButton.root); }, children: t("settings.sitePermissions"),
         }));
         this.permissionsButton = permissionsButton;
         this.header.append(permissionsButton.root);
         permissionsButton.mount();
         if (props.name) {
             this.removeButton = this.child(new IconButtonView({
-                size: "sm", icon: "close", title: "Remove profile", onClick: () => void props.model.handleRemoveProfile(props.name),
+                size: "sm", icon: "close", title: t("settings.removeProfile"), onClick: () => void props.model.handleRemoveProfile(props.name),
             }));
             this.header.append(this.removeButton.root);
             this.removeButton.mount();
@@ -217,16 +218,16 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
         if (this.isDisposed) return;
         const items: MenuItem[] = decisions.length
             ? [
-                { label: "Revoke all site permissions", startGroup: true, onClick: () => void this.props.model.clearPermissionDecisions(this.props.name) },
+                { label: t("settings.revokeSitePermissions"), startGroup: true, onClick: () => void this.props.model.clearPermissionDecisions(this.props.name) },
                 ...groupPermissionDecisions(decisions).map(([origin, entries]) => ({
                     label: origin,
                     items: entries.map((entry) => ({
-                        label: `${entry.permission}: ${entry.decision}`,
+                        label: t("settings.permissionDecision", { permission: entry.permission, decision: entry.decision }),
                         onClick: (): void => { void this.props.model.removePermissionDecision(this.props.name, entry); },
                     })),
                 })),
             ]
-            : [{ label: "No saved site permissions", disabled: true }];
+            : [{ label: t("settings.noSavedSitePermissions"), disabled: true }];
         this.menuHandle?.dispose();
         this.menuHandle = openMenu(anchor, { items, onClose: () => { this.menuHandle = undefined; } });
     }
@@ -318,7 +319,7 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
         const header = panel({ direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs" });
         const icon = TorIcon.createElement({ width: 14, height: 14 });
         icon.style.flexShrink = "0";
-        header.append(icon, panel({ flex: true }, text("Tor", { size: "sm" })));
+        header.append(icon, panel({ flex: true }, text(t("settings.tor"), { size: "sm" })));
         this.root.append(header);
         this.exePanel = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
         this.root.append(this.exePanel);
@@ -326,7 +327,7 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
         const portInput = this.child(new InputView(this.inputProps(this.props)));
         this.portInput = portInput;
         const portPanel = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        portPanel.append(settingsFieldLabel("Port:"), portInput.root);
+        portPanel.append(settingsFieldLabel(t("settings.portLabel")), portInput.root);
         this.root.append(portPanel);
         const bookmarks = this.child(new BookmarksFileLineView({
             filePath: this.props.model.props.torBookmarksFile,
@@ -359,7 +360,7 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
             this.releaseChild(this.exeClearButton);
             this.exeClearButton = undefined;
         }
-        this.exePanel?.replaceChildren(settingsFieldLabel("tor.exe:"));
+        this.exePanel?.replaceChildren(settingsFieldLabel(t("settings.torExeLabel")));
         const filePath = props.model.props.torExePath;
         const filename = filePath ? fpBasename(filePath) : "";
         const target = document.createElement("div");
@@ -368,11 +369,11 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
             const link = settingsLink(filename);
             link.title = filePath;
             target.append(link);
-            this.exeClearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: "Remove tor.exe path", onClick: props.model.handleClearTorExe }));
+            this.exeClearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: t("settings.removeTorExePath"), onClick: props.model.handleClearTorExe }));
             target.append(this.exeClearButton.root);
             this.exeClearButton.mount();
         } else {
-            const placeholder = settingsPlaceholder("Not configured");
+            const placeholder = settingsPlaceholder(t("settings.notConfiguredValue"));
             target.append(placeholder);
         }
         this.exePanel?.append(target);
@@ -420,7 +421,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         return {
             checked: settings.get("browser-windows-sso"),
             onChange: () => settings.set("browser-windows-sso", !settings.get("browser-windows-sso")),
-            children: "Allow Windows single sign-on for Microsoft, work, and school accounts",
+            children: t("settings.allowWindowsSso"),
         };
     }
 
@@ -436,8 +437,8 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text("Browser Profiles", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Isolated browsing sessions with separate cookies, storage, and cache", { color: "light", size: "xs" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.browserProfilesTitle"), { bold: true, size: "sm" })),
+            panel({ paddingBottom: "md" }, text(t("settings.browserProfilesDescription"), { color: "light", size: "xs" })),
         );
         const profilePanel = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
         const defaultPanel = panel({ direction: "column", rounded: "sm", background: "dark" });
@@ -481,7 +482,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         const incognitoHeader = panel({ direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs" });
         const incognitoIcon = IncognitoIcon.createElement({ width: 14, height: 14 });
         incognitoIcon.style.flexShrink = "0";
-        incognitoHeader.append(incognitoIcon, panel({ flex: true }, text("Incognito", { size: "sm" })));
+        incognitoHeader.append(incognitoIcon, panel({ flex: true }, text(t("settings.incognito"), { size: "sm" })));
         incognitoPanel.append(incognitoHeader);
         this.incognitoBookmarks = this.child(new BookmarksFileLineView({
             filePath: settings.get("browser-incognito-bookmarks-file"),
@@ -502,14 +503,14 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         const addPanel = panel({ direction: "column", gap: "md" });
         const addRow = panel({ direction: "row", align: "center", gap: "md" });
         const namePanel = panel({ flex: true });
-        this.newNameInput = this.child(new InputView({ size: "sm", placeholder: "Profile name", value: model.state.get().newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown }));
+        this.newNameInput = this.child(new InputView({ size: "sm", placeholder: t("settings.profileNamePlaceholder"), value: model.state.get().newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown }));
         namePanel.append(this.newNameInput.root);
         addRow.append(namePanel);
-        this.addButton = this.child(new ButtonView({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: "Add" }));
+        this.addButton = this.child(new ButtonView({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: t("settings.profileAdd") }));
         addRow.append(this.addButton.root);
         this.newNameInput.mount();
         this.addButton.mount();
-        addPanel.append(addRow, text("Profile color:", { color: "light", size: "xs" }));
+        addPanel.append(addRow, text(t("settings.profileColor"), { color: "light", size: "xs" }));
         const colorPanel = panel({ direction: "row", wrap: true, gap: "md" });
         TAG_COLORS.forEach((tagColor) => {
             const dot = this.child(new DotView({ size: "lg", color: tagColor.hex, selected: model.state.get().newColor === tagColor.hex, title: tagColor.name, onClick: () => model.setNewColor(tagColor.hex) }));
@@ -524,7 +525,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.windowsSso = this.child(new CheckboxView(this.windowsSsoProps()));
         ssoPanel.append(
             this.windowsSso.root,
-            text("Browser profile pages send this device's Windows sign-in to Microsoft, as Edge and Chrome do, for company sign-ins that require a registered device. Never used by Incognito or Tor pages.", { color: "light", size: "xs" }),
+            text(t("settings.windowsSsoExplanation"), { color: "light", size: "xs" }),
         );
         this.windowsSso.mount();
         this.root.append(ssoPanel);
@@ -587,8 +588,8 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.incognitoBookmarks?.update({ filePath: settings.get("browser-incognito-bookmarks-file"), onBrowse: () => void model.handleBrowseIncognitoBookmarks(), onClear: () => settings.set("browser-incognito-bookmarks-file", "") });
         this.profilesList?.update(model.props.profiles);
         this.torRow?.update({ model, torPortValue: state.torPortValue });
-        this.newNameInput?.update({ size: "sm", placeholder: "Profile name", value: state.newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown });
-        this.addButton?.update({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: "Add" });
+        this.newNameInput?.update({ size: "sm", placeholder: t("settings.profileNamePlaceholder"), value: state.newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown });
+        this.addButton?.update({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: t("settings.profileAdd") });
         this.colorDots.forEach((dot, index) => dot.update({ size: "lg", color: TAG_COLORS[index].hex, selected: state.newColor === TAG_COLORS[index].hex, title: TAG_COLORS[index].name, onClick: () => model.setNewColor(TAG_COLORS[index].hex) }));
     }
 }

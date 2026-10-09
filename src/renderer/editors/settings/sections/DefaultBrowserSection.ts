@@ -4,6 +4,7 @@ import { ButtonView } from "../../../uikit/Button/ButtonView";
 import type { ButtonProps } from "../../../uikit/Button/ButtonView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import { t } from "../../../../shared/i18n/t";
 import { createSectionRoot, panel, text } from "./settings-native";
 
 const defaultDefaultBrowserSectionState = {
@@ -26,14 +27,14 @@ class DefaultBrowserStatusView extends VanillaView<{ registered: DefaultBrowserS
 
     protected onMount(): void {
         if (this.props.registered === null) {
-            this.statusPanel.append(text("Checking...", { size: "sm", color: "light" }));
+            this.statusPanel.append(text(t("settings.defaultBrowserChecking"), { size: "sm", color: "light" }));
         } else if (this.props.registered) {
-            this.statusPanel.append(text("Registered", { size: "sm", color: "success" }));
-            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onUnregister }, "Unregister");
+            this.statusPanel.append(text(t("settings.defaultBrowserRegistered"), { size: "sm", color: "success" }));
+            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onUnregister }, t("settings.unregister"));
         } else {
-            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onRegister }, "Register as Default Browser");
+            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onRegister }, t("settings.registerDefaultBrowser"));
         }
-        this.appendButton({ variant: "link", size: "sm", background: "light", onClick: this.props.onOpenSettings }, "Open Windows Default Apps");
+        this.appendButton({ variant: "link", size: "sm", background: "light", onClick: this.props.onOpenSettings }, t("settings.openWindowsDefaultApps"));
     }
 
     protected onUpdate(): void {}
@@ -62,7 +63,7 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
     protected onMount(): void {
         this.root.append(panel(
             { paddingBottom: "md" },
-            text("Register Persephone as a browser so it appears in Windows Default Apps", { color: "light", size: "xs" }),
+            text(t("settings.defaultBrowserDescription"), { color: "light", size: "xs" }),
         ));
 
         const statusHost = document.createElement("div");

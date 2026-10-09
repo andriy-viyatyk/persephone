@@ -1,11 +1,20 @@
 import { commonCatalog, type EnglishMessage } from "./common";
 import { mainCatalog } from "./main";
+import { settingsCatalog } from "./settings";
+import { dialogsCatalog } from "./dialogs";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
     common: Object.fromEntries(Object.entries(commonCatalog).map(([key, entry]) => [key, entry.message])),
     main: Object.fromEntries(Object.entries(mainCatalog).map(([key, entry]) => [key, entry.message])),
-} as { common: MessagesOf<typeof commonCatalog>; main: MessagesOf<typeof mainCatalog> };
+    settings: Object.fromEntries(Object.entries(settingsCatalog).map(([key, entry]) => [key, entry.message])),
+    dialogs: {},
+} as unknown as {
+    common: MessagesOf<typeof commonCatalog>;
+    main: MessagesOf<typeof mainCatalog>;
+    settings: MessagesOf<typeof settingsCatalog>;
+    dialogs: MessagesOf<typeof dialogsCatalog>;
+};
 
 export type EnglishCatalog = typeof englishCatalog;
 export type MessageKey = {

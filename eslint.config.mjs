@@ -208,7 +208,7 @@ const vanillaViewPlugin = {
                             for (const specifier of node.specifiers) {
                                 if (specifier.type !== "ImportSpecifier") continue;
                                 const imported = specifier.imported.name ?? specifier.imported.value;
-                                if (imported === "text") settingsNativeTextBindings.add(specifier.local.name);
+                                if (imported === "text" || imported === "settingsFieldLabel") settingsNativeTextBindings.add(specifier.local.name);
                             }
                         }
                         for (const specifier of node.specifiers) {
@@ -223,7 +223,7 @@ const vanillaViewPlugin = {
                             : node.key.type === "Literal" && typeof node.key.value === "string"
                                 ? node.key.value
                                 : undefined;
-                        if (["label", "title", "placeholder", "tooltip", "children"].includes(key)) {
+                        if (["label", "title", "placeholder", "tooltip", "children", "emptyText"].includes(key)) {
                             report(node.value);
                         }
                     },
@@ -261,6 +261,8 @@ function isExcludedI18nFile(filename) {
         || filename.includes("/src/main/mcp/")
         || filename.includes("/src/renderer/api/mcp/")
         || filename.includes("/src/renderer/api/types/")
+        // Settings catalog: descriptions, row labels, purposes and paths are agent-only (ai-vision).
+        || filename.endsWith("/src/renderer/editors/settings/settings-catalog.ts")
         || /\/(?:test|tests|__tests__|stories)\//.test(filename)
         || /(?:^|\/)[^/]*(?:\.test|\.spec|\.story)\.[jt]sx?$/.test(filename);
 }

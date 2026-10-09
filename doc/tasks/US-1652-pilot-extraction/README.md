@@ -1,10 +1,17 @@
 # US-1652: Pilot extraction — Settings page and all dialogs, verified under en-XA
 
-**Epic:** [EPIC-124 — Localization foundation](../../epics/EPIC-124.md) · **Status:** Planned
+**Epic:** [EPIC-124 — Localization foundation](../../epics/EPIC-124.md) · **Status:** In Progress
 
 ## Goal
 
 Extract app-owned, user-visible copy from src/renderer/editors/settings/** and every dialog and popper in src/renderer/ui/dialogs/** into typed English catalogs, then verify Settings and every dialog under generated en-XA. Keep stable IDs, script results, agent-facing data, and caller-owned text unchanged.
+
+## Progress
+
+- [x] Slice A, step 1: register the Settings and Dialogs catalog areas.
+- [x] Slice A, step 2: extract Settings UI messages and preserve the AI-vision English catalog shape.
+- [ ] Slice A validation: `npm run i18n:check` could not start because esbuild's child process was denied with `spawn EPERM`; the final `npm run build-prod` retry hit the same process restriction during renderer path resolution.
+- [ ] Live Settings verification under en-XA (performed by the user outside the sandbox).
 
 ## Background
 

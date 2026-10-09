@@ -6,6 +6,7 @@ import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
 import { NotificationView } from "../../../uikit/Notification/NotificationView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import { t } from "../../../../shared/i18n/t";
 import {
     ClipboardSectionModel,
     defaultClipboardSectionState,
@@ -39,10 +40,10 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text("Clipboard", { bold: true, size: "sm" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.clipboardTitle"), { bold: true, size: "sm" })),
             panel(
                 { paddingBottom: "md" },
-                text("Keep a local history of copied clipboard items", { color: "light", size: "xs" }),
+                text(t("settings.clipboardDescription"), { color: "light", size: "xs" }),
             ),
         );
 
@@ -50,14 +51,14 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.enabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
             model.props.clipboardEnabled,
             model.handleToggle,
-            "Enable clipboard history",
+            t("settings.clipboardEnable"),
         )));
         enabledRow.append(this.enabledCheckbox.root);
         this.enabledCheckbox.mount();
         this.root.append(enabledRow);
 
         const maxItemsRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        maxItemsRow.append(text("Maximum history items:", { size: "sm" }));
+        maxItemsRow.append(text(t("settings.clipboardMaximumHistory"), { size: "sm" }));
         this.maxItemsInput = this.child(new InputView(this.inputProps()));
         maxItemsRow.append(this.maxItemsInput.root);
         this.maxItemsInput.mount();
@@ -65,7 +66,7 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
 
         this.warning = this.child(new NotificationView({
             type: "warning",
-            message: "Occasionally-copied secrets may remain on disk in readable form.",
+            message: t("settings.clipboardReadableWarning"),
         }));
         this.root.append(this.warning.root);
         this.warning.mount();
@@ -117,7 +118,7 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.enabledCheckbox?.update(this.checkboxProps(
             model.props.clipboardEnabled,
             model.handleToggle,
-            "Enable clipboard history",
+            t("settings.clipboardEnable"),
         ));
         this.maxItemsInput?.update(this.inputProps(state.maxItemsValue));
     }

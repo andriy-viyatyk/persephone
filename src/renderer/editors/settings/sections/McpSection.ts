@@ -10,6 +10,7 @@ import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import { t } from "../../../../shared/i18n/t";
 import { McpSectionModel, defaultMcpSectionState, type McpSectionProps, type McpSectionState } from "./McpSectionModel";
 import { createSectionRoot, panel, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
@@ -68,12 +69,11 @@ class McpStatusView extends VanillaView<StatusProps> {
         const running = props.status.running;
         const status = props.status as { running: boolean; url: string; clientCount?: number };
         this.dot.update({ size: "sm", color: running ? "success" : "neutral" });
-        const clients = status.clientCount && status.clientCount > 0
-            ? ` — ${status.clientCount} client${status.clientCount !== 1 ? "s" : ""} connected`
-            : "";
         this.statusText.textContent = props.mneme
-            ? running ? "Running" : "Stopped"
-            : running ? `Running${clients}` : "Stopped";
+            ? running ? t("settings.running") : t("settings.stopped")
+            : running && status.clientCount && status.clientCount > 0
+                ? t("settings.mcpRunningWithClients", { count: status.clientCount })
+                : running ? t("settings.running") : t("settings.stopped");
         this.urlText.textContent = props.status.url;
         this.copyButton.update(this.copyButtonProps(props));
     }
@@ -85,7 +85,7 @@ class McpStatusView extends VanillaView<StatusProps> {
             size: "sm",
             background: "light",
             onClick: () => props.onCopy(props.status.url, label),
-            children: props.copied === label ? "Copied!" : "Copy URL",
+            children: props.copied === label ? t("settings.copied") : t("settings.copyUrl"),
         };
     }
 }
@@ -119,14 +119,14 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text("MCP Server", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("AI agents (Claude, ChatGPT, Gemini) can control Persephone via MCP", { color: "light", size: "xs" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.mcpTitle"), { bold: true, size: "sm" })),
+            panel({ paddingBottom: "md" }, text(t("settings.mcpDescription"), { color: "light", size: "xs" })),
         );
         const mcpRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.mcpEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
             model.props.mcpEnabled,
             model.handleToggle,
-            "Enable MCP server",
+            t("settings.mcpEnable"),
         )));
         mcpRow.append(this.mcpEnabledCheckbox.root);
         this.mcpEnabledCheckbox.mount();
@@ -136,15 +136,15 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.mainScriptsCheckbox = this.child(new CheckboxView(this.checkboxProps(
             model.props.mainScriptsEnabled,
             model.handleMainScriptsToggle,
-            "Allow main-process scripts",
+            t("settings.mainScriptsEnable"),
         )));
         mainScriptsRow.append(this.mainScriptsCheckbox.root);
-        mainScriptsRow.append(text("Warning: code runs in the main process and can freeze the app.", { color: "light", size: "xs" }));
+        mainScriptsRow.append(text(t("settings.mainScriptsWarning"), { color: "light", size: "xs" }));
         this.mainScriptsCheckbox.mount();
         this.root.append(mainScriptsRow);
 
         const portRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        portRow.append(text("Port:", { size: "sm" }));
+        portRow.append(text(t("settings.portLabel"), { size: "sm" }));
         this.portInput = this.child(new InputView(this.portProps(false)));
         portRow.append(this.portInput.root);
         this.portInput.mount();
@@ -157,20 +157,20 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.root.append(mcpStatusHost);
         this.mcpStatusSwap = new SubtreeSwap(mcpStatusHost);
         this.root.append(
-            panel({ paddingTop: "sm", paddingBottom: "lg" }, text("Mneme (vector memory)", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Local knowledge-base / memory service. Persephone launches it as a sidecar and serves it over loopback HTTP.", { color: "light", size: "xs" })),
+            panel({ paddingTop: "sm", paddingBottom: "lg" }, text(t("settings.mnemeTitle"), { bold: true, size: "sm" })),
+            panel({ paddingBottom: "md" }, text(t("settings.mnemeDescription"), { color: "light", size: "xs" })),
         );
         const mnemeRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.mnemeEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
             model.props.mnemeEnabled,
             model.handleMnemeToggle,
-            "Enable Mneme",
+            t("settings.mnemeEnable"),
         )));
         mnemeRow.append(this.mnemeEnabledCheckbox.root);
         this.mnemeEnabledCheckbox.mount();
         this.root.append(mnemeRow);
         const mnemePortRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        mnemePortRow.append(text("Port:", { size: "sm" }));
+        mnemePortRow.append(text(t("settings.portLabel"), { size: "sm" }));
         this.mnemePortInput = this.child(new InputView(this.portProps(true)));
         mnemePortRow.append(this.mnemePortInput.root);
         this.mnemePortInput.mount();
@@ -179,7 +179,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.mnemeStatusSwap = new SubtreeSwap(mnemeStatusHost);
 
         this.root.append(
-            panel({ paddingTop: "sm", paddingBottom: "md" }, text("AI client configuration:", { color: "light", size: "xs" })),
+            panel({ paddingTop: "sm", paddingBottom: "md" }, text(t("settings.aiClientConfiguration"), { color: "light", size: "xs" })),
         );
         const code = document.createElement("pre");
         code.dataset.type = "settings-code";
@@ -189,7 +189,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         const copyButton = this.child(new ButtonView({
             variant: "default", size: "sm", background: "light",
             onClick: () => this.model?.handleCopy(this.configJson(), "config"),
-            children: "Copy",
+            children: t("settings.copy"),
         }));
         this.configCopyButton = copyButton;
         (this.root.lastElementChild as HTMLDivElement).append(copyButton.root);
@@ -266,13 +266,13 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
     private syncState(state: McpSectionState): void {
         const model = this.model;
         if (!model) return;
-        this.mcpEnabledCheckbox?.update(this.checkboxProps(model.props.mcpEnabled, model.handleToggle, "Enable MCP server"));
-        this.mainScriptsCheckbox?.update(this.checkboxProps(model.props.mainScriptsEnabled, model.handleMainScriptsToggle, "Allow main-process scripts"));
-        this.mnemeEnabledCheckbox?.update(this.checkboxProps(model.props.mnemeEnabled, model.handleMnemeToggle, "Enable Mneme"));
+        this.mcpEnabledCheckbox?.update(this.checkboxProps(model.props.mcpEnabled, model.handleToggle, t("settings.mcpEnable")));
+        this.mainScriptsCheckbox?.update(this.checkboxProps(model.props.mainScriptsEnabled, model.handleMainScriptsToggle, t("settings.mainScriptsEnable")));
+        this.mnemeEnabledCheckbox?.update(this.checkboxProps(model.props.mnemeEnabled, model.handleMnemeToggle, t("settings.mnemeEnable")));
         this.portInput?.update(this.portProps(false));
         this.mnemePortInput?.update(this.portProps(true));
         this.configCode?.update({ code: this.configJson(), language: "json" });
-        const copyLabel = state.copied === "config" ? "Copied!" : "Copy";
+        const copyLabel = state.copied === "config" ? t("settings.copied") : t("settings.copy");
         this.configCopyButton?.update({
             variant: "default", size: "sm", background: "light",
             onClick: () => model.handleCopy(this.configJson(), "config"),

@@ -4,6 +4,7 @@ import { ui } from "../../api/ui";
 import { customEditorRegistry, type BoardSettingsRegistration } from "../board/custom-editor-registry";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { TreeView } from "../../uikit/Tree/TreeView";
@@ -81,11 +82,11 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
 
 const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {
     "link-behavior": () => [
-        panel({ paddingBottom: "lg" }, text("Links", { bold: true, size: "sm" })),
-        panel({ paddingBottom: "md" }, text("How external links open from editors (Monaco, Markdown)", { color: "light", size: "xs" })),
+        panel({ paddingBottom: "lg" }, text(t("settings.groupTitleLinks"), { bold: true, size: "sm" })),
+        panel({ paddingBottom: "md" }, text(t("settings.linksIntroduction"), { color: "light", size: "xs" })),
     ],
     "default-browser": () => [
-        panel({ paddingBottom: "lg" }, text("Default Browser", { bold: true, size: "sm" })),
+        panel({ paddingBottom: "lg" }, text(t("settings.groupTitleDefaultBrowser"), { bold: true, size: "sm" })),
     ],
 };
 
@@ -101,7 +102,9 @@ function createSettingsContentItems(
             group = {
                 kind: "group",
                 value: `group:${section.groupId}`,
-                label: section.groupTitle,
+                label: "groupTitleKey" in section
+                    ? t(section.groupTitleKey)
+                    : section.groupId === "editors" ? t("settings.groupEditors") : t("settings.groupBoards"),
                 items: [],
             };
             groups.push(group);
@@ -109,7 +112,7 @@ function createSettingsContentItems(
         group.items?.push({
             kind: "section",
             value: `section:${section.id}`,
-            label: section.title,
+            label: "titleKey" in section ? t(section.titleKey) : section.title,
         });
     }
     return groups;
@@ -172,7 +175,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
 
     protected onMount(): void {
         const title = document.createElement("h1");
-        title.textContent = "Settings";
+        title.textContent = t("settings.pageTitle");
 
         const content = createPanelElement({
             name: "settings-content",
@@ -257,7 +260,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             size: "sm",
             background: "light",
             onClick: this.handleOpenSettingsFile,
-            children: "View Settings File",
+            children: t("settings.viewSettingsFile"),
         }));
         footer.append(viewFileButton.root);
         treePane.append(footer);
@@ -266,7 +269,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         const generation = this.initializationGeneration;
         void customEditorRegistry.ensureInitialized().catch((error: unknown) => {
             if (this.isDisposed || generation !== this.initializationGeneration) return;
-            ui.notify(errMessage(error, "Failed to load board settings."), "warning");
+            ui.notify(errMessage(error, t("settings.failedLoadBoardSettings")), "warning");
         });
     }
 

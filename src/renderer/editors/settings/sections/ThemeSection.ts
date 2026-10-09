@@ -5,6 +5,7 @@ import { app } from "../../../api/app";
 import { deleteCustomTheme } from "../../../api/custom-theme-storage";
 import { getMissingEditCapabilityMessage, isCapabilityErrorWithCode } from "../../../api/capability-feedback";
 import { errMessage } from "../../../../shared/utils";
+import { englishMessage, t } from "../../../../shared/i18n/t";
 import { applyTheme, getAvailableThemes } from "../../../theme/themes";
 import type { ThemeDefinition } from "../../../theme/themes/types";
 import { themeState } from "../../../theme/theme-state";
@@ -90,8 +91,6 @@ interface ThemeOption {
     disposeKeydown: () => void;
 }
 
-const THEME_EDITOR_MISSING_MESSAGE = "The Theme Editor board is not installed. Search for and install the Theme Editor board in Tools & Editors.";
-
 export class ThemeSectionView extends VanillaView<Record<string, never>> {
     private readonly options = new Map<string, ThemeOption>();
     private createThemeButton: IconButtonView | undefined;
@@ -131,10 +130,10 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         const customThemes = themes.filter((theme) => theme.id.startsWith("custom-")).sort((left, right) =>
             left.name.localeCompare(right.name, undefined, { sensitivity: "base" }) || left.id.localeCompare(right.id)
         );
-        const groups = [
-            { name: "Dark", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && theme.isDark) },
-            { name: "Light", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && !theme.isDark) },
-            { name: "Custom", themes: customThemes },
+        const groups: { key: "settings.themeDark" | "settings.themeLight" | "settings.themeCustom"; name: string; themes: ThemeDefinition[] }[] = [
+            { key: "settings.themeDark", name: "Dark", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && theme.isDark) },
+            { key: "settings.themeLight", name: "Light", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && !theme.isDark) },
+            { key: "settings.themeCustom", name: "Custom", themes: customThemes },
         ];
         const activeIds = new Set(themes.map((theme) => theme.id));
         for (const [id, option] of this.options) {
@@ -147,9 +146,9 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             option.element.remove();
             this.options.delete(id);
         }
-        this.root.replaceChildren(panel({ paddingBottom: "lg" }, text("Theme", { bold: true, size: "sm" })));
-        groups.forEach(({ name, themes: groupThemes }) => {
-            this.root.append(panel({ paddingBottom: "md" }, text(name, { variant: "uppercased", color: "light", bold: true, size: "xs" })));
+        this.root.replaceChildren(panel({ paddingBottom: "lg" }, text(t("settings.groupTitleTheme"), { bold: true, size: "sm" })));
+        groups.forEach(({ key, name, themes: groupThemes }) => {
+            this.root.append(panel({ paddingBottom: "md" }, text(t(key), { variant: "uppercased", color: "light", bold: true, size: "xs" })));
             const grid = this.createGrid();
             groupThemes.forEach((theme) => {
                 let option = this.options.get(theme.id);
@@ -157,19 +156,19 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
                 option.theme = theme;
                 option.view.update(this.previewProps(theme));
                 option.name.textContent = theme.name;
-                option.element.setAttribute("aria-label", `${theme.name} theme`);
-                option.panel.setAttribute("aria-label", `Apply ${theme.name} theme`);
+                option.element.setAttribute("aria-label", t("settings.themeOptionAria", { name: theme.name }));
+                option.panel.setAttribute("aria-label", t("settings.themeApplyAria", { name: theme.name }));
                 option.editButton.update({
-                    size: "sm", icon: "edit", title: `Edit ${theme.name}`,
-                    "aria-label": `Edit ${theme.name}`,
+                    size: "sm", icon: "edit", title: t("settings.themeEditAria", { name: theme.name }),
+                    "aria-label": t("settings.themeEditAria", { name: theme.name }),
                     onClick: (event) => {
                         event.stopPropagation();
                         void this.handleThemeEdit(theme.id);
                     },
                 });
                 option.removeButton?.update({
-                    size: "sm", icon: "close", title: `Delete ${theme.name}`,
-                    "aria-label": `Delete ${theme.name}`,
+                    size: "sm", icon: "close", title: t("settings.themeDeleteAria", { name: theme.name }),
+                    "aria-label": t("settings.themeDeleteAria", { name: theme.name }),
                     onClick: (event) => {
                         event.stopPropagation();
                         void this.handleThemeDelete(theme.id);
@@ -199,7 +198,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         const option = document.createElement("div");
         option.dataset.type = "settings-theme-option";
         option.setAttribute("role", "group");
-        option.setAttribute("aria-label", `${theme.name} theme`);
+        option.setAttribute("aria-label", t("settings.themeOptionAria", { name: theme.name }));
         const preview = this.child(new ThemePreviewView(this.previewProps(theme)));
         const name = text(theme.name, { size: "sm", align: "center" });
         const themePanel = panel({
@@ -218,7 +217,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             });
         themePanel.setAttribute("role", "button");
         themePanel.tabIndex = 0;
-        themePanel.setAttribute("aria-label", `Apply ${theme.name} theme`);
+        themePanel.setAttribute("aria-label", t("settings.themeApplyAria", { name: theme.name }));
         const disposeClick = this.listen(themePanel, "click", () => this.handleThemeChange(theme.id));
         const disposeKeydown = this.listen(themePanel, "keydown", (event: KeyboardEvent) => {
             if (event.key !== "Enter" && event.key !== " ") return;
@@ -233,8 +232,8 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         const editButton = this.child(new IconButtonView({
             size: "sm",
             icon: "edit",
-            title: `Edit ${theme.name}`,
-            "aria-label": `Edit ${theme.name}`,
+            title: t("settings.themeEditAria", { name: theme.name }),
+            "aria-label": t("settings.themeEditAria", { name: theme.name }),
             onClick: (event) => {
                 event.stopPropagation();
                 void this.handleThemeEdit(theme.id);
@@ -246,8 +245,8 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         let removeButton: IconButtonView | undefined;
         if (theme.id.startsWith("custom-")) {
             removeButton = this.child(new IconButtonView({
-                size: "sm", icon: "close", title: `Delete ${theme.name}`,
-                "aria-label": `Delete ${theme.name}`,
+                size: "sm", icon: "close", title: t("settings.themeDeleteAria", { name: theme.name }),
+                "aria-label": t("settings.themeDeleteAria", { name: theme.name }),
                 onClick: (event) => {
                     event.stopPropagation();
                     void this.handleThemeDelete(theme.id);
@@ -295,22 +294,22 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
 
     private async reportThemeEditFailure(error: unknown): Promise<void> {
         if (isCapabilityErrorWithCode(error, "timeout")) {
-            ui.notify("Theme editor did not respond", "warning");
+            ui.notify(t("settings.themeEditorNoResponse"), "warning");
             return;
         }
 
         const missingMessage = getMissingEditCapabilityMessage(error, "theme.edit");
-        if (missingMessage === THEME_EDITOR_MISSING_MESSAGE) {
+        if (missingMessage === englishMessage("settings.themeEditorMissing")) {
             try {
                 await app.pages.showToolsHubPage({ tab: "search" });
             } catch (navigationError) {
-                ui.notify(`Could not open Tools & Editors: ${errMessage(navigationError)}`, "error");
+                ui.notify(t("settings.themeToolsNavigationFailed", { error: errMessage(navigationError) }), "error");
             }
-            ui.notify(missingMessage, "warning");
+            ui.notify(t("settings.themeEditorMissing"), "warning");
             return;
         }
 
-        ui.notify(`Failed to open Theme Editor: ${errMessage(error)}`, "error");
+        ui.notify(t("settings.themeEditorOpenFailed", { error: errMessage(error) }), "error");
     }
 
     private getCreateThemeButton(): IconButtonView {
@@ -318,8 +317,8 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         const button = this.child(new IconButtonView({
             size: "md",
             icon: "plus",
-            title: "Create a new theme",
-            "aria-label": "Create a new theme",
+            title: t("settings.themeCreate"),
+            "aria-label": t("settings.themeCreate"),
             onClick: (event) => {
                 event.stopPropagation();
                 void this.handleThemeCreate();
@@ -334,14 +333,14 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
     private async handleThemeDelete(themeId: string): Promise<void> {
         const name = this.options.get(themeId)?.theme.name ?? themeId;
         const result = await ui.confirm(
-            `Delete the custom theme "${name}"? This cannot be undone.`,
-            { title: "Delete Theme", buttons: [DialogButton.delete, DialogButton.cancel] },
+            t("settings.themeDeleteConfirmation", { name }),
+            { title: t("settings.themeDelete"), buttons: [DialogButton.delete, DialogButton.cancel] },
         );
         if (result !== DialogButton.delete) return;
         try {
             await deleteCustomTheme(themeId);
         } catch (error) {
-            ui.notify(errMessage(error, `Failed to delete theme "${name}".`), "warning");
+            ui.notify(errMessage(error, t("settings.themeDeleteFailed", { name })), "warning");
         }
     }
 

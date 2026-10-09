@@ -8,6 +8,7 @@ import { api } from "../../../../ipc/renderer/api";
 import { BrowserChannel, type BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { TAG_COLORS } from "../../../theme/palette-colors";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
+import { t } from "../../../../shared/i18n/t";
 
 const { ipcRenderer } = require("electron");
 
@@ -67,8 +68,8 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
 
     handleRemoveProfile = async (name: string) => {
         const result = await ui.confirm(
-            `Delete profile "${name}"? All browsing data (cookies, storage, cache) for this profile will be permanently removed.`,
-                { title: "Delete Profile", buttons: [DialogButton.delete, DialogButton.cancel] },
+            t("settings.deleteProfileConfirmation", { name }),
+                { title: t("settings.deleteProfileTitle"), buttons: [DialogButton.delete, DialogButton.cancel] },
         );
         if (result !== DialogButton.delete) return;
         await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(name, false));
@@ -89,10 +90,10 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name || "default");
 
     handleClearData = async (profileName: string) => {
-        const label = profileName || "Default";
+        const label = profileName || t("settings.defaultProfile");
         const result = await ui.confirm(
-            `Clear all browsing data (cookies, storage, cache) for the "${label}" profile?`,
-                { title: "Clear Profile Data", buttons: [DialogButton.clear, DialogButton.cancel] },
+            t("settings.clearProfileConfirmation", { name: label }),
+                { title: t("settings.clearProfileDataTitle"), buttons: [DialogButton.clear, DialogButton.cancel] },
         );
         if (result !== DialogButton.clear) return;
         await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(profileName, false));
@@ -144,7 +145,7 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
     };
 
     handleBrowseTorExe = async () => {
-        const result = await api.showOpenFileDialog({ title: "Select tor.exe", filters: [{ name: "Executable Files", extensions: ["exe"] }] });
+        const result = await api.showOpenFileDialog({ title: t("settings.selectTorExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
         if (result?.[0]) settings.set("tor.exe-path", result[0]);
     };
 
@@ -158,7 +159,7 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
     handleClearTorBookmarks = () => settings.set("tor.bookmarks-file", "");
 
     private browseBookmarksFile = async (): Promise<string | undefined> => {
-        const result = await api.showOpenFileDialog({ title: "Select Bookmarks File", filters: [{ name: "Link Files", extensions: ["link.json"] }] });
+        const result = await api.showOpenFileDialog({ title: t("settings.selectBookmarks"), filters: [{ name: t("settings.linkFiles"), extensions: ["link.json"] }] });
         return result?.[0];
     };
 

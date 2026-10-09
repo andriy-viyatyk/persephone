@@ -1,3 +1,5 @@
+import type { MessageKey } from "../../../shared/i18n/en";
+
 export interface SettingsCatalogRow {
     readonly key: string;
     readonly label: string;
@@ -7,9 +9,9 @@ export interface SettingsCatalogRow {
 
 export interface SettingsCatalogSection {
     readonly groupId: string;
-    readonly groupTitle: string;
+    readonly groupTitleKey: MessageKey;
     readonly id: string;
-    readonly title: string;
+    readonly titleKey: MessageKey;
     readonly description: string;
     readonly elementName: string;
     readonly panelName: string;
@@ -20,9 +22,9 @@ export interface SettingsCatalogSection {
 export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "theme",
-        title: "Theme",
+        titleKey: "settings.groupTitleTheme",
         description: "Application appearance and color theme.",
         elementName: "settings-section-theme",
         panelName: "settings-panel-theme",
@@ -33,9 +35,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "language",
-        title: "Language",
+        titleKey: "settings.groupTitleLanguage",
         description: "Choose the language used by Persephone.",
         elementName: "settings-section-language",
         panelName: "settings-panel-language",
@@ -46,9 +48,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "window-behavior",
-        title: "Window Behavior",
+        titleKey: "settings.groupTitleWindowBehavior",
         description: "Controls what happens when the last Persephone window closes.",
         elementName: "settings-section-window-behavior",
         panelName: "settings-panel-window-behavior",
@@ -59,9 +61,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "clipboard",
-        title: "Clipboard",
+        titleKey: "settings.groupTitleClipboard",
         description: "Configure the opt-in clipboard history tracker and its item limit.",
         elementName: "settings-section-clipboard",
         panelName: "settings-panel-clipboard",
@@ -73,9 +75,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "terminal",
-        title: "Terminal",
+        titleKey: "settings.groupTitleTerminal",
         description: "Choose the command used by Open Terminal here.",
         elementName: "settings-section-terminal",
         panelName: "settings-panel-terminal",
@@ -86,9 +88,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general",
-        groupTitle: "General",
+        groupTitleKey: "settings.groupGeneral",
         id: "file-search",
-        title: "File Search",
+        titleKey: "settings.groupTitleFileSearch",
         description: "Choose which files content search includes and skips.",
         elementName: "settings-section-file-search",
         panelName: "settings-panel-file-search",
@@ -100,9 +102,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "editors",
-        groupTitle: "Editors",
+        groupTitleKey: "settings.groupEditors",
         id: "editor-behavior",
-        title: "Editor Behavior",
+        titleKey: "settings.groupTitleEditorBehavior",
         description: "Choose the default word-wrapping behavior for newly shown Text Editor pages.",
         elementName: "settings-section-editor",
         panelName: "settings-panel-editor",
@@ -113,9 +115,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "editors",
-        groupTitle: "Editors",
+        groupTitleKey: "settings.groupEditors",
         id: "script-library",
-        title: "Script Library",
+        titleKey: "settings.groupTitleScriptLibrary",
         description: "Choose the folder for saved scripts and reusable modules.",
         elementName: "settings-section-script-library",
         panelName: "settings-panel-script-library",
@@ -126,9 +128,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "editors",
-        groupTitle: "Editors",
+        groupTitleKey: "settings.groupEditors",
         id: "video-player",
-        title: "Video Player",
+        titleKey: "settings.groupTitleVideoPlayer",
         description: "Configure external video decoding and the local video stream.",
         elementName: "settings-section-video-player",
         panelName: "settings-panel-video-player",
@@ -140,9 +142,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "browser",
-        groupTitle: "Browser",
+        groupTitleKey: "settings.groupBrowser",
         id: "site-extensions",
-        title: "Site Extensions",
+        titleKey: "settings.groupTitleSiteExtensions",
         description: "Review and manage site extensions that can run in browser tabs.",
         elementName: "settings-section-site-extensions",
         panelName: "settings-panel-site-extensions",
@@ -154,9 +156,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "browser",
-        groupTitle: "Browser",
+        groupTitleKey: "settings.groupBrowser",
         id: "browser-profiles",
-        title: "Browser Profiles",
+        titleKey: "settings.groupTitleBrowserProfiles",
         description: "Manage isolated browser sessions, defaults, bookmarks, and Tor.",
         elementName: "settings-section-browser-profiles",
         panelName: "settings-panel-browser-profiles",
@@ -174,9 +176,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "browser",
-        groupTitle: "Browser",
+        groupTitleKey: "settings.groupBrowser",
         id: "default-browser",
-        title: "Default Browser",
+        titleKey: "settings.groupTitleDefaultBrowser",
         description: "Register Persephone as a Windows default browser and inspect registration status.",
         elementName: "settings-section-default-browser",
         panelName: "settings-panel-default-browser",
@@ -185,9 +187,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "browser",
-        groupTitle: "Browser",
+        groupTitleKey: "settings.groupBrowser",
         id: "link-behavior",
-        title: "Links",
+        titleKey: "settings.groupTitleLinks",
         description: "Choose where links opened from editors go.",
         elementName: "settings-section-link-behavior",
         panelName: "settings-panel-link-behavior",
@@ -198,9 +200,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "integrations",
-        groupTitle: "Integrations",
+        groupTitleKey: "settings.groupIntegrations",
         id: "mcp",
-        title: "MCP Server / Mneme",
+        titleKey: "settings.groupTitleMcp",
         description: "Configure MCP, main-process scripting, and Mneme services.",
         elementName: "settings-section-mcp",
         panelName: "settings-panel-mcp",
@@ -208,16 +210,16 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         rows: [
             { key: "mcp.enabled", label: "MCP server", purpose: "Whether the MCP HTTP server is enabled for AI agents to drive Persephone." },
             { key: "mcp.port", label: "MCP port", purpose: "The loopback port used by the MCP HTTP server." },
-            { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call → main.script.execute may run code in Persephone's main process." },
+            { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call â†’ main.script.execute may run code in Persephone's main process." },
             { key: "mneme.enabled", label: "Mneme", purpose: "Whether the local Mneme markdown knowledge base is enabled." },
             { key: "mneme.port", label: "Mneme port", purpose: "The loopback port used by Mneme's HTTP/MCP server." },
         ],
     },
     {
         groupId: "integrations",
-        groupTitle: "Integrations",
+        groupTitleKey: "settings.groupIntegrations",
         id: "git-integration",
-        title: "Git Integration",
+        titleKey: "settings.groupTitleGitIntegration",
         description: "Enable the Git Tree and Git Diff editors.",
         elementName: "settings-section-git-integration",
         panelName: "settings-panel-git-integration",
@@ -228,9 +230,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "integrations",
-        groupTitle: "Integrations",
+        groupTitleKey: "settings.groupIntegrations",
         id: "board-vars",
-        title: "Board Environment Variables",
+        titleKey: "settings.groupTitleBoardVars",
         description: "Choose the external file holding per-board variables and secrets.",
         elementName: "settings-section-board-vars",
         panelName: "settings-panel-board-vars",

@@ -6,20 +6,21 @@ import { englishCatalog } from "../../../../shared/i18n/en";
 import { getActiveLocale } from "../../../../shared/i18n/active-locale";
 import { resolveLocale } from "../../../../shared/i18n/resolve-locale";
 import type { LanguagePack } from "../../../../shared/i18n/pack";
+import { t } from "../../../../shared/i18n/t";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createSectionRoot, panel, text } from "./settings-native";
 import "../../../uikit/Select/Select.css";
 
-interface LanguageOption extends IListBoxItem {
+interface LanguageOption extends Omit<IListBoxItem, "label"> {
     readonly nativeName: string;
     readonly englishName: string;
     readonly completeness: number;
 }
 
 function messageKeyCount(): number {
-    return Object.values(englishCatalog).reduce((count, area) => count + Object.keys(area).length, 0);
+    return Object.values(englishCatalog).reduce<number>((count, area) => count + Object.keys(area).length, 0);
 }
 
 function nativeLanguageName(code: string, fallback: string): string {
@@ -46,7 +47,6 @@ function buildLanguageOptions(
 
     const options: LanguageOption[] = [{
         value: "auto",
-        label: "",
         nativeName: "",
         englishName: "",
         completeness: 0,
@@ -56,7 +56,6 @@ function buildLanguageOptions(
         nativeName: "English",
         englishName: "English",
         completeness: 100,
-        label: "English (English) — 100%",
     });
 
     for (const packs of packsByCode.values()) {
@@ -69,7 +68,6 @@ function buildLanguageOptions(
             nativeName: pack.name,
             englishName: pack.englishName,
             completeness,
-            label: `${pack.name} (${pack.englishName}) — ${completeness}%`,
         });
     }
 
@@ -79,7 +77,6 @@ function buildLanguageOptions(
             nativeName: "Pseudo-English",
             englishName: "Pseudo-English",
             completeness: 100,
-            label: "Pseudo-English (Pseudo-English) — 100%",
         });
     }
 
@@ -89,7 +86,7 @@ function buildLanguageOptions(
     const autoName = resolvedPack?.name ?? nativeLanguageName(resolved, "English");
     options[0] = {
         ...options[0],
-        label: `Automatic (system language) — ${autoName}`,
+        nativeName: autoName,
     };
     return options;
 }
@@ -107,8 +104,8 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
 
     protected onMount(): void {
         this.root.append(
-            panel({ paddingBottom: "lg" }, text("Language", { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Choose the language used by Persephone. Choosing one reloads the windows; open pages are kept.", { color: "light", size: "xs" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.languageTitle"), { bold: true, size: "sm" })),
+            panel({ paddingBottom: "md" }, text(t("settings.languageDescription"), { color: "light", size: "xs" })),
         );
         this.select = this.child(new SelectView(this.selectProps()));
         this.root.append(panel({ maxWidth: 420, paddingBottom: "sm" }, this.select.root));
@@ -129,9 +126,19 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
 
     private selectProps(): SelectViewProps<IListBoxItem> {
         const selectedValue = settings.get<string>("language");
+        const items = this.options.map((option) => ({
+            ...option,
+            label: option.value === "auto"
+                ? t("settings.languageAutomatic", { name: option.nativeName })
+                : t("settings.languageOption", {
+                    name: option.nativeName,
+                    englishName: option.englishName,
+                    percent: option.completeness,
+                }),
+        }));
         return {
-            items: this.options,
-            value: this.options.find((option) => option.value === selectedValue) ?? this.options[0] ?? null,
+            items,
+            value: items.find((option) => option.value === selectedValue) ?? items[0] ?? null,
             onChange: (item) => { void this.handleLanguageChange(item.value); },
         };
     }
@@ -145,7 +152,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
             this.options = buildLanguageOptions(packs.builtInPacks, packs.userPacks, this.preferredLanguages);
             this.sync();
         } catch (error: unknown) {
-            if (!this.isDisposed) ui.notify(errMessage(error, "Could not load language packs."), "warning");
+            if (!this.isDisposed) ui.notify(errMessage(error, t("settings.languageLoadFailed")), "warning");
         }
     }
 
@@ -161,7 +168,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
                 messages: {},
             }))
             : []);
-        this.status.textContent = effective === getActiveLocale() ? "" : "Applies after reload";
+        this.status.textContent = effective === getActiveLocale() ? "" : t("settings.languageReloadStatus");
     }
 
     private async handleLanguageChange(value: string | number): Promise<void> {
@@ -174,7 +181,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
             // the main process keeps running, and the pages are restored after the reload.
             await api.reloadAllWindows();
         } catch (error: unknown) {
-            ui.notify(errMessage(error, "Could not apply the language setting."), "error");
+            ui.notify(errMessage(error, t("settings.languageApplyFailed")), "error");
         } finally {
             this.busy = false;
         }

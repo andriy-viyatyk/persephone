@@ -1,5 +1,6 @@
 import { settings } from "../../../api/settings";
 import { TextareaView } from "../../../uikit/Textarea/TextareaView";
+import { t } from "../../../../shared/i18n/t";
 import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createSectionRoot, panel, text } from "./settings-native";
@@ -22,10 +23,10 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         this.excludeValue = searchExclude.join(", ");
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text("File Search", { bold: true, size: "sm" })),
+            panel({ paddingBottom: "lg" }, text(t("settings.fileSearchTitle"), { bold: true, size: "sm" })),
             panel(
                 { paddingBottom: "md" },
-                text("File extensions included in content search (comma-separated)", { color: "light", size: "xs" }),
+                text(t("settings.fileSearchExtensionsDescription"), { color: "light", size: "xs" }),
             ),
         );
 
@@ -40,7 +41,7 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         this.root.append(panel(
             { paddingTop: "lg", paddingBottom: "md" },
             text(
-                "Folders and globs always skipped (comma-separated). Never applied to the search root itself, so searching inside one of these folders still works",
+                t("settings.fileSearchExclusionsDescription"),
                 { color: "light", size: "xs" },
             ),
         ));

@@ -2,6 +2,7 @@ import {
     EditorModel,
     type EditorStateBase,
 } from "../base/EditorModel";
+import { t } from "../../../shared/i18n/t";
 
 export const SETTINGS_PAGE_ID = "settings-page";
 
@@ -12,7 +13,7 @@ export interface SettingsEditorState extends EditorStateBase {
 
 export const getDefaultSettingsEditorState = (): SettingsEditorState => ({
     id: SETTINGS_PAGE_ID,
-    title: "Settings",
+    title: t("settings.pageTitle"),
     modified: false,
     type: "settingsPage",
     editor: "settings-view",
@@ -29,6 +30,6 @@ export class SettingsEditor extends EditorModel<SettingsEditorState> {
     /** Preserve the legacy `restore()` title-reset for parity. */
     async restore(): Promise<void> {
         await super.restore();
-        this.state.update((s) => { s.title = "Settings"; });
+        this.state.update((s) => { s.title = t("settings.pageTitle"); });
     }
 }

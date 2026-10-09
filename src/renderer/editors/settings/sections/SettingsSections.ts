@@ -18,6 +18,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
 import { errMessage } from "../../../../shared/utils";
+import { t } from "../../../../shared/i18n/t";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -25,17 +26,17 @@ import "../../../uikit/IconButton/IconButton.css";
 import "../../../uikit/Input/Input.css";
 import "../../../uikit/Select/Select.css";
 
-const LINK_ITEMS: IListBoxItem[] = [
-    { value: "default-browser", label: "Open in default OS browser" },
-    { value: "internal-browser", label: "Open in internal Browser tab" },
+const LINK_ITEMS: readonly { value: string; key: "settings.openDefaultOsBrowser" | "settings.openInternalBrowser" }[] = [
+    { value: "default-browser", key: "settings.openDefaultOsBrowser" },
+    { value: "internal-browser", key: "settings.openInternalBrowser" },
 ];
 
-const TERMINAL_ITEMS: IListBoxItem[] = [
-    { value: "", label: "Auto-detect (pwsh → powershell → cmd)" },
-    { value: "pwsh", label: "PowerShell 7 (pwsh)" },
-    { value: "powershell", label: "Windows PowerShell (powershell)" },
-    { value: "cmd", label: "Command Prompt (cmd)" },
-    { value: "wt", label: "Windows Terminal (wt)" },
+const TERMINAL_ITEMS: readonly { value: string; key: "settings.autoDetectTerminal" | "settings.powershell7" | "settings.windowsPowershell" | "settings.commandPrompt" | "settings.windowsTerminal" }[] = [
+    { value: "", key: "settings.autoDetectTerminal" },
+    { value: "pwsh", key: "settings.powershell7" },
+    { value: "powershell", key: "settings.windowsPowershell" },
+    { value: "cmd", key: "settings.commandPrompt" },
+    { value: "wt", key: "settings.windowsTerminal" },
 ];
 
 function sectionHeader(root: Node, title: string, description: string): void {
@@ -69,7 +70,8 @@ export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> 
 
     private selectProps(): SelectViewProps<IListBoxItem> {
         const value = settings.get("link-open-behavior");
-        return { items: LINK_ITEMS, value: LINK_ITEMS.find((item) => item.value === value) ?? null, onChange: (item) => settings.set("link-open-behavior", item.value as "default-browser" | "internal-browser") };
+        const items = LINK_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
+        return { items, value: items.find((item) => item.value === value) ?? null, onChange: (item) => settings.set("link-open-behavior", item.value as "default-browser" | "internal-browser") };
     }
 }
 
@@ -82,7 +84,7 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Window Behavior", "What happens when you close the last Persephone window.");
+        sectionHeader(this.root, t("settings.groupTitleWindowBehavior"), t("settings.windowBehaviorDescription"));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
         row.append(this.checkbox.root);
@@ -106,7 +108,7 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
 
     private checkboxProps(): CheckboxProps {
         const closeToTray = settings.get("window.close-to-tray");
-        return { checked: closeToTray, onChange: () => settings.set("window.close-to-tray", !settings.get("window.close-to-tray")), children: "Keep running in system tray" };
+        return { checked: closeToTray, onChange: () => settings.set("window.close-to-tray", !settings.get("window.close-to-tray")), children: t("settings.keepRunningTray") };
     }
 
     private sync(): void {
@@ -114,8 +116,8 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
         this.checkbox?.update(this.checkboxProps());
         if (this.description) {
             this.description.textContent = closeToTray
-                ? "Closing the last window hides it — click the tray icon to bring it back. Background services stay running."
-                : "Closing the last window quits Persephone. Background services (MCP server, Mneme) stop with it.";
+                ? t("settings.lastWindowTray")
+                : t("settings.lastWindowQuit");
         }
     }
 }
@@ -128,7 +130,7 @@ export class EditorBehaviorSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Editor Behavior", "Default word wrapping for newly shown Text Editor pages. Existing pages keep their own persisted choice.");
+        sectionHeader(this.root, t("settings.groupTitleEditorBehavior"), t("settings.editorBehaviorDescription"));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
         row.append(this.checkbox.root);
@@ -148,7 +150,7 @@ export class EditorBehaviorSectionView extends VanillaView<Record<string, never>
         return {
             checked: settings.get("editor.word-wrap"),
             onChange: (checked) => settings.set("editor.word-wrap", checked),
-            children: "Enable Word Wrap by default",
+            children: t("settings.enableWordWrapDefault"),
         };
     }
 }
@@ -205,7 +207,7 @@ class GitStatusView extends VanillaView<{ probe: NonNullable<GitIntegrationState
 
     protected onMount(): void {
         this.dot = this.child(new DotView({ size: "sm", color: this.props.probe.installed ? "success" : "neutral" }));
-        this.root.append(this.dot.root, text(this.props.probe.installed ? `Git ${this.props.probe.version ?? ""} detected`.trim() : "git not found on PATH — install git or fix PATH", { size: "sm", color: "light" }));
+        this.root.append(this.dot.root, text(this.props.probe.installed ? t("settings.gitDetected", { version: this.props.probe.version ?? "" }).trim() : t("settings.gitNotFound"), { size: "sm", color: "light" }));
         this.dot.mount();
     }
 }
@@ -221,7 +223,7 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Git Integration", "Enable Git Tree and File Diff editors. Off by default — requires git installed and on PATH.");
+        sectionHeader(this.root, t("settings.groupTitleGitIntegration"), t("settings.gitHelp"));
         const driver = createComponentModelDriver(
             { gitEnabled: settings.get("git.enabled") },
             GitIntegrationModel,
@@ -233,7 +235,7 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
         this.own(() => driver.dispose());
 
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.checkbox = this.child(new CheckboxView({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: "Enable Git integration" }));
+        this.checkbox = this.child(new CheckboxView({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: t("settings.enableGitIntegration") }));
         row.append(this.checkbox.root);
         this.checkbox.mount();
         this.root.append(row);
@@ -263,7 +265,7 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
     private sync(state: GitIntegrationState): void {
         const model = this.model;
         if (!model) return;
-        this.checkbox?.update({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: "Enable Git integration" });
+        this.checkbox?.update({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: t("settings.enableGitIntegration") });
         const probe = model.props.gitEnabled ? state.probe : null;
         if (probe) {
             this.statusSwap?.set(`${probe.installed}-${probe.version ?? ""}`, () => {
@@ -284,17 +286,17 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Board Environment Variables", "File storing per-board variables/secrets (.env.json), kept outside board folders.");
+        sectionHeader(this.root, t("settings.boardVarsTitle"), t("settings.boardVarsDescription"));
         this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.row = row;
         row.append(this.valuePanel);
-        const browse = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: "Browse..." });
-        const create = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleCreate(), children: "Create..." });
+        const browse = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: t("settings.browse") });
+        const create = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleCreate(), children: t("settings.create") });
         this.child(browse); this.child(create);
         row.append(browse.root, create.root);
         browse.mount(); create.mount();
-        this.openButton = this.child(new ButtonView({ disabled: true, onClick: () => void app.openRawLink(settings.get("board-vars.file"), { editor: "env-vars-view" }), children: "Open Environment Variables" }));
+        this.openButton = this.child(new ButtonView({ disabled: true, onClick: () => void app.openRawLink(settings.get("board-vars.file"), { editor: "env-vars-view" }), children: t("settings.openEnvironmentVariables") }));
         const openRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         openRow.append(this.openButton.root);
         this.openButton.mount();
@@ -308,9 +310,9 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
 
     private sync(): void {
         const filePath = settings.get("board-vars.file");
-        this.valuePanel?.replaceChildren(filePath ? settingsPath(filePath) : text("Not configured yet", { size: "sm", italic: true, color: "light" }));
+        this.valuePanel?.replaceChildren(filePath ? settingsPath(filePath) : text(t("settings.notConfigured"), { size: "sm", italic: true, color: "light" }));
         if (filePath && !this.unlinkButton) {
-            const unlinkButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => settings.set("board-vars.file", ""), children: "Unlink" }));
+            const unlinkButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => settings.set("board-vars.file", ""), children: t("settings.unlink") }));
             this.unlinkButton = unlinkButton;
             this.row?.append(unlinkButton.root);
             unlinkButton.mount();
@@ -318,12 +320,12 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
             this.releaseChild(this.unlinkButton);
             this.unlinkButton = undefined;
         }
-        this.openButton?.update({ disabled: !filePath, onClick: () => void app.openRawLink(filePath, { editor: "env-vars-view" }), children: "Open Environment Variables" });
+        this.openButton?.update({ disabled: !filePath, onClick: () => void app.openRawLink(filePath, { editor: "env-vars-view" }), children: t("settings.openEnvironmentVariables") });
     }
 
     private async handleBrowse(): Promise<void> {
         const { fs } = await import("../../../api/fs");
-        const picked = await fs.showOpenDialog({ title: "Select environment variables file", defaultPath: settings.get("board-vars.file") || undefined, filters: [{ name: "Env JSON", extensions: ["env.json"] }, { name: "JSON", extensions: ["json"] }] });
+        const picked = await fs.showOpenDialog({ title: t("settings.chooseEnvironmentFile"), defaultPath: settings.get("board-vars.file") || undefined, filters: [{ name: t("settings.envJsonFilter"), extensions: ["env.json"] }, { name: t("settings.jsonFilter"), extensions: ["json"] }] });
         if (picked?.[0]) settings.set("board-vars.file", picked[0]);
     }
 
@@ -362,7 +364,7 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
         this.row = row;
         this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
         row.append(this.valuePanel);
-        const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: "Browse..." }));
+        const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: t("settings.browse") }));
         row.append(browse.root);
         browse.mount();
         this.root.append(row);
@@ -385,7 +387,7 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
             this.renderValue(value);
         } catch (error: unknown) {
             if (!this.isDisposed && generation === this.syncGeneration) {
-                ui.notify(errMessage(error, `Failed to read ${this.config.title.toLowerCase()}.`), "warning");
+                ui.notify(errMessage(error, t("settings.failedRead", { setting: this.config.title.toLowerCase() })), "warning");
             }
         }
     }
@@ -407,7 +409,7 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
         try {
             await this.config.browse();
         } catch (error: unknown) {
-            ui.notify(errMessage(error, `Failed to choose ${this.config.title.toLowerCase()}.`), "warning");
+            ui.notify(errMessage(error, t("settings.failedChoose", { setting: this.config.title.toLowerCase() })), "warning");
         }
     }
 
@@ -415,7 +417,7 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
         try {
             await this.config.reset();
         } catch (error: unknown) {
-            ui.notify(errMessage(error, `Failed to reset ${this.config.title.toLowerCase()}.`), "warning");
+            ui.notify(errMessage(error, t("settings.failedReset", { setting: this.config.title.toLowerCase() })), "warning");
         }
     }
 }
@@ -424,12 +426,12 @@ export function createScriptLibrarySection(): LibraryPathSectionView {
     return new LibraryPathSectionView({}, {
         read: () => settings.get("script-library.path"),
         subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "script-library.path") listener(); }),
-        title: "Script Library",
-        description: "Folder for saved scripts and reusable modules",
-        emptyText: "Not linked",
+        title: t("settings.groupTitleScriptLibrary"),
+        description: t("settings.scriptLibraryDescription"),
+        emptyText: t("settings.notLinked"),
         browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
         reset: () => settings.set("script-library.path", ""),
-        clearLabel: "Unlink",
+        clearLabel: t("settings.unlink"),
     });
 }
 
@@ -466,7 +468,7 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Video Player", "VLC integration and local video streaming server settings");
+        sectionHeader(this.root, t("settings.videoPlayerTitle"), t("settings.videoPlayerDescription"));
         const driver = createComponentModelDriver(
             { videoStreamPort: settings.get("video-stream.port") },
             VideoPlayerModel,
@@ -481,10 +483,10 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
         this.valuePanel = document.createElement("div");
         this.valuePanel.style.display = "contents";
         this.listen(this.valuePanel, "click", this.onVlcPathClick);
-        pathRow.append(settingsFieldLabel("vlc.exe:"), this.valuePanel);
+        pathRow.append(settingsFieldLabel(t("settings.vlcPathLabel")), this.valuePanel);
         const portRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
         this.input = this.child(new InputView(this.inputProps()));
-        portRow.append(settingsFieldLabel("Stream port:"), this.input.root);
+        portRow.append(settingsFieldLabel(t("settings.streamPortLabel")), this.input.root);
         this.input.mount();
         outer.append(pathRow, portRow);
         this.root.append(outer);
@@ -516,10 +518,10 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
         if (filename) {
             const link = settingsLink(filename); link.title = path;
             this.valuePanel.append(link);
-            this.clearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: "Remove VLC path", onClick: () => settings.set("vlc-path", "") }));
+            this.clearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: t("settings.removeVlcPath"), onClick: () => settings.set("vlc-path", "") }));
             this.valuePanel.append(this.clearButton.root); this.clearButton.mount();
         } else {
-            const placeholder = settingsPlaceholder("Auto-detect"); this.valuePanel.append(placeholder);
+            const placeholder = settingsPlaceholder(t("settings.autoDetect")); this.valuePanel.append(placeholder);
         }
         this.input?.update(this.inputProps());
     }
@@ -532,7 +534,7 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
     };
 
     private async handleBrowseVlc(): Promise<void> {
-        const result = await api.showOpenFileDialog({ title: "Select vlc.exe", filters: [{ name: "Executable Files", extensions: ["exe"] }] });
+        const result = await api.showOpenFileDialog({ title: t("settings.selectVlcExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
         if (result?.[0]) settings.set("vlc-path", result[0]);
     }
 
@@ -551,7 +553,7 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, "Terminal", "Terminal opened by \"Open Terminal here\" on folders. Auto-detected on first use — change it here (e.g. to pwsh after installing PowerShell 7).");
+        sectionHeader(this.root, t("settings.terminalTitle"), t("settings.terminalDescription"));
         const host = panel({ maxWidth: 360 });
         this.select = this.child(new SelectView(this.selectProps()));
         host.append(this.select.root); this.select.mount(); this.root.append(host);
@@ -563,7 +565,8 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
 
     private selectProps(): SelectViewProps<IListBoxItem> {
         const command = settings.get("terminal.command");
-        const items = command && !TERMINAL_ITEMS.some((item) => item.value === command) ? [...TERMINAL_ITEMS, { value: command, label: command }] : TERMINAL_ITEMS;
+        const items: IListBoxItem[] = TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
+        if (command && !items.some((item) => item.value === command)) items.push({ value: command, label: command });
         return { items, value: items.find((item) => item.value === command) ?? items[0], onChange: (item) => settings.set("terminal.command", (item?.value as string) ?? "") };
     }
 }

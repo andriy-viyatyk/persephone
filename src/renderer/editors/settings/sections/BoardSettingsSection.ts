@@ -10,6 +10,7 @@ import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectVi
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { errMessage } from "../../../../shared/utils";
+import { t } from "../../../../shared/i18n/t";
 import { LibraryPathSectionView } from "./SettingsSections";
 import { createSectionRoot, panel, settingsFieldLabel, text } from "./settings-native";
 
@@ -47,7 +48,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
     protected onMount(): void {
         this.root.append(
             panel({ paddingBottom: "lg" }, text(this.props.displayName, { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text("Settings provided by this board.", { color: "light", size: "xs" })),
+            panel({ paddingBottom: "md" }, text(t("settings.boardSettingsDescription"), { color: "light", size: "xs" })),
         );
 
         for (const declaration of this.props.declarations) this.mountDeclaration(declaration);
@@ -75,8 +76,8 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         if (declaration.type === "string" && declaration.format === "folderPath") {
             const library = this.child(new LibraryPathSectionView({}, {
                 title: settingLabel(declaration),
-                description: declaration.description || "Folder path provided by this board.",
-                emptyText: "Not set",
+                description: declaration.description || t("settings.boardFolderDescription"),
+                emptyText: t("settings.boardSettingNotSet"),
                 read: async () => {
                     const value = await getBoardSetting(this.props.boardRoot, declaration.id);
                     return typeof value === "string" ? value : undefined;
@@ -133,7 +134,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             size: "sm",
             background: "light",
             onClick: () => void this.resetValue(control),
-            children: "Reset",
+            children: t("settings.reset"),
         }));
         row.append(reset.root);
         reset.mount();
@@ -187,7 +188,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         } catch (error: unknown) {
             if (this.isDisposed || lifecycleGeneration !== this.lifecycleGeneration || generation !== control.readGeneration) return;
             this.applyValue(control, control.declaration.default);
-            ui.notify(errMessage(error, `Failed to read board setting "${control.declaration.id}".`), "warning");
+            ui.notify(errMessage(error, t("settings.boardSettingReadFailed", { id: control.declaration.id })), "warning");
         }
     }
 
@@ -197,7 +198,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             if (!this.isDisposed) this.applyValue(control, value);
         } catch (error: unknown) {
             if (this.isDisposed) return;
-            ui.notify(errMessage(error, `Failed to save board setting "${control.declaration.id}".`), "warning");
+            ui.notify(errMessage(error, t("settings.boardSettingSaveFailed", { id: control.declaration.id })), "warning");
             await this.loadValue(control);
         }
     }
@@ -207,7 +208,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             await unsetBoardSetting(this.props.boardRoot, control.declaration.id);
             await this.loadValue(control);
         } catch (error: unknown) {
-            if (!this.isDisposed) ui.notify(errMessage(error, `Failed to reset board setting "${control.declaration.id}".`), "warning");
+            if (!this.isDisposed) ui.notify(errMessage(error, t("settings.boardSettingResetFailed", { id: control.declaration.id })), "warning");
         }
     }
 

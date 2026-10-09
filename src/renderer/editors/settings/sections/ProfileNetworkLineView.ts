@@ -5,6 +5,7 @@ import type { InputProps } from "../../../uikit/Input/InputView";
 import { SelectView } from "../../../uikit/Select/SelectView";
 import type { SelectViewProps } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
+import { t } from "../../../../shared/i18n/t";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { panel, settingsFieldLabel, text } from "./settings-native";
 import "../../../uikit/Input/Input.css";
@@ -12,11 +13,11 @@ import "../../../uikit/Select/Select.css";
 
 type NetworkMode = "direct" | BrowserProxyProtocol;
 
-const MODE_ITEMS: IListBoxItem[] = [
-    { value: "direct", label: "Direct" },
-    { value: "socks5", label: "SOCKS5 proxy" },
-    { value: "http", label: "HTTP proxy" },
-];
+const MODE_ITEMS = [
+    { value: "direct", key: "settings.browserProfileDirect" },
+    { value: "socks5", key: "settings.browserProfileSocks5" },
+    { value: "http", key: "settings.browserProfileHttp" },
+] as const;
 
 /** Prefilled when a proxy is first chosen: the local WSL VPN endpoint of the runbook. */
 const DEFAULT_PROXY_HOST = "127.0.0.1";
@@ -53,7 +54,7 @@ export class ProfileNetworkLineView extends VanillaView<ProfileNetworkLineProps>
         this.hostInput = this.child(new InputView(this.hostProps()));
         this.portInput = this.child(new InputView(this.portProps()));
         this.endpoint = panel({ direction: "row", align: "center", gap: "xs" }, this.hostInput.root, text(":", { color: "light" }), this.portInput.root);
-        const line = panel({ direction: "row", align: "center", gap: "md" }, settingsFieldLabel("Network:"), panel({ width: 140 }, this.select.root), this.endpoint);
+        const line = panel({ direction: "row", align: "center", gap: "md" }, settingsFieldLabel(t("settings.browserProfileNetworkLabel")), panel({ width: 140 }, this.select.root), this.endpoint);
         this.root.append(line, this.error);
     }
 
@@ -97,7 +98,7 @@ export class ProfileNetworkLineView extends VanillaView<ProfileNetworkLineProps>
         const host = this.host.trim();
         const port = Number(this.port.trim());
         const error = validateProxyEndpoint(host, port);
-        this.setError(error ? `${error} Not saved.` : "");
+        this.setError(error ? t("settings.networkNotSaved", { error }) : "");
         if (error) return;
         this.emit({ kind: "proxy", protocol: this.mode, host, port });
     }
@@ -118,8 +119,8 @@ export class ProfileNetworkLineView extends VanillaView<ProfileNetworkLineProps>
         return {
             name: "profile-network-mode",
             size: "sm",
-            items: MODE_ITEMS,
-            value: MODE_ITEMS.find((item) => item.value === this.mode) ?? null,
+            items: MODE_ITEMS.map((item) => ({ value: item.value, label: t(item.key) })),
+            value: MODE_ITEMS.map((item) => ({ value: item.value, label: t(item.key) })).find((item) => item.value === this.mode) ?? null,
             onChange: (item) => {
                 this.mode = item.value as NetworkMode;
                 this.sync();
@@ -130,7 +131,7 @@ export class ProfileNetworkLineView extends VanillaView<ProfileNetworkLineProps>
 
     private hostProps(): InputProps {
         return {
-            name: "profile-network-host", size: "sm", width: 130, type: "text", placeholder: "host",
+            name: "profile-network-host", size: "sm", width: 130, type: "text", placeholder: t("settings.hostPlaceholder"),
             value: this.host,
             onChange: (value) => { this.host = value; },
             onBlur: () => this.commit(),
@@ -140,7 +141,7 @@ export class ProfileNetworkLineView extends VanillaView<ProfileNetworkLineProps>
 
     private portProps(): InputProps {
         return {
-            name: "profile-network-port", size: "sm", width: 56, type: "text", placeholder: "port",
+            name: "profile-network-port", size: "sm", width: 56, type: "text", placeholder: t("settings.portPlaceholder"),
             value: this.port,
             onChange: (value) => { this.port = value; },
             onBlur: () => this.commit(),
