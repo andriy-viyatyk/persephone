@@ -1,4 +1,3 @@
-const fs = require("fs");
 import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { ui } from "../../api/ui";
@@ -10,6 +9,10 @@ import { app } from "../../api/app";
 import { BookmarkEvent } from "../../api/events/events";
 import { withTimeout } from "../../core/utils/utils";
 import { DisposableStore } from "../../core/utils/DisposableStore";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+
+const SELECT_BOOKMARK_FILE = "Select a file";
+const CREATE_BOOKMARK_FILE = "Create new file";
 
 /** Tracked image URLs from a specific navigation level. */
 export interface TrackedImageLevel {
@@ -68,23 +71,23 @@ export class BrowserBookmarksUIModel {
         let filePath = this.model.tabs.getBookmarksFilePath();
 
         // If the configured file no longer exists, treat as unconfigured
-        if (filePath && !fs.existsSync(filePath)) {
+        if (filePath && !(await app.fs.exists(filePath))) {
             filePath = "";
         }
 
         if (!filePath) {
             const choice = await ui.confirm(
                 "This profile has no bookmarks file associated.\nChoose an option:",
-                { title: "Bookmarks File", buttons: ["Select a file", "Create new file", "Cancel"] },
+                { title: "Bookmarks File", buttons: [SELECT_BOOKMARK_FILE, CREATE_BOOKMARK_FILE, DialogButton.cancel] },
             );
 
-            if (choice === "Select a file") {
+            if (choice === SELECT_BOOKMARK_FILE) {
                 const result = await api.showOpenFileDialog({
                     title: "Select Bookmarks File",
                     filters: [BOOKMARKS_FILE_FILTER],
                 });
                 filePath = result?.[0] || "";
-            } else if (choice === "Create new file") {
+            } else if (choice === CREATE_BOOKMARK_FILE) {
                 const result = await api.showSaveFileDialog({
                     title: "Create Bookmarks File",
                     defaultPath: "bookmarks.link.json",

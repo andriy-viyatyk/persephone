@@ -9,6 +9,7 @@ import type { DialogViewProps } from "./dialog-view-registry";
 import type { ConfirmationDialogProps } from "./ConfirmationDialog";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
+import type { DialogButtonDefinition } from "./dialog-buttons";
 
 type ConfirmationDialogModel = TDialogModel<ConfirmationDialogProps, string>;
 
@@ -61,7 +62,7 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
         // Button views are a changing collection; own their active set as one resource so
         // removed buttons do not remain in VanillaView's permanent child list.
         this.own(() => this.disposeButtons());
-        this.syncButtons(this.model.state.get().buttons ?? []);
+        this.syncButtons((this.model.state.get().buttons ?? []) as DialogButtonDefinition[]);
         this.dialogView.mount();
         this.bind(this.model.state, (state) => state.message, (message) => {
             this.messageElement.textContent = message;
@@ -70,11 +71,11 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
             this.contentView.setTitle(title);
         });
         this.bind(this.model.state, (state) => state.buttons ?? [], (buttons) => {
-            this.syncButtons(buttons);
+            this.syncButtons(buttons as DialogButtonDefinition[]);
         });
     }
 
-    private syncButtons(buttons: string[]): void {
+    private syncButtons(buttons: DialogButtonDefinition[]): void {
         for (const [index, buttonView] of this.buttonViews) {
             if (index < buttons.length) continue;
             buttonView.dispose();
@@ -82,19 +83,19 @@ export class ConfirmationDialogView extends VanillaView<DialogViewProps> {
             this.buttonViews.delete(index);
         }
 
-        buttons.forEach((label, index) => {
+        buttons.forEach((button, index) => {
             let buttonView = this.buttonViews.get(index);
             if (!buttonView) {
                 buttonView = new ButtonView({
-                    onClick: () => this.model.close(this.model.state.get().buttons?.[index]),
-                    children: label,
+                    onClick: () => this.model.close((this.model.state.get().buttons?.[index] as DialogButtonDefinition | undefined)?.id),
+                    children: button.label,
                 });
                 buttonView.mount();
                 this.buttonViews.set(index, buttonView);
             } else {
                 buttonView.update({
-                    onClick: () => this.model.close(this.model.state.get().buttons?.[index]),
-                    children: label,
+                    onClick: () => this.model.close((this.model.state.get().buttons?.[index] as DialogButtonDefinition | undefined)?.id),
+                    children: button.label,
                 });
             }
             const currentChild = this.buttonsPanel.children[index];

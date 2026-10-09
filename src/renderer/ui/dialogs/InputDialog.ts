@@ -3,6 +3,7 @@ import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { InputDialogView } from "./InputDialogView";
+import { DialogButton, dialogButton, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
 
 export const inputDialogId = Symbol("inputDialog");
 
@@ -10,7 +11,7 @@ export interface InputDialogProps {
     title?: string;
     message: string;
     value?: string;
-    buttons?: string[];
+    buttons?: DialogButtonInput[];
     selectAll?: boolean;
     defaultButton?: string;
     /** Optional radio button options rendered below the input field. */
@@ -23,7 +24,7 @@ const defaultInputDialogProps: InputDialogProps = {
     title: "Input",
     message: "",
     value: "",
-    buttons: ["OK", "Cancel"],
+    buttons: [dialogButton(DialogButton.ok), dialogButton(DialogButton.cancel)],
     selectAll: false,
     defaultButton: undefined,
 };
@@ -31,6 +32,7 @@ const defaultInputDialogProps: InputDialogProps = {
 export interface InputResult {
     value: string;
     button: string;
+    buttonLabel: string;
     selectedOption?: string;
 }
 
@@ -42,8 +44,10 @@ class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | unde
             if (!state.buttons || state.buttons.length === 0 || !state.value?.trim()) {
                 return;
             }
-            const defBt = state.defaultButton || (state.buttons ? state.buttons[0] : "OK");
-            this.close({ value: state.value || "", button: defBt, selectedOption: state.selectedOption });
+            const buttons = (state.buttons ?? []).map(normalizeDialogButton);
+            const defBt = state.defaultButton || buttons[0]?.id || DialogButton.ok;
+            const selected = buttons.find(({ id }) => id === defBt);
+            this.close({ value: state.value || "", button: defBt, buttonLabel: selected?.label ?? defBt, selectedOption: state.selectedOption });
         }
     };
 
@@ -67,6 +71,7 @@ export function showInputDialog(props: InputDialogProps) {
         ...defaultInputDialogProps,
         ...props,
     };
+    modelState.buttons = modelState.buttons?.map(normalizeDialogButton);
 
     const model = new InputDialogModel(new TComponentState(modelState));
     return showDialog({

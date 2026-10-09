@@ -9,6 +9,9 @@ import {
     virtualPipeDescriptor,
 } from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
+import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+
+const OPEN_EXTERNAL_LINK = "Open";
 
 function decodeFolderEditorLink(raw: string): { editorId: string; anchorFolder: string } | null {
     const prefix = "folder-editor://";
@@ -156,8 +159,8 @@ async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "inter
         return await showConfirmationDialog({
             title: "Open external link?",
             message: `This popup has no trusted board origin. Open ${data.url} outside Persephone?`,
-            buttons: ["Open", "Cancel"],
-        }) === "Open" ? "allow" : "deny";
+            buttons: [dialogButton(OPEN_EXTERNAL_LINK), dialogButton(DialogButton.cancel)],
+        }) === OPEN_EXTERNAL_LINK ? "allow" : "deny";
     }
     const { boardTrust } = await import("../api/board-trust");
     if (await boardTrust.allows(data.boardRoot, "openExternal")) return "allow";

@@ -51,6 +51,7 @@ export interface ConfirmEntry extends LogEntryBase {
     message: StyledText;
     buttons?: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export interface TextInputEntry extends LogEntryBase {
@@ -61,6 +62,7 @@ export interface TextInputEntry extends LogEntryBase {
     text?: string;
     buttons?: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export interface ButtonsEntry extends LogEntryBase {
@@ -68,6 +70,7 @@ export interface ButtonsEntry extends LogEntryBase {
     title?: StyledText;
     buttons: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export interface CheckboxItem {
@@ -82,6 +85,7 @@ export interface CheckboxesEntry extends LogEntryBase {
     layout?: "vertical" | "flex";
     buttons?: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export interface RadioboxesEntry extends LogEntryBase {
@@ -92,6 +96,7 @@ export interface RadioboxesEntry extends LogEntryBase {
     layout?: "vertical" | "flex";
     buttons?: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export interface SelectEntry extends LogEntryBase {
@@ -102,6 +107,7 @@ export interface SelectEntry extends LogEntryBase {
     placeholder?: string;
     buttons?: string[];
     button?: string;
+    buttonLabel?: string;
 }
 
 export type DialogEntryType =
@@ -111,6 +117,21 @@ export type DialogEntryType =
     | "input.checkboxes"
     | "input.radioboxes"
     | "input.select";
+
+export interface LogDialogButton {
+    id: string;
+    label: string;
+    requiresInput: boolean;
+}
+
+/** Caller-provided Log View button text remains its own id and displayed label. */
+export function normalizeLogDialogButtons(buttons: readonly string[]): LogDialogButton[] {
+    return buttons.map((button) => {
+        const requiresInput = button.startsWith("!");
+        const label = requiresInput ? button.slice(1) : button;
+        return { id: label, label, requiresInput };
+    });
+}
 
 // =============================================================================
 // Output Entries (rich display)

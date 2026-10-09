@@ -22,6 +22,7 @@ import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import { createIconElement } from "../../uikit/shared/slots";
 import { editorRegistry } from "../base/editorRegistry";
 import { writeGitTreeColumnLayout } from "./git-tree-preferences";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export interface GitTreeEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -343,9 +344,9 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
             title: "Create branch",
             message: `Create branch at ${shortHash}`,
             value: "",
-            buttons: ["Create", "Cancel"],
+            buttons: [DialogButton.create, DialogButton.cancel],
         });
-        if (res?.button !== "Create" || !res.value.trim()) return;
+        if (res?.button !== DialogButton.create || !res.value.trim()) return;
         const r = await git.createBranch(repoRoot, res.value.trim(), hash, true);
         if (!r.ok) void ui.notify(`Failed to create branch: ${r.error ?? "unknown error"}`, "error");
         this.refresh();

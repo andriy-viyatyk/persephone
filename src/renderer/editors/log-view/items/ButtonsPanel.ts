@@ -1,19 +1,15 @@
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
 import { ButtonView, type ButtonViewProps } from "../../../uikit/Button/ButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import { normalizeLogDialogButtons, type LogDialogButton } from "../logTypes";
 
-interface ParsedButton { label: string; required: boolean; }
-function parseButtons(buttons: string[]): ParsedButton[] {
-    return buttons.map((button) => button.startsWith("!")
-        ? { label: button.slice(1), required: true }
-        : { label: button, required: false });
-}
+type ParsedButton = LogDialogButton;
 
 export interface ButtonsPanelViewProps {
     buttons: string[];
     button?: string;
     requirementNotMet?: boolean;
-    onClickButton: (label: string) => void;
+    onClickButton: (id: string, label: string) => void;
 }
 
 export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
@@ -40,7 +36,7 @@ export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
 
     private applyProps(props: ButtonsPanelViewProps): void {
         applyPanelAttributes(this.root, resolvePanelAttributes({ name: "log-buttons-panel", direction: "row", gap: "md", paddingX: "md", paddingY: "sm", wrap: true }));
-        for (const parsed of parseButtons(props.buttons)) {
+        for (const parsed of normalizeLogDialogButtons(props.buttons)) {
             const view = this.buttonViews.get(parsed.label);
             if (!view) continue;
             view.update(this.buttonProps(parsed));
@@ -48,7 +44,7 @@ export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
     }
 
     private syncButtons(): void {
-        const parsed = parseButtons(this.props.buttons);
+        const parsed = normalizeLogDialogButtons(this.props.buttons);
         const wanted = new Set(parsed.map((button) => button.label));
         for (const [label, view] of this.buttonViews) {
             if (!wanted.has(label)) {
@@ -69,28 +65,28 @@ export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
         });
     }
 
-    private readonly handleClick = (label: string): void => {
-        if (this.props.button === undefined) this.props.onClickButton(label);
+    private readonly handleClick = (id: string, label: string): void => {
+        if (this.props.button === undefined) this.props.onClickButton(id, label);
     };
 
     private buttonProps(button: ParsedButton): ButtonViewProps {
         const resolved = this.props.button !== undefined;
-        const isResult = resolved && this.props.button === button.label;
+        const isResult = resolved && this.props.button === button.id;
         return {
             name: `log-button-${button.label}`,
             size: "sm",
-            disabled: resolved || (button.required && this.props.requirementNotMet === true),
-            onClick: this.clickHandler(button.label),
+            disabled: resolved || (button.requiresInput && this.props.requirementNotMet === true),
+            onClick: this.clickHandler(button.id, button.label),
             icon: isResult ? "check" : undefined,
             children: button.label,
         };
     }
 
-    private clickHandler(label: string): () => void {
-        let handler = this.clickHandlers.get(label);
+    private clickHandler(id: string, label: string): () => void {
+        let handler = this.clickHandlers.get(id);
         if (!handler) {
-            handler = () => this.handleClick(label);
-            this.clickHandlers.set(label, handler);
+            handler = () => this.handleClick(id, label);
+            this.clickHandlers.set(id, handler);
         }
         return handler;
     }

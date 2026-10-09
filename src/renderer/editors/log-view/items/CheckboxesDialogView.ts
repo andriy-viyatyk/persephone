@@ -7,11 +7,12 @@ import type { LogViewEditor } from "../LogViewEditor";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import type { EntryUpdater } from "../LogEntryContent";
 import { ButtonsPanelView } from "./ButtonsPanel";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 import { DialogHeaderView } from "./DialogHeader";
 
 export interface CheckboxesDialogViewProps { entry: CheckboxesEntry; updateEntry: EntryUpdater<CheckboxesEntry>; model: LogViewEditor; }
-const DEFAULT_BUTTONS = ["OK"];
+const DEFAULT_BUTTONS = [DialogButton.ok];
 
 export class CheckboxesDialogView extends VanillaView<CheckboxesDialogViewProps> {
     private readonly header: DialogHeaderView;
@@ -71,5 +72,5 @@ export class CheckboxesDialogView extends VanillaView<CheckboxesDialogViewProps>
     private readonly handleToggle = (index: number): void => {
         this.props.updateEntry((draft) => { draft.items[index].checked = !draft.items[index].checked; });
     };
-    private readonly handleClick = (label: string): void => { this.props.model.resolveDialog(this.props.entry.id, label); };
+    private readonly handleClick = (id: string, label: string): void => { this.props.model.resolveDialog(this.props.entry.id, id, label); };
 }

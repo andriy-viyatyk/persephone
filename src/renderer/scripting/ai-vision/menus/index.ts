@@ -7,7 +7,9 @@ import {
 } from "../../../ui/dialogs/poppers/showPopupMenu";
 
 export interface MenuItemInfo {
+    readonly id?: string;
     readonly label: string;
+    readonly displayedLabel: string;
     readonly enabled: boolean;
     readonly checked: boolean;
     readonly hasSubmenu: boolean;
@@ -16,7 +18,7 @@ export interface MenuItemInfo {
 
 const POPUP_MENU_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "items", kind: "property", summary: "Visible popup items in source order, including nested submenu entries." },
-    { name: "click", kind: "method", signature: "click(label: string)", summary: "Activate an enabled leaf item by its exact qualified label." },
+    { name: "click", kind: "method", signature: "click(idOrLabel: string)", summary: "Activate by unique id first, or by a unique exact displayed/qualified label." },
     { name: "close", kind: "method", signature: "close()", summary: "Dismiss the popup menu." },
 ];
 
@@ -24,7 +26,7 @@ const POPUP_MENU_DESCRIPTOR: IAiVisionDescriptor = {
     kind: "PopupMenu",
     summary: "The live application popup menu and its visible actions.",
     members: POPUP_MENU_MEMBERS,
-    help: "items is a safe snapshot. Use click(\"Parent > Child\") for an enabled leaf, or close() to dismiss the popup.",
+    help: "items is a safe snapshot. click(value) prefers a unique exact id; if none matches, it accepts a unique exact displayed or qualified label. Use it for an enabled leaf, or close() to dismiss the popup.",
 };
 
 const MENUS_MEMBERS: IAiVisionDescriptor["members"] = [];
@@ -33,7 +35,7 @@ const MENUS_DESCRIPTOR: IAiVisionDescriptor = {
     kind: "Menus",
     summary: "The open application popup menu, indexed as menus[0].",
     members: MENUS_MEMBERS,
-    help: "menus[0] is the live popup menu. Read its items, activate an enabled leaf with click(label), or dismiss it with close().",
+    help: "menus[0] is the live popup menu. click(value) prefers a unique exact id and accepts a unique exact displayed or qualified label when no id matches. Read items, activate an enabled leaf, or dismiss it with close().",
 };
 
 function popupItems(): MenuItem[] | undefined {
@@ -55,7 +57,9 @@ function snapshotVisibleItems(
         const hasSubmenu = Boolean(item.items?.length);
         const enabled = parentEnabled && !item.disabled;
         snapshot.push({
+            id: item.id,
             label,
+            displayedLabel: item.label,
             enabled,
             checked: Boolean(item.selected && !hasSubmenu),
             hasSubmenu,
@@ -81,7 +85,9 @@ function itemAtPath(items: readonly MenuItem[], indexPath: readonly number[]): M
 
 function resolveItem(items: readonly MenuItem[], label: string): MenuItemInfo {
     const snapshot = snapshotVisibleItems(items);
-    const matches = snapshot.filter((item) => item.label === label);
+    const idMatches = snapshot.filter((item) => item.id === label);
+    if (idMatches.length > 1) throw new Error(`Popup menu id ${JSON.stringify(label)} is duplicated.`);
+    const matches = idMatches.length ? idMatches : snapshot.filter((item) => item.label === label || item.displayedLabel === label);
     if (matches.length === 0) {
         throw new Error(`Unknown popup menu item ${JSON.stringify(label)}.`);
     }

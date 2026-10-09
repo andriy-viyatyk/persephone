@@ -1,6 +1,9 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { RegisterToolsetDialogProps } from "../../../ui/dialogs/RegisterToolsetDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+
+const REGISTER_TOOLSET = "Register toolset";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -25,12 +28,12 @@ export class RegisterToolsetDialogAdapter implements DialogAdapter {
     get toolsetName(): string { return dialogState<RegisterToolsetDialogProps>(this.entry).toolsetName; }
     get toolsetRoot(): string { return dialogState<RegisterToolsetDialogProps>(this.entry).toolsetRoot; }
     get tools(): readonly { name: string; description: string }[] { return dialogState<RegisterToolsetDialogProps>(this.entry).tools; }
-    get buttons(): readonly string[] { return ["Cancel", "Register toolset"]; }
+    get buttons(): readonly string[] { return [DialogButton.cancel, REGISTER_TOOLSET]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        return await closeWithResult(this.entry, button === "Register toolset");
+        return await closeWithResult(this.entry, button === REGISTER_TOOLSET);
     }
 
     cancel(): Promise<undefined> { return cancelDialog(this.entry); }

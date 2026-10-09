@@ -6,11 +6,12 @@ import type { SelectEntry } from "../logTypes";
 import type { LogViewEditor } from "../LogViewEditor";
 import type { EntryUpdater } from "../LogEntryContent";
 import { ButtonsPanelView } from "./ButtonsPanel";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 import { DialogHeaderView } from "./DialogHeader";
 
 export interface SelectDialogViewProps { entry: SelectEntry; updateEntry: EntryUpdater<SelectEntry>; model: LogViewEditor; }
-const DEFAULT_BUTTONS = ["OK"];
+const DEFAULT_BUTTONS = [DialogButton.ok];
 
 export class SelectDialogView extends VanillaView<SelectDialogViewProps> {
     private readonly header: DialogHeaderView;
@@ -48,5 +49,5 @@ export class SelectDialogView extends VanillaView<SelectDialogViewProps> {
     }
 
     private readonly handleSelect = (item: IListBoxItem): void => { this.props.updateEntry((draft) => { draft.selected = String(item.value); }); };
-    private readonly handleClick = (label: string): void => { this.props.model.resolveDialog(this.props.entry.id, label); };
+    private readonly handleClick = (id: string, label: string): void => { this.props.model.resolveDialog(this.props.entry.id, id, label); };
 }

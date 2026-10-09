@@ -11,6 +11,7 @@ import { api } from "../../../ipc/renderer/api";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 /** OS clipboard copy/paste applies only where item hrefs are absolute local
  *  paths. Mneme / Link / Archive providers are excluded. */
@@ -65,9 +66,9 @@ export async function pasteOsClipboardInto(
     if (clashing.length) {
         const bt = await ui.confirm(
             `${clashing.length} item(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite?", buttons: ["Overwrite", "Cancel"] },
+            { title: "Overwrite?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
-        if (bt !== "Overwrite") return false;
+        if (bt !== DialogButton.overwrite) return false;
     }
 
     const verb = move ? "Moving" : "Copying";

@@ -33,5 +33,5 @@ export class ButtonsDialogView extends VanillaView<ButtonsDialogViewProps> {
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.header.root, this.buttons.root], ownedChildren: [this.header, this.buttons] });
     }
 
-    private readonly handleClick = (label: string): void => { this.props.model.resolveDialog(this.props.entry.id, label); };
+    private readonly handleClick = (id: string, label: string): void => { this.props.model.resolveDialog(this.props.entry.id, id, label); };
 }

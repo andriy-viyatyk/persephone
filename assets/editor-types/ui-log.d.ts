@@ -82,14 +82,18 @@ export interface IStyledLogBuilder extends IStyledTextBuilder {
 
 /**
  * Result of a dialog interaction.
- * `button` is the label of the clicked button, or `undefined` if the dialog was canceled
- * (e.g., the Log View page was closed while the dialog was pending).
+ * `button` is the stable English id of the clicked button, or `undefined` if the dialog was canceled.
+ * `buttonLabel` is the displayed answer text and may differ from the id in a translated UI.
  *
- * The result object also contains all the original data fields passed to the dialog,
- * plus any fields added by user interaction (e.g., `text` for text input dialogs).
+ * The result also contains all original data fields, plus fields added by user interaction
+ * (e.g., `text` for text input dialogs). Cancellation occurs when the Log View page closes
+ * while a dialog is pending.
  */
 export interface IDialogResult {
+    /** Stable English button id; undefined when the pending dialog was canceled. */
     button: string | undefined;
+    /** Displayed answer text, which may differ from the id in a translated UI. */
+    buttonLabel: string | undefined;
     [key: string]: any;
 }
 
@@ -188,6 +192,7 @@ export interface IUiDialog {
      * });
      *
      * @example
+     * // `button` is the English id; `buttonLabel` is presentation text.
      * if (result.button === "OK") {
      *     const selected = result.items.filter(i => i.checked).map(i => i.label);
      * }
@@ -219,6 +224,7 @@ export interface IUiDialog {
      * });
      *
      * @example
+     * // `button` is the English id; `buttonLabel` is presentation text.
      * if (result.button === "OK") {
      *     ui.info(`Selected: ${result.checked}`);
      * }
@@ -253,6 +259,7 @@ export interface IUiDialog {
      * });
      *
      * @example
+     * // `button` is the English id; `buttonLabel` is presentation text.
      * if (result.button === "OK") {
      *     ui.info(`Selected: ${result.selected}`);
      * }
@@ -609,6 +616,7 @@ export interface IUiShow {
  * @example
  * // Dialogs
  * const result = await ui.dialog.confirm("Continue?");
+ * // `button` is the English id; `buttonLabel` is presentation text.
  * if (result.button === "Yes") {
  *     const input = await ui.dialog.textInput("Enter value");
  *     if (input.button) {

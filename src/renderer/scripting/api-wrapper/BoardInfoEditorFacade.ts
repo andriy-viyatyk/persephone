@@ -11,6 +11,7 @@ import { boardInstallRegistry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../../editors/board/request-board-trust";
 import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../editors/board/board-permission-copy";
+// After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { publishedBoards } from "../../api/published-boards";
 import { ui } from "../../api/ui";
 import { compareVersions } from "../../../shared/version-utils";

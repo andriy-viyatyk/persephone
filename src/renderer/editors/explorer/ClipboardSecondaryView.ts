@@ -18,6 +18,7 @@ import {
     type SideBarPanelHeaderHandle,
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
@@ -506,9 +507,9 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         const confirmed = await showConfirmationDialog({
             title: "Remove clipboard item",
             message: "Remove this clipboard item? Its stored payload will be permanently deleted.",
-            buttons: ["Remove", "Cancel"],
+            buttons: [dialogButton(DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
-        if (confirmed === "Cancel" || !confirmed) return;
+        if (confirmed === DialogButton.cancel || !confirmed) return;
         try {
             await api.removeClipboardItem(id);
         } catch (error: unknown) {
@@ -524,9 +525,9 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         const confirmed = await showConfirmationDialog({
             title: "Clear clipboard history",
             message: "Clear all clipboard history? Stored payload files will be permanently deleted.",
-            buttons: ["Clear", "Cancel"],
+            buttons: [dialogButton(DialogButton.clear), dialogButton(DialogButton.cancel)],
         });
-        if (confirmed !== "Clear") return;
+        if (confirmed !== DialogButton.clear) return;
         try {
             await api.clearClipboardHistory();
         } catch (error: unknown) {

@@ -261,6 +261,7 @@ async function enumerateBoardListings(): Promise<BoardListing[]> {
     const merged = mergeBoardSources(sources);
     return Promise.all(merged.map(async (source) => {
         const manifest = await readBoardManifest(source.root);
+        // After Phase 2 extraction, UI uses t(key) and this agent-facing note uses englishMessage(key) with that same key.
         const deprecationNote = normalizePermissions(manifest?.permissions).kind === "legacy"
             && !bundledBoardRegistry.isBundled(source.root)
             ? LEGACY_BOARD_AGENT_DEPRECATION_NOTE

@@ -9,6 +9,7 @@ import type { DialogViewProps } from "./dialog-view-registry";
 import type {
     TextDialogModel,
 } from "./TextDialog";
+import type { DialogButtonDefinition } from "./dialog-buttons";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -107,7 +108,7 @@ export class TextDialogView extends VanillaView<DialogViewProps> {
     }
 
     private syncButtons(): void {
-        const buttons = this.model.state.get().buttons ?? ["OK"];
+        const buttons = (this.model.state.get().buttons ?? []) as DialogButtonDefinition[];
         for (const [index, buttonView] of this.buttonViews) {
             if (index < buttons.length) continue;
             buttonView.dispose();
@@ -117,9 +118,9 @@ export class TextDialogView extends VanillaView<DialogViewProps> {
         buttons.forEach((button, index) => {
             const nextProps = {
                 onClick: () => {
-                    void this.model.close({ text: this.model.editorText, button });
+                    void this.model.close({ text: this.model.editorText, button: button.id, buttonLabel: button.label });
                 },
-                children: button,
+                children: button.label,
             };
             let buttonView = this.buttonViews.get(index);
             if (!buttonView) {

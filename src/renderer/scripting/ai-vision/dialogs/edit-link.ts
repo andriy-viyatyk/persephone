@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { EditLinkDialogModel } from "../../../editors/link-editor/EditLinkDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 
 type EditLinkDialogState = ReturnType<EditLinkDialogModel["state"]["get"]>;
 
@@ -32,12 +33,12 @@ export class EditLinkDialogAdapter implements DialogAdapter {
     get tags(): readonly string[] { return dialogState<EditLinkDialogState>(this.entry).tags; }
     get imgSrc(): string { return dialogState<EditLinkDialogState>(this.entry).imgSrc; }
     get target(): string { return dialogState<EditLinkDialogState>(this.entry).target; }
-    get buttons(): readonly string[] { return ["Cancel", "Save"]; }
+    get buttons(): readonly string[] { return [DialogButton.cancel, DialogButton.save]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        if (button === "Cancel") return this.cancel();
+        if (button === DialogButton.cancel) return this.cancel();
         modelWith<EditLinkModel>(this.entry).save();
         return undefined;
     }

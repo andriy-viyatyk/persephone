@@ -1,6 +1,7 @@
 import { settings, type BrowserProfile } from "../../../api/settings";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { ui } from "../../../api/ui";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { TComponentModel } from "../../../core/state/model";
 import { getPartitionString } from "../../browser/BrowserEditorModel";
 import { api } from "../../../../ipc/renderer/api";
@@ -67,9 +68,9 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
     handleRemoveProfile = async (name: string) => {
         const result = await ui.confirm(
             `Delete profile "${name}"? All browsing data (cookies, storage, cache) for this profile will be permanently removed.`,
-            { title: "Delete Profile", buttons: ["Delete", "Cancel"] },
+                { title: "Delete Profile", buttons: [DialogButton.delete, DialogButton.cancel] },
         );
-        if (result !== "Delete") return;
+        if (result !== DialogButton.delete) return;
         await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(name, false));
         await ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name);
         settings.set("browser-profiles", this.props.profiles.filter((profile) => profile.name !== name));
@@ -91,9 +92,9 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         const label = profileName || "Default";
         const result = await ui.confirm(
             `Clear all browsing data (cookies, storage, cache) for the "${label}" profile?`,
-            { title: "Clear Profile Data", buttons: ["Clear", "Cancel"] },
+                { title: "Clear Profile Data", buttons: [DialogButton.clear, DialogButton.cancel] },
         );
-        if (result !== "Clear") return;
+        if (result !== DialogButton.clear) return;
         await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(profileName, false));
         if (!this.isLive) return;
         this.state.update((state) => { state.clearedProfile = profileName; });

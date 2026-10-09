@@ -399,11 +399,12 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, void,
         return entry.id;
     }
 
-    /** Resolve a pending dialog. Sets `button` on the flat entry and resolves the Promise with full entry. */
-    resolveDialog(id: string, button: string): void {
+    /** Resolve a pending dialog with its stable id and displayed answer label. */
+    resolveDialog(id: string, button: string, buttonLabel = button): void {
         const entry = this.entries.find((e) => e.id === id);
         if (entry) {
             entry.button = button;
+            entry.buttonLabel = buttonLabel;
             logLogViewDialogAnswered(this.page?.id, entry.id, button);
             const index = this.entries.indexOf(entry);
             this.state.update((s) => {

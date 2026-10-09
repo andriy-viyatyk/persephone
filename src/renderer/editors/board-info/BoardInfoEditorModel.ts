@@ -45,6 +45,9 @@ import type { BoardSettingDeclaration } from "../../api/board-settings/types";
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+
+const DELETE_AND_CONTINUE = "Delete & continue";
 
 /** Transient per-board download UI (not persisted). Downloaded/registered state is read from
  *  `boardInstallRegistry` + `boardTrust`, which are authoritative; this only tracks the in-flight
@@ -526,9 +529,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             title: "Remove board",
             message:
                 `Remove board "${props.name}" from trusted boards? Its folder is left untouched on disk.`,
-            buttons: ["Remove", "Cancel"],
+            buttons: [dialogButton(DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
-        if (choice !== "Remove") return;
+        if (choice !== DialogButton.remove) return;
 
         const { ensureBoardIdle } = await import("../../api/board-updates");
         if (!(await ensureBoardIdle(props.root))) return;
@@ -626,9 +629,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                     message:
                         `The folder "${targetRoot}" already exists and will be deleted before ` +
                         `installing. Continue?`,
-                    buttons: ["Delete & continue", "Cancel"],
+                    buttons: [dialogButton(DELETE_AND_CONTINUE), dialogButton(DialogButton.cancel)],
                 });
-                if (choice !== "Delete & continue") return;
+                if (choice !== DELETE_AND_CONTINUE) return;
                 try {
                     await fs.removeDir(targetRoot, true);
                 } catch (err) {

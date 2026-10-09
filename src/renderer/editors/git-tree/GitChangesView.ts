@@ -14,6 +14,7 @@ import type { MenuItem } from "../../uikit/Menu";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import { showCommitDialog } from "../../ui/dialogs/CommitDialog";
 import type { GitFileChange } from "../../../ipc/git-ipc";
 import { GitTreeEditorModel } from "./GitTreeEditorModel";
@@ -284,9 +285,9 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
         const choice = await showConfirmationDialog({
             title: "Reset changes",
             message: `Reset ${count} file${count > 1 ? "s" : ""}? ${detail} This cannot be undone.`,
-            buttons: ["Reset", "Cancel"],
+            buttons: [dialogButton(DialogButton.reset), dialogButton(DialogButton.cancel)],
         });
-        if (choice === "Reset") void this.model.changes.resetChanges(changes);
+        if (choice === DialogButton.reset) void this.model.changes.resetChanges(changes);
     };
 
     private readonly doCommit = async (): Promise<void> => {
@@ -296,9 +297,9 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
             branch,
             name: identity.name,
             email: identity.email,
-            buttons: ["Commit", "Commit & Push", "Cancel"],
+            buttons: [DialogButton.commit, DialogButton.commitAndPush, DialogButton.cancel],
             onAction: async (result) => {
-                if (result.button !== "Commit" && result.button !== "Commit & Push") return false;
+                if (result.button !== DialogButton.commit && result.button !== DialogButton.commitAndPush) return false;
                 const newBranch = result.branch.trim() !== (branch ?? "")
                     ? result.branch.trim()
                     : undefined;
@@ -308,7 +309,7 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
                     newBranch,
                 );
                 if (!committed) return false;
-                if (result.button === "Commit & Push") await this.model.branches.push();
+                if (result.button === DialogButton.commitAndPush) await this.model.branches.push();
                 return true;
             },
         });

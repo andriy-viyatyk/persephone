@@ -1,6 +1,9 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { NamespaceCollisionDialogProps } from "../../../ui/dialogs/NamespaceCollisionDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+
+const REGISTER_ANYWAY = "Register Anyway";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -24,12 +27,12 @@ export class NamespaceCollisionDialogAdapter implements DialogAdapter {
     }
     get namespace(): string { return dialogState<NamespaceCollisionDialogProps>(this.entry).namespace; }
     get collidingRoot(): string { return dialogState<NamespaceCollisionDialogProps>(this.entry).collidingRoot; }
-    get buttons(): readonly string[] { return ["Cancel", "Register Anyway"]; }
+    get buttons(): readonly string[] { return [DialogButton.cancel, REGISTER_ANYWAY]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        return await closeWithResult(this.entry, button === "Register Anyway");
+        return await closeWithResult(this.entry, button === REGISTER_ANYWAY);
     }
 
     cancel(): Promise<undefined> { return cancelDialog(this.entry); }

@@ -2,6 +2,8 @@ import type { IAiVisionDescriptor } from "ai-vision";
 import type { TorInfoDialogState } from "../../../ui/dialogs/TorInfoDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 
+const CLOSE_TOR_INFO = "Close";
+
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
     { name: "message", kind: "property", summary: "The Tor connection explanation." },
@@ -29,7 +31,7 @@ export class TorInfoDialogAdapter implements DialogAdapter {
     get reconnecting(): boolean { return dialogState<TorInfoDialogState>(this.entry).reconnecting; }
     get info(): TorInfoDialogState["info"] { return dialogState<TorInfoDialogState>(this.entry).info; }
     get note(): string { return dialogState<TorInfoDialogState>(this.entry).note; }
-    get buttons(): readonly string[] { return ["Close"]; }
+    get buttons(): readonly string[] { return [CLOSE_TOR_INFO]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {

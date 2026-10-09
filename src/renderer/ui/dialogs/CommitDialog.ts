@@ -3,6 +3,7 @@ import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { CommitDialogView } from "./CommitDialogView";
+import { DialogButton } from "./dialog-buttons";
 
 export const commitDialogId = Symbol("commitDialog");
 
@@ -25,7 +26,7 @@ const defaultCommitDialogProps: CommitDialogProps = {
     message: "",
     name: "",
     email: "",
-    buttons: ["Commit", "Cancel"],
+    buttons: [DialogButton.commit, DialogButton.cancel],
 };
 
 export interface CommitResult {
@@ -34,6 +35,7 @@ export interface CommitResult {
     email: string;
     branch: string;
     button: string;
+    buttonLabel: string;
 }
 
 export class CommitDialogModel extends TDialogModel<CommitDialogProps, CommitResult | undefined> {
@@ -44,7 +46,7 @@ export class CommitDialogModel extends TDialogModel<CommitDialogProps, CommitRes
         if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
             event.preventDefault();
             const state = this.state.get();
-            const action = state.buttons?.find((button) => button !== "Cancel") ?? "Commit";
+            const action = state.buttons?.find((button) => button !== DialogButton.cancel) ?? DialogButton.commit;
             void this.submit(action);
         }
     };
@@ -60,7 +62,7 @@ export class CommitDialogModel extends TDialogModel<CommitDialogProps, CommitRes
         return this.onAction(result);
     };
 
-    submit = async (button: string) => {
+    submit = async (button: string, buttonLabel = button) => {
         const state = this.state.get();
         if (state.committing || !state.message?.trim() || !state.branch?.trim()) return;
         this.state.update((draft) => { draft.committing = true; });
@@ -70,6 +72,7 @@ export class CommitDialogModel extends TDialogModel<CommitDialogProps, CommitRes
             email: state.email ?? "",
             branch: state.branch ?? "",
             button,
+            buttonLabel,
         });
         if (this.viewDisposed) return;
         if (!closed) this.state.update((draft) => { draft.committing = false; });
@@ -82,8 +85,8 @@ export class CommitDialogModel extends TDialogModel<CommitDialogProps, CommitRes
 
 export function actionButtonLabel(button: string, branchChanged: boolean): string {
     if (!branchChanged) return button;
-    if (button === "Commit") return "Create Branch & Commit";
-    if (button === "Commit & Push") return "& Push";
+    if (button === DialogButton.commit) return "Create Branch & Commit";
+    if (button === DialogButton.commitAndPush) return "& Push";
     return button;
 }
 

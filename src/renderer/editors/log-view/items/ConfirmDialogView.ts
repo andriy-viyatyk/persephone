@@ -5,10 +5,11 @@ import type { ConfirmEntry } from "../logTypes";
 import type { LogViewEditor } from "../LogViewEditor";
 import { StyledTextView } from "../StyledTextView";
 import { ButtonsPanelView } from "./ButtonsPanel";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 
 export interface ConfirmDialogViewProps { entry: ConfirmEntry; model: LogViewEditor; }
-const DEFAULT_BUTTONS = ["No", "Yes"];
+const DEFAULT_BUTTONS = [DialogButton.no, DialogButton.yes];
 
 export class ConfirmDialogView extends VanillaView<ConfirmDialogViewProps> {
     private readonly messageText = createTextElement("", { size: "base" });
@@ -39,5 +40,5 @@ export class ConfirmDialogView extends VanillaView<ConfirmDialogViewProps> {
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.messagePanel, this.buttons.root], ownedChildren: [this.styledMessage, this.buttons] });
     }
 
-    private readonly handleClick = (label: string): void => { this.props.model.resolveDialog(this.props.entry.id, label); };
+    private readonly handleClick = (id: string, label: string): void => { this.props.model.resolveDialog(this.props.entry.id, id, label); };
 }

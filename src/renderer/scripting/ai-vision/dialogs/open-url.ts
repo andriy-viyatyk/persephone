@@ -1,6 +1,10 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { OpenUrlDialogState } from "../../../ui/dialogs/OpenUrlDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+
+const OPEN_URL = "Open";
+const OPEN_URL_FILE = "Open File";
 
 interface OpenUrlModel { submit(): void; openFile(): void; }
 
@@ -20,17 +24,17 @@ export class OpenUrlDialogAdapter implements DialogAdapter {
     get title(): string { return "Open"; }
     get message(): string { return "Paste file path, URL, or cURL command"; }
     get value(): string { return dialogState<OpenUrlDialogState>(this.entry).value; }
-    get buttons(): readonly string[] { return ["Open File", "Cancel", "Open"]; }
+    get buttons(): readonly string[] { return [OPEN_URL_FILE, DialogButton.cancel, OPEN_URL]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
         const model = modelWith<OpenUrlModel>(this.entry);
-        if (button === "Cancel") return this.cancel();
-        if (button === "Open") {
+        if (button === DialogButton.cancel) return this.cancel();
+        if (button === OPEN_URL) {
             if (!this.value.trim()) throw new Error(`Dialog button ${JSON.stringify(button)} is disabled.`);
             await model.submit();
-        } else {
+        } else if (button === OPEN_URL_FILE) {
             await model.openFile();
         }
         return undefined;

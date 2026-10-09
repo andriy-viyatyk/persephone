@@ -48,8 +48,10 @@ export interface IInputOptions {
 export interface IInputResult {
     /** The value entered by the user. */
     value: string;
-    /** The button label that was clicked. */
+    /** The stable English id of the clicked button. */
     button: string;
+    /** The displayed label of the clicked button. */
+    buttonLabel: string;
 }
 
 /**
@@ -109,8 +111,10 @@ export interface ITextDialogOptions {
 export interface ITextDialogResult {
     /** The text content (final value if editable, or same as input if readOnly). */
     text: string;
-    /** The button label that was clicked. */
+    /** The stable English id of the clicked button. */
     button: string;
+    /** The displayed label of the clicked button. */
+    buttonLabel: string;
 }
 
 /**
@@ -191,7 +195,7 @@ export interface IAlerts {
  *
  * @example
  * const answer = await app.ui.confirm("Save changes?");
- * if (answer === "Yes") { ... }
+ * if (answer === "Yes") { ... } // The string is the stable English button id.
  *
  * app.ui.notify("File saved", "success");
  */
@@ -201,7 +205,7 @@ export interface IUserInterface {
 
     /**
      * Show a confirmation dialog.
-     * Returns the clicked button label, or `null` if dismissed.
+     * Returns the stable English button id, or `null` if dismissed.
      *
      * @example
      * const answer = await app.ui.confirm("Delete this item?");
@@ -263,7 +267,7 @@ export interface IUserInterface {
      *     buttons: ["Execute", "Cancel"],
      *     options: { language: "sql" },
      * });
-     * if (result?.button === "Execute") { runQuery(result.text); }
+     * if (result?.button === "Execute") { runQuery(result.text); } // button is the English id; buttonLabel is presentation text.
      */
     textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null>;
 

@@ -173,8 +173,8 @@ function formatDialog(dialogsNode: DialogsNode, index: number): string {
 function formatResolvedDialog(adapter: DialogAdapter, index: number): string {
     const title = adapter.title ? ` \"${adapter.title}\"` : "";
     const message = adapter.message ? `: ${adapter.message}` : ".";
-    const actions = adapter.buttons.map((button) =>
-        `dialogs[${index}].click(${JSON.stringify(button)})`,
+    const actions = adapter.buttons.map((button, buttonIndex) =>
+        `dialogs[${index}].click(${JSON.stringify(adapter.buttonIds?.[buttonIndex] ?? button)})`,
     );
     actions.push(`dialogs[${index}].cancel()`);
     return [
@@ -200,11 +200,12 @@ function formatPopup(menusNode: MenusNode): string {
         const labels = items.map((item) => `${item.label}${item.enabled ? "" : " (disabled)"}`);
         const actions = items
             .filter((item): item is MenuItemInfo & { hasSubmenu: false } => !item.hasSubmenu && item.enabled)
-            .map((item) => `menus[0].click(${JSON.stringify(item.label)})`);
+            .map((item) => `menus[0].click(${JSON.stringify(item.id ?? item.label)})`);
         actions.push("menus[0].close()");
         return [
             "Attention: a popup menu is open.",
             `Items: ${labels.length ? labels.join(", ") : "(none)"}`,
+            "Menu click prefers a unique id; exact displayed or qualified labels are accepted when no id matches.",
             `Resolve it with ${actions.join(" or ")}.`,
         ].join("\n");
     } catch (error) {

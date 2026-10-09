@@ -2,6 +2,7 @@ import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 import { pasteOsClipboardInto } from "./os-clipboard";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export interface ItemCrudContext {
     provider: ITreeProvider;
@@ -23,9 +24,9 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
 
     const inputResult = await ui.input("Enter file name:", {
         title: "New File",
-        buttons: ["Create", "Cancel"],
+        buttons: [DialogButton.create, DialogButton.cancel],
     });
-    if (inputResult?.button !== "Create" || !inputResult.value.trim()) return;
+    if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
     const href = provider.resolveLink(directory ? directory + "/" + name : name);
@@ -50,9 +51,9 @@ export async function createNewFolder(context: ItemCrudContext, directory: strin
 
     const inputResult = await ui.input("Enter folder name:", {
         title: "New Folder",
-        buttons: ["Create", "Cancel"],
+        buttons: [DialogButton.create, DialogButton.cancel],
     });
-    if (inputResult?.button !== "Create" || !inputResult.value.trim()) return;
+    if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
     const folderPath = directory ? directory + "/" + name : name;
@@ -72,10 +73,10 @@ export async function renameItem(context: ItemCrudContext, item: ITreeProviderIt
     const inputResult = await ui.input("Enter new name:", {
         title: `Rename ${item.isDirectory ? "Folder" : "File"}`,
         value: item.title,
-        buttons: ["Rename", "Cancel"],
+        buttons: [DialogButton.rename, DialogButton.cancel],
         selectAll: true,
     });
-    if (inputResult?.button !== "Rename" || !inputResult.value.trim()) return;
+    if (inputResult?.button !== DialogButton.rename || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
     const category = item.category;
@@ -98,9 +99,9 @@ export async function deleteItemAction(
 
     const button = await ui.confirm(
         `Are you sure you want to delete "${item.title}"?`,
-        { title: "Delete Confirmation", buttons: ["Delete", "Cancel"] },
+        { title: "Delete Confirmation", buttons: [DialogButton.delete, DialogButton.cancel] },
     );
-    if (button !== "Delete") return;
+    if (button !== DialogButton.delete) return;
 
     try {
         await provider.deleteItem(item.href);

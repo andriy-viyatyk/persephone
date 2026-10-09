@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { ConfirmationDialogProps } from "../../../ui/dialogs/ConfirmationDialog";
-import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { normalizeDialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { cancelDialog, closeWithResult, descriptor, dialogState, resolveDialogButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -16,13 +17,13 @@ export class ConfirmationDialogAdapter implements DialogAdapter {
 
     get title(): string | undefined { return dialogState<ConfirmationDialogProps>(this.entry).title; }
     get message(): string { return dialogState<ConfirmationDialogProps>(this.entry).message; }
-    get buttons(): readonly string[] { return dialogState<ConfirmationDialogProps>(this.entry).buttons ?? []; }
+    get buttons(): readonly string[] { return (dialogState<ConfirmationDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ label }) => label); }
+    get buttonIds(): readonly string[] { return (dialogState<ConfirmationDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ id }) => id); }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
-        const buttons = this.buttons;
-        requireButton(buttons, button);
-        return await closeWithResult(this.entry, button);
+        const selected = resolveDialogButton(dialogState<ConfirmationDialogProps>(this.entry).buttons ?? [], button);
+        return await closeWithResult(this.entry, selected.id);
     }
 
     cancel(): Promise<undefined> { return cancelDialog(this.entry); }

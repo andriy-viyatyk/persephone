@@ -17,6 +17,7 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { pruneNestedItems } from "./plural-actions";
 import { supportsOsClipboard } from "./os-clipboard";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 /**
  * Where a drop lands.
@@ -83,9 +84,9 @@ export async function moveItemsInto(
 
         const bt = await ui.confirm(
             `Move "${source.title}" to "${target.title}/"?`,
-            { title: "Move", buttons: ["Move", "Cancel"] },
+            { title: "Move", buttons: [DialogButton.move, DialogButton.cancel] },
         );
-        if (bt !== "Move") return false;
+        if (bt !== DialogButton.move) return false;
 
         try {
             await provider.rename(source.href, newPath);
@@ -141,9 +142,9 @@ async function moveFilesInto(
         : `${moving.length} items`;
     const bt = await ui.confirm(
         `Move ${label} to "${target.title}/"?`,
-        { title: "Move", buttons: ["Move", "Cancel"] },
+        { title: "Move", buttons: [DialogButton.move, DialogButton.cancel] },
     );
-    if (bt !== "Move") return false;
+    if (bt !== DialogButton.move) return false;
 
     // Overwrite-collision confirm (same wording/pattern as importFilesInto / dropOsFilesInto).
     const existing = new Set(
@@ -155,9 +156,9 @@ async function moveFilesInto(
     if (clashing.length) {
         const ob = await ui.confirm(
             `${clashing.length} item(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite?", buttons: ["Overwrite", "Cancel"] },
+            { title: "Overwrite?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
-        if (ob !== "Overwrite") return false;
+        if (ob !== DialogButton.overwrite) return false;
     }
 
     const progress = await ui.createProgress("Moving...");
@@ -202,9 +203,9 @@ export async function importFilesInto(
         if (clashing.length) {
             const bt = await ui.confirm(
                 `${clashing.length} file(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-                { title: "Overwrite files?", buttons: ["Overwrite", "Cancel"] },
+                { title: "Overwrite files?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
             );
-            if (bt !== "Overwrite") return false;
+            if (bt !== DialogButton.overwrite) return false;
         }
     }
 
@@ -240,10 +241,10 @@ export async function dropOsFilesInto(
     const label = items.length === 1 ? `"${items[0].name}"` : `${items.length} items`;
     const bt = await ui.confirm(`Move or copy ${label} into "${target.title}"?`, {
         title: "Move or Copy",
-        buttons: ["Move", "Copy", "Cancel"],
+        buttons: [DialogButton.move, DialogButton.copy, DialogButton.cancel],
     });
-    if (bt !== "Move" && bt !== "Copy") return false;
-    const move = bt === "Move";
+    if (bt !== DialogButton.move && bt !== DialogButton.copy) return false;
+    const move = bt === DialogButton.move;
 
     // Overwrite-collision confirm (same wording/pattern as importFilesInto).
     const existing = new Set(
@@ -255,9 +256,9 @@ export async function dropOsFilesInto(
     if (clashing.length) {
         const ob = await ui.confirm(
             `${clashing.length} file(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite files?", buttons: ["Overwrite", "Cancel"] },
+            { title: "Overwrite files?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
-        if (ob !== "Overwrite") return false;
+        if (ob !== DialogButton.overwrite) return false;
     }
 
     const verb = move ? "Moving" : "Copying";

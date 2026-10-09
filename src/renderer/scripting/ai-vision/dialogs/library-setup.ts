@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { LibrarySetupDialogState } from "../../../ui/dialogs/LibrarySetupDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 
 interface LibrarySetupModel { link(): Promise<void>; }
 
@@ -24,12 +25,12 @@ export class LibrarySetupDialogAdapter implements DialogAdapter {
     get folderPath(): string { return this.state.folderPath; }
     get copyExamples(): boolean { return this.state.copyExamples; }
     get linking(): boolean { return this.state.linking; }
-    get buttons(): readonly string[] { return [this.state.linking ? "Linking..." : "Link", "Cancel"]; }
+    get buttons(): readonly string[] { return [this.state.linking ? "Linking..." : "Link", DialogButton.cancel]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        if (button === "Cancel") return this.cancel();
+        if (button === DialogButton.cancel) return this.cancel();
         if (this.state.linking || !this.state.folderPath.trim()) {
             throw new Error(`Dialog button ${JSON.stringify(button)} is disabled.`);
         }

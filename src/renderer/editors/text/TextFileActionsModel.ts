@@ -1,4 +1,5 @@
 import { ui } from "../../api/ui";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { PageModel } from "../../api/pages/PageModel";
 import { scriptRunner } from "../../scripting/ScriptRunner";
@@ -83,13 +84,13 @@ export class TextFileActionsModel {
         pagesModel.showPage(this.model.state.get().id);
         const confirmBt = await ui.confirm(
             `Do you want to save the changes you made to "${title}"?`,
-            { title: "Unsaved Changes", buttons: ["Save", "Don't Save", "Cancel"] },
+            { title: "Unsaved Changes", buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
         );
 
         switch (confirmBt) {
-            case "Save":
+            case DialogButton.save:
                 return await this.model.io.saveFile();
-            case "Don't Save":
+            case DialogButton.dontSave:
                 return true;
             default:
                 return false;

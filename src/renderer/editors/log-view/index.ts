@@ -5,6 +5,7 @@ import { TextChromeView } from "../base/TextChromeView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
 
@@ -121,8 +122,8 @@ class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
             icon: createClearIconElement(),
             title: "Clear log",
             onClick: async () => {
-                const result = await showConfirmationDialog({ message: "Clear all log entries?" });
-                if (result === "Yes") this.model.clear();
+                const result = await showConfirmationDialog({ message: "Clear all log entries?", buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)] });
+                if (result === DialogButton.yes) this.model.clear();
             },
         };
     }

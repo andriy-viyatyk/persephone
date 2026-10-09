@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { InputDialogProps, InputResult } from "../../../ui/dialogs/InputDialog";
-import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { normalizeDialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { cancelDialog, closeWithResult, descriptor, dialogState, resolveDialogButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -20,17 +21,19 @@ export class InputDialogAdapter implements DialogAdapter {
     get title(): string | undefined { return dialogState<InputDialogProps>(this.entry).title; }
     get message(): string { return dialogState<InputDialogProps>(this.entry).message; }
     get value(): string { return dialogState<InputDialogProps>(this.entry).value ?? ""; }
-    get buttons(): readonly string[] { return dialogState<InputDialogProps>(this.entry).buttons ?? []; }
+    get buttons(): readonly string[] { return (dialogState<InputDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ label }) => label); }
+    get buttonIds(): readonly string[] { return (dialogState<InputDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ id }) => id); }
     get options(): readonly string[] { return dialogState<InputDialogProps>(this.entry).options ?? []; }
     get selectedOption(): string | undefined { return dialogState<InputDialogProps>(this.entry).selectedOption; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         const state = dialogState<InputDialogProps>(this.entry);
-        requireButton(state.buttons ?? [], button);
+        const selected = resolveDialogButton(state.buttons ?? [], button);
         const result: InputResult = {
             value: state.value ?? "",
-            button,
+            button: selected.id,
+            buttonLabel: selected.label,
             selectedOption: state.selectedOption,
         };
         return await closeWithResult(this.entry, result);

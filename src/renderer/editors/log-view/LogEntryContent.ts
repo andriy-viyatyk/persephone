@@ -83,7 +83,9 @@ class DialogEntryStubView extends VanillaView<{ entry: LogEntry }> {
     protected onUpdate(props: { entry: LogEntry }): void { this.applyProps(props); }
     private applyProps(props: { entry: LogEntry }): void {
         const label = props.entry.title || props.entry.message || "";
-        const answered = props.entry.button !== undefined ? ` — answered: ${String(props.entry.button)}` : "";
+        const answered = props.entry.button !== undefined
+            ? ` — answered: ${String(props.entry.buttonLabel ?? props.entry.button)}`
+            : "";
         this.text.textContent = `[${props.entry.type}] ${typeof label === "string" ? label : ""}${answered}`;
     }
 }

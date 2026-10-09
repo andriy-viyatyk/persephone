@@ -16,6 +16,9 @@ import { createLinkData } from "../../../shared/link-data";
 import { LinkTreeProvider } from "./LinkTreeProvider";
 import type { ILinkSource, LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+
+const IMPORT_ALL = "Import All";
 import type { ImageRoute } from "./routed-src";
 
 export type ExpandedPanel = "tags" | "categories" | "hostnames";
@@ -751,9 +754,9 @@ export class LinkEditor
             if (scanned.limitReached) {
                 const choice = await ui.confirm(
                     `The folder contains more than ${SCAN_LIMIT} files. Import all files?`,
-                    { title: "Import Folder", buttons: ["Import All", "Cancel"] },
+                    { title: "Import Folder", buttons: [IMPORT_ALL, DialogButton.cancel] },
                 );
-                if (choice !== "Import All") return;
+                if (choice !== IMPORT_ALL) return;
 
                 const existingHrefs2 = new Set(
                     this.state.get().data.links.map((l) => l.href.toLowerCase()),
@@ -867,10 +870,10 @@ export class LinkEditor
             const label = link?.title || link?.href || "this link";
             const bt = await ui.confirm(
                 `Are you sure you want to delete "${label}"?`,
-                { title: "Delete Link", buttons: ["Delete", "Cancel"] },
+                { title: "Delete Link", buttons: [DialogButton.delete, DialogButton.cancel] },
             );
             this.containerElement?.focus();
-            if (bt !== "Delete") return;
+            if (bt !== DialogButton.delete) return;
         }
         this.state.update((s) => {
             s.data.links = s.data.links.filter((l) => l.id !== id);
@@ -913,10 +916,10 @@ export class LinkEditor
 
         const result = await ui.confirm(
             `Move ${count} link${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            { title: "Move Category", buttons: ["Move", "Cancel"] },
+            { title: "Move Category", buttons: [DialogButton.move, DialogButton.cancel] },
         );
 
-        if (result !== "Move") return;
+        if (result !== DialogButton.move) return;
 
         this.state.update((s) => {
             for (const link of s.data.links) {

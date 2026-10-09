@@ -2,6 +2,10 @@ export interface ILogEntrySnapshot {
     readonly type: string;
     readonly id: string;
     readonly timestamp?: number;
+    /** Stable English id selected for an answered dialog entry. */
+    readonly button?: string;
+    /** Displayed label for the selected dialog button. */
+    readonly buttonLabel?: string;
     readonly [key: string]: unknown;
 }
 

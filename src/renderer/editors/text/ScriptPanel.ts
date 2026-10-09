@@ -10,6 +10,7 @@ import { debounce, errMessage } from "../../../shared/utils";
 import { libraryService, ScriptPanelEntry } from "../../api/library-service";
 import { settings } from "../../api/settings";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 
 import { fpJoin } from "../../core/utils/file-path";
 
@@ -254,11 +255,11 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             value: "",
             options,
             selectedOption: options[0],
-            buttons: ["Save", "Cancel"],
+            buttons: [dialogButton(DialogButton.save), dialogButton(DialogButton.cancel)],
             selectAll: true,
         });
 
-        if (!result || result.button !== "Save" || !result.value.trim()) {
+        if (!result || result.button !== DialogButton.save || !result.value.trim()) {
             return;
         }
 
@@ -277,7 +278,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
             const confirmResult = await showConfirmationDialog({
                 message: `Script "${scriptName}" already exists in "${folder}/". Overwrite?`,
-                buttons: ["Overwrite", "Cancel"],
+                buttons: [dialogButton(DialogButton.overwrite), dialogButton(DialogButton.cancel)],
             });
             if (confirmResult !== "Overwrite") {
                 return;

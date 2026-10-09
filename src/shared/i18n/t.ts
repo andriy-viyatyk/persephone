@@ -12,11 +12,11 @@ export function setLocalePacks(user: LanguagePack | undefined, builtIn: Language
     builtInPack = builtIn;
 }
 
-function formatMessage(message: PackMessage | undefined, fallback: PackMessage | undefined, params?: Record<string, unknown>): string {
+function formatMessage(message: PackMessage | undefined, fallback: PackMessage | undefined, params?: Record<string, unknown>, locale = getActiveLocale()): string {
     let selected = message ?? fallback;
     if (selected && typeof selected === "object") {
         const count = params?.count;
-        const category = typeof count === "number" ? pluralCategory(getActiveLocale(), count) : "other";
+        const category = typeof count === "number" ? pluralCategory(locale, count) : "other";
         const fallbackMessage = fallback && typeof fallback === "object"
             ? fallback[category] ?? fallback.other
             : fallback;
@@ -27,6 +27,14 @@ function formatMessage(message: PackMessage | undefined, fallback: PackMessage |
         const value = params?.[name];
         return value === undefined || value === null ? match : String(value);
     });
+}
+
+/** Render a catalog message using its English source, regardless of active locale or packs. */
+export function englishMessage<K extends MessageKey>(key: K, params?: MessageParams<K>): string {
+    const [area, name] = key.split(".");
+    const message = (englishCatalog as Record<string, Record<string, PackMessage>>)[area]?.[name];
+    if (message === undefined) return key;
+    return formatMessage(message, message, params as Record<string, unknown> | undefined, "en");
 }
 
 export function t<K extends MessageKey>(key: K, params?: MessageParams<K>): string {

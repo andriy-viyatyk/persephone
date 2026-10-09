@@ -5,6 +5,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import type { TextInputEntry } from "../logTypes";
 import type { LogViewEditor } from "../LogViewEditor";
 import { ButtonsPanelView } from "./ButtonsPanel";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 import { DialogHeaderView } from "./DialogHeader";
 import type { EntryUpdater } from "../LogEntryContent";
@@ -14,7 +15,7 @@ export interface TextInputDialogViewProps {
     updateEntry: EntryUpdater<TextInputEntry>;
     model: LogViewEditor;
 }
-const DEFAULT_BUTTONS = ["OK"];
+const DEFAULT_BUTTONS = [DialogButton.ok];
 
 export class TextInputDialogView extends VanillaView<TextInputDialogViewProps> {
     private readonly field: InputView;
@@ -60,7 +61,7 @@ export class TextInputDialogView extends VanillaView<TextInputDialogViewProps> {
         this.props.updateEntry((draft) => { draft.text = text; });
     };
 
-    private readonly handleClick = (label: string): void => { this.props.model.resolveDialog(this.props.entry.id, label); };
+    private readonly handleClick = (id: string, label: string): void => { this.props.model.resolveDialog(this.props.entry.id, id, label); };
 
     private readonly handleKeyDown = (event: { key: string }): void => {
         const entry = this.props.entry;

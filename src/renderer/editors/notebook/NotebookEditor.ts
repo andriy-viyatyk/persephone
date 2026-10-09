@@ -12,6 +12,7 @@ import { LINK } from "../../core/traits";
 import type { ILink } from "../../api/types/io.tree";
 import type { CategoryItem } from "./category-tree";
 import { NoteItem, NotebookData } from "./notebookTypes";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export type NotebookQueueEvent = { type: "focus" };
 export type NotebookQueueRequest = never;
@@ -638,10 +639,10 @@ export class NotebookEditor extends TextHostEditorModel<NotebookEditorState, voi
 
             const result = await ui.confirm(
                 `Are you sure you want to delete "${noteTitle}"?`,
-                { title: "Delete Note", buttons: ["Delete", "Cancel"] },
+                { title: "Delete Note", buttons: [DialogButton.delete, DialogButton.cancel] },
             );
 
-            if (result !== "Delete") {
+            if (result !== DialogButton.delete) {
                 return;
             }
         }
@@ -839,10 +840,10 @@ export class NotebookEditor extends TextHostEditorModel<NotebookEditorState, voi
 
         const result = await ui.confirm(
             `Move ${count} note${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            { title: "Move Category", buttons: ["Move", "Cancel"] },
+            { title: "Move Category", buttons: [DialogButton.move, DialogButton.cancel] },
         );
 
-        if (result !== "Move") return;
+        if (result !== DialogButton.move) return;
 
         const selectedCategory = this.state.get().selectedCategory;
         const nextSelectedCategory = selectedCategory === fromCategory

@@ -1,7 +1,13 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { TrustBoardDialogProps } from "../../../ui/dialogs/TrustBoardDialog";
 import { BOARD_PERMISSION_INTRODUCTION, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../editors/board/board-permission-copy";
+// After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+
+const TRUST_BOARD = "Trust Board";
+const ACCEPT_PERMISSIONS = "Accept";
+const UNREGISTER_BOARD = "Unregister board";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -69,14 +75,19 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
     get serviceDeclared(): boolean { return dialogState<TrustBoardDialogProps>(this.entry).serviceDeclared; }
     get capabilities(): readonly string[] { return dialogState<TrustBoardDialogProps>(this.entry).capabilities; }
     get buttons(): readonly string[] {
-        return this.state.change ? ["Unregister board", "Accept"] : ["Cancel", "Trust Board"];
+        return this.state.change
+            ? [UNREGISTER_BOARD, ACCEPT_PERMISSIONS]
+            : [DialogButton.cancel, TRUST_BOARD];
     }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
         const results: Record<string, boolean | "accept" | "unregister"> = {
-            "Cancel": false, "Trust Board": true, "Accept": "accept", "Unregister board": "unregister",
+            [DialogButton.cancel]: false,
+            [TRUST_BOARD]: true,
+            [ACCEPT_PERMISSIONS]: "accept",
+            [UNREGISTER_BOARD]: "unregister",
         };
         return await closeWithResult(this.entry, results[button]);
     }

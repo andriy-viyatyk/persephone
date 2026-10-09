@@ -12,6 +12,7 @@ import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { toClipboard } from "../../core/utils/utils";
 import { removePin } from "../../ui/sidebar/pinned-items";
 import { errMessage } from "../../../shared/utils";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import type { MenuItem } from "../../uikit/Menu";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -435,9 +436,9 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             message: onDisk
                 ? `Delete board "${name}"? This permanently removes its folder and all its files.`
                 : `Board "${name}" no longer exists on disk. Remove it from the list?`,
-            buttons: [onDisk ? "Delete" : "Remove", "Cancel"],
+            buttons: [dialogButton(onDisk ? DialogButton.delete : DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
-        if (confirmed === "Cancel" || !confirmed) return;
+        if (confirmed === DialogButton.cancel || !confirmed) return;
         if (onDisk) {
             // Nothing may hold the folder open: on Windows a live handle inside it makes the
             // files delete but the folder itself fail with ENOTEMPTY.

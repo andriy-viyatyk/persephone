@@ -12,6 +12,7 @@ import { isUrlOrCurl } from "../../content/link-utils";
 import { toClipboard } from "../../core/utils/utils";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
 import { copyPathsToOsClipboard, supportsOsClipboard } from "./os-clipboard";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 /** Ctrl/Shift multi-selection is offered where item hrefs are absolute local paths and
  *  every plural action (OS clipboard, batch move, drag-out) is therefore meaningful.
@@ -130,9 +131,9 @@ export async function deleteItemsBatch(
 
     const bt = await ui.confirm(
         `Do you want to delete ${targets.length} items?`,
-        { title: "Delete Confirmation", buttons: ["Delete", "Cancel"] },
+        { title: "Delete Confirmation", buttons: [DialogButton.delete, DialogButton.cancel] },
     );
-    if (bt !== "Delete") return "none";
+    if (bt !== DialogButton.delete) return "none";
 
     const errors: string[] = [];
     const progress = await ui.createProgress("Deleting...");

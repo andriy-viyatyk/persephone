@@ -28,6 +28,7 @@ import { createBoardGlyphElement } from "./board-glyph-element";
 import { createIconElement } from "../../uikit/shared/slots";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import type { MenuItem } from "../../uikit";
@@ -639,15 +640,15 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (pageId) pagesModel.showPage(pageId);
         const choice = await ui.confirm(
             `Do you want to save the changes you made to "${this.title}"?`,
-            { title: "Unsaved Changes", buttons: ["Save", "Don't Save", "Cancel"] },
+            { title: "Unsaved Changes", buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
         );
-        if (choice === "Don't Save") {
+        if (choice === DialogButton.dontSave) {
             // Best effort: let the board drop page-scoped drafts it keeps for app restarts before teardown.
             if (this.requestBoardSave) await this.requestBoardSave(true);
             this.setBoardModified(false);
             return true;
         }
-        if (choice !== "Save") {
+        if (choice !== DialogButton.save) {
             this.releaseCancelled = true;
             return false;
         }

@@ -1,5 +1,6 @@
 import { settings } from "../../../api/settings";
 import { ui } from "../../../api/ui";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { app } from "../../../api/app";
 import { deleteCustomTheme } from "../../../api/custom-theme-storage";
 import { getMissingEditCapabilityMessage, isCapabilityErrorWithCode } from "../../../api/capability-feedback";
@@ -334,9 +335,9 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         const name = this.options.get(themeId)?.theme.name ?? themeId;
         const result = await ui.confirm(
             `Delete the custom theme "${name}"? This cannot be undone.`,
-            { title: "Delete Theme", buttons: ["Delete", "Cancel"] },
+            { title: "Delete Theme", buttons: [DialogButton.delete, DialogButton.cancel] },
         );
-        if (result !== "Delete") return;
+        if (result !== DialogButton.delete) return;
         try {
             await deleteCustomTheme(themeId);
         } catch (error) {

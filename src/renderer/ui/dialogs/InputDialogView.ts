@@ -14,6 +14,7 @@ import type { InputDialogProps, InputResult } from "./InputDialog";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/RadioGroup/RadioGroup.css";
+import type { DialogButtonDefinition } from "./dialog-buttons";
 
 type InputDialogModel = TDialogModel<InputDialogProps, InputResult | undefined> & {
     handleKeyDown(event: KeyboardEvent): void;
@@ -21,7 +22,7 @@ type InputDialogModel = TDialogModel<InputDialogProps, InputResult | undefined> 
     setSelectedOption(option: string): void;
 };
 
-type DialogButton = { index: number; label: string };
+type DialogButtonViewItem = { index: number; button: DialogButtonDefinition };
 
 export class InputDialogView extends VanillaView<DialogViewProps> {
     private readonly model: InputDialogModel;
@@ -32,7 +33,7 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
     private readonly messageElement: HTMLSpanElement;
     private readonly buttonsPanel: HTMLDivElement;
     private readonly radioGroupView: RadioGroupView | undefined;
-    private readonly buttonList: KeyedList<DialogButton, number, HTMLButtonElement>;
+    private readonly buttonList: KeyedList<DialogButtonViewItem, number, HTMLButtonElement>;
     private readonly buttonViews = new Map<HTMLButtonElement, ButtonView>();
 
     public constructor(props: DialogViewProps) {
@@ -101,13 +102,13 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
         this.buttonList = new KeyedList(this.buttonsPanel, {
             keyOf: (button) => button.index,
             create: (button) => {
-                const view = new ButtonView(this.buttonProps(button.index, button.label));
+                const view = new ButtonView(this.buttonProps(button.index, button.button));
                 view.mount();
                 this.buttonViews.set(view.root as HTMLButtonElement, view);
                 return view.root as HTMLButtonElement;
             },
             update: (element, button) => {
-                this.buttonViews.get(element)?.update(this.buttonProps(button.index, button.label));
+                this.buttonViews.get(element)?.update(this.buttonProps(button.index, button.button));
             },
             remove: (element) => {
                 this.buttonViews.get(element)?.dispose();
@@ -122,7 +123,7 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
         this.radioGroupView?.mount();
         this.contentView.mount();
         this.own(() => this.buttonList.dispose());
-        this.syncButtons(this.model.state.get().buttons ?? []);
+        this.syncButtons((this.model.state.get().buttons ?? []) as DialogButtonDefinition[]);
         this.dialogView.mount();
         this.bind(this.model.state, (state) => state.message, (message) => {
             this.messageElement.textContent = message;
@@ -138,7 +139,7 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
             });
         });
         this.bind(this.model.state, (state) => state.buttons ?? [], (buttons) => {
-            this.syncButtons(buttons);
+            this.syncButtons(buttons as DialogButtonDefinition[]);
         });
         if (this.radioGroupView) {
             this.bind(this.model.state, (state) => state.selectedOption ?? "", (value) => {
@@ -158,21 +159,22 @@ export class InputDialogView extends VanillaView<DialogViewProps> {
         }));
     }
 
-    private syncButtons(buttons: string[]): void {
-        this.buttonList.update(buttons.map((label, index) => ({ label, index })));
+    private syncButtons(buttons: DialogButtonDefinition[]): void {
+        this.buttonList.update(buttons.map((button, index) => ({ button, index })));
     }
 
-    private buttonProps(index: number, label: string): ButtonViewProps {
+    private buttonProps(index: number, button: DialogButtonDefinition): ButtonViewProps {
         return {
             onClick: () => {
                 const state = this.model.state.get();
                 void this.model.close({
                     value: state.value ?? "",
-                    button: this.model.state.get().buttons?.[index] ?? label,
+                    button: button.id,
+                    buttonLabel: button.label,
                     selectedOption: state.selectedOption,
                 });
             },
-            children: label,
+            children: button.label,
         };
     }
 }

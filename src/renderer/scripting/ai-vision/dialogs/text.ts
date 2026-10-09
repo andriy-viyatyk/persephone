@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { TextDialogModel, TextDialogProps } from "../../../ui/dialogs/TextDialog";
-import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, modelWith, type DialogAdapter, type DialogEntry } from "./shared";
+import { normalizeDialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { cancelDialog, closeWithResult, descriptor, dialogState, resolveDialogButton, modelWith, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -23,7 +24,8 @@ export class TextDialogAdapter implements DialogAdapter {
     get message(): undefined { return undefined; }
     get text(): string { return dialogState<TextDialogProps>(this.entry).text ?? ""; }
     get editorText(): string { return modelWith<TextDialogModel>(this.entry).editorText; }
-    get buttons(): readonly string[] { return dialogState<TextDialogProps>(this.entry).buttons ?? []; }
+    get buttons(): readonly string[] { return (dialogState<TextDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ label }) => label); }
+    get buttonIds(): readonly string[] { return (dialogState<TextDialogProps>(this.entry).buttons ?? []).map(normalizeDialogButton).map(({ id }) => id); }
     get readOnly(): boolean { return dialogState<TextDialogProps>(this.entry).readOnly ?? true; }
     get options(): TextDialogProps["options"] { return dialogState<TextDialogProps>(this.entry).options; }
     get width(): number | undefined { return dialogState<TextDialogProps>(this.entry).width; }
@@ -31,8 +33,8 @@ export class TextDialogAdapter implements DialogAdapter {
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
-        requireButton(this.buttons, button);
-        return await closeWithResult(this.entry, { text: this.editorText, button });
+        const selected = resolveDialogButton(dialogState<TextDialogProps>(this.entry).buttons ?? [], button);
+        return await closeWithResult(this.entry, { text: this.editorText, button: selected.id, buttonLabel: selected.label });
     }
 
     cancel(): Promise<undefined> { return cancelDialog(this.entry); }

@@ -3,6 +3,7 @@ import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";
 import { TextDialogView } from "./TextDialogView";
+import { DialogButton, dialogButton, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
 
 export const textDialogId = Symbol("textDialog");
 
@@ -16,7 +17,7 @@ export interface TextDialogEditorOptions {
 export interface TextDialogProps {
     title?: string;
     text?: string;
-    buttons?: string[];
+    buttons?: DialogButtonInput[];
     readOnly?: boolean;
     options?: TextDialogEditorOptions;
     width?: number;
@@ -26,13 +27,14 @@ export interface TextDialogProps {
 const defaultTextDialogProps: Required<Pick<TextDialogProps, "title" | "text" | "buttons" | "readOnly">> = {
     title: "",
     text: "",
-    buttons: ["OK"],
+    buttons: [dialogButton(DialogButton.ok)],
     readOnly: true,
 };
 
 export interface TextDialogResult {
     text: string;
     button: string;
+    buttonLabel: string;
 }
 
 export class TextDialogModel extends TDialogModel<TextDialogProps, TextDialogResult | undefined> {
@@ -62,6 +64,7 @@ export function showTextDialog(props: TextDialogProps) {
         ...defaultTextDialogProps,
         ...props,
     };
+    modelState.buttons = modelState.buttons?.map(normalizeDialogButton);
 
     const model = new TextDialogModel(new TComponentState(modelState));
     return showDialog({

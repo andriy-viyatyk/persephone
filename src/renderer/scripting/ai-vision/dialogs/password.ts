@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { PasswordDialogState } from "../../../ui/dialogs/PasswordDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 
 interface PasswordModel {
     submit(): void;
@@ -18,13 +19,13 @@ export class PasswordDialogAdapter implements DialogAdapter {
 
     get buttons(): readonly string[] {
         const state = dialogState<PasswordDialogState>(this.entry);
-        return [state.mode === "decrypt" ? "Decrypt" : "Encrypt", "Cancel"];
+        return [state.mode === "decrypt" ? "Decrypt" : "Encrypt", DialogButton.cancel];
     }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        if (button === "Cancel") return this.cancel();
+        if (button === DialogButton.cancel) return this.cancel();
         // The submit result is the secret password. Await the action but deliberately discard it.
         await modelWith<PasswordModel>(this.entry).submit();
         return undefined;

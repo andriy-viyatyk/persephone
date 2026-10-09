@@ -1,6 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import { actionButtonLabel, type CommitDialogModel, type CommitDialogProps } from "../../../ui/dialogs/CommitDialog";
-import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { cancelDialog, descriptor, dialogState, modelWith, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
@@ -10,7 +11,7 @@ const MEMBERS = [
     { name: "email", kind: "property", summary: "The commit author email." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
     { name: "committing", kind: "property", summary: "Whether a commit is in progress." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(idOrLabel: string)", summary: "Click by unique id first, then by unique exact displayed label." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without selecting a response." },
 ] as const;
 const AI_VISION = descriptor("CommitDialog", "A commit dialog awaiting a response.", MEMBERS);
@@ -30,28 +31,34 @@ export class CommitDialogAdapter implements DialogAdapter {
         const state = this.state;
         const branchChanged = !!state.branch?.trim() && state.branch.trim() !== (state.originalBranch ?? "");
         return (state.buttons ?? ["Commit", "Cancel"]).map((button) =>
-            button === "Cancel" ? button : actionButtonLabel(button, branchChanged),
+            button === DialogButton.cancel ? button : actionButtonLabel(button, branchChanged),
         );
     }
+    get buttonIds(): readonly string[] { return this.state.buttons ?? ["Commit", "Cancel"]; }
     get committing(): boolean { return !!this.state.committing; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         const state = this.state;
-        const visibleButtons = this.buttons;
-        requireButton(visibleButtons, button);
-        if (button === "Cancel") return this.cancel();
+        const branchChanged = !!state.branch.trim() && state.branch.trim() !== (state.originalBranch ?? "");
+        const underlyingButtons = state.buttons ?? ["Commit", "Cancel"];
+        const idMatches = underlyingButtons.filter((candidate) => candidate === button);
+        if (idMatches.length > 1) throw new Error(`Dialog button id ${JSON.stringify(button)} is duplicated.`);
+        const labelMatches = underlyingButtons.filter((candidate) =>
+            (candidate === DialogButton.cancel ? candidate : actionButtonLabel(candidate, branchChanged)) === button,
+        );
+        const underlyingButton = idMatches[0] ?? (labelMatches.length === 1 ? labelMatches[0] : undefined);
+        if (labelMatches.length > 1 && idMatches.length === 0) {
+            throw new Error(`Dialog button label ${JSON.stringify(button)} is ambiguous.`);
+        }
+        if (!underlyingButton) {
+            throw new Error(`Dialog button ${JSON.stringify(button)} is unavailable.`);
+        }
+        if (underlyingButton === "Cancel") return this.cancel();
         if (state.committing || !state.message?.trim() || !state.branch?.trim()) {
             throw new Error(`Dialog button ${JSON.stringify(button)} is disabled.`);
         }
-        const branchChanged = !!state.branch.trim() && state.branch.trim() !== (state.originalBranch ?? "");
-        const underlyingButton = (state.buttons ?? ["Commit", "Cancel"]).find((candidate) =>
-            actionButtonLabel(candidate, branchChanged) === button,
-        );
-        if (!underlyingButton || underlyingButton === "Cancel") {
-            throw new Error(`Dialog button ${JSON.stringify(button)} is unavailable.`);
-        }
-        await this.model.submit(underlyingButton);
+        await this.model.submit(underlyingButton, actionButtonLabel(underlyingButton, branchChanged));
         return undefined;
     }
 

@@ -23,6 +23,7 @@ import {
     isStatusBusy,
 } from "./mnemeTypes";
 import { errMessage } from "../../../shared/utils";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export interface MnemeConfigEditorState extends EditorStateBase {
     type: "mnemeConfigPage";
@@ -277,10 +278,10 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             message: "Root name — must be unique; no spaces, '/', or '\\':",
             value: fpBasename(folder),
             selectAll: true,
-            buttons: ["Add", "Cancel"],
-            defaultButton: "Add",
+            buttons: [dialogButton(DialogButton.add), dialogButton(DialogButton.cancel)],
+            defaultButton: DialogButton.add,
         });
-        if (!res || res.button !== "Add") return;
+        if (!res || res.button !== DialogButton.add) return;
         const name = res.value.trim();
         if (!name) return;
         if (/[\s/\\]/.test(name)) {
@@ -519,7 +520,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const choice = await showConfirmationDialog({
             title,
             message,
-            buttons: [confirmLabel, "Cancel"],
+            buttons: [dialogButton(confirmLabel), dialogButton(DialogButton.cancel)],
         });
         return choice === confirmLabel;
     }

@@ -8,6 +8,7 @@ import { debounce, errMessage } from "../../../shared/utils";
 // barrel here would create a circular module dependency.
 import { DEFAULT_PROFILE, type BoardVarsFile } from "../../api/board-vars/types";
 import type { ILinkData } from "../../../shared/link-data";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 /** HS1 host-slot shape — the two per-window selection fields ride
  *  `host.editorSettings["env-vars-view"]`. Survives EnvVars↔Monaco switches AND app restarts. */
@@ -212,9 +213,9 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
             const keyCount = Object.keys(this.state.get().data[namespace]?.[profile] ?? {}).length;
             const result = await ui.confirm(
                 `Delete profile "${profile}"${keyCount > 0 ? ` and its ${keyCount} variable${keyCount !== 1 ? "s" : ""}` : ""}?`,
-                { title: "Delete Profile", buttons: ["Delete", "Cancel"] },
+                { title: "Delete Profile", buttons: [DialogButton.delete, DialogButton.cancel] },
             );
-            if (result !== "Delete") return;
+            if (result !== DialogButton.delete) return;
         }
         this.state.update((s) => {
             if (s.data[namespace]) delete s.data[namespace][profile];
@@ -245,9 +246,9 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
             const profileCount = Object.keys(this.state.get().data[namespace] ?? {}).length;
             const result = await ui.confirm(
                 `Delete namespace "${namespace}"${profileCount > 0 ? ` and its ${profileCount} profile${profileCount !== 1 ? "s" : ""}` : ""}?`,
-                { title: "Delete Namespace", buttons: ["Delete", "Cancel"] },
+                { title: "Delete Namespace", buttons: [DialogButton.delete, DialogButton.cancel] },
             );
-            if (result !== "Delete") return;
+            if (result !== DialogButton.delete) return;
         }
         this.state.update((s) => {
             delete s.data[namespace];

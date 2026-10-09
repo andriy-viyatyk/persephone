@@ -15,6 +15,7 @@ import { PublishedBoardArchive, PublishedBoardInfo } from "../../ipc/api-param-t
 import { boardInstallRegistry } from "./board-install-registry";
 import { boardTrust } from "./board-trust";
 import { errMessage } from "../../shared/utils";
+import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
 
 function newInstallId(): string {
     return crypto.randomUUID();
@@ -132,9 +133,9 @@ export async function uninstallCatalogBoard(args: {
         title: "Delete board",
         message:
             `Delete board "${args.name}"? This permanently removes its folder and all its files.`,
-        buttons: ["Delete", "Cancel"],
+        buttons: [dialogButton(DialogButton.delete), dialogButton(DialogButton.cancel)],
     });
-    if (choice !== "Delete") return false;
+    if (choice !== DialogButton.delete) return false;
 
     const { ensureBoardIdle } = await import("./board-updates");
     if (!(await ensureBoardIdle(args.root, "deleting"))) return false;

@@ -14,6 +14,7 @@ import {
     type CommitDialogProps,
     type CommitResult,
 } from "./CommitDialog";
+import { DialogButton } from "./dialog-buttons";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/Textarea/Textarea.css";
@@ -184,14 +185,15 @@ export class CommitDialogView extends VanillaView<DialogViewProps> {
         }
 
         buttons.forEach((button, index) => {
-            const disabled = button !== "Cancel" && (!canCommit || !!state.committing);
+            const disabled = button !== DialogButton.cancel && (!canCommit || !!state.committing);
             let buttonView = this.buttonViews.get(index);
+            const label = button === DialogButton.cancel ? button : actionButtonLabel(button, branchChanged);
             const nextProps = {
-                onClick: button === "Cancel"
+                onClick: button === DialogButton.cancel
                     ? () => { void this.model.close(undefined); }
-                    : () => { void this.model.submit(button); },
+                    : () => { void this.model.submit(button, label); },
                 disabled,
-                children: button === "Cancel" ? button : actionButtonLabel(button, branchChanged),
+                children: label,
             };
             if (!buttonView) {
                 buttonView = new ButtonView(nextProps);

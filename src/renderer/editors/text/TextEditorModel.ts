@@ -2,6 +2,7 @@ import { TComponentState, TOneState } from "../../core/state/state";
 import { TDialogModel } from "../../core/state/model";
 import { shell } from "../../api/shell";
 import { ui } from "../../api/ui";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { fs as appFs } from "../../api/fs";
 import type { MenuItem } from "../../uikit";
 import { textFileMenuItems } from "../shared/editor-menu-items";
@@ -431,10 +432,10 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         const inputResult = await ui.input("Enter new file name:", {
             title: "Rename File",
             value: this.state.get().title,
-            buttons: ["Rename", "Cancel"],
+            buttons: [DialogButton.rename, DialogButton.cancel],
             selectAll: true,
         });
-        if (inputResult?.button === "Rename" && inputResult.value) {
+        if (inputResult?.button === DialogButton.rename && inputResult.value) {
             await this.renameFile(inputResult.value);
         }
     };

@@ -1,6 +1,9 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { CreateBoardDialogState } from "../../../ui/dialogs/CreateBoardDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
+import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+
+const CREATE_BOARD = "Create";
 
 interface CreateBoardModel { submit(): Promise<void>; }
 
@@ -26,12 +29,12 @@ export class CreateBoardDialogAdapter implements DialogAdapter {
     get folder(): string { return this.state.folder; }
     get name(): string { return this.state.name; }
     get creating(): boolean { return this.state.creating; }
-    get buttons(): readonly string[] { return ["Cancel", "Create"]; }
+    get buttons(): readonly string[] { return [DialogButton.cancel, CREATE_BOARD]; }
     get aiVision(): IAiVisionDescriptor { return AI_VISION; }
 
     async click(button: string): Promise<unknown> {
         requireButton(this.buttons, button);
-        if (button === "Cancel") return this.cancel();
+        if (button === DialogButton.cancel) return this.cancel();
         if (this.state.creating || !this.state.folder.trim() || !this.state.name.trim()) {
             throw new Error(`Dialog button ${JSON.stringify(button)} is disabled.`);
         }

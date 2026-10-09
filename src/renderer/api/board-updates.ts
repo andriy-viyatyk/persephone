@@ -19,6 +19,9 @@ import { isBoardRootBusy } from "../editors/board/busy-boards";
 import { BoardEditorModel } from "../editors/board/BoardEditorModel";
 import { installVersion } from "./board-install";
 import { errMessage } from "../../shared/utils";
+import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+
+const CLOSE_BOARD_AND_CONTINUE = "Close board & continue";
 
 export interface BoardUpdate {
     /** Installed root (the board folder), original case. */
@@ -141,9 +144,9 @@ export async function ensureBoardIdle(
             message:
                 `This board is open in ${pages.length} page(s) and must be closed before `
                 + `${action}. The page(s) stay open and go empty. Continue?`,
-            buttons: ["Close board & continue", "Cancel"],
+            buttons: [dialogButton(CLOSE_BOARD_AND_CONTINUE), dialogButton(DialogButton.cancel)],
         });
-        if (choice !== "Close board & continue") return false;
+        if (choice !== CLOSE_BOARD_AND_CONTINUE) return false;
         // A content-host board's unsaved-changes prompt still gets its say, and a cancelled
         // prompt aborts the whole operation — same contract the old `page.close()` loop had.
         for (const p of pages) {

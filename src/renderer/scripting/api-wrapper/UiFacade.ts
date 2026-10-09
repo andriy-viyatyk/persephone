@@ -1,5 +1,5 @@
 import type { LogViewEditor } from "../../editors/log-view";
-import type { StyledText, LogEntry, CheckboxItem, GridColumn } from "../../editors/log-view/logTypes";
+import { normalizeLogDialogButtons, type StyledText, type LogEntry, type CheckboxItem, type GridColumn } from "../../editors/log-view/logTypes";
 import { StyledLogBuilder } from "./StyledTextBuilder";
 import { Progress } from "./Progress";
 import { Grid } from "./Grid";
@@ -23,6 +23,16 @@ function isOptionsObject<T>(value: T): value is Exclude<Extract<T, object>, read
  */
 export class UiFacade {
     constructor(private readonly editor: LogViewEditor) {}
+
+    private addDialogEntry(type: string, fields: Record<string, unknown>): Promise<LogEntry> {
+        const buttons = fields.buttons;
+        if (Array.isArray(buttons) && buttons.every((button): button is string => typeof button === "string")) {
+            // Normalize caller-owned strings for validation while preserving the public string[] shape.
+            const normalized = normalizeLogDialogButtons(buttons);
+            fields = { ...fields, buttons: normalized.map(({ id, requiresInput }) => requiresInput ? `!${id}` : id) };
+        }
+        return this.editor.addDialogEntry(type, fields);
+    }
 
     // =========================================================================
     // Console forwarding control
@@ -70,23 +80,23 @@ export class UiFacade {
     readonly dialog = {
         confirm: (messageOrOpts: StyledText | { message: StyledText; buttons?: string[] }, buttons?: string[]): Promise<LogEntry> => {
             if (isOptionsObject(messageOrOpts)) {
-                return this.editor.addDialogEntry("input.confirm", messageOrOpts);
+                return this.addDialogEntry("input.confirm", messageOrOpts);
             }
-            return this.editor.addDialogEntry("input.confirm", { message: messageOrOpts, buttons });
+            return this.addDialogEntry("input.confirm", { message: messageOrOpts, buttons });
         },
 
         buttons: (buttonsOrOpts: string[] | { buttons: string[]; title?: StyledText }, title?: StyledText): Promise<LogEntry> => {
             if (isOptionsObject(buttonsOrOpts)) {
-                return this.editor.addDialogEntry("input.buttons", buttonsOrOpts);
+                return this.addDialogEntry("input.buttons", buttonsOrOpts);
             }
-            return this.editor.addDialogEntry("input.buttons", { buttons: buttonsOrOpts, title });
+            return this.addDialogEntry("input.buttons", { buttons: buttonsOrOpts, title });
         },
 
         textInput: (titleOrOpts?: StyledText | { title?: StyledText; placeholder?: string; defaultValue?: string; buttons?: string[] }, options?: { placeholder?: string; defaultValue?: string; buttons?: string[] }): Promise<LogEntry> => {
             if (isOptionsObject(titleOrOpts)) {
-                return this.editor.addDialogEntry("input.text", titleOrOpts);
+                return this.addDialogEntry("input.text", titleOrOpts);
             }
-            return this.editor.addDialogEntry("input.text", { title: titleOrOpts, ...options });
+            return this.addDialogEntry("input.text", { title: titleOrOpts, ...options });
         },
 
         checkboxes: (itemsOrOpts: (string | CheckboxItem)[] | { items: (string | CheckboxItem)[]; title?: StyledText; layout?: "vertical" | "flex"; buttons?: string[] }, title?: StyledText, buttons?: string[]): Promise<LogEntry> => {
@@ -94,23 +104,23 @@ export class UiFacade {
                 items.map((item) => typeof item === "string" ? { label: item } : item);
 
             if (Array.isArray(itemsOrOpts)) {
-                return this.editor.addDialogEntry("input.checkboxes", { items: normalizeItems(itemsOrOpts), title, buttons });
+                return this.addDialogEntry("input.checkboxes", { items: normalizeItems(itemsOrOpts), title, buttons });
             }
-            return this.editor.addDialogEntry("input.checkboxes", { ...itemsOrOpts, items: normalizeItems(itemsOrOpts.items) });
+            return this.addDialogEntry("input.checkboxes", { ...itemsOrOpts, items: normalizeItems(itemsOrOpts.items) });
         },
 
         radioboxes: (itemsOrOpts: string[] | { items: string[]; title?: StyledText; checked?: string; layout?: "vertical" | "flex"; buttons?: string[] }, title?: StyledText, buttons?: string[]): Promise<LogEntry> => {
             if (Array.isArray(itemsOrOpts)) {
-                return this.editor.addDialogEntry("input.radioboxes", { items: itemsOrOpts, title, buttons });
+                return this.addDialogEntry("input.radioboxes", { items: itemsOrOpts, title, buttons });
             }
-            return this.editor.addDialogEntry("input.radioboxes", itemsOrOpts);
+            return this.addDialogEntry("input.radioboxes", itemsOrOpts);
         },
 
         select: (itemsOrOpts: string[] | { items: string[]; title?: StyledText; selected?: string; placeholder?: string; buttons?: string[] }, title?: StyledText, buttons?: string[]): Promise<LogEntry> => {
             if (Array.isArray(itemsOrOpts)) {
-                return this.editor.addDialogEntry("input.select", { items: itemsOrOpts, title, buttons });
+                return this.addDialogEntry("input.select", { items: itemsOrOpts, title, buttons });
             }
-            return this.editor.addDialogEntry("input.select", itemsOrOpts);
+            return this.addDialogEntry("input.select", itemsOrOpts);
         },
     };
 

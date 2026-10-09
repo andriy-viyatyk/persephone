@@ -71,7 +71,7 @@ export class DialogsNode {
             kind: "Dialogs",
             summary: "Open renderer dialogs indexed in live display order.",
             members: MEMBERS,
-            help: "dialogs[i] is a live dialog adapter. Read its safe fields, then use click(button) or cancel() to answer it. Adapters whose action closes with a result expose that boolean; action-specific adapters may return undefined.",
+            help: "dialogs[i] is a live dialog adapter. click(value) prefers a unique exact button id, then accepts a unique exact displayed label; use cancel() to dismiss. Adapters whose action closes with a result expose that boolean; action-specific adapters may return undefined.",
             children: () => this.children(),
             index: (key) => this.index(key),
         };
