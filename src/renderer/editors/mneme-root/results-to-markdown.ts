@@ -1,4 +1,5 @@
 import type { WikiSearchHit } from "./MnemeRootEditorModel";
+import { t } from "../../../shared/i18n/t";
 
 // =============================================================================
 // Mneme search results → markdown (US-680).
@@ -30,7 +31,7 @@ function hitToMarkdown(hit: WikiSearchHit): string {
     const meta: string[] = [];
     if (hit.tags?.length) meta.push(hit.tags.map((t) => `\`${t}\``).join(" "));
     meta.push(`\`${path}\``);
-    if (typeof hit.score === "number") meta.push(`score ${hit.score.toFixed(2)}`);
+    if (typeof hit.score === "number") meta.push(`${t("mneme.score")} ${hit.score.toFixed(2)}`);
     lines.push("", meta.join("  ·  "));
 
     return lines.join("\n");

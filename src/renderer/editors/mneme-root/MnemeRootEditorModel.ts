@@ -10,6 +10,7 @@ import { parseToolResult } from "../mneme-config/mnemeTypes";
 import { MnemeTreeProvider } from "../../content/tree-providers/MnemeTreeProvider";
 import { fpJoin } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
+import { untranslated } from "../../../shared/i18n/t";
 
 /** Search mode passed to `search`. Hybrid (FTS + vector) is the default; it
  *  degrades to text until the embedding model is provisioned. */
@@ -96,7 +97,7 @@ export const getDefaultMnemeRootEditorState = (): MnemeRootEditorState => ({
     // Per-instance UUID — keys this editor in `page.editors[]`. Two roots open at
     // once are two distinct instances, each contributing its own `mneme-tree` panel.
     id: crypto.randomUUID(),
-    title: "Mneme",
+    title: untranslated("Mneme"),
     modified: false,
     type: "mnemeRootPage",
     editor: "mneme-root",

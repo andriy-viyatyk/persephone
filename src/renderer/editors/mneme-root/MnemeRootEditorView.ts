@@ -20,6 +20,7 @@ import {
 } from "./MnemeRootEditorModel";
 import { resultsToMarkdown } from "./results-to-markdown";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
+import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Textarea/Textarea.css";
@@ -30,11 +31,13 @@ import "../../uikit/TagsInput/TagsInput.css";
 import "../../uikit/Input/Input.css";
 import "../markdown/MarkdownBlock.css";
 
-const MODE_ITEMS: IListBoxItem[] = [
-    { value: "hybrid", label: "Hybrid" },
-    { value: "text", label: "Text" },
-    { value: "vector", label: "Vector" },
-];
+function modeItems(): IListBoxItem[] {
+    return [
+        { value: "hybrid", label: t("mneme.modeHybrid") },
+        { value: "text", label: t("mneme.modeText") },
+        { value: "vector", label: t("mneme.modeVector") },
+    ];
+}
 
 type RootProjection = Pick<MnemeRootEditorState,
     "rootName" | "resolving" | "error" | "searchQuery" | "searchMode" | "searching" |
@@ -72,13 +75,13 @@ class RootFiltersView extends VanillaView<RootFiltersProps> {
 
     protected onMount(): void {
         const includePanel = createPanelElement({ direction: "column", gap: "xs" });
-        includePanel.append(createTextElement("Include tags", { size: "xs", color: "light" }));
+        includePanel.append(createTextElement(t("mneme.include"), { size: "xs", color: "light" }));
         this.includeTags = this.child(new TagsInputView(this.includeProps()));
         includePanel.append(this.includeTags.root);
         this.includeTags.mount();
 
         const excludePanel = createPanelElement({ direction: "column", gap: "xs" });
-        excludePanel.append(createTextElement("Exclude tags", { size: "xs", color: "light" }));
+        excludePanel.append(createTextElement(t("mneme.exclude"), { size: "xs", color: "light" }));
         this.excludeTags = this.child(new TagsInputView(this.excludeProps()));
         excludePanel.append(this.excludeTags.root);
         this.excludeTags.mount();
@@ -86,12 +89,12 @@ class RootFiltersView extends VanillaView<RootFiltersProps> {
         const dates = createPanelElement({ direction: "row", gap: "md", align: "center", justify: "between", wrap: true });
         const dateInputs = createPanelElement({ direction: "row", gap: "md", align: "center", wrap: true });
         const from = createPanelElement({ direction: "row", gap: "xs", align: "center" });
-        from.append(createTextElement("Created from", { size: "xs", color: "light" }));
+        from.append(createTextElement(t("mneme.createdFrom"), { size: "xs", color: "light" }));
         this.dateFrom = this.child(new DateInputView(this.dateProps("from")));
         from.append(this.dateFrom.root);
         this.dateFrom.mount();
         const to = createPanelElement({ direction: "row", gap: "xs", align: "center" });
-        to.append(createTextElement("to", { size: "xs", color: "light" }));
+        to.append(createTextElement(t("mneme.to"), { size: "xs", color: "light" }));
         this.dateTo = this.child(new DateInputView(this.dateProps("to")));
         to.append(this.dateTo.root);
         this.dateTo.mount();
@@ -123,14 +126,14 @@ class RootFiltersView extends VanillaView<RootFiltersProps> {
             || Boolean(props.state.dateFrom || props.state.dateTo);
         if (hasFilters && !this.clearButton) {
             this.clearButton = this.child(new ButtonView({
-                ...buttonProps("mneme-filters-clear", "Clear", props.onClear), variant: "link", icon: "close",
+                ...buttonProps("mneme-filters-clear", t("mneme.clear"), props.onClear), variant: "link", icon: "close",
             }));
             clearHost.append(this.clearButton.root); this.clearButton.mount();
         } else if (!hasFilters && this.clearButton) {
             this.releaseChild(this.clearButton); this.clearButton = undefined;
         } else {
             this.clearButton?.update({
-                ...buttonProps("mneme-filters-clear", "Clear", props.onClear), variant: "link", icon: "close",
+                ...buttonProps("mneme-filters-clear", t("mneme.clear"), props.onClear), variant: "link", icon: "close",
             });
         }
     }
@@ -139,7 +142,7 @@ class RootFiltersView extends VanillaView<RootFiltersProps> {
         return {
             name: "mneme-filter-tags", value: this.props.state.filterTags,
             onChange: (value: string[]) => this.props.model.setFilterTags(value),
-            items: this.props.state.tagVocab, placeholder: "Add tag…", size: "sm" as const,
+            items: this.props.state.tagVocab, placeholder: t("mneme.addTag"), size: "sm" as const,
             disabled: !this.props.state.rootName,
         };
     }
@@ -148,7 +151,7 @@ class RootFiltersView extends VanillaView<RootFiltersProps> {
         return {
             name: "mneme-filter-exclude-tags", value: this.props.state.filterExcludeTags,
             onChange: (value: string[]) => this.props.model.setExcludeTags(value),
-            items: this.props.state.tagVocab, placeholder: "Add tag…", size: "sm" as const,
+            items: this.props.state.tagVocab, placeholder: t("mneme.addTag"), size: "sm" as const,
             tagVariant: "outlined" as const, disabled: !this.props.state.rootName,
         };
     }
@@ -196,7 +199,7 @@ class RootStatusView extends VanillaView<RootStatusProps> {
         }
         const error = !props.searching && props.searchError;
         const note = !props.searching && !props.searchError && props.searchNote;
-        this.message.textContent = props.searching ? "Searching…" : error || note || "";
+        this.message.textContent = props.searching ? t("mneme.searching") : error || note || "";
         this.message.dataset.color = error ? "error" : "light";
     }
 }
@@ -363,8 +366,8 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
         } else this.statusView?.update({ searching: state.searching, searchError: state.searchError, searchNote: state.searchNote });
 
         const kind = this.resultKindFor(state);
-        const message = !state.rootName ? state.error ?? (state.resolving ? "Connecting…" : "Mneme")
-            : !state.hasSearched ? "Type a query and press Enter" : "No results";
+        const message = !state.rootName ? state.error ?? (state.resolving ? t("mneme.connecting") : untranslated("Mneme"))
+            : !state.hasSearched ? t("mneme.queryPrompt") : t("mneme.noResults");
         const props: RootResultProps = { kind, message, markdown: resultsToMarkdown(state.results), highlightText: state.searchQuery };
         if (!this.resultView || this.resultKind !== kind) {
             const next = this.child(new RootResultView(props)); resultsHost.append(next.root); next.mount();
@@ -404,14 +407,15 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
         return {
             name: "mneme-search-input", singleLine: true, size: "sm", flex: true, minHeight: 24, maxHeight: 140,
             value: state.searchQuery, onChange: (value) => this.model.setQuery(value), onKeyDown: this.queryKeyDown,
-            placeholder: state.rootName ? `Search ${state.rootName}…` : "Search…", disabled,
+            placeholder: state.rootName ? t("mneme.queryPlaceholder", { root: state.rootName }) : t("mneme.queryPlaceholderEmpty"), disabled,
         };
     }
 
     private modeProps(state = projectState(this.model.state.get()), disabled = state.resolving || state.searching): SelectViewProps<IListBoxItem> {
+        const items = modeItems();
         return {
-            name: "mneme-search-mode", size: "sm", width: 110, items: MODE_ITEMS,
-            value: MODE_ITEMS.find((item) => item.value === state.searchMode) ?? MODE_ITEMS[0],
+            name: "mneme-search-mode", size: "sm", width: 110, items,
+            value: items.find((item) => item.value === state.searchMode) ?? items[0],
             onChange: (item) => this.model.setMode(item.value as MnemeSearchMode), disabled, filterMode: "off",
         };
     }
@@ -421,13 +425,13 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
             + (state.dateFrom || state.dateTo ? 1 : 0);
         return {
             name: "mneme-filters-toggle", size: "sm", icon: this.filtersOpen ? "chevron-down" : "chevron-right",
-            children: count > 0 ? `Filters (${count})` : "Filters", onClick: this.toggleFilters,
+            children: count > 0 ? t("mneme.filtersCount", { count }) : t("mneme.filters"), onClick: this.toggleFilters,
         };
     }
 
     private searchButtonProps(state = projectState(this.model.state.get()), disabled = state.resolving || state.searching): ButtonViewProps {
         return {
-            name: "mneme-search-run", size: "sm", icon: "search", children: "Search",
+            name: "mneme-search-run", size: "sm", icon: "search", children: t("mneme.search"),
             onClick: () => { void this.model.runSearch(); }, disabled: disabled || !state.rootName,
         };
     }

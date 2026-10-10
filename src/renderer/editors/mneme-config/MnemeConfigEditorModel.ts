@@ -23,6 +23,7 @@ import {
     isStatusBusy,
 } from "./mnemeTypes";
 import { errMessage } from "../../../shared/utils";
+import { t, untranslated } from "../../../shared/i18n/t";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export interface MnemeConfigEditorState extends EditorStateBase {
@@ -48,7 +49,7 @@ export interface MnemeConfigEditorState extends EditorStateBase {
 
 export const getDefaultMnemeConfigEditorState = (): MnemeConfigEditorState => ({
     id: crypto.randomUUID(),
-    title: "Mneme",
+    title: untranslated("Mneme"),
     modified: false,
     type: "mnemeConfigPage",
     editor: "mneme-config",
@@ -163,12 +164,12 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             await mnemeConnection.reconnect();
             mnemeStatusModel.refresh();
             if (status.running) {
-                ui.notify("Mneme restarted", "success");
+                ui.notify(t("mneme.restartSucceeded", { product: untranslated("Mneme") }), "success");
             } else {
-                ui.notify(`Mneme failed to restart: ${status.error ?? "unknown error"}`, "error");
+                ui.notify(t("mneme.restartFailed", { product: untranslated("Mneme"), error: status.error ?? "unknown error" }), "error");
             }
         } catch (err) {
-            ui.notify(`Restart failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.restartFailedShort", { error: errMessage(err) }), "error");
         }
     };
 
@@ -218,7 +219,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             this.state.update((s) => { s.status = status; });
             this.syncPolling();
         } catch (err) {
-            if (!silent) ui.notify(`Mneme status failed: ${errMessage(err)}`, "error");
+            if (!silent) ui.notify(t("mneme.statusFailed", { product: untranslated("Mneme"), error: errMessage(err) }), "error");
         } finally {
             if (!silent) this.state.update((s) => { s.refreshing = false; });
         }
@@ -265,7 +266,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
     }
 
     addRoot = async (): Promise<void> => {
-        const picked = await fs.showFolderDialog({ title: "Add wiki root folder" });
+        const picked = await fs.showFolderDialog({ title: t("mneme.addWikiRootFolder") });
         const folder = picked?.[0];
         if (!folder) return;
 
@@ -274,8 +275,8 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         // is then rejected as a duplicate. Prompt for a unique name.
         const { showInputDialog } = await import("../../ui/dialogs/InputDialog");
         const res = await showInputDialog({
-            title: "Add root",
-            message: "Root name — must be unique; no spaces, '/', or '\\':",
+            title: t("mneme.addRootTitle"),
+            message: t("mneme.rootNameHint"),
             value: fpBasename(folder),
             selectAll: true,
             buttons: [dialogButton(DialogButton.add), dialogButton(DialogButton.cancel)],
@@ -285,7 +286,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const name = res.value.trim();
         if (!name) return;
         if (/[\s/\\]/.test(name)) {
-            ui.notify("Root name must not contain spaces, '/', or '\\'.", "error");
+            ui.notify(t("mneme.rootNameInvalid"), "error");
             return;
         }
 
@@ -298,16 +299,16 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             await this.refreshStatus();
             mnemeStatusModel.refresh();
             this.kickPolling();
-            ui.notify("Root added — indexing in background", "success");
+            ui.notify(t("mneme.rootAdded"), "success");
         } catch (err) {
-            ui.notify(`Add root failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.rootAddFailed", { error: errMessage(err) }), "error");
         }
     };
 
     removeRoot = async (root: string): Promise<void> => {
         const choice = await this.confirm(
-            "Remove root",
-            `Remove root "${root}"?`,
+            t("mneme.removeRootTitle"),
+            t("mneme.removeRootMessage", { root }),
             "Remove",
         );
         if (!choice) return;
@@ -316,9 +317,9 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         try {
             await client.callTool({ name: "remove_root", arguments: { root } });
             await this.refreshStatus();
-            ui.notify(`Root "${root}" removed`, "success");
+            ui.notify(t("mneme.rootRemoved", { root }), "success");
         } catch (err) {
-            ui.notify(`Remove root failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.rootRemoveFailed", { error: errMessage(err) }), "error");
         }
     };
 
@@ -350,14 +351,14 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             );
             await this.refreshStatus();
             mnemeStatusModel.refresh();
-            ui.notify(root ? `Reindexed "${root}"` : "Reindex complete", "success");
+            ui.notify(root ? t("mneme.reindexedRoot", { root }) : t("mneme.reindexComplete"), "success");
         } catch (err) {
             const aborted = abort.signal.aborted;
             if (aborted) {
-                ui.notify("Reindex cancelled", "info");
+                ui.notify(t("mneme.reindexCancelled"), "info");
                 await this.refreshStatus();
             } else {
-                ui.notify(`Reindex failed: ${errMessage(err)}`, "error");
+                ui.notify(t("mneme.reindexFailed", { error: errMessage(err) }), "error");
             }
         } finally {
             delete this._aborts[key];
@@ -397,7 +398,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
                 this.state.update((s) => { s.rootConfigs = { ...s.rootConfigs, [root]: cfg }; });
             }
         } catch (err) {
-            ui.notify(`Read filters failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.filtersReadFailed", { error: errMessage(err) }), "error");
         }
     };
 
@@ -418,9 +419,9 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             await this.refreshStatus();
             mnemeStatusModel.refresh();
             this.kickPolling();
-            ui.notify("Filters applied — reindexing in background", "success");
+            ui.notify(t("mneme.filtersApplied"), "success");
         } catch (err) {
-            ui.notify(`Apply filters failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.filtersApplyFailed", { error: errMessage(err) }), "error");
         }
     };
 
@@ -438,12 +439,12 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             this.kickPolling();
             const dl = this.state.get().status?.model?.download?.phase;
             if (dl === "downloading" || dl === "verifying") {
-                ui.notify("Model download started", "info");
+                ui.notify(t("mneme.modelDownloadStarted"), "info");
             } else if (this.modelReady) {
-                ui.notify("Model is up to date", "success");
+                ui.notify(t("mneme.modelUpToDate"), "success");
             }
         } catch (err) {
-            ui.notify(`Model update failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.modelUpdateFailed", { error: errMessage(err) }), "error");
         }
     };
 
@@ -494,8 +495,8 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
 
     deleteIndex = async (root: string, modelId: string, schemaVer: number): Promise<void> => {
         const choice = await this.confirm(
-            "Delete index",
-            `Delete the "${modelId} / v${schemaVer}" index DB for root "${root}"? This cannot be undone.`,
+            t("mneme.deleteIndexTitle"),
+            t("mneme.deleteIndexMessage", { model: modelId, version: schemaVer, root }),
             "Delete",
         );
         if (!choice) return;
@@ -507,9 +508,9 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
                 arguments: { root, modelId, schemaVer },
             });
             await this.loadIndexInventory();
-            ui.notify("Index deleted", "success");
+            ui.notify(t("mneme.indexDeleted"), "success");
         } catch (err) {
-            ui.notify(`Delete index failed: ${errMessage(err)}`, "error");
+            ui.notify(t("mneme.indexDeleteFailed", { error: errMessage(err) }), "error");
         }
     };
 

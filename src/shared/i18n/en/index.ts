@@ -11,6 +11,8 @@ import { boardCatalog } from "./board";
 import { explorerCatalog } from "./explorer";
 import { linksCatalog } from "./links";
 import { gitCatalog } from "./git";
+import { mnemeCatalog } from "./mneme";
+import { aboutCatalog } from "./about";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
@@ -27,6 +29,8 @@ export const englishCatalog = {
     explorer: Object.fromEntries(Object.entries(explorerCatalog).map(([key, entry]) => [key, entry.message])),
     links: Object.fromEntries(Object.entries(linksCatalog).map(([key, entry]) => [key, entry.message])),
     git: Object.fromEntries(Object.entries(gitCatalog).map(([key, entry]) => [key, entry.message])),
+    mneme: Object.fromEntries(Object.entries(mnemeCatalog).map(([key, entry]) => [key, entry.message])),
+    about: Object.fromEntries(Object.entries(aboutCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;
@@ -41,6 +45,8 @@ export const englishCatalog = {
     explorer: MessagesOf<typeof explorerCatalog>;
     links: MessagesOf<typeof linksCatalog>;
     git: MessagesOf<typeof gitCatalog>;
+    mneme: MessagesOf<typeof mnemeCatalog>;
+    about: MessagesOf<typeof aboutCatalog>;
 };
 
 export type EnglishCatalog = typeof englishCatalog;

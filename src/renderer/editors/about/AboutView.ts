@@ -16,6 +16,7 @@ import { DividerView } from "../../uikit/Divider/DividerView";
 import { SplitterView, type SplitterProps } from "../../uikit/Splitter/SplitterView";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { t, untranslated } from "../../../shared/i18n/t";
 import { AboutGuideBrowserView } from "./AboutGuideBrowserView";
 import "./AboutView.css";
 import "../../uikit/Button/Button.css";
@@ -152,8 +153,8 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         content.append(createPanelElement(
             { direction: "column", align: "center", gap: "xs" },
             [
-                createTextElement("Persephone", { size: "xxl", bold: true }),
-                createTextElement(`Version ${app.version || "..."}`, { color: "light" }),
+                createTextElement(untranslated("Persephone"), { size: "xxl", bold: true }),
+                createTextElement(t("about.version", { version: app.version || "..." }), { color: "light" }),
             ],
         ));
 
@@ -162,10 +163,10 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         firstDivider.mount();
 
         const versions = createPanelElement({ direction: "column", gap: "lg", width: "100%" });
-        this.electronVersion = this.versionRow(versions, "Electron");
-        this.nodeVersion = this.versionRow(versions, "Node.js");
-        this.chromeVersion = this.versionRow(versions, "Chromium");
-        this.availableBoardsText = this.versionRow(versions, "Available boards");
+        this.electronVersion = this.versionRow(versions, untranslated("Electron"));
+        this.nodeVersion = this.versionRow(versions, untranslated("Node.js"));
+        this.chromeVersion = this.versionRow(versions, untranslated("Chromium"));
+        this.availableBoardsText = this.versionRow(versions, t("about.availableBoards"));
         content.append(versions);
 
         const secondDivider = this.child(new DividerView({}));
@@ -194,14 +195,14 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             variant: "link",
             size: "sm",
             onClick: () => { void shell.openExternal("https://github.com/andriy-viyatyk/persephone"); },
-            children: "GitHub Repository",
+            children: t("about.githubRepository", { brand: untranslated("GitHub") }),
         }));
         const reportIssue = this.child(new ButtonView({
             name: "about-report-issue",
             variant: "link",
             size: "sm",
             onClick: () => { void shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues"); },
-            children: "Report Issue",
+            children: t("about.reportIssue"),
         }));
         links.append(github.root, reportIssue.root);
         github.mount();
@@ -274,7 +275,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             variant: "primary",
             disabled: this.checking,
             onClick: () => { void this.handleCheckForUpdates(); },
-            children: this.checking ? "Checking..." : "Check for Updates",
+            children: this.checking ? t("about.checkingUpdates") : t("about.checkUpdates"),
         };
     }
 
@@ -294,7 +295,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         for (const node of this.statusNodes.splice(0)) node.parentNode?.removeChild(node);
 
         if (this.checking) {
-            const status = createTextElement("Checking for updates...", { size: "md", color: "light" });
+            const status = createTextElement(t("about.checkingUpdates"), { size: "md", color: "light" });
             this.statusNodes.push(status);
             this.statusHost.append(status);
             return;
@@ -303,7 +304,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
 
         if (this.updateResult.updateAvailable && this.updateResult.releaseVersion && this.updateResult.releaseUrl) {
             const { releaseVersion, releaseUrl } = this.updateResult;
-            const status = createTextElement(`New version ${releaseVersion} available!`, {
+            const status = createTextElement(t("about.newVersionAvailable", { version: releaseVersion }), {
                 size: "md",
                 color: "warning",
             });
@@ -313,7 +314,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
                 variant: "link",
                 size: "sm",
                 onClick: () => { void shell.openExternal(releaseUrl); },
-                children: "Download",
+                children: t("board.download"),
             }));
             const whatsNew = this.child(new ButtonView({
                 name: "about-update-whats-new",
@@ -326,7 +327,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
                         ),
                     );
                 },
-                children: "What's New",
+                children: t("about.whatsNew"),
             }));
             this.statusButtons.push(download, whatsNew);
             actions.append(download.root, whatsNew.root);
@@ -337,7 +338,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             return;
         }
 
-        const status = createTextElement("You're up to date!", { size: "md", color: "success" });
+        const status = createTextElement(t("about.upToDate"), { size: "md", color: "success" });
         this.statusNodes.push(status);
         this.statusHost.append(status);
     }

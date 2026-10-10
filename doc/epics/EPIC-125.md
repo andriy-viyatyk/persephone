@@ -116,8 +116,8 @@ Claude), as in EPIC-124.
 | [US-1658](../tasks/US-1658-board-host-strings/README.md) | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
 | [US-1659](../tasks/US-1659-explorer-links-strings/README.md) | Explorer and link editor | Planned |
 | [US-1660](../tasks/US-1660-git-diff-strings/README.md) | Git tree, file diff, compare, archive | Planned |
-| US-1661 | Mneme editors and About | Planned |
-| US-1662 | MCP inspector, Tools hub, Storybook | Planned |
+| [US-1661](../tasks/US-1661-mneme-about-strings/README.md) | Mneme editors and About | Planned |
+| [US-1662](../tasks/US-1662-tools-strings/README.md) | MCP inspector, Tools hub, Storybook | Planned |
 | US-1663 | Remaining editors and uikit defaults | Planned |
 | US-1664 | Monaco UI language (D9) | Planned |
 | US-1665 | Layout fixes, lint rule to error, closing sweep | Planned |

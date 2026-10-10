@@ -10,6 +10,7 @@ import type { WikiModelDownload, WikiModelFile, WikiModelStatus } from "./mnemeT
 import { formatBytes } from "../../core/utils/format";
 import { isDownloadActive, isModelReady } from "./mnemeTypes";
 import type { MnemeConfigEditorState } from "./MnemeConfigEditorModel";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Button/Button.css";
@@ -33,13 +34,13 @@ class DownloadProgressView extends VanillaView<{ download: WikiModelDownload }> 
     private sync(props: { download: WikiModelDownload }): void {
         const d = props.download; this.progress.update({ value: d.bytesTotal > 0 ? d.bytesDone : undefined, max: d.bytesTotal > 0 ? d.bytesTotal : undefined });
         this.label.dataset.color = d.phase === "error" ? "error" : "light";
-        this.label.textContent = d.phase === "verifying" ? "verifying…" : d.phase === "error" ? "download failed" : `${formatBytes(d.bytesDone)} / ${formatBytes(d.bytesTotal)}`;
+        this.label.textContent = d.phase === "verifying" ? t("mneme.downloadVerifying") : d.phase === "error" ? t("mneme.downloadFailed") : `${formatBytes(d.bytesDone)} / ${formatBytes(d.bytesTotal)}`;
     }
 }
 
 class NoModelView extends VanillaView<Record<string, never>> {
     public constructor() { super({}, createPanelElement({ direction: "row", align: "center", gap: "sm" })); }
-    protected onMount(): void { const dot = this.child(new DotView({ size: "xs", color: "warning" })); this.root.append(dot.root, text("No model resolved — semantic search is unavailable.", "warning")); dot.mount(); }
+    protected onMount(): void { const dot = this.child(new DotView({ size: "xs", color: "warning" })); this.root.append(dot.root, text(t("mneme.noModelResolved"), "warning")); dot.mount(); }
 }
 
 interface ModelDetailsProps { model: WikiModelStatus; ready: boolean; }
@@ -61,8 +62,8 @@ class ModelDetailsView extends VanillaView<ModelDetailsProps> {
     protected onUpdate(props: ModelDetailsProps): void { this.sync(props); }
     protected onDispose(): void { this.fileViews.clear(); this.filesList = undefined; this.filesHost = undefined; }
     private sync(props: ModelDetailsProps): void {
-        const model = props.model; this.heading.textContent = `${model.name} · ${model.precision} · v${model.version}`; this.cache.textContent = `Cache: ${model.dir}`;
-        this.statusDot.update({ size: "xs", color: props.ready ? "success" : "warning" }); this.statusText.dataset.color = props.ready ? "success" : "warning"; this.statusText.textContent = props.ready ? "ready" : "not loaded"; this.filesList.update(model.files);
+        const model = props.model; this.heading.textContent = t("mneme.modelDetails", { model: model.name, precision: model.precision, version: model.version }); this.cache.textContent = t("mneme.cache", { directory: model.dir });
+        this.statusDot.update({ size: "xs", color: props.ready ? "success" : "warning" }); this.statusText.dataset.color = props.ready ? "success" : "warning"; this.statusText.textContent = props.ready ? t("mneme.ready") : t("mneme.notLoaded"); this.filesList.update(model.files);
     }
     private createFile(file: WikiModelFile): HTMLElement { const view = new ModelFileView({ file }); claimViewOwnership(view); view.mount(); this.fileViews.set(view.root, view); return view.root; }
     private removeFile(element: HTMLElement): void { this.fileViews.get(element)?.dispose(); this.fileViews.delete(element); }
@@ -76,12 +77,12 @@ class ModelFileView extends VanillaView<{ file: WikiModelFile }> {
         this.present = text(""); this.verified = text(""); const spacer = createPanelElement({ flex: true }); this.bytes = text("", "light", "xs"); this.root.append(nameHost, this.present, this.verified, spacer, this.bytes); this.sync(this.props);
     }
     protected onUpdate(props: { file: WikiModelFile }): void { this.sync(props); }
-    private sync(props: { file: WikiModelFile }): void { const f = props.file; this.filename.textContent = f.filename; this.filename.dataset.truncate = ""; this.present.dataset.color = f.present ? "success" : "error"; this.present.textContent = f.present ? "present ✓" : "missing"; this.verified.hidden = !f.present; this.verified.dataset.color = f.verified ? "success" : "error"; this.verified.textContent = f.verified ? "verified ✓" : "verified ✕"; this.bytes.textContent = formatBytes(f.bytes); }
+    private sync(props: { file: WikiModelFile }): void { const f = props.file; this.filename.textContent = f.filename; this.filename.dataset.truncate = ""; this.present.dataset.color = f.present ? "success" : "error"; this.present.textContent = f.present ? t("mneme.present") : t("mneme.missing"); this.verified.hidden = !f.present; this.verified.dataset.color = f.verified ? "success" : "error"; this.verified.textContent = f.verified ? t("mneme.verified") : t("mneme.notVerified"); this.bytes.textContent = formatBytes(f.bytes); }
 }
 
 class ModelWarningView extends VanillaView<Record<string, never>> {
     public constructor() { super({}, createPanelElement({ direction: "row", align: "center", gap: "xs" })); }
-    protected onMount(): void { const dot = this.child(new DotView({ size: "xs", color: "warning" })); this.root.append(dot.root, text("Model not loaded — semantic search unavailable", "warning")); dot.mount(); }
+    protected onMount(): void { const dot = this.child(new DotView({ size: "xs", color: "warning" })); this.root.append(dot.root, text(t("mneme.modelNotLoaded"), "warning")); dot.mount(); }
 }
 
 export class ModelPanelView extends VanillaView<ModelPanelProps> {
@@ -91,7 +92,7 @@ export class ModelPanelView extends VanillaView<ModelPanelProps> {
     public constructor(props: ModelPanelProps) { super(props, createPanelElement({ direction: "column" })); }
     protected onMount(): void {
         const header = createPanelElement({ background: "dark", borderBottom: true, direction: "row", align: "center", gap: "sm", paddingX: "lg", paddingY: "sm" });
-        header.append(text("Embedding model", undefined, "base"), createPanelElement({ flex: true })); this.warningHost = createPanelElement({});
+        header.append(text(t("mneme.embeddingModel"), undefined, "base"), createPanelElement({ flex: true })); this.warningHost = createPanelElement({});
         this.modelButton = this.child(new ButtonView(this.buttonProps())); header.append(this.warningHost, this.modelButton.root); this.modelButton.mount();
         this.body = createPanelElement({ direction: "column", gap: "md", padding: "lg" }); this.root.append(header, this.body); this.sync(this.props);
     }
@@ -111,5 +112,5 @@ export class ModelPanelView extends VanillaView<ModelPanelProps> {
         else if (model && this.modelArm instanceof ModelDetailsView) this.modelArm.update({ model, ready });
         else if (model && this.modelArm) { this.releaseChild(this.modelArm); const view = this.child(new ModelDetailsView({ model, ready })); this.modelArm = view; this.body.append(view.root); view.mount(); }
     }
-    private buttonProps() { const status = this.props.state.status; const model = status?.model; const downloading = isDownloadActive(model?.download); const ready = isModelReady(status); return { name: "mneme-update-model", size: "sm" as const, variant: ready ? "default" as const : "primary" as const, disabled: downloading, children: downloading ? "Downloading…" : ready ? "Update model" : "Load model", onClick: () => { void this.props.model.updateModel(); } }; }
+    private buttonProps() { const status = this.props.state.status; const model = status?.model; const downloading = isDownloadActive(model?.download); const ready = isModelReady(status); return { name: "mneme-update-model", size: "sm" as const, variant: ready ? "default" as const : "primary" as const, disabled: downloading, children: downloading ? t("mneme.downloading") : ready ? t("mneme.updateModel") : t("mneme.loadModel"), onClick: () => { void this.props.model.updateModel(); } }; }
 }

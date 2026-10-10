@@ -16,6 +16,7 @@ import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import type { MnemeRootEditorModel, MnemeRootEditorState } from "./MnemeRootEditorModel";
+import { t, untranslated } from "../../../shared/i18n/t";
 
 type MnemeTreeState = Pick<
     MnemeRootEditorState,
@@ -51,7 +52,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
         this.closeButton = this.child(new IconButtonView({
             name: "mneme-tree-close",
             size: "sm",
-            title: "Close",
+            title: t("mneme.close"),
             icon: "close",
             onClick: (event) => {
                 event.stopPropagation();
@@ -63,7 +64,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Wiki",
+            title: t("shell.wiki"),
         });
         this.own(() => this.header?.dispose());
 
@@ -194,7 +195,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
             this.releaseChild(tree);
         }
 
-        const message = state.error ?? (state.resolving ? "Connecting…" : "No content");
+        const message = state.error ?? (state.resolving ? t("mneme.connecting") : t("mneme.noContent"));
         if (!this.fallbackPanel) {
             this.fallbackText = createTextElement(message, {
                 size: "sm",
@@ -217,12 +218,12 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
             headerHost: props.headerHost,
             icon: props.iconElement,
             badge: this.rootTag?.root,
-            title: "Wiki",
+            title: t("shell.wiki"),
             // Shown collapsed too, unlike the refresh/save actions on the other panels: those
             // act on content the collapsed panel is not showing, while Close disposes the whole
             // editor. Hiding it meant expanding a panel purely to close it.
             actions: this.closeButton?.root,
-            showMainTitle: "Open Mneme search",
+            showMainTitle: t("mneme.openSearch", { product: untranslated("Mneme") }),
             showMainActive: this.mnemeModel.isMain,
             onShowMain: this.showMain,
         });

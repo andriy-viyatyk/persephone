@@ -20,6 +20,7 @@ import type {
     MarkdownQueueRequest,
 } from "../markdown/MarkdownBodyModel";
 import type { AboutGuideBrowserState, AboutGuideLocation } from "./AboutEditor";
+import { t } from "../../../shared/i18n/t";
 
 export interface AboutGuidePageViewProps {
     browser: AboutGuideBrowserState;
@@ -116,7 +117,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             size: "sm",
             disabled: true,
             onClick: props.back,
-            children: "Back",
+            children: t("about.back"),
         }));
         this.openInTabButton = this.child(new ButtonView({
             name: "about-guide-open-in-tab",
@@ -124,7 +125,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             size: "sm",
             disabled: true,
             onClick: this.openInTab,
-            children: "Open in tab",
+            children: t("about.openInTab"),
         }));
         this.breadcrumbs = createPanelElement({
             name: "about-guide-breadcrumbs",
@@ -282,7 +283,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             size: "sm",
             disabled: !this.props.browser.canGoBack,
             onClick: this.props.back,
-            children: "Back",
+            children: t("about.back"),
         });
         this.openInTabButton.update({
             name: "about-guide-open-in-tab",
@@ -290,7 +291,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             size: "sm",
             disabled: !isGuide,
             onClick: this.openInTab,
-            children: "Open in tab",
+            children: t("about.openInTab"),
         });
     }
 

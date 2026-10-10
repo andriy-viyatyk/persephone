@@ -14,6 +14,7 @@ import type { ITreeItem, TreeProps } from "../../uikit/Tree/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { AboutEditor, type AboutGuideLocation } from "./AboutEditor";
 import { AboutGuidePageView } from "./AboutGuidePageView";
+import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Checkbox/Checkbox.css";
 import "./AboutView.css";
@@ -228,7 +229,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             gap: "md",
             shrink: false,
         });
-        whatsNew.append(createTextElement("What's New", { size: "lg", bold: true }));
+        whatsNew.append(createTextElement(t("about.whatsNew"), { size: "lg", bold: true }));
         this.releaseNotesText = document.createElement("div");
         this.releaseNotesText.classList.add("about-release-notes");
         whatsNew.append(this.releaseNotesText);
@@ -237,7 +238,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             variant: "link",
             size: "sm",
             onClick: () => { void this.openGuide("whats-new"); },
-            children: "View full What's New",
+            children: t("about.viewFullWhatsNew"),
         }));
         whatsNew.append(openWhatsNew.root);
         openWhatsNew.mount();
@@ -250,7 +251,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             wrap: true,
             shrink: false,
         });
-        resources.append(createTextElement("Resources:", { size: "lg", bold: true }));
+        resources.append(createTextElement(t("about.resources"), { size: "lg", bold: true }));
         const resourceActions = createPanelElement({
             direction: "row",
             wrap: true,
@@ -258,16 +259,16 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             align: "center",
             minWidth: 0,
         });
-        this.appendResourceButton(resourceActions, "about-resource-repository", "Repository", () => {
+        this.appendResourceButton(resourceActions, "about-resource-repository", t("about.repository"), () => {
             void guard("Failed to open repository", () => shell.openExternal("https://github.com/andriy-viyatyk/persephone"));
         });
-        this.appendResourceButton(resourceActions, "about-resource-issues", "Issues", () => {
+        this.appendResourceButton(resourceActions, "about-resource-issues", t("about.issues"), () => {
             void guard("Failed to open issues", () => shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues"));
         });
-        this.appendResourceButton(resourceActions, "about-resource-boards", "Boards catalogue", () => {
+        this.appendResourceButton(resourceActions, "about-resource-boards", t("about.boardsCatalogue"), () => {
             void this.openGuide("boards");
         });
-        this.appendResourceButton(resourceActions, "about-resource-mcp-setup", "MCP setup", () => {
+        this.appendResourceButton(resourceActions, "about-resource-mcp-setup", t("about.mcpSetup", { protocol: untranslated("MCP") }), () => {
             void this.openGuide("mcp-setup");
         });
         resources.append(resourceActions);
@@ -283,7 +284,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             name: "about-show-agent-guides",
             checked: this.model.guideBrowser.showAgentGuides,
             onChange: (checked) => { this.model.guideBrowser.setShowAgentGuides(checked); },
-            children: "Show agent guides",
+            children: t("about.showAgentGuides"),
         }));
         treeSection.append(this.showAgentGuidesToggle.root);
         this.showAgentGuidesToggle.mount();
@@ -337,7 +338,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             name: "about-show-agent-guides",
             checked: this.model.guideBrowser.showAgentGuides,
             onChange: (checked) => { this.model.guideBrowser.setShowAgentGuides(checked); },
-            children: "Show agent guides",
+            children: t("about.showAgentGuides"),
         });
         this.applyLocation();
         if (this.loadedShowAgentGuides !== this.model.guideBrowser.showAgentGuides) {
@@ -401,7 +402,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             focusSelection: true,
             rowHeight: 24,
             loading: this.loading,
-            emptyMessage: "No guides available.",
+            emptyMessage: t("about.noGuides"),
         };
     }
 

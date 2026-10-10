@@ -2,6 +2,7 @@ import { t } from "../../../shared/i18n/t";
 
 /** Localized presentation for app-owned page titles whose stored/API identity stays English. */
 export function displayPageTitle(editor: string | undefined, title: string | undefined): string {
+    if (editor === "about-view" && title === "About") return t("editors.about");
     if (editor === "browser-view" && title === "Browser") return t("browser.pageTitle");
     if (editor === "browser-view" && title === "Browser (agent)") return t("browser.pageTitleAgent");
     if (editor === "monaco" && title?.startsWith("Source: ")) {

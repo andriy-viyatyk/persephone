@@ -2,6 +2,7 @@ import {
     EditorModel,
     type EditorStateBase,
 } from "../base/EditorModel";
+import { englishMessage } from "../../../shared/i18n/t";
 
 export const ABOUT_PAGE_ID = "about-page";
 
@@ -12,7 +13,7 @@ export interface AboutEditorState extends EditorStateBase {
 
 export const getDefaultAboutEditorState = (): AboutEditorState => ({
     id: ABOUT_PAGE_ID,
-    title: "About",
+    title: englishMessage("editors.about"),
     modified: false,
     type: "aboutPage",
     editor: "about-view",
@@ -96,6 +97,6 @@ export class AboutEditor extends EditorModel<AboutEditorState> {
     /** Preserve the legacy `restore()` title-reset for parity. */
     async restore(): Promise<void> {
         await super.restore();
-        this.state.update((s) => { s.title = "About"; });
+        this.state.update((s) => { s.title = englishMessage("editors.about"); });
     }
 }

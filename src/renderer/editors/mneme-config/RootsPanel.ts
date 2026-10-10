@@ -14,6 +14,7 @@ import { MnemeConfigEditorModel } from "./MnemeConfigEditorModel";
 import type { StaleIndexEntry, WikiRootConfig, WikiRootStatus, WikiReindexProgress } from "./mnemeTypes";
 import { formatBytes } from "../../core/utils/format";
 import { isReindexActive } from "./mnemeTypes";
+import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Button/Button.css";
@@ -56,14 +57,14 @@ export class RootsPanelView extends VanillaView<RootsPanelProps> {
             background: "dark", borderBottom: true, direction: "row", align: "center", gap: "sm",
             paddingX: "lg", paddingY: "sm",
         });
-        header.append(text("Roots", undefined, "base"), createPanelElement({ flex: true }));
-        this.addButton = this.child(new ButtonView({ name: "mneme-add-root", size: "sm", children: "+ Add root", onClick: this.addRoot }));
-        this.reindexAllButton = this.child(new ButtonView({ name: "mneme-reindex-all", size: "sm", children: "Reindex all", onClick: this.reindexAll }));
+        header.append(text(t("mneme.roots"), undefined, "base"), createPanelElement({ flex: true }));
+        this.addButton = this.child(new ButtonView({ name: "mneme-add-root", size: "sm", children: t("mneme.addRoot"), onClick: this.addRoot }));
+        this.reindexAllButton = this.child(new ButtonView({ name: "mneme-reindex-all", size: "sm", children: t("mneme.reindexAll"), onClick: this.reindexAll }));
         header.append(this.addButton.root, this.reindexAllButton.root);
         this.addButton.mount(); this.reindexAllButton.mount();
 
         const body = createPanelElement({ direction: "column", gap: "sm", padding: "lg" });
-        this.emptyMessage = text("No roots configured. Add one to start indexing.", "light");
+        this.emptyMessage = text(t("mneme.noRoots"), "light");
         this.rowsHost = createPanelElement({ direction: "column", gap: "sm" });
         body.append(this.emptyMessage, this.rowsHost);
         this.root.append(header, body);
@@ -91,9 +92,9 @@ export class RootsPanelView extends VanillaView<RootsPanelProps> {
         if (!emptyMessage || !addButton || !reindexAllButton || !rows) return;
         const roots = state.status?.roots ?? [];
         emptyMessage.hidden = roots.length !== 0;
-        addButton.update({ name: "mneme-add-root", size: "sm", children: "+ Add root", onClick: this.addRoot });
+        addButton.update({ name: "mneme-add-root", size: "sm", children: t("mneme.addRoot"), onClick: this.addRoot });
         reindexAllButton.update({
-            name: "mneme-reindex-all", size: "sm", children: "Reindex all", disabled: state.connectionStatus !== "connected" || !!state.reindexProgress.__all__, onClick: this.reindexAll,
+            name: "mneme-reindex-all", size: "sm", children: t("mneme.reindexAll"), disabled: state.connectionStatus !== "connected" || !!state.reindexProgress.__all__, onClick: this.reindexAll,
         });
         rows.update(roots);
     }
@@ -147,8 +148,8 @@ class RootRowView extends VanillaView<RootRowProps> {
     protected onMount(): void {
         const top = createPanelElement({ direction: "row", align: "center", gap: "md" });
         this.title = text(this.props.root.name, undefined, "md"); this.title.dataset.variant = "link"; this.title.dataset.bold = "";
-        this.folder = text(this.props.root.folder, "light"); this.folder.dataset.truncate = ""; this.folder.dataset.hoverUnderline = ""; this.folder.title = `Open in Explorer: ${this.props.root.folder}`;
-        this.docs = text(`${this.props.root.docCount} docs`, "light"); this.bytes = text(formatBytes(this.props.root.indexBytes), "light");
+        this.folder = text(this.props.root.folder, "light"); this.folder.dataset.truncate = ""; this.folder.dataset.hoverUnderline = ""; this.folder.title = t("mneme.openInExplorer", { folder: this.props.root.folder });
+        this.docs = text(t("mneme.docsCount", { count: this.props.root.docCount }), "light"); this.bytes = text(formatBytes(this.props.root.indexBytes), "light");
         this.listen(this.title, "click", () => this.props.model.openRoot(this.props.root.folder));
         this.listen(this.folder, "click", () => this.props.model.showRootInExplorer(this.props.root.folder));
         const spacer = this.child(new SpacerView({}));
@@ -157,16 +158,16 @@ class RootRowView extends VanillaView<RootRowProps> {
         const actions = createPanelElement({ direction: "row", align: "center", gap: "sm" });
         this.indexInfo = text("");
         const activeDot = this.child(new DotView({ size: "xs", color: "success" }));
-        const activeText = text("active", "success", "xs");
+        const activeText = text(t("mneme.active"), "success", "xs");
         const fill = createPanelElement({ flex: true });
-        this.filtersButton = this.child(new ButtonView({ name: this.filterName(), size: "sm", variant: "link", children: "Filters", onClick: this.toggleFilters }));
+        this.filtersButton = this.child(new ButtonView({ name: this.filterName(), size: "sm", variant: "link", children: t("mneme.filters"), onClick: this.toggleFilters }));
         this.reindexButton = this.child(new ButtonView(this.reindexProps()));
         this.removeButton = this.child(new ButtonView(this.removeProps()));
         actions.append(this.indexInfo, activeDot.root, activeText, fill, this.filtersButton.root, this.reindexButton.root, this.removeButton.root);
         activeDot.mount(); spacer.mount(); this.filtersButton.mount(); this.reindexButton.mount(); this.removeButton.mount();
 
         this.progressHost = createPanelElement({}); this.progressText = text("", "light", "xs");
-        this.errorText = text("Background indexing failed — check the Mneme log; try Reindex.", "error", "xs"); this.errorText.hidden = true;
+        this.errorText = text(t("mneme.backgroundIndexingFailed", { product: untranslated("Mneme") }), "error", "xs"); this.errorText.hidden = true;
         this.staleHost = createPanelElement({ direction: "column", gap: "xs", paddingTop: "xs" });
         this.filtersHost = createPanelElement({});
         this.root.append(top, actions, this.progressHost, this.errorText, this.staleHost, this.filtersHost);
@@ -193,10 +194,10 @@ class RootRowView extends VanillaView<RootRowProps> {
         if (!title || !folder || !docs || !bytes || !indexInfo || !filtersButton || !reindexButton || !removeButton || !progressHost || !progressText || !errorText || !staleList || !filtersHost) return;
         const root = props.root; const manual = props.reindexProgress[root.name]; const bg = root.reindex;
         const bgActive = isReindexActive(bg); const progress = manual ?? (bgActive ? bg : undefined);
-        title.textContent = root.name; folder.textContent = root.folder; folder.title = `Open in Explorer: ${root.folder}`;
-        docs.textContent = `${root.docCount} docs`; bytes.textContent = formatBytes(root.indexBytes);
-        indexInfo.textContent = `index: ${root.model}-${root.precision} · v${root.schemaVer}`;
-        filtersButton.update({ name: this.filterName(), size: "sm", variant: "link", children: this.expanded ? "Hide filters" : "Filters", onClick: this.toggleFilters });
+        title.textContent = root.name; folder.textContent = root.folder; folder.title = t("mneme.openInExplorer", { folder: root.folder });
+        docs.textContent = t("mneme.docsCount", { count: root.docCount }); bytes.textContent = formatBytes(root.indexBytes);
+        indexInfo.textContent = t("mneme.indexInfo", { model: root.model, precision: root.precision, version: root.schemaVer });
+        filtersButton.update({ name: this.filterName(), size: "sm", variant: "link", children: this.expanded ? t("mneme.hideFilters") : t("mneme.filters"), onClick: this.toggleFilters });
         reindexButton.update(this.reindexProps()); removeButton.update(this.removeProps());
         errorText.hidden = !( !manual && bg?.phase === "error");
 
@@ -211,7 +212,8 @@ class RootRowView extends VanillaView<RootRowProps> {
         } else if (progress && this.progressView) {
             this.progressView.update({ value: progress.total > 0 ? progress.processed : undefined, max: progress.total > 0 ? progress.total : undefined });
         }
-        progressText.textContent = progress ? `${progress.phase}${progress.total > 0 ? ` ${progress.processed}/${progress.total}` : ""}` : "";
+        const phase = progress ? this.phaseLabel(progress.phase) : "";
+        progressText.textContent = progress ? `${phase}${progress.total > 0 ? ` ${progress.processed}/${progress.total}` : ""}` : "";
 
         const stale = (props.staleIndexes[root.name] ?? []).filter((entry) => !entry.active);
         staleList.update(stale);
@@ -229,21 +231,32 @@ class RootRowView extends VanillaView<RootRowProps> {
     }
     private removeStale(element: HTMLElement): void { this.staleViews.get(element)?.dispose(); this.staleViews.delete(element); }
     private filterName(): string { return `mneme-filters-${this.props.root.name}`; }
+    private phaseLabel(phase: string): string {
+        switch (phase) {
+            case "scanning": return t("mneme.phaseScanning");
+            case "embedding": return t("mneme.phaseEmbedding");
+            case "idle": return t("mneme.phaseIdle");
+            case "done": return t("mneme.phaseDone");
+            case "cancelled": return t("mneme.phaseCancelled");
+            case "error": return t("mneme.phaseError");
+            default: return phase;
+        }
+    }
     private readonly toggleFilters = (): void => {
         this.expanded = !this.expanded;
         if (!this.expanded && this.filtersView) { this.releaseChild(this.filtersView); this.filtersView = undefined; }
         if (this.expanded && !this.props.rootConfigs[this.props.root.name]) void this.props.model.getRootConfig(this.props.root.name);
-        this.filtersButton.update({ name: this.filterName(), size: "sm", variant: "link", children: this.expanded ? "Hide filters" : "Filters", onClick: this.toggleFilters });
+        this.filtersButton.update({ name: this.filterName(), size: "sm", variant: "link", children: this.expanded ? t("mneme.hideFilters") : t("mneme.filters"), onClick: this.toggleFilters });
         if (this.expanded) this.sync(this.props);
     };
     private reindexProps() {
         const manual = this.props.reindexProgress[this.props.root.name]; const bgActive = isReindexActive(this.props.root.reindex);
-        return manual ? { name: `mneme-cancel-${this.props.root.name}`, size: "sm" as const, variant: "danger" as const, children: "Cancel", onClick: () => this.props.model.cancelReindex(this.props.root.name) }
-            : { name: `mneme-reindex-${this.props.root.name}`, size: "sm" as const, variant: "default" as const, children: bgActive ? "Indexing…" : "Reindex", disabled: bgActive, onClick: () => { void this.props.model.reindex(this.props.root.name); } };
+        return manual ? { name: `mneme-cancel-${this.props.root.name}`, size: "sm" as const, variant: "danger" as const, children: t("common.cancel"), onClick: () => this.props.model.cancelReindex(this.props.root.name) }
+            : { name: `mneme-reindex-${this.props.root.name}`, size: "sm" as const, variant: "default" as const, children: bgActive ? t("mneme.indexing") : t("mneme.reindex"), disabled: bgActive, onClick: () => { void this.props.model.reindex(this.props.root.name); } };
     }
     private removeProps() {
         const busy = !!this.props.reindexProgress[this.props.root.name] || isReindexActive(this.props.root.reindex);
-        return { name: `mneme-remove-${this.props.root.name}`, size: "sm" as const, variant: "danger" as const, children: "Remove", disabled: busy, onClick: () => { void this.props.model.removeRoot(this.props.root.name); } };
+        return { name: `mneme-remove-${this.props.root.name}`, size: "sm" as const, variant: "danger" as const, children: t("common.remove"), disabled: busy, onClick: () => { void this.props.model.removeRoot(this.props.root.name); } };
     }
 }
 
@@ -256,8 +269,8 @@ class StaleIndexRowView extends VanillaView<StaleIndexRowProps> {
         const spacer = createPanelElement({ flex: true }); this.root.append(this.label, this.bytes, spacer, this.button.root); this.button.mount(); this.sync(this.props);
     }
     protected onUpdate(props: StaleIndexRowProps): void { this.sync(props); }
-    private sync(props: StaleIndexRowProps): void { const { label, bytes, button } = this; if (!label || !bytes || !button) return; label.textContent = `stale: ${props.entry.modelId} / v${props.entry.schemaVer}`; bytes.textContent = formatBytes(props.entry.bytes); button.update(this.buttonProps()); }
-    private buttonProps() { const e = this.props.entry; return { name: `mneme-delidx-${this.props.root}-${e.modelId}-${e.schemaVer}`, size: "sm" as const, variant: "danger" as const, children: "Delete", onClick: () => { void this.props.model.deleteIndex(this.props.root, e.modelId, e.schemaVer); } }; }
+    private sync(props: StaleIndexRowProps): void { const { label, bytes, button } = this; if (!label || !bytes || !button) return; label.textContent = t("mneme.staleIndex", { model: props.entry.modelId, version: props.entry.schemaVer }); bytes.textContent = formatBytes(props.entry.bytes); button.update(this.buttonProps()); }
+    private buttonProps() { const e = this.props.entry; return { name: `mneme-delidx-${this.props.root}-${e.modelId}-${e.schemaVer}`, size: "sm" as const, variant: "danger" as const, children: t("menus.delete"), onClick: () => { void this.props.model.deleteIndex(this.props.root, e.modelId, e.schemaVer); } }; }
 }
 
 interface FiltersEditorProps { model: MnemeConfigEditorModel; root: string; config?: WikiRootConfig; }
@@ -276,7 +289,7 @@ export class FiltersEditorView extends VanillaView<FiltersEditorProps> {
 
     public constructor(props: FiltersEditorProps) { super(props, createPanelElement({ direction: "column", gap: "sm", paddingY: "sm" })); }
     protected onMount(): void {
-        this.live = true; this.content = createPanelElement({}); this.loading = text("Loading filters…", "light", "xs"); this.root.append(this.content); this.sync(this.props);
+        this.live = true; this.content = createPanelElement({}); this.loading = text(t("mneme.loadingFilters"), "light", "xs"); this.root.append(this.content); this.sync(this.props);
     }
     protected onUpdate(props: FiltersEditorProps): void { this.sync(props); }
     protected onDispose(): void { this.live = false; this.disposeControls(); this.content = undefined; this.loading = undefined; }
@@ -294,23 +307,23 @@ export class FiltersEditorView extends VanillaView<FiltersEditorProps> {
         if (!includeInput || !ignoreInput || !resetButton || !applyButton) return;
         const cfg = props.config; const inc = this.include ?? cfg.include; const ign = this.ignore ?? cfg.ignore;
         this.includeList?.update(inc); this.ignoreList?.update(ign);
-        includeInput.update({ name: `mneme-include-add-${props.root}`, size: "sm", placeholder: "add include glob (e.g. **/*.md)", value: this.includeDraft, onChange: (v) => { this.includeDraft = v; this.includeInput?.update(this.includeInputProps("include")); }, onKeyDown: this.keyHandler("include"), width: 260 });
-        ignoreInput.update({ name: `mneme-ignore-add-${props.root}`, size: "sm", placeholder: "add ignore glob (e.g. drafts/**)", value: this.ignoreDraft, onChange: (v) => { this.ignoreDraft = v; this.ignoreInput?.update(this.includeInputProps("ignore")); }, onKeyDown: this.keyHandler("ignore"), width: 260 });
+        includeInput.update({ name: `mneme-include-add-${props.root}`, size: "sm", placeholder: t("mneme.includeGlobPlaceholder", { pattern: "**/*.md" }), value: this.includeDraft, onChange: (v) => { this.includeDraft = v; this.includeInput?.update(this.includeInputProps("include")); }, onKeyDown: this.keyHandler("include"), width: 260 });
+        ignoreInput.update({ name: `mneme-ignore-add-${props.root}`, size: "sm", placeholder: t("mneme.ignoreGlobPlaceholder", { pattern: "drafts/**" }), value: this.ignoreDraft, onChange: (v) => { this.ignoreDraft = v; this.ignoreInput?.update(this.includeInputProps("ignore")); }, onKeyDown: this.keyHandler("ignore"), width: 260 });
         const dirty = JSON.stringify(inc) !== JSON.stringify(cfg.include) || JSON.stringify(ign) !== JSON.stringify(cfg.ignore);
-        resetButton.update({ name: `mneme-filters-reset-${props.root}`, size: "sm", variant: "ghost", children: "Reset", disabled: !dirty, onClick: this.reset });
-        applyButton.update({ name: `mneme-filters-apply-${props.root}`, size: "sm", variant: "primary", children: "Apply & reindex", disabled: !dirty, onClick: this.apply });
+        resetButton.update({ name: `mneme-filters-reset-${props.root}`, size: "sm", variant: "ghost", children: t("mneme.reset"), disabled: !dirty, onClick: this.reset });
+        applyButton.update({ name: `mneme-filters-apply-${props.root}`, size: "sm", variant: "primary", children: t("mneme.applyReindex"), disabled: !dirty, onClick: this.apply });
     }
 
     private hasControls(): boolean { return !!this.includeInput; }
     private createControls(): void {
         this.content.replaceChildren(); this.divider = this.child(new DividerView({})); this.content.append(this.divider.root); this.divider.mount();
-        this.content.append(text("Include (empty → defaults to *.md)", "light", "xs"));
+        this.content.append(text(t("mneme.includeDefaults", { pattern: "*.md" }), "light", "xs"));
         this.includeTags = createPanelElement({ direction: "row", wrap: true, gap: "xs", align: "center" }); this.content.append(this.includeTags);
-        this.includeInput = this.child(new InputView(this.includeInputProps("include"))); this.addIncludeButton = this.child(new ButtonView({ name: `mneme-include-addbtn-${this.props.root}`, size: "sm", children: "Add", onClick: () => this.addGlob("include") }));
+        this.includeInput = this.child(new InputView(this.includeInputProps("include"))); this.addIncludeButton = this.child(new ButtonView({ name: `mneme-include-addbtn-${this.props.root}`, size: "sm", children: t("dialogs.buttonAdd"), onClick: () => this.addGlob("include") }));
         const includeRow = createPanelElement({ direction: "row", gap: "xs", align: "center" }); includeRow.append(this.includeInput.root, this.addIncludeButton.root); this.content.append(includeRow); this.includeInput.mount(); this.addIncludeButton.mount();
-        this.content.append(text("Ignore (gitignore-style)", "light", "xs"));
+        this.content.append(text(t("mneme.ignoreGitignore"), "light", "xs"));
         this.ignoreTags = createPanelElement({ direction: "row", wrap: true, gap: "xs", align: "center" }); this.content.append(this.ignoreTags);
-        this.ignoreInput = this.child(new InputView(this.includeInputProps("ignore"))); this.addIgnoreButton = this.child(new ButtonView({ name: `mneme-ignore-addbtn-${this.props.root}`, size: "sm", children: "Add", onClick: () => this.addGlob("ignore") }));
+        this.ignoreInput = this.child(new InputView(this.includeInputProps("ignore"))); this.addIgnoreButton = this.child(new ButtonView({ name: `mneme-ignore-addbtn-${this.props.root}`, size: "sm", children: t("dialogs.buttonAdd"), onClick: () => this.addGlob("ignore") }));
         const ignoreRow = createPanelElement({ direction: "row", gap: "xs", align: "center" }); ignoreRow.append(this.ignoreInput.root, this.addIgnoreButton.root); this.content.append(ignoreRow); this.ignoreInput.mount(); this.addIgnoreButton.mount();
         const actions = createPanelElement({ direction: "row", gap: "sm", justify: "end" }); this.resetButton = this.child(new ButtonView({})); this.applyButton = this.child(new ButtonView({})); actions.append(this.resetButton.root, this.applyButton.root); this.content.append(actions); this.resetButton.mount(); this.applyButton.mount();
         this.includeList = this.makeTagList(this.includeTags, "include"); this.ignoreList = this.makeTagList(this.ignoreTags, "ignore");
@@ -333,5 +346,5 @@ export class FiltersEditorView extends VanillaView<FiltersEditorProps> {
     private readonly reset = (): void => { this.include = null; this.ignore = null; this.includeDraft = ""; this.ignoreDraft = ""; this.sync(this.props); };
     private readonly apply = async (): Promise<void> => { const cfg = this.props.config; if (!cfg) return; const include = this.include ?? cfg.include; const ignore = this.ignore ?? cfg.ignore; await this.props.model.setRootConfig(this.props.root, include, ignore); if (!this.live) return; this.include = null; this.ignore = null; this.sync(this.props); };
     private keyHandler(kind: "include" | "ignore") { return (event: KeyboardEvent): void => { if (event.key === "Enter") this.addGlob(kind); }; }
-    private includeInputProps(kind: "include" | "ignore") { return { name: `mneme-${kind}-add-${this.props.root}`, size: "sm" as const, placeholder: kind === "include" ? "add include glob (e.g. **/*.md)" : "add ignore glob (e.g. drafts/**)", value: kind === "include" ? this.includeDraft : this.ignoreDraft, onChange: (v: string) => { if (kind === "include") this.includeDraft = v; else this.ignoreDraft = v; }, onKeyDown: this.keyHandler(kind), width: 260 }; }
+    private includeInputProps(kind: "include" | "ignore") { return { name: `mneme-${kind}-add-${this.props.root}`, size: "sm" as const, placeholder: kind === "include" ? t("mneme.includeGlobPlaceholder", { pattern: "**/*.md" }) : t("mneme.ignoreGlobPlaceholder", { pattern: "drafts/**" }), value: kind === "include" ? this.includeDraft : this.ignoreDraft, onChange: (v: string) => { if (kind === "include") this.includeDraft = v; else this.ignoreDraft = v; }, onKeyDown: this.keyHandler(kind), width: 260 }; }
 }
