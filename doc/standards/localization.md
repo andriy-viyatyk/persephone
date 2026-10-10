@@ -77,18 +77,54 @@ scrambles the configured Russian letters throughout that user pack. Built-in pac
 filtered at runtime; they must pass the checker’s no-false-hit gate, which rejects a built-in pack
 if applying D16 would change any message.
 
-## Pilot lessons
+## Phase 2 reference
 
-- The hardcoded UI lint rule is a useful scan, but it misses some positions, including `emptyText:`
-  and visible strings passed through helpers such as `settingsFieldLabel()`. Review each scoped file
-  for app-owned text in helper arguments, defaults, descriptions, messages, and accessibility
-  attributes in addition to fixing lint findings.
-- If agent-only catalog data files contain English source messages that should not trigger UI-copy
-  warnings, exempt those files in the ESLint configuration rather than adding inline disable
-  comments beside catalog entries.
-- Resolve `t()` lazily while building view props or rendering. Module-level translated constants can
-  capture the English fallback before the active language pack is ready.
+### UI positions and lint coverage
 
-The pack validator in [`validate-pack.ts`](../../src/shared/i18n/validate-pack.ts) checks the pack
-filename/code, known keys, message forms, placeholders, and D15 restrictions. Keep keys in the
-current flat shape and include hashes for translated entries when maintaining a pack.
+`vanilla-view/no-hardcoded-ui-strings` checks the UI positions established by phase 2:
+
+- `notify`, `confirm`, and `input` calls on the internal UI receivers (`ui`, `app.ui`,
+  `services.ui`); direct `message` properties passed to `show*Dialog()`; and `emptyMessage`.
+- `ariaLabel` / `aria-label`, `setAttribute("title" | "placeholder" | "aria-label", value)`, and
+  the editor registry's display `name` in `src/renderer/editors/register-editors.ts`.
+- The earlier label/title/placeholder/tooltip/children positions, text assignments, and known UI
+  text helpers.
+
+This visitor is a scan, not proof that a file has no remaining UI literals. Positional helper
+arguments and defaults can be invisible to it: inspect arguments such as `settingsFieldLabel()`
+and other local UI helpers, as well as descriptions, messages, and accessibility text. Keep checks
+receiver- or file-scoped when property names also carry data. Exempt agent-only catalog data files
+in ESLint with a rationale rather than adding inline disable comments.
+
+### Display copy, English values, and identity
+
+When a string serves both UI and agents, scripts, or persisted state, keep an English value and a
+catalog key side by side (E2). Use `englishMessage(key)` for the durable/agent-facing value and
+`t(key)` for display; this applies to editor names, Tools/sidebar registry labels, panel labels,
+page titles such as Browser and About, and board permission lines. Use `untranslated("…")` only
+when deliberate English data or a product/protocol name must occupy a UI text position.
+
+Every translated menu item keeps a stable `id` so automation selects by identity across locales.
+Built-in dialog buttons likewise retain and compare their stable `id`; the translated label is
+presentation only. Keep custom caller labels and returned values as caller data.
+
+### Catalog and component conventions
+
+UIKit stays independent of the app catalog. Component defaults come from
+`src/renderer/uikit/shared/uikit-text.ts` via `uikitText()`; Persephone supplies localized
+overrides once with `setUikitText()` at startup. Explicit caller-provided text remains authoritative.
+
+Monaco NLS uses the explicit language allow-list in `src/renderer/i18n/monaco-nls.ts` (`cs`, `de`,
+`es`, `fr`, `it`, `ja`, `ko`, `pl`, `pt-BR`, `tr`, `zh-CN`, `zh-TW`). Unsupported languages keep
+Monaco's English widgets; never construct a message-module path from a locale or add Russian to the
+list.
+
+Keep each sentence in one catalog message with placeholders; do not assemble sentences from
+translated fragments. Use CLDR plural category objects for counts. Every plural form must contain
+the same placeholders, which `npm run i18n:check` enforces for `{count}`.
+
+Resolve `t()` while building view props or rendering. Module-level translated constants can capture
+the English fallback before the active language pack is ready. The pack validator in
+[`validate-pack.ts`](../../src/shared/i18n/validate-pack.ts) checks the pack filename/code, known
+keys, message forms, placeholders, and D15 restrictions. Keep keys in the current flat shape and
+include hashes for translated entries when maintaining a pack.

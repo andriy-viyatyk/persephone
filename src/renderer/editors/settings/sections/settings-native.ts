@@ -43,6 +43,7 @@ export function settingsPath(value: string): HTMLSpanElement {
 export function settingsLink(value: string): HTMLSpanElement {
     const element = document.createElement("span");
     element.dataset.type = "settings-link";
+    element.title = value;
     element.textContent = value;
     return element;
 }

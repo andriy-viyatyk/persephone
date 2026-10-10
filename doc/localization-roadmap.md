@@ -266,6 +266,11 @@ and file diff; Mneme editors; notebook, log view, text, grid and the remaining s
 inspector, Tools hub and About; uikit defaults. Then Monaco (D9), the layout fixes `en-XA`
 revealed, and the lint rule switched to error.
 
+Result (2026-10-10): **1,512** English catalog messages in 19 areas — settings 205, board 154,
+menus 148, browser 125, shell 117, dialogs 114, tools 112, editors 107, mneme 102, api 69, links 64,
+git 58, explorer 50, notebook 24, about 20, logView 16, uikit 12, common 9, main 6. This is the size
+of each phase-4 pack.
+
 ### Phase 3 — Boards localization (epic)
 
 Manifest `languages` and `localized` (D10), `persephone.locale` and `persephone.i18n` in the shim,

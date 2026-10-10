@@ -25,7 +25,7 @@ phase 3 (boards localization) and phase 4 (the 17 built-in language packs and th
   - [ ] [US-1662: MCP inspector, Tools hub, Storybook](tasks/US-1662-tools-strings/README.md)
   - [ ] [US-1663: Remaining editors and uikit defaults](tasks/US-1663-remaining-strings/README.md)
   - [ ] [US-1664: Monaco UI language (D9)](tasks/US-1664-monaco-locale/README.md)
-  - [ ] US-1665: Layout fixes, lint rule to error, closing sweep
+  - [ ] [US-1665: Layout fixes, lint rule to error, closing sweep](tasks/US-1665-closing-sweep/README.md)
 
 ## Planned
 

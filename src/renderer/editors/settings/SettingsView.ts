@@ -191,7 +191,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         const treePane = createPanelElement({
             name: "settings-content-pane",
             direction: "column",
-            width: 220,
+            width: 280,
             minHeight: 0,
             shrink: false,
             overflow: "hidden",
@@ -260,6 +260,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             size: "sm",
             background: "light",
             onClick: this.handleOpenSettingsFile,
+            title: t("settings.viewSettingsFile"),
             children: t("settings.viewSettingsFile"),
         }));
         footer.append(viewFileButton.root);
@@ -459,6 +460,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             onChange: this.handleContentChange,
             defaultExpandAll: true,
             keyboardNav: true,
+            getTooltip: (item: SettingsContentItem) => item.label,
             getName: getSettingsContentName,
         };
     }

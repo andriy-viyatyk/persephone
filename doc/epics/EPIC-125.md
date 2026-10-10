@@ -108,19 +108,19 @@ Claude), as in EPIC-124.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Planned |
-| [US-1654](../tasks/US-1654-shell-strings/README.md) | App shell, tabs, sidebar, editor display names | Planned |
-| [US-1655](../tasks/US-1655-menu-strings/README.md) | Menus and context menus, tree providers, shared editor menus, file components | Planned |
-| [US-1656](../tasks/US-1656-api-strings/README.md) | API layer, content pipeline, notifications outside editors | Planned |
-| [US-1657](../tasks/US-1657-browser-strings/README.md) | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
-| [US-1658](../tasks/US-1658-board-host-strings/README.md) | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
-| [US-1659](../tasks/US-1659-explorer-links-strings/README.md) | Explorer and link editor | Planned |
-| [US-1660](../tasks/US-1660-git-diff-strings/README.md) | Git tree, file diff, compare, archive | Planned |
-| [US-1661](../tasks/US-1661-mneme-about-strings/README.md) | Mneme editors and About | Planned |
-| [US-1662](../tasks/US-1662-tools-strings/README.md) | MCP inspector, Tools hub, Storybook | Planned |
-| [US-1663](../tasks/US-1663-remaining-strings/README.md) | Remaining editors and uikit defaults | Planned |
-| [US-1664](../tasks/US-1664-monaco-locale/README.md) | Monaco UI language (D9) | Planned |
-| US-1665 | Layout fixes, lint rule to error, closing sweep | Planned |
+| [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Implemented |
+| [US-1654](../tasks/US-1654-shell-strings/README.md) | App shell, tabs, sidebar, editor display names | Implemented |
+| [US-1655](../tasks/US-1655-menu-strings/README.md) | Menus and context menus, tree providers, shared editor menus, file components | Implemented |
+| [US-1656](../tasks/US-1656-api-strings/README.md) | API layer, content pipeline, notifications outside editors | Implemented |
+| [US-1657](../tasks/US-1657-browser-strings/README.md) | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Implemented |
+| [US-1658](../tasks/US-1658-board-host-strings/README.md) | Board host: board editor, board info, env vars, toolsets, board context menu | Implemented |
+| [US-1659](../tasks/US-1659-explorer-links-strings/README.md) | Explorer and link editor | Implemented |
+| [US-1660](../tasks/US-1660-git-diff-strings/README.md) | Git tree, file diff, compare, archive | Implemented |
+| [US-1661](../tasks/US-1661-mneme-about-strings/README.md) | Mneme editors and About | Implemented |
+| [US-1662](../tasks/US-1662-tools-strings/README.md) | MCP inspector, Tools hub, Storybook | Implemented |
+| [US-1663](../tasks/US-1663-remaining-strings/README.md) | Remaining editors and uikit defaults | Implemented |
+| [US-1664](../tasks/US-1664-monaco-locale/README.md) | Monaco UI language (D9) | Implemented |
+| [US-1665](../tasks/US-1665-closing-sweep/README.md) | Layout fixes, lint rule to error, closing sweep | Implemented |
 
 ### US-1653 — Lint coverage and baseline
 
@@ -293,9 +293,24 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   Checked live: the markdown Back button, the status bar, the tree. Not opened live: Notebook,
   Log View dialogs, Grid, Video, Image, HTML, Mermaid, SVG editors.
 
+- **US-1665 — closing sweep.** The lint rule is now an error (only the two board-shim files are
+  exempt until phase 3). Settings navigation is wider (280px) and clipped labels in Settings, the
+  menu bar, quick settings and the pinned rail show their full text as a tooltip. Checked live:
+  Settings under `en-XA`. `doc/standards/localization.md` now records the phase-2 patterns. Also
+  fixed during the sweep: Settings, board, board info, toolset and video pages stored a translated
+  title that scripts read; they now store English like About and Browser.
+- **To try everything:** in a dev build pick *Pseudo-English* in Settings > General > Language and
+  walk the app; any plain English left (other than file names, URLs, product names, and text that
+  boards or scripts supply) is a missed string. Switch back to *Automatic* afterwards.
+
 ## Notes
 
 ### 2026-10-10
 - Epic created from phase 2 of the localization roadmap. Lint baseline measured: 892 reports in 196
   files before widening; the roadmap's ~2,000 estimate included patterns the rule did not yet see (E1).
 - US-1653 widened lint coverage and measured 975 reports in 201 files after widening.
+
+### 2026-10-10 (implementation)
+- All 13 tasks implemented in one autonomous run (Codex implementation, Claude plan review and live
+  `en-XA` checks), one commit per task. Catalog: 1,512 English messages in 19 areas. Lint reports
+  went from 975 to 0 (11 board-shim strings exempt until phase 3).

@@ -217,13 +217,18 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         row.dataset.type = rowClass;
         row.setAttribute("draggable", "true");
         if (rowData.ref.kind === "board") {
-            row.querySelector<HTMLElement>(".item-label")!.textContent = fpBasename(rowData.ref.root);
+            const label = row.querySelector<HTMLElement>(".item-label")!;
+            label.textContent = fpBasename(rowData.ref.root);
+            label.removeAttribute("title");
             record.iconCleanup = fillSlot(
                 row.querySelector<HTMLElement>(".item-icon")!,
                 createBoardGlyphElement(rowData.ref.root),
             );
         } else if (editor) {
-            row.querySelector<HTMLElement>(".item-label")!.textContent = getCreatableItemLabel(editor);
+            const label = row.querySelector<HTMLElement>(".item-label")!;
+            const labelText = getCreatableItemLabel(editor);
+            label.textContent = labelText;
+            label.title = labelText;
             record.iconCleanup = fillSlot(
                 row.querySelector<HTMLElement>(".item-icon")!,
                 typeof editor.icon === "string"

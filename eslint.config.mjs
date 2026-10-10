@@ -281,6 +281,9 @@ function isExcludedI18nFile(filename) {
         || filename.includes("/src/main/mcp/")
         || filename.includes("/src/renderer/api/mcp/")
         || filename.includes("/src/renderer/api/types/")
+        // These files run inside the board webview, which receives its locale in phase 3 (roadmap D10).
+        || filename.endsWith("/src/board-context-menu.ts")
+        || filename.endsWith("/src/board-shim.ts")
         // Settings catalog: descriptions, row labels, purposes and paths are agent-only (ai-vision).
         || filename.endsWith("/src/renderer/editors/settings/settings-catalog.ts")
         || /\/(?:test|tests|__tests__|stories)\//.test(filename)
@@ -693,7 +696,7 @@ export default tseslint.config(
             "vanilla-view/no-child-claim-twice": "error",
             "vanilla-view/no-indirect-view-subclass": "error",
             "vanilla-view/bind-handle-outside-mount": "error",
-            "vanilla-view/no-hardcoded-ui-strings": "warn",
+            "vanilla-view/no-hardcoded-ui-strings": "error",
         },
     },
 

@@ -88,6 +88,7 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         const labelElement = document.createElement("span");
         labelElement.dataset.part = "label";
         labelElement.textContent = label;
+        labelElement.title = label;
         row.append(icon, labelElement);
         this.listen(row, "click", () => {
             this.props.onSnip(hideWindows);
@@ -107,7 +108,9 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         icon.append(createIconElement("circle", { color: color.misc.red }));
         const labelElement = document.createElement("span");
         labelElement.dataset.part = "label";
-        labelElement.textContent = t("shell.record");
+        const label = t("shell.record");
+        labelElement.textContent = label;
+        labelElement.title = label;
         const chevron = document.createElement("span");
         chevron.dataset.part = "chevron";
         chevron.append(createIconElement("chevron-right"));
@@ -159,7 +162,9 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         }));
         const label = document.createElement("span");
         label.dataset.part = "label";
-        label.textContent = quickServiceLabel(entry);
+        const labelText = quickServiceLabel(entry);
+        label.textContent = labelText;
+        label.title = labelText;
 
         const onChange = (checked: boolean): void => {
             settings.set(entry.key, checked);

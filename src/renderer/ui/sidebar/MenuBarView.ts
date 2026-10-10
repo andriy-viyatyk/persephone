@@ -275,12 +275,13 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             dragState = { dragEnterCount: 0 };
             this.folderDragStates.set(id, dragState);
         }
+        const label = this.getFolderLabel(folder);
         const props = {
             folder,
             selected: folder.id === this.selectedFolderId,
             icon: this.getFolderIcon(folder),
-            label: this.getFolderLabel(folder),
-            tooltip: this.getFolderTooltip(folder),
+            label,
+            tooltip: isBuiltinFolder(folder) ? label : this.getFolderTooltip(folder) ?? label,
             onSelectedIconClick: canOpenInTab(folder)
                 ? (value: MenuFolder) => this.openFolderInTab(value)
                 : undefined,
