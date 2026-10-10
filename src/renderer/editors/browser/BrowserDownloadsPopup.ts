@@ -1,5 +1,6 @@
 import type { DownloadEntry } from "../../../ipc/api-param-types";
 import { downloads } from "../../api/downloads";
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { formatBytes } from "../../core/utils/format";
 import { ButtonView } from "../../uikit/Button/ButtonView";
@@ -67,7 +68,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         });
         const spacerView = this.child(new SpacerView({}));
         headerPanel.append(
-            createTextElement("Downloads", { size: "md", bold: true }),
+            createTextElement(t("browser.downloadsTitle"), { size: "md", bold: true }),
             spacerView.root,
         );
 
@@ -106,7 +107,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         if (downloadEntries.length === 0) {
             listPanel.replaceChildren(createPanelElement(
                 { paddingY: "xxl", paddingX: "lg", align: "center", justify: "center" },
-                [createTextElement("No downloads", { size: "md", color: "light" })],
+                [createTextElement(t("browser.downloadsEmpty"), { size: "md", color: "light" })],
             ));
             return;
         }
@@ -131,7 +132,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 size: "sm",
                 variant: "ghost",
                 onClick: () => { void downloads.clearCompleted(); },
-                children: "Clear",
+                children: t("dialogs.buttonClear"),
             }));
             clearButton.mount();
             headerPanel.append(clearButton.root);
@@ -156,12 +157,12 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         const statusText = isDownloading
             ? `${formatBytes(receivedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : "?"}`
             : status === "awaitingPath"
-                ? "Waiting for save location"
+                ? t("browser.downloadsWaitingForPath")
                 : status === "completed"
                 ? formatBytes(totalBytes)
                 : status === "cancelled"
-                    ? "Cancelled"
-                    : "Failed";
+                    ? t("browser.downloadsCancelled")
+                    : t("browser.downloadsFailed");
 
         const filenamePanel = createPanelElement({ flex: true, overflow: "hidden" });
         filenamePanel.append(createTextElement(filename, { truncate: true, size: "md" }));
@@ -200,7 +201,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 size: "sm",
                 variant: "ghost",
                 onClick: () => { void downloads.cancelDownload(id); },
-                children: "Cancel",
+                children: t("common.cancel"),
             }));
         }
         if (status === "completed") {
@@ -208,11 +209,11 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 size: "sm",
                 variant: "ghost",
                 onClick: () => { void downloads.openDownload(id); },
-                children: "Open",
+                children: t("common.open"),
             }));
             addButton(new IconButtonView({
                 size: "sm",
-                title: "Show in Folder",
+                title: t("browser.downloadsShowInFolder"),
                 icon: "folder-open",
                 onClick: () => { void downloads.showInFolder(id); },
             }));
@@ -220,7 +221,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         if (status === "failed" || status === "cancelled") {
             addButton(new IconButtonView({
                 size: "sm",
-                title: "Dismiss",
+                title: t("browser.downloadsDismiss"),
                 icon: "close",
                 onClick: () => { void downloads.clearCompleted(); },
             }));

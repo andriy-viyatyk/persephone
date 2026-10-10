@@ -37,6 +37,15 @@ export function englishMessage<K extends MessageKey>(key: K, params?: MessagePar
     return formatMessage(message, message, params as Record<string, unknown> | undefined, "en");
 }
 
+/**
+ * Mark text in a UI position that is deliberately not translated: product and protocol names,
+ * file names, and English identity values that scripts or agents read. The lint rule accepts it;
+ * reviewers should check each use against "What stays English" in doc/standards/localization.md.
+ */
+export function untranslated<T extends string>(text: T): T {
+    return text;
+}
+
 export function t<K extends MessageKey>(key: K, params?: MessageParams<K>): string {
     const resolved = resolveMessage(key, userPack, builtInPack);
     if (resolved === undefined) return key;

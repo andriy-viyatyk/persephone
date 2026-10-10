@@ -1,3 +1,4 @@
+import { englishMessage, untranslated } from "../../../shared/i18n/t";
 import { IEditorState } from "../../../shared/types";
 import { TorStatus } from "../../../ipc/tor-ipc";
 import { getDefaultEditorModelState } from "../base";
@@ -24,70 +25,70 @@ export interface SearchEngine {
 export const SEARCH_ENGINES: SearchEngine[] = [
     {
         id: "google",
-        label: "Google",
+        label: untranslated("Google"),
         searchUrl: "https://www.google.com/search?q=%s",
         hosts: ["www.google.com", "google.com"],
         queryParam: "q",
     },
     {
         id: "bing",
-        label: "Bing",
+        label: untranslated("Bing"),
         searchUrl: "https://www.bing.com/search?q=%s",
         hosts: ["www.bing.com", "bing.com"],
         queryParam: "q",
     },
     {
         id: "duckduckgo",
-        label: "DuckDuckGo",
+        label: untranslated("DuckDuckGo"),
         searchUrl: "https://duckduckgo.com/?q=%s",
         hosts: ["duckduckgo.com", "www.duckduckgo.com"],
         queryParam: "q",
     },
     {
         id: "yahoo",
-        label: "Yahoo",
+        label: untranslated("Yahoo"),
         searchUrl: "https://search.yahoo.com/search?p=%s",
         hosts: ["search.yahoo.com"],
         queryParam: "p",
     },
     {
         id: "ecosia",
-        label: "Ecosia",
+        label: untranslated("Ecosia"),
         searchUrl: "https://www.ecosia.org/search?q=%s",
         hosts: ["www.ecosia.org", "ecosia.org"],
         queryParam: "q",
     },
     {
         id: "brave",
-        label: "Brave",
+        label: untranslated("Brave"),
         searchUrl: "https://search.brave.com/search?q=%s",
         hosts: ["search.brave.com"],
         queryParam: "q",
     },
     {
         id: "startpage",
-        label: "Startpage",
+        label: untranslated("Startpage"),
         searchUrl: "https://www.startpage.com/sp/search?query=%s",
         hosts: ["www.startpage.com", "startpage.com"],
         queryParam: "query",
     },
     {
         id: "qwant",
-        label: "Qwant",
+        label: untranslated("Qwant"),
         searchUrl: "https://www.qwant.com/?q=%s",
         hosts: ["www.qwant.com", "qwant.com"],
         queryParam: "q",
     },
     {
         id: "baidu",
-        label: "Baidu",
+        label: untranslated("Baidu"),
         searchUrl: "https://www.baidu.com/s?wd=%s",
         hosts: ["www.baidu.com", "baidu.com"],
         queryParam: "wd",
     },
     {
         id: "perplexity",
-        label: "Perplexity",
+        label: untranslated("Perplexity"),
         searchUrl: "https://www.perplexity.ai/search?q=%s",
         hosts: ["www.perplexity.ai", "perplexity.ai"],
         queryParam: "q",
@@ -95,7 +96,7 @@ export const SEARCH_ENGINES: SearchEngine[] = [
     },
     {
         id: "gibiru",
-        label: "Gibiru",
+        label: untranslated("Gibiru"),
         searchUrl: "https://gibiru.com/results.html?q=%s",
         hosts: ["gibiru.com", "www.gibiru.com"],
         queryParam: "q",
@@ -275,7 +276,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
     return {
         ...getDefaultEditorModelState(),
         type: "browserPage",
-        title: "Browser",
+        title: englishMessage("editors.browser"),
         editor: "browser-view",
         url: DEFAULT_URL,
         pageTitle: "",

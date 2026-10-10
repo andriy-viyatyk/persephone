@@ -5,6 +5,7 @@ import { capabilities } from "../../api/capabilities";
 import { ui } from "../../api/ui";
 import { certificatesToPem } from "../../api/certificate-view";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import type { BrowserEditorState, BrowserTabData } from "./BrowserEditorModel";
 import { BrowserChannel, type BrowserRegisterRequest, type BrowserSitePermissionEntry, type BrowserSitePermissionKey, type BrowserSitePermissions } from "../../../ipc/browser-ipc";
 import { PageManagerView } from "../../components/page-manager/PageManagerView";
@@ -314,12 +315,12 @@ class ProfileNetworkErrorView extends VanillaView<ProfileNetworkErrorProps> {
 
     public constructor(props: ProfileNetworkErrorProps) {
         super(props, createPanelElement({ name: "profile-network-error", position: "absolute", top: 0, right: 0, bottom: 0, left: 0, zIndex: 5, background: "dark", direction: "column", align: "center", gap: "lg", paddingTop: "xxxl" }));
-        this.retry = this.child(new ButtonView({ name: "profile-network-retry", children: "Retry", onClick: () => { void props.model.retryProfileNetwork(); } }));
-        this.root.append(createTextElement("The profile's proxy could not be applied, so no page is loaded.", { size: "md" }), this.message, this.retry.root);
+        this.retry = this.child(new ButtonView({ name: "profile-network-retry", children: t("browser.profileNetworkRetry"), onClick: () => { void props.model.retryProfileNetwork(); } }));
+        this.root.append(createTextElement(t("browser.profileNetworkUnavailable"), { size: "md" }), this.message, this.retry.root);
     }
     protected onMount(): void { this.retry.mount(); this.sync(this.props); }
     protected onUpdate(props: ProfileNetworkErrorProps): void { this.sync(props); }
-    private sync(props: ProfileNetworkErrorProps): void { this.message.textContent = `${props.error} Fix the profile's network in Settings → Browser Profiles, then retry.`; }
+    private sync(props: ProfileNetworkErrorProps): void { this.message.textContent = t("browser.profileNetworkRetryHelp", { error: props.error }); }
 }
 
 interface BrowserToolbarProps { model: BrowserEditor; state: BrowserEditorState; }
@@ -340,17 +341,17 @@ interface SitePermissionsContentProps {
     onViewCertificate: () => void;
 }
 
-const SITE_PERMISSION_LABELS: Record<string, string> = {
-    camera: "Camera",
-    microphone: "Microphone",
-    geolocation: "Location",
-    notifications: "Notifications",
-    midi: "MIDI",
-    midiSysex: "MIDI full control (SysEx)",
-    "clipboard-read": "Clipboard read",
-    "idle-detection": "Device use (idle detection)",
-    "window-management": "Window management",
-    "speaker-selection": "Speaker selection",
+const SITE_PERMISSION_LABELS: Record<string, "browser.permissionCamera" | "browser.permissionMicrophone" | "browser.permissionLocation" | "browser.permissionNotifications" | "browser.permissionMidi" | "browser.permissionMidiFullControl" | "browser.permissionClipboardRead" | "browser.permissionIdleDetection" | "browser.permissionWindowManagement" | "browser.permissionSpeakerSelection"> = {
+    camera: "browser.permissionCamera",
+    microphone: "browser.permissionMicrophone",
+    geolocation: "browser.permissionLocation",
+    notifications: "browser.permissionNotifications",
+    midi: "browser.permissionMidi",
+    midiSysex: "browser.permissionMidiFullControl",
+    "clipboard-read": "browser.permissionClipboardRead",
+    "idle-detection": "browser.permissionIdleDetection",
+    "window-management": "browser.permissionWindowManagement",
+    "speaker-selection": "browser.permissionSpeakerSelection",
 };
 
 class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps> {
@@ -364,17 +365,17 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
     private readonly heading = createTextElement("", { size: "md", bold: true });
     private readonly rows = document.createElement("div");
     private readonly reset: ButtonView;
-    private readonly reloadHint = createTextElement("Reload the page to apply", { size: "sm", color: "light" });
+    private readonly reloadHint = createTextElement(t("browser.profileNetworkReloadHint"), { size: "sm", color: "light" });
     private readonly reload: ButtonView;
     private readonly rowViews = new Map<BrowserSitePermissionKey, { row: HTMLDivElement; label: HTMLSpanElement; hint: HTMLSpanElement; toggle: SwitchView }>();
 
     public constructor(props: SitePermissionsContentProps, host: HTMLElement) {
         super(props, host);
         this.rows.dataset.part = "permission-list";
-        this.reset = this.child(new ButtonView({ name: "site-permissions-reset", variant: "ghost", size: "sm", children: "Reset permissions", onClick: () => this.props.onReset() }));
-        this.reload = this.child(new ButtonView({ name: "site-permissions-reload", variant: "link", size: "sm", children: "Reload", onClick: () => this.props.onReload() }));
+        this.reset = this.child(new ButtonView({ name: "site-permissions-reset", variant: "ghost", size: "sm", children: t("browser.sitePermissionsReset"), onClick: () => this.props.onReset() }));
+        this.reload = this.child(new ButtonView({ name: "site-permissions-reload", variant: "link", size: "sm", children: t("browser.reload"), onClick: () => this.props.onReload() }));
         this.aiVisionBadge = this.child(new TagView({ name: "site-permissions-ai-vision-badge", label: "", variant: "outlined", size: "sm" }));
-        this.certificateButton = this.child(new ButtonView({ name: "site-certificate-view", size: "sm", children: "View certificate", onClick: () => this.props.onViewCertificate() }));
+        this.certificateButton = this.child(new ButtonView({ name: "site-certificate-view", size: "sm", children: t("browser.certificateView"), onClick: () => this.props.onViewCertificate() }));
     }
 
     protected onMount(): void {
@@ -417,12 +418,12 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
                 name: "site-permissions-ai-vision-badge",
                 variant: "outlined",
                 size: "sm",
-                label: isPage ? "built-in ai-vision" : `site extension ai-vision · ${extensionName}`,
+            label: isPage ? t("browser.aiVisionBuiltinBadge") : t("browser.aiVisionExtensionBadge", { name: extensionName }),
             });
             this.aiVisionBadgeTooltip?.update({
                 content: isPage
-                    ? "This site publishes its own ai-vision model, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page."
-                    : `The "${extensionName}" site extension adds an ai-vision model to this site, so your AI agent can read and drive it through Persephone's MCP object model (pages[…].editor.app) instead of parsing the page.`,
+                    ? t("browser.aiVisionBuiltinTooltip")
+                    : t("browser.aiVisionExtensionTooltip", { name: extensionName }),
             });
             this.aiVisionBadge.root.hidden = false;
         }
@@ -431,12 +432,12 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         this.certificateButton.update({
             name: "site-certificate-view",
             size: "sm",
-            children: "View certificate",
+            children: t("browser.certificateView"),
             onClick: () => this.props.onViewCertificate(),
         });
         this.certificateButtonTooltip?.update({ content: props.certificateHandlerAvailable
-            ? "View the decoded certificate chain for this site"
-            : "Install a certificate viewer board to see the decoded certificate" });
+            ? t("browser.certificateTooltipAvailable")
+            : t("browser.certificateTooltipUnavailable") });
         const entries = props.permissions.entries;
         const entryKeys = new Set(entries.map((entry) => entry.key));
         for (const [key, row] of this.rowViews) {
@@ -449,7 +450,7 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
         for (const entry of entries) {
             const row = this.getOrCreateRow(entry);
             row.label.textContent = this.permissionLabel(entry.key);
-            row.hint.textContent = entry.decision === undefined ? "Ask" : "";
+            row.hint.textContent = entry.decision === undefined ? t("browser.permissionAsk") : "";
             row.hint.hidden = entry.decision !== undefined;
             row.toggle.update({ name: `site-permission-${entry.key.replace(/[^a-z0-9-]/gi, "-")}`, label: this.permissionLabel(entry.key), checked: entry.decision === "allow", size: "sm", onChange: (checked) => this.props.onSet(entry.key, checked ? "allow" : "block") });
             orderedRows.push(row.row);
@@ -479,8 +480,9 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
     }
 
     private permissionLabel(key: string): string {
-        if (key.startsWith("openExternal:")) return `Open ${key.slice("openExternal:".length)} links`;
-        return SITE_PERMISSION_LABELS[key] ?? key;
+        if (key.startsWith("openExternal:")) return t("browser.permissionOpenSchemeLinks", { scheme: key.slice("openExternal:".length) });
+        const labelKey = SITE_PERMISSION_LABELS[key];
+        return labelKey ? t(labelKey) : key;
     }
 }
 
@@ -522,19 +524,19 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.endSlot = document.createElement("span"); this.endSlot.style.display = "contents";
         this.torIndicator.dataset.torIndicator = "";
         this.searchEngineButton.type = "button"; this.searchEngineButton.dataset.searchEngineChip = "";
-        this.proxyChip.type = "button"; this.proxyChip.dataset.proxyChip = ""; this.proxyChip.dataset.name = "url-proxy-indicator"; this.proxyChip.textContent = "Proxy";
+        this.proxyChip.type = "button"; this.proxyChip.dataset.proxyChip = ""; this.proxyChip.dataset.name = "url-proxy-indicator"; this.proxyChip.textContent = t("browser.proxy");
         this.inputPanel = createPanelElement({ name: "url-bar", flex: true }); this.inputPanel.dataset.urlBar = "";
         const make = (name: string, icon: IconRef, title: string, onClick: () => void): IconButtonView => this.child(new IconButtonView({ name, size: "sm", icon, title, onClick }));
-        const home = make("toolbar-home", "home", "Home", this.model.goHome);
-        const back = make("toolbar-back", "arrow-left", "Back (Alt+Left)", this.model.webview.goBack);
-        const forward = make("toolbar-forward", "arrow-right", "Forward (Alt+Right)", this.model.webview.goForward);
-        const reload = make("toolbar-reload", "refresh", "Reload", this.model.webview.reloadOrStop);
+        const home = make("toolbar-home", "home", t("browser.toolbarHome"), this.model.goHome);
+        const back = make("toolbar-back", "arrow-left", t("browser.toolbarBack", { shortcut: "Alt+Left" }), this.model.webview.goBack);
+        const forward = make("toolbar-forward", "arrow-right", t("browser.toolbarForward", { shortcut: "Alt+Right" }), this.model.webview.goForward);
+        const reload = make("toolbar-reload", "refresh", t("browser.toolbarReload"), this.model.webview.reloadOrStop);
         this.controls = [home, back, forward, reload];
-        this.navigate = this.child(new IconButtonView({ name: "url-navigate", size: "sm", icon: "arrow-right", title: "Navigate", onClick: this.model.urlBar.handleNavigate }));
-        this.sitePermissionsButton = this.child(new IconButtonView({ name: "url-site-permissions", size: "sm", icon: "info", title: "Site permissions", onClick: this.toggleSitePermissions }));
+        this.navigate = this.child(new IconButtonView({ name: "url-navigate", size: "sm", icon: "arrow-right", title: t("browser.navigate"), onClick: this.model.urlBar.handleNavigate }));
+        this.sitePermissionsButton = this.child(new IconButtonView({ name: "url-site-permissions", size: "sm", icon: "info", title: t("browser.sitePermissions"), onClick: this.toggleSitePermissions }));
         this.sitePermissionsPopover = this.child(new PopoverView(this.sitePermissionsPopoverProps()));
-        this.star = this.child(new IconButtonView({ name: "url-bookmark-toggle", size: "sm", icon: "star", title: "Add Bookmark", onClick: this.model.bookmarksUI.handleStarClick }));
-        this.input = this.child(new InputView({ name: "url-input", size: "sm", value: props.state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: "Enter URL or search term...", autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
+        this.star = this.child(new IconButtonView({ name: "url-bookmark-toggle", size: "sm", icon: "star", title: t("browser.bookmarkAdd"), onClick: this.model.bookmarksUI.handleStarClick }));
+        this.input = this.child(new InputView({ name: "url-input", size: "sm", value: props.state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
         const bookmarks = make("toolbar-bookmarks", "bookmark", "Open Bookmarks", this.model.bookmarksUI.handleOpenBookmarks);
         const torInfo = make("toolbar-tor-info", "question", "Tor connection info", this.model.showTorInfoDialog);
         const downloads = this.child(new DownloadButtonView());
@@ -568,26 +570,26 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private sync(state: BrowserEditorState): void {
         const aiVisionIndicator = this.getAiVisionIndicator(state);
         const sitePermissionsTitle = aiVisionIndicator.source === "page"
-            ? "Site permissions · built-in ai-vision model"
+            ? t("browser.sitePermissionsTitleBuiltin")
             : aiVisionIndicator.source === "extension"
-                ? `Site permissions · site extension ai-vision model (${aiVisionIndicator.extensionName})`
-                : "Site permissions";
+                ? t("browser.sitePermissionsTitleExtension", { name: aiVisionIndicator.extensionName })
+                : t("browser.sitePermissions");
         this.sitePermissionsButton.update({ name: "url-site-permissions", size: "sm", icon: "info", title: sitePermissionsTitle, onClick: this.toggleSitePermissions });
         if (aiVisionIndicator.source === "none") delete this.sitePermissionsButton.root.dataset.aiVisionSource;
         else this.sitePermissionsButton.root.dataset.aiVisionSource = aiVisionIndicator.source;
         const active = state.tabs.find((tab) => tab.id === state.activeTabId);
-        this.controls[0].update({ name: "toolbar-home", size: "sm", icon: "home", title: active?.homeUrl ? `Go to ${active.homeUrl}` : "Home", onClick: this.model.goHome, disabled: !active?.homeUrl });
-        this.controls[1].update({ name: "toolbar-back", size: "sm", icon: "arrow-left", title: "Back (Alt+Left)", onClick: this.model.webview.goBack, disabled: !state.canGoBack });
-        this.controls[2].update({ name: "toolbar-forward", size: "sm", icon: "arrow-right", title: "Forward (Alt+Right)", onClick: this.model.webview.goForward, disabled: !state.canGoForward });
-        this.controls[3].update({ name: "toolbar-reload", size: "sm", icon: state.loading ? "stop" : "refresh", title: state.loading ? "Stop" : "Reload", onClick: this.model.webview.reloadOrStop });
-        this.input.update({ name: "url-input", size: "sm", value: state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: "Enter URL or search term...", autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot });
-        this.navigate.update({ name: "url-navigate", size: "sm", icon: "arrow-right", title: "Navigate", onClick: this.model.urlBar.handleNavigate });
-        this.star.update({ name: "url-bookmark-toggle", size: "sm", icon: state.isBookmarked ? "star-filled" : "star", title: state.isBookmarked ? "Edit Bookmark" : "Add Bookmark", active: state.isBookmarked, onClick: this.model.bookmarksUI.handleStarClick });
-        this.controls[4].update({ name: "toolbar-bookmarks", size: "sm", icon: "bookmark", title: "Open Bookmarks", onClick: this.model.bookmarksUI.handleOpenBookmarks });
-        this.controls[5].update({ name: "toolbar-tor-info", size: "sm", icon: "question", title: "Tor connection info", onClick: this.model.showTorInfoDialog, hidden: !state.isTor });
-        this.controls[6].update({ name: "toolbar-more", size: "sm", icon: "more-vert", title: "Page Menu", onClick: () => this.openPageMenu() });
-        this.controls[7].update({ name: "toolbar-devtools", size: "sm", icon: "settings", title: "Open DevTools", onClick: this.model.webview.openDevTools });
-        this.controls[8].update({ name: "toolbar-close", size: "sm", icon: "close", title: "Close Tab", onClick: () => this.model.closeTab(this.model.state.get().activeTabId) });
+        this.controls[0].update({ name: "toolbar-home", size: "sm", icon: "home", title: active?.homeUrl ? t("browser.toolbarGoToHome", { url: active.homeUrl }) : t("browser.toolbarHome"), onClick: this.model.goHome, disabled: !active?.homeUrl });
+        this.controls[1].update({ name: "toolbar-back", size: "sm", icon: "arrow-left", title: t("browser.toolbarBack", { shortcut: "Alt+Left" }), onClick: this.model.webview.goBack, disabled: !state.canGoBack });
+        this.controls[2].update({ name: "toolbar-forward", size: "sm", icon: "arrow-right", title: t("browser.toolbarForward", { shortcut: "Alt+Right" }), onClick: this.model.webview.goForward, disabled: !state.canGoForward });
+        this.controls[3].update({ name: "toolbar-reload", size: "sm", icon: state.loading ? "stop" : "refresh", title: state.loading ? t("browser.toolbarStop") : t("browser.toolbarReload"), onClick: this.model.webview.reloadOrStop });
+        this.input.update({ name: "url-input", size: "sm", value: state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot });
+        this.navigate.update({ name: "url-navigate", size: "sm", icon: "arrow-right", title: t("browser.navigate"), onClick: this.model.urlBar.handleNavigate });
+        this.star.update({ name: "url-bookmark-toggle", size: "sm", icon: state.isBookmarked ? "star-filled" : "star", title: state.isBookmarked ? t("browser.bookmarkEdit") : t("browser.bookmarkAdd"), active: state.isBookmarked, onClick: this.model.bookmarksUI.handleStarClick });
+        this.controls[4].update({ name: "toolbar-bookmarks", size: "sm", icon: "bookmark", title: t("browser.toolbarOpenBookmarks"), onClick: this.model.bookmarksUI.handleOpenBookmarks });
+        this.controls[5].update({ name: "toolbar-tor-info", size: "sm", icon: "question", title: t("browser.toolbarTorInfo"), onClick: this.model.showTorInfoDialog, hidden: !state.isTor });
+        this.controls[6].update({ name: "toolbar-more", size: "sm", icon: "more-vert", title: t("browser.toolbarPageMenu"), onClick: () => this.openPageMenu() });
+        this.controls[7].update({ name: "toolbar-devtools", size: "sm", icon: "settings", title: t("browser.toolbarDevTools"), onClick: this.model.webview.openDevTools });
+        this.controls[8].update({ name: "toolbar-close", size: "sm", icon: "close", title: t("shell.closeTab"), onClick: () => this.model.closeTab(this.model.state.get().activeTabId) });
         this.renderStart(state);
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
         this.permissionsContent?.update(this.sitePermissionsContentProps());
@@ -615,7 +617,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             if (this.dot) { this.releaseChild(this.dot); this.dot = undefined; }
         }
         if (state.isIncognito) this.startSlot.append(IncognitoIcon.createElement({ color: color.icon.light }));
-        if (state.networkLabel) { this.proxyChip.title = `Proxy: ${state.networkLabel} — click for connection info`; this.startSlot.append(this.proxyChip); }
+        if (state.networkLabel) { this.proxyChip.title = t("browser.proxyInfoTitle", { network: state.networkLabel }); this.startSlot.append(this.proxyChip); }
         const registrationKey = `${state.id}/${state.activeTabId}`;
         const activeUrl = this.model.tabs.currentUrls.get(state.activeTabId)
             || state.tabs.find((tab) => tab.id === state.activeTabId)?.url
@@ -659,12 +661,12 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             const sourceUrl = this.permissionsUrl;
             const certificate = await this.model.getCertificate(tabId);
             if (!certificate) {
-                await ui.notify("The certificate for this page is not available yet. Reload the page and try again.", "warning");
+                await ui.notify(t("browser.certificateUnavailable"), "warning");
                 return;
             }
 
             if (!URL.canParse(sourceUrl) || new URL(sourceUrl).origin !== new URL(certificate.url).origin) {
-                await ui.notify("This page changed while the certificate was being read. Reopen the site-info popover and try again.", "warning");
+                await ui.notify(t("browser.certificatePageChanged"), "warning");
                 return;
             }
 
@@ -685,7 +687,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             this.permissionsOpen = false;
             this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
         } catch (error) {
-            await ui.notify(`Failed to view certificate: ${errMessage(error)}`, "error");
+            await ui.notify(t("browser.certificateViewFailed", { error: errMessage(error) }), "error");
         } finally {
             this.certificateActionBusy = false;
         }
@@ -779,12 +781,12 @@ class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count: number
     private readonly dismiss: IconButtonView;
     public constructor(props: { model: BrowserEditor; count: number }) {
         const root = createPanelElement({ name: "popup-blocked-bar", direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs", background: "light", borderBottom: true, shrink: false });
-        super(props, root); this.allow = this.child(new ButtonView({ name: "popup-allow", size: "sm", variant: "ghost", children: "Allow", onClick: props.model.allowPopups })); this.dismiss = this.child(new IconButtonView({ name: "popup-dismiss", size: "sm", icon: "close", title: "Dismiss", onClick: props.model.dismissBlockedPopups }));
+        super(props, root); this.allow = this.child(new ButtonView({ name: "popup-allow", size: "sm", variant: "ghost", children: t("browser.allow"), onClick: props.model.allowPopups })); this.dismiss = this.child(new IconButtonView({ name: "popup-dismiss", size: "sm", icon: "close", title: t("browser.dismiss"), onClick: props.model.dismissBlockedPopups }));
         root.append(createPanelElement({ flex: true }, [this.text]), this.allow.root, this.dismiss.root);
     }
     protected onMount(): void { this.allow.mount(); this.dismiss.mount(); this.sync(); }
     protected onUpdate(props: { model: BrowserEditor; count: number }): void { this.props = props; this.sync(); }
-    private sync(): void { this.text.textContent = this.props.count === 1 ? "A popup was blocked on this page" : `${this.props.count} popups were blocked on this page`; }
+    private sync(): void { this.text.textContent = t("browser.blockedPopup", { count: this.props.count }); }
 }
 
 class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserEditorState["permissionPrompts"][number] }> {
@@ -798,8 +800,8 @@ class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt
         super(props, root);
         const details = createPanelElement({ name: "permission-prompt-copy", flex: true, direction: "column", gap: "xs" });
         details.append(this.origin, this.requestText);
-        this.allow = this.child(new ButtonView({ name: "permission-allow", size: "sm", variant: "ghost", children: "Allow", onClick: () => this.resolve("allow") }));
-        this.block = this.child(new ButtonView({ name: "permission-block", size: "sm", variant: "ghost", children: "Block", onClick: () => this.resolve("block") }));
+        this.allow = this.child(new ButtonView({ name: "permission-allow", size: "sm", variant: "ghost", children: t("browser.allow"), onClick: () => this.resolve("allow") }));
+        this.block = this.child(new ButtonView({ name: "permission-block", size: "sm", variant: "ghost", children: t("browser.block"), onClick: () => this.resolve("block") }));
         root.append(details, this.allow.root, this.block.root);
     }
 
@@ -811,13 +813,13 @@ class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt
         this.origin.textContent = prompt.topLevelOrigin;
         this.origin.dataset.name = "permission-origin";
         const labels: Record<string, string> = {
-            camera: "camera", microphone: "microphone", geolocation: "location", notifications: "notifications",
-            midi: "MIDI devices", midiSysex: "MIDI system messages", "clipboard-read": "clipboard contents",
-            "idle-detection": "idle detection", "window-management": "window information", "speaker-selection": "audio output",
-            openExternal: `open ${prompt.externalScheme || "external"} links`,
+            camera: t("browser.permissionCamera"), microphone: t("browser.permissionMicrophone"), geolocation: t("browser.permissionLocation"), notifications: t("browser.permissionNotifications"),
+            midi: t("browser.permissionMidiDevices"), midiSysex: t("browser.permissionMidiSystemMessages"), "clipboard-read": t("browser.permissionClipboardContents"),
+            "idle-detection": t("browser.permissionIdleDetectionRequest"), "window-management": t("browser.permissionWindowInformation"), "speaker-selection": t("browser.permissionAudioOutput"),
+            openExternal: t("browser.permissionOpenSchemeLinks", { scheme: prompt.externalScheme || "external" }),
         };
         const names = prompt.permissions.map((permission) => labels[permission] ?? permission);
-        this.requestText.textContent = `wants permission to access ${names.join(" and ")}`;
+        this.requestText.textContent = t("browser.permissionRequest", { permissions: names.join(", ") });
         this.requestText.dataset.name = "permission-description";
     }
 
@@ -835,8 +837,8 @@ class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor
         super(props, root);
         const details = createPanelElement({ name: "site-extension-trust-copy", flex: true, direction: "column", gap: "xs" });
         details.append(this.copy);
-        this.trust = this.child(new ButtonView({ name: "site-extension-trust", size: "sm", variant: "ghost", children: "Trust", onClick: () => void props.model.webview.trustSiteExtensionPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
-        this.notNow = this.child(new ButtonView({ name: "site-extension-not-now", size: "sm", variant: "ghost", children: "Not now", onClick: () => props.model.webview.dismissSiteExtensionTrustPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        this.trust = this.child(new ButtonView({ name: "site-extension-trust", size: "sm", variant: "ghost", children: t("browser.trust"), onClick: () => void props.model.webview.trustSiteExtensionPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        this.notNow = this.child(new ButtonView({ name: "site-extension-not-now", size: "sm", variant: "ghost", children: t("browser.notNow"), onClick: () => props.model.webview.dismissSiteExtensionTrustPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
         root.append(details, this.trust.root, this.notNow.root);
     }
     protected onMount(): void { this.trust.mount(); this.notNow.mount(); this.sync(); }
@@ -844,9 +846,11 @@ class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor
     private sync(): void {
         const { name, host, hosts, available } = this.props.prompt;
         const otherHosts = hosts.filter((item) => item !== host);
-        this.copy.textContent = available
-            ? `Site extension ${name} wants to run on ${host}${otherHosts.length ? `. It will also run on: ${otherHosts.join(", ")}.` : "."} This script can do anything available to your signed-in site session.`
-            : `Site extension ${name} is no longer valid for ${host}; no trust was granted.`;
+        this.copy.textContent = !available
+            ? t("browser.siteExtensionTrustPromptInvalid", { name, host })
+            : otherHosts.length
+                ? t("browser.siteExtensionTrustPrompt", { name, host, otherHosts: otherHosts.join(", ") })
+                : t("browser.siteExtensionTrustPromptSingleHost", { name, host });
         this.copy.dataset.name = "site-extension-trust-prompt-copy";
         this.trust.root.hidden = !available;
     }
@@ -989,7 +993,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     }
     private syncFind(state: BrowserEditorState): void {
         if (!state.findBarVisible) { this.findView = undefined; this.findSwap.clear(); return; }
-        const props = { text: state.findText, currentMatch: state.findActiveMatch, totalMatches: state.findTotalMatches, onTextChange: this.model.webview.setFindText, onNext: this.model.webview.findNext, onPrev: this.model.webview.findPrev, onClose: this.model.webview.closeFind, placeholder: "Find in page..." };
+        const props = { text: state.findText, currentMatch: state.findActiveMatch, totalMatches: state.findTotalMatches, onTextChange: this.model.webview.setFindText, onNext: this.model.webview.findNext, onPrev: this.model.webview.findPrev, onClose: this.model.webview.closeFind, placeholder: t("browser.toolbarFindPlaceholder") };
         let created: FindBarView | undefined; this.findSwap.set("find", () => { created = new FindBarView(props); this.findView = created; return created; }); created?.mount(); this.findView?.update(props);
     }
     private syncDrawer(state: BrowserEditorState): void {

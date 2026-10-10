@@ -5,6 +5,7 @@ import { ui } from "../../api/ui";
 import { BrowserNetworkChannel, proxyLabel } from "../../../ipc/browser-network-ipc";
 import type { BrowserNetwork, BrowserNetworkApplyResult } from "../../../ipc/browser-network-ipc";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import { profileImageRoute, resolveRoutedSrc, torImageRoute } from "../link-editor/routed-src";
 import type { ImageRoute } from "../link-editor/routed-src";
 import { DisposableStore } from "../../core/utils/DisposableStore";
@@ -57,7 +58,7 @@ export class BrowserProfileNetworkModel {
             // with the current value anyway.
             if (!this.armed) return;
             void this.armProxy().catch((err: unknown) => {
-                ui.notify(`Could not apply the profile network: ${invokeErrorMessage(err)}`, "error");
+            ui.notify(t("browser.profileNetworkApplyFailed", { error: invokeErrorMessage(err) }), "error");
             });
         }));
     }
@@ -101,7 +102,7 @@ export class BrowserProfileNetworkModel {
         // A runtime change: new requests take the new route, but documents already
         // loaded stay as they are until reloaded.
         if (previousKey !== undefined && this.model.state.get().tabs.some((t) => t.url !== "about:blank")) {
-            ui.notify("The profile network changed — reload open tabs to load them over the new route.", "info");
+            ui.notify(t("browser.profileNetworkChanged"), "info");
         }
     };
 

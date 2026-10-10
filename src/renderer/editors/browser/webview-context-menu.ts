@@ -7,6 +7,7 @@ import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard, withTimeout } from "../../core/utils/utils";
 import { guard } from "../../core/utils/guard";
+import { t, untranslated } from "../../../shared/i18n/t";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 const SVG_PROBE_TIMEOUT = 250;
@@ -85,18 +86,21 @@ export async function showBrowserContextMenu({
         if (data.linkURL) {
             const linkURL = data.linkURL;
             items.push({
-                label: "Open Link in New Tab",
+                id: "open-link-in-new-tab",
+                label: t("browser.toolbarOpenLinkNewTab"),
                 onClick: () => {
                     const parentTab = model.state.get().tabs.find((t) => t.id === internalTabId);
                     model.addTab(linkURL, parentTab?.groupId);
                 },
             });
             items.push({
-                label: "Copy Link Address",
+                id: "copy-link-address",
+                label: t("browser.toolbarCopyLinkAddress"),
                 onClick: () => toClipboard(linkURL),
             });
             items.push({
-                label: "Add to Bookmarks",
+                id: "add-to-bookmarks",
+                label: t("browser.toolbarAddToBookmarks"),
                 onClick: async () => {
                     const bm = await model.bookmarksUI.ensureBookmarks();
                     if (!bm) return;
@@ -135,24 +139,27 @@ export async function showBrowserContextMenu({
         if (data.srcURL && data.mediaType === "image") {
             const srcURL = data.srcURL;
             items.push({
-                label: "Open Image in New Tab",
+                id: "open-image-in-new-tab",
+                label: t("browser.toolbarOpenImageNewTab"),
                 startGroup: items.length > 0,
                 onClick: async () => {
                     // A Tor/proxied page's image is read through its session (US-1557).
                     const sessionHandle = await model.network.sessionSource(srcURL);
                     if (sessionHandle === null) {
-                        ui.notify("The page's secure route is not connected — the image was not opened.", "warning");
+                        ui.notify(t("browser.secureRouteImageFailed"), "warning");
                         return;
                     }
                     pagesModel.openImageInNewTab(srcURL, undefined, sessionHandle);
                 },
             });
             items.push({
-                label: "Copy Image Address",
+                id: "copy-image-address",
+                label: t("browser.toolbarCopyImageAddress"),
                 onClick: () => toClipboard(srcURL),
             });
             items.push({
-                label: "Use Image for Bookmark",
+                id: "use-image-for-bookmark",
+                label: t("browser.toolbarUseImageForBookmark"),
                 onClick: () => {
                     model.bookmarksUI.trackClickedImages(internalTabId, [srcURL]);
                 },
@@ -163,7 +170,8 @@ export async function showBrowserContextMenu({
         if (data.selectionText) {
             const selectionText = data.selectionText;
             items.push({
-                label: "Copy",
+                id: "copy-selection",
+                label: t("menus.copy"),
                 startGroup: items.length > 0,
                 onClick: () => {
                     toClipboard(selectionText);
@@ -176,7 +184,8 @@ export async function showBrowserContextMenu({
         if (data.isEditable) {
             if (data.editFlags?.canCut) {
                 items.push({
-                    label: "Cut",
+                    id: "cut-field",
+                    label: t("menus.cut"),
                     startGroup: !data.selectionText && items.length > 0,
                     onClick: () => {
                         webview.focus();
@@ -186,7 +195,8 @@ export async function showBrowserContextMenu({
             }
             if (!data.selectionText && data.editFlags?.canCopy) {
                 items.push({
-                    label: "Copy",
+                    id: "copy-field",
+                    label: t("menus.copy"),
                     onClick: () => {
                         webview.focus();
                         webview.copy();
@@ -195,7 +205,8 @@ export async function showBrowserContextMenu({
             }
             if (data.editFlags?.canPaste) {
                 items.push({
-                    label: "Paste",
+                    id: "paste-field",
+                    label: t("menus.paste"),
                     onClick: () => {
                         webview.focus();
                         webview.paste();
@@ -208,25 +219,29 @@ export async function showBrowserContextMenu({
         const state = model.state.get();
         const tab = state.tabs.find((t) => t.id === internalTabId);
         items.push({
-            label: "Back",
+            id: "back",
+            label: t("browser.back"),
             startGroup: true,
             disabled: !tab?.canGoBack,
             onClick: () => webview.goBack(),
         });
         items.push({
-            label: "Forward",
+            id: "forward",
+            label: t("browser.forward"),
             disabled: !tab?.canGoForward,
             onClick: () => webview.goForward(),
         });
         items.push({
-            label: "Reload",
+            id: "reload",
+            label: t("browser.reload"),
             onClick: () => webview.reload(),
         });
 
         // View Source
         const pageUrl = tab?.url || "";
         items.push({
-            label: "View Source",
+            id: "view-source",
+            label: t("browser.toolbarViewSource"),
             startGroup: true,
             disabled: !pageUrl || pageUrl === "about:blank",
             onClick: async () => {
@@ -244,7 +259,8 @@ export async function showBrowserContextMenu({
         // View actual DOM (includes iframe content via main process)
         const regKey = `${model.id}/${internalTabId}`;
         items.push({
-            label: "View Actual DOM",
+            id: "view-actual-dom",
+            label: t("browser.toolbarViewActualDom"),
             onClick: async () => {
                 const html = await ipcRenderer.invoke(
                     BrowserChannel.collectDom,
@@ -260,19 +276,21 @@ export async function showBrowserContextMenu({
 
         // Show resources extracted from the page DOM + network log
         items.push({
-            label: "Show Resources",
+            id: "show-resources",
+            label: t("browser.toolbarShowResources"),
             onClick: () => showResources(regKey, pageUrl, tab?.pageTitle || pageUrl),
         });
 
         // SVG item
         if (svgSource) {
             items.push({
-                label: "Open SVG in Editor",
+                id: "open-svg-in-editor",
+                label: t("browser.toolbarOpenSvgEditor"),
                 onClick: () => {
                     void guard("Failed to open SVG source", () => app.capabilities.invoke("text.open", {
                         content: svgSource,
                         language: "xml",
-                        title: "untitled.svg",
+                        title: untranslated("untitled.svg"),
                     }));
                 },
             });
@@ -280,7 +298,8 @@ export async function showBrowserContextMenu({
 
         // Inspect Element
         items.push({
-            label: "Inspect Element",
+            id: "inspect-element",
+            label: t("browser.toolbarInspectElement"),
             onClick: () => webview.inspectElement(probeX, probeY),
         });
 

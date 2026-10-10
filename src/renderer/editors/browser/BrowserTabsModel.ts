@@ -3,6 +3,7 @@ import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { createIconElement } from "../../uikit/shared/slots";
 import { settings, BrowserProfile } from "../../api/settings";
 import { BrowserBookmarks } from "./BrowserBookmarks";
+import { t } from "../../../shared/i18n/t";
 import type {
     BrowserEditorModel,
     BrowserEditorState,
@@ -308,7 +309,8 @@ export class BrowserTabsModel {
             if (!currentTab?.url || currentTab.url === DEFAULT_URL) data.browserTabMode = "navigate";
         };
         bm.linkEditor.onGetLinkMenuItems = (link) => link.href ? [{
-            label: "Open in New Tab",
+            id: "open-in-new-tab",
+            label: t("shell.openInNewTab"),
             icon: createIconElement("open-link"),
             onClick: () => this.addTab(link.href),
         }] : [];

@@ -5,6 +5,7 @@ import {
 import { searchHistoryManager } from "./browser-search-history";
 import type { MenuItem } from "../../uikit";
 import { ContextMenuEvent } from "../../api/events/events";
+import { t } from "../../../shared/i18n/t";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 /**
@@ -124,6 +125,7 @@ export class BrowserUrlBarModel {
     get searchEngineMenuItems(): MenuItem[] {
         const detected = this.detectedSearch;
         return SEARCH_ENGINES.map((engine) => ({
+            id: engine.id,
             label: engine.label,
             onClick: () => {
                 if (detected) {
@@ -206,7 +208,8 @@ export class BrowserUrlBarModel {
     handleUrlContextMenu = (e: MouseEvent) => {
         const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "browser-url-bar");
         ctxEvent.items.push({
-            label: "Paste and Go",
+            id: "paste-and-go",
+            label: t("browser.toolbarPasteAndGo"),
             startGroup: true,
             onClick: async () => {
                 const text = await navigator.clipboard.readText();

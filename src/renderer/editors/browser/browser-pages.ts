@@ -7,6 +7,7 @@ import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { fs as appFs } from "../../api/fs";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 // ============================================================================
 // Browser page opening — the browser-specific halves of the pages lifecycle.
@@ -33,13 +34,13 @@ export async function showBrowserPage(
         const torPath = settings.get("tor.exe-path");
         if (!torPath) {
             ui.notify(
-                "Browser (Tor) requires tor.exe path. Configure it in Settings → tor.exe-path",
+                t("browser.browserTorNeedsExe"),
                 "error",
             );
             return;
         }
         if (!(await appFs.exists(torPath))) {
-            ui.notify(`tor.exe not found at: ${torPath}`, "error");
+            ui.notify(t("browser.browserTorExeNotFound", { path: torPath }), "error");
             return;
         }
     }
@@ -86,9 +87,7 @@ export async function showBrowserPage(
             // partition could not be armed would browse over the normal
             // network, which is the exact failure this guards against.
             ui.notify(
-                `Could not secure the Tor session — the page was not opened: ${
-                    errMessage(err)
-                }`,
+                t("browser.browserTorSecureFailed", { error: errMessage(err) }),
                 "error",
             );
             return;
@@ -100,7 +99,7 @@ export async function showBrowserPage(
     // A NEW page is refused instead — it has no tabs worth keeping.
     const networkError = editor.state.get().networkError;
     if (networkError) {
-        ui.notify(`Could not apply the profile's proxy — the page was not opened: ${networkError}`, "error");
+        ui.notify(t("browser.browserProxyOpenFailed", { error: networkError }), "error");
         editor.network.dispose();
         return;
     }

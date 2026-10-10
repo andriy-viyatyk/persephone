@@ -5,6 +5,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -30,7 +31,7 @@ class SuggestionsContentView extends VanillaView<UrlSuggestionsDropdownProps> {
     protected onDispose(): void { if (this.clear) this.releaseChild(this.clear); this.clear = undefined; }
     private sync(props: UrlSuggestionsDropdownProps): void {
         this.headerLabel.textContent = props.mode === "search" ? "Search History" : "Navigation History";
-        if (props.mode === "search" && props.onClearVisible) { if (!this.clear) { this.clear = this.child(new ButtonView({ name: "url-suggestions-clear", size: "sm", variant: "ghost", children: "Clear", onClick: props.onClearVisible })); this.header.append(this.clear.root); this.clear.mount(); } else this.clear.update({ name: "url-suggestions-clear", size: "sm", variant: "ghost", children: "Clear", onClick: props.onClearVisible }); } else if (this.clear) { this.releaseChild(this.clear); this.clear = undefined; }
+        if (props.mode === "search" && props.onClearVisible) { if (!this.clear) { this.clear = this.child(new ButtonView({ name: "url-suggestions-clear", size: "sm", variant: "ghost", children: t("menus.clear"), onClick: props.onClearVisible })); this.header.append(this.clear.root); this.clear.mount(); } else this.clear.update({ name: "url-suggestions-clear", size: "sm", variant: "ghost", children: t("menus.clear"), onClick: props.onClearVisible }); } else if (this.clear) { this.releaseChild(this.clear); this.clear = undefined; }
     }
     private listProps(props: UrlSuggestionsDropdownProps) { return { name: "url-suggestions-list", items: props.items.map((value) => ({ value, label: value })), activeIndex: props.hoveredIndex, onActiveChange: props.onHoveredIndexChange, onChange: (item: IListBoxItem) => props.onSelect(item.value as string), searchText: props.mode === "search" ? props.searchText : undefined, keyboardNav: false, growToHeight: 400 }; }
 }

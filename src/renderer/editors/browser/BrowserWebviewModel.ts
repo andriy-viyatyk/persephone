@@ -18,6 +18,7 @@ import { agentMayAccessBrowserPage } from "./agent-access";
 import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
 import { tryParseJson } from "../../core/utils/parse-utils";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import { withTimeout } from "../../core/utils/utils";
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
@@ -974,7 +975,8 @@ ${source}
 
         return [
             {
-                label: "View Source",
+                id: "view-source",
+                label: t("browser.toolbarViewSource"),
                 disabled: !hasPage,
                 onClick: async () => {
                     if (!webview) return;
@@ -989,7 +991,8 @@ ${source}
                 },
             },
             {
-                label: "View Actual DOM",
+                id: "view-actual-dom",
+                label: t("browser.toolbarViewActualDom"),
                 disabled: !hasPage,
                 onClick: async () => {
                     const html = await ipcRenderer.invoke(
@@ -1004,7 +1007,8 @@ ${source}
                 },
             },
             {
-                label: "Show Resources",
+                id: "show-resources",
+                label: t("browser.toolbarShowResources"),
                 disabled: !hasPage,
                 onClick: () => this.showResources(regKey, pageUrl, tab?.pageTitle || pageUrl),
             },
@@ -1035,7 +1039,7 @@ ${source}
         }
 
         if (links.length === 0) {
-            ui.notify("No resources found on this page.", "info");
+            ui.notify(t("browser.toolbarNoResources"), "info");
             return;
         }
 

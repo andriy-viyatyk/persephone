@@ -1,3 +1,4 @@
+import { englishMessage } from "../../../shared/i18n/t";
 const { ipcRenderer } = require("electron");
 import { TComponentState } from "../../core/state/state";
 import {
@@ -466,7 +467,7 @@ export class BrowserEditor extends EditorModel<
                     s.activeTabId = fresh.id;
                     s.url = DEFAULT_URL;
                     s.pageTitle = "";
-                    s.title = "Browser";
+                    s.title = englishMessage("editors.browser");
                 }
             }
             if (data.searchEngineId) s.searchEngineId = data.searchEngineId;

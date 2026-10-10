@@ -1,6 +1,5 @@
 import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
-import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import { settings, BrowserProfile } from "../../api/settings";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
@@ -10,9 +9,10 @@ import { BookmarkEvent } from "../../api/events/events";
 import { withTimeout } from "../../core/utils/utils";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
-const SELECT_BOOKMARK_FILE = "Select a file";
-const CREATE_BOOKMARK_FILE = "Create new file";
+const SELECT_BOOKMARK_FILE_ID = "select-bookmarks-file";
+const CREATE_BOOKMARK_FILE_ID = "create-bookmarks-file";
 
 /** Tracked image URLs from a specific navigation level. */
 export interface TrackedImageLevel {
@@ -76,20 +76,26 @@ export class BrowserBookmarksUIModel {
         }
 
         if (!filePath) {
-            const choice = await ui.confirm(
-                "This profile has no bookmarks file associated.\nChoose an option:",
-                { title: "Bookmarks File", buttons: [SELECT_BOOKMARK_FILE, CREATE_BOOKMARK_FILE, DialogButton.cancel] },
-            );
+            const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+            const choice = await showConfirmationDialog({
+                message: t("browser.bookmarksMissingFile"),
+                title: t("browser.bookmarksFileTitle"),
+                buttons: [
+                    { id: SELECT_BOOKMARK_FILE_ID, label: t("browser.bookmarksSelectFile") },
+                    { id: CREATE_BOOKMARK_FILE_ID, label: t("browser.bookmarksCreateFile") },
+                    DialogButton.cancel,
+                ],
+            });
 
-            if (choice === SELECT_BOOKMARK_FILE) {
+            if (choice === SELECT_BOOKMARK_FILE_ID) {
                 const result = await api.showOpenFileDialog({
-                    title: "Select Bookmarks File",
+                    title: t("browser.bookmarksSelectFileTitle"),
                     filters: [BOOKMARKS_FILE_FILTER],
                 });
                 filePath = result?.[0] || "";
-            } else if (choice === CREATE_BOOKMARK_FILE) {
+            } else if (choice === CREATE_BOOKMARK_FILE_ID) {
                 const result = await api.showSaveFileDialog({
-                    title: "Create Bookmarks File",
+                    title: t("browser.bookmarksCreateFileTitle"),
                     defaultPath: "bookmarks.link.json",
                     filters: [BOOKMARKS_FILE_FILTER],
                 });
@@ -298,7 +304,7 @@ export class BrowserBookmarksUIModel {
         // Show dialog with (possibly modified) event data
         const bmState = bm.linkEditor.state.get();
         const result = await showEditLinkDialog({
-            title: isEdit ? "Edit Bookmark" : "Add Bookmark",
+            title: isEdit ? t("browser.bookmarkEdit") : t("browser.bookmarkAdd"),
             link: {
                 title: bookmarkEvent.title,
                 href: bookmarkEvent.href,

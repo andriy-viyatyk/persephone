@@ -19,6 +19,29 @@ import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
+
+const PROFILE_COLOR_MESSAGE_KEYS: Record<string, Parameters<typeof t>[0]> = {
+    "Dodger Blue": "browser.profileColorDodgerBlue",
+    "Hot Pink": "browser.profileColorHotPink",
+    Olive: "browser.profileColorOlive",
+    "Medium Purple": "browser.profileColorMediumPurple",
+    Orange: "browser.profileColorOrange",
+    "Dark Khaki": "browser.profileColorDarkKhaki",
+    "Deep Sky Blue": "browser.profileColorDeepSkyBlue",
+    Tomato: "browser.profileColorTomato",
+    "Lime Green": "browser.profileColorLimeGreen",
+    "Cornflower Blue": "browser.profileColorCornflowerBlue",
+    Sienna: "browser.profileColorSienna",
+};
+
+function profileColorLabel(name: string): string {
+    const key = PROFILE_COLOR_MESSAGE_KEYS[name];
+    return key ? t(key) : name;
+}
+
+function profileColorMenuId(name: string): string {
+    return `profile-color-${name.toLowerCase().replace(/\s+/g, "-")}`;
+}
 import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
@@ -201,7 +224,8 @@ class ProfileHeaderView extends VanillaView<ProfileHeaderProps> {
     private openColorMenu(anchor: Element): void {
         const profileName = this.props.name;
         const items: MenuItem[] = TAG_COLORS.map((tagColor) => ({
-            label: tagColor.name,
+            id: profileColorMenuId(tagColor.name),
+            label: profileColorLabel(tagColor.name),
             icon: this.createTagColorIcon(tagColor.hex),
             selected: this.props.color === tagColor.hex,
             onClick: () => this.props.model.handleColorChange(profileName, tagColor.hex),
@@ -513,7 +537,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         addPanel.append(addRow, text(t("settings.profileColor"), { color: "light", size: "xs" }));
         const colorPanel = panel({ direction: "row", wrap: true, gap: "md" });
         TAG_COLORS.forEach((tagColor) => {
-            const dot = this.child(new DotView({ size: "lg", color: tagColor.hex, selected: model.state.get().newColor === tagColor.hex, title: tagColor.name, onClick: () => model.setNewColor(tagColor.hex) }));
+            const dot = this.child(new DotView({ size: "lg", color: tagColor.hex, selected: model.state.get().newColor === tagColor.hex, title: profileColorLabel(tagColor.name), onClick: () => model.setNewColor(tagColor.hex) }));
             this.colorDots.push(dot);
             colorPanel.append(dot.root);
             dot.mount();
@@ -590,7 +614,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.torRow?.update({ model, torPortValue: state.torPortValue });
         this.newNameInput?.update({ size: "sm", placeholder: t("settings.profileNamePlaceholder"), value: state.newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown });
         this.addButton?.update({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: t("settings.profileAdd") });
-        this.colorDots.forEach((dot, index) => dot.update({ size: "lg", color: TAG_COLORS[index].hex, selected: state.newColor === TAG_COLORS[index].hex, title: TAG_COLORS[index].name, onClick: () => model.setNewColor(TAG_COLORS[index].hex) }));
+        this.colorDots.forEach((dot, index) => dot.update({ size: "lg", color: TAG_COLORS[index].hex, selected: state.newColor === TAG_COLORS[index].hex, title: profileColorLabel(TAG_COLORS[index].name), onClick: () => model.setNewColor(TAG_COLORS[index].hex) }));
     }
 }
 
