@@ -45,7 +45,7 @@ export class PageEditorSwitchesNode implements IAiVisible {
 
     get options(): readonly IEditorSwitchOption[] {
         const editor = this.mainEditor;
-        return editor ? getEditorSwitchOptions(editor) : [];
+        return editor ? getEditorSwitchOptions(editor).map(({ id, label, title }) => ({ id, label, title })) : [];
     }
 
     async switchTo(id: string): Promise<void> {

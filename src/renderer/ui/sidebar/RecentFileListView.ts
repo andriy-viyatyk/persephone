@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { fpBasename } from "../../core/utils/file-path";
 import { pagesModel } from "../../api/pages";
 import { recent } from "../../api/recent";
@@ -80,7 +81,7 @@ export class RecentFileListView extends VanillaView<RecentFileListProps> {
     private getContextMenu(item: FileListItem): MenuItem[] {
         return [
             {
-                label: "Open",
+                label: t("common.open"),
                 icon: createIconElement("open-file"),
                 onClick: () => this.openItem(item),
             },
@@ -89,18 +90,18 @@ export class RecentFileListView extends VanillaView<RecentFileListProps> {
                 invisible: item.isFolder,
             },
             {
-                label: "Open in New Window",
+                label: t("shell.openInNewWindow"),
                 icon: createIconElement("new-window"),
                 onClick: () => pagesModel.openPathInNewWindow(item.filePath),
                 invisible: item.isFolder,
             },
             {
-                label: "Show in File Explorer",
+                label: t("shell.showInFileExplorer"),
                 icon: createIconElement("folder-open"),
                 onClick: () => { api.showItemInFolder(item.filePath); },
             },
             {
-                label: "Remove from Recent",
+                label: t("shell.removeFromRecent"),
                 icon: createIconElement("remove"),
                 onClick: async () => {
                     const filePath = item.filePath;

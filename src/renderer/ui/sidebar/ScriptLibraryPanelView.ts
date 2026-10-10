@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
@@ -58,7 +59,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
             background: "dark",
             icon: "folder-open",
             onClick: () => { void this.selectFolder(); },
-            children: "Select Folder",
+            children: t("shell.selectFolder"),
         });
     }
 
@@ -66,7 +67,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
         this.setupPanel.append(
             this.setupButton.root,
             createTextElement(
-                "Select an existing folder with scripts or create a new one to store your saved scripts and reusable modules",
+                t("shell.selectAnExistingFolderWithScriptsOrCreateANewOneToStoreYourSavedScriptsAndReusableModules"),
                 { size: "xs", color: "light", align: "center" },
             ),
         );

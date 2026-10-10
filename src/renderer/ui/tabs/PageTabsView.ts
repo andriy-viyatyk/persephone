@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { settings } from "../../api/settings";
@@ -14,7 +15,7 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IState } from "../../core/state/state";
 import type { MenuItem } from "../../uikit/Menu/types";
-import { getCreatableItems } from "../sidebar/tools-editors-registry";
+import { getCreatableItemLabel, getCreatableItems } from "../sidebar/tools-editors-registry";
 import { decodePin, getPinnedStrings } from "../sidebar/pinned-items";
 import { minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab";
 import { PageTabView } from "./PageTabView";
@@ -63,7 +64,7 @@ export class PageTabsView extends VanillaView<object> {
         this.addButton = new SplitButtonView({
             name: "page-tabs-add",
             size: "md",
-            title: "Add Page (Ctrl+N)",
+            title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
             icon: "plus",
             onClick: () => pagesModel.addEmptyPage(),
             menuTitle: "New editor page",
@@ -304,7 +305,7 @@ export class PageTabsView extends VanillaView<object> {
                     // Pinned items are also displayed in the sidebar rail. Clone native icons so
                     // opening this menu cannot move the rail's single-use DOM node to the menu.
                     const icon = item.icon instanceof Node ? item.icon.cloneNode(true) : item.icon;
-                    items.push({ label: item.label, icon, onClick: item.create });
+                    items.push({ label: getCreatableItemLabel(item), icon, onClick: item.create });
                 }
             } else {
                 const root = ref.root;
@@ -320,14 +321,14 @@ export class PageTabsView extends VanillaView<object> {
             }
         }
         items.push({
-            label: "Show All…",
+            label: t("shell.showAll"),
             startGroup: true,
             onClick: () => void pagesModel.showToolsHubPage(),
         });
         this.addButton.update({
             name: "page-tabs-add",
             size: "md",
-            title: "Add Page (Ctrl+N)",
+            title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
             icon: "plus",
             onClick: () => pagesModel.addEmptyPage(),
             menuTitle: "New editor page",

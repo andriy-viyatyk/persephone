@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { menuFolders, type MenuFolder } from "../../api/menu-folders";
 import {
     getTraitDragData,
@@ -43,7 +44,7 @@ function selectedArrow(
 
     const button = document.createElement("span");
     button.className = "selected-icon-button";
-    button.title = "Open folder in new tab";
+    button.title = t("shell.openFolderInNewTab");
     button.append(arrow);
     button.addEventListener("click", (event) => {
         event.stopPropagation();

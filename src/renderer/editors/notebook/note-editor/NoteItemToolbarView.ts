@@ -1,5 +1,6 @@
 import type { EditorConfig } from "../../base/EditorConfig";
 import { editorRegistry } from "../../base/editorRegistry";
+import { t } from "../../../../shared/i18n/t";
 import { createFileTypeIconElement } from "../../../components/icons/icon-elements";
 import { settings } from "../../../api/settings";
 import { isScriptLanguage } from "../../../scripting/transpile";
@@ -161,7 +162,9 @@ export class NoteItemToolbarView extends VanillaView<NoteItemToolbarViewProps> {
             name: "note-editor-switch",
             items: options.options.map((value) => ({
                 value,
-                label: options.getOptionLabel(value),
+                label: value !== "monaco" && editorRegistry.getById(value)?.nameKey
+                    ? t(editorRegistry.getById(value)!.nameKey!)
+                    : options.getOptionLabel(value),
             })),
             value: editor || "monaco",
             onChange: (value) => this.props.model.changeEditor(value as EditorView),

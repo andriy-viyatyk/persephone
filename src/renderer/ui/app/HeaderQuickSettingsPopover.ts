@@ -1,3 +1,4 @@
+import { englishMessage, t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { PopoverView, type PopoverViewProps } from "../../uikit/Popover/PopoverView";
 import { SwitchView } from "../../uikit/Switch/SwitchView";
@@ -10,12 +11,13 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { RecordingRegion } from "../../../ipc/api-param-types";
 import "../../uikit/Switch/Switch.css";
 import "./HeaderQuickSettingsPopover.css";
+import type { MessageKey } from "../../../shared/i18n/en";
 
 export type QuickServiceKey = "mcp.enabled" | "mneme.enabled" | "clipboard.enabled";
 
 export interface QuickServiceEntry {
     key: QuickServiceKey;
-    label: string;
+    labelKey: MessageKey;
     /** Registry name, not a node: an icon element is single-use, so each row builds its own. */
     icon: IconName;
     iconColor?: string;
@@ -24,10 +26,16 @@ export interface QuickServiceEntry {
 const QUICK_SERVICE_ENTRIES: readonly QuickServiceEntry[] = [
     // The same icons these services carry in Tools & Editors, so one service reads the same
     // wherever it appears.
-    { key: "mcp.enabled", label: "MCP", icon: "mcp" },
-    { key: "mneme.enabled", label: "Mneme", icon: "memory", iconColor: MEMORY_ICON_COLOR },
-    { key: "clipboard.enabled", label: "Clipboard listener", icon: "paste" },
+    { key: "mcp.enabled", labelKey: "shell.mCP", icon: "mcp" },
+    { key: "mneme.enabled", labelKey: "shell.mneme", icon: "memory", iconColor: MEMORY_ICON_COLOR },
+    { key: "clipboard.enabled", labelKey: "shell.clipboardListener", icon: "paste" },
 ];
+
+function quickServiceLabel(entry: QuickServiceEntry): string {
+    return entry.key === "mcp.enabled" || entry.key === "mneme.enabled"
+        ? englishMessage(entry.labelKey)
+        : t(entry.labelKey);
+}
 
 interface HeaderQuickSettingsContentProps {
     onClose: () => void;
@@ -53,8 +61,8 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
 
     protected onMount(): void {
         this.root.append(
-            this.createSnipRow("Snip Screen", true),
-            this.createSnipRow("Snip Persephone", false),
+            this.createSnipRow(t("shell.snipScreen"), true),
+            this.createSnipRow(t("shell.snipPersephone"), false),
             this.createRecordRow(),
             ...this.createRecordChoices(),
             this.createSeparator(),
@@ -99,7 +107,7 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         icon.append(createIconElement("circle", { color: color.misc.red }));
         const labelElement = document.createElement("span");
         labelElement.dataset.part = "label";
-        labelElement.textContent = "Record…";
+        labelElement.textContent = t("shell.record");
         const chevron = document.createElement("span");
         chevron.dataset.part = "chevron";
         chevron.append(createIconElement("chevron-right"));
@@ -114,9 +122,9 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
 
     private createRecordChoices(): HTMLButtonElement[] {
         return ([
-            ["Full window", "window"],
-            ["Active page", "page"],
-            ["Main editor area", "editor"],
+            [t("shell.fullWindow"), "window"],
+            [t("shell.activePage"), "page"],
+            [t("shell.mainEditorArea"), "editor"],
         ] as const).map(([label, region]) => {
             const row = document.createElement("button");
             row.type = "button";
@@ -151,14 +159,14 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         }));
         const label = document.createElement("span");
         label.dataset.part = "label";
-        label.textContent = entry.label;
+        label.textContent = quickServiceLabel(entry);
 
         const onChange = (checked: boolean): void => {
             settings.set(entry.key, checked);
         };
         const switchView = this.child(new SwitchView({
             name: `header-quick-settings-${entry.key.replace(".", "-")}`,
-            label: entry.label,
+            label: quickServiceLabel(entry),
             checked: Boolean(settings.get(entry.key)),
             size: "sm",
             onChange,
@@ -186,7 +194,7 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         this.serviceSwitches.forEach(({ entry, view, onChange }) => {
             view.update({
                 name: `header-quick-settings-${entry.key.replace(".", "-")}`,
-                label: entry.label,
+                label: quickServiceLabel(entry),
                 checked: Boolean(settings.get(entry.key)),
                 size: "sm",
                 onChange,

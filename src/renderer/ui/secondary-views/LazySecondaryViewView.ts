@@ -8,6 +8,7 @@ import {
     secondaryViewRegistry,
     type SecondaryViewProps,
 } from "./secondary-view-registry";
+import { t } from "../../../shared/i18n/t";
 
 /** Native asynchronous loader for secondary-view definitions on the vanilla arm. */
 export class LazySecondaryViewView extends VanillaView<SecondaryViewProps> {
@@ -61,7 +62,7 @@ export class LazySecondaryViewView extends VanillaView<SecondaryViewProps> {
         const panelId = this.props.panelId;
         const definition = secondaryViewRegistry.get(panelId);
         if (!definition) {
-            this.showError(`Unknown secondary view: "${panelId}"`);
+            this.showError(t("shell.unknownSecondaryView", { panelId }));
             return;
         }
         void definition.loadView().then((module) => {
@@ -69,7 +70,7 @@ export class LazySecondaryViewView extends VanillaView<SecondaryViewProps> {
             this.mountPanel(module.default, this.props);
         }).catch((error: unknown) => {
             if (!this.live || generation !== this.loadGeneration || this.props.panelId !== panelId) return;
-            this.showError(errMessage(error, `Failed to load "${panelId}".`));
+            this.showError(errMessage(error, t("shell.failedToLoadSecondaryView", { panelId })));
         });
     }
 

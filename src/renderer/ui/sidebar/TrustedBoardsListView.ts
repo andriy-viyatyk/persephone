@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { boardInstallRegistry } from "../../api/board-install-registry";
@@ -124,7 +125,7 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
     private readonly removeBoard = async (root: string): Promise<void> => {
         await boardTrust.untrust(root);
         removePin({ kind: "board", root });
-        ui.notify("Removed from trusted boards", "info");
+        ui.notify(t("shell.removedFromTrustedBoards"), "info");
     };
 
     private readonly getBoardContextMenu = (root: string): MenuItem[] => {
@@ -132,15 +133,15 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
         const items: MenuItem[] = [];
         if (update) {
             items.push({
-                label: `Update to v${update.latestVersion}`,
+                label: t("shell.updateBoard", { version: update.latestVersion }),
                 onClick: () => { void runBoardUpdate(update); },
             });
         }
         items.push(
-            { label: "Copy board path", onClick: () => { toClipboard(root); } },
-            { label: "Open board folder", onClick: () => { void app.pages.openFile(root); } },
+            { label: t("shell.copyBoardPath"), onClick: () => { toClipboard(root); } },
+            { label: t("shell.openBoardFolder"), onClick: () => { void app.pages.openFile(root); } },
             {
-                label: "Remove",
+                label: t("common.remove"),
                 onClick: () => { void this.removeBoard(root); },
                 startGroup: true,
             },
@@ -193,9 +194,9 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
         }
 
         const tagProps = {
-            label: "Update",
+            label: t("shell.update"),
             size: "sm" as const,
-            title: `Update to v${update.latestVersion}`,
+            title: t("shell.updateBoard", { version: update.latestVersion }),
             onClick: () => { void runBoardUpdate(update); },
         };
         if (!record.tag) {
@@ -250,7 +251,7 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
             trailingVisible: this.trailingVisible,
             trailingElement: this.trailingElement,
             getBoardContextMenu: this.getBoardContextMenu,
-            emptyMessage: createTextElement("No trusted boards yet", { size: "sm", color: "light" }),
+            emptyMessage: createTextElement(t("shell.noTrustedBoardsYet"), { size: "sm", color: "light" }),
         };
     }
 }

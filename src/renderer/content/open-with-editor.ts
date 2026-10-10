@@ -8,6 +8,7 @@ import { createBoardGlyphElement } from "../editors/board/board-glyph-element";
 import { ArchiveIcon, type SvgIconComponent } from "../theme/icons";
 import { DefaultIcon, GridIcon, LinkIcon, NotebookIcon } from "../theme/language-icons";
 import { openWithDefaultApp } from "./open-with-default-app";
+import { t } from "../../shared/i18n/t";
 
 /** Built-in editors with a recognisable icon; every other built-in (the Text Editor included)
  *  gets the generic file icon. */
@@ -33,9 +34,9 @@ export function createOpenWithMenuItem(path: string): MenuItem {
         label: "Open with",
         icon: "open-link",
         items: [
-            ...options.map(({ id, label }): MenuItem => ({
+            ...options.map(({ id, label, labelKey, labelParams }): MenuItem => ({
                 id: `open-with:${id}`,
-                label,
+                label: labelKey ? t(labelKey, labelParams as never) : label,
                 icon: editorOptionIcon(id),
                 onClick: () => openWithEditor(path, id),
             })),

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { TraitSet, traited } from "../../core/traits/traits";
@@ -11,6 +12,7 @@ import {
     getBundledBoardContextMenu,
     getCreatableItems,
     getDisabledBundledBoardItems,
+    getCreatableItemLabel,
     type CreatableItem,
 } from "./tools-editors-registry";
 
@@ -18,7 +20,7 @@ export interface BuiltinEditorsListProps {
     onClose?: () => void;
 }
 
-type SectionMarker = { kind: "section"; label: string };
+type SectionMarker = { kind: "section"; id: string; label: string };
 type RowSource = CreatableItem | SectionMarker;
 
 const isSection = (source: RowSource): source is SectionMarker =>
@@ -28,9 +30,12 @@ function createRowTraits(getTrailing: (source: RowSource) => Node | undefined): 
     return new TraitSet().add(LIST_ITEM_KEY, {
     value: (source: unknown) => {
         const item = source as RowSource;
-        return isSection(item) ? `section-${item.label}` : item.id;
+        return isSection(item) ? `section-${item.id}` : item.id;
     },
-    label: (source: unknown) => (source as RowSource).label,
+    label: (source: unknown) => {
+        const item = source as RowSource;
+        return isSection(item) ? item.label : getCreatableItemLabel(item);
+    },
     icon: (source: unknown) => {
         const item = source as RowSource;
         return isSection(item) ? undefined : item.icon;
@@ -112,7 +117,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
         );
         const rows = allItems
             .filter((item) => item.disabled || !pinnedIds.has(item.id))
-            .sort((a, b) => a.label.localeCompare(b.label));
+            .sort((a, b) => getCreatableItemLabel(a).localeCompare(getCreatableItemLabel(b)));
 
         this.ensurePinButtons(rows);
         this.list.update(this.listProps(rows));
@@ -132,7 +137,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
             const button = new IconButtonView({
                 size: "sm",
                 icon: "pin",
-                title: "Pin to menu",
+                title: t("shell.pinToMenu"),
                 onClick: (event) => {
                     event.stopPropagation();
                     addPin({ kind: "editor", id: item.id });

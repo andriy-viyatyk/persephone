@@ -4,6 +4,7 @@ import type { EditorConfig } from "./EditorConfig";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import type { ContentRepresentation } from "../../api/types/capabilities";
+import type { MessageKey } from "../../../shared/i18n/en";
 
 export type EditorCapabilityDeclaration =
     | { readonly id: "text.open"; readonly representation?: never }
@@ -64,6 +65,8 @@ export interface EditorMatcher {
 export interface EditorDefinition {
     id: string;
     name: string;
+    /** English catalog identity used for localized UI display. */
+    readonly nameKey?: MessageKey;
     /** Canonical user guide path for synchronous facade help. */
     readonly guidePath?: string;
 

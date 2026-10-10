@@ -109,7 +109,7 @@ Claude), as in EPIC-124.
 | Task | Title | Status |
 |------|-------|--------|
 | [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Planned |
-| US-1654 | App shell, tabs, sidebar, editor display names | Planned |
+| [US-1654](../tasks/US-1654-shell-strings/README.md) | App shell, tabs, sidebar, editor display names | Planned |
 | US-1655 | Menus and context menus, tree providers, shared editor menus, file components | Planned |
 | US-1656 | API layer, content pipeline, notifications outside editors | Planned |
 | US-1657 | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |

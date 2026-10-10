@@ -18,6 +18,7 @@ import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface PageToolbarViewProps {
     name?: string;
@@ -327,8 +328,8 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
 
         const items: ISegment[] = options.map((option) => ({
             value: option.id,
-            label: option.label,
-            title: option.title,
+            label: option.labelKey ? t(option.labelKey, option.labelParams as never) : option.label,
+            title: option.titleKey ? t(option.titleKey, option.labelParams as never) : option.title,
         }));
         const props: SegmentedControlViewProps = {
             name: "page-editor-switch",

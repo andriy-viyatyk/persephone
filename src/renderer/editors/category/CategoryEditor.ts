@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type {
     ITreeProvider,
@@ -206,7 +207,7 @@ export class CategoryEditorView extends VanillaView<{ model: EditorModel }> {
         if (this.messagePanel) return;
         this.messagePanel = createPanelElement({ padding: "xl" });
         this.messagePanel.append(
-            createTextElement("Please select a category in the Navigation Panel.", { color: "light" }),
+            createTextElement(t("shell.pleaseSelectACategoryInTheNavigationPanel"), { color: "light" }),
         );
         this.root.append(this.messagePanel);
     }

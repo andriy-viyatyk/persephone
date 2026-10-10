@@ -13,11 +13,16 @@ import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
 import { hostOwnsPipe } from "../board/board-manifest";
+import { englishMessage } from "../../../shared/i18n/t";
+import type { MessageKey } from "../../../shared/i18n/en";
 
 export interface IEditorSwitchOption {
     readonly id: string;
     readonly label: string;
     readonly title?: string;
+    readonly labelKey?: MessageKey;
+    readonly titleKey?: MessageKey;
+    readonly labelParams?: Record<string, string | number>;
 }
 
 /** Compatible targets for opening a file before a page/editor has been created. */
@@ -47,23 +52,29 @@ export function getFileOpenEditorOptions(path: string): IEditorSwitchOption[] {
             const label = switchOptions.options.includes(id)
                 ? switchOptions.getOptionLabel(id)
                 : definition.name;
-            return [{ id, label }];
+            return [{ id, label, labelKey: id === "monaco" ? undefined : definition.nameKey }];
         });
 
     const boardOptions = eligibleBoards
         .filter((board) => board.editorId !== defaultEditorId)
         .map((board) => ({
             id: board.editorId,
-            label: `Board: ${board.name}`,
+            label: englishMessage("shell.boardName", { name: board.name }),
+            labelKey: "shell.boardName" as const,
+            labelParams: { name: board.name },
         }));
 
     const defaultOption = defaultBoard
-        ? { id: defaultBoard.editorId, label: `Board: ${defaultBoard.name} (Default)` }
+        ? { id: defaultBoard.editorId, label: englishMessage("shell.defaultBoardEditor", { name: defaultBoard.name }), labelKey: "shell.defaultBoardEditor" as const, labelParams: { name: defaultBoard.name } }
         : {
             id: defaultEditorId,
-            label: `${switchOptions.options.includes(defaultEditorId)
+            label: englishMessage("shell.defaultEditor", { name: switchOptions.options.includes(defaultEditorId)
                 ? switchOptions.getOptionLabel(defaultEditorId)
-                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId} (Default)`,
+                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId }),
+            labelKey: "shell.defaultEditor" as const,
+            labelParams: { name: switchOptions.options.includes(defaultEditorId)
+                ? switchOptions.getOptionLabel(defaultEditorId)
+                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId },
         };
     return [defaultOption, ...builtInOptions, ...boardOptions];
 }
@@ -106,9 +117,11 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             label: id === BOARD_INFO_EDITOR_ID
                 ? "\u00A0\u00A0+\u00A0\u00A0"
                 : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
+            labelKey: id === BOARD_INFO_EDITOR_ID ? undefined : editorRegistry.getById(id)?.nameKey,
             title: id === BOARD_INFO_EDITOR_ID
-                ? "Install an editor for this folder"
+                ? englishMessage("shell.installEditorForFolder")
                 : undefined,
+            titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFolder" : undefined,
         }));
     }
 
@@ -174,9 +187,11 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
         label: id === BOARD_INFO_EDITOR_ID
             ? "\u00A0\u00A0+\u00A0\u00A0"
             : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
+        labelKey: id === BOARD_INFO_EDITOR_ID ? undefined : editorRegistry.getById(id)?.nameKey,
         title: id === BOARD_INFO_EDITOR_ID
-            ? "Install an editor for this file type…"
+            ? englishMessage("shell.installEditorForFileType")
             : undefined,
+        titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFileType" : undefined,
     }));
 }
 

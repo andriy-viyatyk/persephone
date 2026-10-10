@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { pagesModel } from "../../api/pages";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -47,9 +48,9 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
         value: this.tab,
         onChange: this.onTabChange,
         items: [
-            { value: "editors", label: "Built-in Editors" },
-            { value: "boards", label: "Boards" },
-            { value: "tools", label: "Tools" },
+            { value: "editors", label: t("shell.builtInEditors") },
+            { value: "boards", label: t("shell.boards") },
+            { value: "tools", label: t("shell.tools") },
         ],
     };
     private readonly header = document.createElement("div");
@@ -68,7 +69,7 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
             name: "tools-editors-open-in-tab",
             size: "sm",
             icon: "new-window",
-            title: "Open in new tab",
+            title: t("shell.openInNewTab2"),
             onClick: this.onOpenInNewTab,
         });
         this.pinned = new PinnedRailView({ layout: "horizontal", onClose: props.onClose });

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { toolsTrust } from "../../api/tools/tools-trust";
@@ -60,12 +61,12 @@ export class TrustedToolsListView extends VanillaView<TrustedToolsListProps> {
 
     private readonly removeToolset = async (root: string): Promise<void> => {
         await toolsTrust.untrust(root);
-        ui.notify("Removed from tools", "info");
+        ui.notify(t("shell.removedFromTools"), "info");
     };
 
     private readonly getContextMenu = (root: string): MenuItem[] => [
         {
-            label: "Remove",
+            label: t("common.remove"),
             icon: createIconElement("remove", { width: 14, height: 14 }),
             onClick: () => { void this.removeToolset(root); },
         },
@@ -80,7 +81,7 @@ export class TrustedToolsListView extends VanillaView<TrustedToolsListProps> {
             })),
             onOpenToolset: this.openToolset,
             getContextMenu: this.getContextMenu,
-            emptyMessage: createTextElement("No registered tools yet", { size: "sm", color: "light" }),
+            emptyMessage: createTextElement(t("shell.noRegisteredToolsYet"), { size: "sm", color: "light" }),
         };
     }
 }

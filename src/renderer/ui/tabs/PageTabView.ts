@@ -1,6 +1,8 @@
+import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
 import type { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
+import { decodeCategoryLink } from "../../content/tree-providers/tree-provider-link";
 import { ContextMenuEvent } from "../../api/events/events";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
@@ -20,6 +22,7 @@ import type { PageTabProps } from "./PageTab";
 import "./PageTab.css";
 
 interface EditorTabState {
+    editor?: string;
     title?: string;
     modified?: boolean;
     language?: string;
@@ -47,22 +50,31 @@ interface EditorProjection {
     pageMuted: boolean;
 }
 
-const emptyEditorProjection: EditorProjection = {
-    title: "Empty",
-    modified: false,
-    language: "",
-    filePath: "",
-    deleted: false,
-    encrypted: false,
-    temp: false,
-    iconKey: "",
-    anyTabAudible: false,
-    pageMuted: false,
-};
+function emptyEditorProjection(): EditorProjection {
+    return {
+        title: t("shell.empty"),
+        modified: false,
+        language: "",
+        filePath: "",
+        deleted: false,
+        encrypted: false,
+        temp: false,
+        iconKey: "",
+        anyTabAudible: false,
+        pageMuted: false,
+    };
+}
 
 function selectEditorState(state: EditorTabState): EditorProjection {
+    const categoryLink = state.editor === "category-view" && state.filePath
+        ? decodeCategoryLink(state.filePath)
+        : null;
     return {
-        title: state.title ?? "Empty",
+        title: !state.editor && (!state.title || state.title === "Empty")
+            ? t("shell.empty")
+            : categoryLink && !categoryLink.category && state.title === "Folder"
+            ? t("shell.folder")
+            : state.title ?? "",
         modified: state.modified ?? false,
         language: state.language ?? "",
         filePath: state.filePath ?? "",
@@ -103,7 +115,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private closeIconCleanup: (() => void) | undefined;
     private emptyIconCleanup: (() => void) | undefined;
     private currentEditor: EditorOrHost | null = null;
-    private projection: EditorProjection = emptyEditorProjection;
+    private projection: EditorProjection = emptyEditorProjection();
     private isActive = false;
     private isGrouped = false;
     private dragEnterCount = 0;
@@ -126,7 +138,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.closeButton = new IconButtonView({
             name: "tab-close",
             size: "sm",
-            title: "Close Page",
+            title: t("shell.closePage"),
             icon: "close",
             ...{"data-part": "close-button"},
             onClick: () => this.closeClick(),
@@ -224,7 +236,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         if (editor === this.currentEditor) return;
         this.editorUnsubscribe();
         this.currentEditor = editor;
-        this.projection = emptyEditorProjection;
+        this.projection = emptyEditorProjection();
         if (editor) {
             this.projection = selectEditorState(editor.state.get() as EditorTabState);
             this.editorUnsubscribe = this.ownSubscription(editor.state.subscribe(
@@ -262,7 +274,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.syncEditorKind(editor);
         this.titleText.data = pinned ? "" : this.projection.title;
         this.encryptionIcon.textContent = encrypted ? "🔒" : "🔓";
-        this.encryptionIcon.title = encrypted ? "Decrypt File" : "Encrypt File";
+        this.encryptionIcon.title = encrypted ? t("shell.decryptFile") : t("shell.encryptFile");
         this.encryptionIcon.hidden = !hasEncryption;
         this.titleTooltip?.update({
             content: !pinned && this.projection.filePath ? this.projection.filePath : null,
@@ -491,13 +503,13 @@ export class PageTabView extends VanillaView<PageTabProps> {
         if (isPinned) menuItems.push(pinUnpinItem);
         if (!isPinned) {
             menuItems.push({
-                label: "Close Tab",
+                label: t("shell.closeTab"),
                 onClick: () => page.close(),
                 startGroup: menuItems.length > 0,
             });
         }
         menuItems.push({
-            label: "Close Other Tabs",
+            label: t("shell.closeOtherTabs"),
             disabled: pagesModel.state.get().pages.length <= 1,
             onClick: () => pagesModel.closeOtherPages(page.id),
             startGroup: isPinned,
@@ -505,18 +517,18 @@ export class PageTabView extends VanillaView<PageTabProps> {
         if (!isPinned) {
             menuItems.push(
                 {
-                    label: "Close Tabs to the Right",
+                    label: t("shell.closeTabsToTheRight"),
                     disabled: pagesModel.isLastPage(page.id),
                     onClick: () => pagesModel.closeToTheRight(page.id),
                 },
                 {
-                    label: "Open in New Window",
+                    label: t("shell.openInNewWindow"),
                     onClick: () => api.addDragEvent(this.getDragData()),
                 },
             );
         }
         menuItems.push({
-            label: "Duplicate Tab",
+            label: t("shell.duplicateTab"),
             icon: createIconElement("duplicate"),
             onClick: () => pagesModel.duplicatePage(page.id),
             startGroup: isPinned,

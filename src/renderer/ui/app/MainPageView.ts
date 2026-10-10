@@ -1,3 +1,4 @@
+import { englishMessage, t } from "../../../shared/i18n/t";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -26,7 +27,7 @@ async function runSnip(hideWindows: boolean): Promise<void> {
         const blobUrl = URL.createObjectURL(blob);
         await pagesModel.openImageInNewTab(blobUrl, "Snip");
     } catch (error) {
-        app.ui.notify(`Snip failed: ${errMessage(error)}`, "error");
+        app.ui.notify(t("shell.snipFailed", { product: englishMessage("shell.snipProduct"), error: errMessage(error) } as never), "error");
     }
 }
 
@@ -73,7 +74,7 @@ export class MainPageView extends VanillaView<object> {
         this.pageTabs = this.child(new PageTabsView({}));
         this.pages = this.child(new PagesView({}));
         this.menuBar = this.child(new MenuBarView({ open: false, onClose: this.closeMenuBar }));
-        this.autoloadButton = this.child(new IconButtonView({ name: "autoload-reload", size: "sm", icon: "refresh", title: "Application scripts need to be reloaded. Click to reload.", onClick: () => autoloadService.loadScripts() }));
+        this.autoloadButton = this.child(new IconButtonView({ name: "autoload-reload", size: "sm", icon: "refresh", title: t("shell.applicationScriptsNeedToBeReloadedClickToReload"), onClick: () => autoloadService.loadScripts() }));
         this.quickSettingsPopover = this.child(new HeaderQuickSettingsPopoverView({
             anchor: this.snipButton,
             open: false,
@@ -121,14 +122,14 @@ export class MainPageView extends VanillaView<object> {
     private buildHeader(): void {
         this.header.className = "app-header";
         this.header.dataset.name = "app-header";
-        this.menuButton = this.createButton("persephone-menu", "app-button", "Menu", createIconElement("persephone"), () => app.window.toggleMenuBar());
+        this.menuButton = this.createButton("persephone-menu", "app-button", t("shell.menu"), createIconElement("persephone"), () => app.window.toggleMenuBar());
         this.header.append(this.menuButton, this.pageTabs.root);
         this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
         this.autoloadWrap.className = "autoload-reload";
         this.recordingControls.className = "recording-controls";
         this.recordingControls.dataset.name = "window-recording-controls";
         this.recordingControls.hidden = true;
-        this.header.append(this.autoloadWrap, this.buildZoomButton(), this.recordingControls, this.createSystemButton("window-minimize", createIconElement("window-minimize"), "Minimize", () => app.window.minimize()), this.toggleWindowButton, this.createSystemButton("window-close", createIconElement("close"), "Close", () => app.window.close()));
+        this.header.append(this.autoloadWrap, this.buildZoomButton(), this.recordingControls, this.createSystemButton("window-minimize", createIconElement("window-minimize"), t("shell.minimize"), () => app.window.minimize()), this.toggleWindowButton, this.createSystemButton("window-close", createIconElement("close"), t("shell.closeWindow"), () => app.window.close()));
         this.toggleWindowButton.className = "system-button darkBackground";
         this.toggleWindowButton.type = "button";
         this.toggleWindowButton.dataset.name = "window-toggle";
@@ -138,7 +139,7 @@ export class MainPageView extends VanillaView<object> {
         this.snipButton.type = "button";
         this.snipButton.dataset.name = "header-snip-button";
         this.snipButton.className = "quick-settings-button";
-        this.snipButton.title = "Open quick settings";
+        this.snipButton.title = t("shell.openQuickSettings");
         this.snipButton.append(createIconElement("more-horiz", { width: 28, height: 28 }));
         this.listen(this.snipButton, "click", () => this.toggleSnipMenu());
         this.statusIndicators.append(this.snipButton, this.mnemeIndicator, this.mcpIndicator);
@@ -183,7 +184,7 @@ export class MainPageView extends VanillaView<object> {
         this.zoomButton.type = "button";
         this.zoomButton.dataset.name = "zoom-indicator";
         this.zoomButton.className = "zoom-indicator";
-        this.zoomButton.title = "Reset Zoom";
+        this.zoomButton.title = t("shell.resetZoom");
         this.listen(this.zoomButton, "click", () => app.window.resetZoom());
         return this.zoomButton;
     }
@@ -192,11 +193,13 @@ export class MainPageView extends VanillaView<object> {
         this.zoomButton.classList.toggle("visible", state.zoomLevel !== 0);
         this.zoomButton.textContent = `${Math.round(Math.pow(1.2, state.zoomLevel) * 100)}%`;
         this.toggleWindowButton.replaceChildren(createIconElement(state.isMaximized ? "window-restore" : "window-maximize"));
-        this.toggleWindowButton.title = state.isMaximized ? "Restore" : "Maximize";
+        this.toggleWindowButton.title = state.isMaximized ? t("shell.restore") : t("shell.maximize");
         this.mcpIndicator.style.display = this.hiddenChromeState ? "none" : state.mcpRunning ? "" : "none";
         this.mcpIndicator.dataset.name = "mcp-indicator";
         this.mcpIndicator.className = "mcp-indicator";
-        this.mcpIndicator.title = state.mcpClientCount > 0 ? `MCP is active, ${state.mcpClientCount} active connection${state.mcpClientCount !== 1 ? "s" : ""} — click to view request log` : "MCP server is running — click to view request log";
+        this.mcpIndicator.title = state.mcpClientCount > 0
+            ? t("shell.activeMcpConnections", { product: englishMessage("shell.mCP"), count: state.mcpClientCount } as never)
+            : t("shell.mcpServerRunning", { product: englishMessage("shell.mCP") } as never);
         this.mcpIndicator.onclick = () => showMcpRequestLog();
         if (state.mcpClientCount > 0) {
             const count = document.createElement("span");
@@ -215,7 +218,11 @@ export class MainPageView extends VanillaView<object> {
         this.mnemeIndicator.dataset.name = "mneme-indicator";
         this.mnemeIndicator.className = "mneme-indicator";
         const dotClass = state.running ? (state.modelReady ? "success" : "warning") : "neutral";
-        this.mnemeIndicator.title = state.running ? (state.modelReady ? "Mneme active — vector memory ready. Click to manage." : "Mneme is running without an embedding model — semantic search unavailable (text/grep fallback only). Click to fix in Mneme settings.") : "Mneme is enabled but not running. Click to manage.";
+        this.mnemeIndicator.title = state.running
+            ? (state.modelReady
+                ? t("shell.mnemeActive", { product: englishMessage("shell.mneme") } as never)
+                : t("shell.mnemeNoEmbedding", { product: englishMessage("shell.mneme") } as never))
+            : t("shell.mnemeEnabledStopped", { product: englishMessage("shell.mneme") } as never);
         this.mnemeIndicator.onclick = () => pagesModel.showMnemeConfigPage();
         const dot = document.createElement("span");
         dot.className = `mneme-dot ${dotClass}`;
@@ -247,7 +254,7 @@ export class MainPageView extends VanillaView<object> {
 
     private async prepareRecording(region: RecordingRegion): Promise<void> {
         try { await windowRecording.prepare(region, true); }
-        catch (error: unknown) { app.ui.notify(`Could not prepare recording: ${errMessage(error)}`, "error"); }
+        catch (error: unknown) { app.ui.notify(t("shell.recordingPrepareFailed", { error: errMessage(error) }), "error"); }
     }
 
     private recordingParts: { dot: HTMLSpanElement; elapsed: HTMLSpanElement; start: HTMLButtonElement; cancel: HTMLButtonElement; pause: HTMLButtonElement; resume: HTMLButtonElement; stop: HTMLButtonElement } | undefined;
@@ -292,12 +299,12 @@ export class MainPageView extends VanillaView<object> {
         const parts = {
             dot,
             elapsed,
-            start: this.recordingButton("recording-start", "circle", "Start", () => this.startPreparedRecording()),
-            cancel: this.recordingButton("recording-cancel", "close", "Cancel", () => { void windowRecording.cancel(); }),
-            pause: this.recordingButton("recording-pause", "pause", "Pause", () => { void windowRecording.pause(); }),
-            resume: this.recordingButton("recording-resume", "play", "Resume", () => { void windowRecording.resume(); }),
-            stop: this.recordingButton("recording-stop", "stop", "Stop", () => {
-                void windowRecording.stop("user").catch((error: unknown) => app.ui.notify(`Could not finish recording: ${errMessage(error)}`, "error"));
+            start: this.recordingButton("recording-start", "circle", t("shell.start"), () => this.startPreparedRecording()),
+            cancel: this.recordingButton("recording-cancel", "close", t("common.cancel"), () => { void windowRecording.cancel(); }),
+            pause: this.recordingButton("recording-pause", "pause", t("shell.pause"), () => { void windowRecording.pause(); }),
+            resume: this.recordingButton("recording-resume", "play", t("shell.resume"), () => { void windowRecording.resume(); }),
+            stop: this.recordingButton("recording-stop", "stop", t("shell.stop"), () => {
+                void windowRecording.stop("user").catch((error: unknown) => app.ui.notify(t("shell.recordingFinishFailed", { error: errMessage(error) }), "error"));
             }),
         };
         this.recordingControls.append(dot, elapsed, parts.start, parts.pause, parts.resume, parts.stop, parts.cancel);
@@ -320,7 +327,7 @@ export class MainPageView extends VanillaView<object> {
         try { windowRecording.startPrepared(); }
         catch (error: unknown) {
             void windowRecording.cancel();
-            app.ui.notify(`Could not start recording: ${errMessage(error)}`, "error");
+            app.ui.notify(t("shell.recordingStartFailed", { error: errMessage(error) }), "error");
         }
     }
 }

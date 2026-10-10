@@ -1,6 +1,7 @@
 import type { EditorOrHost } from "../../editors/base";
 import type { IconName } from "../../theme/icon-registry";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
+import type { MessageKey } from "../../../shared/i18n/en";
 
 /** Props passed to secondary view sidebar components. */
 export interface SecondaryViewProps {
@@ -25,6 +26,8 @@ export type SecondaryViewDefinition = {
     id: string;
     /** Display label for the panel header. */
     label: string;
+    /** Catalog identity for UI display; `label` stays English for agents. */
+    labelKey: MessageKey;
     /** Optional per-panel header icon. When set, it overrides the owning editor's
      *  icon for this panel — used by sidebar-only sub-panels that want their own
      *  glyph (e.g. the Explorer "search" panel → the "search" registry name). Most panels omit this

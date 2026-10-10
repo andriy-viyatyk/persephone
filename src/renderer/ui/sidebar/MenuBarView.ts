@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { menuFolders, type MenuFolder } from "../../api/menu-folders";
@@ -90,14 +91,14 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         name: "menubar-open-file",
         size: "md",
         icon: "open-file",
-        title: "Open File (Ctrl+O)",
+        title: t("shell.openFileCtrlO", { shortcut: "Ctrl+O" }),
         onClick: () => { void this.openFile(); },
     });
     private readonly newWindowButton = new IconButtonView({
         name: "menubar-new-window",
         size: "md",
         icon: "new-window",
-        title: "New Window (Ctrl+Shift+N)",
+        title: t("shell.newWindowCtrlShiftN", { shortcut: "Ctrl+Shift+N" }),
         onClick: () => { void this.newWindow(); },
     });
     private readonly spacer = new SpacerView({});
@@ -105,23 +106,23 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         name: "menubar-about",
         size: "md",
         icon: "info",
-        title: "About",
+        title: t("shell.about"),
         onClick: () => this.openAbout(),
     });
     private readonly settingsButton = new IconButtonView({
         name: "menubar-settings",
         size: "md",
         icon: "settings",
-        title: "Settings",
+        title: t("shell.settings"),
         onClick: () => this.openSettings(),
     });
     private readonly addFolderButton = new ButtonView({
         name: "menubar-add-folder-button",
         icon: "folder-plus",
-        title: "Add a folder to the sidebar",
+        title: t("shell.addAFolderToTheSidebar"),
         size: "sm",
         onClick: () => { void this.addFolder(); },
-        children: "Add Folder",
+        children: t("shell.addFolder"),
     });
     private readonly folderList: ListBoxView<FolderItemRecord>;
     private readonly splitter = new SplitterView({
@@ -295,7 +296,16 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         app.window.menuBar.open(nextId);
     }
 
-    private getFolderLabel(folder: MenuFolder): string { return folder.name; }
+    private getFolderLabel(folder: MenuFolder): string {
+        // Built-in folders keep their English `name` for scripts; the menu shows the catalog text.
+        switch (folder.id) {
+            case openTabsId: return t("shell.openTabs");
+            case recentFilesId: return t("shell.recentFiles");
+            case toolsEditorsId: return t("editors.toolsAndEditors");
+            case scriptLibraryId: return t("shell.scriptLibrary");
+            default: return folder.name;
+        }
+    }
 
     private getFolderIcon(folder: MenuFolder): IconRef {
         switch (folder.id) {
@@ -318,7 +328,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     }
 
     private async changeLibraryFolder(): Promise<void> {
-        const result = await api.showOpenFolderDialog({ title: "Select Script Library Folder" });
+        const result = await api.showOpenFolderDialog({ title: t("shell.selectScriptLibraryFolder") });
         if (result && result.length > 0) settings.set("script-library.path", result[0]);
     }
 
@@ -335,7 +345,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         if (folder.id === openTabsId) return [];
         if (folder.id === recentFilesId) {
             return [{
-                label: "Clear Recent Files",
+                label: t("shell.clearRecentFiles"),
                 icon: createIconElement("clear-list"),
                 onClick: () => { void this.clearRecentFiles(); },
             }];
@@ -343,19 +353,19 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         if (folder.id === scriptLibraryId) {
             const libraryPath = settings.get("script-library.path");
             const items = [{
-                label: "Change Library Folder",
+                label: t("shell.changeLibraryFolder"),
                 icon: createIconElement("folder-open"),
                 onClick: () => { void this.changeLibraryFolder(); },
             }];
             if (libraryPath) {
                 items.push(
                     {
-                        label: "Open in Explorer",
+                        label: t("shell.openInExplorer"),
                         icon: createIconElement("folder-open"),
                         onClick: () => { api.showFolder(libraryPath); },
                     },
                     {
-                        label: "Unlink Library",
+                        label: t("shell.unlinkLibrary"),
                         icon: createIconElement("remove"),
                         onClick: () => this.unlinkLibraryFolder(),
                     },
@@ -365,12 +375,12 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         }
         return [
             {
-                label: "Open in New Tab",
+                label: t("shell.openInNewTab"),
                 icon: createIconElement("open-file"),
                 onClick: () => this.openFolderInTab(folder),
             },
             {
-                label: "Remove Folder",
+                label: t("shell.removeFolder"),
                 icon: createIconElement("remove"),
                 onClick: () => {
                     const folderId = folder.id;
@@ -378,12 +388,12 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
                 },
             },
             {
-                label: "Show in File Explorer",
+                label: t("shell.showInFileExplorer"),
                 icon: createIconElement("folder-open"),
                 onClick: () => { if (folder.path) api.showFolder(folder.path); },
             },
             {
-                label: "Open Terminal here",
+                label: t("shell.openTerminalHere"),
                 icon: createIconElement("terminal"),
                 onClick: async () => {
                     const folderPath = folder.path;
@@ -396,7 +406,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     }
 
     private async addFolder(): Promise<void> {
-        const result = await api.showOpenFolderDialog({ title: "Select Folder to Add" });
+        const result = await api.showOpenFolderDialog({ title: t("shell.selectFolderToAdd") });
         if (result && result.length > 0) {
             const folderPath = result[0];
             menuFolders.add({ name: fpBasename(folderPath), path: folderPath });
@@ -437,7 +447,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         if (event.contextMenuEvent) return;
         const contextEvent = ContextMenuEvent.fromNativeEvent(event, "sidebar-background");
         contextEvent.items.push({
-            label: "Add Folder",
+            label: t("shell.addFolder"),
             icon: createIconElement("folder-plus"),
             onClick: () => { void this.addFolder(); },
         });

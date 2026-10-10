@@ -9,6 +9,8 @@ export interface EnglishCatalogEntry<T extends EnglishMessage = EnglishMessage> 
 export const commonCatalog = {
     ok: { message: "OK" },
     cancel: { message: "Cancel" },
+    open: { message: "Open" },
+    remove: { message: "Remove" },
     loading: { message: "Loading…", note: "Shown while content is being loaded." },
     todayAt: { message: "Today at {time}" },
     items: { message: { one: "{count} item", other: "{count} items" } },

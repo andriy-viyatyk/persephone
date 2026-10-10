@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { errMessage } from "../../../shared/utils";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "./NativeEditorErrorView.css";
@@ -22,7 +23,7 @@ export class NativeEditorErrorView extends VanillaView<NativeEditorErrorViewProp
         const titleElement = document.createElement("div");
         titleElement.className = "error-title";
         titleElement.dataset.part = "title";
-        titleElement.textContent = "Editor crashed";
+        titleElement.textContent = t("shell.editorCrashed");
 
         const messageElement = document.createElement("div");
         messageElement.className = "error-message";

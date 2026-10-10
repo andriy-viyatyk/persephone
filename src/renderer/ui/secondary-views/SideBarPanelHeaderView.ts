@@ -3,6 +3,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { createIconElement } from "../../uikit/shared/slots";
 import "./SideBarPanelHeader.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface SideBarPanelHeaderDomProps {
     headerHost: HTMLDivElement | null;
@@ -122,7 +123,7 @@ class SideBarPanelHeaderDom implements SideBarPanelHeaderHandle {
         else delete this.showMainButton.dataset.active;
         if (!props.onShowMain) this.showMainButton.remove();
         this.showMainTooltip.update({
-            content: props.onShowMain ? props.showMainTitle ?? "Show in main view" : null,
+            content: props.onShowMain ? props.showMainTitle ?? t("shell.secondaryViewHeaderTooltip") : null,
         });
 
         if (this.currentHeader !== props.headerHost) {

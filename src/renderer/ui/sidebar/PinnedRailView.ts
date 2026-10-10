@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { ContextMenuEvent } from "../../api/events/events";
 import { settings } from "../../api/settings";
@@ -15,6 +16,7 @@ import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache"
 import {
     getBundledBoardContextMenu,
     getCreatableItems,
+    getCreatableItemLabel,
     type CreatableItem,
 } from "./tools-editors-registry";
 import {
@@ -75,7 +77,7 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
 
         const header = document.createElement("div");
         header.dataset.part = "section-header";
-        header.textContent = "Pinned";
+        header.textContent = t("shell.pinned");
         this.scroll.dataset.part = "scroll";
         this.root.append(header, this.scroll);
 
@@ -160,7 +162,7 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         const button = new IconButtonView({
             size: "sm",
             icon: "pin-filled",
-            title: "Unpin",
+            title: t("shell.unpin"),
             onClick: (event) => {
                 event.stopPropagation();
                 removePin(this.rows.get(row)?.rowData.ref ?? rowData.ref);
@@ -221,7 +223,7 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
                 createBoardGlyphElement(rowData.ref.root),
             );
         } else if (editor) {
-            row.querySelector<HTMLElement>(".item-label")!.textContent = editor.label;
+            row.querySelector<HTMLElement>(".item-label")!.textContent = getCreatableItemLabel(editor);
             record.iconCleanup = fillSlot(
                 row.querySelector<HTMLElement>(".item-icon")!,
                 typeof editor.icon === "string"

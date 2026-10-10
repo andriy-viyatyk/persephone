@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
@@ -37,7 +38,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         onActiveChange: this.onListActiveChange,
         isSelected: this.isListItemSelected,
         getTooltip: this.getListItemTooltip,
-        emptyMessage: "no tabs",
+        emptyMessage: t("shell.noTabs"),
         variant: "browse",
     };
     private allWindowsPages: WindowPages[] = [];
@@ -52,7 +53,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
             name: "sidebar-open-tabs",
             items: [],
             rowHeight: 22,
-            emptyMessage: "no tabs",
+            emptyMessage: t("shell.noTabs"),
             variant: "browse",
         });
         super(props, list.root);
@@ -128,7 +129,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private section(windowIndex: number): OpenTabsListItem {
         return {
             value: `window-${windowIndex}`,
-            label: `window-${windowIndex}`,
+            label: t("shell.windowSectionLabel", { window: windowIndex }),
             windowIndex,
             section: true,
         };
