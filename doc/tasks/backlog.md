@@ -192,9 +192,9 @@ of [`active-work.md`](../active-work.md) along with its task list.
 
 ### Platform roadmap — boards as modules, capability registry, external providers
 
-**Completed historical roadmap.** [`doc/platform-roadmap.md`](../platform-roadmap.md) records the
-completed phases and their design history; the final phase is tracked in the
-[completed epic index](../epics/completed.md).
+**Completed historical roadmap.** Its phases (EPIC-105 to EPIC-114) are recorded in the
+[completed epic index](../epics/completed.md); the roadmap document itself was removed on
+2026-10-10 and remains in git history.
 
 ### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
 

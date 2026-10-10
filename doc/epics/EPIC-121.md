@@ -12,7 +12,7 @@ Move the built-in REST client (`src/renderer/editors/rest-client/`, ~3.8k lines)
 into a bundled board at `assets/boards/rest-client/`, shipped in the installer the way the Excalidraw
 board is ([EPIC-109](EPIC-109.md)) and then removed from the core the way `draw-view` was
 ([EPIC-110](EPIC-110.md)). This is follow-up work named in the
-[platform roadmap](../platform-roadmap.md) §1 ("move the heavy built-ins out — Excalidraw, REST
+platform roadmap (removed; in git history) §1 ("move the heavy built-ins out — Excalidraw, REST
 client, video/audio") and "After the roadmap" ("Video and REST client extraction as ordinary
 epics"). It is also the test case the roadmap reserved for the network permission model (§6:
 "the REST client will be the test").

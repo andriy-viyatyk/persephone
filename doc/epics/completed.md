@@ -1,3 +1,27 @@
+## EPIC-124 — Localization foundation (interface languages, phase 1)
+
+Completed 2026-10-10. Phase 1 of the [localization roadmap](../localization-roadmap.md): the
+translation layer, the language setting and the conventions, proven on the Settings page and the
+dialogs. No translated packs ship yet; they are phase 4. Epic document: [EPIC-124](EPIC-124.md).
+
+- **i18n core (US-1647).** Typed English catalog in `src/shared/i18n/en/`, `t()` with `{placeholders}`
+  and CLDR plurals, `<code>.lang.json` packs layered user → built-in → English, generated `en-XA`
+  pseudo-locale. Russian is blocked by code and name (D15); Russian words and Russian-only letters
+  in non-built-in packs are scrambled (D16).
+- **Stable identity (US-1648).** Dialog buttons have ids separate from labels (`button` +
+  `buttonLabel`), menu items take ids, ai-vision resolves by id or label.
+- **Language setting (US-1649).** Settings > General > Language (Automatic, English, packs with
+  completeness); choosing one reloads every window at once, saving pages first; main-process tray and
+  unsaved-navigation strings follow the setting.
+- **Formatting (US-1650).** `src/renderer/core/utils/format.ts` over `Intl`: numbers, byte sizes,
+  relative days; language-neutral `YYYY-MM-DD HH:mm` dates kept.
+- **Conventions (US-1651).** `doc/standards/localization.md`, the `no-hardcoded-ui-strings` lint
+  warning, `npm run i18n:check`.
+- **Pilot (US-1652).** Settings page and all dialogs translated through the `settings` and `dialogs`
+  catalog areas; checked live under `en-XA`, agents still drive both by English ids.
+- **Completion.** `/review` (no findings), `/document`, `/userdoc` run by Codex. Task folders kept
+  until the localization roadmap is finished (user decision).
+
 ## EPIC-123 — Custom themes, derived from three colors and edited in a Theme Editor board
 
 Completed 2026-10-09. A user can make their own themes: pick a background, a text color and an
