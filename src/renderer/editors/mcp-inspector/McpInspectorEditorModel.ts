@@ -6,6 +6,7 @@ import {
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { tryParseJson } from "../../core/utils/parse-utils";
+import { untranslated } from "../../../shared/i18n/t";
 import { McpIcon } from "../../theme/icons";
 import {
     McpConnectionManager,
@@ -201,7 +202,7 @@ export interface McpInspectorEditorState extends EditorStateBase {
 
 export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => ({
     id: crypto.randomUUID(),
-    title: "MCP Inspector",
+    title: untranslated("MCP Inspector"),
     modified: false,
     type: "mcpInspectorPage",
     editor: "mcp-view",
@@ -790,7 +791,7 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
             representation: "log",
             content,
             language: "jsonl",
-            title: "MCP Inspector History",
+            title: untranslated("MCP Inspector History"),
         });
     };
 

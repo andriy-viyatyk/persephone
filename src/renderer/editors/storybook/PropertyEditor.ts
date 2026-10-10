@@ -1,4 +1,5 @@
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../uikit/Checkbox/CheckboxView";
 import type { CheckboxProps } from "../../uikit/Checkbox/CheckboxView";
@@ -62,14 +63,14 @@ class PropertyRowView extends VanillaView<PropertyRowProps> {
             : ICON_PRESETS.map((preset) => preset.id);
         this.options = options.map((option) => {
             const emptyLabel = option === ""
-                ? this.child(new LabelView({ italic: true, color: "inherit", children: "(empty)" }))
+                ? this.child(new LabelView({ italic: true, color: "inherit", children: t("tools.storybookEmpty") }))
                 : undefined;
             emptyLabel?.mount();
             const buttonProps: ButtonViewProps = {
                 size: "sm",
                 variant: this.props.value === option ? "primary" : "link",
                 onClick: () => this.props.onChange(option),
-                children: emptyLabel?.root ?? option,
+                children: emptyLabel?.root ?? this.optionLabel(this.props.def, option),
             };
             const button = this.child(new ButtonView(buttonProps));
             optionsPanel.append(button.root);
@@ -90,7 +91,7 @@ class PropertyRowView extends VanillaView<PropertyRowProps> {
                     size: "sm",
                     variant: props.value === value ? "primary" : "link",
                     onClick: () => props.onChange(value),
-                    children: option.emptyLabel?.root ?? value,
+                    children: option.emptyLabel?.root ?? this.optionLabel(props.def, value),
                 });
             });
         }
@@ -131,6 +132,11 @@ class PropertyRowView extends VanillaView<PropertyRowProps> {
 
     private optionValue(def: PropDef, index: number): string {
         return def.type === "enum" ? def.options[index] : ICON_PRESETS[index].id;
+    }
+
+    private optionLabel(def: PropDef, value: string): string {
+        if (def.type === "enum") return value;
+        return ICON_PRESETS.find((preset) => preset.id === value)?.label() ?? value;
     }
 }
 
@@ -199,7 +205,7 @@ export class PropertyEditorView extends VanillaView<{ model: StorybookEditorMode
         this.root.replaceChildren();
         if (!hasStory || visibleProps.length === 0) {
             const messagePanel = createPanelElement({ padding: "md" });
-            this.emptyMessage = createTextElement("No editable props", { size: "sm", color: "light" });
+            this.emptyMessage = createTextElement(t("tools.storybookNoEditableProps"), { size: "sm", color: "light" });
             messagePanel.append(this.emptyMessage);
             this.root.append(messagePanel);
             return;
@@ -222,7 +228,7 @@ export class PropertyEditorView extends VanillaView<{ model: StorybookEditorMode
             variant: "ghost",
             size: "sm",
             onClick: this.model.resetProps,
-            children: "Reset Props",
+            children: t("tools.storybookResetProps"),
         }));
         const resetPanel = createPanelElement({ align: "start" });
         resetPanel.append(this.resetButton.root);

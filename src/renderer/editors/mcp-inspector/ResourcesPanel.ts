@@ -1,4 +1,5 @@
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
@@ -36,7 +37,7 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
     protected onMount(): void {
         const sidebar = createPanelElement({ name: "mcp-resources-sidebar", direction: "column", overflow: "hidden", shrink: false, width: this.sidebarWidth });
         const header = createPanelElement({ direction: "row", align: "center", justify: "between", paddingX: "lg", paddingY: "md", borderBottom: true, shrink: false });
-        header.append(createTextElement("Resources", { size: "xs", variant: "uppercased", color: "light", bold: true }));
+        header.append(createTextElement(t("tools.mcpResources"), { size: "xs", variant: "uppercased", color: "light", bold: true }));
         this.countTag = this.child(new TagView({ label: "0", size: "sm" }));
         header.append(this.countTag.root);
         this.countTag.mount();
@@ -127,12 +128,12 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
 }
 
 class ResourceHeaderView extends VanillaView<Record<string, never>> {
-    public constructor() { super({}, createPanelElement({ paddingX: "lg", paddingY: "sm", borderBottom: true, background: "dark", shrink: false }, [createTextElement("Templates", { size: "xs", variant: "uppercased", color: "light", bold: true })])); }
+    public constructor() { super({}, createPanelElement({ paddingX: "lg", paddingY: "sm", borderBottom: true, background: "dark", shrink: false }, [createTextElement(t("tools.mcpTemplates"), { size: "xs", variant: "uppercased", color: "light", bold: true })])); }
 }
 
 class EmptyResourceView extends VanillaView<{ model: McpInspectorEditorModel }> {
     public constructor(props: { model: McpInspectorEditorModel }) { super(props, createPanelElement({ flex: true, align: "center", justify: "center", overflow: "auto" })); }
-    protected onMount(): void { const state = this.props.model.resourcesState.get(); this.root.append(createTextElement(state.resources.length + state.templates.length === 0 ? "No resources available on this server." : "Select a resource from the sidebar.", { size: "md", color: "light" })); }
+    protected onMount(): void { const state = this.props.model.resourcesState.get(); this.root.append(createTextElement(state.resources.length + state.templates.length === 0 ? t("tools.mcpNoResources") : t("tools.mcpSelectResource"), { size: "md", color: "light" })); }
 }
 
 interface ResourceRowProps {
@@ -201,13 +202,13 @@ class ResourceDetailView extends VanillaView<ResourceDetailProps> {
     private sync(props: ResourceDetailProps): void {
         const state = props.model.resourcesState.get();
         const item = props.resource || props.template;
-        if (!item) { this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(state.resources.length + state.templates.length === 0 ? "No resources available on this server." : "Select a resource from the sidebar.", { size: "md", color: "light" })])); return; }
+        if (!item) { this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(state.resources.length + state.templates.length === 0 ? t("tools.mcpNoResources") : t("tools.mcpSelectResource"), { size: "md", color: "light" })])); return; }
         this.title.textContent = item.name;
         this.uri.textContent = props.resource ? props.resource.uri : (props.template as McpResourceTemplateInfo).uriTemplate;
         this.syncOptional(item.description, item.mimeType);
         if (props.resource) {
             this.argsList?.dispose(); this.argsList = undefined; this.argsHost?.remove(); this.argsHost = undefined;
-            this.button.update({ name: "mcp-read-resource", variant: "primary", size: "sm", onClick: this.read, disabled: state.readLoading, children: state.readLoading ? "Reading…" : "▶ Read Resource" });
+            this.button.update({ name: "mcp-read-resource", variant: "primary", size: "sm", onClick: this.read, disabled: state.readLoading, children: state.readLoading ? t("common.loading") : t("tools.mcpReadResource") });
             this.errorText.textContent = state.readError;
             this.syncContent(state.readContent);
         } else {
@@ -218,7 +219,7 @@ class ResourceDetailView extends VanillaView<ResourceDetailProps> {
             this.argsList = new KeyedList(host, { keyOf: (param) => param, create: (param) => { const view = new TemplateArgView({ param, model: props.model }); view.mount(); return view.root; }, update: (element, param) => (element as TemplateArgRoot).view?.update({ param, model: props.model }), remove: (element) => (element as TemplateArgRoot).view?.dispose() });
             }
             this.argsList.update(params);
-            this.button.update({ name: "mcp-read-resource", variant: "primary", size: "sm", onClick: this.readTemplate, disabled: state.templateReadLoading, children: state.templateReadLoading ? "Reading…" : "▶ Read Resource" });
+            this.button.update({ name: "mcp-read-resource", variant: "primary", size: "sm", onClick: this.readTemplate, disabled: state.templateReadLoading, children: state.templateReadLoading ? t("common.loading") : t("tools.mcpReadResource") });
             this.errorText.textContent = state.templateReadError;
             this.syncContent(state.templateReadContent);
         }

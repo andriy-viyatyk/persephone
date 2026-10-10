@@ -13,6 +13,7 @@ import { linksCatalog } from "./links";
 import { gitCatalog } from "./git";
 import { mnemeCatalog } from "./mneme";
 import { aboutCatalog } from "./about";
+import { toolsCatalog } from "./tools";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
@@ -31,6 +32,7 @@ export const englishCatalog = {
     git: Object.fromEntries(Object.entries(gitCatalog).map(([key, entry]) => [key, entry.message])),
     mneme: Object.fromEntries(Object.entries(mnemeCatalog).map(([key, entry]) => [key, entry.message])),
     about: Object.fromEntries(Object.entries(aboutCatalog).map(([key, entry]) => [key, entry.message])),
+    tools: Object.fromEntries(Object.entries(toolsCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;
@@ -47,6 +49,7 @@ export const englishCatalog = {
     git: MessagesOf<typeof gitCatalog>;
     mneme: MessagesOf<typeof mnemeCatalog>;
     about: MessagesOf<typeof aboutCatalog>;
+    tools: MessagesOf<typeof toolsCatalog>;
 };
 
 export type EnglishCatalog = typeof englishCatalog;

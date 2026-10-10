@@ -1,4 +1,5 @@
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
@@ -31,7 +32,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
     protected onMount(): void {
         const sidebar = createPanelElement({ name: "mcp-prompts-sidebar", direction: "column", overflow: "hidden", shrink: false, width: this.sidebarWidth });
         const header = createPanelElement({ direction: "row", align: "center", justify: "between", paddingX: "lg", paddingY: "md", borderBottom: true, shrink: false });
-        header.append(createTextElement("Prompts", { size: "xs", variant: "uppercased", color: "light", bold: true }));
+        header.append(createTextElement(t("tools.mcpPrompts"), { size: "xs", variant: "uppercased", color: "light", bold: true }));
         this.countTag = this.child(new TagView({ label: "0", size: "sm" }));
         header.append(this.countTag.root);
         this.countTag.mount();
@@ -123,7 +124,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
 
 class EmptyPromptView extends VanillaView<{ model: McpInspectorEditorModel }> {
     public constructor(props: { model: McpInspectorEditorModel }) { super(props, createPanelElement({ flex: true, align: "center", justify: "center", overflow: "auto" })); }
-    protected onMount(): void { const state = this.props.model.promptsState.get(); this.root.append(createTextElement(state.prompts.length === 0 ? "No prompts available on this server." : "Select a prompt from the sidebar.", { size: "md", color: "light" })); }
+    protected onMount(): void { const state = this.props.model.promptsState.get(); this.root.append(createTextElement(state.prompts.length === 0 ? t("tools.mcpNoPrompts") : t("tools.mcpSelectPrompt"), { size: "md", color: "light" })); }
 }
 
 interface PromptRowProps {
@@ -235,7 +236,7 @@ class PromptDetailView extends VanillaView<PromptDetailProps> {
         const prompt = props.prompt;
         if (!prompt) {
             this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [
-                createTextElement(state.prompts.length === 0 ? "No prompts available on this server." : "Select a prompt from the sidebar.", { size: "md", color: "light" }),
+                createTextElement(state.prompts.length === 0 ? t("tools.mcpNoPrompts") : t("tools.mcpSelectPrompt"), { size: "md", color: "light" }),
             ]));
             return;
         }
@@ -246,7 +247,7 @@ class PromptDetailView extends VanillaView<PromptDetailProps> {
             if (!this.descriptionText.parentNode) this.root.firstElementChild?.insertBefore(this.descriptionText, this.argsHost);
         } else this.descriptionText?.remove();
         this.argsList.update(prompt.arguments);
-        this.button.update({ name: "mcp-get-prompt", variant: "primary", size: "sm", onClick: this.getPrompt, disabled: state.getPromptLoading, children: state.getPromptLoading ? "Loading…" : "Get Prompt" });
+        this.button.update({ name: "mcp-get-prompt", variant: "primary", size: "sm", onClick: this.getPrompt, disabled: state.getPromptLoading, children: state.getPromptLoading ? t("common.loading") : t("tools.mcpGetPrompt") });
         if (this.errorText) this.errorText.textContent = state.promptError;
         this.syncMessages(state.promptMessages);
     }
@@ -261,7 +262,7 @@ class PromptDetailView extends VanillaView<PromptDetailProps> {
         }
         if (!this.messagesPanel) {
             this.messagesPanel = createPanelElement({ direction: "column", flex: true, overflow: "auto", paddingX: "xl", paddingBottom: "xl", gap: "md", height: 0 });
-            this.messagesPanel.append(createTextElement("Messages", { size: "xs", variant: "uppercased", color: "light", bold: true }));
+            this.messagesPanel.append(createTextElement(t("tools.mcpMessages"), { size: "xs", variant: "uppercased", color: "light", bold: true }));
             const messageHost = document.createElement("div");
             messageHost.style.display = "contents";
             this.messagesPanel.append(messageHost);
@@ -291,7 +292,7 @@ class PromptArgView extends VanillaView<PromptArgProps> {
     public constructor(props: PromptArgProps) { super(props, createPanelElement({ direction: "column", gap: "xs" })); (this.root as PromptArgRoot).view = this; }
     protected onMount(): void {
         const row = createPanelElement({ direction: "row", gap: "md", align: "center" }, [createTextElement(this.props.argument.name, { size: "sm", color: "default" })]);
-        if (this.props.argument.required) row.append(createTextElement("required", { size: "xs", color: "error" }));
+        if (this.props.argument.required) row.append(createTextElement(t("tools.mcpRequired"), { size: "xs", color: "error" }));
         this.input = this.child(new TextareaView({ value: "", onChange: (value) => this.props.model.setPromptArg(this.props.argument.name, value), placeholder: this.props.argument.description, readOnly: false, size: "sm" }));
         this.root.append(row, this.input.root);
         this.input.mount();

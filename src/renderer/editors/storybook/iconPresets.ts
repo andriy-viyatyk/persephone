@@ -1,12 +1,13 @@
 import { createIconElement, type IconRef } from "../../uikit/shared/slots";
 import { IconPresetId } from "./storyTypes";
+import { t } from "../../../shared/i18n/t";
 
-export const ICON_PRESETS: { id: IconPresetId; label: string; render: () => IconRef | null }[] = [
-    { id: "none",     label: "None",     render: () => null },
-    { id: "folder",   label: "Folder",   render: () => createIconElement("folder-open") },
-    { id: "plus",     label: "Plus",     render: () => createIconElement("plus") },
-    { id: "save",     label: "Save",     render: () => createIconElement("save") },
-    { id: "settings", label: "Settings", render: () => createIconElement("settings") },
+export const ICON_PRESETS: { id: IconPresetId; label: () => string; render: () => IconRef | null }[] = [
+    { id: "none",     label: () => t("tools.iconNone"), render: () => null },
+    { id: "folder",   label: () => t("tools.iconFolder"), render: () => createIconElement("folder-open") },
+    { id: "plus",     label: () => t("tools.iconPlus"), render: () => createIconElement("plus") },
+    { id: "save",     label: () => t("tools.iconSave"), render: () => createIconElement("save") },
+    { id: "settings", label: () => t("tools.iconSettings"), render: () => createIconElement("settings") },
 ];
 
 export function resolveIconPreset(id: IconPresetId | undefined): IconRef | null {

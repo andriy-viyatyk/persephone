@@ -1,5 +1,6 @@
 import type { editor } from "monaco-editor";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { ui } from "../../api/ui";
@@ -123,13 +124,13 @@ export class ResourceContentView extends VanillaView<ResourceContentViewProps> {
 
             const sizeKb = Math.round((content.blob.length * 3) / 4 / 1024);
             this.root.append(createPanelElement({ padding: "md", rounded: "md", border: true, background: "light" }, [
-                createTextElement(`Binary content: ${mime || "unknown type"} (${sizeKb} KB)`, { size: "sm", color: "light" }),
+                createTextElement(t("tools.mcpBinaryContent", { mime: mime || t("tools.mcpUnknownType"), size: sizeKb }), { size: "sm", color: "light" }),
             ]));
             return;
         }
 
         this.root.append(createPanelElement({ padding: "md", rounded: "md", border: true, background: "light" }, [
-            createTextElement("No content.", { size: "sm", color: "light" }),
+            createTextElement(t("tools.mcpNoResourceContent"), { size: "sm", color: "light" }),
         ]));
     }
 
@@ -143,7 +144,7 @@ export class ResourceContentView extends VanillaView<ResourceContentViewProps> {
         event.preventDefault();
         event.stopPropagation();
         ui.notify(
-            `Relative link "${href}" cannot be resolved — MCP resources have no filesystem base.`,
+            t("tools.mcpRelativeLinkUnresolved", { href }),
             "info",
         );
     };

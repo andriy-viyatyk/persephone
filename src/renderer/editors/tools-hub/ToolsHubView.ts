@@ -16,6 +16,7 @@ import { encodePin, isPinnedRef, removePin, type PinnedRef } from "../../ui/side
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SegmentedControlView } from "../../uikit/SegmentedControl/SegmentedControlView";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
@@ -114,11 +115,11 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
             value: this.model.state.get().tab,
             onChange: (value: string) => this.model.setTab(value as HubTab),
             items: [
-                { value: "builtin", label: "Built-in" },
-                { value: "boards", label: "Registered boards" },
-                { value: "search", label: "Search boards" },
-                { value: "tools", label: "Tools" },
-                { value: "site-extensions", label: "Site extensions" },
+                { value: "builtin", label: t("tools.hubBuiltin") },
+                { value: "boards", label: t("tools.hubBoards") },
+                { value: "search", label: t("tools.hubSearchBoards") },
+                { value: "tools", label: t("tools.hubTools") },
+                { value: "site-extensions", label: t("tools.hubSiteExtensions") },
             ],
         };
     }

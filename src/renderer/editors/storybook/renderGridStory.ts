@@ -1,4 +1,5 @@
 import color from "../../theme/color";
+import { untranslated } from "../../../shared/i18n/t";
 import { RenderGrid } from "../../uikit/DataGrid";
 import { applyCellStyle } from "../../uikit/shared/cell-style";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -17,7 +18,7 @@ const renderCell: RenderCellFunc = (params) => {
     const element = params.previous ?? params.recycle?.() ?? document.createElement("div");
     element.dataset.part = "cell";
     applyCellStyle(element, params.style, params.row, params.col, params.renderInfo.input.columnCount);
-    element.textContent = `R${params.row}·C${params.col}`;
+    element.textContent = untranslated(`R${params.row}·C${params.col}`);
     const style = element.style;
     style.alignItems = "center";
     style.padding = "0 6px";
@@ -129,8 +130,8 @@ class RenderGridDemoView extends VanillaView<GridDemoProps> {
     private updateStatsText(): void {
         if (!this.statsElement) return;
         this.statsElement.textContent = this.stats
-            ? `paints ${this.stats.paints} · appended ${this.stats.cellsAppended} · removed ${this.stats.cellsRemoved} · pool hits ${this.stats.pool.hits} / misses ${this.stats.pool.misses} · last paint ${this.stats.lastPaintMs.toFixed(2)}ms`
-            : "measuring…";
+            ? untranslated(`paints ${this.stats.paints} · appended ${this.stats.cellsAppended} · removed ${this.stats.cellsRemoved} · pool hits ${this.stats.pool.hits} / misses ${this.stats.pool.misses} · last paint ${this.stats.lastPaintMs.toFixed(2)}ms`)
+            : untranslated("measuring…");
     }
 
     protected onDispose(): void {

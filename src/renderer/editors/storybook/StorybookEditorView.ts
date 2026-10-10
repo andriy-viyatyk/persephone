@@ -8,6 +8,7 @@ import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
 import type { SplitterProps } from "../../uikit/Splitter/SplitterView";
 import { createTextElement } from "../../uikit/Text/text-style";
+import { t, untranslated } from "../../../shared/i18n/t";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import {
     PreviewBackground,
@@ -19,11 +20,13 @@ import { LivePreviewView } from "./LivePreview";
 import { PropertyEditorView } from "./PropertyEditor";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 
-const BG_OPTIONS: ISegment[] = [
-    { value: "dark", label: "Dark" },
-    { value: "default", label: "Default" },
-    { value: "light", label: "Light" },
-];
+function backgroundOptions(): ISegment[] {
+    return [
+        { value: "dark", label: t("tools.storybookDark") },
+        { value: "default", label: t("tools.storybookDefault") },
+        { value: "light", label: t("tools.storybookLight") },
+    ];
+}
 
 const ROOT_PROPS: PanelStyleProps = {
     name: "storybook-root",
@@ -62,7 +65,7 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
         this.toolbar = this.child(new ToolbarView(this.toolbarProps()));
         this.backgroundControl = this.child(new SegmentedControlView(this.backgroundProps(state.previewBackground)));
         const toolbarLeading = createPanelElement({ paddingLeft: "sm", paddingRight: "md" }, [
-            createTextElement("Storybook", { size: "lg", bold: true }),
+            createTextElement(untranslated("Storybook"), { size: "lg", bold: true }),
         ]);
         const body = createPanelElement({
             name: "storybook-body",
@@ -82,7 +85,7 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
         this.toolbarChildren.push(
             toolbarLeading,
             spacer.root,
-            createTextElement("Background:", { size: "sm", color: "light" }),
+            createTextElement(t("tools.storybookBackground"), { size: "sm", color: "light" }),
             this.backgroundControl.root,
         );
         body.append(
@@ -137,7 +140,7 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
     private toolbarProps(): ToolbarProps {
         return {
             borderBottom: true,
-            "aria-label": "Storybook editor toolbar",
+            "aria-label": t("tools.storybookToolbar"),
             children: this.toolbarChildren,
         };
     }
@@ -145,7 +148,7 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
     private backgroundProps(value: PreviewBackground): SegmentedControlProps {
         return {
             name: "storybook-bg-select",
-            items: BG_OPTIONS,
+            items: backgroundOptions(),
             value,
             onChange: (next) => this.setPreviewBackground(next),
             size: "sm",

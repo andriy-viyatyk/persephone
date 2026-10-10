@@ -15,5 +15,7 @@ export function displayPageTitle(editor: string | undefined, title: string | und
         return t("browser.resourcesTitle", { title: title.slice(0, -" — Resources".length) });
     }
     if (editor === "html-view" && title === "Pasted HTML") return t("api.pastedHtml");
+    if (editor === "mcp-view" && title === "MCP Inspector") return t("tools.mcpInspectorPageTitle");
+    if (editor === "tools-hub-view" && title === "Tools & Editors") return t("tools.toolsHubPageTitle");
     return title ?? "";
 }

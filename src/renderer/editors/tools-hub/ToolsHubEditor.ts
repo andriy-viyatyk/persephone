@@ -1,4 +1,5 @@
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
+import { untranslated } from "../../../shared/i18n/t";
 
 export const TOOLS_HUB_PAGE_ID = "tools-hub-page";
 
@@ -14,7 +15,7 @@ export interface ToolsHubEditorState extends EditorStateBase {
 
 export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
     id: TOOLS_HUB_PAGE_ID,
-    title: "Tools & Editors",
+    title: untranslated("Tools & Editors"),
     modified: false,
     type: "toolsHubPage",
     editor: "tools-hub-view",
@@ -46,6 +47,6 @@ export class ToolsHubEditor extends EditorModel<ToolsHubEditorState> {
     /** Preserve the title across restore (parity with About). */
     async restore(): Promise<void> {
         await super.restore();
-        this.state.update((s) => { s.title = "Tools & Editors"; });
+        this.state.update((s) => { s.title = untranslated("Tools & Editors"); });
     }
 }

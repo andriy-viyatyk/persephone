@@ -1,4 +1,5 @@
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { CheckboxView } from "../../uikit/Checkbox/CheckboxView";
 import type { CheckboxProps } from "../../uikit/Checkbox/CheckboxView";
@@ -112,7 +113,7 @@ export class ToolArgFormView extends VanillaView<ToolArgFormProps> {
 
         if (entries.length === 0) {
             this.list?.clear();
-            this.emptyText ??= createTextElement("No arguments", { size: "md", color: "light", italic: true });
+            this.emptyText ??= createTextElement(t("tools.mcpNoArguments"), { size: "md", color: "light", italic: true });
             if (!this.emptyText.parentNode) this.root.append(this.emptyText);
         } else {
             this.emptyText?.remove();
@@ -236,7 +237,7 @@ class ArgFieldView extends VanillaView<ArgFieldProps> {
                 items,
                 value: items.find((item) => item.value === props.value) || null,
                 onChange: (item: IListBoxItem) => props.onChange(props.name, String(item.value)),
-                placeholder: "— select —",
+                placeholder: t("tools.mcpSelectPlaceholder"),
                 disabled: props.disabled,
                 size: "sm",
             } satisfies SelectViewProps<IListBoxItem>;
@@ -265,7 +266,7 @@ class ArgFieldView extends VanillaView<ArgFieldProps> {
             return;
         }
         if (required) {
-            this.requiredText ??= createTextElement("required", { size: "xs", color: "error" });
+            this.requiredText ??= createTextElement(t("tools.mcpRequired"), { size: "xs", color: "error" });
             const header = this.typeText.parentElement;
             if (header && !this.requiredText.parentNode) header.append(this.requiredText);
         } else {

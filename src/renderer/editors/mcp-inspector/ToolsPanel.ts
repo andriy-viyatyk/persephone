@@ -1,4 +1,5 @@
 import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { t } from "../../../shared/i18n/t";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
@@ -34,7 +35,7 @@ export class ToolsPanelView extends VanillaView<ToolsPanelProps> {
         this.listen(this.root, "keydown", this.onKeyDown);
         const sidebar = createPanelElement({ name: "mcp-tools-sidebar", direction: "column", overflow: "hidden", shrink: false, width: this.sidebarWidth });
         const header = createPanelElement({ direction: "row", align: "center", justify: "between", paddingX: "lg", paddingY: "md", borderBottom: true, shrink: false });
-        header.append(createTextElement("Tools", { size: "xs", variant: "uppercased", color: "light", bold: true }));
+        header.append(createTextElement(t("tools.mcpTools"), { size: "xs", variant: "uppercased", color: "light", bold: true }));
         this.countTag = this.child(new TagView({ label: "0", size: "sm" }));
         header.append(this.countTag.root); this.countTag.mount(); sidebar.append(header);
         const listHost = createPanelElement({ direction: "column", flex: true, overflow: "hidden" });
@@ -110,7 +111,7 @@ class ToolsDetailView extends VanillaView<ToolsDetailProps> {
         this.bottom = createPanelElement({ direction: "column", overflow: "hidden" }) as HTMLDivElement;
         const bottomHeader = createPanelElement({ direction: "row", align: "center", gap: "md", paddingX: "lg", paddingY: "xs", borderBottom: true, shrink: false, background: "dark" });
         this.listen(bottomHeader, "dblclick", () => this.props.onToggleHeight(0.7));
-        this.resultLabel = createTextElement("Result", { size: "xs", variant: "uppercased", color: "light", bold: true }); bottomHeader.append(this.resultLabel);
+        this.resultLabel = createTextElement(t("tools.mcpResult"), { size: "xs", variant: "uppercased", color: "light", bold: true }); bottomHeader.append(this.resultLabel);
         this.resultButton = this.child(new ButtonView({ name: "mcp-call-tool", variant: "primary", size: "sm", onClick: () => void this.props.model.callTool() }));
         const spacer = this.child(new SpacerView({})); bottomHeader.append(spacer.root, this.resultButton.root); spacer.mount(); this.resultButton.mount(); this.bottom.append(bottomHeader);
         const resultHost = createPanelElement({ direction: "column", flex: true, overflow: "hidden", paddingX: "lg", paddingY: "md" });
@@ -121,7 +122,7 @@ class ToolsDetailView extends VanillaView<ToolsDetailProps> {
     protected onUpdate(props: ToolsDetailProps): void { this.sync(props); }
     protected onDispose(): void { this.resultView = undefined; }
     private sync(props: ToolsDetailProps): void {
-        if (!props.tool) { this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(props.model.toolsState.get().tools.length === 0 ? "No tools available on this server." : "Select a tool from the sidebar.", { size: "md", color: "light" })])); return; }
+        if (!props.tool) { this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(props.model.toolsState.get().tools.length === 0 ? t("tools.mcpNoTools") : t("tools.mcpSelectTool"), { size: "md", color: "light" })])); return; }
         const state = props.model.toolsState.get();
         this.applyLayout(props.resultHeight);
         this.args.update({ schema: props.tool.inputSchema, args: state.toolArgs, onArgChange: props.model.setToolArg, disabled: state.toolCallLoading });
@@ -142,10 +143,10 @@ class ToolsDetailView extends VanillaView<ToolsDetailProps> {
         this.toolTitle.textContent = tool.name;
         this.annotationViews.forEach((tag) => this.releaseChild(tag));
         this.annotationViews = [];
-        if (tool.annotations?.readOnlyHint) { const tag = this.child(new TagView({ label: "read-only", size: "sm" })); this.annotationViews.push(tag); this.annotationHost.append(tag.root); tag.mount(); }
-        if (tool.annotations?.destructiveHint) { const tag = this.child(new TagView({ label: "destructive", size: "sm", tone: "error" })); this.annotationViews.push(tag); this.annotationHost.append(tag.root); tag.mount(); }
-        this.resultLabel.textContent = "Result";
-        this.resultButton.update({ name: "mcp-call-tool", variant: "primary", size: "sm", onClick: () => void this.props.model.callTool(), disabled: state.toolCallLoading, children: state.toolCallLoading ? "Calling…" : "▶ Call Tool" });
+        if (tool.annotations?.readOnlyHint) { const tag = this.child(new TagView({ label: t("tools.mcpReadOnly"), size: "sm" })); this.annotationViews.push(tag); this.annotationHost.append(tag.root); tag.mount(); }
+        if (tool.annotations?.destructiveHint) { const tag = this.child(new TagView({ label: t("tools.mcpDestructive"), size: "sm", tone: "error" })); this.annotationViews.push(tag); this.annotationHost.append(tag.root); tag.mount(); }
+        this.resultLabel.textContent = t("tools.mcpResult");
+        this.resultButton.update({ name: "mcp-call-tool", variant: "primary", size: "sm", onClick: () => void this.props.model.callTool(), disabled: state.toolCallLoading, children: state.toolCallLoading ? t("tools.mcpCalling") : t("tools.mcpCallTool") });
     }
     private applyLayout(resultHeight: number | null): void {
         const height = resultHeight ?? (this.detailRoot.clientHeight > 0 ? this.detailRoot.clientHeight * 0.3 : 200);
@@ -156,10 +157,10 @@ class ToolsDetailView extends VanillaView<ToolsDetailProps> {
 }
 
 class EmptyResultView extends VanillaView<Record<string, never>> {
-    public constructor() { super({}, createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement('Click "Call Tool" to execute.', { size: "sm", color: "light" })])); }
+    public constructor() { super({}, createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(t("tools.mcpClickCallTool"), { size: "sm", color: "light" })])); }
 }
 
 class EmptyToolsView extends VanillaView<{ model: McpInspectorEditorModel }> {
     public constructor(props: { model: McpInspectorEditorModel }) { super(props, createPanelElement({ flex: true, align: "center", justify: "center", overflow: "auto" })); }
-    protected onMount(): void { const state = this.props.model.toolsState.get(); this.root.append(createTextElement(state.tools.length === 0 ? "No tools available on this server." : "Select a tool from the sidebar.", { size: "md", color: "light" })); }
+    protected onMount(): void { const state = this.props.model.toolsState.get(); this.root.append(createTextElement(state.tools.length === 0 ? t("tools.mcpNoTools") : t("tools.mcpSelectTool"), { size: "md", color: "light" })); }
 }

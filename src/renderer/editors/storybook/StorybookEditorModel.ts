@@ -5,6 +5,7 @@ import {
 import { StorybookIcon } from "../../theme/icons";
 import { ALL_STORIES, findStory } from "./storyRegistry";
 import { Story, PropDef } from "./storyTypes";
+import { untranslated } from "../../../shared/i18n/t";
 
 export const STORYBOOK_PAGE_ID = "storybook-page";
 
@@ -24,7 +25,7 @@ export const getDefaultStorybookEditorState = (): StorybookEditorState => {
     const first = ALL_STORIES[0];
     return {
         id: STORYBOOK_PAGE_ID,
-        title: "Storybook",
+        title: untranslated("Storybook"),
         modified: false,
         type: "storybookPage",
         editor: "storybook-view",

@@ -1,5 +1,6 @@
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import { siteExtensionStore, type SiteExtensionListing } from "../../api/site-extensions";
 import { sameSiteExtensionHostSet, siteExtensionTrust } from "../../api/site-extension-trust";
 import { confirmAndRemoveSiteExtension, siteExtensionFolder } from "../../api/site-extension-management";
@@ -51,14 +52,14 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         const toolbar = createPanelElement({ direction: "row", align: "center", gap: "sm", paddingX: "lg", paddingBottom: "md", shrink: false });
         this.input = this.child(new InputView(this.inputProps()));
         const refresh = this.child(new IconButtonView({
-            name: "site-extensions-refresh", size: "sm", icon: "refresh", title: "Refresh", onClick: () => void this.refresh(),
+            name: "site-extensions-refresh", size: "sm", icon: "refresh", title: t("tools.refresh"), onClick: () => void this.refresh(),
         }));
         const openRoot = this.child(new IconButtonView({
-            name: "site-extensions-open-root", size: "sm", icon: "folder-open", title: "Open the site extensions folder",
+            name: "site-extensions-open-root", size: "sm", icon: "folder-open", title: t("tools.openSiteExtensionsFolder"),
             onClick: () => void this.perform(async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionStore.getRoot()); }),
         }));
         const description = createPanelElement({ flex: 1, paddingLeft: "md" }, [createTextElement(
-            "Scripts that give agents a model of a website. Each runs only on its own hosts, and only after you trust it.",
+            t("tools.siteExtensionsDescription"),
             { color: "light", size: "xs" },
         )]);
         toolbar.append(this.input.root, refresh.root, openRoot.root, description);
@@ -91,7 +92,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
             size: "sm" as const,
             value: this.query,
             onChange: (value: string) => this.setQuery(value),
-            placeholder: "Filter by name or host…",
+            placeholder: t("tools.filterExtensions"),
             tone: this.query ? "accent" as const : "default" as const,
             maxWidth: 360,
         };
@@ -108,7 +109,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
             const [listings] = await Promise.all([siteExtensionStore.list(), siteExtensionTrust.load()]);
             const root = await siteExtensionStore.getRoot();
             if (!this.alive) return;
-            this.folder.textContent = `Folder: ${root}`;
+            this.folder.textContent = t("tools.folderPath", { path: root });
             const grants = siteExtensionTrust.snapshot;
             const listed = new Set(listings.map((listing) => listing.id));
             this.entries = listings.map((listing) => ({ listing, id: listing.id, grant: grants[listing.id] }));
@@ -116,7 +117,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
             this.status.textContent = "";
             this.renderEntries();
         } catch (error) {
-            if (this.alive) this.status.textContent = errMessage(error, "Site extensions could not be loaded.");
+            if (this.alive) this.status.textContent = errMessage(error, t("tools.siteExtensionsLoadFailed"));
         }
     }
 
@@ -124,17 +125,17 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         this.disposeRows();
         this.list.replaceChildren();
         this.reloadNotice.textContent = this.reloadRequired
-            ? "Trust or enabled state changed. Pages that already ran an extension keep their current code and model until you reload or navigate."
+            ? t("tools.extensionReloadRequired")
             : "";
         this.reloadNotice.hidden = !this.reloadRequired;
         if (this.entries.length === 0) {
-            this.list.append(createTextElement("No site extensions installed.", { color: "light", size: "sm" }));
+            this.list.append(createTextElement(t("tools.noSiteExtensions"), { color: "light", size: "sm" }));
             return;
         }
         const query = this.query.trim().toLowerCase();
         const visible = query ? this.entries.filter((entry) => matches(entry, query)) : this.entries;
         if (visible.length === 0) {
-            this.list.append(createTextElement("No site extensions match the filter.", { color: "light", size: "sm" }));
+            this.list.append(createTextElement(t("tools.noExtensionsMatch"), { color: "light", size: "sm" }));
             return;
         }
         for (const entry of visible) this.list.append(this.createEntry(entry));
@@ -148,23 +149,23 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
 
         const header = panel({ direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs" });
         header.append(panel({ flex: true }, createTextElement(usable ? usable.name : entry.id, { size: "sm" })));
-        header.append(badge(!listing ? "folder missing" : listing.status));
+        header.append(badge(!listing ? t("tools.folderMissing") : listing.status === "valid" ? t("tools.extensionValid") : listing.status === "invalid" ? t("tools.extensionInvalid") : t("tools.extensionConflictStatus")));
         if (entry.grant) {
-            header.append(createTextElement(entry.grant.enabled ? "trusted" : "trusted, disabled", { color: entry.grant.enabled ? "success" : "warning", size: "xs" }));
+            header.append(createTextElement(entry.grant.enabled ? t("tools.trusted") : t("tools.trustedDisabled"), { color: entry.grant.enabled ? "success" : "warning", size: "xs" }));
             this.addRowView(header, new SwitchView({
-                name: `site-extension-enabled-${entry.id}`, label: `Enable ${entry.id}`, size: "sm", checked: entry.grant.enabled,
+                name: `site-extension-enabled-${entry.id}`, label: t("tools.enableExtension", { id: entry.id }), size: "sm", checked: entry.grant.enabled,
                 onChange: (value) => void this.perform(async () => { await siteExtensionTrust.setEnabled(entry.id, value); this.reloadRequired = true; }),
             }));
-            this.addButton(header, `site-extension-revoke-${entry.id}`, "revoke trust", async () => { await siteExtensionTrust.revoke(entry.id); this.reloadRequired = true; });
+            this.addButton(header, `site-extension-revoke-${entry.id}`, t("tools.revokeTrust"), async () => { await siteExtensionTrust.revoke(entry.id); this.reloadRequired = true; });
         } else {
-            header.append(createTextElement("not trusted", { color: "light", size: "xs" }));
+            header.append(createTextElement(t("tools.notTrusted"), { color: "light", size: "xs" }));
         }
         if (listing) {
-            this.addButton(header, `site-extension-open-folder-${entry.id}`, "open folder", async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionFolder(entry.id)); });
+            this.addButton(header, `site-extension-open-folder-${entry.id}`, t("tools.openFolder"), async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionFolder(entry.id)); });
         }
         if (listing || entry.grant) {
             this.addRowView(header, new IconButtonView({
-                name: `site-extension-remove-${entry.id}`, size: "sm", icon: "close", title: "Remove extension",
+                name: `site-extension-remove-${entry.id}`, size: "sm", icon: "close", title: t("tools.removeExtension"),
                 onClick: () => void this.perform(async () => {
                     const displayName = listing && listing.status !== "invalid" ? listing.name : entry.id;
                     const result = await confirmAndRemoveSiteExtension(entry.id, displayName);
@@ -174,12 +175,12 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         }
         row.append(header);
 
-        if (usable) row.append(detail("Hosts:", usable.hosts.join(", ")));
-        if (listing?.status === "invalid") row.append(detail("Problem:", listing.reason, "error"));
-        if (listing?.status === "conflict") row.append(detail("Conflict:", `another extension also claims ${listing.conflictingHosts.join(", ")}; neither runs there`, "warning"));
-        if (!listing) row.append(detail("Folder:", "deleted outside Persephone; revoke the leftover trust"));
+        if (usable) row.append(detail(t("tools.hosts"), usable.hosts.join(", ")));
+        if (listing?.status === "invalid") row.append(detail(t("tools.problem"), listing.reason, "error"));
+        if (listing?.status === "conflict") row.append(detail(t("tools.conflict"), t("tools.extensionConflict", { hosts: listing.conflictingHosts.join(", ") }), "warning"));
+        if (!listing) row.append(detail(t("tools.folder"), t("tools.deletedFolderTrust")));
         if (entry.grant && usable && !sameSiteExtensionHostSet(entry.grant.hosts, usable.hosts)) {
-            row.append(detail("Trust:", "the host list changed since you trusted it; the browser will ask again", "warning"));
+            row.append(detail(t("tools.trust"), t("tools.trustChanged"), "warning"));
         }
         return row;
     }

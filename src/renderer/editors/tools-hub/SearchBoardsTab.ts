@@ -1,4 +1,5 @@
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
+import { t, untranslated } from "../../../shared/i18n/t";
 import { listBoardUpdates, type BoardUpdate } from "../../api/board-updates";
 import { publishedBoards } from "../../api/published-boards";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -23,11 +24,11 @@ import "../../uikit/Tag/Tag.css";
 import "../../uikit/Text/Text.css";
 
 const GROUP_ORDER: BoardUsageGroup[] = ["file-viewer", "file-editor", "tool"];
-const GROUP_LABELS: Record<BoardUsageGroup, string> = {
-    "file-viewer": "File viewers",
-    "file-editor": "File editors",
-    "tool": "Tools & apps",
-};
+function groupLabel(group: BoardUsageGroup): string {
+    if (group === "file-viewer") return t("tools.boardGroupViewers");
+    if (group === "file-editor") return t("tools.boardGroupEditors");
+    return t("tools.boardGroupTools");
+}
 
 function usageGroupOf(board: PublishedBoardInfo): BoardUsageGroup {
     return boardUsageGroup({
@@ -176,7 +177,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
             size: "sm" as const,
             value: this.query,
             onChange: (value: string) => this.setQuery(value),
-            placeholder: "Search boards…",
+            placeholder: t("tools.searchBoardsPlaceholder"),
             tone: this.query ? "accent" as const : "default" as const,
             maxWidth: 360,
         };
@@ -187,7 +188,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
             name: "search-boards-refresh",
             size: "sm" as const,
             icon: "refresh" as const,
-            title: "Refresh catalog",
+            title: t("tools.refreshCatalog"),
             disabled: this.refreshing,
             onClick: () => { void this.refresh(); },
         };
@@ -257,13 +258,13 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         const groups = this.groupBoards(filtered);
         if (this.catalog.length === 0) {
             groupsList.update([]);
-            emptyMessage.textContent = "No published boards available.";
+            emptyMessage.textContent = t("tools.noPublishedBoards");
             emptyMessage.hidden = false;
             return;
         }
         if (filtered.length === 0) {
             groupsList.update([]);
-            emptyMessage.textContent = `No boards match “${this.query}”.`;
+            emptyMessage.textContent = t("tools.noBoardsMatch", { query: this.query });
             emptyMessage.hidden = false;
             return;
         }
@@ -327,7 +328,7 @@ class BoardGroupView extends VanillaView<BoardGroupProps> {
     private readonly cardViews = new Map<HTMLElement, BoardCardView>();
 
     protected onMount(): void {
-        const heading = createTextElement(GROUP_LABELS[this.props.group], { size: "sm", color: "light", bold: true });
+        const heading = createTextElement(groupLabel(this.props.group), { size: "sm", color: "light", bold: true });
         const cardsHost = createPanelElement({ direction: "column", gap: "sm" });
         this.root.append(heading, cardsHost);
         this.cards = new KeyedList<PublishedBoardInfo, string, HTMLElement>(cardsHost, {
@@ -444,19 +445,19 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         const header = createPanelElement({ direction: "row", align: "center", gap: "sm" });
         header.append(
             createTextElement(name, { bold: true }),
-            createTextElement(`v${version}`, { size: "sm", color: "light" }),
+            createTextElement(untranslated(`v${version}`), { size: "sm", color: "light" }),
             createTextElement(formatBytes(size), { size: "sm", color: "light" }),
             createPanelElement({ flex: 1, minWidth: 0 }),
         );
         if (installed && update) {
             this.addChild(header, new TagView({
-                label: "Update available",
+                label: t("tools.updateAvailable"),
                 size: "sm",
-                title: `Update to v${update.latestVersion}`,
+                title: t("tools.updateToVersion", { version: update.latestVersion }),
             }));
         } else if (installed) {
             this.addChild(header, new TagView({
-                label: `Installed v${installed.version}`,
+                label: t("tools.installedVersion", { version: installed.version }),
                 size: "sm",
                 variant: "outlined",
             }));
@@ -469,7 +470,7 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
 
         if (fileMasks && fileMasks.length > 0) {
             const masks = createPanelElement({ direction: "row", wrap: true, gap: "xs", align: "center" });
-            masks.append(createTextElement("Files:", { size: "sm", color: "light" }));
+            masks.append(createTextElement(t("tools.boardFiles"), { size: "sm", color: "light" }));
             for (const mask of fileMasks) {
                 this.addChild(masks, new TagView({ label: mask, size: "sm", variant: "outlined" }));
             }
@@ -478,7 +479,7 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
 
         const compatible = publishedBoards.isCompatible(minAppVersion);
         if (!compatible) {
-            details.append(createTextElement(`Requires Persephone ≥ ${minAppVersion}`, {
+            details.append(createTextElement(t("tools.requiresPersephone", { product: untranslated("Persephone"), version: minAppVersion }), {
                 size: "sm",
                 color: "warning",
             }));
@@ -490,21 +491,21 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
                 size: "sm",
                 disabled: !compatible,
                 onClick: () => this.openInstall(id),
-                children: "Install…",
+                children: t("tools.install"),
             }));
         } else {
             if (update) {
                 this.addChild(actions, new ButtonView({
                     size: "sm",
                         onClick: () => this.openProperties(installed.root),
-                    children: "Update…",
+                    children: t("tools.update"),
                 }));
             }
             this.addChild(actions, new ButtonView({
                 size: "sm",
                 variant: "ghost",
                 onClick: () => this.openProperties(installed.root),
-                children: "Properties",
+                children: t("tools.properties"),
             }));
         }
         details.append(actions);
