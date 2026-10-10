@@ -15,6 +15,7 @@ import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import color from "../../theme/color";
+import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Tag/Tag.css";
@@ -83,9 +84,9 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
             value: this.tab,
             onChange: (value) => model.setGitPanelTab(value as GitPanelTab),
             items: [
-                { value: "changes", label: "Changes" },
-                { value: "branches", label: "Branches" },
-                { value: "tags", label: "Tags" },
+                { value: "changes", label: t("git.changesTab") },
+                { value: "branches", label: t("menus.branches") },
+                { value: "tags", label: t("menus.tags") },
             ],
         }));
         const toolbarSpacer = this.child(new SpacerView({}));
@@ -93,7 +94,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
             name: "git-branches-sort-alpha",
             size: "sm",
             active: this.alphabetical,
-            title: "Sort alphabetically (off - historical)",
+            title: t("git.sortAlphabeticallyOff"),
             icon: "sort-alpha",
             onClick: (event) => {
                 event.stopPropagation();
@@ -112,7 +113,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
         this.refreshButton = this.child(new IconButtonView({
             name: "git-panel-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("git.refresh"),
             icon: "refresh",
             onClick: (event) => {
                 event.stopPropagation();
@@ -122,7 +123,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
         this.closeButton = this.child(new IconButtonView({
             name: "git-panel-close",
             size: "sm",
-            title: "Close Git Tree",
+            title: t("git.closeGitTree"),
             icon: "close",
             onClick: (event) => {
                 event.stopPropagation();
@@ -240,9 +241,9 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
             value: this.tab,
             onChange: (value) => this.model?.setGitPanelTab(value as GitPanelTab),
             items: [
-                { value: "changes", label: "Changes" },
-                { value: "branches", label: "Branches" },
-                { value: "tags", label: "Tags" },
+                { value: "changes", label: t("git.changesTab") },
+                { value: "branches", label: t("menus.branches") },
+                { value: "tags", label: t("menus.tags") },
             ],
         });
         if (this.sortButton) {
@@ -251,8 +252,8 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
                 size: "sm",
                 active: this.alphabetical,
                 title: this.alphabetical
-                    ? "Sort alphabetically (on)"
-                    : "Sort alphabetically (off - historical)",
+                    ? t("git.sortAlphabeticallyOn")
+                    : t("git.sortAlphabeticallyOff"),
                 icon: "sort-alpha",
                 onClick: (event) => {
                     event.stopPropagation();
@@ -284,7 +285,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
     }
 
     private createTitleElement(fileCount: number): HTMLSpanElement {
-        const title = createTextElement("Git", {
+        const title = createTextElement(untranslated(englishMessage("shell.git")), {
             color: "inherit",
             size: "md",
             truncate: true,
@@ -315,7 +316,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
             badge: this.repoBadge.root,
             title: this.titleNode,
             actions: this.headerActions,
-            showMainTitle: "Show Git Tree",
+            showMainTitle: t("git.showGitTree"),
             showMainActive: model.isMain,
             onShowMain: this.showMain,
         });

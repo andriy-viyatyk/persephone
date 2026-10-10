@@ -17,6 +17,7 @@ import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import { showCommitDialog } from "../../ui/dialogs/CommitDialog";
 import type { GitFileChange } from "../../../ipc/git-ipc";
+import { t } from "../../../shared/i18n/t";
 import { GitTreeEditorModel } from "./GitTreeEditorModel";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
@@ -67,7 +68,7 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
     protected onMount(): void {
         const state = this.model.changes.state.get();
         this.unavailableHost = createPanelElement({ padding: "md" }, [
-            createTextElement("Git is unavailable.", { color: "light" }),
+            createTextElement(t("git.gitUnavailable"), { color: "light" }),
         ]);
         this.layoutHost = createPanelElement({
             direction: "column",
@@ -119,16 +120,8 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
             this.unstageButton.root,
         );
 
-        this.unstagedGrid = this.child(new FileGridView(this.gridProps(
-            "Unstaged",
-            "unstaged",
-            state.unstaged,
-        )));
-        this.stagedGrid = this.child(new FileGridView(this.gridProps(
-            "Staged",
-            "staged",
-            state.staged,
-        )));
+        this.unstagedGrid = this.child(new FileGridView(this.gridProps("unstaged", state.unstaged)));
+        this.stagedGrid = this.child(new FileGridView(this.gridProps("staged", state.staged)));
         unstagedPanel.append(this.unstagedGrid.root);
         stagedGridHost.append(this.stagedGrid.root);
 
@@ -186,8 +179,8 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
 
     private readonly applyState = (state: Pick<GitChangesState, "unstaged" | "staged" | "gitOk" | "branch">): void => {
         this.branch = state.branch;
-        this.unstagedGrid?.update(this.gridProps("Unstaged", "unstaged", state.unstaged));
-        this.stagedGrid?.update(this.gridProps("Staged", "staged", state.staged));
+        this.unstagedGrid?.update(this.gridProps("unstaged", state.unstaged));
+        this.stagedGrid?.update(this.gridProps("staged", state.staged));
         this.updateControls(state.staged.length);
         this.setUnavailable(!state.gitOk);
     };
@@ -201,17 +194,16 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
     }
 
     private gridProps(
-        label: string,
         listKind: "unstaged" | "staged",
         changes: GitFileChange[],
     ): FileGridProps {
         const changeMap = new Map(changes.map((change) => [change.path, change]));
-        const moveLabel = listKind === "unstaged" ? "Stage" : "Unstage";
+        const label = t(listKind === "unstaged" ? "git.unstaged" : "git.staged");
         const moveIcon = createIconElement(
             listKind === "unstaged" ? "filter-arrow-down" : "filter-arrow-up",
         );
         return {
-            name: `git-changes-${label.toLowerCase()}`,
+            name: `git-changes-${listKind}`,
             label,
             items: changes.map((change) => ({
                 filePath: change.path,
@@ -238,13 +230,15 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
                 if (!selected.length) return [];
                 const count = selected.length;
                 const items: MenuItem[] = [{
-                    label: `${moveLabel} ${count} file${count > 1 ? "s" : ""}`,
+                    id: listKind === "unstaged" ? "stage-files" : "unstage-files",
+                    label: t(listKind === "unstaged" ? "git.stageFiles" : "git.unstageFiles", { count }),
                     icon: moveIcon,
                     onClick: () => this.move(listKind, selected),
                 }];
                 if (listKind === "unstaged") {
                     items.push({
-                        label: `Reset ${count} file${count > 1 ? "s" : ""}`,
+                        id: "reset-files",
+                        label: t("git.resetFiles", { count }),
                         icon: createIconElement("delete"),
                         startGroup: true,
                         onClick: () => void this.reset(selected),
@@ -279,12 +273,10 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
     private readonly reset = async (changes: GitFileChange[]): Promise<void> => {
         if (!changes.length) return;
         const count = changes.length;
-        const detail = changes.some((change) => change.status === "?")
-            ? "Uncommitted changes will be discarded and untracked files deleted."
-            : "Uncommitted changes will be discarded.";
+        const hasUntracked = changes.some((change) => change.status === "?");
         const choice = await showConfirmationDialog({
-            title: "Reset changes",
-            message: `Reset ${count} file${count > 1 ? "s" : ""}? ${detail} This cannot be undone.`,
+            title: t("git.resetChangesTitle"),
+            message: t(hasUntracked ? "git.resetUntrackedConfirmation" : "git.resetTrackedConfirmation", { count }),
             buttons: [dialogButton(DialogButton.reset), dialogButton(DialogButton.cancel)],
         });
         if (choice === DialogButton.reset) void this.model.changes.resetChanges(changes);
@@ -320,7 +312,7 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
             name: "git-commit",
             disabled: stagedCount === 0,
             onClick: this.doCommit,
-            children: "Commit",
+            children: t("dialogs.buttonCommit"),
         };
     }
 
@@ -328,7 +320,7 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
         return {
             name: "git-stage",
             size: "sm",
-            title: "Stage selected",
+            title: t("git.stageSelected"),
             icon: "filter-arrow-down",
             disabled: !this.selUnstaged.length,
             onClick: () => this.move("unstaged", this.selUnstaged),
@@ -339,7 +331,7 @@ export class GitChangesView extends VanillaView<GitChangesViewProps> {
         return {
             name: "git-unstage",
             size: "sm",
-            title: "Unstage selected",
+            title: t("git.unstageSelected"),
             icon: "filter-arrow-up",
             disabled: !this.selStaged.length,
             onClick: () => this.move("staged", this.selStaged),

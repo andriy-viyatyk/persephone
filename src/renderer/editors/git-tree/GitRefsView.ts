@@ -9,11 +9,16 @@ import type { MenuItem } from "../../uikit/Menu";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { GitTreeEditorModel } from "./GitTreeEditorModel";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Tree/Tree.css";
 
 const ICON_SIZE = 14;
+
+function refIdPart(refName: string): string {
+    return refName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ref";
+}
 
 export interface GitRefsViewProps {
     model: GitTreeEditorModel;
@@ -61,7 +66,7 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
 
     protected onMount(): void {
         this.unavailableHost = createPanelElement({ padding: "md" }, [
-            createTextElement("Git is unavailable.", { color: "light" }),
+            createTextElement(t("git.gitUnavailable"), { color: "light" }),
         ]);
         this.treeHost = createPanelElement({
             direction: "column",
@@ -181,7 +186,7 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
                 this.activeIndex = index;
                 this.tree?.update(this.treeProps());
             },
-            emptyMessage: this.show === "branches" ? "No branches" : "No tags",
+            emptyMessage: t(this.show === "branches" ? "git.noBranches" : "git.noTags"),
         };
     }
 
@@ -230,7 +235,8 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
         if (kind === "branch" && refName) {
             const isCurrent = refName === this.currentBranch;
             return [{
-                label: `Switch to Branch '${refName}'${isCurrent ? " (current)" : ""}`,
+                id: `switch-to-branch-${refIdPart(refName)}`,
+                label: t(isCurrent ? "git.switchCurrentBranch" : "git.switchToBranch", { name: refName }),
                 icon: createIconElement("git", { width: ICON_SIZE, height: ICON_SIZE }),
                 disabled: isCurrent,
                 onClick: () => void this.model.switchTo({ type: "branch", name: refName }),
@@ -238,14 +244,16 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
         }
         if (kind === "remote-branch" && refName) {
             return [{
-                label: `Switch to Remote Branch '${refName}'`,
+                id: `switch-to-remote-branch-${refIdPart(refName)}`,
+                label: t("git.switchToRemoteBranch", { name: refName }),
                 icon: createIconElement("globe", { width: ICON_SIZE, height: ICON_SIZE }),
                 onClick: () => void this.model.switchTo({ type: "remote", ref: refName }),
             }];
         }
         if (kind === "tag" && refName) {
             return [{
-                label: `Switch to Tag '${refName}' Commit`,
+                id: `switch-to-tag-${refIdPart(refName)}`,
+                label: t("git.switchToTagCommit", { name: refName }),
                 icon: createIconElement("tag", { width: ICON_SIZE, height: ICON_SIZE }),
                 onClick: () => void this.model.switchTo({ type: "tag", name: refName }),
             }];

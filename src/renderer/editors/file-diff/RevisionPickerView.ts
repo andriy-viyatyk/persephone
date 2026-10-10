@@ -6,6 +6,7 @@ import { GitTreeView, type GitTreeProps } from "../../components/git-tree/GitTre
 import { syntheticCommitRow, type GitCommitRow } from "../../components/git-tree/swimlane-layout";
 import type { GitTreeModel } from "../../components/git-tree/GitTreeModel";
 import type { RevSel } from "./FileDiffEditor";
+import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 
 export interface RevisionPickerViewProps {
@@ -22,9 +23,9 @@ export interface RevisionPickerViewProps {
 
 function labelFor(selection: RevSel): string {
     switch (selection.kind) {
-        case "unstaged": return "Unstaged";
-        case "staged": return "Staged";
-        case "head": return "HEAD";
+        case "unstaged": return t("git.unstaged");
+        case "staged": return t("git.staged");
+        case "head": return untranslated("HEAD");
         case "commit": return selection.shortHash;
     }
 }

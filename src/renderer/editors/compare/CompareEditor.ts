@@ -7,6 +7,7 @@ import { createToolbarElement } from "../../uikit/Toolbar/toolbar-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { MonacoDiffEditorHostView } from "../shared/MonacoDiffEditorHostView";
+import { t } from "../../../shared/i18n/t";
 
 export interface CompareEditorProps {
     model: TextFileModel;
@@ -76,7 +77,7 @@ export class CompareEditor extends VanillaView<CompareEditorProps> {
         this.exitButton = this.child(new IconButtonView({
             name: "compare-exit",
             size: "sm",
-            title: "Exit Compare Mode",
+            title: t("git.exitCompareMode"),
             icon: "compare",
             onClick: () => pagesModel.exitCompareMode(this.leftPageId),
         }));

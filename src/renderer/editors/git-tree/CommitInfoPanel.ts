@@ -9,6 +9,7 @@ import { dateText } from "../../components/git-tree/git-date";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../components/git-tree/GitTree.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface CommitInfoPanelProps {
     repoRoot: string;
@@ -81,7 +82,7 @@ export class CommitInfoPanelView extends VanillaView<CommitInfoPanelProps> {
 
         if (!commit) {
             applyPanelAttributes(this.root, resolvePanelAttributes({ padding: "md" }));
-            this.root.replaceChildren(createTextElement("Select a commit to see its details.", { color: "light" }));
+            this.root.replaceChildren(createTextElement(t("git.selectCommitDetails"), { color: "light" }));
             return;
         }
 
@@ -93,12 +94,12 @@ export class CommitInfoPanelView extends VanillaView<CommitInfoPanelProps> {
             gap: "sm",
         }));
         this.root.replaceChildren(
-            this.row("Author", createTextElement(
+            this.row(t("menus.authorColumn"), createTextElement(
                 commit.authorEmail ? `${commit.authorName} <${commit.authorEmail}>` : commit.authorName,
                 { size: "md" },
             )),
-            this.row("Date", createTextElement(dateText(commit.authorDate), { size: "md" })),
-            this.row("Commit hash", createTextElement(commit.hash, { size: "md" })),
+            this.row(t("menus.dateColumn"), createTextElement(dateText(commit.authorDate), { size: "md" })),
+            this.row(t("git.commitHashLabel"), createTextElement(commit.hash, { size: "md" })),
             ...(commit.refs.length > 0 ? [this.refsRow(commit.refs)] : []),
             createPanelElement({ paddingTop: "sm" }, [
                 createTextElement(this.message || commit.subject, { size: "md", preWrap: true }),
@@ -133,6 +134,6 @@ export class CommitInfoPanelView extends VanillaView<CommitInfoPanelProps> {
             badge.textContent = refData.name;
             return badge;
         });
-        return this.row("Refs", createPanelElement({ direction: "row", wrap: true }, badges));
+        return this.row(t("git.refsLabel"), createPanelElement({ direction: "row", wrap: true }, badges));
     }
 }

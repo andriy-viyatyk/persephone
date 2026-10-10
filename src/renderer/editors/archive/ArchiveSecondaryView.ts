@@ -11,6 +11,7 @@ import {
     type SideBarPanelHeaderHandle,
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
 import type { ArchiveEditor } from "./ArchiveEditor";
+import { t } from "../../../shared/i18n/t";
 
 export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps> {
     private archiveModel: ArchiveEditor | undefined;
@@ -42,7 +43,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         this.closeButton = this.child(new IconButtonView({
             name: "archive-secondary-close",
             size: "sm",
-            title: "Close",
+            title: t("git.closePanel"),
             icon: "close",
             onClick: this.onCloseClick,
         }));
@@ -50,7 +51,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Archive",
+            title: t("shell.archive"),
             actions: this.shouldShowClose(this.props) ? this.closeButton.root : undefined,
         });
 
@@ -123,7 +124,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "Archive",
+            title: t("shell.archive"),
             actions: this.shouldShowClose(props) ? this.closeButton?.root : undefined,
         });
     }

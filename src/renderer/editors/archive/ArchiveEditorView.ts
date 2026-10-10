@@ -18,6 +18,7 @@ import {
     type ArchiveEditorState,
 } from "./ArchiveEditor";
 import { TComponentState } from "../../core/state/state";
+import { t } from "../../../shared/i18n/t";
 
 export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
     private model: ArchiveEditor;
@@ -37,7 +38,7 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
         const provider = this.model.treeProvider;
         if (!provider) {
             this.applyEmptyRoot();
-            this.root.append(createTextElement("No archive loaded.", { color: "light" }));
+            this.root.append(createTextElement(t("git.archiveEmpty"), { color: "light" }));
             return;
         }
 
@@ -48,14 +49,14 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
         this.collapseButton = this.child(new IconButtonView({
             name: "archive-collapse-all",
             size: "sm",
-            title: "Collapse All",
+            title: t("git.archiveCollapseAll"),
             icon: "collapse-all",
             onClick: this.handleCollapseAll,
         }));
         this.refreshButton = this.child(new IconButtonView({
             name: "archive-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("git.refresh"),
             icon: "refresh",
             onClick: this.handleRefresh,
         }));

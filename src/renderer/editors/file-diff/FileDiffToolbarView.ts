@@ -3,6 +3,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import type { FileDiffEditor, FileDiffEditorState } from "./FileDiffEditor";
 import { RevisionPickerView } from "./RevisionPickerView";
+import { t } from "../../../shared/i18n/t";
 
 type FileDiffToolbarProjection = Pick<FileDiffEditorState, "from" | "to" | "hasStaged">;
 
@@ -24,7 +25,7 @@ export class FileDiffToolbarView extends VanillaView<{ model: FileDiffEditor }> 
         this.fromPicker = fromPicker;
         this.toPicker = toPicker;
         this.root.append(
-            createTextElement("From", { size: "sm", color: "light" }),
+            createTextElement(t("git.fromRevision"), { size: "sm", color: "light" }),
             fromPicker.root,
             createTextElement("→", { size: "sm", color: "light" }),
             toPicker.root,

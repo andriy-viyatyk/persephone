@@ -262,6 +262,16 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   Variables editor, Toolset editor, the permission-change dialog, the untrusted/not-found board
   states. Board-owned text (titles, status bar, toolbar items) stays as the board wrote it.
 
+- **US-1659 — Explorer and links.** Checked live: Explorer and Boards panel headers, the browser
+  bookmarks panel (Collections, All, Add Link, List, Pinned, Tags, Hostnames, search). Not opened
+  live: Explorer search panel, Clipboard history panel, the link edit dialog, link-editor view modes
+  on a `.link.json` page.
+
+- **US-1660 — git.** Checked live: the Git sidebar panel (Changes / Branches / Tags, Unstaged,
+  Staged, Commit). Agents still read it in English and by `data-name`. Not opened live: Git Tree
+  history page, File Diff / File History, Compare mode, Archive. Git tab titles (`… — Git`) stay
+  English, like other saved page titles.
+
 ## Notes
 
 ### 2026-10-10

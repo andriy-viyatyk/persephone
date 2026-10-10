@@ -8,6 +8,7 @@ import { ButtonView } from "../../uikit/Button/ButtonView";
 import type { ButtonProps } from "../../uikit/Button/ButtonView";
 import type { TextFileEditorModelState } from "../text/TextEditorModel";
 import { MonacoDiffEditorHostView } from "../shared/MonacoDiffEditorHostView";
+import { t } from "../../../shared/i18n/t";
 import {
     FileDiffBodyModel,
     defaultFileDiffBodyState,
@@ -60,7 +61,7 @@ class FileDiffEmptyView extends VanillaView<FileDiffEmptyViewProps> {
 
     protected onMount(): void {
         const message = createTextElement(
-            "Nothing to compare — this file isn't in a git repository, or git is unavailable.",
+            t("git.fileDiffEmpty"),
             { color: "light" },
         );
         const button = this.child(new ButtonView(this.buttonProps()));
@@ -76,7 +77,7 @@ class FileDiffEmptyView extends VanillaView<FileDiffEmptyViewProps> {
     private buttonProps(): ButtonProps {
         return {
             onClick: () => void this.props.model.page?.switchMainEditor?.("monaco"),
-            children: "Switch to Text Editor",
+            children: t("git.switchToTextEditor"),
         };
     }
 }

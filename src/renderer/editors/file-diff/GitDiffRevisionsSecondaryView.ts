@@ -14,6 +14,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/IconButton/IconButton.css";
+import { t } from "../../../shared/i18n/t";
 
 const shortHashOf = (hash: string): string => hash.slice(0, 7);
 
@@ -25,7 +26,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
     private tree: GitTreeView | undefined;
     private fallbackHost: HTMLDivElement | undefined;
     private treeHost: HTMLDivElement | undefined;
-    private leadingRows: GitCommitRow[] = [syntheticCommitRow("unstaged", "Unstaged changes")];
+    private leadingRows: GitCommitRow[] = [syntheticCommitRow("unstaged", t("git.unstagedChanges"))];
     private sideSelect: GitTreeSideSelect | undefined;
 
     public constructor(props: SecondaryViewProps) {
@@ -44,7 +45,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.model = model;
 
         this.fallbackHost = createPanelElement({ padding: "md" }, [
-            createTextElement("Git is unavailable.", { color: "light" }),
+            createTextElement(t("git.gitUnavailable"), { color: "light" }),
         ]);
         this.treeHost = createPanelElement({
             direction: "column",
@@ -57,7 +58,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.refreshButton = this.child(new IconButtonView({
             name: "git-diff-revisions-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("git.refresh"),
             icon: "refresh",
             onClick: (event) => {
                 event.stopPropagation();
@@ -72,7 +73,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "File History",
+            title: t("shell.fileHistory"),
             actions: this.refreshButton.root,
         });
         this.bind(
@@ -111,8 +112,8 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
     private readonly applyDiffState = (state: Pick<FileDiffEditorState, "from" | "to" | "hasStaged">): void => {
         const model = this.model;
         if (!model) return;
-        this.leadingRows = [syntheticCommitRow("unstaged", "Unstaged changes")];
-        if (state.hasStaged) this.leadingRows.push(syntheticCommitRow("staged", "Staged changes"));
+        this.leadingRows = [syntheticCommitRow("unstaged", t("git.unstagedChanges"))];
+        if (state.hasStaged) this.leadingRows.push(syntheticCommitRow("staged", t("git.stagedChanges")));
         this.sideSelect = this.createSideSelect(model, state.from, state.to);
         this.tree?.update(this.treeProps(model));
     };
@@ -173,7 +174,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "File History",
+            title: t("shell.fileHistory"),
             actions: props.expanded === false ? undefined : this.refreshButton?.root,
         });
     }

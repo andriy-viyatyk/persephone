@@ -20,6 +20,7 @@ import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../components/file-list/FileList.css";
 import "../../components/git-tree/GitTree.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface CommitDiffPanelProps {
     repoRoot: string;
@@ -201,7 +202,7 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
         if (!commit) {
             this.releaseCommitSurface();
             applyPanelAttributes(this.root, resolvePanelAttributes({ padding: "md", align: "center", justify: "center", flex: 1 }));
-            this.placeholder = createTextElement("Select a commit to view its changes.", { color: "light" });
+            this.placeholder = createTextElement(t("git.selectCommitChanges"), { color: "light" });
             this.root.replaceChildren(this.placeholder);
             return;
         }
@@ -297,8 +298,8 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
         }
         this.emptyDiffPanel.replaceChildren(createTextElement(
             this.driver.model.state.get().changes.length === 0
-                ? "No file changes in this commit."
-                : "Select a file to view its diff.",
+                ? t("git.noFileChangesInCommit")
+                : t("git.selectFileForDiff"),
             { color: "light" },
         ));
         this.viewPanel.replaceChildren(this.emptyDiffPanel);
@@ -376,7 +377,8 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
         this.driver.model.setSelectedFile(item.filePath);
         this.loadDiff();
         return [{
-            label: "Open in new Tab",
+            id: "open-in-new-tab",
+            label: t("shell.openInNewTab"),
             icon: "compare",
             onClick: () => this.openInNewTab(change),
         }];

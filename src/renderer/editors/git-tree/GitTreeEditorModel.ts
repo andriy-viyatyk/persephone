@@ -23,6 +23,7 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { editorRegistry } from "../base/editorRegistry";
 import { writeGitTreeColumnLayout } from "./git-tree-preferences";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 
 export interface GitTreeEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -76,7 +77,7 @@ export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
     // cache-file prefix. MUST be non-empty (PageModel.mainEditorInstance treats
     // a falsy id as "no main editor"). Per-instance UUID, like MCP Inspector.
     id: crypto.randomUUID(),
-    title: "Git Tree",
+    title: untranslated(englishMessage("editors.gitTree")),
     modified: false,
     type: "gitTreePage",
     editor: "git-tree",
@@ -144,7 +145,8 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         const remote = remotes.includes("origin") ? "origin" : remotes[0];
         return [
             {
-                label: "Open Git Root Folder",
+                id: "open-git-root-folder",
+                label: t("git.openGitRootFolder"),
                 icon: createIconElement("folder-open"),
                 onClick: () => {
                     if (repoRoot) api.showItemInFolder(repoRoot);
@@ -152,7 +154,8 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
                 disabled: !repoRoot,
             },
             {
-                label: "Copy Remote URL",
+                id: "copy-remote-url",
+                label: t("git.copyRemoteUrl"),
                 icon: createIconElement("copy"),
                 onClick: async () => {
                     const url = await git.getRemoteUrl(repoRoot, remote);
@@ -326,7 +329,10 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         const repoRoot = this.state.get().repoRoot;
         if (!repoRoot) return;
         const r = await git.switchTo(repoRoot, target);
-        if (!r.ok) void ui.notify(`Failed to switch: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("api.actionFailed", {
+            action: t("git.switchFailedAction"),
+            error: r.error ?? "unknown error",
+        }), "error");
         this.refresh();
     };
 
@@ -341,14 +347,14 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         if (!repoRoot) return;
         const { showInputDialog } = await import("../../ui/dialogs/InputDialog");
         const res = await showInputDialog({
-            title: "Create branch",
-            message: `Create branch at ${shortHash}`,
+            title: t("git.createBranchTitle"),
+            message: t("git.createBranchAt", { shortHash }),
             value: "",
             buttons: [DialogButton.create, DialogButton.cancel],
         });
         if (res?.button !== DialogButton.create || !res.value.trim()) return;
         const r = await git.createBranch(repoRoot, res.value.trim(), hash, true);
-        if (!r.ok) void ui.notify(`Failed to create branch: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("menus.failCreateBranch", { error: r.error ?? "unknown error" }), "error");
         this.refresh();
     };
 
@@ -382,7 +388,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         this.selectionState.set({});
         this.state.update((s) => {
             s.repoRoot = repoRoot;
-            s.title = `${folder} — Git`;
+            s.title = untranslated(`${folder} — ${englishMessage("shell.git")}`);
         });
         this.syncGitTree();
     }

@@ -27,11 +27,16 @@ import {
     writeGitTreeBottomPanelHeight,
 } from "./git-tree-preferences";
 import color from "../../theme/color";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
 const DEFAULT_PANEL_H = 240;
 const DEFAULT_DIFF_LIST_W = 240;
+
+function refIdPart(refName: string): string {
+    return refName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ref";
+}
 
 interface GitTreeSurfaceState {
     loading: boolean;
@@ -189,14 +194,14 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         this.refreshButton = this.child(new IconButtonView({
             name: "git-tree-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("git.refresh"),
             icon: "refresh",
             disabled: this.model.gitTree.state.get().loading,
             onClick: this.model.refresh,
         }));
 
         this.toolbarGroup.append(
-            createTextElement("Repo:", { color: "light", nowrap: true }),
+            createTextElement(t("git.repoLabel"), { color: "light", nowrap: true }),
             this.repoTag.root,
             this.aheadBehindGroup,
             this.pullButton.root,
@@ -270,7 +275,7 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         this.refreshButton.update({
             name: "git-tree-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("git.refresh"),
             icon: "refresh",
             disabled: state.loading,
             onClick: this.model.refresh,
@@ -279,13 +284,13 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             this.releaseBottomSurface();
             this.showBodyMessage({
                 kind: "unavailable",
-                text: "Git is unavailable — check that git is installed and on your PATH, and that Git integration is enabled in Settings.",
+                text: t("git.historyUnavailable"),
             });
             return;
         }
         if (state.loading && !state.hasCommits) {
             this.releaseBottomSurface();
-            this.showBodyMessage({ kind: "loading", text: "Loading history…" });
+            this.showBodyMessage({ kind: "loading", text: t("git.historyLoading") });
             return;
         }
         this.ensureHistoryBody();
@@ -453,8 +458,8 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             value: this.bottomPanelTab ?? "commit",
             onChange: (value: string) => this.model.setBottomPanelTab(value as "commit" | "diff"),
             items: [
-                { value: "commit", label: "Commit" },
-                { value: "diff", label: "Diff" },
+                { value: "commit", label: t("git.commitTab") },
+                { value: "diff", label: t("git.diffTab") },
             ],
         };
     }
@@ -557,22 +562,24 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             size: "sm" as const,
             icon: "download" as const,
             title: !aheadBehind.hasUpstream
-                ? "Pull (no upstream configured)"
+                ? t("git.pullNoUpstream")
                 : aheadBehind.behind > 0
-                    ? `Pull ${aheadBehind.behind} commit(s) — merge`
-                    : "Pull — merge (up to date)",
+                    ? t("git.pullCommits", { count: aheadBehind.behind })
+                    : t("git.pullUpToDate"),
             disabled: pulling || fetching || !aheadBehind.hasUpstream,
             menuDisabled: pulling || fetching,
             onClick: () => void this.model.pull(),
             items: [
                 {
-                    label: "Pull (merge)",
+                    id: "pull-merge",
+                    label: t("git.pullMerge"),
                     icon: "download",
                     disabled: !aheadBehind.hasUpstream,
                     onClick: () => void this.model.pull(),
                 },
                 {
-                    label: "Fetch all",
+                    id: "fetch-all",
+                    label: t("git.fetchAll"),
                     startGroup: true,
                     onClick: () => void this.model.fetch(),
                 },
@@ -586,10 +593,10 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             name: "git-tree-push",
             size: "sm" as const,
             title: !aheadBehind.hasUpstream
-                ? "Push (set upstream)"
+                ? t("git.pushSetUpstream")
                 : aheadBehind.ahead > 0
-                    ? `Push ${aheadBehind.ahead} commit(s)`
-                    : "Nothing to push",
+                    ? t("git.pushCommits", { count: aheadBehind.ahead })
+                    : t("git.pushNothing"),
             icon: "upload" as const,
             disabled: pushing || (aheadBehind.hasUpstream && aheadBehind.ahead === 0),
             onClick: () => void this.model.push(),
@@ -602,24 +609,31 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         const multi = rows.length > 1;
         const items: MenuItem[] = [];
         let hasLocalBranch = false;
-        for (const ref of row.refs) {
+        for (const [index, ref] of row.refs.entries()) {
             if (ref.kind === "head") {
                 hasLocalBranch = true;
-                items.push({ label: `Switch to Branch '${ref.name}' (current)`, icon: "git", disabled: true });
+                items.push({
+                    id: `switch-to-branch-${refIdPart(ref.name)}-${index}`,
+                    label: t("git.switchCurrentBranch", { name: ref.name }),
+                    icon: "git",
+                    disabled: true,
+                });
             } else if (ref.kind === "branch") {
                 hasLocalBranch = true;
                 items.push({
-                    label: `Switch to Branch '${ref.name}'`,
+                    id: `switch-to-branch-${refIdPart(ref.name)}-${index}`,
+                    label: t("git.switchToBranch", { name: ref.name }),
                     icon: "git",
                     disabled: multi,
                     onClick: () => void this.model.switchTo({ type: "branch", name: ref.name }),
                 });
             }
         }
-        for (const ref of row.refs) {
+        for (const [index, ref] of row.refs.entries()) {
             if (ref.kind === "remote") {
                 items.push({
-                    label: `Switch to Remote Branch '${ref.name}'`,
+                    id: `switch-to-remote-branch-${refIdPart(ref.name)}-${index}`,
+                    label: t("git.switchToRemoteBranch", { name: ref.name }),
                     icon: "globe",
                     disabled: multi,
                     onClick: () => void this.model.switchTo({ type: "remote", ref: ref.name }),
@@ -628,7 +642,8 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         }
         if (!hasLocalBranch) {
             items.push({
-                label: `Switch to Commit ${row.shortHash}`,
+                id: `switch-to-commit-${row.shortHash.toLowerCase()}`,
+                label: t("git.switchToCommit", { shortHash: row.shortHash }),
                 icon: "git",
                 startGroup: items.length > 0,
                 disabled: multi,
@@ -636,7 +651,8 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             });
         }
         items.push({
-            label: "Create branch here…",
+            id: "create-branch-here",
+            label: t("git.createBranchHere"),
             icon: "git",
             startGroup: items.length > 0,
             disabled: multi,
