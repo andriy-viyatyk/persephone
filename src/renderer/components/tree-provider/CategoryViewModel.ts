@@ -43,6 +43,7 @@ import { DragEnterCounter } from "../../uikit/shared/drag-enter-counter";
 import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import { sameHref, sameHrefs } from "./href-utils";
 import type { GridModelCapability } from "../../uikit/DataGrid";
+import { t } from "../../../shared/i18n/t";
 
 // =============================================================================
 // Types
@@ -272,7 +273,7 @@ export class CategoryViewModel extends TComponentModel<
                 s.items = [];
                 s.filteredItems = [];
                 s.loading = false;
-                s.error = err.message || "Failed to load items";
+                s.error = err.message || t("menus.failedToLoadItems");
             });
         }
     };

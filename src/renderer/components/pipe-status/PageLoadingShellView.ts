@@ -4,6 +4,7 @@ import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { PipeStageListView } from "./PipeStageListView";
 import "./PageLoadingShellView.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface PageLoadingShellViewProps {
     page: PageModel;
@@ -37,7 +38,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
             name: "page-loading-close",
             size: "sm",
             icon: "close",
-            title: "Close page",
+            title: t("menus.closePage"),
             "data-part": "close",
             onClick: () => this.props.onClose(),
         }));
@@ -47,7 +48,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
         this.retryButton = document.createElement("button");
         this.retryButton.type = "button";
         this.retryButton.dataset.name = "page-loading-retry";
-        this.retryButton.textContent = "Retry";
+        this.retryButton.textContent = t("menus.retry");
         this.listen(this.retryButton, "click", () => this.props.onRetry());
         actions.append(this.retryButton);
         this.tile = document.createElement("div");
@@ -90,8 +91,8 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
         this.root.dataset.state = isError ? "error" : "loading";
         this.root.setAttribute("aria-busy", String(!isError));
         this.message.textContent = isError
-            ? state.restoreError ?? "Unable to load content."
-            : "Loading content…";
+            ? state.restoreError ?? t("menus.unableToLoadContentPeriod")
+            : t("common.loading");
         this.retryButton.hidden = !isError;
         if (this.actions) this.actions.hidden = !isError;
         const stages = pipe?.stages ?? [];

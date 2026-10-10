@@ -13,6 +13,7 @@ import { toClipboard } from "../../core/utils/utils";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
 import { copyPathsToOsClipboard, supportsOsClipboard } from "./os-clipboard";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 /** Ctrl/Shift multi-selection is offered where item hrefs are absolute local paths and
  *  every plural action (OS clipboard, batch move, drag-out) is therefore meaningful.
@@ -59,9 +60,10 @@ export function buildMultiItemMenuItems(
     const menuItems: MenuItem[] = [];
 
     menuItems.push({
+        id: items.every((x) => isUrlOrCurl(x.href)) ? "copy-hrefs" : "copy-paths",
         label: items.every((x) => isUrlOrCurl(x.href))
-            ? `Copy Hrefs (${n})`
-            : `Copy Paths (${n})`,
+            ? t("menus.copyHrefsCount", { count: n })
+            : t("menus.copyPathsCount", { count: n }),
         icon: CopyIcon.createElement(),
         onClick: () => toClipboard(hrefs.join("\n")),
     });
@@ -73,14 +75,16 @@ export function buildMultiItemMenuItems(
         if (!hasRoot) {
             menuItems.push({
                 startGroup: true,
-                label: `Cut (${n})`,
+                id: "cut",
+                label: t("menus.cutCount", { count: n }),
                 icon: CutIcon.createElement(),
                 onClick: () => copyPathsToOsClipboard(hrefs, true),
             });
         }
         menuItems.push({
             startGroup: hasRoot,
-            label: `Copy (${n})`,
+            id: "copy",
+            label: t("menus.copyCount", { count: n }),
             icon: CopyIcon.createElement(),
             onClick: () => copyPathsToOsClipboard(hrefs, false),
         });
@@ -89,7 +93,8 @@ export function buildMultiItemMenuItems(
     if (provider.writable && provider.deleteItem && !hasRoot) {
         menuItems.push({
             startGroup: true,
-            label: `Delete (${n})`,
+            id: "delete",
+            label: t("menus.deleteCount", { count: n }),
             icon: DeleteIcon.createElement(),
             onClick: onDelete,
         });
@@ -130,19 +135,22 @@ export async function deleteItemsBatch(
     }
 
     const bt = await ui.confirm(
-        `Do you want to delete ${targets.length} items?`,
-        { title: "Delete Confirmation", buttons: [DialogButton.delete, DialogButton.cancel] },
+        t("menus.deleteItemsConfirmation", { count: targets.length }),
+        { title: t("menus.deleteConfirmation"), buttons: [DialogButton.delete, DialogButton.cancel] },
     );
     if (bt !== DialogButton.delete) return "none";
 
     const errors: string[] = [];
-    const progress = await ui.createProgress("Deleting...");
+    const progress = await ui.createProgress(t("menus.deletingProgressTitle"));
     try {
         await progress.show((async () => {
             let done = 0;
             for (const target of targets) {
-                progress.label =
-                    `Deleting ${done + 1} of ${targets.length}: ${target.title}`;
+                progress.label = t("menus.deletingProgress", {
+                    done: done + 1,
+                    total: targets.length,
+                    name: target.title,
+                });
                 try {
                     await provider.deleteItem?.(target.href);
                 } catch (err) {
@@ -152,12 +160,14 @@ export async function deleteItemsBatch(
             }
         })());
     } catch (err) {
-        ui.notify(err?.message || "Failed to delete.", "warning");
+        ui.notify(err?.message || t("menus.failedToDelete"), "warning");
     }
     if (errors.length) {
         const shown = errors.slice(0, 5).join("\n");
-        const more = errors.length > 5 ? `\n(+${errors.length - 5} more)` : "";
-        ui.notify(`Some items could not be deleted:\n${shown}${more}`, "warning");
+        const remaining = errors.length - 5;
+        ui.notify(remaining > 0
+            ? t("menus.itemsCouldNotBeDeletedWithMore", { errors: shown, count: remaining } as never)
+            : t("menus.itemsCouldNotBeDeleted", { errors: shown }), "warning");
     }
 
     return "batch";

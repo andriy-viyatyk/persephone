@@ -4,11 +4,18 @@ import { IncognitoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { createLinkData } from "../../../shared/link-data";
 import { settings } from "../../api/settings";
+import { t } from "../../../shared/i18n/t";
 
 function createDirectMenuIcon(component: { createElement?: () => SVGElement }): SVGElement {
     const icon = component.createElement();
     if (!icon) throw new Error("Menu icon does not have a DOM builder.");
     return icon;
+}
+
+function profileMenuId(name: string): string {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "profile";
+    const identity = Array.from(name, (character) => character.codePointAt(0)!.toString(16)).join("-");
+    return `open-in-profile-${slug}-${identity}`;
 }
 
 /**
@@ -35,26 +42,30 @@ export function appendLinkOpenMenuItems(
 
     menuItems.push(
         {
-            label: "Open in Default Browser",
+            id: "open-in-default-browser",
+            label: t("menus.openInDefaultBrowser"),
             icon: createIconElement("open-file"),
             onClick: () => { fireOpenRawLink("os-default"); },
             disabled,
             startGroup: options?.startGroup,
         },
         {
-            label: "Open in Internal Browser",
+            id: "open-in-internal-browser",
+            label: t("menus.openInInternalBrowser"),
             icon: createIconElement("globe", { color: DEFAULT_BROWSER_COLOR }),
             onClick: () => { fireOpenRawLink("internal"); },
             disabled,
         },
         ...settings.get("browser-profiles").map((profile) => ({
-            label: `Open in ${profile.name}`,
+            id: profileMenuId(profile.name),
+            label: t("menus.openInProfile", { profile: profile.name }),
             icon: createIconElement("globe", { color: profile.color }),
             onClick: () => { fireOpenRawLink(`profile:${profile.name}`); },
             disabled,
         })),
         {
-            label: "Open in Incognito",
+            id: "open-in-incognito",
+            label: t("menus.openInIncognito"),
             icon: createDirectMenuIcon(IncognitoIcon),
             onClick: () => { fireOpenRawLink("incognito"); },
             disabled,

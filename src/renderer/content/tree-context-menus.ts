@@ -1,6 +1,7 @@
 import { app } from "../api/app";
 import { createLinkData } from "../../shared/link-data";
 import { createOpenWithMenuItem } from "./open-with-editor";
+import { t } from "../../shared/i18n/t";
 
 /**
  * Register default context menu handlers for ILink items.
@@ -34,7 +35,8 @@ export function registerTreeContextMenuHandlers(): void {
         ) return;
 
         event.items.push({
-            label: "Open in Rest Client",
+            id: "open-in-rest-client",
+            label: t("menus.openInRestClient"),
             onClick: () =>
                 app.events.openRawLink.sendAsync(
                     createLinkData(href, { target: "http.request.open" }),
@@ -51,7 +53,8 @@ export function registerTreeContextMenuHandlers(): void {
             event.items.push(
                 {
                     startGroup: true,
-                    label: "Open in New Tab",
+                    id: "open-in-new-tab",
+                    label: t("shell.openInNewTab"),
                     icon: "open-file",
                     onClick: async () => {
                         const { pagesModel } = await import("../api/pages");
@@ -61,7 +64,8 @@ export function registerTreeContextMenuHandlers(): void {
             );
             // Show in File Explorer (folders)
             event.items.push({
-                label: "Show in File Explorer",
+                id: "show-in-file-explorer",
+                label: t("shell.showInFileExplorer"),
                 icon: "folder-open",
                 onClick: async () => {
                     const { api } = await import("../../ipc/renderer/api");
@@ -72,12 +76,14 @@ export function registerTreeContextMenuHandlers(): void {
             event.items.push(
                 {
                     startGroup: true,
-                    label: "Open in New Tab",
+                    id: "open-in-new-tab",
+                    label: t("shell.openInNewTab"),
                     icon: "open-file",
                     onClick: () => app.events.openRawLink.sendAsync(createLinkData(item.href)),
                 },
                 {
-                    label: "Open in New Window",
+                    id: "open-in-new-window",
+                    label: t("shell.openInNewWindow"),
                     icon: "new-window",
                     onClick: async () => {
                         const { pagesModel } = await import("../api/pages");
@@ -88,7 +94,8 @@ export function registerTreeContextMenuHandlers(): void {
                     ...createOpenWithMenuItem(item.href),
                 },
                 {
-                    label: "Show in File Explorer",
+                    id: "show-in-file-explorer",
+                    label: t("shell.showInFileExplorer"),
                     icon: "folder-open",
                     onClick: async () => {
                         const { api } = await import("../../ipc/renderer/api");

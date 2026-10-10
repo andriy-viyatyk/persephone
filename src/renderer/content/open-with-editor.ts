@@ -31,7 +31,8 @@ function editorOptionIcon(editorId: string): Element {
 export function createOpenWithMenuItem(path: string): MenuItem {
     const options = getFileOpenEditorOptions(path);
     return {
-        label: "Open with",
+        id: "open-with",
+        label: t("menus.openWith"),
         icon: "open-link",
         items: [
             ...options.map(({ id, label, labelKey, labelParams }): MenuItem => ({
@@ -42,7 +43,7 @@ export function createOpenWithMenuItem(path: string): MenuItem {
             })),
             {
                 id: "open-with:default-app",
-                label: "Default App",
+                label: t("menus.defaultApp"),
                 icon: "open-link",
                 onClick: () => openWithDefaultApp(path),
             },
@@ -53,7 +54,7 @@ export function createOpenWithMenuItem(path: string): MenuItem {
 /** Recheck a menu choice immediately before switching or opening the file. */
 export async function openWithEditor(path: string, editorId: string): Promise<void> {
     if (!getFileOpenEditorOptions(path).some((option) => option.id === editorId)) {
-        void ui.notify("This editor is no longer available for this file.", "warning");
+        void ui.notify(t("menus.editorUnavailable"), "warning");
         return;
     }
 
@@ -67,6 +68,6 @@ export async function openWithEditor(path: string, editorId: string): Promise<vo
     if (page.mainEditorInstance?.editorId === editorId) return;
     await page.switchMainEditor(editorId);
     if (page.mainEditorInstance?.editorId !== editorId) {
-        void ui.notify("The current page remains in its existing editor.", "info");
+        void ui.notify(t("menus.currentPageEditorUnchanged"), "info");
     }
 }

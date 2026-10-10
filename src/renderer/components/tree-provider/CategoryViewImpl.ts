@@ -6,6 +6,7 @@ import { InputView } from "../../uikit/Input/InputView";
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { t } from "../../../shared/i18n/t";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { IconName } from "../../theme/icon-registry";
 import {
@@ -22,12 +23,12 @@ import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "./CategoryView.css";
 
-const VIEW_MODE_LABELS: Record<CategoryViewMode, string> = {
-    "list": "List",
-    "tiles-landscape": "Landscape",
-    "tiles-landscape-big": "Landscape (Large)",
-    "tiles-portrait": "Portrait",
-    "tiles-portrait-big": "Portrait (Large)",
+const VIEW_MODE_LABELS: Record<CategoryViewMode, () => string> = {
+    "list": () => t("menus.listView"),
+    "tiles-landscape": () => t("menus.landscapeView"),
+    "tiles-landscape-big": () => t("menus.landscapeLargeView"),
+    "tiles-portrait": () => t("menus.portraitView"),
+    "tiles-portrait-big": () => t("menus.portraitLargeView"),
 };
 
 const VIEW_MODE_ICONS: Record<CategoryViewMode, IconName> = {
@@ -110,19 +111,19 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
 
         this.inputView = this.child(new InputView({
             value: "",
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
         }));
         this.clearButton = this.child(new IconButtonView({
             size: "sm",
-            title: "Clear",
+            title: t("menus.clearSearch"),
             icon: "close",
             onClick: this.onSearchClose,
         }));
         this.viewModeButton = this.child(new IconButtonView({
             size: "sm",
-            title: "View Mode",
+            title: t("menus.viewMode"),
             icon: VIEW_MODE_ICONS.list,
             onClick: this.onViewModeMenu,
         }));
@@ -224,7 +225,7 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
 
         if (!contentArm) {
             this.disposeActiveItems();
-            this.content.replaceChildren(this.createMessage(state.error ? "error" : "loading", state.error ?? "Loading..."));
+            this.content.replaceChildren(this.createMessage(state.error ? "error" : "loading", state.error ?? t("common.loading")));
             this.itemsChainMounted = false;
             this.footer.remove();
             return;
@@ -236,7 +237,7 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
             this.disposeActiveItems();
             const empty = document.createElement("div");
             empty.className = "cv-empty";
-            empty.textContent = state.searchText ? "No matching items" : "Empty folder";
+            empty.textContent = state.searchText ? t("menus.noMatchingItems") : t("menus.emptyFolder");
             this.content.replaceChildren(empty);
             this.itemsChainMounted = false;
             return;
@@ -255,11 +256,12 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
     private updateFooter(state: CategoryViewState): void {
         const totalCount = state.items.length;
         const filteredCount = state.filteredItems.length;
-        this.footerCount.textContent = filteredCount === totalCount
-            ? `${totalCount} items`
-            : `${filteredCount} of ${totalCount} items`;
         if (state.selectedHrefs.length > 1) {
-            this.footerCount.textContent += ` (${state.selectedHrefs.length} selected)`;
+            this.footerCount.textContent = t("menus.selectedCount", { count: state.selectedHrefs.length });
+        } else {
+            this.footerCount.textContent = filteredCount === totalCount
+                ? t("menus.itemsCount", { count: totalCount })
+                : t("menus.visibleItemsCount", { shown: filteredCount, total: totalCount });
         }
     }
 
@@ -388,14 +390,14 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
         const state = this.model.state.get();
         this.inputView.update({
             value: state.searchText,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
             endSlot: state.searchText ? this.clearButton.root : undefined,
         });
         this.viewModeButton.update({
             size: "sm",
-            title: "View Mode",
+            title: t("menus.viewMode"),
             icon: VIEW_MODE_ICONS[this.props.viewMode ?? "list"],
             onClick: this.onViewModeMenu,
         });
@@ -425,7 +427,8 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
         const rect = event.currentTarget.getBoundingClientRect();
         const viewMode = this.props.viewMode ?? "list";
         void showAppPopupMenu(rect.left, rect.bottom + 2, VIEW_MODE_ORDER.map((mode) => ({
-            label: VIEW_MODE_LABELS[mode],
+            id: mode,
+            label: VIEW_MODE_LABELS[mode](),
             icon: createIconElement(VIEW_MODE_ICONS[mode]),
             selected: mode === viewMode,
             onClick: () => onViewModeChange(mode),

@@ -13,6 +13,7 @@ import {
     defaultTreeProviderViewState,
 } from "./TreeProviderViewModel";
 import { createTreeProviderItemIconElement, subscribeFileIconElements } from "../icons/icon-elements";
+import { t } from "../../../shared/i18n/t";
 import { TREE_ITEM_KEY } from "../../uikit/Tree/types";
 import type { TreeProps } from "../../uikit/Tree/types";
 import type { SlotContent } from "../../uikit/shared/fill-slot";
@@ -240,7 +241,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         this.searchClose = this.child(new IconButtonView({
             name: "tree-provider-search-close",
             size: "sm",
-            title: "Close Search",
+            title: t("menus.closeSearch"),
             icon: "close",
             onClick: this.onSearchClose,
         }));
@@ -250,7 +251,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             name: "tree-provider-search-input",
             size: "sm",
             value: "",
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
             onBlur: this.onSearchBlur,
@@ -281,7 +282,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             name: "tree-provider-search-input",
             size: "sm",
             value: state.searchText,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
             onBlur: this.onSearchBlur,

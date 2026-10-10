@@ -4,6 +4,7 @@ import { InputView } from "../../uikit/Input/InputView";
 import type { InputProps } from "../../uikit/Input/InputView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { t } from "../../../shared/i18n/t";
 
 export interface FindBarProps {
     text: string;
@@ -20,7 +21,7 @@ function matchLabel(props: FindBarProps): string {
     if (!props.text) return "";
     return props.totalMatches > 0
         ? `${props.currentMatch + 1} of ${props.totalMatches}`
-        : "No results";
+        : t("menus.noResults");
 }
 
 export class FindBarView extends VanillaView<FindBarProps> {
@@ -53,21 +54,21 @@ export class FindBarView extends VanillaView<FindBarProps> {
         this.previousButton = this.child(new IconButtonView({
             name: "find-prev",
             size: "sm",
-            title: "Previous Match (Shift+F3)",
+            title: t("menus.previousMatch", { shortcut: "Shift+F3" }),
             onClick: props.onPrev,
             icon: "chevron-up",
         }));
         this.nextButton = this.child(new IconButtonView({
             name: "find-next",
             size: "sm",
-            title: "Next Match (F3)",
+            title: t("menus.nextMatch", { shortcut: "F3" }),
             onClick: props.onNext,
             icon: "chevron-down",
         }));
         this.closeButton = this.child(new IconButtonView({
             name: "find-close",
             size: "sm",
-            title: "Close (Esc)",
+            title: t("menus.closeWithShortcut", { shortcut: "Esc" }),
             onClick: props.onClose,
             icon: "close",
         }));
@@ -103,21 +104,21 @@ export class FindBarView extends VanillaView<FindBarProps> {
         this.previousButton.update({
             name: "find-prev",
             size: "sm",
-            title: "Previous Match (Shift+F3)",
+            title: t("menus.previousMatch", { shortcut: "Shift+F3" }),
             onClick: props.onPrev,
             icon: "chevron-up",
         });
         this.nextButton.update({
             name: "find-next",
             size: "sm",
-            title: "Next Match (F3)",
+            title: t("menus.nextMatch", { shortcut: "F3" }),
             onClick: props.onNext,
             icon: "chevron-down",
         });
         this.closeButton.update({
             name: "find-close",
             size: "sm",
-            title: "Close (Esc)",
+            title: t("menus.closeWithShortcut", { shortcut: "Esc" }),
             onClick: props.onClose,
             icon: "close",
         });
@@ -131,7 +132,7 @@ export class FindBarView extends VanillaView<FindBarProps> {
             value: props.text,
             onChange: props.onTextChange,
             onKeyDown: this.handleInputKeyDown,
-            placeholder: props.placeholder ?? "Find...",
+            placeholder: props.placeholder ?? t("menus.findPlaceholder"),
         };
     }
 

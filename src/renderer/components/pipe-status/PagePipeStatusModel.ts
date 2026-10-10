@@ -4,6 +4,7 @@ import type { PageModel } from "../../api/pages/PageModel";
 import { TComponentModel } from "../../core/state/model";
 import { formatBytes } from "../../core/utils/format-bytes";
 import { subscribePagePipe } from "./page-pipe";
+import { t } from "../../../shared/i18n/t";
 
 export interface PagePipeStatusProps {
     page: PageModel;
@@ -98,7 +99,7 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
                 ...base,
                 visible: true,
                 kind: "busy",
-                label: summary.text || "Loading",
+                label: summary.text || t("menus.loading"),
                 loaded: progress?.loaded,
                 total: progress?.total,
                 hasProgress: !!progress && Number.isFinite(progress.loaded)
@@ -112,7 +113,7 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
                 ...base,
                 visible: !base.dismissed,
                 kind: "error",
-                label: summary.text || summary.detail || "Unable to load content",
+                label: summary.text || summary.detail || t("menus.unableToLoadContent"),
             });
             return;
         }
@@ -121,8 +122,8 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
             const loaded = pipe.stages.find((stage) => stage.role === "provider")?.status?.progress?.loaded;
             const elapsed = this.startedAt == null ? undefined : Math.max(0, Date.now() - this.startedAt);
             const label = loaded != null && Number.isFinite(loaded) && elapsed != null
-                ? `${formatBytes(loaded)} in ${this.formatElapsed(elapsed)}`
-                : "Content loaded";
+                ? this.formatLoadedDuration(formatBytes(loaded), elapsed)
+                : t("menus.contentLoaded");
             this.state.set({ ...base, visible: true, kind: "done", label });
             this.doneTimer = setTimeout(() => {
                 this.doneTimer = undefined;
@@ -136,14 +137,16 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
         this.state.set(base);
     }
 
-    private formatElapsed(milliseconds: number): string {
+    private formatLoadedDuration(size: string, milliseconds: number): string {
         const seconds = Math.round(milliseconds / 1000);
-        if (seconds < 60) return `${seconds} sec`;
+        if (seconds < 60) return t("menus.loadedInSeconds", { size, count: seconds } as never);
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
-        if (minutes < 60) return remainingSeconds ? `${minutes} min ${remainingSeconds} sec` : `${minutes} min`;
+        if (minutes < 60) return remainingSeconds
+            ? t("menus.loadedInMinutesAndSeconds", { size, count: minutes, subcount: remainingSeconds } as never)
+            : t("menus.loadedInMinutes", { size, count: minutes } as never);
         const hours = Math.floor(minutes / 60);
-        return `${hours} hr ${minutes % 60} min`;
+        return t("menus.loadedInHoursAndMinutes", { size, count: hours, subcount: minutes % 60 } as never);
     }
 
     private releaseSourceSubscriptions(): void {

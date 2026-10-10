@@ -4,6 +4,7 @@ import { InputView } from "../../uikit/Input/InputView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { t } from "../../../shared/i18n/t";
 import { focusAfterPaint } from "../../core/utils/scheduling";
 import { createFileIconElement, createFolderIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { defaultFileListState, FileListModel, type FileListItem, type FileListProps } from "./FileList";
@@ -45,7 +46,7 @@ export class FileListView extends VanillaView<FileListProps> {
         this.input = this.child(new InputView({
             name: "file-list-search-input",
             value: "",
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.driver.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
             onBlur: this.onSearchBlur,
@@ -53,7 +54,7 @@ export class FileListView extends VanillaView<FileListProps> {
         this.clearButton = this.child(new IconButtonView({
             name: "file-list-search-clear",
             icon: "close",
-            title: "Clear Search",
+            title: t("menus.clearSearch"),
             size: "sm",
             onClick: () => this.hideSearchAndFocus(),
         }));
@@ -115,7 +116,7 @@ export class FileListView extends VanillaView<FileListProps> {
         this.input.update({
             name: "file-list-search-input",
             value: state.searchText,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.driver.model.setSearchText,
             onKeyDown: this.onSearchKeyDown,
             onBlur: this.onSearchBlur,
@@ -139,7 +140,7 @@ export class FileListView extends VanillaView<FileListProps> {
             getTooltip: this.getTooltip,
             getContextMenu: this.getContextMenu,
             onContextMenu: props.onContextMenu,
-            emptyMessage: "no files",
+            emptyMessage: t("menus.noFiles"),
             variant: "browse",
         };
     }

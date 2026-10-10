@@ -17,6 +17,7 @@
  */
 import type { IconRef } from "../../uikit/shared/slots";
 import type { GitRefs } from "../../../ipc/git-ipc";
+import { t } from "../../../shared/i18n/t";
 
 /** Selectable ref-leaf kind (set on leaves only; folders/roots carry none). */
 export type GitRefNodeKind = "branch" | "remote-branch" | "tag";
@@ -136,7 +137,7 @@ export function buildRefsTree(refs: GitRefs, alphabetical = false): GitRefNode[]
     }));
     const branchesRoot: GitRefNode = {
         value: BRANCHES_ROOT_VALUE,
-        label: "Branches",
+        label: t("menus.branches"),
         items: foldRefs(branchEntries, "branch", "local:", "localdir:", [], alphabetical),
     };
 
@@ -162,7 +163,7 @@ export function buildRefsTree(refs: GitRefs, alphabetical = false): GitRefNode[]
         });
     const remotesRoot: GitRefNode = {
         value: REMOTES_ROOT_VALUE,
-        label: "Remotes",
+        label: t("menus.remotes"),
         items: remoteNodes,
     };
 
@@ -176,7 +177,7 @@ export function buildRefsTree(refs: GitRefs, alphabetical = false): GitRefNode[]
     }));
     const tagsRoot: GitRefNode = {
         value: TAGS_ROOT_VALUE,
-        label: "Tags",
+        label: t("menus.tags"),
         items: tagNodes,
     };
 

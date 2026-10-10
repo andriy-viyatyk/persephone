@@ -4,6 +4,7 @@ import { toClipboard } from "../../core/utils/utils";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu/types";
 import type { TextFileModel } from "../text/TextEditorModel";
+import { t } from "../../../shared/i18n/t";
 
 /** HTML files that make sense to render in the browser instead of editing. */
 const HTML_FILE = /\.(?:x?html?)$/i;
@@ -18,7 +19,8 @@ export function openInBrowserMenuItems(filePath: string | undefined): MenuItem[]
     if (!filePath || !HTML_FILE.test(filePath)) return [];
     return [
         {
-            label: "Open in Browser",
+            id: "open-in-browser",
+            label: t("menus.openInBrowser"),
             icon: createIconElement("globe"),
             startGroup: true,
             onClick: async () => {
@@ -40,7 +42,8 @@ export function openInBrowserMenuItems(filePath: string | undefined): MenuItem[]
 export function filePathMenuItems(filePath: string | undefined): MenuItem[] {
     return [
         {
-            label: "Show in File Explorer",
+            id: "show-in-file-explorer",
+            label: t("shell.showInFileExplorer"),
             icon: createIconElement("folder-open"),
             onClick: () => {
                 if (filePath) api.showItemInFolder(filePath);
@@ -48,7 +51,8 @@ export function filePathMenuItems(filePath: string | undefined): MenuItem[] {
             disabled: !filePath,
         },
         {
-            label: "Copy File Path",
+            id: "copy-file-path",
+            label: t("menus.copyFilePath"),
             icon: createIconElement("copy"),
             onClick: () => {
                 if (filePath) toClipboard(filePath);
@@ -70,37 +74,43 @@ export function filePathMenuItems(filePath: string | undefined): MenuItem[] {
 export function textFileMenuItems(host: TextFileModel): MenuItem[] {
     return [
         {
-            label: "Save",
+            id: "save",
+            label: t("menus.save"),
             icon: createIconElement("save"),
             onClick: () => host.saveFile(false),
         },
         {
-            label: "Save As...",
+            id: "save-as",
+            label: t("menus.saveAs"),
             icon: createIconElement("save"),
             onClick: () => host.saveFile(true),
         },
         {
-            label: "Rename",
+            id: "rename",
+            label: t("menus.rename"),
             icon: createIconElement("rename"),
             onClick: () => host.promptRename(),
         },
         ...filePathMenuItems(host.filePath),
         ...openInBrowserMenuItems(host.filePath),
         {
-            label: "Decrypt",
+            id: "decrypt",
+            label: t("menus.decrypt"),
             icon: createIconElement("unlock"),
             onClick: () => host.showEncryptionDialog(),
             disabled: !host.encrypted,
             startGroup: true,
         },
         {
-            label: host.withEncryption ? "Change Password" : "Encrypt",
+            id: host.withEncryption ? "change-password" : "encrypt",
+            label: host.withEncryption ? t("menus.changePassword") : t("menus.encrypt"),
             icon: createIconElement("lock"),
             onClick: () => host.showEncryptionDialog(),
             disabled: host.encrypted,
         },
         {
-            label: "Make Unencrypted",
+            id: "make-unencrypted",
+            label: t("menus.makeUnencrypted"),
             icon: createIconElement("key-off"),
             onClick: () => host.makeUnencrypted(),
             disabled: !host.decrypted,

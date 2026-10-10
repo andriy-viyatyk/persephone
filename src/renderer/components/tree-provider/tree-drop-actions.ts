@@ -18,6 +18,7 @@ import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { pruneNestedItems } from "./plural-actions";
 import { supportsOsClipboard } from "./os-clipboard";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Where a drop lands.
@@ -83,15 +84,15 @@ export async function moveItemsInto(
             : source.title;
 
         const bt = await ui.confirm(
-            `Move "${source.title}" to "${target.title}/"?`,
-            { title: "Move", buttons: [DialogButton.move, DialogButton.cancel] },
+            t("menus.moveOneConfirmation", { name: source.title, target: target.title }),
+            { title: t("menus.move"), buttons: [DialogButton.move, DialogButton.cancel] },
         );
         if (bt !== DialogButton.move) return false;
 
         try {
             await provider.rename(source.href, newPath);
         } catch (err) {
-            ui.notify(err.message || "Failed to move.", "warning");
+            ui.notify(err.message || t("menus.failedToMove"), "warning");
             return false;
         }
     } else {
@@ -133,16 +134,15 @@ async function moveFilesInto(
         return targetCmp === srcCmp || targetCmp.startsWith(srcCmp + "/");
     });
     if (illegal) {
-        ui.notify(`Cannot move folder "${illegal.title}" into itself.`, "warning");
+        ui.notify(t("menus.cannotMoveFolderIntoItself", { name: illegal.title }), "warning");
         return false;
     }
 
-    const label = moving.length === 1
-        ? `"${moving[0].title}"`
-        : `${moving.length} items`;
     const bt = await ui.confirm(
-        `Move ${label} to "${target.title}/"?`,
-        { title: "Move", buttons: [DialogButton.move, DialogButton.cancel] },
+        moving.length === 1
+            ? t("menus.moveOneConfirmation", { name: moving[0].title, target: target.title })
+            : t("menus.moveManyConfirmation", { count: moving.length, target: target.title } as never),
+        { title: t("menus.move"), buttons: [DialogButton.move, DialogButton.cancel] },
     );
     if (bt !== DialogButton.move) return false;
 
@@ -155,31 +155,31 @@ async function moveFilesInto(
         .map((i) => i.title);
     if (clashing.length) {
         const ob = await ui.confirm(
-            `${clashing.length} item(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
+            t("menus.overwriteItems", { count: clashing.length, names: clashing.join(", ") } as never),
+            { title: t("menus.overwrite"), buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
         if (ob !== DialogButton.overwrite) return false;
     }
 
-    const progress = await ui.createProgress("Moving...");
+    const progress = await ui.createProgress(t("menus.movingProgressTitle"));
     try {
         const result = await progress.show(
             copyPathsInto(moving.map((i) => i.href), targetPath, {
                 move: true,
                 onProgress: (done, total, name) => {
-                    progress.label = `Moving ${done} of ${total}: ${name}`;
+                    progress.label = t("menus.movingProgress", { done, total, name });
                 },
             }),
         );
         if (result.errors.length) {
             const shown = result.errors.slice(0, 5).join("\n");
-            const more = result.errors.length > 5
-                ? `\n(+${result.errors.length - 5} more)`
-                : "";
-            ui.notify(`Some items could not be moved:\n${shown}${more}`, "warning");
+            const remaining = result.errors.length - 5;
+            ui.notify(remaining > 0
+                ? t("menus.itemsCouldNotBeMovedWithMore", { errors: shown, count: remaining } as never)
+                : t("menus.itemsCouldNotBeMoved", { errors: shown }), "warning");
         }
     } catch (err) {
-        ui.notify(err?.message || "Failed to move.", "warning");
+        ui.notify(err?.message || t("menus.failedToMove"), "warning");
     }
     return true;
 }
@@ -202,8 +202,8 @@ export async function importFilesInto(
         const clashing = items.filter((i) => existing.has(i.name)).map((i) => i.name);
         if (clashing.length) {
             const bt = await ui.confirm(
-                `${clashing.length} file(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-                { title: "Overwrite files?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
+                t("menus.overwriteFiles", { count: clashing.length, names: clashing.join(", ") } as never),
+                { title: t("menus.overwriteFilesTitle"), buttons: [DialogButton.overwrite, DialogButton.cancel] },
             );
             if (bt !== DialogButton.overwrite) return false;
         }
@@ -212,7 +212,7 @@ export async function importFilesInto(
     try {
         await provider.importFiles(items, targetCategory);
     } catch (err) {
-        ui.notify(err.message || "Failed to import files.", "warning");
+        ui.notify(err.message || t("menus.failedToImportFiles"), "warning");
         return false;
     }
     return true;
@@ -238,9 +238,10 @@ export async function dropOsFilesInto(
         return importFilesInto(provider, items, targetDir);
     }
 
-    const label = items.length === 1 ? `"${items[0].name}"` : `${items.length} items`;
-    const bt = await ui.confirm(`Move or copy ${label} into "${target.title}"?`, {
-        title: "Move or Copy",
+    const bt = await ui.confirm(items.length === 1
+        ? t("menus.moveOrCopyOneConfirmation", { name: items[0].name, target: target.title })
+        : t("menus.moveOrCopyManyConfirmation", { count: items.length, target: target.title } as never), {
+        title: t("menus.moveOrCopy"),
         buttons: [DialogButton.move, DialogButton.copy, DialogButton.cancel],
     });
     if (bt !== DialogButton.move && bt !== DialogButton.copy) return false;
@@ -255,35 +256,39 @@ export async function dropOsFilesInto(
         .map((i) => i.name);
     if (clashing.length) {
         const ob = await ui.confirm(
-            `${clashing.length} file(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite files?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
+            t("menus.overwriteFiles", { count: clashing.length, names: clashing.join(", ") } as never),
+            { title: t("menus.overwriteFilesTitle"), buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
         if (ob !== DialogButton.overwrite) return false;
     }
 
-    const verb = move ? "Moving" : "Copying";
-    const progress = await ui.createProgress(`${verb}...`);
+    const progress = await ui.createProgress(move
+        ? t("menus.movingProgressTitle")
+        : t("menus.copyingProgressTitle"));
     try {
         const result = await progress.show(
             copyPathsInto(paths, targetDir, {
                 move,
                 onProgress: (done, total, name) => {
-                    progress.label = `${verb} ${done} of ${total}: ${name}`;
+                    progress.label = move
+                        ? t("menus.movingProgress", { done, total, name })
+                        : t("menus.copyingProgress", { done, total, name });
                 },
             }),
         );
         if (result.errors.length) {
             const shown = result.errors.slice(0, 5).join("\n");
-            const more = result.errors.length > 5
-                ? `\n(+${result.errors.length - 5} more)`
-                : "";
-            ui.notify(
-                `Some items could not be ${move ? "moved" : "copied"}:\n${shown}${more}`,
-                "warning",
-            );
+            const remaining = result.errors.length - 5;
+            ui.notify(move
+                ? remaining > 0
+                    ? t("menus.itemsCouldNotBeMovedWithMore", { errors: shown, count: remaining } as never)
+                    : t("menus.itemsCouldNotBeMoved", { errors: shown })
+                : remaining > 0
+                    ? t("menus.itemsCouldNotBeCopiedWithMore", { errors: shown, count: remaining } as never)
+                    : t("menus.itemsCouldNotBeCopied", { errors: shown }), "warning");
         }
     } catch (err) {
-        ui.notify(err?.message || `Failed to ${move ? "move" : "copy"}.`, "warning");
+        ui.notify(err?.message || (move ? t("menus.failedToMove") : t("menus.failedToCopy")), "warning");
     }
     return true;
 }

@@ -6,6 +6,7 @@ import type { RowAlign } from "../../uikit/DataGrid";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
+import { t } from "../../../shared/i18n/t";
 import { fpBasename, fpDirname, fpIsAbsolute, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import {
@@ -1060,7 +1061,7 @@ export class TreeProviderViewModel extends TComponentModel<
         try {
             await provider.importLinks(items, targetCategory);
         } catch (err) {
-            ui.notify(err.message || "Failed to import links.", "warning");
+            ui.notify(err.message || t("menus.failedToImportLinks"), "warning");
             return;
         }
         await this.buildTree();

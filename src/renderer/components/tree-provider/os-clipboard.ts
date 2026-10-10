@@ -12,6 +12,7 @@ import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 /** OS clipboard copy/paste applies only where item hrefs are absolute local
  *  paths. Mneme / Link / Archive providers are excluded. */
@@ -25,12 +26,9 @@ export async function copyPathsToOsClipboard(paths: string[], cut: boolean): Pro
     if (!paths.length) return;
     const ok = await api.clipboardWriteFilePaths(paths, cut);
     if (!ok) {
-        ui.notify(
-            paths.length === 1
-                ? "Failed to put the file on the clipboard."
-                : "Failed to put the files on the clipboard.",
-            "warning",
-        );
+        ui.notify(paths.length === 1
+            ? t("menus.failedPutOneOnClipboard")
+            : t("menus.failedPutManyOnClipboard"), "warning");
     }
 }
 
@@ -50,7 +48,7 @@ export async function pasteOsClipboardInto(
 ): Promise<boolean> {
     const clip = await api.clipboardReadFilePaths();
     if (!clip.paths.length) {
-        ui.notify("The clipboard contains no files.", "info");
+        ui.notify(t("menus.clipboardNoFiles"), "info");
         return false;
     }
     const move = clip.dropEffect === "cut";
@@ -65,34 +63,39 @@ export async function pasteOsClipboardInto(
         .filter((name) => existing.has(name.toLowerCase()));
     if (clashing.length) {
         const bt = await ui.confirm(
-            `${clashing.length} item(s) already exist here and will be overwritten:\n${clashing.join(", ")}`,
-            { title: "Overwrite?", buttons: [DialogButton.overwrite, DialogButton.cancel] },
+            t("menus.overwriteItems", { count: clashing.length, names: clashing.join(", ") } as never),
+            { title: t("menus.overwrite"), buttons: [DialogButton.overwrite, DialogButton.cancel] },
         );
         if (bt !== DialogButton.overwrite) return false;
     }
 
-    const verb = move ? "Moving" : "Copying";
-    const progress = await ui.createProgress(`${verb}...`);
+    const progress = await ui.createProgress(move
+        ? t("menus.movingProgressTitle")
+        : t("menus.copyingProgressTitle"));
     try {
         const result = await progress.show(
             copyPathsInto(clip.paths, targetDir, {
                 move,
                 onProgress: (done, total, name) => {
-                    progress.label = `${verb} ${done} of ${total}: ${name}`;
+                    progress.label = move
+                        ? t("menus.movingProgress", { done, total, name })
+                        : t("menus.copyingProgress", { done, total, name });
                 },
             }),
         );
         if (result.errors.length) {
             const shown = result.errors.slice(0, 5).join("\n");
-            const more = result.errors.length > 5 ? `\n(+${result.errors.length - 5} more)` : "";
-            ui.notify(`Some items could not be pasted:\n${shown}${more}`, "warning");
+            const remaining = result.errors.length - 5;
+            ui.notify(remaining > 0
+                ? t("menus.itemsCouldNotBePastedWithMore", { errors: shown, count: remaining } as never)
+                : t("menus.itemsCouldNotBePasted", { errors: shown }), "warning");
         } else if (move) {
             // Cut clipboard fully consumed — clear it so a second paste
             // doesn't fail on the now-moved sources (Explorer behavior).
             await api.clipboardWriteFilePaths([], false);
         }
     } catch (err) {
-        ui.notify(err?.message || "Failed to paste.", "warning");
+        ui.notify(err?.message || t("menus.failedToPaste"), "warning");
     }
     return true;
 }

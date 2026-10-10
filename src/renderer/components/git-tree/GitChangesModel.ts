@@ -16,6 +16,7 @@ import { settings } from "../../api/settings";
 import { git } from "../../api/git";
 import { ui } from "../../api/ui";
 import type { GitFileChange, GitIdentity } from "../../../ipc/git-ipc";
+import { t } from "../../../shared/i18n/t";
 
 export interface GitChangesState {
     /** Working-tree (unstaged) changes, incl. untracked. */
@@ -96,7 +97,7 @@ export class GitChangesModel {
     stagePaths = async (paths: string[]): Promise<void> => {
         if (!this.repoRoot || !paths.length) return;
         const r = await git.stage(this.repoRoot, paths);
-        if (!r.ok) void ui.notify(`Failed to stage: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("menus.failStage", { error: r.error ?? "unknown error" }), "error");
         await this.reload();
     };
 
@@ -105,7 +106,7 @@ export class GitChangesModel {
     unstagePaths = async (paths: string[]): Promise<void> => {
         if (!this.repoRoot || !paths.length) return;
         const r = await git.unstage(this.repoRoot, paths);
-        if (!r.ok) void ui.notify(`Failed to unstage: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("menus.failUnstage", { error: r.error ?? "unknown error" }), "error");
         await this.reload();
     };
 
@@ -120,7 +121,7 @@ export class GitChangesModel {
             .filter((c) => c.status !== "?")
             .flatMap((c) => (c.oldPath ? [c.path, c.oldPath] : [c.path]));
         const r = await git.discard(this.repoRoot, tracked, untracked);
-        if (!r.ok) void ui.notify(`Failed to reset: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("menus.failReset", { error: r.error ?? "unknown error" }), "error");
         await this.reload();
     };
 
@@ -143,13 +144,13 @@ export class GitChangesModel {
         if (newBranch) {
             const cr = await git.createBranch(this.repoRoot, newBranch, undefined, true);
             if (!cr.ok) {
-                void ui.notify(`Failed to create branch: ${cr.error ?? "unknown error"}`, "error");
+                void ui.notify(t("menus.failCreateBranch", { error: cr.error ?? "unknown error" }), "error");
                 await this.reload();
                 return false;
             }
         }
         const r = await git.commit(this.repoRoot, message, identity);
-        if (!r.ok) void ui.notify(`Failed to commit: ${r.error ?? "unknown error"}`, "error");
+        if (!r.ok) void ui.notify(t("menus.failCommit", { error: r.error ?? "unknown error" }), "error");
         await this.reload();
         return r.ok;
     };

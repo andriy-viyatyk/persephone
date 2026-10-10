@@ -17,6 +17,7 @@ import { settings } from "../../api/settings";
 import { git } from "../../api/git";
 import { ui } from "../../api/ui";
 import type { GitRefs, GitAheadBehind, GitPullOptions } from "../../../ipc/git-ipc";
+import { t } from "../../../shared/i18n/t";
 
 export interface GitBranchesState {
     /** Repository refs (branches / remotes / tags / current). */
@@ -122,7 +123,7 @@ export class GitBranchesModel {
         this.write((s) => { s.fetching = true; });
         try {
             const r = await git.fetch(this.repoRoot);
-            if (!r.ok) void ui.notify(`Failed to fetch: ${r.error ?? "unknown error"}`, "error");
+            if (!r.ok) void ui.notify(t("menus.failFetch", { error: r.error ?? "unknown error" }), "error");
             await this.reload();
         } finally {
             this.write((s) => { s.fetching = false; });
@@ -146,8 +147,8 @@ export class GitBranchesModel {
             const r = await git.push(this.repoRoot, { setUpstream });
             if (!r.ok) {
                 const msg = r.rejected
-                    ? "Push rejected: fetch or pull first, then push again."
-                    : `Failed to push: ${r.error ?? "unknown error"}`;
+                    ? t("menus.pushRejected")
+                    : t("menus.failedToPush", { error: r.error ?? "unknown error" });
                 void ui.notify(msg, "error");
             }
             await this.reload();
@@ -169,9 +170,9 @@ export class GitBranchesModel {
             if (!r.ok) {
                 if (r.hadConflicts && r.conflicts?.length) {
                     const list = r.conflicts.slice(0, 5).join(", ") + (r.conflicts.length > 5 ? ", …" : "");
-                    void ui.notify(`Pull stopped with conflicts: ${list}`, "error");
+                    void ui.notify(t("menus.pullConflicts", { conflicts: list }), "error");
                 } else {
-                    void ui.notify(`Failed to pull: ${r.error ?? "unknown error"}`, "error");
+                    void ui.notify(t("menus.failPull", { error: r.error ?? "unknown error" }), "error");
                 }
             } else if (r.summary) {
                 void ui.notify(r.summary, "success");

@@ -12,6 +12,7 @@
  * (US-1021 F5). The band is taller than the default 20px trailing slack, so the caller pairs it
  * with `whiteSpaceY`.
  */
+import { t } from "../../../shared/i18n/t";
 
 export interface LoadMoreFooter {
     /** Pass to `DataGrid`'s `extraElement`. */
@@ -48,11 +49,22 @@ export function createLoadMoreFooter(handlers: LoadMoreFooterHandlers): LoadMore
     const setLoading = (next: boolean): void => {
         if (loading === next) return;
         loading = next;
-        element.innerHTML = next
-            ? `<span class="git-tree-load-more-link" data-disabled>Loading…</span>`
-            : `<span class="git-tree-load-more-link" data-action="load-more">Load more</span>` +
-              `<span class="git-tree-load-more-sep">·</span>` +
-              `<span class="git-tree-load-more-link" data-action="load-all">Load all</span>`;
+        const item = (label: string, action?: string): HTMLSpanElement => {
+            const span = document.createElement("span");
+            span.className = "git-tree-load-more-link";
+            if (action) span.dataset.action = action;
+            else span.dataset.disabled = "";
+            span.textContent = label;
+            return span;
+        };
+        if (next) {
+            element.replaceChildren(item(t("common.loading")));
+        } else {
+            const separator = document.createElement("span");
+            separator.className = "git-tree-load-more-sep";
+            separator.textContent = "·";
+            element.replaceChildren(item(t("menus.loadMore"), "load-more"), separator, item(t("menus.loadAll"), "load-all"));
+        }
     };
 
     setLoading(false);

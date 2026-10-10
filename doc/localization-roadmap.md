@@ -269,7 +269,8 @@ revealed, and the lint rule switched to error.
 ### Phase 3 — Boards localization (epic)
 
 Manifest `languages` and `localized` (D10), `persephone.locale` and `persephone.i18n` in the shim,
-bridge version bump, catalog and board info showing localized names, the board template
+bridge version bump, the host's built-in board context menu (`src/board-context-menu.ts`, which runs
+in the shim and so had no locale in phase 2), catalog and board info showing localized names, the board template
 (`assets/board-template/`) and board guides updated. In `persephone-boards`: localize the catalog's
 own boards (Chess, Theme Editor and the rest) with at least the Phase 4 languages, or English-only
 where a board has almost no text.

@@ -110,7 +110,7 @@ Claude), as in EPIC-124.
 |------|-------|--------|
 | [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Planned |
 | [US-1654](../tasks/US-1654-shell-strings/README.md) | App shell, tabs, sidebar, editor display names | Planned |
-| US-1655 | Menus and context menus, tree providers, shared editor menus, file components | Planned |
+| [US-1655](../tasks/US-1655-menu-strings/README.md) | Menus and context menus, tree providers, shared editor menus, file components | Planned |
 | US-1656 | API layer, content pipeline, notifications outside editors | Planned |
 | US-1657 | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
 | US-1658 | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
@@ -146,8 +146,8 @@ Claude), as in EPIC-124.
 
 - `components/tree-provider` (item menus, CRUD and drop actions), `editors/shared` (editor menu
   items), `components/file-search`, `components/file-list`, `components/git-tree`,
-  `components/pipe-status`, `src/board-context-menu.ts` if it is host UI (board-shipped items stay
-  under E5).
+  `components/pipe-status`. `src/board-context-menu.ts` moved to phase 3: it runs inside the board
+  webview (bundled into `board-shim.ts`), which has no locale until D10's `persephone.locale`.
 - Menu items keep their `id` (D4); only `label` moves to the catalog.
 - **Acceptance:** E7; ai-vision still clicks the converted menu items by id.
 
@@ -223,12 +223,23 @@ Claude), as in EPIC-124.
 - Fix the layouts `en-XA` breaks across the app, collected from every area task's notes: tab width,
   pinned rail, toolbars, the Settings tree (wider, or a tooltip on the ellipsized label), the
   520px dialogs.
-- Switch `vanilla-view/no-hardcoded-ui-strings` to `error`.
+- Switch `vanilla-view/no-hardcoded-ui-strings` to `error`. Exempt `src/board-context-menu.ts` by file, with a comment pointing
+  at phase 3, if phase 3 has not translated it yet.
 - Update `doc/standards/localization.md` with what the extraction taught (new lint positions, the
   E2 split pattern, the uikit prop pattern).
 - Prepare the phase-4 inputs: count the final catalog size by area for the roadmap.
 - **Acceptance:** `npm run lint` passes with the rule at error; an `en-XA` walk through the main
   screens finds no plain English outside E5.
+
+## For the user to test
+
+Each task is checked live by Claude under `en-XA` (Settings > General > Language > Pseudo-English in a
+dev build) before it is committed. Things worth a human look, and layout notes for US-1665:
+
+- **US-1654 — shell.** Header buttons and window controls, tab strip, editor switch buttons
+  (`[ţéxţ éðîţöŕ]`), the menu bar (built-in folders, "Add folder"), Open Tabs window groups,
+  Tools & Editors, Recent Files, Script Library. Editor names over MCP / `app.editors.list` stay
+  English. Layout: the menu bar's left column cuts off "Tools & Editors" under `en-XA`.
 
 ## Notes
 

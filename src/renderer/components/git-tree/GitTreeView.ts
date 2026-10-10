@@ -29,6 +29,7 @@ import {
     type GitCommitRow,
 } from "./swimlane-layout";
 import "./GitTree.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface GitTreeSideSelect {
     /** Changes whenever the diff's from/to changes — the trigger for repainting the L/R column. */
@@ -102,21 +103,21 @@ function buildColumns(
 ): Column<GitCommitRow>[] {
     const subject: Column<GitCommitRow> = {
         key: "subject",
-        name: "Comment",
+        name: t("menus.commentColumn"),
         width: compact ? 240 : 360,
         resizable: true,
         render: renderSubject,
     };
     const hash: Column<GitCommitRow> = {
         key: "shortHash",
-        name: "Commit",
+        name: t("menus.commitColumn"),
         width: 80,
         resizable: true,
         render: renderHash,
     };
     const date: Column<GitCommitRow> = {
         key: "authorDate",
-        name: "Date",
+        name: t("menus.dateColumn"),
         width: compact ? 94 : 160,
         resizable: true,
         formatValue: (_c, row) => dateText(row.authorDate),
@@ -145,7 +146,7 @@ function buildColumns(
             formatValue: () => "",
         },
         subject,
-        { key: "authorName", name: "Author", width: 140, resizable: true },
+        { key: "authorName", name: t("menus.authorColumn"), width: 140, resizable: true },
         date,
         hash,
     ];

@@ -112,6 +112,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
 
             if (!s.skipInspect) {
                 s.items.push({
+                    id: "inspect",
                     label: t("dialogs.popupInspect"),
                     startGroup: s.items.length > 0,
                     onClick: () => {

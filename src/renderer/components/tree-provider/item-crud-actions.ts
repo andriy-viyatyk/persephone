@@ -3,6 +3,7 @@ import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 import { pasteOsClipboardInto } from "./os-clipboard";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 export interface ItemCrudContext {
     provider: ITreeProvider;
@@ -22,8 +23,8 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
     const { provider } = context;
     if (!provider.addItem) return;
 
-    const inputResult = await ui.input("Enter file name:", {
-        title: "New File",
+    const inputResult = await ui.input(t("menus.enterFileName"), {
+        title: t("menus.newFile"),
         buttons: [DialogButton.create, DialogButton.cancel],
     });
     if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
@@ -39,7 +40,7 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
             isDirectory: false,
         });
     } catch (error) {
-        ui.notify(errMessage(error, "Failed to create file."), "warning");
+        ui.notify(errMessage(error, t("menus.failedCreateFile")), "warning");
         return;
     }
     await context.refresh();
@@ -49,8 +50,8 @@ export async function createNewFolder(context: ItemCrudContext, directory: strin
     const { provider } = context;
     if (!provider.mkdir) return;
 
-    const inputResult = await ui.input("Enter folder name:", {
-        title: "New Folder",
+    const inputResult = await ui.input(t("menus.enterFolderName"), {
+        title: t("menus.newFolder"),
         buttons: [DialogButton.create, DialogButton.cancel],
     });
     if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
@@ -60,7 +61,7 @@ export async function createNewFolder(context: ItemCrudContext, directory: strin
     try {
         await provider.mkdir(folderPath);
     } catch (error) {
-        ui.notify(errMessage(error, "Failed to create folder."), "warning");
+        ui.notify(errMessage(error, t("menus.failedCreateFolder")), "warning");
         return;
     }
     await context.refresh();
@@ -70,8 +71,8 @@ export async function renameItem(context: ItemCrudContext, item: ITreeProviderIt
     const { provider } = context;
     if (!provider.rename) return;
 
-    const inputResult = await ui.input("Enter new name:", {
-        title: `Rename ${item.isDirectory ? "Folder" : "File"}`,
+    const inputResult = await ui.input(t("menus.enterNewName"), {
+        title: item.isDirectory ? t("menus.renameFolder") : t("menus.renameFile"),
         value: item.title,
         buttons: [DialogButton.rename, DialogButton.cancel],
         selectAll: true,
@@ -84,7 +85,7 @@ export async function renameItem(context: ItemCrudContext, item: ITreeProviderIt
     try {
         await provider.rename(context.getItemPath(item), newPath);
     } catch (error) {
-        ui.notify(errMessage(error, "Failed to rename."), "warning");
+        ui.notify(errMessage(error, t("menus.failedRename")), "warning");
         return;
     }
     await context.refresh();
@@ -98,15 +99,15 @@ export async function deleteItemAction(
     if (!provider.deleteItem) return;
 
     const button = await ui.confirm(
-        `Are you sure you want to delete "${item.title}"?`,
-        { title: "Delete Confirmation", buttons: [DialogButton.delete, DialogButton.cancel] },
+        t("menus.deleteItemConfirmation", { title: item.title }),
+        { title: t("menus.deleteConfirmation"), buttons: [DialogButton.delete, DialogButton.cancel] },
     );
     if (button !== DialogButton.delete) return;
 
     try {
         await provider.deleteItem(item.href);
     } catch (error) {
-        ui.notify(errMessage(error, "Failed to delete."), "warning");
+        ui.notify(errMessage(error, t("menus.failedToDelete")), "warning");
         return;
     }
     await context.refresh();

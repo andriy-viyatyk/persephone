@@ -4,6 +4,7 @@ import { fs as appFs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import type { IImageExport } from "../base/IImageExport";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import { imageElementToPngBlob } from "../../uikit/ImageViewport/image-raster";
 
 /**
@@ -136,7 +137,7 @@ export async function writePngToFile(source: IImageExport, filePath: string): Pr
  *  Failures are surfaced as a toast (the toolbar callers fire-and-forget). */
 export async function savePngViaDialog(source: IImageExport): Promise<void> {
     const path = await appFs.showSaveDialog({
-        title: "Save Image",
+        title: t("menus.saveImage"),
         defaultPath: `${source.suggestedImageName()}.png`,
         filters: [
             { name: "PNG", extensions: ["png"] },
@@ -147,6 +148,6 @@ export async function savePngViaDialog(source: IImageExport): Promise<void> {
     try {
         await appFs.writeBinary(path, await blobToBuffer(await source.exportPng()));
     } catch (err) {
-        ui.notify(`Failed to save image: ${errMessage(err)}`, "error");
+        ui.notify(t("menus.failedToSaveImage", { error: errMessage(err) }), "error");
     }
 }

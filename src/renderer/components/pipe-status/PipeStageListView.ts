@@ -2,6 +2,7 @@ import type { IPipeStage } from "../../api/types/io.pipe";
 import { formatBytes } from "../../core/utils/format-bytes";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "./PipeStageListView.css";
+import { t } from "../../../shared/i18n/t";
 
 export interface PipeStageListViewProps {
     stages: ReadonlyArray<IPipeStage>;
@@ -49,11 +50,11 @@ export class PipeStageListView extends VanillaView<PipeStageListViewProps> {
             if (status?.text) row.append(this.createLine("text", status.text));
             if (status?.detail) row.append(this.createLine("detail", status.detail));
             if (status?.progress) {
-                const loaded = this.createLine("progress", `Loaded ${formatBytes(status.progress.loaded)}`);
-                if (status.progress.total != null && Number.isFinite(status.progress.total)) {
-                    loaded.append(document.createTextNode(` of ${formatBytes(status.progress.total)}`));
-                }
-                row.append(loaded);
+                const loaded = formatBytes(status.progress.loaded);
+                const total = status.progress.total;
+                row.append(this.createLine("progress", total != null && Number.isFinite(total)
+                    ? t("menus.loadedBytes", { loaded, total: formatBytes(total) })
+                    : t("menus.loadedSingleBytes", { loaded })));
             }
             if (status?.rate != null && Number.isFinite(status.rate)) {
                 row.append(this.createLine("rate", `${formatBytes(status.rate)}/s`));

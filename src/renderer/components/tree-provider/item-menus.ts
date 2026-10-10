@@ -14,6 +14,7 @@ import {
     TerminalIcon,
 } from "../../theme/icons";
 import { copyPathToOsClipboard, supportsOsClipboard } from "./os-clipboard";
+import { t } from "../../../shared/i18n/t";
 
 export interface ItemMenuActions {
     createFile(directory: string): void;
@@ -48,14 +49,16 @@ function pushEditGroup(
 
     if (allowRenameDelete && provider.writable && provider.rename) {
         items.push({
-            label: "Rename...",
+            id: "rename",
+            label: t("menus.renameAction"),
             icon: RenameIcon.createElement(),
             onClick: () => actions.rename(item),
         });
     }
     if (allowRenameDelete && provider.writable && provider.deleteItem) {
         items.push({
-            label: "Delete",
+            id: "delete",
+            label: t("menus.delete"),
             icon: DeleteIcon.createElement(),
             onClick: () => actions.deleteItem(item),
         });
@@ -63,12 +66,14 @@ function pushEditGroup(
     if (provider.writable && provider.mkdir) {
         items.push(
             {
-                label: "New File...",
+                id: "new-file",
+                label: t("menus.newFileAction"),
                 icon: NewFileIcon.createElement(),
                 onClick: () => actions.createFile(directory),
             },
             {
-                label: "New Folder...",
+                id: "new-folder",
+                label: t("menus.newFolderAction"),
                 icon: NewFolderIcon.createElement(),
                 onClick: () => actions.createFolder(directory),
             },
@@ -87,8 +92,10 @@ export function getFileMenuItems(
     /** The file's parent — what Paste and New File / New Folder target, as Ctrl+V does. */
     directory: string,
 ): MenuItem[] {
+    const isUrl = isUrlOrCurl(item.href);
     const items: MenuItem[] = [{
-        label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
+        id: isUrl ? "copy-href" : "copy-path",
+        label: isUrl ? t("menus.copyHref") : t("menus.copyPath"),
         icon: CopyIcon.createElement(),
         onClick: () => toClipboard(item.href),
     }];
@@ -97,12 +104,14 @@ export function getFileMenuItems(
         items.push(
             {
                 startGroup: true,
-                label: "Cut",
+                id: "cut",
+                label: t("menus.cut"),
                 icon: CutIcon.createElement(),
                 onClick: () => copyPathToOsClipboard(item.href, true),
             },
             {
-                label: "Copy",
+                id: "copy",
+                label: t("menus.copy"),
                 icon: CopyIcon.createElement(),
                 onClick: () => copyPathToOsClipboard(item.href, false),
             },
@@ -111,7 +120,8 @@ export function getFileMenuItems(
         // handler that used to contribute it appends after every other layer, which stranded
         // it at the bottom of the menu next to Inspect.
         items.push({
-            label: "Paste",
+            id: "paste",
+            label: t("menus.paste"),
             icon: PasteIcon.createElement(),
             onClick: () => actions.paste(directory),
         });
@@ -136,12 +146,14 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
     const items: MenuItem[] = [];
 
     if (onOpen) {
-        items.push({ label: "Open", icon: FolderOpenIcon.createElement(), onClick: onOpen });
+        items.push({ id: "open", label: t("common.open"), icon: FolderOpenIcon.createElement(), onClick: onOpen });
     }
 
+    const isUrl = isUrlOrCurl(item.href);
     items.push({
         startGroup: items.length > 0,
-        label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
+        id: isUrl ? "copy-href" : "copy-path",
+        label: isUrl ? t("menus.copyHref") : t("menus.copyPath"),
         icon: CopyIcon.createElement(),
         onClick: () => toClipboard(item.href),
     });
@@ -150,7 +162,8 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         if (!isRoot) {
             items.push({
                 startGroup: true,
-                label: "Cut",
+                id: "cut",
+                label: t("menus.cut"),
                 icon: CutIcon.createElement(),
                 onClick: () => copyPathToOsClipboard(item.href, true),
             });
@@ -158,12 +171,14 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         items.push(
             {
                 startGroup: isRoot,
-                label: "Copy",
+                id: "copy",
+                label: t("menus.copy"),
                 icon: CopyIcon.createElement(),
                 onClick: () => copyPathToOsClipboard(item.href, false),
             },
             {
-                label: "Paste",
+                id: "paste",
+                label: t("menus.paste"),
                 icon: PasteIcon.createElement(),
                 onClick: () => actions.paste(directory),
             },
@@ -175,7 +190,8 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
     if (supportsOsClipboard(provider)) {
         items.push({
             startGroup: true,
-            label: "Open Terminal here",
+            id: "open-terminal-here",
+            label: t("shell.openTerminalHere"),
             icon: TerminalIcon.createElement(),
             onClick: async () => {
                 const { openTerminalAt } = await import("../../api/terminal");
@@ -195,12 +211,14 @@ export function getBackgroundMenuItems(
     if (provider.writable && provider.mkdir) {
         items.push(
             {
-                label: "New File...",
+                id: "new-file",
+                label: t("menus.newFileAction"),
                 icon: NewFileIcon.createElement(),
                 onClick: () => actions.createFile(directory),
             },
             {
-                label: "New Folder...",
+                id: "new-folder",
+                label: t("menus.newFolderAction"),
                 icon: NewFolderIcon.createElement(),
                 onClick: () => actions.createFolder(directory),
             },
@@ -209,7 +227,8 @@ export function getBackgroundMenuItems(
     if (supportsOsClipboard(provider)) {
         items.push({
             startGroup: items.length > 0,
-            label: "Paste",
+            id: "paste",
+            label: t("menus.paste"),
             icon: PasteIcon.createElement(),
             onClick: () => actions.paste(directory),
         });

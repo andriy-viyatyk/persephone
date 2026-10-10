@@ -10,6 +10,7 @@ import "../../uikit/Popover/Popover.css";
 import "../../uikit/ProgressBar/ProgressBar.css";
 import "../../uikit/Spinner/Spinner.css";
 import "./PagePipeStatusView.css";
+import { t } from "../../../shared/i18n/t";
 
 export class PagePipeStatusView extends VanillaView<PagePipeStatusProps> {
     private readonly driver: ComponentModelDriver<PagePipeStatusState, PagePipeStatusProps, PagePipeStatusModel>;
@@ -18,7 +19,7 @@ export class PagePipeStatusView extends VanillaView<PagePipeStatusProps> {
     private readonly label = document.createElement("span");
     private readonly dismiss = document.createElement("button");
     private readonly spinner = this.child(new SpinnerView({ size: 14, color: color.icon.default }));
-    private readonly progress = this.child(new ProgressBarView({ height: 2, "aria-label": "Content loading progress" }));
+    private readonly progress = this.child(new ProgressBarView({ height: 2, "aria-label": t("menus.contentLoadingProgress") }));
     private readonly popover: PopoverView;
     private stageList: PipeStageListView | undefined;
     private popoverOpen = false;
@@ -35,7 +36,7 @@ export class PagePipeStatusView extends VanillaView<PagePipeStatusProps> {
         this.content.dataset.part = "content";
         this.dismiss.type = "button";
         this.dismiss.dataset.part = "dismiss";
-        this.dismiss.setAttribute("aria-label", "Dismiss pipe error");
+        this.dismiss.setAttribute("aria-label", t("menus.dismissPipeError"));
         this.dismiss.textContent = "×";
         this.popover = this.child(new PopoverView(this.popoverProps(false)));
         this.driver = createComponentModelDriver(props, PagePipeStatusModel, initialPagePipeStatusState);
@@ -75,13 +76,13 @@ export class PagePipeStatusView extends VanillaView<PagePipeStatusProps> {
         this.spinner.root.hidden = state.kind !== "busy";
         this.progress.root.hidden = state.kind !== "busy";
         this.dismiss.hidden = state.kind !== "error";
-        this.trigger.setAttribute("aria-label", `Pipe status: ${state.label}`);
+        this.trigger.setAttribute("aria-label", t("menus.pipeStatus", { state: state.label }));
         this.progress.update({
             name: "page-pipe-status-progress",
             height: 2,
             value: state.hasProgress ? state.loaded : undefined,
             max: state.hasProgress ? state.total : undefined,
-            "aria-label": "Content loading progress",
+            "aria-label": t("menus.contentLoadingProgress"),
         });
         this.stageList?.update({ stages: state.stages, density: "compact" });
         this.popover.update(this.popoverProps(this.popoverOpen));

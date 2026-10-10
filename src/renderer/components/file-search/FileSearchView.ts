@@ -7,6 +7,7 @@ import { applyCellStyle } from "../../uikit/shared/cell-style";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
+import { t } from "../../../shared/i18n/t";
 import { createFileIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import type { FileSearchProps } from "./FileSearch";
 import {
@@ -87,33 +88,33 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
         const state = this.model.state.get();
         this.queryInput = this.child(new InputView({
             value: state.query,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setQuery,
             onKeyDown: this.onQueryKeyDown,
             tone: "accent",
         }));
         this.includeInput = this.child(new InputView({
             value: state.includePattern,
-            placeholder: "Include (e.g. *.ts, *.tsx)",
+            placeholder: t("menus.includeExtensionsPlaceholder"),
             onChange: this.model.setIncludePattern,
         }));
         this.excludeInput = this.child(new InputView({
             value: state.excludePattern,
             // node_modules and .git come from the search-exclude setting, so naming one here
             // would imply the field is what excludes it.
-            placeholder: "Exclude — adds to Settings (e.g. dist, *.min.js)",
+            placeholder: t("menus.excludePatternsPlaceholder"),
             onChange: this.model.setExcludePattern,
         }));
         this.filterButton = this.child(new IconButtonView({
             size: "sm",
-            title: "Toggle Filters",
+            title: t("menus.toggleFilters"),
             onClick: this.model.toggleFilters,
             icon: state.showFilters ? "filter-arrow-up" : "filter-arrow-down",
         }));
 
         this.gridHost.style.display = "contents";
         this.emptyHost.className = "fs-empty";
-        this.emptyHost.textContent = "No results found";
+        this.emptyHost.textContent = t("menus.noResultsFound");
         this.statusHost.className = "fs-status";
         this.resultsHost.className = "fs-results";
         this.inputArea.className = "fs-input-area";
@@ -193,26 +194,26 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
     private readonly applyChrome = (state: ChromeState): void => {
         this.queryInput.update({
             value: state.query,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             onChange: this.model.setQuery,
             onKeyDown: this.onQueryKeyDown,
             tone: "accent",
         });
         this.includeInput.update({
             value: state.includePattern,
-            placeholder: "Include (e.g. *.ts, *.tsx)",
+            placeholder: t("menus.includeExtensionsPlaceholder"),
             onChange: this.model.setIncludePattern,
         });
         this.excludeInput.update({
             value: state.excludePattern,
-            placeholder: "Exclude — adds to Settings (e.g. dist, *.min.js)",
+            placeholder: t("menus.excludePatternsPlaceholder"),
             onChange: this.model.setExcludePattern,
         });
         this.includeInput.root.toggleAttribute("data-hidden", !state.showFilters);
         this.excludeInput.root.toggleAttribute("data-hidden", !state.showFilters);
         this.filterButton.update({
             size: "sm",
-            title: "Toggle Filters",
+            title: t("menus.toggleFilters"),
             onClick: this.model.toggleFilters,
             icon: state.showFilters ? "filter-arrow-up" : "filter-arrow-down",
         });
@@ -224,13 +225,15 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
     };
 
     private statusText(state: ChromeState): string {
-        if (state.isSearching) return `Searching... ${state.filesSearched} files`;
+        if (state.isSearching) return t("menus.searchingFiles", { count: state.filesSearched });
         if (!state.query.trim()) return "";
-        if (state.totalFiles === 0) return "No results";
-        let text = `${state.totalMatches} matches in ${state.totalFiles} files`;
-        if (state.truncated) {
-            text += ` (first ${maxSearchResults} results — refine your search)`;
-        }
+        if (state.totalFiles === 0) return t("menus.noResults");
+        const text = state.truncated
+            ? t("menus.truncatedResultSummary", {
+                matches: state.totalMatches,
+                count: state.totalFiles,
+            } as never)
+            : t("menus.resultSummary", { matches: state.totalMatches, count: state.totalFiles } as never);
         return text;
     }
 

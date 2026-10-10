@@ -1,4 +1,5 @@
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 
 /**
  * Hand a file or folder to the OS shell, the way double-clicking it in Windows
@@ -21,5 +22,5 @@ export async function openWithDefaultApp(path: string): Promise<void> {
     if (!error) return;
 
     const { ui } = await import("../api/ui");
-    void ui.notify(`Could not open ${path}: ${error}`, "error");
+    void ui.notify(t("menus.couldNotOpenDefaultApp", { path, error }), "error");
 }
