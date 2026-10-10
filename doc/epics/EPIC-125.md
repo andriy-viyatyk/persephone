@@ -118,8 +118,8 @@ Claude), as in EPIC-124.
 | [US-1660](../tasks/US-1660-git-diff-strings/README.md) | Git tree, file diff, compare, archive | Planned |
 | [US-1661](../tasks/US-1661-mneme-about-strings/README.md) | Mneme editors and About | Planned |
 | [US-1662](../tasks/US-1662-tools-strings/README.md) | MCP inspector, Tools hub, Storybook | Planned |
-| US-1663 | Remaining editors and uikit defaults | Planned |
-| US-1664 | Monaco UI language (D9) | Planned |
+| [US-1663](../tasks/US-1663-remaining-strings/README.md) | Remaining editors and uikit defaults | Planned |
+| [US-1664](../tasks/US-1664-monaco-locale/README.md) | Monaco UI language (D9) | Planned |
 | US-1665 | Layout fixes, lint rule to error, closing sweep | Planned |
 
 ### US-1653 — Lint coverage and baseline
@@ -271,6 +271,17 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   Staged, Commit). Agents still read it in English and by `data-name`. Not opened live: Git Tree
   history page, File Diff / File History, Compare mode, Archive. Git tab titles (`… — Git`) stay
   English, like other saved page titles.
+
+- **US-1661 — About and Mneme.** Checked live: the About page (version card, buttons, resources,
+  guide toggle). The guides and What's New text stay English (D3). Not opened live: Mneme config
+  page, Mneme root search page, an About guide page with its Back button.
+
+- **US-1664 — Monaco.** Checked live with a stub German pack: the find widget reads "Suchen",
+  "Groß-/Kleinschreibung beachten". Monaco follows the language for cs, de, es, fr, it, ja, ko, pl,
+  pt-BR, tr, zh-CN, zh-TW (Monaco ships these; Russian has no branch at all). Other languages leave
+  Monaco's own widgets in English. English loads nothing extra. To try: put
+  `{"schemaVersion":1,"code":"de","name":"Deutsch","englishName":"German","messages":{}}` in
+  `%APPDATA%\persephone\data\languages\de.lang.json`, pick it, press Ctrl+F in a text page.
 
 ## Notes
 
