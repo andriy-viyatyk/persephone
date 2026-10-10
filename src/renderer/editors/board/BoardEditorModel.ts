@@ -31,7 +31,7 @@ import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
-import { t } from "../../../shared/i18n/t";
+import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
@@ -183,7 +183,7 @@ function validateBoardPageStateValue(value: unknown): asserts value is string {
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
     // Per-instance UUID — keys this editor in `page.editors[]`.
     id: crypto.randomUUID(),
-    title: t("board.editor"),
+    title: englishMessage("board.editor"),
     modified: false,
     type: "boardPage",
     editor: "board-view",

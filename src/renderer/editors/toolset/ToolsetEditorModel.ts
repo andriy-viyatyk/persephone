@@ -12,7 +12,7 @@ import { registeredTools } from "../../api/tools/registered-tools";
 import { pagesModel } from "../../api/pages";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
-import { t } from "../../../shared/i18n/t";
+import { englishMessage, t } from "../../../shared/i18n/t";
 
 export interface ToolsetEditorState extends EditorStateBase {
     type: "toolsetPage";
@@ -33,7 +33,7 @@ export interface ToolsetEditorState extends EditorStateBase {
 
 export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
     id: crypto.randomUUID(),
-    title: t("board.agentTool"),
+    title: englishMessage("board.agentTool"),
     modified: false,
     type: "toolsetPage",
     editor: "toolset-view",

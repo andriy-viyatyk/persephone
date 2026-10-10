@@ -1,4 +1,4 @@
-import { t } from "../../../shared/i18n/t";
+import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
     EditorModel,
@@ -71,7 +71,7 @@ function sourceKind(url: string, format: VideoFormat): VideoSourceKind {
 
 export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
-    title: t("editors.videoPlayer"),
+    title: englishMessage("editors.videoPlayer"),
     modified: false,
     type: "videoPage",
     editor: "video-view",

@@ -46,7 +46,7 @@ import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
-import { t } from "../../../shared/i18n/t";
+import { englishMessage, t } from "../../../shared/i18n/t";
 
 const DELETE_AND_CONTINUE = "Delete & continue";
 
@@ -142,7 +142,7 @@ export interface BoardInfoEditorState extends EditorStateBase {
 
 export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
     id: crypto.randomUUID(),
-    title: t("board.infoInstallTitle"),
+    title: englishMessage("board.infoInstallTitle"),
     modified: false,
     type: "boardInfoPage",
     editor: "board-info",
