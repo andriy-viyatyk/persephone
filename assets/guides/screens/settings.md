@@ -106,7 +106,8 @@ Persephone to refresh the list. Choosing a language saves the setting and immedi
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
 uses English.
 
-This release bundles only English. Built-in translations and a Language Editor arrive in a later release.
+This release bundles only English. Built-in translations arrive in a later release, along with a way
+for your AI agent to create a pack for any other language.
 When a translation pack is active, Monaco's own widgets use a translation for languages Monaco
 ships; otherwise those widgets remain in English. Number formatting, byte sizes, and relative day
 labels use the active locale when one is available.

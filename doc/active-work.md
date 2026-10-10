@@ -9,7 +9,8 @@ Overview of all active and planned epics and tasks.
 The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
 [EPIC-124](epics/completed.md)) is done; phase 2 (every UI string
 extracted, [EPIC-125](epics/completed.md)) is done; next are phase 3 (boards localization) and
-phase 4 (the 17 built-in language packs and the Language Editor).
+phase 4 (the 17 built-in language packs, and the `app.languages` API and agent guide for
+writing packs).
 
 ## Active
 

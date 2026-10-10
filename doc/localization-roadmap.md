@@ -11,10 +11,10 @@ Persephone's interface is English only. This roadmap makes the interface languag
 
 - **Built-in languages** ship with the app (§4 lists the proposed set, including Ukrainian and its
   neighbours: Polish, Latvian, Lithuanian, Estonian).
-- **Language packs are data, not code.** A user, or an agent, can add a language or fix a
-  translation without a new release, using a **Language Editor board** installed on demand, the
-  same split as the Theme Editor (EPIC-123): Persephone owns the capability, the editing UI is a
-  board.
+- **Language packs are data, not code.** A language can be added or a translation fixed without a
+  new release. The user asks their AI agent ("add Estonian", "this button should say …"); the agent
+  writes the pack through the `app.languages` API, following an agent guide (D17). There is no
+  manual editing UI.
 - **Boards are localized too.** A board ships its own packs. When the board has no pack for the
   current language it falls back to English (or to the language it declares as its default), per
   string, never as a broken mix of keys.
@@ -76,8 +76,7 @@ tr, zh-cn, zh-tw.
 per item under `fs.resolveDataPath(...)`, atomic save, `DirectoryWatcher` reload) is the template
 for user language packs; the board theme push (`board-theme.ts` → `BoardWebview.ts:544`
 `registerBoard` → `main/board-bridge.ts:627` → `board-shim.ts` `onThemeChange`) is the template for
-handing a board its locale; the `themes` permission + `persephone.themes` bridge (US-1639) is the
-template for the Language Editor's access.
+handing a board its locale.
 
 **Layout risks for longer text (German is ~30% longer):** tabs `width: 200px` (`ui/tabs/PageTab.css:17`),
 pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
@@ -163,9 +162,9 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
 - **D13 — Left-to-right only.** Arabic and Hebrew need mirrored layouts across all CSS; out of scope.
   The pack format reserves `"direction": "ltr"` so it can be added later.
 - **D14 — Translations are machine-drafted, reviewed by speakers.** Built-in packs are produced by
-  an agent from the English catalog with key context (D1 allows a translator note per key) and are
-  marked "community review welcome" in the Language Editor. Ukrainian is reviewed by the user
-  before release.
+  an agent from the English catalog with key context (D1 allows a translator note per key), using
+  the same agent guide a user's agent follows (D17). Ukrainian is reviewed by the user before
+  release.
 - **D15 — No built-in Russian pack (user decision, 2026-10-09; revised 2026-10-10).** Persephone
   ships no Russian pack and does not bundle Monaco's `nls.messages.ru.js`. Nothing blocks Russian:
   a user who wants it can write a `ru.lang.json` pack, as for any other language, and the loader
@@ -175,6 +174,14 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
   draw well-deserved criticism. Not shipping a pack is enough.
 - **D16 — Withdrawn 2026-10-10.** (Was: scramble Russian words and letters in user and board packs.)
   See D15.
+
+- **D17 — No Language Editor; agents write packs (user decision, 2026-10-10).** Nobody translates
+  1,500 strings by hand any more: a user who wants a language or a fix asks an AI agent. So phase 4
+  drops the Language Editor board and its `languages` board permission and bridge. What it keeps,
+  and must get right, is what the agent needs: the `app.languages` API over MCP and scripting, and
+  an agent guide (`guides.agents.languages`) that walks through creating a pack, fixing one
+  message, and bringing a pack up to date after an app update. The MCP server instructions point
+  to that guide, so an agent finds it from "add a language" alone.
 
 ## 4. Built-in languages
 
@@ -248,18 +255,26 @@ in the shim and so had no locale in phase 2), catalog and board info showing loc
 own boards (Chess, Theme Editor and the rest) with at least the Phase 4 languages, or English-only
 where a board has almost no text.
 
-### Phase 4 — Language packs and the Language Editor (epic)
+### Phase 4 — Language packs for agents (epic)
 
-1. **`app.languages` API** (scripting / MCP): `list()`, `current`, `get(code)`, `english()` (keys,
-   English text, translator notes), `save(pack)`, `delete(code)`, `apply(code)`; packs import and
-   export as files. An agent can then produce a pack on request ("add Estonian").
-2. **`languages` board permission** and `persephone.languages` bridge, mirroring US-1639.
-3. **Language Editor board** (`persephone-boards`): pick or create a language; a grid of key,
-   English, translation, note; filters for missing, stale and invalid; completeness per area;
-   placeholder checks while typing; save, export, import; "apply and reload". It is itself
-   localized (Phase 3).
+1. **`app.languages` API** (scripting / MCP): `list()`, `current`, `get(code)`, `english(area?)`
+   (keys, English text, plural forms, translator notes, source hashes), `validate(pack)` (the same
+   warnings the loader gives: unknown keys, placeholder mismatches, invalid plural forms),
+   `missing(code)` / `stale(code)`, `save(pack)` (validates, writes the user pack atomically),
+   `delete(code)`, `apply(code)`. Reads are per area so an agent can work in chunks that fit its
+   context.
+2. **Agent guide** `assets/guides/agents/languages.md` (`guides.agents.languages`), per D17:
+   creating a pack area by area; keeping `{placeholders}` and supplying the target language's CLDR
+   plural categories; using translator notes for ambiguous keys; recording source hashes; checking
+   with `validate` and in the app (`apply`, then a snapshot); fixing a single message; updating
+   missing and stale keys after an app update. A pointer from the MCP server instructions and from
+   `guides.agents.index`, and a short user-facing note in the Settings guide: "ask your agent to
+   add a language".
+3. **QA run:** a weak model with only the docs creates a small pack and fixes a message, per the
+   `qa/` practice; the guide is fixed where it misleads.
 4. **Built-in packs:** the seventeen non-English languages of §4, drafted by an agent per D14,
-   checked with `npm run i18n:check`, Ukrainian reviewed by the user.
+   checked with `npm run i18n:check`, Ukrainian reviewed by the user. Drafted by following the
+   agent guide, which tests it at scale.
 5. **Installer languages:** `electron-builder.yml` `nsis` gets `multiLanguageInstaller` and the
    matching `installerLanguages`.
 
@@ -267,7 +282,8 @@ where a board has almost no text.
 
 - Translating guides, What's New, `$help` and MCP text (D3).
 - Right-to-left languages (D13).
-- Editing a board's packs from the Language Editor: board packs belong to the board's author and
+- A manual translation editor (D17).
+- Writing a board's packs into the user's data folder: board packs belong to the board's author and
   would be overwritten by the next board update. A user who wants another language for a board
   contributes it to the board.
 - Monaco widget text for languages Monaco does not ship (D9).
@@ -280,7 +296,7 @@ where a board has almost no text.
   comparison fails visibly.
 - **Translation quality.** Machine drafts of UI strings without context produce wrong senses
   ("Open" as an adjective). Translator notes on ambiguous keys (D1) and speaker review mitigate it;
-  the Language Editor makes fixing a string a two-minute job.
+  fixing a string is one request to an agent.
 - **Size.** About 2,000 strings across ~400 files. The lint rule and `en-XA` keep the extraction
   measurable, and each Phase 2 task is independent.
 - **Bundle size.** Built-in packs are JSON in `assets/languages/` loaded only for the active
