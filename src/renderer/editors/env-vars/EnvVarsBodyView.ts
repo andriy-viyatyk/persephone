@@ -270,10 +270,12 @@ class NamespaceListView extends VanillaView<{
 
 type VarRow = { _rowKey: string; name: string; value: string };
 
-const VAR_COLUMNS: Column<VarRow>[] = [
-    { key: "name", name: t("board.envName"), width: 220, resizable: true },
-    { key: "value", name: t("board.envValue"), width: 400, resizable: true },
-];
+function varColumns(): Column<VarRow>[] {
+    return [
+        { key: "name", name: t("board.envName"), width: 220, resizable: true },
+        { key: "value", name: t("board.envValue"), width: 400, resizable: true },
+    ];
+}
 
 function validateRows(rows: VarRow[]): string | undefined {
     const counts = new Map<string, number>();
@@ -403,7 +405,7 @@ class VariablesGridView extends VanillaView<{
     private gridProps(rows: readonly VarRow[]): DataGridProps<VarRow> {
         return {
             name: "env-vars-grid",
-            columns: VAR_COLUMNS,
+            columns: varColumns(),
             rows,
             getRowKey: (row) => row._rowKey,
             onGrid: this.handleGrid,

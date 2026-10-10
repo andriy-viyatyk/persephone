@@ -98,10 +98,10 @@ function createNoneIconElement(): SVGElement {
     return element;
 }
 
-const EFFECTS: { type: EffectType; createIcon: () => SVGElement; label: string }[] = [
-    { type: "bars", createIcon: createBarsIconElement, label: t("editors.bars") },
-    { type: "circular", createIcon: createCircularIconElement, label: t("editors.circular") },
-    { type: "none", createIcon: createNoneIconElement, label: t("editors.noEffect") },
+const EFFECTS: { type: EffectType; createIcon: () => SVGElement; label: () => string }[] = [
+    { type: "bars", createIcon: createBarsIconElement, label: () => t("editors.bars") },
+    { type: "circular", createIcon: createCircularIconElement, label: () => t("editors.circular") },
+    { type: "none", createIcon: createNoneIconElement, label: () => t("editors.noEffect") },
 ];
 
 interface TrackInfo {
@@ -196,7 +196,7 @@ export class AudioVisualizerView extends VanillaView<AudioVisualizerProps> {
                 variant: "chip",
                 size: "sm",
                 active: false,
-                title: item.label,
+                title: item.label(),
                 icon: item.createIcon(),
                 onClick: (event) => {
                     event.stopPropagation();
@@ -285,7 +285,7 @@ export class AudioVisualizerView extends VanillaView<AudioVisualizerProps> {
                     variant: "chip",
                     size: "sm",
                     active: this.selectedEffect === type,
-                    title: EFFECTS.find((item) => item.type === type)?.label,
+                    title: EFFECTS.find((item) => item.type === type)?.label(),
                     icon: EFFECTS.find((item) => item.type === type)?.createIcon() ?? createNoneIconElement(),
                     onClick: (event) => {
                         event.stopPropagation();

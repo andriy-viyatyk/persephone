@@ -17,8 +17,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Choose the interface language:** In Settings > General > Language, select Automatic or an
   available language pack. A selection reloads all open windows and restores their pages. Compatible
   packs can be placed in `%APPDATA%\persephone\data\languages\`; the picker shows each pack's
-  completeness. Russian packs are blocked. Built-in translations arrive in a later release; this
-  version lays the groundwork and ships English only.
+  completeness. Russian packs are blocked. This version ships English only; built-in translations
+  and a Language Editor arrive in a later release.
+- **The whole interface is translatable:** every menu, dialog, panel and editor now reads its text
+  from the language pack. The text editor's own find box, context menu and command palette follow
+  the language for the languages Monaco ships (German, French, Spanish, Polish, Japanese and more).
 - **Locale-aware formatting:** Numbers, byte sizes, and relative day labels follow the active
   language where available.
 

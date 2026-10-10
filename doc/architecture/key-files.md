@@ -83,8 +83,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | JSON parsing helpers (`tryParseJson<T>` parse-or-fall-back; `parseObject` / `parseJSON5`) | `/src/renderer/core/utils/parse-utils.ts` |
 | Toast-on-failure wrapper (`guard(label, fn, level?)` — the "try, notify, carry on" handler shape) | `/src/renderer/core/utils/guard.ts` |
 | App settings             | `/src/renderer/api/settings.ts`                   |
-| Shared localization runtime (typed English catalogs, `t()` and stable agent-facing English lookup, pack validation/layering, pseudo-locale, and active locale) | `/src/shared/i18n/` |
-| Renderer startup locale and language-pack loading (before first UI paint) | `/src/renderer/i18n/startup.ts` |
+| Shared localization runtime (`t()`, English `englishMessage()`, deliberate-English `untranslated()`, pack validation/layering, pseudo-locale, and active locale) | `/src/shared/i18n/` |
+| English source-message catalog areas (common, settings, dialogs, shell, editors, menus, API, browser, board, Explorer, links, Git, Mneme, About, tools, UIKit, notebook, and Log View) | `/src/shared/i18n/en/` |
+| Renderer startup locale and language-pack loading (before first UI paint; installs localized UIKit defaults) | `/src/renderer/i18n/startup.ts` |
+| UIKit's standalone English defaults and app-supplied text overrides (`uikitText()` / `setUikitText()`) | `/src/renderer/uikit/shared/uikit-text.ts` |
+| Monaco widget message localization (explicit supported-language imports; awaited before Monaco modules load) | `/src/renderer/i18n/monaco-nls.ts`, `/src/renderer.ts` |
+| Localized presentation of app-owned page titles while stored/API titles remain English | `/src/renderer/ui/tabs/page-title.ts` |
 | Main-process locale and pack loading (tray and native dialogs) | `/src/main/i18n-locale.ts` |
 | Locale-aware date, relative-time, number, unit, and byte-size formatting | `/src/renderer/core/utils/format.ts` |
 | Language setting and picker (including completeness and reload-all) | `/src/renderer/editors/settings/sections/LanguageSection.ts`, `/src/renderer/api/settings.ts` |

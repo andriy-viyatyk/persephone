@@ -1,3 +1,22 @@
+## EPIC-125 — Extract every UI string (interface languages, phase 2)
+
+Completed 2026-10-10. Phase 2 of the [localization roadmap](../localization-roadmap.md): every
+app-owned interface string now comes from the English catalog (1,512 messages in 19 areas), so a
+language pack can translate the whole interface. Still ships English only; packs are phase 4. Epic
+document: [EPIC-125](EPIC-125.md).
+
+- **Lint coverage (US-1653, US-1665).** `no-hardcoded-ui-strings` widened to every UI position found
+  and switched to error; reports went from 975 to 0. The board shim files are exempt until phase 3.
+- **Area extraction (US-1654 – US-1663).** Shell, menus, API notifications, browser, board host,
+  Explorer and links, Git, Mneme and About, MCP inspector and Tools hub, the remaining editors.
+- **Agents stay English.** Translated menu items carry stable ids; editor names, panel labels, page
+  titles and board permission lines keep an English field for scripts and MCP and translate only on
+  screen; `untranslated()` marks deliberate English in UI positions.
+- **uikit defaults** come from one text table (`uikit/shared/uikit-text.ts`) filled at startup.
+- **Monaco (US-1664)** loads its own translations for the languages it ships; never Russian.
+- **Completion.** `/review` (two module-scope `t()` calls fixed), `/document`, `/userdoc` run by
+  Codex. Task folders kept until the localization roadmap is finished.
+
 ## EPIC-124 — Localization foundation (interface languages, phase 1)
 
 Completed 2026-10-10. Phase 1 of the [localization roadmap](../localization-roadmap.md): the

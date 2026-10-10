@@ -138,6 +138,14 @@ resolving the declared selector.
 
 Each renderer window bootstraps via `src/renderer.ts`:
 
+The entry imports `renderer/i18n/startup.ts` synchronously before bootstrap, so the active locale,
+language-pack catalogs, and UIKit text overrides are ready before views are created. Bootstrap then
+awaits `loadMonacoNls()` from `renderer/i18n/monaco-nls.ts` before dynamically importing the app,
+settings, or renderer index modules that can load Monaco. The NLS loader uses explicit imports for
+the languages Monaco ships; unsupported locales leave Monaco's own widgets in English. App-owned
+tab titles are translated for display by `ui/tabs/page-title.ts` while their stored and API values
+remain English.
+
 ```
 1. app.init()          ──  Fetch version from main process
 2. app.initSetup()     ──  Configure Monaco (themes, languages, types)

@@ -106,8 +106,10 @@ Persephone to refresh the list. Choosing a language saves the setting and immedi
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
 uses English. Russian language packs are blocked.
 
-Additional language packs and the Language Editor are planned for later phases. Number formatting,
-byte sizes, and relative day labels use the active locale when one is available.
+This release bundles only English. Translated packs and a Language Editor arrive in a later release.
+When a translation pack is active, Monaco's own widgets use a translation for languages Monaco
+ships; otherwise those widgets remain in English. Number formatting, byte sizes, and relative day
+labels use the active locale when one is available.
 
 ## Editor Behavior
 

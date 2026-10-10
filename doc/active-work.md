@@ -7,25 +7,13 @@ Overview of all active and planned epics and tasks.
 - Ideas and future concepts in [`/doc/tasks/backlog.md`](tasks/backlog.md)
 
 The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
-[EPIC-124](epics/completed.md)) is done; phase 2 (extract every UI string) is EPIC-125 below; then
-phase 3 (boards localization) and phase 4 (the 17 built-in language packs and the Language Editor).
+[EPIC-124](epics/completed.md)) is done; phase 2 (every UI string
+extracted, [EPIC-125](epics/completed.md)) is done; next are phase 3 (boards localization) and
+phase 4 (the 17 built-in language packs and the Language Editor).
 
 ## Active
 
-- **EPIC-125** — [Extract every UI string (interface languages, phase 2)](epics/EPIC-125.md)
-  - [ ] [US-1653: Widen the lint rule to every UI position; per-area baseline](tasks/US-1653-lint-coverage/README.md)
-  - [ ] [US-1654: App shell, tabs, sidebar, editor display names](tasks/US-1654-shell-strings/README.md)
-  - [ ] [US-1655: Menus and context menus, tree providers, shared editor menus, file components](tasks/US-1655-menu-strings/README.md)
-  - [ ] [US-1656: API layer, content pipeline, notifications outside editors](tasks/US-1656-api-strings/README.md)
-  - [ ] [US-1657: Browser editor](tasks/US-1657-browser-strings/README.md)
-  - [ ] [US-1658: Board host: board editor, board info, env vars, toolsets](tasks/US-1658-board-host-strings/README.md)
-  - [ ] [US-1659: Explorer and link editor](tasks/US-1659-explorer-links-strings/README.md)
-  - [ ] [US-1660: Git tree, file diff, compare, archive](tasks/US-1660-git-diff-strings/README.md)
-  - [ ] [US-1661: Mneme editors and About](tasks/US-1661-mneme-about-strings/README.md)
-  - [ ] [US-1662: MCP inspector, Tools hub, Storybook](tasks/US-1662-tools-strings/README.md)
-  - [ ] [US-1663: Remaining editors and uikit defaults](tasks/US-1663-remaining-strings/README.md)
-  - [ ] [US-1664: Monaco UI language (D9)](tasks/US-1664-monaco-locale/README.md)
-  - [ ] [US-1665: Layout fixes, lint rule to error, closing sweep](tasks/US-1665-closing-sweep/README.md)
+*(none)*
 
 ## Planned
 
