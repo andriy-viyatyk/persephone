@@ -1,6 +1,6 @@
 # Persephone in other languages — localization roadmap
 
-> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10. Each phase below is sized to become
+> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10; phase 2 is [EPIC-125](epics/EPIC-125.md). Each phase below is sized to become
 > one epic; numbers are assigned when a phase moves to [active-work.md](active-work.md). Findings
 > are source-verified against the tree at commit `9fdd76e5` (v5.0.10 working branch); file
 > references are the seams a task document should start from.
@@ -257,7 +257,7 @@ for delegated, area-by-area tasks.
 6. **Pilot extraction:** Settings page and dialogs, end to end, to prove the pattern before Phase 2
    fans out.
 
-### Phase 2 — Extract every UI string (epic)
+### Phase 2 — Extract every UI string ([EPIC-125](epics/EPIC-125.md))
 
 One task per area, each converting its literals to catalog keys and checking the area under `en-XA`:
 app shell / tabs / sidebar; menus and context menus; notifications; browser editor; board host

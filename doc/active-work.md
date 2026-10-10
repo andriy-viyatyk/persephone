@@ -7,8 +7,8 @@ Overview of all active and planned epics and tasks.
 - Ideas and future concepts in [`/doc/tasks/backlog.md`](tasks/backlog.md)
 
 The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
-[EPIC-124](epics/completed.md)) is done; next are phase 2 (extract every UI string), phase 3 (boards
-localization) and phase 4 (the 17 built-in language packs and the Language Editor).
+[EPIC-124](epics/completed.md)) is done; phase 2 (extract every UI string) is EPIC-125 below; then
+phase 3 (boards localization) and phase 4 (the 17 built-in language packs and the Language Editor).
 
 ## Active
 
@@ -16,7 +16,20 @@ localization) and phase 4 (the 17 built-in language packs and the Language Edito
 
 ## Planned
 
-*(none)*
+- **EPIC-125** — [Extract every UI string (interface languages, phase 2)](epics/EPIC-125.md)
+  - [ ] US-1653: Widen the lint rule to every UI position; per-area baseline
+  - [ ] US-1654: App shell, tabs, sidebar, editor display names
+  - [ ] US-1655: Menus and context menus, tree providers, shared editor menus, file components
+  - [ ] US-1656: API layer, content pipeline, notifications outside editors
+  - [ ] US-1657: Browser editor
+  - [ ] US-1658: Board host: board editor, board info, env vars, toolsets, board context menu
+  - [ ] US-1659: Explorer and link editor
+  - [ ] US-1660: Git tree, file diff, compare, archive
+  - [ ] US-1661: Mneme editors and About
+  - [ ] US-1662: MCP inspector, Tools hub, Storybook
+  - [ ] US-1663: Remaining editors and uikit defaults
+  - [ ] US-1664: Monaco UI language (D9)
+  - [ ] US-1665: Layout fixes, lint rule to error, closing sweep
 
 ## Scheduled
 
