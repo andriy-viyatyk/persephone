@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.10 (Upcoming)
+## Version 5.0.11 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.10
 
 ### New Features
 
@@ -22,6 +28,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **The whole interface is translatable:** every menu, dialog, panel and editor now reads its text
   from the language pack. The text editor's own find box, context menu and command palette follow
   the language for the languages Monaco ships (German, French, Spanish, Polish, Japanese and more).
+- **Boards follow the app language:** the bundled REST Client and Excalidraw boards and the
+  catalog boards show their text, names and descriptions in the chosen language. Board authors can
+  ship language packs in a board's `lang` folder.
+- **Installer in your language:** the installer starts with a language choice and shows all its
+  screens in that language.
 - **Locale-aware formatting:** Numbers, byte sizes, and relative day labels follow the active
   language where available.
 
