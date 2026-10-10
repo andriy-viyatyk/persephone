@@ -7,6 +7,7 @@ import { createFileTypeIconElement } from "../../components/icons/icon-elements"
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { displayPageTitle } from "../tabs/page-title";
 
 export interface OpenTabsListProps {
     onClose?: () => void;
@@ -138,7 +139,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private item(windowIndex: number, page: Partial<IEditorState>): OpenTabsListItem {
         return {
             value: page.id ?? `window-${windowIndex}`,
-            label: page.title ?? "",
+            label: displayPageTitle(page.editor, page.title),
             iconElement: createFileTypeIconElement({ language: page.language, width: 16, height: 16 }),
             windowIndex,
             page,

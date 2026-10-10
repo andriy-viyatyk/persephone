@@ -7,6 +7,7 @@ import { getBoardGuideMountId } from "../../guides/board-guide-mounts";
 import { BOARD_GUIDES_PREFIX, BOARD_SELF_EDITOR_ID } from "../../../shared/guides/mounted-source";
 import { errMessage } from "../../../shared/utils";
 import { guard } from "../../core/utils/guard";
+import { t } from "../../../shared/i18n/t";
 
 function findGuidePath(
     nodes: readonly GuideTreeNode[],
@@ -83,7 +84,7 @@ export class KeyboardService {
                 if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.isComposing || e.defaultPrevented) break;
                 if (e.target instanceof Element && e.target.closest(".monaco-editor")) break;
                 e.preventDefault();
-                void guard("Failed to open User Guide", () => openActiveGuideOrContents());
+                void guard(t("api.failedToOpenUserGuide"), () => openActiveGuideOrContents());
                 break;
 
             case "F12":

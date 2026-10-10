@@ -13,6 +13,7 @@ import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
 import { saveWindowStateForShutdown } from "./save-window-state";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Renderer IPC events service.
@@ -61,13 +62,13 @@ export class RendererEventsService {
         if (msg.editor === "image-view" && msg.href.startsWith("data:image/")) {
             // Open from a cached blob URL, as the built-in viewers do. Routed as a link, the whole
             // data URL would become the page's file path and title and be persisted with the session.
-            await guard("Failed to open image", async () => {
+        await guard(t("api.failedToOpenImage"), async () => {
                 const blob = await (await fetch(msg.href)).blob();
                 await pagesModel.openImageInNewTab(URL.createObjectURL(blob), "Image");
             });
             return;
         }
-        await guard("Failed to open link", () =>
+        await guard(t("api.failedToOpenLink"), () =>
             app.events.openRawLink.sendAsync(
                 createLinkData(msg.href, { sourceId: "board", target: msg.editor, boardRoot: msg.boardRoot }),
             ),
@@ -77,7 +78,7 @@ export class RendererEventsService {
     openLaunchInput = async (input: LaunchInput): Promise<void> => {
         switch (input.kind) {
             case "file":
-                await guard("Failed to open file", () =>
+                await guard(t("api.failedToOpenFile"), () =>
                     app.events.openRawLink.sendAsync(createLinkData(input.path)),
                 );
                 return;
@@ -85,14 +86,14 @@ export class RendererEventsService {
                 // Route through the pipeline — the HTTP resolver decides content vs browser.
                 // `browserMode: "internal"` prevents the shell.openExternal fallback, which
                 // would loop back to us when Persephone is the OS default browser.
-                await guard("Failed to open URL", () =>
+                await guard(t("api.failedToOpenUrl"), () =>
                     app.events.openRawLink.sendAsync(
                         createLinkData(input.url, { browserMode: "internal" }),
                     ),
                 );
                 return;
             case "diff":
-                await guard("Failed to open diff", () =>
+                await guard(t("api.failedToOpenDiff"), () =>
                     pagesModel.openDiff({
                         firstPath: input.firstPath,
                         secondPath: input.secondPath,
@@ -102,19 +103,19 @@ export class RendererEventsService {
     };
 
     private handleShowPage = async (pageId: string) => {
-        await guard("Failed to show page", () => pagesModel.showPage(pageId));
+        await guard(t("api.failedToShowPage"), () => pagesModel.showPage(pageId));
     };
 
     private handleMovePageIn = async (data: { page: PageDescriptor; targetPageId: string | undefined } | undefined) => {
-        await guard("Failed to move page", () => pagesModel.movePageIn(data));
+        await guard(t("api.failedToMovePage"), () => pagesModel.movePageIn(data));
     };
 
     private handleMovePageOut = async (pageId: string) => {
-        await guard("Failed to move page", () => pagesModel.movePageOut(pageId));
+        await guard(t("api.failedToMovePage"), () => pagesModel.movePageOut(pageId));
     };
 
     private handleOpenUrl = async (event: { url: string; boardRoot?: string; unattributedPopup?: boolean }) => {
-        await guard("Failed to open URL", () =>
+        await guard(t("api.failedToOpenUrl"), () =>
             app.events.openRawLink.sendAsync(createLinkData(event.url, {
                 ...(event.boardRoot ? { boardRoot: event.boardRoot, sourceId: "board" } : {}),
                 ...(event.unattributedPopup ? { unattributedPopup: true } : {}),
@@ -126,7 +127,7 @@ export class RendererEventsService {
         const scheme = schemeOf(url);
         if (!scheme || !isBoardClaimedScheme(scheme)) return;
 
-        await guard("Failed to open URL", () =>
+        await guard(t("api.failedToOpenUrl"), () =>
             app.events.openRawLink.sendAsync(createLinkData(url)),
         );
     };
@@ -136,7 +137,7 @@ export class RendererEventsService {
         boardRoot: string;
         sessionHandle?: string;
     }) => {
-        await guard("Failed to open URL", () =>
+        await guard(t("api.failedToOpenUrl"), () =>
             app.events.openRawLink.sendAsync(
                 createLinkData(data.url, {
                     target: boardEditorId(data.boardRoot),
@@ -171,7 +172,7 @@ export class RendererEventsService {
     private handleUpdateAvailable = async (result: UpdateCheckResult) => {
         if (result.updateAvailable && result.releaseInfo) {
             const closeResult = await ui.notify(
-                `New version ${result.releaseInfo.version} is available! Click to open About page.`,
+                t("api.updateAvailable", { version: result.releaseInfo.version }),
                 "info",
             );
             if (closeResult === "clicked") {

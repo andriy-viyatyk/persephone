@@ -20,6 +20,7 @@ import { fpBasename, fpJoin } from "../../core/utils/file-path";
 import { isFileDrag, setEventTraitDragData } from "../../core/traits/dnd";
 import { makeOsFileDescriptor } from "../../core/traits/fileLinkTraits";
 import { guard } from "../../core/utils/guard";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Expand a list of dropped file/folder paths into ILink items.
@@ -178,7 +179,7 @@ export class GlobalEventService {
     };
 
     private openDroppedPaths = async (filePaths: string[]) => {
-        await guard("Failed to open dropped files", async () => {
+        await guard(t("api.failedToOpenDroppedFiles"), async () => {
             if (filePaths.length === 1) {
                 const stat = await fs.stat(filePaths[0]);
                 if (!stat.isDirectory) {
@@ -246,7 +247,7 @@ export class GlobalEventService {
             return;
         }
         if (scriptRunner.handlePromiseException) {
-            ui.notify(`Unhandled promise rejection: ${e.reason}`, "error");
+        ui.notify(t("api.unhandledPromiseRejection", { reason: e.reason }), "error");
         }
     };
 

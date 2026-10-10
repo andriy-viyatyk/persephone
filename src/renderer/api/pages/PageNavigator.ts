@@ -13,6 +13,7 @@ import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { ui } from "../ui";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 // ============================================================================
 // PageNavigator — navigate an existing page to a new file.
@@ -141,7 +142,7 @@ async function buildEditor(
     const isVirtualPath =
         newFilePath.includes("://") || newFilePath.startsWith("data:");
     if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
-        ui.notify(`File not found: ${fpBasename(newFilePath)}`, "error");
+        ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
         const legacy = newTextFileModel("");
         legacy.state.update((s) => {
             s.title = fpBasename(newFilePath);
@@ -157,7 +158,7 @@ async function buildEditor(
                 options.folderPath,
             );
         } catch (err) {
-            ui.notify(`Failed to open folder: ${errMessage(err)}`, "error");
+            ui.notify(t("api.failedToOpenFolder", { error: errMessage(err) }), "error");
             throw err;
         }
     }
@@ -170,7 +171,7 @@ async function buildEditor(
         );
     } catch (err) {
         ui.notify(
-            `Failed to open ${fpBasename(newFilePath)}: ${errMessage(err)}`,
+            t("api.failedToOpenNamedFileWithError", { name: fpBasename(newFilePath), error: errMessage(err) }),
             "error",
         );
         const legacy = newTextFileModel("");

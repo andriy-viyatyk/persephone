@@ -1,6 +1,7 @@
 import { ui } from "../../api/ui";
 import type { NotificationType } from "../../api/types/ui";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Run `fn`, reporting any failure as a toast instead of letting it escape.
@@ -21,7 +22,7 @@ export async function guard<T>(
     try {
         return await fn();
     } catch (err) {
-        void ui.notify(`${label}: ${errMessage(err)}`, level);
+        void ui.notify(t("api.actionFailed", { action: label, error: errMessage(err) }), level);
         return undefined;
     }
 }

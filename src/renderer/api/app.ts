@@ -6,6 +6,7 @@ import { AppEvents } from "./events/AppEvents";
 import { createLinkData } from "../../shared/link-data";
 import type { IFetchOptions } from "./types/app";
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 import {
     appServiceDescriptors,
     type AppServiceKey,
@@ -314,7 +315,7 @@ class App {
                 const mnemePort = services.settings.get("mneme.port") as number | undefined;
                 api.setMnemeEnabled(true, mnemePort || undefined).then((status) => {
                     if (!status.running) {
-                        services.ui.notify(`Mneme failed to start: ${status.error ?? "unknown error"}`, "error");
+                        services.ui.notify(t("api.mnemeFailedToStart", { error: status.error ?? "unknown error" }), "error");
                     }
                 });
             }
@@ -325,7 +326,7 @@ class App {
             );
             void api.setClipboardEnabled(clipboardEnabled, clipboardMaxItems).then((status) => {
                 if (clipboardEnabled && status.error) {
-                    services.ui.notify(`Clipboard tracker failed to start: ${status.error}`, "error");
+                    services.ui.notify(t("api.clipboardTrackerFailedToStart", { error: status.error }), "error");
                 }
             });
 
@@ -368,9 +369,9 @@ class App {
                 api.setMnemeEnabled(!!value, mnemePort || undefined).then((status) => {
                     if (!value) return; // silent on intentional stop
                     if (status.running) {
-                        services.ui.notify("Mneme started", "success");
+                        services.ui.notify(t("api.mnemeStarted"), "success");
                     } else {
-                        services.ui.notify(`Mneme failed to start: ${status.error ?? "unknown error"}`, "error");
+                        services.ui.notify(t("api.mnemeFailedToStart", { error: status.error ?? "unknown error" }), "error");
                     }
                 });
             }
@@ -386,7 +387,7 @@ class App {
         // Toast unexpected Mneme exits (crash after a successful start).
         ipcRendererEvents.eMnemeStatusChanged.subscribe((s) => {
             if (s.error) {
-                services.ui.notify(`Mneme: ${s.error}`, "error");
+                services.ui.notify(t("api.mnemeExited", { error: s.error }), "error");
             }
         });
     }

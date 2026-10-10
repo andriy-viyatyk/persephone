@@ -1,5 +1,6 @@
 import { CapabilityError } from "./capability-bus";
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 import type { CapabilityPageResult } from "./types/capabilities";
 
 export type EditCapabilityId = "image.edit" | "diagram.edit" | "theme.edit";
@@ -55,7 +56,7 @@ export function notifyEditCapabilityFailure(
 ): boolean {
     const message = getMissingEditCapabilityMessage(error, capability);
     void import("./ui").then(({ ui }) => {
-        ui.notify(message ?? `${fallbackMessage}: ${errMessage(error)}`, message ? "warning" : "error");
+        ui.notify(message ?? t("api.actionFailed", { action: fallbackMessage, error: errMessage(error) }), message ? "warning" : "error");
     }).catch((reportError: unknown) => {
         console.error(`Failed to report ${capability} failure: ${errMessage(reportError)}`);
     });

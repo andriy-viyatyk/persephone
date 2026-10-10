@@ -4,6 +4,7 @@ import {
     getDefaultTextFileEditorModelState,
 } from "../../editors/text/TextEditorModel";
 import { shell } from "../shell";
+import { t } from "../../../shared/i18n/t";
 import { ui } from "../ui";
 import { fs } from "../fs";
 import { settings } from "../settings";
@@ -91,7 +92,7 @@ class BoardEnvStore {
                 if (opts?.silent) return { status: "locked" };
                 const password = await ui.password({
                     mode: "decrypt",
-                    message: "Decrypt the board environment variables file to continue.",
+                    message: t("api.decryptBoardEnvironmentVariables"),
                 });
                 if (!password) return { status: "locked" };
                 const ok = await model.decrypt(password); // toasts on wrong password

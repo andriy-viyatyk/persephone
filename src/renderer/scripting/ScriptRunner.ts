@@ -4,6 +4,7 @@ import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { settings } from "../api/settings";
 import { convertToText } from "./script-utils";
 import { ScriptRunnerBase } from "./ScriptRunnerBase";
+import { t } from "../../shared/i18n/t";
 
 export interface McpScriptResult {
     text: string;
@@ -60,7 +61,7 @@ class ScriptRunner extends ScriptRunnerBase {
         if (outputSuppressed && isError) {
             import("../ui/dialogs/TextDialog").then(({ showTextDialog }) => {
                 showTextDialog({
-                    title: "Script Error",
+                    title: t("api.scriptErrorTitle"),
                     text: textAndLang.text,
                 });
             });

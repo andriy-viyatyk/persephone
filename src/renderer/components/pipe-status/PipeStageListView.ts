@@ -3,6 +3,7 @@ import { formatBytes } from "../../core/utils/format-bytes";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "./PipeStageListView.css";
 import { t } from "../../../shared/i18n/t";
+import { httpStatusDisplayText } from "./http-status-text";
 
 export interface PipeStageListViewProps {
     stages: ReadonlyArray<IPipeStage>;
@@ -47,7 +48,8 @@ export class PipeStageListView extends VanillaView<PipeStageListViewProps> {
             row.append(heading);
 
             const status = stage.status;
-            if (status?.text) row.append(this.createLine("text", status.text));
+            const statusText = (status && httpStatusDisplayText(stage.type, status)) || status?.text;
+            if (statusText) row.append(this.createLine("text", statusText));
             if (status?.detail) row.append(this.createLine("detail", status.detail));
             if (status?.progress) {
                 const loaded = formatBytes(status.progress.loaded);

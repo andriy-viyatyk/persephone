@@ -1,4 +1,5 @@
 import { t } from "../../../shared/i18n/t";
+import { displayPageTitle } from "./page-title";
 import { api } from "../../../ipc/renderer/api";
 import type { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
@@ -74,7 +75,7 @@ function selectEditorState(state: EditorTabState): EditorProjection {
             ? t("shell.empty")
             : categoryLink && !categoryLink.category && state.title === "Folder"
             ? t("shell.folder")
-            : state.title ?? "",
+            : displayPageTitle(state.editor, state.title),
         modified: state.modified ?? false,
         language: state.language ?? "",
         filePath: state.filePath ?? "",

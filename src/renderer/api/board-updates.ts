@@ -20,6 +20,7 @@ import { BoardEditorModel } from "../editors/board/BoardEditorModel";
 import { installVersion } from "./board-install";
 import { errMessage } from "../../shared/utils";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+import { t } from "../../shared/i18n/t";
 
 const CLOSE_BOARD_AND_CONTINUE = "Close board & continue";
 
@@ -133,17 +134,15 @@ export async function ensureBoardIdle(
     action: "updating" | "deleting" = "updating",
 ): Promise<boolean> {
     if (isBoardRootBusy(root)) {
-        void ui.notify(`This board is currently running. Stop it before ${action}.`, "warning");
+        void ui.notify(t(action === "deleting" ? "api.boardBusyDeleting" : "api.boardBusyUpdating"), "warning");
         return false;
     }
     const pages = boardPagesForRoot(root);
     if (pages.length) {
         const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
         const choice = await showConfirmationDialog({
-            title: "Board is open",
-            message:
-                `This board is open in ${pages.length} page(s) and must be closed before `
-                + `${action}. The page(s) stay open and go empty. Continue?`,
+            title: t("api.boardOpenTitle"),
+            message: t(action === "deleting" ? "api.boardOpenDeleting" : "api.boardOpenUpdating", { count: pages.length }),
             buttons: [dialogButton(CLOSE_BOARD_AND_CONTINUE), dialogButton(DialogButton.cancel)],
         });
         if (choice !== CLOSE_BOARD_AND_CONTINUE) return false;
@@ -175,12 +174,12 @@ export async function runBoardVersionInstall(args: {
             installVersion(args.id, args.archive, args.version, {
                 preSwap: async () => isBoardIdle(args.root),
             }),
-            `Installing ${args.name} v${args.version}…`,
+            t("api.installingBoard", { name: args.name, version: args.version }),
         );
-        void ui.notify(`Installed ${args.name} v${args.version}.`, "success");
+        void ui.notify(t("api.boardInstalled", { name: args.name, version: args.version }), "success");
         return true;
     } catch (err) {
-        void ui.notify(`Install failed: ${errMessage(err)}`, "error");
+        void ui.notify(t("api.boardInstallFailed", { error: errMessage(err) }), "error");
         return false;
     }
 }

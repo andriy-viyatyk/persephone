@@ -21,6 +21,7 @@ import { errMessage } from "../../shared/utils";
 import { type BoardServiceStatus } from "../../ipc/module-service-channels";
 import { moduleServiceStatus } from "./module-service-status";
 import { createLinkData } from "../../shared/link-data";
+import { t } from "../../shared/i18n/t";
 
 export const BOARDS_ASSETS_BASE_URL =
     "https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/";
@@ -517,7 +518,7 @@ export const boards: IBoards = {
             const v = vm?.versions.find((x) => x.version === opts.version);
             if (!v) throw new Error(`Version not found for "${id}": ${opts.version}`);
             if (!publishedBoards.isCompatible(v.minAppVersion)) {
-                void ui.notify(`This version requires Persephone ≥ ${v.minAppVersion}.`, "warning");
+                void ui.notify(t("api.boardVersionRequiresApp", { version: v.minAppVersion }), "warning");
                 return undefined;
             }
             const { runBoardVersionInstall } = await import("./board-updates");

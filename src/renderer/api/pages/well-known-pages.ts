@@ -30,12 +30,16 @@ export function getWellKnownPageDef(id: string): WellKnownPageDef | undefined {
 
 // ── Registrations ──────────────────────────────────────────────────
 
+// Log page titles are file names that scripts and agents read; they stay English in every language.
+const MCP_UI_LOG_TITLE = "MCP Log.log.jsonl";
+const MCP_SERVER_LOG_TITLE = "MCP Server Log.log.jsonl";
+
 // MCP Log View — shared between the call surface and ScriptContext
 registerWellKnownPage({
     id: "mcp-ui-log",
     editor: "log-view",
     language: "jsonl",
-    title: "MCP Log.log.jsonl",
+    title: MCP_UI_LOG_TITLE,
 });
 
 // MCP server request log (for )
@@ -43,5 +47,5 @@ registerWellKnownPage({
     id: "mcp-server-log",
     editor: "log-view",
     language: "jsonl",
-    title: "MCP Server Log.log.jsonl",
+    title: MCP_SERVER_LOG_TITLE,
 });

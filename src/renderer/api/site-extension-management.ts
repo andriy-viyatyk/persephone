@@ -4,6 +4,7 @@ import { siteExtensionStore, isValidSiteExtensionId } from "./site-extensions";
 import { siteExtensionTrust } from "./site-extension-trust";
 import type { SiteExtensionRemoveResult } from "./types/site-extensions";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+import { t } from "../../shared/i18n/t";
 
 /** Resolve an extension folder while refusing ids that could escape the configured root. */
 export async function siteExtensionFolder(id: string): Promise<string> {
@@ -36,8 +37,8 @@ export async function confirmAndRemoveSiteExtension(
         || id;
     const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
     const choice = await showConfirmationDialog({
-        title: "Remove site extension",
-        message: `Remove site extension "${name}" and its folder?`,
+        title: t("api.removeSiteExtensionTitle"),
+        message: t("api.removeSiteExtensionConfirmation", { name }),
         buttons: [dialogButton(DialogButton.delete), dialogButton(DialogButton.cancel)],
     });
     if (choice !== DialogButton.delete) return { removed: false, revokedTrust: false };

@@ -1,4 +1,5 @@
 import * as monaco from "monaco-editor";
+import { t } from "../../../shared/i18n/t";
 import { libraryService } from "../library-service";
 import { settings } from "../settings";
 
@@ -140,14 +141,14 @@ function registerPathCompletionProvider(): void {
                 );
                 return {
                     suggestions: [{
-                        label: "library",
+                        label: t("api.libraryCompletion"),
                         kind: monaco.languages.CompletionItemKind.Module,
                         insertText: "library/",
                         range,
-                        detail: "Script library modules",
+                        detail: t("api.libraryCompletionDetail"),
                         command: {
                             id: "editor.action.triggerSuggest",
-                            title: "Trigger",
+                            title: t("api.triggerSuggestion"),
                         },
                     }],
                 };
@@ -181,7 +182,7 @@ function registerPathCompletionProvider(): void {
                     sortText: "0" + folder,
                     command: {
                         id: "editor.action.triggerSuggest",
-                        title: "Trigger",
+                            title: t("api.triggerSuggestion"),
                     },
                 });
             }

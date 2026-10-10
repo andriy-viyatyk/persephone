@@ -2,6 +2,7 @@ import type { PagesModel } from "./PagesModel";
 import { EditorModel } from "../../editors/base";
 import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
+import { t } from "../../../shared/i18n/t";
 import { cleanForStorage, createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../types/io.link-data";
@@ -675,7 +676,7 @@ export class PagesLifecycleModel {
         // nothing at all — US-1163's shape, one path over. `undefined` is already this
         // method's "did not open" answer, so no caller changes.
         const editor = await guard(
-            `Failed to open ${fpBasename(filePath ?? options?.folderPath ?? "folder")}`,
+            t("api.failedToOpenNamedFile", { name: fpBasename(filePath ?? options?.folderPath ?? "folder") }),
             async () => {
                 if (options?.folderPath !== undefined) {
                     return this.createEditorFromFolder(options.target ?? "", options.folderPath);
@@ -847,7 +848,7 @@ export class PagesLifecycleModel {
 
     openFileFromDialog = async () => {
         const filePaths = await api.showOpenFileDialog({
-            title: "Open File",
+            title: t("dialogs.openUrlFile"),
             multiSelections: false,
         });
         if (filePaths && filePaths.length > 0) {
@@ -873,14 +874,14 @@ export class PagesLifecycleModel {
         // half-built comparison (US-1163's shape).
         if (!existingFirst) {
             const pipe = await this.createPipeFromPath(firstPath);
-            const editor = await guard(`Failed to open ${fpBasename(firstPath)}`, () =>
+            const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(firstPath) }), () =>
                 this.createEditorFromFile(firstPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
             existingFirst = this.addPage(wrap(editor));
         }
         if (!existingSecond) {
             const pipe = await this.createPipeFromPath(secondPath);
-            const editor = await guard(`Failed to open ${fpBasename(secondPath)}`, () =>
+            const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(secondPath) }), () =>
                 this.createEditorFromFile(secondPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
             existingSecond = this.addPage(wrap(editor));
@@ -1126,7 +1127,7 @@ export class PagesLifecycleModel {
         editorId: string,
         pageId?: string | (() => Promise<string>),
     ): Promise<PageModel | undefined> =>
-        guard(`Failed to open "${editorId}"`, async () => {
+        guard(t("api.failedToOpenEditor", { editorId }), async () => {
             // Resolved inside the guard on purpose: each caller's page-id constant
             // comes from the editor's own module, so that import fails for exactly
             // the same reasons `createEditor` does — and it runs first. Guarding

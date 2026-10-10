@@ -16,6 +16,7 @@ import { boardInstallRegistry } from "./board-install-registry";
 import { boardTrust } from "./board-trust";
 import { errMessage } from "../../shared/utils";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+import { t } from "../../shared/i18n/t";
 
 function newInstallId(): string {
     return crypto.randomUUID();
@@ -130,9 +131,8 @@ export async function uninstallCatalogBoard(args: {
 }): Promise<boolean> {
     const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
     const choice = await showConfirmationDialog({
-        title: "Delete board",
-        message:
-            `Delete board "${args.name}"? This permanently removes its folder and all its files.`,
+        title: t("api.deleteBoardTitle"),
+        message: t("api.deleteBoardConfirmation", { name: args.name }),
         buttons: [dialogButton(DialogButton.delete), dialogButton(DialogButton.cancel)],
     });
     if (choice !== DialogButton.delete) return false;
@@ -145,7 +145,7 @@ export async function uninstallCatalogBoard(args: {
         await fs.removeDir(args.root, true);
     } catch (err) {
         const { ui } = await import("./ui");
-        ui.notify(errMessage(err, "Failed to delete the board folder."), "error");
+        ui.notify(errMessage(err, t("api.failedToDeleteBoardFolder")), "error");
         return false;
     }
     await boardTrust.untrust(args.root);

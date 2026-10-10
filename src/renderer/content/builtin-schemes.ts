@@ -1,6 +1,7 @@
 import type { ILinkData } from "../../shared/link-data";
 import { openImageForEdit, notifyEditCapabilityFailure } from "../api/capability-feedback";
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 import { parseGuideUrl } from "../../shared/guides/guide-links";
 import {
     effectivePathOf,
@@ -65,7 +66,7 @@ async function parseVirtual(
 async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const parsed = decodeFolderEditorLink(data.href);
     if (!parsed) {
-        await notifyUser(`Invalid folder editor link: ${data.href}`, "warning");
+        await notifyUser(t("api.invalidFolderEditorLink", { href: data.href }), "warning");
         data.handled = true;
         return;
     }
@@ -79,7 +80,7 @@ async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<
     const parsed = parseGuideUrl(data.href);
     if (!parsed) {
         await notifyUser(
-            `Invalid guide link: ${data.href}. Expected persephone-guide://<corpus-path>[#anchor].`,
+            t("api.invalidGuideLink", { href: data.href }),
             "warning",
         );
         data.handled = true;
@@ -157,8 +158,8 @@ async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "inter
         if (!data.unattributedPopup) return "allow";
         const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
         return await showConfirmationDialog({
-            title: "Open external link?",
-            message: `This popup has no trusted board origin. Open ${data.url} outside Persephone?`,
+            title: t("api.externalLinkTitle"),
+            message: t("api.externalLinkUnattributed", { url: data.url ?? "" }),
             buttons: [dialogButton(OPEN_EXTERNAL_LINK), dialogButton(DialogButton.cancel)],
         }) === OPEN_EXTERNAL_LINK ? "allow" : "deny";
     }
@@ -210,7 +211,7 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
         try {
             await openImageForEdit({ dataUrl: data.url, title: data.title || "drawing" });
         } catch (error) {
-            notifyEditCapabilityFailure(error, "image.edit", "Failed to open image for editing");
+            notifyEditCapabilityFailure(error, "image.edit", t("api.failedToOpenImageForEditing"));
         }
         data.handled = true;
         return;
@@ -246,7 +247,7 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
     const parsed = parseGuideUrl(data.url);
     if (!parsed) {
         await notifyUser(
-            `Invalid guide link: ${data.url}. Expected persephone-guide://<corpus-path>[#anchor].`,
+            t("api.invalidGuideUrl", { url: data.url }),
             "error",
         );
         data.handled = true;
@@ -270,7 +271,7 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
         if (!page) {
             const { ui } = await import("../api/ui");
             ui.notify(
-                `Guide not found: ${parsed.path}. Use the guide index to inspect available pages.`,
+                t("api.guideNotFound", { path: parsed.path }),
                 "error",
             );
             data.handled = true;
@@ -288,7 +289,7 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
         await context.handoff();
     } catch (error) {
         const { ui } = await import("../api/ui");
-        ui.notify(`Failed to open guide ${parsed.path}: ${errMessage(error)}`, "error");
+        ui.notify(t("api.failedToOpenGuide", { path: parsed.path, error: errMessage(error) }), "error");
         data.handled = true;
     }
 }
@@ -316,11 +317,11 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
             const { CapabilityError } = await import("../api/capability-bus");
             if (error instanceof CapabilityError && error.code === "no-handler") {
                 await notifyUser(
-                    "No REST Client board is registered. Enable it in Tools & Editors or install a replacement.",
+                    t("api.noRestClientRegistered"),
                     "warning",
                 );
             } else {
-                await notifyUser(`Failed to open request in REST Client: ${errMessage(error)}`, "error");
+                await notifyUser(t("api.failedToOpenRequestInRestClient", { error: errMessage(error) }), "error");
             }
         }
         data.handled = true;

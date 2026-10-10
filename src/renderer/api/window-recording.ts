@@ -1,6 +1,7 @@
 import { app } from "./app";
 import { pagesModel } from "./pages";
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 import { api } from "../../ipc/renderer/api";
 import color from "../theme/color";
 import type { RecordingRegion } from "../../ipc/api-param-types";
@@ -157,7 +158,7 @@ class WindowRecordingModel {
                 recorder.addEventListener("error", () => resolve(), { once: true });
             });
         } catch (error: unknown) {
-            app.ui.notify(`Could not start recording: ${errMessage(error)}`, "error");
+            app.ui.notify(t("api.recordingCouldNotStart", { error: errMessage(error) }), "error");
             if (this.current && this.current !== existing) await this.cancel();
             throw error;
         }
@@ -179,7 +180,7 @@ class WindowRecordingModel {
                 await api.appendWindowRecordingChunk({ recordingId: session.id, chunk: bytes });
             });
         };
-        recorder.onerror = (event) => { app.ui.notify(`Recording failed: ${errMessage(event)}`, "error"); void this.cancel(); };
+        recorder.onerror = (event) => { app.ui.notify(t("api.recordingFailed", { error: errMessage(event) }), "error"); void this.cancel(); };
         recorder.onstart = () => {
             session.startedAt = performance.now();
             this.setState({ status: "recording", elapsedMs: 0, region: session.region });
@@ -189,7 +190,7 @@ class WindowRecordingModel {
         recorder.onresume = () => { session.startedAt = performance.now(); this.setState({ status: "recording", elapsedMs: session.elapsedMs, region: session.region }); };
         try { recorder.start(1000); }
         catch (error: unknown) {
-            app.ui.notify(`Could not start recording: ${errMessage(error)}`, "error");
+            app.ui.notify(t("api.recordingCouldNotStart", { error: errMessage(error) }), "error");
             void this.cancel();
             throw error;
         }
@@ -230,7 +231,7 @@ class WindowRecordingModel {
         session.recorder?.stream.getTracks().forEach((track) => track.stop());
         session.media.getTracks().forEach((track) => track.stop());
         if (session.video) { session.video.pause(); session.video.srcObject = null; }
-        await api.cancelWindowRecording(session.id).catch((error: unknown) => app.ui.notify(`Could not remove recording: ${errMessage(error)}`, "error"));
+        await api.cancelWindowRecording(session.id).catch((error: unknown) => app.ui.notify(t("api.recordingCouldNotRemove", { error: errMessage(error) }), "error"));
         this.setState({ status: "idle", elapsedMs: 0 });
     }
 
@@ -253,7 +254,7 @@ class WindowRecordingModel {
             const extension = session.mimeType?.includes("mp4") ? "mp4" : "webm";
             path = await api.finalizeWindowRecording({ recordingId: session.id, extension });
         } catch (error: unknown) {
-            app.ui.notify(`Could not finish recording: ${errMessage(error)}`, "error");
+            app.ui.notify(t("api.recordingCouldNotFinish", { error: errMessage(error) }), "error");
             await this.cancel();
             throw error;
         }

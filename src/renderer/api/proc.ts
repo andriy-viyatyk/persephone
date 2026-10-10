@@ -63,13 +63,16 @@ const INBOUND = [
     RunnerChannel.error,
 ] as const;
 
+/** API handle name used in diagnostics; not UI text. */
+const EXECUTE_HANDLE_LABEL = "proc.execute";
+
 export const proc: IProc = {
     execute(command: string, options?: IExecuteOptions): IExecuteHandle {
         const jobId = `p_${++idCounter}_${Date.now()}`;
         return createExecuteHandle(
             {
                 jobId,
-                label: "proc.execute",
+                label: EXECUTE_HANDLE_LABEL,
                 send: (channel, msg) =>
                     ipcRenderer.sendMessage(channel as unknown as never, msg as never),
                 subscribe: (deliver) => {

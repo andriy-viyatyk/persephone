@@ -1,4 +1,5 @@
 import { errMessage } from "../../shared/utils";
+import { englishMessage, t } from "../../shared/i18n/t";
 import { OwnershipRegistry } from "../../shared/ownership-registry";
 import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 import type { IProvider, IProviderDescriptor } from "../api/types/io.provider";
@@ -110,7 +111,7 @@ export function validateProviderShape(
 
 function reportProviderShapeFailure(message: string): void {
     void import("../api/ui")
-        .then(({ ui }) => ui.notify(message, "error"))
+        .then(({ ui }) => ui.notify(t("api.providerRegistrationFailed", { error: message }), "error"))
         .catch((error: unknown) => {
             console.error(`Failed to report provider shape failure: ${errMessage(error)}`);
         });
@@ -143,7 +144,7 @@ function reportTransformerDuplicate(
     kind: string,
     name: string,
 ): void {
-    const reason = `Duplicate ${kind} registration: "${name}". The first registration remains active.`;
+    const reason = t("api.duplicateProviderRegistration", { kind, name });
     void import("../api/ui")
         .then(({ ui }) => ui.notify(
             reason,
@@ -156,8 +157,8 @@ function reportTransformerDuplicate(
 
 function duplicateResult(kind: string, name: string, existing: ProviderRegistration): RegistrationResult {
     const reason = existing.owner
-        ? `${kind} "${name}" is already owned by board "${existing.owner}".`
-        : `${kind} "${name}" is already registered by ${existing.origin}.`;
+        ? englishMessage("api.duplicateProviderOwnedByBoard", { kind, name, owner: existing.owner })
+        : englishMessage("api.duplicateProviderRegisteredBy", { kind, name, origin: existing.origin });
     return { accepted: false, reason, owner: existing.owner, existingOrigin: existing.origin };
 }
 

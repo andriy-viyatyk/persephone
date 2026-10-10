@@ -1,4 +1,5 @@
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 import type {
     CapabilityHandlerFilter,
     CapabilityId,
@@ -56,7 +57,7 @@ function reportDuplicate(id: CapabilityId, representation: string | undefined): 
     const name = representation ? `${id}/${representation}` : id;
     void import("./ui")
         .then(({ ui }) => ui.notify(
-            `Duplicate capability registration: "${name}". The first registration remains active.`,
+            t("api.duplicateCapabilityRegistration", { name }),
             "error",
         ))
         .catch((error: unknown) => {

@@ -16,8 +16,8 @@ phase 3 (boards localization) and phase 4 (the 17 built-in language packs and th
   - [ ] [US-1653: Widen the lint rule to every UI position; per-area baseline](tasks/US-1653-lint-coverage/README.md)
   - [ ] [US-1654: App shell, tabs, sidebar, editor display names](tasks/US-1654-shell-strings/README.md)
   - [ ] [US-1655: Menus and context menus, tree providers, shared editor menus, file components](tasks/US-1655-menu-strings/README.md)
-  - [ ] US-1656: API layer, content pipeline, notifications outside editors
-  - [ ] US-1657: Browser editor
+  - [ ] [US-1656: API layer, content pipeline, notifications outside editors](tasks/US-1656-api-strings/README.md)
+  - [ ] [US-1657: Browser editor](tasks/US-1657-browser-strings/README.md)
   - [ ] US-1658: Board host: board editor, board info, env vars, toolsets, board context menu
   - [ ] US-1659: Explorer and link editor
   - [ ] US-1660: Git tree, file diff, compare, archive

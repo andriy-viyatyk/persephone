@@ -111,8 +111,8 @@ Claude), as in EPIC-124.
 | [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Planned |
 | [US-1654](../tasks/US-1654-shell-strings/README.md) | App shell, tabs, sidebar, editor display names | Planned |
 | [US-1655](../tasks/US-1655-menu-strings/README.md) | Menus and context menus, tree providers, shared editor menus, file components | Planned |
-| US-1656 | API layer, content pipeline, notifications outside editors | Planned |
-| US-1657 | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
+| [US-1656](../tasks/US-1656-api-strings/README.md) | API layer, content pipeline, notifications outside editors | Planned |
+| [US-1657](../tasks/US-1657-browser-strings/README.md) | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
 | US-1658 | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
 | US-1659 | Explorer and link editor | Planned |
 | US-1660 | Git tree, file diff, compare, archive | Planned |
@@ -240,6 +240,12 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   (`[ţéxţ éðîţöŕ]`), the menu bar (built-in folders, "Add folder"), Open Tabs window groups,
   Tools & Editors, Recent Files, Script Library. Editor names over MCP / `app.editors.list` stay
   English. Layout: the menu bar's left column cuts off "Tools & Editors" under `en-XA`.
+
+- **US-1655 — menus.** Right-click a file or folder in Explorer: every item is translated and has
+  a stable id (`menus[0].click("rename")` works in any language). Also the find bar tooltips
+  (Browser/Markdown `Ctrl+F`), File Search placeholders, the Git tree grid headers and "Load more",
+  and the page loading shell (`Retry` / `Close page`). Not opened live: the move/copy/overwrite
+  confirmations from drag-and-drop in the tree.
 
 ## Notes
 

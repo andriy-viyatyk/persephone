@@ -4,6 +4,7 @@ import { parseHttpRequest } from "../core/utils/curl-parser";
 import { canonicalizeScheme, dispatchRegisteredSchemeParse } from "./scheme-registry";
 import "./builtin-schemes";
 import { normalizeFileUrl, isFileUrl, isPlausibleFilePath, splitUrlFragment } from "./link-utils";
+import { t } from "../../shared/i18n/t";
 
 /** Register Layer 1 fallbacks and the registry-backed scheme dispatcher. */
 export function registerRawLinkParsers(): void {
@@ -17,7 +18,7 @@ export function registerRawLinkParsers(): void {
         }
         if (!isPlausibleFilePath(filePath)) {
             const { ui } = await import("../api/ui");
-            ui.notify(`Invalid file path: ${filePath}`, "warning");
+            ui.notify(t("api.invalidFilePath", { path: filePath }), "warning");
             data.handled = true;
             return;
         }

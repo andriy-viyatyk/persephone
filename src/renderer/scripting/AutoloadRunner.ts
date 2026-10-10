@@ -6,6 +6,7 @@ import { fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "../api/fs";
 import { TOneState } from "../core/state/state";
 import { errMessage } from "../../shared/utils";
+import { t } from "../../shared/i18n/t";
 
 interface AutoloadState {
     /** Whether autoload scripts are currently loaded. */
@@ -124,7 +125,7 @@ class AutoloadRunner {
             this.dispose();
             // Dynamic import to avoid pulling ui module at load time
             import("../api/ui").then(({ ui }) => {
-                ui.notify(`Autoload script error: ${message}`, "error");
+                ui.notify(t("api.autoloadScriptError", { message }), "error");
             });
         }
     }

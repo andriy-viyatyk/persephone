@@ -5,6 +5,7 @@ import { TComponentModel } from "../../core/state/model";
 import { formatBytes } from "../../core/utils/format-bytes";
 import { subscribePagePipe } from "./page-pipe";
 import { t } from "../../../shared/i18n/t";
+import { httpStatusDisplayText } from "./http-status-text";
 
 export interface PagePipeStatusProps {
     page: PageModel;
@@ -99,7 +100,7 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
                 ...base,
                 visible: true,
                 kind: "busy",
-                label: summary.text || t("menus.loading"),
+                label: (httpStatusDisplayText(pipe.provider.type, summary) ?? summary.text) || t("menus.loading"),
                 loaded: progress?.loaded,
                 total: progress?.total,
                 hasProgress: !!progress && Number.isFinite(progress.loaded)
@@ -113,7 +114,7 @@ export class PagePipeStatusModel extends TComponentModel<PagePipeStatusState, Pa
                 ...base,
                 visible: !base.dismissed,
                 kind: "error",
-                label: summary.text || summary.detail || t("menus.unableToLoadContent"),
+                label: (httpStatusDisplayText(pipe.provider.type, summary) ?? summary.text) || summary.detail || t("menus.unableToLoadContent"),
             });
             return;
         }

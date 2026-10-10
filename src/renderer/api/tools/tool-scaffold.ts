@@ -15,6 +15,7 @@
  * (electron-builder `extraResources`), so the template is always present.
  */
 import { api } from "../../../ipc/renderer/api";
+import { t } from "../../../shared/i18n/t";
 import { fs } from "../fs";
 import { ui } from "../ui";
 import { fpJoin } from "../../core/utils/file-path";
@@ -52,9 +53,7 @@ export async function createToolset(name: string, dir: string): Promise<string> 
         // Template missing / copy failed — still produce a usable toolset folder.
         await fs.mkdir(toolsetRoot);
         ui.notify(
-            `Toolset created, but the template could not be copied: ${
-                errMessage(err)
-            }`,
+            t("api.toolsetTemplateCopyFailed", { error: errMessage(err) }),
             "warning",
         );
     }
