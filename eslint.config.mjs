@@ -198,6 +198,18 @@ const vanillaViewPlugin = {
                 const report = (node) => {
                     if (literalHasLetters(node)) context.report({ node, messageId: "hardcoded" });
                 };
+                const isInternalUiServiceCall = (callee, methodName) => callee.type === "MemberExpression"
+                    && memberName(callee) === methodName
+                    && (callee.object.type === "Identifier" && callee.object.name === "ui"
+                        || callee.object.type === "MemberExpression"
+                            && memberName(callee.object) === "ui"
+                            && callee.object.object.type === "Identifier"
+                            && ["app", "services"].includes(callee.object.object.name));
+                const propertyKey = (node) => node.key.type === "Identifier"
+                    ? node.key.name
+                    : node.key.type === "Literal" && typeof node.key.value === "string"
+                        ? node.key.value
+                        : undefined;
 
                 return {
                     ImportDeclaration(node) {
@@ -218,12 +230,11 @@ const vanillaViewPlugin = {
                         }
                     },
                     Property(node) {
-                        const key = node.key.type === "Identifier"
-                            ? node.key.name
-                            : node.key.type === "Literal" && typeof node.key.value === "string"
-                                ? node.key.value
-                                : undefined;
-                        if (["label", "title", "placeholder", "tooltip", "children", "emptyText"].includes(key)) {
+                        const key = propertyKey(node);
+                        const isEditorRegistryName = filename.endsWith("/src/renderer/editors/register-editors.ts")
+                            && key === "name";
+                        if (["label", "title", "placeholder", "tooltip", "children", "emptyText", "emptyMessage", "ariaLabel", "aria-label"].includes(key)
+                            || isEditorRegistryName) {
                             report(node.value);
                         }
                     },
@@ -236,16 +247,25 @@ const vanillaViewPlugin = {
                         if (!argument || argument.type === "SpreadElement") return;
                         const callee = node.callee;
                         const name = callee.type === "Identifier" ? callee.name : undefined;
-                        const isUiNotify = callee.type === "MemberExpression"
-                            && memberName(callee) === "notify"
-                            && ((callee.object.type === "Identifier" && callee.object.name === "ui")
-                                || (callee.object.type === "MemberExpression"
-                                    && memberName(callee.object) === "ui"
-                                    && callee.object.object.type === "Identifier"
-                                    && callee.object.object.name === "app"));
+                        const memberCalleeName = callee.type === "MemberExpression" ? memberName(callee) : undefined;
+                        const isInternalUiTextCall = ["notify", "confirm", "input"].some((method) => isInternalUiServiceCall(callee, method));
                         if ((name && textElementBindings.has(name))
                             || (name && settingsNativeTextBindings.has(name))
-                            || isUiNotify) report(argument);
+                            || isInternalUiTextCall) report(argument);
+
+                        if (/^show\w*Dialog$/.test(name ?? memberCalleeName ?? "") && argument.type === "ObjectExpression") {
+                            for (const property of argument.properties) {
+                                if (property.type === "Property" && propertyKey(property) === "message") report(property.value);
+                            }
+                        }
+
+                        if (memberCalleeName === "setAttribute"
+                            && argument.type === "Literal"
+                            && ["aria-label", "title", "placeholder"].includes(argument.value)
+                            && node.arguments[1]
+                            && node.arguments[1].type !== "SpreadElement") {
+                            report(node.arguments[1]);
+                        }
                     },
                 };
             },

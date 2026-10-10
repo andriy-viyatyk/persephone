@@ -32,14 +32,18 @@ translate the whole interface.
 Roadmap decisions D1–D16 stand (accepted 2026-10-09). This epic adds these. They are proposals for
 the user to confirm or change:
 
-- **E1 — Make the lint rule see everything first.** Today it reports **892** literals in 196 files
-  (measured 2026-10-10). That is a floor: it only checks `label`, `title`, `placeholder`, `tooltip`,
+- **E1 — Make the lint rule see everything first.** Before widening, the rule reported **892** literals
+  in 196 files (measured 2026-10-10). After US-1653 widened the rule, it reports **975** literals in
+  201 files (measured 2026-10-10). Before widening, it only checked `label`, `title`, `placeholder`,
+  `tooltip`,
   `children`, `emptyText`, `textContent` / `title` / `placeholder` assignments,
   `createTextElement`, and `ui.notify` / `app.ui.notify` calls. A grep finds UI text it misses:
   `services.ui.notify(…)` and other receivers, `message:` (~28), `text:` (~18), `description:`
   (~16), `ariaLabel` / `aria-label` (~4), `emptyMessage` (~6), and editor display names
-  (`register-editors.ts`, ~37 `name:` entries). The first task widens the rule, so every area task
-  starts from an accurate list and finishes at zero.
+  (`register-editors.ts`, ~37 `name:` entries). US-1653 adds receiver-scoped toast/confirm/input
+  checks, direct dialog `message` checks, `emptyMessage` and accessibility text positions, and the
+  registry-only `name` check. It deliberately does not add global `message`, `text`, or `description`
+  checks because those keys also carry data and agent-facing schemas.
 - **E2 — Strings that are both UI and agent text are split, not shared.** Editor names
   (`register-editors.ts` `name`), the Tools hub and sidebar registries, and any MCP-visible
   description keep an English field for agents and get a catalog key for the UI, like
@@ -65,27 +69,33 @@ the user to confirm or change:
   build pass; under `en-XA`, a live snapshot of each screen in the area shows no plain English
   outside E5; agents still drive the area through MCP (ids and `data-name`, not labels).
 
-## Current state (verified 2026-10-10)
+## Current state (verified 2026-10-10; after US-1653 widening)
 
-`no-hardcoded-ui-strings` reports, by area (before E1 widens the rule):
+`no-hardcoded-ui-strings` reports, by area. Counts include only this rule; paths are bucketed relative
+to `src/`, collapsing the leading `renderer/` for display and retaining the existing area labels:
 
 | Area | Reports | Files |
 |---|---|---|
-| `editors/browser` | 102 | 15 |
-| `ui/sidebar` | 64 | 11 |
-| `editors/link-editor` | 58 | 10 |
-| `editors/explorer` | 51 | 5 |
-| `editors/mneme-config` | 50 | 4 |
-| `components/tree-provider` | 45 | 7 |
-| `editors/git-tree` | 43 | 7 |
-| `editors/notebook` | 42 | 8 |
+| `editors/browser` | 103 | 15 |
+| `ui/sidebar` | 66 | 11 |
+| `editors/link-editor` | 61 | 10 |
+| `components/tree-provider` | 57 | 7 |
+| `editors/explorer` | 55 | 5 |
+| `editors/mneme-config` | 51 | 4 |
+| `editors/git-tree` | 45 | 7 |
+| `editors/notebook` | 44 | 8 |
+| `editors` | 43 | 1 |
 | `editors/mcp-inspector` | 41 | 7 |
+| `api` | 34 | 16 |
 | `editors/tools-hub` | 30 | 4 |
-| `api` | 27 | 15 |
-| `editors/about`, `editors/board`, `editors/shared` | 20 each | 4 / 9 / 4 |
-| `content`, `editors/board-info`, `editors/storybook` | 15 each | 5 / 2 / 5 |
-| everything else (31 areas) | ≤ 14 each | — |
-| **Total** | **892** | **196** |
+| `editors/board` | 21 | 9 |
+| `editors/about` | 21 | 4 |
+| `editors/shared` | 20 | 4 |
+| `editors/text` | 18 | 6 |
+| `editors/storybook`, `content` | 16 each | 5 / 5 |
+| `editors/board-info` | 16 | 2 |
+| everything else (27 areas) | ≤ 14 each | — |
+| **Total** | **975** | **201** |
 
 Phase 1 leftovers, which belong to this epic: the uikit tree's `Collapse` / `Expand` aria-labels,
 the browser-profile color names (`Dodger Blue`, …), and long Settings tree labels, which are
@@ -98,7 +108,7 @@ Claude), as in EPIC-124.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1653 | Widen the lint rule to every UI position; per-area baseline | Planned |
+| [US-1653](../tasks/US-1653-lint-coverage/README.md) | Widen the lint rule to every UI position; per-area baseline | Planned |
 | US-1654 | App shell, tabs, sidebar, editor display names | Planned |
 | US-1655 | Menus and context menus, tree providers, shared editor menus, file components | Planned |
 | US-1656 | API layer, content pipeline, notifications outside editors | Planned |
@@ -114,17 +124,17 @@ Claude), as in EPIC-124.
 
 ### US-1653 — Lint coverage and baseline
 
-- Extend `no-hardcoded-ui-strings` (`eslint.config.mjs`) to the positions in E1: any `*.ui.notify`
-  / `notify` receiver used for UI toasts, `message`, `text`, `description`, `ariaLabel`,
-  `aria-label` via `setAttribute`, `emptyMessage`, and editor `name` in the editor registry. Each
-  addition is checked for false positives first: a key that is not UI in some file gets an exemption
-  that names the reason, not an inline disable.
-- Agent-facing data that falls inside a UI folder (an English field kept for agents under E2) is
-  exempted by file in `isExcludedI18nFile()`, with a comment.
-- Record the new per-area counts in this document's Current state table; the area tasks work from
-  them.
-- **Acceptance:** lint still passes (warnings only); every new position has at least one real hit
-  and no known false positive; the table is updated.
+- `no-hardcoded-ui-strings` now uses one receiver predicate for `ui.x`, `app.ui.x`, and
+  `services.ui.x`; it reports arguments to `notify`, `confirm`, and `input`. It also checks `message`
+  only on direct object literals passed to `show…Dialog` functions, adds `emptyMessage`, `ariaLabel`,
+  and `"aria-label"` property keys, checks exact `setAttribute("aria-label" | "title" |
+  "placeholder", value)` calls, and checks literal editor `name` values only in
+  `src/renderer/editors/register-editors.ts`.
+- Do not add generic `message`, `text`, or `description` property checks. No new finding landed in the
+  excluded MCP/API declaration, MCP implementation, AI-vision, API-wrapper, or Settings catalog
+  files. The registry names remain intentionally visible to the rule and are split under US-1654.
+- The rule remains warning-level; `npm run lint` and `npm run typecheck` pass. The Current state table
+  records 975 reports in 201 files, bucketed by the US-1653 per-area method.
 
 ### US-1654 — App shell, tabs, sidebar, editor names
 
@@ -224,4 +234,5 @@ Claude), as in EPIC-124.
 
 ### 2026-10-10
 - Epic created from phase 2 of the localization roadmap. Lint baseline measured: 892 reports in 196
-  files; the roadmap's ~2,000 estimate included patterns the rule does not yet see (E1).
+  files before widening; the roadmap's ~2,000 estimate included patterns the rule did not yet see (E1).
+- US-1653 widened lint coverage and measured 975 reports in 201 files after widening.

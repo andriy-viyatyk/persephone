@@ -12,12 +12,8 @@ phase 3 (boards localization) and phase 4 (the 17 built-in language packs and th
 
 ## Active
 
-*(none)*
-
-## Planned
-
 - **EPIC-125** — [Extract every UI string (interface languages, phase 2)](epics/EPIC-125.md)
-  - [ ] US-1653: Widen the lint rule to every UI position; per-area baseline
+  - [ ] [US-1653: Widen the lint rule to every UI position; per-area baseline](tasks/US-1653-lint-coverage/README.md)
   - [ ] US-1654: App shell, tabs, sidebar, editor display names
   - [ ] US-1655: Menus and context menus, tree providers, shared editor menus, file components
   - [ ] US-1656: API layer, content pipeline, notifications outside editors
@@ -30,6 +26,10 @@ phase 3 (boards localization) and phase 4 (the 17 built-in language packs and th
   - [ ] US-1663: Remaining editors and uikit defaults
   - [ ] US-1664: Monaco UI language (D9)
   - [ ] US-1665: Layout fixes, lint rule to error, closing sweep
+
+## Planned
+
+*(none)*
 
 ## Scheduled
 
