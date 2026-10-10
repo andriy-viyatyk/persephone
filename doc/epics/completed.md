@@ -1,6 +1,6 @@
 ## EPIC-127 — Language packs (interface languages, phase 4)
 
-Completed 2026-10-11. Phase 4, the last phase of the [localization roadmap](../localization-roadmap.md):
+Completed 2026-10-11. Phase 4, the last phase of the localization roadmap:
 agents read, write and validate language packs through an API, and Persephone ships 17 built-in
 languages for the app, its bundled boards and the 15 catalog boards. Epic document:
 [EPIC-127](EPIC-127.md).
@@ -26,7 +26,7 @@ languages for the app, its bundled boards and the 15 catalog boards. Epic docume
 
 ## EPIC-126 — Boards localization (interface languages, phase 3)
 
-Completed 2026-10-10. Phase 3 of the [localization roadmap](../localization-roadmap.md): every
+Completed 2026-10-10. Phase 3 of the localization roadmap: every
 bundled and catalog board reads its text from language packs and follows the app language. Boards
 ship English packs only; translated board packs are drafted in phase 4 (F7). Epic document:
 [EPIC-126](EPIC-126.md).
@@ -52,7 +52,7 @@ ship English packs only; translated board packs are drafted in phase 4 (F7). Epi
 
 ## EPIC-125 — Extract every UI string (interface languages, phase 2)
 
-Completed 2026-10-10. Phase 2 of the [localization roadmap](../localization-roadmap.md): every
+Completed 2026-10-10. Phase 2 of the localization roadmap: every
 app-owned interface string now comes from the English catalog (1,512 messages in 19 areas), so a
 language pack can translate the whole interface. Still ships English only; packs are phase 4. Epic
 document: [EPIC-125](EPIC-125.md).
@@ -71,7 +71,7 @@ document: [EPIC-125](EPIC-125.md).
 
 ## EPIC-124 — Localization foundation (interface languages, phase 1)
 
-Completed 2026-10-10. Phase 1 of the [localization roadmap](../localization-roadmap.md): the
+Completed 2026-10-10. Phase 1 of the localization roadmap: the
 translation layer, the language setting and the conventions, proven on the Settings page and the
 dialogs. No translated packs ship yet; they are phase 4. Epic document: [EPIC-124](EPIC-124.md).
 

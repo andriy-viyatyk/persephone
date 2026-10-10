@@ -8,7 +8,7 @@
 
 ## Overview
 
-Phase 2 of the [localization roadmap](../localization-roadmap.md). EPIC-124 built the translation
+Phase 2 of the localization roadmap. EPIC-124 built the translation
 layer and converted the Settings page and the dialogs. This epic converts every remaining
 app-owned UI string to the English catalog, area by area, and checks each area under the `en-XA`
 pseudo-language. At the end the lint rule becomes an error, so new hardcoded text cannot land, and

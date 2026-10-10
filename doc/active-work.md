@@ -6,13 +6,6 @@ Overview of all active and planned epics and tasks.
 - Task details tracked in [`/doc/tasks/completed.md`](tasks/completed.md) after completion
 - Ideas and future concepts in [`/doc/tasks/backlog.md`](tasks/backlog.md)
 
-The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
-[EPIC-124](epics/completed.md)) is done; phase 2 (every UI string
-extracted, [EPIC-125](epics/completed.md)) is done; phase 3 (boards localization,
-[EPIC-126](epics/completed.md)) is done; phase 4
-(language packs for agents and 17 built-in languages, [EPIC-127](epics/completed.md)) is done.
-Next: the user's local test and the boards publish.
-
 ## Active
 
 *(none)*

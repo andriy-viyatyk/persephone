@@ -21,7 +21,6 @@ The in-app copy in `/assets/guides/` is canonical: users read these guides in th
 - [Architecture Overview](./architecture/overview.md)
 - [Active Work Dashboard](./active-work.md)
 - [Coding Style Guide](./standards/coding-style.md)
-- [Localization Roadmap](./localization-roadmap.md) — interface languages, language packs, board localization
 
 ## Future Work
 

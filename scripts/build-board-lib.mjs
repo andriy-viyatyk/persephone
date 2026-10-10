@@ -26,7 +26,7 @@ const libraryRoot = join(boardRoot, "lib");
 const dependencyRoot = join(libraryRoot, "deps");
 
 // EPIC-109 D9: the Chinese handwriting family is 13 MB of the package's 14 MB of fonts.
-// Keep only the Excalidraw locales for the non-English languages in localization-roadmap.md
+// Keep only the Excalidraw locales for Persephone's built-in non-English languages (assets/languages)
 // §4; Estonian and Belarusian have no Excalidraw locale. A version bump must not quietly
 // re-add every vendor locale.
 const excludedFontFamily = "fonts/Xiaolai/";

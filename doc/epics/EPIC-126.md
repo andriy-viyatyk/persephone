@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 3 of the [localization roadmap](../localization-roadmap.md). After EPIC-125, everything
+Phase 3 of the localization roadmap. After EPIC-125, everything
 Persephone draws is in the English catalog, but boards are still English only. A board's own text
 lives in its own files, and the board webview has no idea which language the app uses. This epic
 gives boards the same model as the app (roadmap D10). A board ships `lang/<code>.json` packs, the

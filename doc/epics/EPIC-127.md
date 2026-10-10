@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 4, the last phase of the [localization roadmap](../localization-roadmap.md). After EPIC-124
+Phase 4, the last phase of the localization roadmap. After EPIC-124
 to EPIC-126, every string the app and its boards show comes from an English catalog or pack, but
 English is the only language that ships. This epic gives an agent what it needs to write a pack
 (the `app.languages` API and an agent guide, D17), proves the guide with a QA run, and then uses

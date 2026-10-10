@@ -9,7 +9,7 @@
 ## Overview
 
 Persephone's interface is English only, with about 2,000 literals written inline across ~400
-files. This epic is phase 1 of the [localization roadmap](../localization-roadmap.md): it builds the
+files. This epic is phase 1 of the localization roadmap: it builds the
 translation layer, the language setting and the conventions, moves identity off displayed text, and
 proves the pattern end to end on the Settings page and the dialogs. Phases 2–4 (extract every
 string, localize boards, language packs and the Language Editor board) become their own epics.
@@ -29,7 +29,7 @@ string, localize boards, language packs and the Language Editor board) become th
 
 ## Decisions
 
-All roadmap decisions D1–D15 ([§3](../localization-roadmap.md#3-decisions-accepted-2026-10-09)) were accepted
+All roadmap decisions D1–D15 (roadmap §3) were accepted
 by the user on 2026-10-09, including the eighteen built-in languages (§4; Belarusian, Romanian, Slovak and Hungarian added
 the same day), no Russian ever (D15), reload-on-switch (D5),
 the English agent surface (D3) and agent-drafted translations with user review of Ukrainian (D14).
