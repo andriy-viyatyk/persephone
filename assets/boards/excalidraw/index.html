@@ -77,6 +77,7 @@
         const {
             Excalidraw,
             FONT_FAMILY,
+            languages,
             convertToExcalidrawElements,
             exportToBlob,
             exportToSvg,
@@ -87,6 +88,10 @@
         );
 
         const EMPTY_SCENE = { elements: [], appState: {}, files: {} };
+        const BUNDLED_LOCALE_CODES = [
+            "uk-UA", "pl-PL", "lt-LT", "lv-LV", "ro-RO", "sk-SK", "hu-HU", "de-DE",
+            "fr-FR", "es-ES", "pt-BR", "it-IT", "zh-CN", "ja-JP", "ko-KR",
+        ];
         const IMAGE_OFFSET_X = 250;
         const IMAGE_OFFSET_Y = 120;
         const MAX_DIMENSION = 1200;
@@ -99,6 +104,19 @@
             { name: "elementCount", kind: "property", summary: "Number of elements on the canvas." },
             { name: "editorIsMounted", kind: "property", summary: "Whether the Excalidraw editor is currently mounted. When true, addImage() works. When false, addImage() throws." },
         ];
+
+        function resolveLangCode(appLocale) {
+            const normalizedLocale = typeof appLocale === "string" ? appLocale.toLowerCase() : "";
+            const bundledLanguages = languages.filter(language =>
+                BUNDLED_LOCALE_CODES.some(code => code.toLowerCase() === language.code.toLowerCase()),
+            );
+            const exact = bundledLanguages.find(language => language.code.toLowerCase() === normalizedLocale);
+            if (exact) return exact.code;
+            const base = normalizedLocale.split("-")[0];
+            return bundledLanguages.find(language => language.code.toLowerCase().split("-")[0] === base)?.code || "en";
+        }
+
+        const langCode = resolveLangCode(persephone.locale.code);
 
         function parseExcalidrawContent(content) {
             if (typeof content !== "string" || content.trim() === "") return EMPTY_SCENE;
@@ -829,6 +847,7 @@
             root.render(
                 React.createElement(Excalidraw, {
                     initialData: scene,
+                    langCode,
                     theme: drawDarkMode ? "dark" : "light",
                     onChange: scheduleHostWrite,
                     excalidrawAPI: adoptExcalidrawApi,

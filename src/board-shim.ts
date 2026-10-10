@@ -48,6 +48,7 @@ import type {
     BoardJsonValue,
     BoardFireMethod,
     BoardHostContentMsg,
+    BoardHostTextId,
     BoardSourceOpenedMsg,
     BoardJobInfo,
     BoardToolbarControlEventMsg,
@@ -186,8 +187,67 @@ const boot: BoardBootContext =
     (window as unknown as { __persephoneBoot?: BoardBootContext }).__persephoneBoot ?? {
         theme: { id: "", isDark: true, vars: {} },
         tokens: {},
+        i18n: { locale: { code: "en" }, tables: [{}, {}, {}] },
+        hostText: {} as BoardBootContext["hostText"],
         hostOrigin: "",
     };
+
+const ENGLISH_BOARD_HOST_TEXT: Record<BoardHostTextId, string> = {
+    openLink: "Open Link",
+    copyLink: "Copy Link",
+    openImageInNewTab: "Open Image in New Tab",
+    copyImage: "Copy Image",
+    saveImageAs: "Save Image As…",
+    imageFileFilter: "Image",
+    allFilesFileFilter: "All Files",
+    cut: "Cut",
+    copy: "Copy",
+    paste: "Paste",
+    saveImageDialogTitle: "Save Image",
+    failedToOpenImage: "Failed to open image: {error}",
+    failedToCopyImage: "Failed to copy image: {error}",
+    imageSaved: "Image saved.",
+    failedToSaveImage: "Failed to save image: {error}",
+    pasteFailed: "Paste failed: {error}",
+};
+
+function resolveBoardHostText(id: BoardHostTextId, params?: { error?: string }): string {
+    const template = boot.hostText[id] || ENGLISH_BOARD_HOST_TEXT[id];
+    return params?.error === undefined ? template : template.replace(/\{error\}/g, params.error);
+}
+const boardLocale = Object.freeze({ code: boot.i18n.locale.code });
+const boardMessageTables = boot.i18n.tables;
+let boardPluralRules: Intl.PluralRules;
+try {
+    boardPluralRules = new Intl.PluralRules(boardLocale.code);
+} catch {
+    boardPluralRules = new Intl.PluralRules("en");
+}
+
+function translateBoardMessage(key: string, params?: Record<string, unknown>): string {
+    let message: string | Partial<Record<"zero" | "one" | "two" | "few" | "many" | "other", string>> | undefined;
+    for (const table of boardMessageTables) {
+        if (Object.prototype.hasOwnProperty.call(table, key)) {
+            message = table[key];
+            if (message !== undefined) break;
+        }
+    }
+    if (message === undefined) return key;
+    if (typeof message !== "string") {
+        const count = params?.count;
+        const category = typeof count === "number" ? boardPluralRules.select(count) : "other";
+        message = message[category] ?? message.other;
+        if (typeof message !== "string") return key;
+    }
+    return message.replace(/\{([\w.-]+)\}/g, (token, name: string) => {
+        const value = params?.[name];
+        return value === undefined || value === null ? token : String(value);
+    });
+}
+
+function hasBoardMessage(key: string): boolean {
+    return boardMessageTables.some((table) => Object.prototype.hasOwnProperty.call(table, key));
+}
 
 // Origin-locking is only reliable for an http(s) dev host. In production the host
 // window is loaded from `file://`, and the file origin is serialized inconsistently
@@ -1633,7 +1693,7 @@ window.addEventListener("auxclick", (e: MouseEvent) => {
     if (e.button === 1) routeExternalLinkClick(e);
 });
 
-installBoardContextMenu({ fire, rpc });
+installBoardContextMenu({ fire, rpc, hostText: resolveBoardHostText });
 
 // Host-overlay dismissal (EPIC-037 / US-773 C10): a cross-origin board's inner clicks
 // don't bubble to the host, so an open Persephone menu/popover/command-palette wouldn't
@@ -1708,12 +1768,18 @@ function createHandle(
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
     // 1.28.0 adds the `segmented` board toolbar control (US-1577).
+    // 1.36.0 adds registration-time `locale` and board-pack `i18n.t()` / `has()`.
     // 1.35.0 adds the themes bridge (EPIC-123), the plain-page unsaved-changes protocol (US-1641),
     //   text toolbar buttons (a labelled button/menu) and `placement: "board-menu"` (US-1642).
     // 1.34.0 adds page-scoped board UI state in the host cache (US-1621), and fixes
     //   persephone.fetch() response bodies, which never arrived since 1.25.0 because the shim did
     //   not request chunks (US-1623). A board that reads response bodies needs 1.34.0.
     version: BOARD_BRIDGE_VERSION,
+    locale: boardLocale,
+    i18n: {
+        t: translateBoardMessage,
+        has: hasBoardMessage,
+    },
 
     /** Lifecycle state for this board's own page (main frame only). */
     page: {

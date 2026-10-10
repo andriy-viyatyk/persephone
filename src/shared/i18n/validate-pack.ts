@@ -2,20 +2,28 @@ import { englishCatalog, type MessageKey } from "./en";
 import type { EnglishMessage } from "./en/common";
 import type { LanguagePack, PackMessage } from "./pack";
 
-function placeholders(message: string): string[] {
+export function messagePlaceholders(message: string): string[] {
     return [...message.matchAll(/\{([\w.-]+)\}/g)].map((match) => match[1]).sort();
+}
+
+export function hasSamePlaceholders(candidate: PackMessage, reference: PackMessage): boolean {
+    const candidateValues = typeof candidate === "string" ? [candidate] : Object.values(candidate);
+    const referenceValues = typeof reference === "string" ? [reference] : Object.values(reference);
+    const expected = [...new Set(referenceValues.flatMap(messagePlaceholders))].sort();
+    return candidateValues.every((value) => JSON.stringify([...new Set(messagePlaceholders(value))].sort()) === JSON.stringify(expected));
+}
+
+export function parsePackMessage(raw: unknown): PackMessage | undefined {
+    if (typeof raw === "string") return raw;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const entries = Object.entries(raw as Record<string, unknown>);
+    if (!entries.length || !entries.every(([category, value]) => ["zero", "one", "two", "few", "many", "other"].includes(category) && typeof value === "string")) return undefined;
+    return Object.fromEntries(entries) as PackMessage;
 }
 
 function englishMessage(key: MessageKey): EnglishMessage | undefined {
     const [area, name] = key.split(".");
     return (englishCatalog as Record<string, Record<string, EnglishMessage>>)[area]?.[name];
-}
-
-function samePlaceholders(candidate: PackMessage, english: EnglishMessage): boolean {
-    const candidateValues = typeof candidate === "string" ? [candidate] : Object.values(candidate);
-    const englishValues = typeof english === "string" ? [english] : Object.values(english);
-    const expected = [...new Set(englishValues.flatMap(placeholders))].sort();
-    return candidateValues.every((value) => JSON.stringify([...new Set(placeholders(value))].sort()) === JSON.stringify(expected));
 }
 
 export interface PackValidationResult { value?: LanguagePack; warnings: string[]; }
@@ -48,19 +56,12 @@ export function validateLanguagePack(input: unknown, filename: string): PackVali
         }
         const messageKey = key as MessageKey;
         const english = englishMessage(messageKey);
-        let message: PackMessage | undefined;
-        if (typeof raw === "string") message = raw;
-        else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-            const entries = Object.entries(raw as Record<string, unknown>);
-            if (entries.length > 0 && entries.every(([category, value]) => ["zero", "one", "two", "few", "many", "other"].includes(category) && typeof value === "string")) {
-                message = Object.fromEntries(entries) as PackMessage;
-            }
-        }
+        const message = parsePackMessage(raw);
         if (!message) {
             warnings.push(`${filename}: invalid message ${key}; ignored.`);
             continue;
         }
-        if (english && !samePlaceholders(message, english)) {
+        if (english && !hasSamePlaceholders(message, english)) {
             warnings.push(`${filename}: placeholder mismatch for ${key}; ignored.`);
             continue;
         }

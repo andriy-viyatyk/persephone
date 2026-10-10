@@ -5,6 +5,7 @@ import { boardTrustDisclosure, readNormalizedBoardManifest } from "./board-manif
 import { bundledBoardRegistry } from "./bundled-board-registry";
 import { errMessage } from "../../../shared/utils";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "./board-display-text";
 
 /** In-flight trust requests by board root, so concurrent opens/reloads of the same board share
  *  one dialog instead of stacking a copy per caller. */
@@ -40,7 +41,9 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
             || changes.some(({ kind }) => kind !== "removed");
         if (!requiresPrompt) return true;
         const manifest = await readNormalizedBoardManifest(boardRoot);
-        const boardName = manifest?.name?.trim() || fpBasename(boardRoot);
+        const englishName = manifest?.name?.trim() || fpBasename(boardRoot);
+        if (manifest) await ensureBoardDisplayText(boardRoot, manifest).catch((): void => undefined);
+        const boardName = boardDisplayText(boardRoot, manifest, boardMetadataKeys.name, englishName);
         for (;;) {
             const choice = await showBoardPermissionChangeDialog(boardRoot, {
                 boardName,
@@ -72,10 +75,12 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
     }
 
     const manifest = await readNormalizedBoardManifest(boardRoot);
+    if (manifest) await ensureBoardDisplayText(boardRoot, manifest).catch((): void => undefined);
     const disclosure = manifest
         ? boardTrustDisclosure(manifest)
         : { permissions: { kind: "legacy" as const, service: false }, serviceDeclared: false, capabilities: [] as string[] };
-    const boardName = manifest?.name?.trim() || fpBasename(boardRoot);
+    const englishName = manifest?.name?.trim() || fpBasename(boardRoot);
+    const boardName = boardDisplayText(boardRoot, manifest, boardMetadataKeys.name, englishName);
     const accepted = await showTrustBoardDialog(boardRoot, { ...disclosure, boardName });
     if (!accepted) return false;
     if (!(await confirmNamespaceNotColliding(boardRoot))) return false;

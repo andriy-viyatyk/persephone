@@ -3,7 +3,7 @@
   "name": "REST Client",
   "description": "The bundled REST Client editor.",
   "author": "Persephone",
-  "minBridgeVersion": "1.34.0",
+  "minBridgeVersion": "1.36.0",
   "minAppVersion": "4.0.21",
   "permissions": {
     "execute": false,
@@ -35,6 +35,7 @@
     }
   ],
   "standalone": true,
+  "languages": { "folder": "lang", "default": "en" },
   "secondaryViews": [
     { "id": "requests", "title": "Requests" }
   ]

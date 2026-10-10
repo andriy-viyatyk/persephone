@@ -13,7 +13,7 @@
       "default": ""
     }
   ],
-  "minBridgeVersion": "1.30.0",
+  "minBridgeVersion": "1.36.0",
   "permissions": {
     "execute": false,
     "service": false,

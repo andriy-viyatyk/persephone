@@ -2,6 +2,18 @@ import type { EnglishCatalogEntry } from "./common";
 
 export const boardCatalog = {
     editor: { message: "Board" },
+    openLink: { message: "Open Link", note: "Label for the built-in board context menu." },
+    openImageInNewTab: { message: "Open Image in New Tab", note: "Label for the built-in board context menu." },
+    copyImage: { message: "Copy Image", note: "Label for the built-in board context menu." },
+    saveImageAs: { message: "Save Image As…", note: "Label for the built-in board context menu." },
+    imageFileFilter: { message: "Image", note: "File type name in the board's save-image dialog." },
+    allFilesFileFilter: { message: "All Files", note: "File type name in the board's save-image dialog." },
+    saveImageDialogTitle: { message: "Save Image", note: "Title of the board's native save-image dialog." },
+    failedToOpenImage: { message: "Failed to open image: {error}", note: "Board context-menu action feedback. Keep {error} unchanged." },
+    failedToCopyImage: { message: "Failed to copy image: {error}", note: "Board context-menu action feedback. Keep {error} unchanged." },
+    imageSaved: { message: "Image saved.", note: "Board context-menu action feedback." },
+    failedToSaveImage: { message: "Failed to save image: {error}", note: "Board context-menu action feedback. Keep {error} unchanged." },
+    pasteFailed: { message: "Paste failed: {error}", note: "Board context-menu action feedback. Keep {error} unchanged." },
     frameTitle: { message: "Board" },
     contentUnavailable: { message: "Content unavailable" },
     notFoundTitle: { message: "Board not found" },

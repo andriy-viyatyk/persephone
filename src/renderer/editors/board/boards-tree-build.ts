@@ -71,9 +71,14 @@ function sortNodes(nodes: BoardTreeNode[]): void {
 }
 
 /** Convert a build node to a render node, applying single-child folder compaction. */
-function convert(node: BuildNode): BoardTreeNode {
+function convert(node: BuildNode, getBoardLabel?: (root: string, fallback: string) => string): BoardTreeNode {
     if (node.board) {
-        return { value: "board:" + node.board, label: node.label, kind: "board", root: node.board };
+        return {
+            value: "board:" + node.board,
+            label: getBoardLabel?.(node.board, node.label) ?? node.label,
+            kind: "board",
+            root: node.board,
+        };
     }
     // Compact a chain of single-child folders into one joined-path node (`personal\boards`).
     // Stop before a board leaf — a board never merges into its containing folder.
@@ -85,7 +90,7 @@ function convert(node: BuildNode): BoardTreeNode {
         label += fpSep + child.label;
         cur = child;
     }
-    const items = [...cur.children.values()].map(convert);
+    const items = [...cur.children.values()].map((child) => convert(child, getBoardLabel));
     sortNodes(items);
     // Identity = the DEEPEST merged folder's key, so the node id stays stable across rebuilds.
     return { value: "dir:" + cur.pathKey, label, kind: "folder", items };
@@ -96,7 +101,11 @@ function convert(node: BuildNode): BoardTreeNode {
  * @param boards Absolute board-root paths (e.g. the trusted-boards registry).
  * @param baseRoot Single-root mode: relativize paths to this base. Omit for multi-root (forest).
  */
-export function buildBoardsTree(boards: string[], baseRoot?: string): BoardTreeNode[] {
+export function buildBoardsTree(
+    boards: string[],
+    baseRoot?: string,
+    getBoardLabel?: (root: string, fallback: string) => string,
+): BoardTreeNode[] {
     const rootChildren = new Map<string, BuildNode>();
 
     for (const root of boards) {
@@ -118,7 +127,7 @@ export function buildBoardsTree(boards: string[], baseRoot?: string): BoardTreeN
         }
     }
 
-    const top = [...rootChildren.values()].map(convert);
+    const top = [...rootChildren.values()].map((node) => convert(node, getBoardLabel));
     sortNodes(top);
     return top;
 }

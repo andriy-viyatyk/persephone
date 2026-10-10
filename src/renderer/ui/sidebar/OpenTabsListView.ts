@@ -8,6 +8,9 @@ import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { displayPageTitle } from "../tabs/page-title";
+import { ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "../../editors/board/board-manifest";
+import { fpBasename } from "../../core/utils/file-path";
 
 export interface OpenTabsListProps {
     onClose?: () => void;
@@ -16,7 +19,7 @@ export interface OpenTabsListProps {
 
 interface OpenTabsListItem extends IListBoxItem {
     windowIndex: number;
-    page?: Partial<IEditorState>;
+    page?: Partial<IEditorState> & { boardRoot?: string; folderPath?: string };
 }
 
 export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
@@ -48,6 +51,8 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private duplicateTimer: number | undefined;
     private previousOpen: boolean | undefined;
     private live = true;
+    private readonly warmedBoardRoots = new Set<string>();
+    private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
 
     public constructor(props: OpenTabsListProps) {
         const list = new ListBoxView<OpenTabsListItem>({
@@ -65,6 +70,10 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     protected onMount(): void {
         this.child(this.list).mount();
         this.bind(pagesModel.state, (state) => state.pages, () => this.updateList());
+        this.own(onBoardDisplayTextChanged((_root, reason) => {
+            if (reason === "invalidate") this.warmedBoardRoots.clear();
+            this.updateList();
+        }));
         this.previousOpen = this.props.open;
         void this.loadWindowPages();
         this.updateList();
@@ -95,7 +104,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         const state = pagesModel.state.get();
         const currentPages: OpenTabsListItem[] = state.pages.map((page) => {
             const pageState = page.mainEditor?.state.get() ?? { title: page.title };
-            const pageData = { ...pageState, id: page.id } as Partial<IEditorState>;
+            const pageData = { ...pageState, id: page.id } as Partial<IEditorState> & { boardRoot?: string; folderPath?: string };
             return this.item(currentWindowIndex, pageData);
         });
 
@@ -136,14 +145,36 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         };
     }
 
-    private item(windowIndex: number, page: Partial<IEditorState>): OpenTabsListItem {
+    private item(windowIndex: number, page: Partial<IEditorState> & { boardRoot?: string; folderPath?: string }): OpenTabsListItem {
+        const candidateRoot = page.editor === "board-view" && !page.filePath && !page.folderPath
+            ? page.boardRoot
+            : undefined;
+        if (candidateRoot) this.warmBoard(candidateRoot);
+        const manifest = candidateRoot ? this.boardManifests.get(candidateRoot) : undefined;
+        const isPlainBoardTitle = candidateRoot !== undefined && page.title !== undefined
+            && page.title === (manifest?.name?.trim() || fpBasename(candidateRoot));
+        const infoProps = (page as { props?: { name?: string } }).props;
+        const boardInfoRoot = page.editor === "board-info" && page.boardRoot && infoProps?.name === page.title
+            ? page.boardRoot
+            : undefined;
+        const boardRoot = isPlainBoardTitle ? candidateRoot : boardInfoRoot;
         return {
             value: page.id ?? `window-${windowIndex}`,
-            label: displayPageTitle(page.editor, page.title),
+            label: displayPageTitle(page.editor, page.title, boardRoot),
             iconElement: createFileTypeIconElement({ language: page.language, width: 16, height: 16 }),
             windowIndex,
             page,
         };
+    }
+
+    private warmBoard(root: string): void {
+        if (this.warmedBoardRoots.has(root)) return;
+        this.warmedBoardRoots.add(root);
+        void readNormalizedBoardManifest(root).then((manifest) => {
+            if (!manifest) return;
+            this.boardManifests.set(root, manifest);
+            return ensureBoardDisplayText(root, manifest);
+        }).catch(() => {});
     }
 
     private onClick(item: OpenTabsListItem): void {

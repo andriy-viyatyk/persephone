@@ -197,7 +197,12 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.35.0**. Bridge `1.35.0` adds the permission-gated `persephone.themes.*` API described below. Bridge `1.33.0` adds `persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it. Bridge `1.32.0` allows a simple board with `fileSystem: false`
+The current board bridge is **1.36.0**. Bridge `1.36.0` adds registration-time
+`persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; a board using them
+requires `minBridgeVersion: "1.36.0"`. Bridge `1.35.0` adds the permission-gated
+`persephone.themes.*` API described below. Bridge `1.33.0` adds
+`persephone.notify(message, type, { persistent: true })`, a toast that stays until you close it.
+Bridge `1.32.0` allows a simple board with `fileSystem: false`
 to read only its currently hosted document through `readFile(getFilePath())`. Bridge `1.23.0` uses one extension-to-MIME table for
 `board://` files and `__pipe` responses; markdown, CSV, XML, and YAML board text uses UTF-8.
 Bridge `1.22.0` adds host-managed module-service lifecycle
@@ -211,6 +216,10 @@ available on the request-bound `request.resolve`) for discarding a page created 
 request, preserved the handler's exact value under `result` for board callers, and added the
 optional manifest capability field `alwaysOpensNewPage` to request a fresh handler page for every
 invocation. See [What's New](./whats-new.md) for the release notes.
+
+Boards that declare language packs can show their interface in Persephone's current language. Ask
+your AI agent to add a language to a board; changing the app language reloads open boards so they
+can use the new language.
 
 Boards can also declare service-backed content providers:
 

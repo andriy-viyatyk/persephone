@@ -28,8 +28,9 @@ export function formatResponseBody(body, language) {
 }
 
 export function formatByteSize(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
-    if (bytes < 1024) return `${bytes} B`;
+    const locale = persephone.locale.code;
+    if (!Number.isFinite(bytes) || bytes < 0) return `${new Intl.NumberFormat(locale).format(0)} B`;
+    if (bytes < 1024) return `${new Intl.NumberFormat(locale).format(bytes)} B`;
     const units = ["KB", "MB", "GB"];
     let size = bytes / 1024;
     let unit = units[0];
@@ -37,7 +38,7 @@ export function formatByteSize(bytes) {
         size /= 1024;
         unit = units[index];
     }
-    return `${size.toFixed(size >= 10 ? 0 : 1)} ${unit}`;
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: size >= 10 ? 0 : 1 }).format(size)} ${unit}`;
 }
 
 export function byteLength(text) { return new TextEncoder().encode(text).byteLength; }

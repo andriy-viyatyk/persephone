@@ -1,4 +1,5 @@
 import { byteLength } from "./response-utils.js";
+import { t } from "./i18n.js";
 
 const CACHE_KEY = "response-cache";
 const MAX_CACHE_BYTES = 9 * 1024 * 1024;
@@ -24,7 +25,7 @@ export class ResponseCache {
             this.#trim();
             if (byteLength(JSON.stringify(Object.fromEntries(this.#persisted))) !== previousSize) this.schedule();
         } catch (error) {
-            this.bridge.notify(error?.message || "Unable to restore response cache.", "warning");
+            this.bridge.notify(error?.message || t("errors.restoreResponseCache"), "warning");
         }
     }
 
@@ -59,7 +60,7 @@ export class ResponseCache {
             if (!this.#persisted.size) await this.bridge.pageState.remove(CACHE_KEY);
             else await this.bridge.pageState.set(CACHE_KEY, JSON.stringify(Object.fromEntries(this.#persisted)));
         } catch (error) {
-            this.bridge.notify(error?.message || "Unable to save response cache.", "warning");
+            this.bridge.notify(error?.message || t("errors.saveResponseCache"), "warning");
         }
     }
 

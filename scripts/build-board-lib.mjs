@@ -25,11 +25,16 @@ const vendorRoot = join(vendorPackageDirectory, "dist", "prod");
 const libraryRoot = join(boardRoot, "lib");
 const dependencyRoot = join(libraryRoot, "deps");
 
-// EPIC-109 D9: the Chinese handwriting family is 13 MB of the package's 14 MB of fonts,
-// and the other 54 locales are 1.8 MB. Excluding them is what keeps the committed board
-// at roughly 3.7 MB. A version bump must not quietly re-add them.
+// EPIC-109 D9: the Chinese handwriting family is 13 MB of the package's 14 MB of fonts.
+// Keep only the Excalidraw locales for the non-English languages in localization-roadmap.md
+// §4; Estonian and Belarusian have no Excalidraw locale. A version bump must not quietly
+// re-add every vendor locale.
 const excludedFontFamily = "fonts/Xiaolai/";
-const keptLocalePrefix = "locales/en-";
+const keptLocaleCodes = [
+    "uk-UA", "pl-PL", "lt-LT", "lv-LV", "ro-RO", "sk-SK", "hu-HU", "de-DE",
+    "fr-FR", "es-ES", "pt-BR", "it-IT", "zh-CN", "ja-JP", "ko-KR",
+];
+const keptLocalePrefixes = ["en-", ...keptLocaleCodes.map(code => `${code}-`)];
 
 const importMapStartMarker = "<!-- import-map:start -->";
 const importMapEndMarker = "<!-- import-map:end -->";
@@ -66,7 +71,7 @@ async function collectFiles(root) {
 
 function isKeptVendorFile(filePath) {
     if (filePath.startsWith(excludedFontFamily)) return false;
-    if (filePath.startsWith("locales/") && !filePath.startsWith(keptLocalePrefix)) return false;
+    if (filePath.startsWith("locales/") && !keptLocalePrefixes.some(prefix => filePath.startsWith(`locales/${prefix}`))) return false;
     return true;
 }
 
@@ -95,8 +100,15 @@ async function copyVendorGraph() {
     }
 
     const localeFiles = copiedFiles.filter((filePath) => filePath.startsWith("locales/"));
-    if (localeFiles.length !== 1) {
-        throw new Error(`Expected exactly one locale file, found: ${localeFiles.join(", ") || "none"}`);
+    const expectedLocaleCodes = ["en", ...keptLocaleCodes].sort();
+    const actualLocaleCodes = localeFiles
+        .map(filePath => filePath.slice("locales/".length).split("-").slice(0, -1).join("-"))
+        .sort();
+    if (actualLocaleCodes.length !== expectedLocaleCodes.length
+        || actualLocaleCodes.some((code, index) => code !== expectedLocaleCodes[index])) {
+        throw new Error(
+            `Expected locale chunks for ${expectedLocaleCodes.join(", ")}, found: ${localeFiles.join(", ") || "none"}`,
+        );
     }
     const fontFamilies = new Set(
         copiedFiles
@@ -107,12 +119,12 @@ async function copyVendorGraph() {
         throw new Error("Xiaolai was copied; the D9 font exclusion is broken.");
     }
 
-    return { sourceFiles, copiedFiles, localeFile: localeFiles[0], fontFamilies };
+    return { sourceFiles, copiedFiles, localeFiles, fontFamilies };
 }
 
 // A verbatim copy is only safe if every relative reference still lands on a file that
 // was kept. This is what would catch an over-eager exclusion filter.
-async function validateRelativeTargets(copiedFiles, localeFile) {
+async function validateRelativeTargets(copiedFiles, localeFiles) {
     const referencePattern = /(?:from|import\(|url\()\s*["']?(\.[^"')]*)["']?/g;
     for (const filePath of copiedFiles) {
         if (!filePath.endsWith(".js") && !filePath.endsWith(".css")) continue;
@@ -122,10 +134,9 @@ async function validateRelativeTargets(copiedFiles, localeFile) {
             const targetPath = toPosixPath(
                 relative(libraryRoot, resolve(dirname(join(libraryRoot, filePath)), reference)),
             );
-            // Non-English locales are referenced by 55 literal import() calls in the
-            // vendor entry. Only the active locale is ever loaded, so the other 54
-            // references are deliberately left dangling.
-            if (targetPath.startsWith("locales/") && !targetPath.startsWith(keptLocalePrefix)) continue;
+            // Unbundled vendor locales are not supported; every retained dynamic-import
+            // target must be present so the advertised locale set stays loadable.
+            if (targetPath.startsWith("locales/") && !isKeptVendorFile(targetPath)) continue;
             if (targetPath.startsWith(excludedFontFamily)) continue;
             try {
                 await readFile(join(libraryRoot, targetPath));
@@ -135,9 +146,11 @@ async function validateRelativeTargets(copiedFiles, localeFile) {
         }
     }
 
-    const localeSource = await readFile(join(libraryRoot, localeFile), "utf8");
-    if (!localeSource.includes("../chunk-")) {
-        throw new Error(`${localeFile} no longer references a sibling vendor chunk; the copy layout changed.`);
+    for (const localeFile of localeFiles) {
+        const localeSource = await readFile(join(libraryRoot, localeFile), "utf8");
+        if (!localeSource.includes("../chunk-")) {
+            throw new Error(`${localeFile} no longer references a sibling vendor chunk; the copy layout changed.`);
+        }
     }
 }
 
@@ -406,8 +419,8 @@ async function writeImportMap(specifiers) {
 }
 
 await mkdir(boardRoot, { recursive: true });
-const { sourceFiles, copiedFiles, localeFile, fontFamilies } = await copyVendorGraph();
-await validateRelativeTargets(copiedFiles, localeFile);
+const { sourceFiles, copiedFiles, localeFiles, fontFamilies } = await copyVendorGraph();
+await validateRelativeTargets(copiedFiles, localeFiles);
 const {
     specifiers, defaultImported, namespaceImported, sideEffectOnly, namedImports,
 } = await scanVendorSpecifiers(copiedFiles);
@@ -421,6 +434,6 @@ await buildDependencies(specifiers, dependencies);
 const mappedCount = await writeImportMap(specifiers);
 
 console.log(`Copied ${copiedFiles.length} of ${sourceFiles.length} vendor files verbatim.`);
-console.log(`Kept ${localeFile} and ${fontFamilies.size} font families; excluded Xiaolai and non-English locales.`);
+console.log(`Kept ${localeFiles.length} locale chunks and ${fontFamilies.size} font families; excluded Xiaolai and unlisted locales.`);
 console.log(`Bundled ${specifiers.length} dependencies into ${dependencyRoot}.`);
 console.log(`Wrote ${mappedCount} import-map entries into ${boardPage}.`);

@@ -4,6 +4,7 @@ import { renderResponseViewer } from "./views/response-viewer.js";
 import { renderRequestTree } from "./views/request-tree.js";
 import { createSplitter } from "./components/splitter.js";
 import { createAiVisionModel, elements } from "./ai-vision-model.js";
+import { t } from "./i18n.js";
 
 const root = document.querySelector("#app");
 const model = new RestClientModel(persephone);
@@ -18,7 +19,7 @@ const disposeViews = () => {
 
 const send = async () => {
     try { await model.sendRequest(() => disposed); }
-    catch (error) { persephone.notify(error?.message || "Unable to send request.", "warning"); }
+    catch (error) { persephone.notify(error?.message || t("errors.send"), "warning"); }
 };
 
 const render = () => {
@@ -28,7 +29,7 @@ const render = () => {
         const error = document.createElement("section");
         error.className = "error";
         const title = document.createElement("h1");
-        title.textContent = "Unable to read REST Client collection";
+        title.textContent = t("errors.collection.read");
         const details = document.createElement("pre");
         details.textContent = model.error;
         error.append(title, details);

@@ -35,9 +35,9 @@ export function createOpenWithMenuItem(path: string): MenuItem {
         label: t("menus.openWith"),
         icon: "open-link",
         items: [
-            ...options.map(({ id, label, labelKey, labelParams }): MenuItem => ({
+            ...options.map(({ id, label, labelKey, labelParams, displayLabel }): MenuItem => ({
                 id: `open-with:${id}`,
-                label: labelKey ? t(labelKey, labelParams as never) : label,
+                label: displayLabel ?? (labelKey ? t(labelKey, labelParams as never) : label),
                 icon: editorOptionIcon(id),
                 onClick: () => openWithEditor(path, id),
             })),

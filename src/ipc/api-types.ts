@@ -19,7 +19,7 @@ import {
     VideoStreamSessionResult,
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
-import type { BoardThemePalette } from "./board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "./board-bridge-channels";
 import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
 import type {
     ClipboardFileList,
@@ -312,7 +312,7 @@ export type Api = {
     [Endpoint.gitPull]: (dir: string, opts?: GitPullOptions) => Promise<GitPullResult>;
     [Endpoint.gitRemoteUrl]: (dir: string, remote: string) => Promise<string>;
     [Endpoint.capturePageRegion]: (rect: CaptureRect) => Promise<Uint8Array>;
-    [Endpoint.registerBoard]: (boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>) => Promise<string>;
+    [Endpoint.registerBoard]: (boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>, i18n: BoardI18nContext, hostText: BoardHostText) => Promise<string>;
     [Endpoint.setHtmlPreview]: (id: string, html: string) => Promise<void>;
     [Endpoint.clearHtmlPreview]: (id: string) => Promise<void>;
     [Endpoint.appendBoardLog]: (boardRoot: string, level: BoardLogLevel, message: string) => Promise<void>;

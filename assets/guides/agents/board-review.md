@@ -45,7 +45,8 @@ what does it reach, and can it change after the user clicks Trust?**
 ## What to read
 
 1. **`board-manifest.json` first.** It declares the board's identity, `permissions`,
-   `minBridgeVersion`, any `service` entry, and any `contentProviders` declarations, plus (for an
+   `minBridgeVersion`, any `service` entry, any `languages` declaration, and any
+   `contentProviders` declarations, plus (for an
    editor board) `fileMasks` / `contentMasks` / `folderMasks` / `browserUrlMasks` and `editorKind`.
    These say which of
    the user's files this board
@@ -53,6 +54,12 @@ what does it reach, and can it change after the user clicks Trust?**
    on its own.
 2. **Every file in the folder.** `index.html`, the app scripts, **all of `scripts/`**, and anything
    in `lib/`. Boards are plain files; there is no hidden part.
+   If `languages` is declared, read the default and translated packs too. Check user-visible UI for
+   hardcoded strings that bypass `persephone.i18n.t()`, compare placeholder names against the
+   default pack, and verify plural forms for each target locale. Stable English keys, settings IDs,
+   data, and agent-facing `.app` names are not translation findings. A board that uses
+   `persephone.locale` or `persephone.i18n` needs `minBridgeVersion: "1.36.0"`; inspect `ui.log`
+   for pack-validation warnings.
 3. **Then re-read the entry points**: what runs at load, on a timer, and on each user action.
 4. **Compare declared grants to calls.** Find both missing and unused permissions with this
    starting search, then inspect every hit and aliases manually:
@@ -116,8 +123,9 @@ starts only when the old array includes `"service"`. The dialog also warns that 
 are deprecated and asks the authoring agent to add an object-form `permissions` block. Full access
 secondary text is “Can reach everything your user account can.”
 
-New blank boards use all-false object manifests and `minBridgeVersion: "1.30.0"`; object-form
-manifests require `minBridgeVersion >= 1.30.0`. Auto-trust on creation does not widen their grants.
+New blank boards use all-false object manifests and `minBridgeVersion: "1.36.0"` for the starter's
+board-pack i18n; object-form manifests require `minBridgeVersion >= 1.30.0`. Auto-trust on creation
+does not widen their grants.
 Keep only flags used by reachable code. Native
 `fetch("./data.json")` and `fetch("board://<host>/data.json")` read own board files with
 `fileSystem: false`; `persephone.fetch()` needs `network`. An exact refusal is
@@ -133,6 +141,7 @@ For theme operations, verify the board declares `themes: true` and uses only the
 `persephone.themes.*` methods documented in the [board guide](./boards.md#the-persephone-themes-bridge).
 The bridge passes plain JSON values and does not require `appScripting`. Boards using it must set
 `minBridgeVersion: "1.35.0"`. Review preview cleanup and saved-theme changes as user-visible effects.
+Locale and board-pack i18n calls require `minBridgeVersion: "1.36.0"`.
 
 Viewer boards rendering untrusted documents keep `fileSystem: false` and `network: false`, and
 never request `execute` or `appScripting`: injected document code must not rewrite viewer files or

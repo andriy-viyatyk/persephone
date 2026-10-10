@@ -17,6 +17,10 @@ import { boardTrust } from "./board-trust";
 import { errMessage } from "../../shared/utils";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
 import { t } from "../../shared/i18n/t";
+import { invalidateBoardDisplayText } from "../editors/board/board-display-text";
+import { publishedBoards } from "./published-boards";
+import { publishedBoardDisplayText } from "./published-board-display-text";
+import { getActiveLocale } from "../../shared/i18n/active-locale";
 
 function newInstallId(): string {
     return crypto.randomUUID();
@@ -129,10 +133,16 @@ export async function uninstallCatalogBoard(args: {
     name: string;
     catalogId?: string;
 }): Promise<boolean> {
+    const catalogEntry = args.catalogId
+        ? publishedBoards.getCatalog().find((board) => board.id === args.catalogId)
+        : undefined;
+    const displayName = catalogEntry
+        ? publishedBoardDisplayText(catalogEntry, getActiveLocale()).name
+        : args.name;
     const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
     const choice = await showConfirmationDialog({
         title: t("api.deleteBoardTitle"),
-        message: t("api.deleteBoardConfirmation", { name: args.name }),
+        message: t("api.deleteBoardConfirmation", { name: displayName }),
         buttons: [dialogButton(DialogButton.delete), dialogButton(DialogButton.cancel)],
     });
     if (choice !== DialogButton.delete) return false;
@@ -149,6 +159,7 @@ export async function uninstallCatalogBoard(args: {
         return false;
     }
     await boardTrust.untrust(args.root);
+    invalidateBoardDisplayText(args.root);
     const { removePin } = await import("../ui/sidebar/pinned-items");
     removePin({ kind: "board", root: args.root });
     if (args.catalogId) await boardInstallRegistry.remove(args.catalogId);
@@ -231,6 +242,7 @@ export async function installVersion(
             version,
             installedAt: Date.now(),
         });
+        invalidateBoardDisplayText(root);
         return root;
     } finally {
         // Reap any staging dir left behind (failed/aborted swap; a successful swap already

@@ -21,6 +21,7 @@ import type {
     BoardFileIconsResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
+    BoardHostText,
     BoardSourceOpenedMsg,
     BoardOpenContentRequest,
     BoardOpenContentResultMsg,
@@ -64,6 +65,9 @@ import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
 import { boardTrust, pathCovers } from "../../api/board-trust";
 import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
 import { boardPermissionError } from "../../../shared/board-manifest-utils";
+import { readNormalizedBoardManifest } from "./board-manifest";
+import { loadBoardI18n } from "./board-i18n";
+import { refreshBoardDisplayText } from "./board-display-text";
 import { getPreviewGeneration } from "../../theme/themes";
 import { errMessage } from "../../../shared/utils";
 import { CapabilityError } from "../../api/capability-bus";
@@ -542,13 +546,35 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private async registerBoard(): Promise<void> {
         const { boardRoot } = this.props;
-        const h = await api.registerBoard(boardRoot, computeBoardThemePalette(), BOARD_TOKEN_VARS);
+        const manifest = await readNormalizedBoardManifest(boardRoot);
+        const boardI18n = await loadBoardI18n(boardRoot, manifest?.languages);
+        if (manifest) refreshBoardDisplayText(boardRoot, boardI18n.context);
+        const hostText: BoardHostText = {
+            openLink: t("board.openLink"),
+            copyLink: t("editors.copyLink"),
+            openImageInNewTab: t("board.openImageInNewTab"),
+            copyImage: t("board.copyImage"),
+            saveImageAs: t("board.saveImageAs"),
+            imageFileFilter: t("board.imageFileFilter"),
+            allFilesFileFilter: t("board.allFilesFileFilter"),
+            cut: t("menus.cut"),
+            copy: t("menus.copy"),
+            paste: t("menus.paste"),
+            saveImageDialogTitle: t("board.saveImageDialogTitle"),
+            failedToOpenImage: t("board.failedToOpenImage"),
+            failedToCopyImage: t("board.failedToCopyImage"),
+            imageSaved: t("board.imageSaved"),
+            failedToSaveImage: t("board.failedToSaveImage"),
+            pasteFailed: t("board.pasteFailed"),
+        };
+        const h = await api.registerBoard(boardRoot, computeBoardThemePalette(), BOARD_TOKEN_VARS, boardI18n.context, hostText);
         if (!this.live) {
             void api.unregisterBoard(h);
             return;
         }
         if (this.isMain) {
             void api.appendBoardLog(boardRoot, "info", "----- board loaded -----").catch(() => {});
+            for (const warning of boardI18n.warnings) this.appendLog("warn", warning);
         }
         this.registeredHost = h;
         this.host = h;

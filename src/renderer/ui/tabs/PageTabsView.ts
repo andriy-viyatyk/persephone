@@ -7,6 +7,8 @@ import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { fpBasename } from "../../core/utils/file-path";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "../../editors/board/board-manifest";
 import { isTextFileModel } from "../../editors/text";
 import type { EditorOrHost } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -44,6 +46,8 @@ export class PageTabsView extends VanillaView<object> {
     private resizeObserver: ResizeObserver | undefined;
     private showScrollButtons = false;
     private currentPages: PageModel[] = [];
+    private readonly warmedBoardRoots = new Set<string>();
+    private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
 
     public constructor(props: object) {
         super(props);
@@ -105,6 +109,10 @@ export class PageTabsView extends VanillaView<object> {
         });
         this.own(settingsSubscription);
         this.own(subscribeBoardIconChanges(() => this.updateAddMenu()));
+        this.own(onBoardDisplayTextChanged((_root, reason) => {
+            if (reason === "invalidate") this.warmedBoardRoots.clear();
+            this.updateAddMenu();
+        }));
         this.bind(
             pagesModel.state,
             (state): TabProjection => ({
@@ -296,6 +304,9 @@ export class PageTabsView extends VanillaView<object> {
 
     private updateAddMenu(): void {
         const allItems = getCreatableItems(settings.get("browser-profiles"));
+        for (const item of allItems) {
+            if (item.boardRoot) this.warmBoard(item.boardRoot);
+        }
         const items: MenuItem[] = [];
         for (const stored of getPinnedStrings()) {
             const ref = decodePin(stored);
@@ -309,8 +320,14 @@ export class PageTabsView extends VanillaView<object> {
                 }
             } else {
                 const root = ref.root;
+                this.warmBoard(root);
                 items.push({
-                    label: fpBasename(root),
+                    label: boardDisplayText(
+                        root,
+                        this.boardManifests.get(root),
+                        boardMetadataKeys.name,
+                        this.boardManifests.get(root)?.name?.trim() || fpBasename(root),
+                    ),
                     icon: createBoardGlyphElement(root),
                     onClick: () => {
                         void app.events.openRawLink.sendAsync(
@@ -334,5 +351,15 @@ export class PageTabsView extends VanillaView<object> {
             menuTitle: "New editor page",
             items,
         });
+    }
+
+    private warmBoard(root: string): void {
+        if (this.warmedBoardRoots.has(root)) return;
+        this.warmedBoardRoots.add(root);
+        void readNormalizedBoardManifest(root).then((manifest) => {
+            if (!manifest) return;
+            this.boardManifests.set(root, manifest);
+            return ensureBoardDisplayText(root, manifest);
+        }).catch(() => {});
     }
 }

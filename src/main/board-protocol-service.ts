@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { BoardThemePalette } from "../ipc/board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../ipc/board-bridge-channels";
 import type { BoardPipeKind } from "../ipc/board-pipe-channels";
 import { BoardPipeError } from "./board-pipe-service";
 import { readPipeRange, BoardPipeRangeError } from "./board-pipe-range-reader";
@@ -43,6 +43,8 @@ const hostToRoot = new Map<string, string>();
 interface BoardDesign {
     theme: BoardThemePalette;
     tokens: Record<string, string>;
+    i18n: BoardI18nContext;
+    hostText: BoardHostText;
     hostOrigin: string;
 }
 const hostToDesign = new Map<string, BoardDesign>();
@@ -116,6 +118,8 @@ function buildBootScript(design: BoardDesign | undefined): string {
     const boot = {
         theme: design?.theme ?? { id: "", isDark: true, vars: {} },
         tokens: design?.tokens ?? {},
+        i18n: design?.i18n ?? { locale: { code: "en" }, tables: [{}, {}, {}] },
+        hostText: design?.hostText ?? {},
         hostOrigin: design?.hostOrigin ?? "",
     };
     return `<script id="persephone-boot">window.__persephoneBoot=${safeJson(boot)};</script>`;
@@ -375,12 +379,14 @@ export function registerBoard(
     boardRoot: string,
     theme: BoardThemePalette,
     tokens: Record<string, string>,
+    i18n: BoardI18nContext,
+    hostText: BoardHostText,
     hostOrigin: string,
 ): string {
     const root = path.resolve(boardRoot);
     const host = boardRootToHost(root);
     hostToRoot.set(host, root);
-    hostToDesign.set(host, { theme, tokens, hostOrigin });
+    hostToDesign.set(host, { theme, tokens, i18n, hostText, hostOrigin });
     hostRefCount.set(host, (hostRefCount.get(host) ?? 0) + 1);
     return host;
 }

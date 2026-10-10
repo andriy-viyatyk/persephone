@@ -9,6 +9,8 @@ import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import type { EditorOrHost } from "../../editors/base";
+import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
+import { onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
 import { createEditorIconElement, createFileTypeIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
@@ -66,7 +68,7 @@ function emptyEditorProjection(): EditorProjection {
     };
 }
 
-function selectEditorState(state: EditorTabState): EditorProjection {
+function selectEditorState(state: EditorTabState, boardRoot?: string): EditorProjection {
     const categoryLink = state.editor === "category-view" && state.filePath
         ? decodeCategoryLink(state.filePath)
         : null;
@@ -75,7 +77,7 @@ function selectEditorState(state: EditorTabState): EditorProjection {
             ? t("shell.empty")
             : categoryLink && !categoryLink.category && state.title === "Folder"
             ? t("shell.folder")
-            : displayPageTitle(state.editor, state.title),
+            : displayPageTitle(state.editor, state.title, boardRoot),
         modified: state.modified ?? false,
         language: state.language ?? "",
         filePath: state.filePath ?? "",
@@ -181,6 +183,9 @@ export class PageTabView extends VanillaView<PageTabProps> {
         });
         this.iconUnsubscribe = subscribeFileIconElements(() => this.updateIcons());
         this.own(() => this.iconUnsubscribe?.());
+        this.own(onBoardDisplayTextChanged(() => {
+            if (this.currentEditor) this.applyEditorProjection(this.projectEditorState(this.currentEditor));
+        }));
         this.languageSettingsSubscription = this.ownSubscription(settings.onChanged.subscribe(({ key }) => {
             if (key === "tab-recent-languages") this.updateLanguageMenu();
         }));
@@ -239,12 +244,28 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.currentEditor = editor;
         this.projection = emptyEditorProjection();
         if (editor) {
-            this.projection = selectEditorState(editor.state.get() as EditorTabState);
+            this.projection = this.projectEditorState(editor);
             this.editorUnsubscribe = this.ownSubscription(editor.state.subscribe(
-                () => this.applyEditorProjection(selectEditorState(editor.state.get() as EditorTabState)),
+                () => this.applyEditorProjection(this.projectEditorState(editor)),
             ));
         }
         this.updateView();
+    }
+
+    private projectEditorState(editor: EditorOrHost): EditorProjection {
+        const model = this.props.model.mainEditorInstance;
+        const state = editor.state.get() as EditorTabState & { boardRoot?: string; props?: { name?: string } };
+        // Board Info in properties mode is titled with the board's English manifest name.
+        if (state.editor === "board-info" && state.boardRoot && state.props?.name === state.title) {
+            return selectEditorState(state, state.boardRoot);
+        }
+        const boardRoot = model instanceof BoardEditorModel
+            && !model.filePath
+            && !model.folderAnchor
+            && (editor.state.get() as EditorTabState).title === model.displayNameEnglish
+            ? model.boardRoot
+            : undefined;
+        return selectEditorState(editor.state.get() as EditorTabState, boardRoot);
     }
 
     private applyEditorProjection(next: EditorProjection): void {

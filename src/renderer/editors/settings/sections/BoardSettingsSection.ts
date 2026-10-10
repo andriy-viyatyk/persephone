@@ -13,6 +13,7 @@ import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
 import { LibraryPathSectionView } from "./SettingsSections";
 import { createSectionRoot, panel, settingsFieldLabel, text } from "./settings-native";
+import { boardDisplayText, boardMetadataKeys } from "../../board/board-display-text";
 
 export interface BoardSettingsSectionProps {
     boardRoot: string;
@@ -27,10 +28,6 @@ interface BoardSettingControl {
     select?: SelectView<IListBoxItem>;
     draft?: string;
     readGeneration: number;
-}
-
-function settingLabel(declaration: BoardSettingDeclaration): string {
-    return declaration.label || declaration.id;
 }
 
 function settingText(value: BoardSettingValue): string {
@@ -60,6 +57,25 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         for (const control of this.controls.values()) void this.loadValue(control);
     }
 
+    private settingLabel(declaration: BoardSettingDeclaration): string {
+        return boardDisplayText(
+            this.props.boardRoot,
+            undefined,
+            boardMetadataKeys.settingLabel(declaration.id),
+            declaration.label || declaration.id,
+        );
+    }
+
+    private settingDescription(declaration: BoardSettingDeclaration): string | undefined {
+        if (!declaration.description) return undefined;
+        return boardDisplayText(
+            this.props.boardRoot,
+            undefined,
+            boardMetadataKeys.settingDescription(declaration.id),
+            declaration.description,
+        );
+    }
+
     protected onDispose(): void {
         this.lifecycleGeneration++;
         this.controls.clear();
@@ -75,8 +91,8 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
 
         if (declaration.type === "string" && declaration.format === "folderPath") {
             const library = this.child(new LibraryPathSectionView({}, {
-                title: settingLabel(declaration),
-                description: declaration.description || t("settings.boardFolderDescription"),
+                title: this.settingLabel(declaration),
+                description: this.settingDescription(declaration) || t("settings.boardFolderDescription"),
                 emptyText: t("settings.boardSettingNotSet"),
                 read: async () => {
                     const value = await getBoardSetting(this.props.boardRoot, declaration.id);
@@ -89,7 +105,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
                 browse: async () => {
                     const current = await getBoardSetting(this.props.boardRoot, declaration.id);
                     const result = await api.showOpenFolderDialog({
-                        title: settingLabel(declaration),
+                        title: this.settingLabel(declaration),
                         defaultPath: typeof current === "string" && current ? current : undefined,
                     });
                     if (result?.[0]) await setBoardSetting(this.props.boardRoot, declaration.id, result[0]);
@@ -103,15 +119,16 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         }
 
         const row = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
-        if (declaration.type !== "boolean") row.append(settingsFieldLabel(settingLabel(declaration)));
-        if (declaration.description) row.append(text(declaration.description, { color: "light", size: "xs" }));
+        if (declaration.type !== "boolean") row.append(settingsFieldLabel(this.settingLabel(declaration)));
+        const description = this.settingDescription(declaration);
+        if (description) row.append(text(description, { color: "light", size: "xs" }));
 
         if (declaration.type === "boolean") {
             const checkboxRow = panel({ direction: "row", align: "center", gap: "md" });
             const checkbox = this.child(new CheckboxView({
                 checked: declaration.default === true,
                 onChange: (value) => { void this.writeValue(control, value); },
-                children: settingLabel(declaration),
+                children: this.settingLabel(declaration),
             }));
             control.checkbox = checkbox;
             checkboxRow.append(checkbox.root);
@@ -173,7 +190,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         control.checkbox?.update({
             checked: value === true,
             onChange: (nextValue) => { void this.writeValue(control, nextValue); },
-            children: settingLabel(control.declaration),
+            children: this.settingLabel(control.declaration),
         });
         control.select?.update(this.selectProps(control));
     }

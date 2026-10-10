@@ -3,6 +3,7 @@ import { serializeRestClientData } from "./rest-client-serializer.js";
 import { ResponseCache } from "./response-cache.js";
 import { CONTENT_TYPES } from "./http-constants.js";
 import { executeRequest } from "./request-execution.js";
+import { t } from "./i18n.js";
 
 const copyRequest = request => request && ({
     ...request,
@@ -23,7 +24,7 @@ function setContentType(headers, value) {
 function parseContent(content) {
     const parsed = JSON.parse(content);
     if (!parsed || parsed.type !== "rest-client" || !Array.isArray(parsed.requests)) {
-        throw new Error("This file is not a REST Client collection.");
+        throw new Error(t("errors.notCollection"));
     }
     return parsed;
 }
@@ -179,7 +180,7 @@ export class RestClientModel {
                 if (content.trim()) this.data = parseContent(content);
                 this.error = "";
             } catch (error) {
-                this.error = error?.message || "Unable to parse REST Client collection.";
+                this.error = error?.message || t("errors.notCollection");
             }
         }
 
@@ -218,7 +219,7 @@ export class RestClientModel {
             this.#restoreSelectedResponse();
             if (this.#pendingOperations.length) this.#scheduleContentSave();
         } catch (error) {
-            this.error = error?.message || "Unable to parse REST Client collection.";
+            this.error = error?.message || t("errors.notCollection");
         }
         this.#notify();
     }
@@ -384,8 +385,8 @@ export class RestClientModel {
 
     async sendRequest(isDisposed = () => false) {
         const request = this.selectedRequest;
-        if (!request || !request.url || this.executing) throw new Error("Select a request with a URL before sending.");
-        if (this.headersJsonInvalid) throw new Error("Fix invalid JSON in headers before sending.");
+        if (!request || !request.url || this.executing) throw new Error(t("errors.sendPrerequisite"));
+        if (this.headersJsonInvalid) throw new Error(t("errors.invalidHeadersBeforeSend"));
         this.#requestController = new AbortController();
         this.executing = true;
         this.response = null;
@@ -472,7 +473,7 @@ export class RestClientModel {
             this.#notify();
         }).catch(error => {
             this.#pendingOperations.unshift(...operations);
-            this.bridge.notify(error?.message || "Unable to save REST Client collection.", "warning");
+            this.bridge.notify(error?.message || t("errors.saveCollection"), "warning");
         });
         return this.#saveQueue;
     }
@@ -498,6 +499,6 @@ function requestName(url) {
         const segments = parsed.pathname.split("/").filter(Boolean);
         return segments.length > 0 ? segments[segments.length - 1] : parsed.hostname;
     } catch {
-        return "Request";
+        return t("request.default.name");
     }
 }

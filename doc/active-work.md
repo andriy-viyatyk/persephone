@@ -8,13 +8,23 @@ Overview of all active and planned epics and tasks.
 
 The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
 [EPIC-124](epics/completed.md)) is done; phase 2 (every UI string
-extracted, [EPIC-125](epics/completed.md)) is done; next are phase 3 (boards localization) and
+extracted, [EPIC-125](epics/completed.md)) is done; phase 3 (boards localization,
+[EPIC-126](epics/EPIC-126.md)) is active; then
 phase 4 (the 17 built-in language packs, and the `app.languages` API and agent guide for
 writing packs).
 
 ## Active
 
-*(none)*
+- **EPIC-126** — [Boards localization (interface languages, phase 3)](epics/EPIC-126.md)
+  - [ ] [US-1667: Board packs and `persephone.i18n` (manifest `languages`, locale at registration, bridge 1.36.0)](tasks/US-1667-board-i18n-runtime/README.md)
+  - [ ] [US-1668: Shim-owned text: board context menu](tasks/US-1668-board-shim-text/README.md)
+  - [ ] [US-1669: Board metadata text (`manifest.*` keys)](tasks/US-1669-board-metadata-text/README.md)
+  - [ ] [US-1670: Published catalog: localized name and description](tasks/US-1670-catalog-localized-text/README.md)
+  - [ ] [US-1671: Board template and guides](tasks/US-1671-board-i18n-guides/README.md)
+  - [ ] [US-1672: Bundled boards: REST Client, Excalidraw](tasks/US-1672-bundled-board-strings/README.md)
+  - [ ] [US-1673: Catalog boards, part 1](tasks/US-1673-catalog-boards-1/README.md)
+  - [ ] [US-1674: Catalog boards, part 2](tasks/US-1674-catalog-boards-2/README.md)
+  - [ ] US-1675: Closing sweep (no task document)
 
 ## Planned
 

@@ -103,6 +103,8 @@ export interface PublishedBoardInfo {
     version: string;
     name: string;
     description?: string;
+    /** Optional display-only catalog metadata copied from declared board language packs. */
+    localized?: Record<string, { name?: string; description?: string }>;
     fileMasks?: string[];
     folderMasks?: string[];
     /** Direct folder claims; unlike folderMasks, these match the folder itself. */

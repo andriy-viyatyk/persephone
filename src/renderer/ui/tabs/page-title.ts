@@ -1,11 +1,15 @@
 import { englishMessage, t } from "../../../shared/i18n/t";
+import { boardDisplayText, boardMetadataKeys } from "../../editors/board/board-display-text";
 
 /** Localized presentation for app-owned page titles whose stored/API identity stays English. */
-export function displayPageTitle(editor: string | undefined, title: string | undefined): string {
+export function displayPageTitle(editor: string | undefined, title: string | undefined, boardRoot?: string): string {
     if (editor === "about-view" && title === "About") return t("editors.about");
     if (editor === "board-info" && title === englishMessage("board.infoInstallTitle")) return t("board.infoInstallTitle");
     if (editor === "toolset-view" && title === englishMessage("board.agentTool")) return t("board.agentTool");
     if (editor === "video-view" && title === englishMessage("editors.videoPlayer")) return t("editors.videoPlayer");
+    if ((editor === "board-view" || editor === "board-info") && boardRoot && title) {
+        return boardDisplayText(boardRoot, undefined, boardMetadataKeys.name, title);
+    }
     if (editor === "board-view" && title === englishMessage("board.editor")) return t("board.editor");
     if (editor === "settings-view" && title === englishMessage("settings.pageTitle")) return t("settings.pageTitle");
     if (editor === "browser-view" && title === "Browser") return t("browser.pageTitle");

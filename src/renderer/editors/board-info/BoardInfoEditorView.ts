@@ -3,8 +3,11 @@ import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
 import { legacyBoardDeprecationWarningForUi } from "../board/board-permission-copy";
+import { boardDisplayText, boardMetadataKeys } from "../board/board-display-text";
 import { createBoardPermissionChangeList, createBoardPermissionList } from "../board/board-permission-list";
 import { publishedBoards } from "../../api/published-boards";
+import { publishedBoardDisplayText } from "../../api/published-board-display-text";
+import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
@@ -231,6 +234,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     }
 
     private renderInstallTile(props: BoardInfoBodyProps, entry: PublishedBoardInfo): void {
+        const display = publishedBoardDisplayText(entry, getActiveLocale());
         const tile = panel({
             direction: "row",
             gap: "md",
@@ -243,10 +247,10 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.addChild(tile, new BoardScreenshotView({ url: entry.screenshotUrl }));
         const details = panel({ direction: "column", gap: "sm", align: "stretch", flex: 1, minWidth: 0 });
         details.append(panel({ direction: "row", align: "baseline", gap: "sm" },
-            text(entry.name, { bold: true }),
+            text(display.name, { bold: true }),
             text(`v${entry.version}`, { size: "sm", color: "light" }),
             text(formatBytes(entry.archive.size), { size: "sm", color: "light" })));
-        if (entry.description) details.append(text(entry.description, { size: "sm" }));
+        if (display.description) details.append(text(display.description, { size: "sm" }));
         if ((entry.fileMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true },
                 text(t("board.filesLabel"), { size: "sm", color: "light" }));
@@ -356,8 +360,9 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             : undefined;
         const heading = panel({ direction: "row", align: "start", gap: "md" });
         this.addChild(heading, new BoardScreenshotView({ url: screenshotUrl }));
+        const displayName = boardDisplayText(info.root, undefined, boardMetadataKeys.name, info.name);
         const headingDetails = panel({ direction: "row", align: "baseline", gap: "sm", wrap: true, flex: 1, minWidth: 0 },
-            text(info.name, { size: "lg", bold: true }));
+            text(displayName, { size: "lg", bold: true }));
         if (info.installedVersion) headingDetails.append(text(`${untranslated("v")}${info.installedVersion}`, { size: "sm", color: "light" }));
         const trusted = boardTrust.isTrusted(info.root);
         headingDetails.append(text(trusted ? t("board.trusted") : t("board.notTrusted"), {
@@ -368,7 +373,10 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.root.append(heading);
 
         const metadata = panel({ direction: "column", gap: "xs", align: "stretch" });
-        if (info.description) metadata.append(this.infoRow(t("board.descriptionLabel"), text(info.description, { size: "sm" })));
+        if (info.description) metadata.append(this.infoRow(t("board.descriptionLabel"), text(
+            boardDisplayText(info.root, undefined, boardMetadataKeys.description, info.description),
+            { size: "sm" },
+        )));
         if (info.author) metadata.append(this.infoRow(t("board.authorLabel"), text(info.author, { size: "sm" })));
         if (info.repository) {
             const repository = text(info.repository, { size: "sm", hoverUnderline: isHttpUrl(info.repository) });
@@ -384,7 +392,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         metadata.append(this.infoRow(t("board.locationLabel"), text(info.root, { size: "sm" })));
         if ((info.fileMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
-            if (info.editorName) masks.append(text(info.editorName, { size: "sm" }));
+            if (info.editorName) masks.append(text(boardDisplayText(info.root, undefined, boardMetadataKeys.editorName, info.editorName), { size: "sm" }));
             for (const mask of info.fileMasks ?? []) masks.append(this.maskChip(mask));
             if ((info.folderMasks?.length ?? 0) > 0) {
                 masks.append(text(t("board.inLabel"), { size: "sm", color: "light" }));
@@ -395,7 +403,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         }
         if ((info.folderEditorMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
-            if (info.editorName) masks.append(text(info.editorName, { size: "sm" }));
+            if (info.editorName) masks.append(text(boardDisplayText(info.root, undefined, boardMetadataKeys.editorName, info.editorName), { size: "sm" }));
             for (const mask of info.folderEditorMasks ?? []) masks.append(this.maskChip(mask));
             if (info.folderEditorPriority !== undefined) {
                 masks.append(text(t("board.editorPriority", { value: info.folderEditorPriority }), {
@@ -409,11 +417,11 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             metadata.append(text(t("board.notTrustedNoPermissions"), { size: "sm", color: "warning" }));
             if (info.proposedPermissions) {
                 metadata.append(text(t("board.proposedPermissions"), { size: "sm", bold: true }));
-                metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
+                metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, displayName));
             }
         } else if (info.permissions) {
             metadata.append(text(t("board.grantedPermissions"), { size: "sm", bold: true }));
-            metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, info.name));
+            metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, displayName));
         }
         if (info.permissionChangePending && info.proposedPermissions) {
             const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
@@ -421,7 +429,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             if (info.permissions) {
                 pending.append(createBoardPermissionChangeList(info.permissions, info.proposedPermissions, "sm"));
             } else {
-                pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
+                pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, displayName));
             }
             if (info.service) pending.append(text(t("board.serviceDeclared"), { size: "sm", color: "light" }));
             this.addButton(pending, {
@@ -449,7 +457,9 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 const details = [
                     t("board.capabilityDetails", { id, version: declaration.version ?? 1, priority: declaration.priority ?? 50 }),
                 ];
-                if (declaration.title) details.push(t("board.capabilityTitle", { value: untranslated(declaration.title) }));
+                if (declaration.title) details.push(t("board.capabilityTitle", {
+                    value: boardDisplayText(info.root, undefined, boardMetadataKeys.capabilityTitle(declaration.id), declaration.title),
+                }));
                 if ((declaration.accepts?.length ?? 0) > 0) {
                     details.push(t("board.capabilityAccepts", { values: untranslated(declaration.accepts?.join(", ") ?? "") }));
                 }

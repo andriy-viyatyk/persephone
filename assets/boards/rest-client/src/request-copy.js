@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 function getEnabledHeaders(request) {
     return request.headers
         .filter(header => header.enabled && header.key.trim())
@@ -69,10 +71,10 @@ function serializeFetch(request, nodeJs) {
 }
 
 const COPY_FORMATS = [
-    ["Copy as cURL (bash)", serializeAsCurlBash],
-    ["Copy as cURL (cmd)", serializeAsCurlCmd],
-    ["Copy as fetch", serializeAsFetch],
-    ["Copy as fetch (Node.js)", serializeAsFetchNodeJs],
+    ["request.copyAs.curlBash", serializeAsCurlBash],
+    ["request.copyAs.curlCmd", serializeAsCurlCmd],
+    ["request.copyAs.fetch", serializeAsFetch],
+    ["request.copyAs.fetchNode", serializeAsFetchNodeJs],
 ];
 
 export function createCopyMenu(model, anchor) {
@@ -82,14 +84,14 @@ export function createCopyMenu(model, anchor) {
     for (const [label, serialize] of COPY_FORMATS) {
         const item = document.createElement("button");
         item.type = "button";
-        item.textContent = label;
+        item.textContent = t(label);
         item.setAttribute("role", "menuitem");
         item.addEventListener("click", async () => {
             try {
                 const request = model.selectedRequest;
                 if (request) await persephone.clipboard.writeText(serialize(request));
             } catch (error) {
-                persephone.notify(error?.message || "Unable to copy request.", "error");
+                persephone.notify(error?.message || t("errors.copyRequest"), "error");
             }
             close();
         });

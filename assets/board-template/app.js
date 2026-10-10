@@ -1,11 +1,13 @@
-// The all-false starter demonstrates local UI logic without a gated bridge call.
+const t = (key, params) => persephone.i18n.t(key, params);
 const out = document.getElementById("out");
 
+document.title = t("starter.title");
+document.querySelector("h1").textContent = t("starter.title");
+document.querySelector("body > p").textContent = t("starter.description");
+document.getElementById("run").textContent = t("starter.run");
+out.textContent = t("starter.output");
+
 document.getElementById("run").addEventListener("click", () => {
-    const result = {
-        message: "Your board is running.",
-        timestamp: new Date().toLocaleTimeString(),
-        nextStep: "Add only the permissions your board needs to board-manifest.json.",
-    };
-    out.textContent = JSON.stringify(result, null, 2);
+    const result = { messageKey: "starter.result" };
+    out.textContent = t(result.messageKey);
 });

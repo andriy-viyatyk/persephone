@@ -5,7 +5,7 @@ import type {
     PublishedBoardsResult,
     PublishedBoardVersions,
 } from "../api-param-types";
-import type { BoardThemePalette } from "../board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { errMessage } from "../../shared/utils";
@@ -50,7 +50,7 @@ export type BoardEndpoint =
 /** Register Board lifecycle, bridge, automation, and catalog endpoints. Each
  * handler keeps its service dynamic import so Board infrastructure stays lazy. */
 export function initBoardHandlers(): void {
-    bindEndpoint(Endpoint.registerBoard, async (event: IpcMainEvent, boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>): Promise<string> => {
+    bindEndpoint(Endpoint.registerBoard, async (event: IpcMainEvent, boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>, i18n: BoardI18nContext, hostText: BoardHostText): Promise<string> => {
         const { registerBoard } = await import("../../main/board-protocol-service");
         let hostOrigin = "";
         try {
@@ -58,7 +58,7 @@ export function initBoardHandlers(): void {
         } catch {
             // Leave empty: the shim falls back to its parent-frame check.
         }
-        const host = registerBoard(boardRoot, theme, tokens, hostOrigin);
+        const host = registerBoard(boardRoot, theme, tokens, i18n, hostText, hostOrigin);
         const { ensureHostWired } = await import("../../main/board-bridge");
         ensureHostWired(event.sender);
         return host;

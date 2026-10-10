@@ -8,6 +8,8 @@ import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { subscribeBoardIconChanges } from "./board-icon-cache";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { buildBoardsTree, type BoardTreeNode } from "./boards-tree-build";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "./board-display-text";
+import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "./board-manifest";
 
 export interface BoardsTreeViewProps {
     name?: string;
@@ -79,9 +81,8 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
     private tree: TreeView<BoardTreeNode> | undefined;
     private selectedNode: BoardTreeNode | null = null;
     private activeIndex: number | null = null;
-    private nodes: BoardTreeNode[] = [];
-    private nodesBoards: string[] | undefined;
-    private nodesBaseRoot: string | undefined;
+    private readonly warmedRoots = new Set<string>();
+    private readonly manifests = new Map<string, NormalizedBoardManifest>();
 
     public constructor(props: BoardsTreeViewProps) {
         super(props, document.createElement("div"));
@@ -96,6 +97,10 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
                 if (value.startsWith("board:")) this.iconElements.delete(value);
             }
             this.tree?.refreshRows();
+        }));
+        this.own(onBoardDisplayTextChanged((_root, reason) => {
+            if (reason === "invalidate") this.warmedRoots.clear();
+            this.tree?.update(this.treeProps());
         }));
 
         const tree = this.child(new TreeView<BoardTreeNode>(this.treeProps()));
@@ -138,12 +143,24 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
     }
 
     private projectNodes(): BoardTreeNode[] {
-        if (this.nodesBoards === this.props.boards && this.nodesBaseRoot === this.props.baseRoot) {
-            return this.nodes;
-        }
-        this.nodesBoards = this.props.boards;
-        this.nodesBaseRoot = this.props.baseRoot;
-        this.nodes = buildBoardsTree(this.props.boards, this.props.baseRoot);
-        return this.nodes;
+        for (const root of this.props.boards) this.warmBoard(root);
+        return buildBoardsTree(this.props.boards, this.props.baseRoot, (root, fallback) =>
+            boardDisplayText(
+                root,
+                this.manifests.get(root),
+                boardMetadataKeys.name,
+                this.manifests.get(root)?.name?.trim() || fallback,
+            ),
+        );
+    }
+
+    private warmBoard(root: string): void {
+        if (this.warmedRoots.has(root)) return;
+        this.warmedRoots.add(root);
+        void readNormalizedBoardManifest(root).then((manifest) => {
+            if (!manifest) return;
+            this.manifests.set(root, manifest);
+            return ensureBoardDisplayText(root, manifest);
+        }).catch(() => {});
     }
 }

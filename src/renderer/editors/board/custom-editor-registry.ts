@@ -24,6 +24,7 @@ import { boardTrust } from "../../api/board-trust";
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { settings } from "../../api/settings";
 import { bundledBoardRegistry } from "./bundled-board-registry";
+import { invalidateBoardDisplayText } from "./board-display-text";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import { urlPathFileName } from "../../content/link-utils";
@@ -97,6 +98,8 @@ export interface CustomEditorMatch extends Omit<BoardEditorAssociation, "editorN
     boardRoot: string;
     /** Switch-widget display name: editorName ?? manifest.name ?? basename(root). */
     name: string;
+    /** Reserved metadata key used only by renderer presentation; `name` remains English. */
+    displayNameKey: "manifest.name" | "manifest.editorName";
     /** File resolution priority (>= 0) from the manifest (US-836 `editorPriority`). */
     priority: number;
 
@@ -472,6 +475,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
      *  Full rebuild (cheap at registry scale; a manifest edit can change masks/priority).
      *  Enumerates trusted roots directly — nested boards are unsupported by design, so no subtree walk. */
     async refresh(): Promise<void> {
+        invalidateBoardDisplayText();
         const gen = ++this.refreshGen;
         await bundledBoardRegistry.ensureInitialized();
         const roots = boardTrust.listPaths();
@@ -532,6 +536,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 editorId: boardEditorId(root),
                 boardRoot: root,
                 name: assoc.editorName || boardName,
+                displayNameKey: assoc.editorName ? "manifest.editorName" : "manifest.name",
                 priority: assoc.editorPriority,
                 fileMasks: assoc.fileMasks,
                 folderMasks: assoc.folderMasks,

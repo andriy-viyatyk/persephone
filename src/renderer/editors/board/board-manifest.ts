@@ -74,6 +74,11 @@ export interface BoardCapabilityDeclaration {
     alwaysOpensNewPage?: boolean;
 }
 
+export interface BoardLanguages {
+    folder: string;
+    default: string;
+}
+
 export interface BoardManifest {
     /** Schema version of this manifest. */
     schemaVersion: number;
@@ -107,6 +112,8 @@ export interface BoardManifest {
     minAppVersion?: string;
     /** Minimum bridge version this board requires (semver; absent = no requirement). */
     minBridgeVersion?: string;
+    /** Optional board-owned language packs. */
+    languages?: { folder?: string; default?: string };
 
     /** Optional capabilities declared by the board. Values are disclosed and forward-compatible.
      * Known disclosure values include `service`, `contentProviders`, and `capabilities`; unknown
@@ -280,6 +287,7 @@ export interface NormalizedBoardManifest {
     singleInstance?: boolean;
     minAppVersion?: string;
     minBridgeVersion?: string;
+    languages?: BoardLanguages;
     permissions: NormalizedBoardPermissions;
     service?: string;
     contentProviders?: BoardContentProviderDeclaration[];
@@ -847,6 +855,10 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     for (const key of ["name", "description", "author", "repository", "version", "minAppVersion", "minBridgeVersion"] as const) {
         copyString(key);
     }
+    if (has("languages")) {
+        const languages = normalizeBoardLanguages(source.languages);
+        if (languages) normalized.languages = languages;
+    }
     if (typeof source.standalone === "boolean") normalized.standalone = source.standalone;
     if (typeof source.singleInstance === "boolean") normalized.singleInstance = source.singleInstance;
     if (typeof source.service === "string") {
@@ -888,6 +900,21 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     const folderEditorMasks = normalized.folderEditorMasks ?? [];
     normalized.association = createBoardEditorAssociation(normalized, fileMasks, folderMasks, contentMasks, folderEditorMasks);
     return normalized;
+}
+
+function normalizeBoardLanguages(raw: unknown): BoardLanguages | undefined {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    const candidate = raw as Record<string, unknown>;
+    const folder = candidate.folder === undefined ? "lang" : normalizeBoardRelativePath(candidate.folder);
+    const defaultCode = candidate.default === undefined ? "en" : candidate.default;
+    if (!folder || typeof defaultCode !== "string" || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(defaultCode)) return undefined;
+    try {
+        const canonical = Intl.getCanonicalLocales(defaultCode)[0];
+        if (!canonical) return undefined;
+        return { folder, default: canonical };
+    } catch {
+        return undefined;
+    }
 }
 
 export function boardTrustDisclosure(manifest: NormalizedBoardManifest): {

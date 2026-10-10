@@ -16,6 +16,8 @@ import { boardUsageGroup, type BoardManifest, type BoardUsageGroup } from "../bo
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { formatBytes } from "../../core/utils/format-bytes";
 import type { PublishedBoardInfo } from "../../../ipc/api-param-types";
+import { getActiveLocale } from "../../../shared/i18n/active-locale";
+import { publishedBoardDisplayText } from "../../api/published-board-display-text";
 import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Input/Input.css";
@@ -227,7 +229,10 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         const query = this.query.trim().toLowerCase();
         if (!query) return this.catalog;
         return this.catalog.filter((board) => {
+            const display = publishedBoardDisplayText(board, getActiveLocale());
             const haystack = [
+                display.name,
+                display.description ?? "",
                 board.name,
                 board.description ?? "",
                 ...(board.fileMasks ?? []),
@@ -414,23 +419,22 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         if (!details) return;
         const {
             id,
-            name,
             version,
-            description,
             fileMasks,
             minAppVersion,
             archive: { size },
         } = props.board;
+        const display = publishedBoardDisplayText(props.board, getActiveLocale());
         const installed = props.installed.find((entry) => entry.id === id);
         const { id: installedId = null, root: installedRoot = null, version: installedVersion = null } = installed ?? {};
         const update = installed ? props.updates.get(fpNormalizeForCompare(installed.root)) : undefined;
         const { latestVersion: updateVersion = null } = update ?? {};
         const nextDetailsSignature: BoardDetailsSignature = {
             id,
-            name,
+            name: display.name,
             version,
             size,
-            description: description ?? null,
+            description: display.description ?? null,
             fileMasks: fileMasks ? [...fileMasks] : null,
             minAppVersion: minAppVersion ?? null,
             installedId,
@@ -444,7 +448,7 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         details.replaceChildren();
         const header = createPanelElement({ direction: "row", align: "center", gap: "sm" });
         header.append(
-            createTextElement(name, { bold: true }),
+            createTextElement(display.name, { bold: true }),
             createTextElement(untranslated(`v${version}`), { size: "sm", color: "light" }),
             createTextElement(formatBytes(size), { size: "sm", color: "light" }),
             createPanelElement({ flex: 1, minWidth: 0 }),
@@ -464,8 +468,8 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         }
         details.append(header);
 
-        if (description) {
-            details.append(createTextElement(description, { size: "sm" }));
+        if (display.description) {
+            details.append(createTextElement(display.description, { size: "sm" }));
         }
 
         if (fileMasks && fileMasks.length > 0) {

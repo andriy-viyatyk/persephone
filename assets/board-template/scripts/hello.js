@@ -11,7 +11,7 @@ console.error("hello.js: diagnostics go to stderr");  // logs belong on stderr
 
 const result = {
     ok: true,
-    message: "Hello from scripts/hello.js",
+    messageKey: "starter.result",
     ts: new Date().toISOString(),
 };
 

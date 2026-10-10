@@ -7,6 +7,7 @@ import { getEditorSwitchFileName, getEditorSwitchOptions } from "./editor-switch
 import { EditorToolbarView } from "./EditorToolbarView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
 import { customEditorRegistry } from "../board/custom-editor-registry";
+import { onBoardDisplayTextChanged } from "../board/board-display-text";
 import { isTextFileModel, type TextFileEditorModelState, type TextFileModel } from "../text/TextEditorModel";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import {
@@ -250,6 +251,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
             (state) => state.entries,
         ));
         this.own(boardInstallRegistry.subscribeInstalled(() => this.syncSegments()));
+        this.own(onBoardDisplayTextChanged(() => this.syncSegments()));
         this.bind(this.model.state, selectEditorSwitchProjection, () => this.syncSegments());
     }
 
@@ -328,7 +330,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
 
         const items: ISegment[] = options.map((option) => ({
             value: option.id,
-            label: option.labelKey ? t(option.labelKey, option.labelParams as never) : option.label,
+            label: option.displayLabel ?? (option.labelKey ? t(option.labelKey, option.labelParams as never) : option.label),
             title: option.titleKey ? t(option.titleKey, option.labelParams as never) : option.title,
         }));
         const props: SegmentedControlViewProps = {

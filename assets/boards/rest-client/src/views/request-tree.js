@@ -1,7 +1,8 @@
 import { confirmDialog } from "../components/confirm.js";
 import { createIcon, createIconButton } from "../components/icons.js";
+import { t } from "../i18n.js";
 
-const EMPTY_LABEL = "(empty)";
+const EMPTY_LABEL = t("request.empty.label");
 
 function createButton(label, name, action) {
     const button = document.createElement("button");
@@ -20,8 +21,8 @@ export function renderRequestTree(model, root) {
     header.className = "tree-header";
     const title = document.createElement("span");
     title.className = "section-title";
-    title.textContent = "Requests";
-    const add = createIconButton({ icon: "plus", name: "rest-tree-add", title: "Add request", onClick: () => model.addRequest() });
+    title.textContent = t("requests.title");
+    const add = createIconButton({ icon: "plus", name: "rest-tree-add", title: t("request.add.title"), onClick: () => model.addRequest() });
     header.append(title, add);
     const groupsRoot = document.createElement("div");
     groupsRoot.className = "request-groups";
@@ -85,10 +86,10 @@ export function renderRequestTree(model, root) {
             rows.hidden = expanded;
         });
         groupHeader.addEventListener("contextmenu", event => showMenu(event, [
-            ["Add Request", "collection-tree-add", () => model.addRequest(undefined, collection)],
-            ["Delete Collection", "collection-tree-delete", () => {
+            [t("request.add.context"), "collection-tree-add", () => model.addRequest(undefined, collection)],
+            [t("collection.delete.title"), "collection-tree-delete", () => {
                 const label = collection || EMPTY_LABEL;
-                void confirmDialog(`Delete all requests in "${label}"?`, { view: "requests" }).then((ok) => { if (ok) model.deleteCollection(collection); });
+                void confirmDialog(t("confirm.collection.delete", { name: label }), { view: "requests" }).then((ok) => { if (ok) model.deleteCollection(collection); });
             }, true],
         ]));
         groupHeader.addEventListener("dragover", event => {
@@ -120,9 +121,9 @@ export function renderRequestTree(model, root) {
             row.addEventListener("click", () => model.selectRequest(request.id));
             row.addEventListener("contextmenu", event => {
                 showMenu(event, [
-                    ["Duplicate", "request-tree-duplicate", () => model.duplicateRequest(request.id)],
-                    ["Delete", "request-tree-delete", () => {
-                        void confirmDialog(`Delete "${request.name || EMPTY_LABEL}"?`, { view: "requests" }).then((ok) => { if (ok) model.deleteRequest(request.id); });
+                    [t("request.duplicate"), "request-tree-duplicate", () => model.duplicateRequest(request.id)],
+                    [t("request.delete.context"), "request-tree-delete", () => {
+                        void confirmDialog(t("confirm.request.delete", { name: request.name || EMPTY_LABEL }), { view: "requests" }).then((ok) => { if (ok) model.deleteRequest(request.id); });
                     }, true],
                 ]);
             });

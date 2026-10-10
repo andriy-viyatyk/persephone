@@ -1,4 +1,3 @@
-import { maxSearchResults } from "../../../ipc/search-ipc";
 import { RenderGrid } from "../../uikit/DataGrid";
 import type { RenderCellFunc } from "../../uikit/DataGrid";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";

@@ -13,8 +13,9 @@ import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
 import { hostOwnsPipe } from "../board/board-manifest";
-import { englishMessage } from "../../../shared/i18n/t";
+import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MessageKey } from "../../../shared/i18n/en";
+import { boardDisplayText } from "../board/board-display-text";
 
 export interface IEditorSwitchOption {
     readonly id: string;
@@ -23,6 +24,8 @@ export interface IEditorSwitchOption {
     readonly labelKey?: MessageKey;
     readonly titleKey?: MessageKey;
     readonly labelParams?: Record<string, string | number>;
+    /** UI-only projection; `label` stays English for scripting and agent consumers. */
+    readonly displayLabel?: string;
 }
 
 /** Compatible targets for opening a file before a page/editor has been created. */
@@ -62,10 +65,11 @@ export function getFileOpenEditorOptions(path: string): IEditorSwitchOption[] {
             label: englishMessage("shell.boardName", { name: board.name }),
             labelKey: "shell.boardName" as const,
             labelParams: { name: board.name },
+            displayLabel: t("shell.boardName", { name: boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name) }),
         }));
 
     const defaultOption = defaultBoard
-        ? { id: defaultBoard.editorId, label: englishMessage("shell.defaultBoardEditor", { name: defaultBoard.name }), labelKey: "shell.defaultBoardEditor" as const, labelParams: { name: defaultBoard.name } }
+        ? { id: defaultBoard.editorId, label: englishMessage("shell.defaultBoardEditor", { name: defaultBoard.name }), labelKey: "shell.defaultBoardEditor" as const, labelParams: { name: defaultBoard.name }, displayLabel: t("shell.defaultBoardEditor", { name: boardDisplayText(defaultBoard.boardRoot, undefined, defaultBoard.displayNameKey, defaultBoard.name) }) }
         : {
             id: defaultEditorId,
             label: englishMessage("shell.defaultEditor", { name: switchOptions.options.includes(defaultEditorId)
@@ -91,6 +95,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
         if (currentBoardId && !merged.includes(currentBoardId)) merged.push(currentBoardId);
 
         const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
+        const boardById = new Map(boardMatches.map((board) => [board.editorId, board]));
         if (currentBoardId && !boardNameById.has(currentBoardId)) {
             const selectedBoard = (model.state.get() as { selectedBoard?: string }).selectedBoard;
             if (selectedBoard) boardNameById.set(currentBoardId, selectedBoard);
@@ -112,7 +117,9 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             merged.splice(plusIndex, 1);
             merged.push(BOARD_INFO_EDITOR_ID);
         }
-        return merged.map((id) => ({
+        return merged.map((id) => {
+            const board = boardById.get(id);
+            return ({
             id,
             label: id === BOARD_INFO_EDITOR_ID
                 ? "\u00A0\u00A0+\u00A0\u00A0"
@@ -122,7 +129,11 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
                 ? englishMessage("shell.installEditorForFolder")
                 : undefined,
             titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFolder" : undefined,
-        }));
+            displayLabel: board
+                ? boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name)
+                : undefined,
+        });
+        });
     }
 
     const host = getTextHost(model);
@@ -178,7 +189,10 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     }
 
     const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
-    return merged.map((id) => ({
+    const boardById = new Map(boardMatches.map((board) => [board.editorId, board]));
+    return merged.map((id) => {
+        const board = boardById.get(id);
+        return ({
         id,
         // Non-breaking spaces, written as escapes on purpose: the label is rendered as ordinary
         // text, so plain spaces around the "+" collapse and the segment comes out barely wider
@@ -192,7 +206,11 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             ? englishMessage("shell.installEditorForFileType")
             : undefined,
         titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFileType" : undefined,
-    }));
+        displayLabel: board
+            ? boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name)
+            : undefined,
+    });
+    });
 }
 
 /** File identity used by the toolbar's catalog subscription. */

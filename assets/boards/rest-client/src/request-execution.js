@@ -1,5 +1,6 @@
 import { MAX_REQUEST_BODY_BYTES } from "./http-constants.js";
 import { isBinaryContentType } from "./response-utils.js";
+import { t } from "./i18n.js";
 
 const encoder = new TextEncoder();
 
@@ -17,7 +18,7 @@ function filenameFromPath(path) { return path.split(/[\\/]/).at(-1) || "upload.b
 
 function appendChunk(chunks, chunk, size) {
     const nextSize = size + chunk.byteLength;
-    if (nextSize > MAX_REQUEST_BODY_BYTES) throw new Error("Request body exceeds the 32 MiB limit.");
+    if (nextSize > MAX_REQUEST_BODY_BYTES) throw new Error(t("errors.requestBodyLimit"));
     chunks.push(chunk);
     return nextSize;
 }
@@ -32,8 +33,8 @@ async function buildBody(request, headers) {
     if (request.bodyType === "binary") {
         if (!request.binaryFilePath) return undefined;
         const bytes = await persephone.readFile(request.binaryFilePath, { encoding: "binary" });
-        if (!(bytes instanceof Uint8Array)) throw new Error("The file bridge did not return binary data.");
-        if (bytes.byteLength > MAX_REQUEST_BODY_BYTES) throw new Error("Request body exceeds the 32 MiB limit.");
+        if (!(bytes instanceof Uint8Array)) throw new Error(t("errors.fileBridgeBinary"));
+        if (bytes.byteLength > MAX_REQUEST_BODY_BYTES) throw new Error(t("errors.requestBodyLimit"));
         return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     }
     if (request.bodyType !== "form-data") return undefined;
@@ -46,9 +47,9 @@ async function buildBody(request, headers) {
         size = appendChunk(chunks, encoder.encode(`--${boundary}\r\n`), size);
         if (entry.type === "file" && entry.value) {
             const bytes = await persephone.readFile(entry.value, { encoding: "binary" });
-            if (!(bytes instanceof Uint8Array)) throw new Error("The file bridge did not return binary data.");
+            if (!(bytes instanceof Uint8Array)) throw new Error(t("errors.fileBridgeBinary"));
             // Check each file immediately after readFile; the bridge has no size-query operation.
-            if (bytes.byteLength > MAX_REQUEST_BODY_BYTES) throw new Error("Request body exceeds the 32 MiB limit.");
+            if (bytes.byteLength > MAX_REQUEST_BODY_BYTES) throw new Error(t("errors.requestBodyLimit"));
             size = appendChunk(chunks, encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${filenameFromPath(entry.value)}"\r\nContent-Type: application/octet-stream\r\n\r\n`), size);
             size = appendChunk(chunks, bytes, size);
             size = appendChunk(chunks, encoder.encode("\r\n"), size);
@@ -82,7 +83,7 @@ export async function executeRequest(request, signal) {
         };
     } catch (error) {
         return {
-            response: { status: 0, statusText: "Error", headers: [], body: error?.message || "Request failed." },
+            response: { status: 0, statusText: t("response.status.error"), headers: [], body: error?.message || t("errors.send") },
             responseTime: Date.now() - started,
         };
     }

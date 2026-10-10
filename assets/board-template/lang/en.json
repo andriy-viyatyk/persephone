@@ -1,0 +1,9 @@
+{
+  "messages": {
+    "starter.title": "My Board",
+    "starter.description": "This all-false starter demonstrates local UI logic. Its button does not call a gated bridge API.",
+    "starter.run": "Run example",
+    "starter.output": "Output appears here...",
+    "starter.result": "Your board is running."
+  }
+}

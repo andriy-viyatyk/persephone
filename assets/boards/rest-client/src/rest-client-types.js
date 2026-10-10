@@ -1,3 +1,5 @@
+import { t } from "./i18n.js";
+
 /** @typedef {{ key: string, value: string, enabled: boolean }} RestHeader */
 /** @typedef {"none" | "form-urlencoded" | "raw" | "binary" | "form-data"} BodyType */
 /** @typedef {"plaintext" | "json" | "javascript" | "html" | "xml"} RawLanguage */
@@ -13,7 +15,7 @@ export const RAW_LANGUAGES = Object.freeze(["plaintext", "json", "javascript", "
 export function createDefaultRequest(name, collection) {
     return {
         id: crypto.randomUUID(),
-        name: name || "New Request",
+        name: name || t("request.default.name"),
         collection: collection || "",
         method: "GET",
         url: "",

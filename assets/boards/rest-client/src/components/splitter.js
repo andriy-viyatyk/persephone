@@ -1,3 +1,5 @@
+import { t } from "../i18n.js";
+
 export function createSplitter({ name, orientation = "horizontal", initial = 50 }) {
     const element = document.createElement("div");
     element.className = `splitter splitter-${orientation}`;
@@ -5,7 +7,7 @@ export function createSplitter({ name, orientation = "horizontal", initial = 50 
     element.tabIndex = 0;
     element.setAttribute("role", "separator");
     element.setAttribute("aria-orientation", orientation);
-    element.setAttribute("aria-label", name === "request-body-splitter" ? "Resize headers and body" : "Resize request and response panes");
+    element.setAttribute("aria-label", t(name === "request-body-splitter" ? "accessibility.resizeHeadersBody" : "accessibility.resizeRequestResponse"));
     let ratio = initial;
     const apply = () => {
         if (!element.parentElement) return;

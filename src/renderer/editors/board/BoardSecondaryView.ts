@@ -11,6 +11,7 @@ import { parseBoardSecondaryPanelId } from "./board-secondary";
 import { BoardWebview } from "./BoardWebview";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { t, untranslated } from "../../../shared/i18n/t";
+import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "./board-display-text";
 
 export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> {
     private boardModel: BoardEditorModel | undefined;
@@ -54,6 +55,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
 
         this.bindBoardState(boardModel);
         this.own(subscribeBoardPermission(this.renderState));
+        this.own(onBoardDisplayTextChanged(this.renderState));
         this.own(() => this.header?.dispose());
         this.renderState();
     }
@@ -118,7 +120,9 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: declaration?.title ?? (viewId ? untranslated(viewId) : t("board.viewFallback")),
+            title: declaration?.title && selectedRoot && viewId
+                ? boardDisplayText(selectedRoot, undefined, boardMetadataKeys.viewTitle(viewId), declaration.title)
+                : declaration?.title ?? (viewId ? untranslated(viewId) : t("board.viewFallback")),
         });
 
         if (!selectedRoot || !declaration || !permitted) {

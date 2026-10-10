@@ -21,6 +21,8 @@ import { installVersion } from "./board-install";
 import { errMessage } from "../../shared/utils";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
 import { t } from "../../shared/i18n/t";
+import { getActiveLocale } from "../../shared/i18n/active-locale";
+import { publishedBoardDisplayText } from "./published-board-display-text";
 
 const CLOSE_BOARD_AND_CONTINUE = "Close board & continue";
 
@@ -169,14 +171,18 @@ export async function runBoardVersionInstall(args: {
     version: string;
 }): Promise<boolean> {
     if (!(await ensureBoardIdle(args.root))) return false;
+    const catalogEntry = publishedBoards.getCatalog().find((board) => board.id === args.id);
+    const displayName = catalogEntry
+        ? publishedBoardDisplayText(catalogEntry, getActiveLocale()).name
+        : args.name;
     try {
         await ui.showProgress(
             installVersion(args.id, args.archive, args.version, {
                 preSwap: async () => isBoardIdle(args.root),
             }),
-            t("api.installingBoard", { name: args.name, version: args.version }),
+            t("api.installingBoard", { name: displayName, version: args.version }),
         );
-        void ui.notify(t("api.boardInstalled", { name: args.name, version: args.version }), "success");
+        void ui.notify(t("api.boardInstalled", { name: displayName, version: args.version }), "success");
         return true;
     } catch (err) {
         void ui.notify(t("api.boardInstallFailed", { error: errMessage(err) }), "error");

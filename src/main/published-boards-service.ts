@@ -69,6 +69,27 @@ function screenshotUrl(id: string, screenshot: string | undefined): string | und
     return `${boardsRepoRawBase()}/boards/${encodeURIComponent(id)}/${encodeURIComponent(screenshot)}`;
 }
 
+function validateLocalizedText(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const text = value.trim();
+    if (!text || /\{[\w.-]+\}/.test(text)) return undefined;
+    return text;
+}
+
+function validateLocalized(value: unknown): PublishedBoardInfo["localized"] {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const localized: NonNullable<PublishedBoardInfo["localized"]> = {};
+    for (const [code, rawText] of Object.entries(value)) {
+        if (!/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(code)) continue;
+        if (!rawText || typeof rawText !== "object" || Array.isArray(rawText)) continue;
+        const fields = rawText as Record<string, unknown>;
+        const name = validateLocalizedText(fields.name);
+        const description = validateLocalizedText(fields.description);
+        if (name || description) localized[code] = { name, description };
+    }
+    return Object.keys(localized).length > 0 ? localized : undefined;
+}
+
 /**
  * Add the derived `screenshotUrl` to every entry. Applied when a catalog LEAVES the service
  * — never before it is cached — so the stored copy holds only what the manifest said and the
@@ -110,6 +131,7 @@ function validateBoard(entry: unknown): PublishedBoardInfo | null {
         version: e.version,
         name: e.name,
         description: typeof e.description === "string" ? e.description : undefined,
+        localized: validateLocalized(e.localized),
         fileMasks: Array.isArray(e.fileMasks)
             ? e.fileMasks.filter((m): m is string => typeof m === "string")
             : undefined,

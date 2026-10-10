@@ -11,8 +11,10 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.35.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.20.0` delivers requests to each handler
+The board bridge is version **1.36.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.36.0` adds registration-time
+`persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; boards using them must set
+`minBridgeVersion: "1.36.0"`. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
 `Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
@@ -396,6 +398,7 @@ blank board contains:
   layer (`.p-toolbar`, `.p-btn`, `.p-input`, …).
   **Already linked in `index.html`; don't fetch or recreate it.**
 - `board-manifest.json` — the board-identity file (already valid).
+- `lang/en.json` — the default UI messages; the starter calls `persephone.i18n.t()` to display them.
 - `CLAUDE.md` — the generic board authoring guide. **When the board is built, rewrite this file
   to document _this_ board** (purpose, how it works, key files, run/test steps, gotchas) so a
   future agent has instant context — see the "rewrite this file" note at its top. The generic
@@ -403,6 +406,80 @@ blank board contains:
 
 Edit these with your own file tools (or `app.fs` inside another `script.execute`). The key
 surfaces:
+
+### Languages
+
+A board declares its packs in `board-manifest.json` and keeps one `<code>.json` file in the pack
+folder per language:
+
+```json
+{
+  "minBridgeVersion": "1.36.0",
+  "languages": { "folder": "lang", "default": "en" }
+}
+```
+
+Each file has a `messages` object. Keys are stable English identifiers; values are strings or CLDR
+plural objects. The optional `source` field is metadata for authors and translators; Persephone
+currently ignores it.
+
+```json
+{
+  "messages": {
+    "welcome.title": "Welcome",
+    "items.count": { "one": "{count} item", "other": "{count} items" }
+  }
+}
+```
+
+Call `persephone.i18n.t(key, params)` for UI text and `persephone.i18n.has(key)` to check whether
+any loaded pack contains a key. Keep `{name}` placeholder names identical across translations.
+For plurals, provide the target locale's CLDR categories, including `other`, and pass a numeric
+`count`. Keys, `.app` member names, settings keys, and other agent-facing identifiers stay English.
+
+Persephone loads only the current locale, its base locale, and the declared default pack. Lookup
+falls back per key in that order, then returns the key. `persephone.locale.code` gives the app
+locale, including regional codes such as `pt-BR` and the verification locale `en-XA`. Registration
+loads the locale once; changing the app language reloads the window and registers boards again.
+Pass `persephone.locale.code` to third-party libraries that accept a locale option.
+
+English manifest values stay in `board-manifest.json`; they do not need `manifest.*` keys in the
+default pack. A translated pack can add plain-string `manifest.*` entries to localize `name`,
+`description`, `editorName`, `views.<id>.title`, `settings.<key>.label` / `.description`, and
+`capabilities.<id>.title`. Keep the IDs in these keys stable. Manifest entries cannot have
+placeholders or plural forms. They are full flat keys inside `messages`, beside the board's own
+keys — for example `lang/uk.json`:
+
+```json
+{
+  "messages": {
+    "welcome.title": "Ласкаво просимо",
+    "items.count": { "one": "{count} елемент", "few": "{count} елементи", "many": "{count} елементів", "other": "{count} елемента" },
+    "manifest.name": "Мій борд",
+    "manifest.views.notes.title": "Нотатки",
+    "manifest.settings.apiUrl.label": "Адреса API"
+  }
+}
+```
+
+Invalid pack entries are ignored and validation warnings are written to the board's `ui.log`.
+Inspect that log after opening the board. Open it under `en-XA` to check extraction: board-pack
+strings and translated manifest display values become pseudo-text; remaining user-visible English
+copy has not been extracted. Data and agent-facing names remain unchanged.
+
+**Make a board translatable.** Declare `languages`, set `minBridgeVersion: "1.36.0"`, move
+user-visible copy into `lang/en.json`, and replace it with `persephone.i18n.t()` calls. Add
+translated `manifest.*` entries only to translated packs, then check the board under `en-XA` and
+inspect `ui.log`.
+
+**Add a language to an existing board.** Read its declared default pack first, then create
+`lang/<code>.json` with the same stable message keys and translated values. Preserve placeholders,
+provide the target locale's CLDR plural categories, and add applicable translated `manifest.*`
+entries using the existing IDs. Before you finish, compare the new pack with the default pack
+yourself: the same keys (no extra ones), the same `{placeholder}` names in every message, and an
+`other` form in every plural. Persephone validates a pack only when the app runs in that language
+— it then drops bad entries and lists them in `ui.log` — and switching the app language reloads
+every window, so ask the user before you change it, or leave the on-screen check to them.
 
 ### Give the board its secrets — env vars
 

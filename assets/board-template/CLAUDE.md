@@ -5,8 +5,10 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.35.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.19.0` adds
+The board bridge is version **1.36.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.36.0` adds registration-time
+`persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; boards using these APIs
+must set `minBridgeVersion: "1.36.0"`. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
@@ -155,11 +157,32 @@ image.src = icons["movie.mp4"];
 > - **Reference** — keep a short pointer to the canonical Persephone board docs (below /
 >   `persephone://guides/boards`) for the `persephone.*` bridge API; don't re-document it here.
 
+## Languages
+
+The starter declares `languages` in `board-manifest.json` and includes its English UI messages in
+`lang/en.json`. It uses `persephone.i18n.t(key, params)` in `app.js`; keep message keys, settings
+keys, and `.app` names in English. English manifest values stay in the manifest. Add plain-string
+`manifest.*` keys to translated packs when the board's name, description, editor name, view titles,
+settings labels, or capability titles need translation.
+
+```js
+const t = (key, params) => persephone.i18n.t(key, params);
+document.getElementById("run").textContent = t("starter.run");
+```
+
+For another language, copy the default pack's keys, translate the values, preserve placeholders,
+and provide the target language's CLDR plural categories. A board using `persephone.locale` or
+`persephone.i18n` needs `minBridgeVersion: "1.36.0"`. Check the board under `en-XA` for remaining
+English UI text and inspect `ui.log` for pack-validation warnings. Changing the app language
+reloads the board. See the **Languages** section in `persephone://guides/boards` for the full format
+and author workflow.
+
 ## Board permissions
 
 Trust decides whether the board runs; the manifest's object-form permissions gate capabilities.
-Persephone-created blank boards begin all-false with `minBridgeVersion: "1.30.0"`. Auto-trust
-does not widen those grants. Object-form manifests require `minBridgeVersion >= 1.30.0`. The
+Persephone-created blank boards begin all-false with `minBridgeVersion: "1.36.0"` for the starter's
+board-pack i18n. Auto-trust does not widen those grants. Object-form manifests require
+`minBridgeVersion >= 1.30.0`. The
 exact hosted-document `readFile()` exception requires bridge `1.32.0`; set that as the minimum
 when a board depends on it. Enable only flags the code uses. Approved permission wording:
 

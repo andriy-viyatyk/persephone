@@ -1,14 +1,15 @@
-import type { BoardFireMethod, BoardRpcMethod } from "./ipc/board-bridge-channels";
+import type { BoardFireMethod, BoardHostTextId, BoardRpcMethod } from "./ipc/board-bridge-channels";
 import { errMessage } from "./shared/utils";
 
 export interface BoardContextMenuBridge {
     fire(method: BoardFireMethod, args: unknown[]): void;
     rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown>;
+    hostText(id: BoardHostTextId, params?: { error?: string }): string;
 }
 
 
 /** Install Persephone's built-in board context menu. */
-export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): void {
+export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMenuBridge): void {
     // Default context menu — a board lives on a locked-down `board://` origin with no access to
     // Persephone's native context menu, so right-click gets nothing by default. Provide a minimal
     // built-in menu so boards behave like other apps without any board code:
@@ -18,7 +19,8 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
     // (bubble phase — a board handler on document/an element runs first), exactly like the Ctrl+S
     // and link-click opt-outs. The menu is a small themed popover drawn from the injected --p-* vars.
     interface CtxItem {
-        label: string;
+        id: "openLink" | "copyLink" | "openImageInNewTab" | "copyImage" | "saveImageAs" | "cut" | "copy" | "paste";
+        textId: BoardHostTextId;
         action: () => void;
         /** Draw a divider line above this item (used to separate groups). */
         separator?: boolean;
@@ -58,7 +60,7 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             }
             fire("openRawLink", [href, "image-view"]);
         } catch (e) {
-            fire("notify", [`Failed to open image: ${errMessage(e)}`, "error"]);
+            fire("notify", [hostText("failedToOpenImage", { error: errMessage(e) }), "error"]);
         }
     }
 
@@ -96,7 +98,7 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             if (!blob) throw new Error("Could not encode the image.");
             await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
         } catch (e) {
-            fire("notify", [`Failed to copy image: ${errMessage(e)}`, "error"]);
+            fire("notify", [hostText("failedToCopyImage", { error: errMessage(e) }), "error"]);
         }
     }
 
@@ -159,19 +161,19 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             if (!b64) throw new Error("Could not read the image.");
             const path = (await rpc("saveFileDialog", [
                 {
-                    title: "Save Image",
+                    title: hostText("saveImageDialogTitle"),
                     defaultPath: suggestImageName(src, ext),
                     filters: [
-                        { name: "Image", extensions: [ext] },
-                        { name: "All Files", extensions: ["*"] },
+                        { name: hostText("imageFileFilter"), extensions: [ext] },
+                        { name: hostText("allFilesFileFilter"), extensions: ["*"] },
                     ],
                 },
             ])) as string | undefined;
             if (!path) return; // cancelled
             await rpc("writeFile", [path, b64, "base64"]);
-            fire("notify", ["Image saved.", "success"]);
+            fire("notify", [hostText("imageSaved"), "success"]);
         } catch (e) {
-            fire("notify", [`Failed to save image: ${errMessage(e)}`, "error"]);
+            fire("notify", [hostText("failedToSaveImage", { error: errMessage(e) }), "error"]);
         }
     }
 
@@ -249,7 +251,7 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             const text = await navigator.clipboard.readText();
             if (text) insertIntoEditable(el, text);
         } catch (e) {
-            fire("notify", [`Paste failed: ${errMessage(e)}`, "error"]);
+            fire("notify", [hostText("pasteFailed", { error: errMessage(e) }), "error"]);
         }
     }
 
@@ -295,7 +297,8 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             }
             const btn = document.createElement("button");
             btn.type = "button";
-            btn.textContent = item.label;
+            btn.dataset.persephoneMenuItemId = item.id;
+            btn.textContent = hostText(item.textId);
             // Explicit reset styles so a board's global `button {}` rules can't distort the menu.
             btn.style.cssText = [
                 "display:block",
@@ -371,8 +374,8 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
         const href = anchor instanceof HTMLAnchorElement ? anchor.href : "";
         if (href && !href.startsWith("board://") && !href.startsWith("javascript:")) {
             groups.push([
-                { label: "Open Link", action: () => fire("openRawLink", [href]) },
-                { label: "Copy Link", action: () => copyText(href) },
+                { id: "openLink", textId: "openLink", action: () => fire("openRawLink", [href]) },
+                { id: "copyLink", textId: "copyLink", action: () => copyText(href) },
             ]);
         }
 
@@ -382,9 +385,9 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
         const imgSrc = img ? img.currentSrc || img.src : "";
         if (img && imgSrc && !imgSrc.startsWith("data:,")) {
             groups.push([
-                { label: "Open Image in New Tab", action: () => void openImageInNewTab(imgSrc) },
-                { label: "Copy Image", action: () => void copyImage(img) },
-                { label: "Save Image As…", action: () => void saveImageAs(img, imgSrc) },
+                { id: "openImageInNewTab", textId: "openImageInNewTab", action: () => void openImageInNewTab(imgSrc) },
+                { id: "copyImage", textId: "copyImage", action: () => void copyImage(img) },
+                { id: "saveImageAs", textId: "saveImageAs", action: () => void saveImageAs(img, imgSrc) },
             ]);
         }
 
@@ -394,13 +397,13 @@ export function installBoardContextMenu({ fire, rpc }: BoardContextMenuBridge): 
             const editItems: CtxItem[] = [];
             const hasSelection = !!editableSelection(editable);
             const readonly = isReadonly(editable);
-            if (hasSelection && !readonly) editItems.push({ label: "Cut", action: () => cutEditable(editable) });
-            if (hasSelection) editItems.push({ label: "Copy", action: () => copyEditable(editable) });
-            if (!readonly) editItems.push({ label: "Paste", action: () => void pasteEditable(editable) });
+            if (hasSelection && !readonly) editItems.push({ id: "cut", textId: "cut", action: () => cutEditable(editable) });
+            if (hasSelection) editItems.push({ id: "copy", textId: "copy", action: () => copyEditable(editable) });
+            if (!readonly) editItems.push({ id: "paste", textId: "paste", action: () => void pasteEditable(editable) });
             if (editItems.length) groups.push(editItems);
         } else {
             const selection = (window.getSelection && window.getSelection()?.toString()) || "";
-            if (selection.trim()) groups.push([{ label: "Copy", action: () => copyText(selection) }]);
+            if (selection.trim()) groups.push([{ id: "copy", textId: "copy", action: () => copyText(selection) }]);
         }
 
         // Flatten groups → items, marking the first item of each non-first group as a separator.

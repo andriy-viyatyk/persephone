@@ -54,6 +54,36 @@ export interface BoardThemePalette {
     graph?: Record<string, string>;
 }
 
+export type BoardI18nMessage = string | Partial<Record<"zero" | "one" | "two" | "few" | "many" | "other", string>>;
+export type BoardI18nTable = Record<string, BoardI18nMessage>;
+
+/** Registration-time locale and board messages, ordered current/base/default. */
+export interface BoardI18nContext {
+    locale: { code: string };
+    tables: [BoardI18nTable, BoardI18nTable, BoardI18nTable];
+}
+
+/** App-catalog strings used by Persephone's built-in board UI. */
+export type BoardHostTextId =
+    | "openLink"
+    | "copyLink"
+    | "openImageInNewTab"
+    | "copyImage"
+    | "saveImageAs"
+    | "imageFileFilter"
+    | "allFilesFileFilter"
+    | "cut"
+    | "copy"
+    | "paste"
+    | "saveImageDialogTitle"
+    | "failedToOpenImage"
+    | "failedToCopyImage"
+    | "imageSaved"
+    | "failedToSaveImage"
+    | "pasteFailed";
+
+export type BoardHostText = Record<BoardHostTextId, string>;
+
 /** The board context baked into served HTML by the `board://` handler as
  *  `window.__persephoneBoot` (EPIC-037 / US-771) — read synchronously by the shim
  *  before the first author script, replacing the old synchronous `getContext` IPC.
@@ -63,6 +93,10 @@ export interface BoardBootContext {
     /** Initial color palette, applied by the shim at first paint (US-725). Live
      *  switches arrive later as a {@link MainToBoard} `theme` envelope over the port. */
     theme: BoardThemePalette;
+    /** Locale and board message tables fixed for this document registration. */
+    i18n: BoardI18nContext;
+    /** Resolved app-catalog text used by Persephone's built-in board UI. */
+    hostText: BoardHostText;
     /** Static metric vars (`--p-space-*`, `--p-radius-*`, …) — theme-independent. */
     tokens: Record<string, string>;
     /** The host renderer's origin — the shim accepts the port-handshake message only

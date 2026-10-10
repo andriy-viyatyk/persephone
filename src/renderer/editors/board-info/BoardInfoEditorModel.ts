@@ -20,6 +20,7 @@ import {
     type BoardCapabilityDeclaration,
     type SecondaryViewDecl,
 } from "../board/board-manifest";
+import { ensureBoardDisplayText } from "../board/board-display-text";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import { BOARD_INFO_EDITOR_ID } from "./board-info-id";
@@ -399,6 +400,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         await boardInstallRegistry.load();
         const reg = boardInstallRegistry.getByRoot(root);
         const manifest = await readNormalizedBoardManifest(root);
+        if (manifest) await ensureBoardDisplayText(root, manifest);
         await boardTrust.load();
         await boardTrust.refreshPermissionSnapshot();
         const permissionSnapshot = await boardTrust.getPermissionSnapshot(root);

@@ -205,6 +205,7 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
  * the Boards panel or the in-board toolbar (EPIC-036 C4).
  */
 export class BoardEditorModel extends EditorModel<BoardEditorState> {
+    private boardDisplayNameEnglish: string | undefined;
     /** Virtual `board-editor:<root>` when acting as a custom editor for a file (so the
      *  switch widget shows/highlights it and `switchMainEditor` routes correctly), else
      *  the constant `"board-view"` for a plain board page. Persistence pins `"board-view"`
@@ -690,6 +691,10 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return this.state.get().boardRoot;
     }
 
+    get displayNameEnglish(): string | undefined {
+        return this.boardDisplayNameEnglish;
+    }
+
     private getBoardPageStateNamespace(): Promise<string> {
         if (this.boardStorageKeyPromise) return this.boardStorageKeyPromise;
         const boardRoot = this.boardRoot;
@@ -1084,6 +1089,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
         )?.boardRoot ?? boardRoot;
         const name = fpBasename(boardRoot);
+        this.boardDisplayNameEnglish = name;
         this.state.update((s) => {
             s.boardRoot = boardRoot;
             s.filePath = filePath;
@@ -1108,6 +1114,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     private async applyManifestTitle(boardRoot: string, fallbackTitle: string): Promise<void> {
         const manifestName = (await readBoardManifest(boardRoot))?.name?.trim();
+        this.boardDisplayNameEnglish = manifestName || fallbackTitle;
         if (!manifestName || this.aiVisionDisposed) return;
         const s = this.state.get();
         // Only replace the fallback this method set: a caller may already have retitled the page.

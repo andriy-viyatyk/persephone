@@ -147,9 +147,11 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
   shim gets `persephone.locale` (`{ code, plural rules }`) at registration, beside the theme
   palette, and offers `persephone.i18n.t(key, params)`, which resolves board pack for the current
   language → its base language → the board's `default` pack → the key itself. A board without
-  `languages` keeps working exactly as now. The manifest may also carry localized catalog text
-  (`"localized": { "uk": { "name": …, "description": … } }`) for the Boards catalog and board info.
-  Bridge version bump required.
+  `languages` keeps working exactly as now. Manifest text (name, description, editor name, view
+  titles, settings labels) is translated in the same packs under reserved `manifest.*` keys; the
+  `persephone-boards` publish script copies the translated name and description into the catalog
+  entry's `localized` map, because the catalog cannot read a board's files before install
+  (EPIC-126 F1). Bridge version bump required.
 - **D11 — Guard against new hardcoded strings with lint, not tests.** A local ESLint rule flags
   string literals in UI positions (`label`, `title`, `children`, `placeholder`, `textContent`,
   `createTextElement`, `ui.notify`) outside the catalogs and the agent-facing folders. It runs as a
@@ -246,14 +248,14 @@ menus 148, browser 125, shell 117, dialogs 114, tools 112, editors 107, mneme 10
 git 58, explorer 50, notebook 24, about 20, logView 16, uikit 12, common 9, main 6. This is the size
 of each phase-4 pack.
 
-### Phase 3 — Boards localization (epic)
+### Phase 3 — Boards localization ([EPIC-126](epics/EPIC-126.md))
 
 Manifest `languages` and `localized` (D10), `persephone.locale` and `persephone.i18n` in the shim,
 bridge version bump, the host's built-in board context menu (`src/board-context-menu.ts`, which runs
 in the shim and so had no locale in phase 2), catalog and board info showing localized names, the board template
-(`assets/board-template/`) and board guides updated. In `persephone-boards`: localize the catalog's
-own boards (Chess, Theme Editor and the rest) with at least the Phase 4 languages, or English-only
-where a board has almost no text.
+(`assets/board-template/`) and board guides updated. In `persephone-boards`: make the catalog's
+own boards (Chess, Theme Editor and the rest) translatable, with their text in `lang/en.json`.
+Translated board packs are drafted in Phase 4 with the app's built-in packs (EPIC-126 F7).
 
 ### Phase 4 — Language packs for agents (epic)
 
@@ -261,6 +263,9 @@ where a board has almost no text.
    (keys, English text, plural forms, translator notes, source hashes), `validate(pack)` (the same
    warnings the loader gives: unknown keys, placeholder mismatches, invalid plural forms),
    `missing(code)` / `stale(code)`, `save(pack)` (validates, writes the user pack atomically),
+   plus a board-pack check (`validateBoardPack(boardRoot, code)` or similar) so an agent can
+   validate a board's `lang/<code>.json` without switching the app language (found in the
+   EPIC-126 QA run: today a board pack is validated only when the app runs in that language),
    `delete(code)`, `apply(code)`. Reads are per area so an agent can work in chunks that fit its
    context.
 2. **Agent guide** `assets/guides/agents/languages.md` (`guides.agents.languages`), per D17:
@@ -274,7 +279,8 @@ where a board has almost no text.
    `qa/` practice; the guide is fixed where it misleads.
 4. **Built-in packs:** the seventeen non-English languages of §4, drafted by an agent per D14,
    checked with `npm run i18n:check`, Ukrainian reviewed by the user. Drafted by following the
-   agent guide, which tests it at scale.
+   agent guide, which tests it at scale. The same languages are drafted for the bundled and
+   catalog boards' packs (EPIC-126 F7).
 5. **Installer languages:** `electron-builder.yml` `nsis` gets `multiLanguageInstaller` and the
    matching `installerLanguages`.
 

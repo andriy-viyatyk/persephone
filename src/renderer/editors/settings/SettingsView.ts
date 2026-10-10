@@ -2,6 +2,8 @@ import { app } from "../../api/app";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { customEditorRegistry, type BoardSettingsRegistration } from "../board/custom-editor-registry";
+import { readNormalizedBoardManifest } from "../board/board-manifest";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../board/board-display-text";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
@@ -154,6 +156,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     private programmaticSettleFrame: number | undefined;
     private selectedContentValue: string | undefined;
     private readonly dynamicSectionIds = new Set<string>();
+    private dynamicSectionsGeneration = 0;
     private footerElement: HTMLDivElement | undefined;
     private initializationGeneration = 0;
 
@@ -217,11 +220,11 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         for (const section of SETTINGS_CATALOG) this.appendSectionPanel(section, panels);
         this.own(customEditorRegistry.state.subscribe<readonly BoardSettingsRegistration[]>(
             (settingsBoards) => {
-                if (!this.isDisposed) this.rebuildDynamicSections(settingsBoards);
+                if (!this.isDisposed) void this.rebuildDynamicSections(settingsBoards);
             },
             (state) => state.settingsBoards,
         ));
-        this.rebuildDynamicSections(customEditorRegistry.settingsBoards);
+        void this.rebuildDynamicSections(customEditorRegistry.settingsBoards);
         this.rebuildContentItems();
 
         const tree = this.child(new TreeView<SettingsContentItem>(this.contentTreeProps()));
@@ -276,6 +279,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
 
     protected onDispose(): void {
         this.initializationGeneration++;
+        this.dynamicSectionsGeneration++;
         this.cancelProgrammaticScroll();
         this.contentTree = undefined;
         this.panelsElement = undefined;
@@ -292,7 +296,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         if ("kind" in section && section.kind === "board") {
             const boardView = this.child(new BoardSettingsSectionView({
                 boardRoot: section.board.boardRoot,
-                displayName: section.board.name,
+                displayName: boardDisplayText(section.board.boardRoot, undefined, boardMetadataKeys.name, section.board.name),
                 declarations: section.board.declarations,
             }));
             boardView.mount();
@@ -336,7 +340,17 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         return factory();
     }
 
-    private rebuildDynamicSections(settingsBoards: readonly BoardSettingsRegistration[]): void {
+    private async rebuildDynamicSections(settingsBoards: readonly BoardSettingsRegistration[]): Promise<void> {
+        const generation = ++this.dynamicSectionsGeneration;
+        await Promise.all(settingsBoards.map(async (board) => {
+            try {
+                const manifest = await readNormalizedBoardManifest(board.boardRoot);
+                if (manifest) await ensureBoardDisplayText(board.boardRoot, manifest);
+            } catch {
+                // English manifest text remains a usable display fallback when a pack cannot load.
+            }
+        }));
+        if (generation !== this.dynamicSectionsGeneration || this.isDisposed) return;
         const panels = this.panelsElement;
         if (!panels || this.isDisposed) return;
 
@@ -401,7 +415,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             groupId,
             groupTitle,
             id,
-            title: board.name,
+            title: boardDisplayText(board.boardRoot, undefined, boardMetadataKeys.name, board.name),
             description: "",
             elementName: `settings-section-${id}`,
             panelName: `settings-panel-${id}`,

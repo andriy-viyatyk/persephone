@@ -27,7 +27,7 @@ import {
     type ModuleServicePortPayload,
 } from "../api-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../git-ipc";
-import type { BoardThemePalette } from "../board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
 import type {
     ClipboardFileList,
     ClipboardHistorySnapshot,
@@ -469,8 +469,10 @@ class ApiCalls implements Api {
         boardRoot: string,
         theme: BoardThemePalette,
         tokens: Record<string, string>,
+        i18n: BoardI18nContext,
+        hostText: BoardHostText,
     ) => {
-        return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens);
+        return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens, i18n, hostText);
     };
 
     setHtmlPreview = async (id: string, html: string) => {

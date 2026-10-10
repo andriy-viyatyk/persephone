@@ -13,6 +13,8 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "../../editors/board/board-manifest";
 import {
     getBundledBoardContextMenu,
     getCreatableItems,
@@ -66,6 +68,8 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
     private activeSourceRef: PinnedRef | undefined;
     private activeSourceMode: "pin" | "unpin" | undefined;
     private foreignDropIndex: number | undefined;
+    private readonly warmedBoardRoots = new Set<string>();
+    private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
 
     public constructor(props: PinnedRailProps) {
         super(props);
@@ -105,6 +109,10 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         });
         this.own(() => this.list?.dispose());
         this.own(subscribeBoardIconChanges(() => this.refresh()));
+        this.own(onBoardDisplayTextChanged((_root, reason) => {
+            if (reason === "invalidate") this.warmedBoardRoots.clear();
+            this.refresh();
+        }));
         this.own(() => {
             draggingPinnedIndex = -1;
             this.sourceSessionActive = false;
@@ -138,6 +146,7 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         const storedPins = getPinnedStrings();
         const rows = storedPins.map((stored, index) => {
             const ref = decodePin(stored);
+            if (ref.kind === "board") this.warmBoard(ref.root);
             return {
                 ref,
                 index,
@@ -218,7 +227,12 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         row.setAttribute("draggable", "true");
         if (rowData.ref.kind === "board") {
             const label = row.querySelector<HTMLElement>(".item-label")!;
-            label.textContent = fpBasename(rowData.ref.root);
+            label.textContent = boardDisplayText(
+                rowData.ref.root,
+                this.boardManifests.get(rowData.ref.root),
+                boardMetadataKeys.name,
+                this.boardManifests.get(rowData.ref.root)?.name?.trim() || fpBasename(rowData.ref.root),
+            );
             label.removeAttribute("title");
             record.iconCleanup = fillSlot(
                 row.querySelector<HTMLElement>(".item-icon")!,
@@ -246,6 +260,16 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         record.button.dispose();
         record.button.root.remove();
         this.rows.delete(row);
+    }
+
+    private warmBoard(root: string): void {
+        if (this.warmedBoardRoots.has(root)) return;
+        this.warmedBoardRoots.add(root);
+        void readNormalizedBoardManifest(root).then((manifest) => {
+            if (!manifest) return;
+            this.boardManifests.set(root, manifest);
+            return ensureBoardDisplayText(root, manifest);
+        }).catch(() => {});
     }
 
     private activate(ref: PinnedRef): void {

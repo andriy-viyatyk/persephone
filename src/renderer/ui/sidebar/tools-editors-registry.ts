@@ -8,6 +8,7 @@ import { guard } from "../../core/utils/guard";
 import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
+import { boardDisplayText, boardMetadataKeys } from "../../editors/board/board-display-text";
 import {
     GridIcon, IncognitoIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
@@ -40,6 +41,8 @@ export interface CreatableItem {
     category: "editor" | "tool";
     /** Stable identity of a bundled board, present only for bundled-board items. */
     bundledBoardId?: string;
+    /** Display-only source root for localized bundled board metadata. */
+    boardRoot?: string;
     /** Disable this bundled board without removing its retained pins. */
     disable?: () => void;
     /** Re-enable this bundled board. Present only on the rows `getDisabledBundledBoardItems()`
@@ -225,6 +228,7 @@ export function getCreatableItems(
             return {
                 id: `bundled-board:${board.id}`,
                 label,
+                boardRoot: board.root,
                 icon: createBoardGlyphElement(board.root),
                 create: () => {
                     void guard(`Failed to create ${label}`, async () => {
@@ -252,6 +256,9 @@ export function disableBundledBoard(id: string): void {
 
 /** Resolve an app-owned creatable label at the point where UI text is rendered. */
 export function getCreatableItemLabel(item: CreatableItem): string {
+    if (item.boardRoot) {
+        return boardDisplayText(item.boardRoot, undefined, boardMetadataKeys.name, item.label);
+    }
     return item.labelKey ? t(item.labelKey, item.labelParams as never) : item.label;
 }
 
@@ -274,6 +281,7 @@ export function getDisabledBundledBoardItems(): CreatableItem[] {
         .map((board) => ({
             id: `bundled-board:${board.id}`,
             label: board.manifest.name?.trim() || board.id,
+            boardRoot: board.root,
             icon: createBoardGlyphElement(board.root),
             create: () => {},
             category: "editor" as const,

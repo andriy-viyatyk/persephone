@@ -1,10 +1,12 @@
+import { t } from "../i18n.js";
+
 /**
  * In-board confirmation modal on the native <dialog> element, styled by styles/dialog.css.
  *
  * Never use window.confirm/alert/prompt in a board: a native JavaScript dialog raised from a board
  * frame blocks board frames app-wide until the main process restarts (seen 2026-10-05, US-1624).
  */
-export function confirmDialog(message, { title = "Confirm", okLabel = "Delete", view = "main" } = {}) {
+export function confirmDialog(message, { title = t("confirm.title"), okLabel = t("confirm.delete"), view = "main" } = {}) {
     const suffix = view === "requests" ? "requests" : "main";
     return new Promise((resolve) => {
         const dialog = document.createElement("dialog");
@@ -26,7 +28,7 @@ export function confirmDialog(message, { title = "Confirm", okLabel = "Delete", 
         footer.className = "dialog-footer";
         const cancel = document.createElement("button");
         cancel.value = "cancel";
-        cancel.textContent = "Cancel";
+        cancel.textContent = t("confirm.cancel");
         cancel.dataset.name = `confirm-cancel-${suffix}`;
         const ok = document.createElement("button");
         ok.value = "ok";

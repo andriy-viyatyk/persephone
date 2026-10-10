@@ -15,6 +15,8 @@ import {
     getCreatableItemLabel,
     type CreatableItem,
 } from "./tools-editors-registry";
+import { onBoardDisplayTextChanged, ensureBoardDisplayText } from "../../editors/board/board-display-text";
+import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
 
 export interface BuiltinEditorsListProps {
     onClose?: () => void;
@@ -79,6 +81,7 @@ function createRowTraits(getTrailing: (source: RowSource) => Node | undefined): 
 export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps> {
     private readonly list: ListBoxView<RowSource>;
     private readonly pinButtons = new Map<string, IconButtonView>();
+    private readonly warmedBoardRoots = new Set<string>();
 
     public constructor(props: BuiltinEditorsListProps) {
         const list = new ListBoxView<RowSource>({
@@ -104,6 +107,10 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
             ) this.refresh();
         });
         this.own(settingsSubscription);
+        this.own(onBoardDisplayTextChanged((_root, reason) => {
+            if (reason === "invalidate") this.warmedBoardRoots.clear();
+            this.refresh();
+        }));
         this.refresh();
     }
 
@@ -112,6 +119,13 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
         // Disabled bundled boards keep a row here so Disable is reversible — see
         // `getDisabledBundledBoardItems()`. They are never pinnable, so they bypass the pin filter.
         const allItems = [...getCreatableItems(browserProfiles), ...getDisabledBundledBoardItems()];
+        for (const item of allItems) {
+            if (!item.boardRoot || this.warmedBoardRoots.has(item.boardRoot)) continue;
+            this.warmedBoardRoots.add(item.boardRoot);
+            void readNormalizedBoardManifest(item.boardRoot).then((manifest) => {
+                if (manifest) return ensureBoardDisplayText(item.boardRoot!, manifest);
+            }).catch(() => {});
+        }
         const pinnedIds = new Set(
             getPinnedStrings().filter((stored) => !stored.startsWith("board:")),
         );
