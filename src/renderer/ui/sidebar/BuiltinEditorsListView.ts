@@ -120,10 +120,11 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
         // `getDisabledBundledBoardItems()`. They are never pinnable, so they bypass the pin filter.
         const allItems = [...getCreatableItems(browserProfiles), ...getDisabledBundledBoardItems()];
         for (const item of allItems) {
-            if (!item.boardRoot || this.warmedBoardRoots.has(item.boardRoot)) continue;
-            this.warmedBoardRoots.add(item.boardRoot);
-            void readNormalizedBoardManifest(item.boardRoot).then((manifest) => {
-                if (manifest) return ensureBoardDisplayText(item.boardRoot!, manifest);
+            const boardRoot = item.boardRoot;
+            if (!boardRoot || this.warmedBoardRoots.has(boardRoot)) continue;
+            this.warmedBoardRoots.add(boardRoot);
+            void readNormalizedBoardManifest(boardRoot).then((manifest) => {
+                if (manifest) return ensureBoardDisplayText(boardRoot, manifest);
             }).catch(() => {});
         }
         const pinnedIds = new Set(

@@ -1,3 +1,29 @@
+## EPIC-126 — Boards localization (interface languages, phase 3)
+
+Completed 2026-10-10. Phase 3 of the [localization roadmap](../localization-roadmap.md): every
+bundled and catalog board reads its text from language packs and follows the app language. Boards
+ship English packs only; translated board packs are drafted in phase 4 (F7). Epic document:
+[EPIC-126](EPIC-126.md).
+
+- [x] **Board runtime (US-1667).** Manifest `languages`, `lang/<code>.json` packs,
+  `persephone.locale` and `persephone.i18n.t()/has()` with current → base → default → key fallback
+  and plurals; host-side validation logged to the board log; `en-XA` pseudo-text. Bridge 1.36.0.
+- [x] **Shim text (US-1668).** The board context menu comes from the app catalog, with stable item ids.
+- [x] **Board metadata (US-1669).** Reserved `manifest.*` keys translate board names, descriptions,
+  view titles, settings and capability titles everywhere the app shows them; agents keep English.
+- [x] **Catalog (US-1670).** Catalog entries carry a `localized` map that the publish script fills
+  from board packs.
+- [x] **Template and guides (US-1671).** The board template is translatable from the start; the
+  agent board guide has a "Languages" section with a worked pack.
+- [x] **Bundled boards (US-1672).** REST Client extracted; Excalidraw follows the app language from
+  15 bundled locale chunks.
+- [x] **Catalog boards (US-1673, US-1674).** 15 boards extracted to English packs with minor version
+  bumps, committed to `persephone-boards` develop; not published until the roadmap is done.
+- [x] **Closing sweep (US-1675).** Every board checked under `en-XA`; a QA run of the guide led to a
+  worked `manifest.*` example and a board-pack validation call planned for phase 4.
+- **Completion.** `/review` (one non-null assertion fixed), `/document` (key-files pointers),
+  `/userdoc` (no changes) run by Codex. Task folders kept until the localization roadmap is finished.
+
 ## EPIC-125 — Extract every UI string (interface languages, phase 2)
 
 Completed 2026-10-10. Phase 2 of the [localization roadmap](../localization-roadmap.md): every
