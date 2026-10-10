@@ -2,7 +2,7 @@ import type { EnglishCatalogEntry } from "./common";
 
 export const notebookCatalog = {
     noteTitlePlaceholder: { message: "note title..." },
-    collapseEscape: { message: "Collapse ({shortcut})" },
+    collapseEscape: { message: "Collapse ({shortcut})", note: "Keyboard hint on a note control; Escape collapses the current note section." },
     category: { message: "Category" },
     categoryPlaceholder: { message: "category..." },
     tagPlaceholder: { message: "tag..." },

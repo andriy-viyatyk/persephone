@@ -1,9 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, join, parse as parsePath, resolve } from "node:path";
 import process from "node:process";
 import { errMessage } from "../src/shared/utils";
 import { englishCatalog } from "../src/shared/i18n/en";
-import { hashEnglishMessage } from "../src/shared/i18n/hash";
+import { auditLanguagePack } from "../src/shared/i18n/audit-pack";
+import { checkTranslatedMessage } from "../src/shared/i18n/broken-text";
+import { normalizeBoardLanguages, parseBoardLanguagePack, validateBoardTranslationPack } from "../src/shared/i18n/board-pack";
 import { createPseudoLocalePack } from "../src/shared/i18n/pseudo-locale";
 import { validateLanguagePack } from "../src/shared/i18n/validate-pack";
 
@@ -43,10 +45,19 @@ async function readPackFile(file: PackFile): Promise<LoadedPack> {
     }
 }
 
+const LISTED_KEYS_LIMIT = 20;
+
+function listKeys(keys: readonly string[]): string {
+    if (!keys.length) return "none";
+    const listed = keys.slice(0, LISTED_KEYS_LIMIT).join(", ");
+    return keys.length > LISTED_KEYS_LIMIT ? `${listed}, … (${keys.length - LISTED_KEYS_LIMIT} more)` : listed;
+}
+
 function reportPack(
     filename: string,
     loaded: LoadedPack,
     fatal: { value: boolean },
+    reportIdentical: boolean,
 ): void {
     if (loaded.error) {
         console.error(`INVALID ${filename}: ${loaded.error}`);
@@ -62,20 +73,235 @@ function reportPack(
     const pack = result.value;
     if (!pack) return;
 
-    const packKeys = new Set(Object.keys(pack.messages));
-    const missing = englishKeys.filter((key) => !packKeys.has(key as keyof typeof pack.messages));
-    const stale: string[] = [];
-    for (const key of packKeys) {
+    const audit = auditLanguagePack(pack);
+    const translated = Object.keys(pack.messages).length;
+    console.log(`${filename}: ${translated}/${englishKeys.length} translated messages.`);
+    console.log(`  Missing (${audit.missingKeys.length}): ${listKeys(audit.missingKeys)}`);
+    console.log(`  Stale source hashes (${audit.staleKeys.length}): ${listKeys(audit.staleKeys)}`);
+    console.log(`  Unverified source hashes: ${audit.unverified}`);
+    if (reportIdentical) {
+        const identicalKeys = Object.entries(pack.messages)
+            .filter(([key, message]) => {
+                const [area, entry] = key.split(".");
+                const english = englishMessages[area]?.[entry];
+                return english !== undefined && messagesAreIdentical(message, english as never);
+            })
+            .map(([key]) => key)
+            .sort();
+        console.log(`  Identical to English (${identicalKeys.length}): ${listKeys(identicalKeys)}`);
+    }
+    for (const [key, message] of Object.entries(pack.messages)) {
         const [area, entry] = key.split(".");
         const english = englishMessages[area]?.[entry];
         if (english === undefined) continue;
-        const englishHash = hashEnglishMessage(english);
-        if (pack.source?.[key as keyof typeof pack.source] !== englishHash) stale.push(key);
+        for (const issue of checkTranslatedMessage(message, english as never, pack.code)) {
+            console.error(`BROKEN ${filename} ${key}: ${issue.kind}${issue.detail ? ` (${issue.detail})` : ""}`);
+            fatal.value = true;
+        }
     }
+}
 
-    console.log(`${filename}: ${packKeys.size}/${englishKeys.length} translated messages.`);
-    if (missing.length > 0) console.log(`  Missing (${missing.length}): ${missing.join(", ")}`);
-    if (stale.length > 0) console.log(`  Stale source hashes (${stale.length}): ${stale.join(", ")}`);
+function messagesAreIdentical(
+    candidate: string | Readonly<Record<string, string>>,
+    reference: string | Readonly<Record<string, string>>,
+): boolean {
+    if (typeof candidate === "string" || typeof reference === "string") return candidate === reference;
+    const candidateKeys = Object.keys(candidate).sort();
+    const referenceKeys = Object.keys(reference).sort();
+    return candidateKeys.length === referenceKeys.length
+        && candidateKeys.every((key, index) => key === referenceKeys[index] && candidate[key] === reference[key]);
+}
+
+function boardManifestEnglishMessages(manifest: unknown): Map<string, string> {
+    const result = new Map<string, string>();
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return result;
+    const source = manifest as Record<string, unknown>;
+    for (const key of ["name", "description", "editorName"] as const) {
+        if (typeof source[key] === "string") result.set(`manifest.${key}`, source[key] as string);
+    }
+    const addList = (
+        keyArea: "views" | "settings" | "capabilities",
+        sourceProperty: "secondaryViews" | "settings" | "capabilities",
+        fields: readonly string[],
+    ) => {
+        const entries = source[sourceProperty];
+        if (!Array.isArray(entries)) return;
+        for (const entry of entries) {
+            if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+            const candidate = entry as Record<string, unknown>;
+            if (typeof candidate.id !== "string") continue;
+            for (const field of fields) {
+                if (typeof candidate[field] === "string") {
+                    result.set(`manifest.${keyArea}.${candidate.id}.${field}`, candidate[field] as string);
+                }
+            }
+        }
+    };
+    addList("views", "secondaryViews", ["title"]);
+    addList("settings", "settings", ["label", "description"]);
+    addList("capabilities", "capabilities", ["title"]);
+    return result;
+}
+
+function parseArguments(arguments_: readonly string[]): { userDirectory?: string; boardPatterns: string[]; identical: boolean; error?: string } {
+    const positional: string[] = [];
+    const boardPatterns: string[] = [];
+    let identical = false;
+    for (let index = 0; index < arguments_.length; index += 1) {
+        const argument = arguments_[index];
+        if (argument === "--boards") {
+            let count = 0;
+            while (index + 1 < arguments_.length && !arguments_[index + 1].startsWith("--")) {
+                boardPatterns.push(arguments_[index + 1]);
+                index += 1;
+                count += 1;
+            }
+            if (count === 0) return { boardPatterns, identical, error: "--boards requires at least one board root." };
+        } else if (argument === "--identical") {
+            identical = true;
+        } else if (argument.startsWith("--")) {
+            return { boardPatterns, identical, error: `Unknown option ${argument}.` };
+        } else positional.push(argument);
+    }
+    if (positional.length > 1) return { boardPatterns, identical, error: "Only one optional user-pack directory is supported." };
+    return { userDirectory: positional[0], boardPatterns, identical };
+}
+
+function wildcardMatcher(segment: string): RegExp {
+    return new RegExp(`^${segment.split("*").map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`, "i");
+}
+
+async function expandPattern(pattern: string): Promise<string[]> {
+    const absolute = resolve(process.cwd(), pattern);
+    const root = parsePath(absolute).root;
+    const segments = absolute.slice(root.length).split(/[\\/]+/).filter(Boolean);
+    let paths = [root];
+    for (const segment of segments) {
+        if (!segment.includes("*")) {
+            paths = paths.map((path) => join(path, segment));
+            continue;
+        }
+        const matcher = wildcardMatcher(segment);
+        const next: string[] = [];
+        for (const path of paths) {
+            try {
+                const children = await readdir(path, { withFileTypes: true });
+                for (const child of children) if (matcher.test(child.name)) next.push(join(path, child.name));
+            } catch { /* no matches below this path */ }
+        }
+        paths = next;
+    }
+    return paths;
+}
+
+async function checkBoards(patterns: readonly string[], fatal: { value: boolean }, reportIdentical: boolean): Promise<void> {
+    for (const pattern of patterns) {
+        const roots = await expandPattern(pattern);
+        for (const boardRoot of roots) {
+            let manifest: unknown;
+            try {
+                manifest = JSON.parse(await readFile(join(boardRoot, "board-manifest.json"), "utf8")) as unknown;
+            } catch {
+                continue;
+            }
+            const rawLanguages = manifest && typeof manifest === "object" && !Array.isArray(manifest)
+                ? (manifest as Record<string, unknown>).languages
+                : undefined;
+            const languages = normalizeBoardLanguages(rawLanguages);
+            const manifestMessages = boardManifestEnglishMessages(manifest);
+            if (!languages) {
+                console.log(`${boardRoot}: board has no declared language packs; skipped.`);
+                continue;
+            }
+            let files: string[];
+            try {
+                files = (await readdir(resolve(boardRoot, languages.folder), { withFileTypes: true }))
+                    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
+                    .map((entry) => entry.name)
+                    .sort((left, right) => left.localeCompare(right));
+            } catch (error) {
+                console.error(`INVALID board ${boardRoot}: could not read language folder ${languages.folder}: ${errMessage(error)}`);
+                fatal.value = true;
+                continue;
+            }
+            const byCode = new Map(files.map((file) => [basename(file, ".json"), file]));
+            const defaultFile = byCode.get(languages.default);
+            if (!defaultFile) {
+                console.error(`INVALID board ${boardRoot} ${languages.default}: default pack is missing or unreadable.`);
+                fatal.value = true;
+                continue;
+            }
+            const defaultPack = await loadBoardFile(boardRoot, languages.folder, languages.default);
+            if (!defaultPack) {
+                console.error(`INVALID board ${boardRoot} ${languages.default}: default pack is missing or unreadable.`);
+                fatal.value = true;
+                continue;
+            }
+            for (const warning of defaultPack.warnings) {
+                console.error(`INVALID board ${boardRoot} ${languages.default}: ${warning}`);
+                fatal.value = true;
+            }
+            console.log(`Board ${boardRoot}: default ${languages.default}, ${Object.keys(defaultPack.messages).length} messages.`);
+            for (const [key, message] of Object.entries(defaultPack.messages)) {
+                if (key.startsWith("manifest.")) continue;
+                for (const issue of checkTranslatedMessage(message, message as never, languages.default)) {
+                    console.error(`BROKEN board ${boardRoot} ${languages.default} ${key}: ${issue.kind}${issue.detail ? ` (${issue.detail})` : ""}`);
+                    fatal.value = true;
+                }
+            }
+            for (const file of files) {
+                const code = basename(file, ".json");
+                if (code === languages.default) continue;
+                const parsed = await loadBoardFile(boardRoot, languages.folder, code);
+                if (!parsed) {
+                    console.error(`INVALID board ${boardRoot} ${code}: pack is missing or unreadable.`);
+                    fatal.value = true;
+                    continue;
+                }
+                const pack = validateBoardTranslationPack(code, parsed, defaultPack.messages);
+                for (const warning of pack.warnings) {
+                    console.error(`INVALID board ${boardRoot} ${code}: ${warning}`);
+                    fatal.value = true;
+                }
+                const missing = Object.keys(defaultPack.messages).filter((key) => !key.startsWith("manifest.") && !Object.hasOwn(pack.messages, key));
+                console.log(`  ${code}: ${Object.keys(pack.messages).length}/${Object.keys(defaultPack.messages).length} messages.`);
+                if (missing.length) {
+                    console.error(`MISSING board ${boardRoot} ${code}: ${missing.join(", ")}`);
+                    fatal.value = true;
+                }
+                for (const [key, message] of Object.entries(pack.messages)) {
+                    if (key.startsWith("manifest.")) continue;
+                    const english = defaultPack.messages[key];
+                    if (english === undefined) continue;
+                    for (const issue of checkTranslatedMessage(message, english as never, code)) {
+                        console.error(`BROKEN board ${boardRoot} ${code} ${key}: ${issue.kind}${issue.detail ? ` (${issue.detail})` : ""}`);
+                        fatal.value = true;
+                    }
+                }
+                if (reportIdentical) {
+                    const identicalKeys = Object.entries(pack.messages)
+                        .filter(([key, message]) => {
+                            const english = key.startsWith("manifest.")
+                                ? manifestMessages.get(key)
+                                : defaultPack.messages[key];
+                            return english !== undefined && messagesAreIdentical(message, english as never);
+                        })
+                        .map(([key]) => key)
+                        .sort();
+                    console.log(`  ${code} identical to English (${identicalKeys.length}): ${listKeys(identicalKeys)}`);
+                }
+            }
+        }
+    }
+}
+
+async function loadBoardFile(boardRoot: string, folder: string, code: string): Promise<ReturnType<typeof parseBoardLanguagePack> | undefined> {
+    try {
+        const text = await readFile(resolve(boardRoot, folder, `${code}.json`), "utf8");
+        return parseBoardLanguagePack(text, code);
+    } catch {
+        return undefined;
+    }
 }
 
 function validatePseudoLocale(fatal: { value: boolean }): void {
@@ -101,8 +327,9 @@ function validatePseudoLocale(fatal: { value: boolean }): void {
 
 export async function runI18nCheck(arguments_: readonly string[]): Promise<void> {
     const fatal = { value: false };
-    if (arguments_.length > 1) {
-        console.error("Usage: npm run i18n:check [user-pack-directory]");
+    const parsedArguments = parseArguments(arguments_);
+    if (parsedArguments.error) {
+        console.error(`Usage: npm run i18n:check [user-pack-directory] [--identical] [--boards <folder>...] (${parsedArguments.error})`);
         process.exitCode = 1;
         return;
     }
@@ -118,20 +345,21 @@ export async function runI18nCheck(arguments_: readonly string[]): Promise<void>
     }
 
     if (builtIns.length === 0) console.log("No built-in language pack files found in assets/languages/.");
-    for (const file of builtIns) reportPack(file.filename, await readPackFile(file), fatal);
+    for (const file of builtIns) reportPack(file.filename, await readPackFile(file), fatal, parsedArguments.identical);
 
-    if (arguments_[0]) {
-        const userDirectory = resolve(process.cwd(), arguments_[0]);
+    if (parsedArguments.userDirectory) {
+        const userDirectory = resolve(process.cwd(), parsedArguments.userDirectory);
         try {
             const userPacks = await listPackFiles(userDirectory);
             if (userPacks.length === 0) console.log(`No user language pack files found in ${userDirectory}.`);
-            for (const file of userPacks) reportPack(file.filename, await readPackFile(file), fatal);
+            for (const file of userPacks) reportPack(file.filename, await readPackFile(file), fatal, parsedArguments.identical);
         } catch (error) {
             console.error(`Could not read user language directory: ${errMessage(error)}`);
             fatal.value = true;
         }
     }
 
+    if (parsedArguments.boardPatterns.length > 0) await checkBoards(parsedArguments.boardPatterns, fatal, parsedArguments.identical);
     validatePseudoLocale(fatal);
     if (fatal.value) process.exitCode = 1;
 }

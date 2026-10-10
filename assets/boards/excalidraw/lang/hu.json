@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Beépített Excalidraw-szerkesztő.",
+    "manifest.settings.library-path.label": "Könyvtármappa",
+    "manifest.settings.library-path.description": "Az Excalidraw-könyvtár elemeit (újrahasználható alakzatokat) tartalmazó mappa",
+    "manifest.capabilities.image.edit.title": "Kép szerkesztése",
+    "manifest.capabilities.diagram.edit.title": "Diagram szerkesztése"
+  }
+}

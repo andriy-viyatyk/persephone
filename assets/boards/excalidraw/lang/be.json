@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Убудаваны рэдактар Excalidraw.",
+    "manifest.settings.library-path.label": "Папка бібліятэкі",
+    "manifest.settings.library-path.description": "Папка для элементаў бібліятэкі Excalidraw (шматразовых фігур)",
+    "manifest.capabilities.image.edit.title": "Змяніць выяву",
+    "manifest.capabilities.diagram.edit.title": "Змяніць дыяграму"
+  }
+}

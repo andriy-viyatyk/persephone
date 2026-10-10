@@ -409,6 +409,8 @@ surfaces:
 
 ### Languages
 
+For app language packs, follow [`guides.agents.languages`](languages.md). The instructions below cover board language files.
+
 A board declares its packs in `board-manifest.json` and keeps one `<code>.json` file in the pack
 folder per language:
 

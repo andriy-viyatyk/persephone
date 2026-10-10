@@ -38,6 +38,10 @@ export const appServiceDescriptors = [
         load: async (): Promise<IApp["themes"]> => (await import("./themes")).themes,
     }),
     defineService({
+        key: "languages",
+        load: async (): Promise<IApp["languages"]> => (await import("./languages")).languages,
+    }),
+    defineService({
         key: "editors",
         load: async (): Promise<IApp["editors"]> => (await import("./editors")).editors,
     }),

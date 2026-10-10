@@ -19,6 +19,6 @@ export const aboutCatalog = {
     mcpSetup: { message: "{protocol} setup" },
     showAgentGuides: { message: "Show agent guides" },
     noGuides: { message: "No guides available." },
-    back: { message: "Back" },
+    back: { message: "Back", note: "Back button on an agent guide page; returns to the guide index." },
     openInTab: { message: "Open in tab" },
 } satisfies Record<string, EnglishCatalogEntry>;

@@ -104,7 +104,7 @@ names and translation completeness percentage. To load a compatible pack, place 
 `<code>.lang.json` file in `%APPDATA%\persephone\data\languages\`, then reopen Settings or restart
 Persephone to refresh the list. Choosing a language saves the setting and immediately reloads all
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
-uses English.
+uses English. Ask your agent to add a language or fix a translation.
 
 This release bundles only English. Built-in translations arrive in a later release, along with a way
 for your AI agent to create a pack for any other language.

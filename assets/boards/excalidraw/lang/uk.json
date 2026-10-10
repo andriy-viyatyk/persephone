@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Вбудований редактор Excalidraw.",
+    "manifest.settings.library-path.label": "Папка бібліотеки",
+    "manifest.settings.library-path.description": "Папка для елементів бібліотеки Excalidraw (багаторазових фігур)",
+    "manifest.capabilities.image.edit.title": "Редагувати зображення",
+    "manifest.capabilities.diagram.edit.title": "Редагувати діаграму"
+  }
+}

@@ -15,6 +15,7 @@ import type { ISiteExtensions } from "./site-extensions";
 import type { IPageCollection } from "./pages";
 import type { IAppEvents } from "./events";
 import type { IThemes } from "./themes";
+import type { ILanguages } from "./languages";
 
 /**
  * Root application object. Entry point to all app functionality.
@@ -37,6 +38,9 @@ export interface IApp {
 
     /** Inspect, derive, preview, and manage built-in and custom themes. */
     readonly themes: IThemes;
+
+    /** Read available language packs, English source messages, and validation reports. */
+    readonly languages: ILanguages;
 
     /** Read-only registry of all editors. */
     readonly editors: IEditorRegistry;

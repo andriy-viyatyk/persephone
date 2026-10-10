@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Vstavaný editor Excalidraw.",
+    "manifest.settings.library-path.label": "Priečinok knižnice",
+    "manifest.settings.library-path.description": "Priečinok pre položky knižnice Excalidraw (opakovane použiteľné tvary)",
+    "manifest.capabilities.image.edit.title": "Upraviť obrázok",
+    "manifest.capabilities.diagram.edit.title": "Upraviť diagram"
+  }
+}

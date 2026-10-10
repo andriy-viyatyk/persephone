@@ -2,7 +2,7 @@ import { api } from "../../../../ipc/renderer/api";
 import { settings, flushSettingsSave } from "../../../api/settings";
 import { ui } from "../../../api/ui";
 import { errMessage } from "../../../../shared/utils";
-import { englishCatalog } from "../../../../shared/i18n/en";
+import { languageCompleteness } from "../../../../shared/i18n/language-completeness";
 import { getActiveLocale } from "../../../../shared/i18n/active-locale";
 import { resolveLocale } from "../../../../shared/i18n/resolve-locale";
 import type { LanguagePack } from "../../../../shared/i18n/pack";
@@ -19,10 +19,6 @@ interface LanguageOption extends Omit<IListBoxItem, "label"> {
     readonly completeness: number;
 }
 
-function messageKeyCount(): number {
-    return Object.values(englishCatalog).reduce<number>((count, area) => count + Object.keys(area).length, 0);
-}
-
 function nativeLanguageName(code: string, fallback: string): string {
     try {
         return new Intl.DisplayNames([code], { type: "language" }).of(code) ?? fallback;
@@ -36,7 +32,6 @@ function buildLanguageOptions(
     userPacks: readonly LanguagePack[],
     preferredLanguages: readonly string[],
 ): LanguageOption[] {
-    const totalKeys = messageKeyCount();
     const packsByCode = new Map<string, LanguagePack[]>();
     for (const pack of [...builtInPacks, ...userPacks]) {
         const code = pack.code.toLowerCase();
@@ -61,8 +56,7 @@ function buildLanguageOptions(
     for (const packs of packsByCode.values()) {
         const pack = packs[packs.length - 1];
         if (pack.code.toLowerCase() === "en") continue;
-        const translatedKeys = new Set(packs.flatMap((entry) => Object.keys(entry.messages)));
-        const completeness = Math.round(100 * translatedKeys.size / totalKeys);
+        const completeness = languageCompleteness(packs);
         options.push({
             value: pack.code,
             nativeName: pack.name,

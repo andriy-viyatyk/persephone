@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Iebūvēts Excalidraw redaktors.",
+    "manifest.settings.library-path.label": "Bibliotēkas mape",
+    "manifest.settings.library-path.description": "Mape Excalidraw bibliotēkas vienumiem (atkārtoti izmantojamām formām)",
+    "manifest.capabilities.image.edit.title": "Rediģēt attēlu",
+    "manifest.capabilities.diagram.edit.title": "Rediģēt diagrammu"
+  }
+}

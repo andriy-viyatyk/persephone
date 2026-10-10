@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "内置 Excalidraw 编辑器。",
+    "manifest.settings.library-path.label": "库文件夹",
+    "manifest.settings.library-path.description": "用于存储 Excalidraw 库项目（可重复使用的形状）的文件夹",
+    "manifest.capabilities.image.edit.title": "编辑图像",
+    "manifest.capabilities.diagram.edit.title": "编辑图表"
+  }
+}

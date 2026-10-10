@@ -53,6 +53,9 @@ label.
 
 ## Packs and pseudo-locale
 
+For app-pack authoring and repair, see the [language-pack agent guide](../../assets/guides/agents/languages.md)
+and the [shipped language glossary](../../assets/guides/agents/languages-glossary.md).
+
 Language packs use schema version 1: BCP-47 `code`, localized `name`, English `englishName`,
 optional `direction: "ltr"`, `messages`, and optional `source` hashes. See
 [`assets/languages/README.md`](../../assets/languages/README.md) and the shape in

@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "組み込みの Excalidraw エディター。",
+    "manifest.settings.library-path.label": "ライブラリ フォルダー",
+    "manifest.settings.library-path.description": "Excalidraw ライブラリの要素 (再利用可能な図形) を格納するフォルダー",
+    "manifest.capabilities.image.edit.title": "画像の編集",
+    "manifest.capabilities.diagram.edit.title": "図の編集"
+  }
+}

@@ -80,6 +80,29 @@ nsis:
   artifactName: "persephone-setup-${version}.${ext}"
   oneClick: false
   allowToChangeInstallationDirectory: true
+  multiLanguageInstaller: true
+  # NSIS 3.0.4 lacks the five "Choose Users" page strings for Lithuanian, Latvian, Estonian and
+  # Romanian and warns that it uses the English ones; a warning would otherwise fail the build.
+  warningsAsErrors: false
+  installerLanguages:
+    - en_US
+    - uk_UA
+    - pl_PL
+    - lt_LT
+    - lv_LV
+    - et_EE
+    - be_BY
+    - ro_RO
+    - sk_SK
+    - hu_HU
+    - de_DE
+    - fr_FR
+    - es_ES
+    - pt_BR
+    - it_IT
+    - zh_CN
+    - ja_JP
+    - ko_KR
   perMachine: false
   allowElevation: true
   createDesktopShortcut: false

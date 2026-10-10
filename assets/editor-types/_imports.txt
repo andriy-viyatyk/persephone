@@ -27,6 +27,7 @@ io.pipe.d.ts
 io.provider.d.ts
 io.transformer.d.ts
 io.tree.d.ts
+languages.d.ts
 link-editor.d.ts
 log-view-editor.d.ts
 markdown-editor.d.ts

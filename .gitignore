@@ -97,6 +97,7 @@ release/
 
 /data/
 /temp/
+.i18n-work/
 
 # Rust build artifacts
 launcher/target/

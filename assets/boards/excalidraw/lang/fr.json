@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Éditeur Excalidraw intégré.",
+    "manifest.settings.library-path.label": "Dossier de la bibliothèque",
+    "manifest.settings.library-path.description": "Dossier des éléments de la bibliothèque Excalidraw (formes réutilisables)",
+    "manifest.capabilities.image.edit.title": "Modifier l’image",
+    "manifest.capabilities.diagram.edit.title": "Modifier le diagramme"
+  }
+}

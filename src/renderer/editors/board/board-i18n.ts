@@ -1,19 +1,24 @@
 import { fs } from "../../api/fs";
 import { fpJoin } from "../../core/utils/file-path";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
-import { parsePackMessage, hasSamePlaceholders, messagePlaceholders } from "../../../shared/i18n/validate-pack";
+import { parseBoardLanguagePack, validateBoardTranslationPack, type BoardPack } from "../../../shared/i18n/board-pack";
 import { pseudoText } from "../../../shared/i18n/pseudo-text";
-import type { BoardI18nContext, BoardI18nMessage, BoardI18nTable } from "../../../ipc/board-bridge-channels";
-import type { BoardLanguages } from "./board-manifest";
-
-interface BoardPack {
-    messages: BoardI18nTable;
-    warnings: string[];
-}
+import type { BoardI18nContext, BoardI18nTable } from "../../../ipc/board-bridge-channels";
+import { readNormalizedBoardManifest, type BoardLanguages } from "./board-manifest";
 
 export interface BoardI18nLoadResult {
     context: BoardI18nContext;
     warnings: string[];
+}
+
+export interface BoardLanguageValidation {
+    boardRoot: string;
+    code: string;
+    defaultCode: string | null;
+    valid: boolean;
+    warnings: string[];
+    /** Default-pack message keys the requested pack does not translate; they fall back, so they do not affect `valid`. */
+    missing: string[];
 }
 
 export async function loadBoardI18n(boardRoot: string, languages?: BoardLanguages): Promise<BoardI18nLoadResult> {
@@ -40,20 +45,7 @@ export async function loadBoardI18n(boardRoot: string, languages?: BoardLanguage
     for (const packCode of codes) {
         if (packCode === languages.default) continue;
         const pack = loaded.get(packCode);
-        if (!pack) continue;
-        for (const [key, message] of Object.entries(pack.messages)) {
-            if (key.startsWith("manifest.")) continue;
-            const defaultMessage = defaultTable[key];
-            if (!defaultMessage) {
-                delete pack.messages[key];
-                pack.warnings.push(`${packCode}.json: unknown key ${key}; ignored.`);
-                continue;
-            }
-            if (!hasSamePlaceholders(message, defaultMessage)) {
-                delete pack.messages[key];
-                pack.warnings.push(`${packCode}.json: placeholder mismatch for ${key}; ignored.`);
-            }
-        }
+        if (pack) loaded.set(packCode, validateBoardTranslationPack(packCode, pack, defaultTable));
     }
     for (const pack of loaded.values()) warnings.push(...pack.warnings);
 
@@ -76,6 +68,54 @@ export async function loadBoardI18n(boardRoot: string, languages?: BoardLanguage
     };
 }
 
+export async function validateBoardLanguagePack(boardRoot: string, code: string): Promise<BoardLanguageValidation> {
+    const manifest = await readNormalizedBoardManifest(boardRoot);
+    const languages = manifest?.languages;
+    if (!languages) {
+        return {
+            boardRoot,
+            code,
+            defaultCode: null,
+            valid: false,
+            missing: [],
+            warnings: [manifest
+                ? "Board manifest has no usable languages configuration."
+                : "Board manifest is missing or invalid; language configuration is unavailable."],
+        };
+    }
+
+    const warnings: string[] = [];
+    const requested = await readBoardPack(boardRoot, languages.folder, code);
+    if (!requested) warnings.push(`Board language pack ${code}.json is missing or unreadable.`);
+    else warnings.push(...requested.warnings);
+
+    const defaultPack = code === languages.default
+        ? requested
+        : await readBoardPack(boardRoot, languages.folder, languages.default);
+    if (!defaultPack) {
+        if (code !== languages.default) warnings.push(`Board language pack ${languages.default}.json is missing or unreadable.`);
+    } else if (code !== languages.default) {
+        warnings.push(...defaultPack.warnings);
+    }
+
+    const missing: string[] = [];
+    if (requested && code !== languages.default && defaultPack) {
+        const warningCount = requested.warnings.length;
+        const validated = validateBoardTranslationPack(code, requested, defaultPack.messages);
+        warnings.push(...validated.warnings.slice(warningCount));
+        missing.push(...Object.keys(defaultPack.messages).filter((key) => !(key in validated.messages)));
+    }
+
+    return {
+        boardRoot,
+        code,
+        defaultCode: languages.default,
+        valid: warnings.length === 0,
+        warnings,
+        missing,
+    };
+}
+
 async function readBoardPack(boardRoot: string, folder: string, code: string): Promise<BoardPack | undefined> {
     const filePath = fpJoin(boardRoot, folder, `${code}.json`);
     let text: string;
@@ -85,44 +125,10 @@ async function readBoardPack(boardRoot: string, folder: string, code: string): P
         return undefined;
     }
 
-    const warnings: string[] = [];
-    let input: unknown;
-    try {
-        input = JSON.parse(text);
-    } catch {
-        return { messages: {}, warnings: [`${code}.json: malformed JSON; pack ignored.`] };
-    }
-    if (!input || typeof input !== "object" || Array.isArray(input)) {
-        return { messages: {}, warnings: [`${code}.json: expected a pack object; pack ignored.`] };
-    }
-    const rawMessages = (input as Record<string, unknown>).messages;
-    if (!rawMessages || typeof rawMessages !== "object" || Array.isArray(rawMessages)) {
-        return { messages: {}, warnings: [`${code}.json: expected a messages object; pack ignored.`] };
-    }
-
-    const messages: BoardI18nTable = {};
-    for (const [key, raw] of Object.entries(rawMessages as Record<string, unknown>)) {
-        if (!key.trim()) {
-            warnings.push(`${code}.json: invalid empty message key; ignored.`);
-            continue;
-        }
-        if (key.startsWith("manifest.")) {
-            if (key.length === "manifest.".length || typeof raw !== "string" || messagePlaceholders(raw).length > 0) {
-                warnings.push(`${code}.json: invalid manifest entry ${key}; expected a plain string without placeholders.`);
-                continue;
-            }
-            messages[key] = raw;
-            continue;
-        }
-        const message = parsePackMessage(raw);
-        if (!message) {
-            warnings.push(`${code}.json: invalid message ${key}; ignored.`);
-            continue;
-        }
-        messages[key] = message as BoardI18nMessage;
-    }
-    return { messages, warnings };
+    return parseBoardLanguagePack(text, code);
 }
+
+export { parseBoardLanguagePack } from "../../../shared/i18n/board-pack";
 
 function pseudoTable(table: BoardI18nTable): BoardI18nTable {
     return Object.fromEntries(Object.entries(table).map(([key, message]) => [

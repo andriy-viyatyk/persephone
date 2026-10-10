@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Editor Excalidraw încorporat.",
+    "manifest.settings.library-path.label": "Folder bibliotecă",
+    "manifest.settings.library-path.description": "Folder pentru elementele bibliotecii Excalidraw (forme reutilizabile)",
+    "manifest.capabilities.image.edit.title": "Editare imagine",
+    "manifest.capabilities.diagram.edit.title": "Editare diagramă"
+  }
+}

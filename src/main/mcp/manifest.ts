@@ -26,6 +26,7 @@ export const SERVER_INSTRUCTIONS = [
     "Run renderer code with `script.execute(code)`; use `main.script.execute(code)` only when enabled.",
     "For editor choices, start with `guides.editors.index` or `guides.editors.<editor>`; reading returns text for your use, while showing a guide means opening it — not copying its text into a new page — with `pages.openUrl(\"persephone-guide://editors/<editor>\")` for an ordinary Markdown tab or `pages[\"about-page\"].editor.open(\"editors/<editor>\")` for the About guide browser next to the version card; for notebook or links JSON use `guides.formats.<page>` (the matching resources remain available as an alternative).",
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
+    "To add a language or fix a translation, follow `guides.agents.languages`; use `guides.agents[\"languages-glossary\"]` when choosing terminology.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
     "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard.",
     "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. For a reusable model on a page without `.app`, read `guides.agents[\"site-extensions\"]` or `persephone://guides/site-extensions`. The `persephone://guides/*` resources are the same files as `guides.*`.",
@@ -82,6 +83,18 @@ export const resourceFiles: IGuideResource[] = [
         uri: "persephone://guides/boards",
         file: "guides/agents/boards.md",
         description: "Boards authoring reference: board lifecycle, the execute channel, theme contract, local vendoring, and automation.",
+    },
+    {
+        name: "languages-guide",
+        uri: "persephone://guides/languages",
+        file: "guides/agents/languages.md",
+        description: "Guide to adding a language pack, fixing a translation, updating a pack, and validating a board language.",
+    },
+    {
+        name: "languages-glossary-guide",
+        uri: "persephone://guides/languages-glossary",
+        file: "guides/agents/languages-glossary.md",
+        description: "Language pack glossary for approved terms and product or protocol names that stay English.",
     },
     {
         name: "ai-vision-guide",

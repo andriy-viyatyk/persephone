@@ -7,6 +7,7 @@ import {
 } from "../../../shared/guides/mounted-source";
 import { normalizeVersionRequirement, OBJECT_PERMISSION_BRIDGE_VERSION } from "../../../shared/version-utils";
 import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
+import { normalizeBoardLanguages, type BoardLanguages } from "../../../shared/i18n/board-pack";
 import {
     BOARD_MANIFEST_FILE,
     normalizeBoardServicePath,
@@ -74,10 +75,7 @@ export interface BoardCapabilityDeclaration {
     alwaysOpensNewPage?: boolean;
 }
 
-export interface BoardLanguages {
-    folder: string;
-    default: string;
-}
+export type { BoardLanguages } from "../../../shared/i18n/board-pack";
 
 export interface BoardManifest {
     /** Schema version of this manifest. */
@@ -902,20 +900,6 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     return normalized;
 }
 
-function normalizeBoardLanguages(raw: unknown): BoardLanguages | undefined {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-    const candidate = raw as Record<string, unknown>;
-    const folder = candidate.folder === undefined ? "lang" : normalizeBoardRelativePath(candidate.folder);
-    const defaultCode = candidate.default === undefined ? "en" : candidate.default;
-    if (!folder || typeof defaultCode !== "string" || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(defaultCode)) return undefined;
-    try {
-        const canonical = Intl.getCanonicalLocales(defaultCode)[0];
-        if (!canonical) return undefined;
-        return { folder, default: canonical };
-    } catch {
-        return undefined;
-    }
-}
 
 export function boardTrustDisclosure(manifest: NormalizedBoardManifest): {
     permissions: NormalizedBoardPermissions;

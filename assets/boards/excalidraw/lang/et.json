@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Sisseehitatud Excalidraw redaktor.",
+    "manifest.settings.library-path.label": "Teegi kaust",
+    "manifest.settings.library-path.description": "Excalidraw teegiüksuste kaust (korduskasutatavad kujundid)",
+    "manifest.capabilities.image.edit.title": "Redigeeri pilti",
+    "manifest.capabilities.diagram.edit.title": "Redigeeri diagrammi"
+  }
+}

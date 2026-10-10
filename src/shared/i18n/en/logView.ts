@@ -9,7 +9,7 @@ export const logViewCatalog = {
     confirmClearLog: { message: "Clear all log entries?" },
     openInGridEditor: { message: "Open in Grid editor" },
     openInMarkdownEditor: { message: "Open in Markdown editor" },
-    error: { message: "ERROR" },
+    error: { message: "ERROR", note: "Log severity label for an error-level entry." },
     openInMermaidEditor: { message: "Open in Mermaid editor" },
     rendering: { message: "Rendering..." },
     openInTextEditor: { message: "Open in Text editor" },

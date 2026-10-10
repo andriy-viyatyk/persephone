@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "기본 제공 Excalidraw 편집기입니다.",
+    "manifest.settings.library-path.label": "라이브러리 폴더",
+    "manifest.settings.library-path.description": "Excalidraw 라이브러리 항목(재사용 가능한 도형)을 저장할 폴더입니다.",
+    "manifest.capabilities.image.edit.title": "이미지 편집",
+    "manifest.capabilities.diagram.edit.title": "다이어그램 편집"
+  }
+}

@@ -9,13 +9,25 @@ Overview of all active and planned epics and tasks.
 The [localization roadmap](localization-roadmap.md) is in progress: phase 1 (foundation,
 [EPIC-124](epics/completed.md)) is done; phase 2 (every UI string
 extracted, [EPIC-125](epics/completed.md)) is done; phase 3 (boards localization,
-[EPIC-126](epics/completed.md)) is done; next is
-phase 4 (the 17 built-in language packs, and the `app.languages` API and agent guide for
-writing packs).
+[EPIC-126](epics/completed.md)) is done; phase 4
+([EPIC-127](epics/EPIC-127.md): the `app.languages` API, the agent guide, and the 17 built-in
+language packs) is active.
 
 ## Active
 
-*(none)*
+- **EPIC-127** — [Language packs (interface languages, phase 4)](epics/EPIC-127.md)
+  - [ ] [US-1676: `app.languages` read side](tasks/US-1676-languages-api-read/README.md)
+  - [ ] [US-1677: `app.languages` write side](tasks/US-1677-languages-api-write/README.md)
+  - [ ] [US-1678: Translator notes and `i18n:check` hardening](tasks/US-1678-notes-and-check/README.md)
+  - [ ] [US-1679: Agent guide `guides.agents.languages`](tasks/US-1679-languages-guide/README.md)
+  - [ ] US-1680: QA run of the language guide
+  - [ ] [US-1681: Ukrainian pack (app and boards)](tasks/US-1681-ukrainian-pack/README.md)
+  - [ ] US-1682: Polish, Lithuanian, Latvian, Estonian
+  - [ ] US-1683: Belarusian, Romanian, Slovak, Hungarian
+  - [ ] US-1684: German, French, Spanish, Italian
+  - [ ] US-1685: Portuguese (Brazil), Chinese, Japanese, Korean
+  - [ ] US-1686: Installer languages
+  - [ ] US-1687: Closing sweep
 
 ## Planned
 
@@ -81,3 +93,4 @@ date has passed. When it is due, move it to Active or Planned.
 ### Task ID Format
 
 `US-XXX` — sequential number. `EPIC-XXX` — sequential number.
+

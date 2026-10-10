@@ -71,6 +71,8 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Give the board or web app you are building its own agent-drivable object model | `persephone.aiVision.expose(root)` in the board | [AI Vision](./ai-vision.md) / `guides.agents["ai-vision"]` |
 | Decide whether a board the user did not write is safe to trust | read the board folder, then `boards.registerBoard` | [Reviewing a board](./board-review.md) / `guides.agents["board-review"]` |
 | Recurring external-system task (ADO, SQL, email, CLI) | `tools.search` → `tools.execute` | `tools.$help` and `persephone://guides/tools` |
+| Add a language, fix a translation, or update a pack | `app.languages.*` | [`Language packs`](./languages.md) / `guides.agents.languages` |
+| Choose language-pack terminology | — | [`Language pack glossary`](./languages-glossary.md) / `guides.agents["languages-glossary"]` |
 
 `main` is resolved locally by the main process, alongside root `windows`. Use `main.windows` for
 the same live window collection, and use root `main` rather than `windows[i].main`; the latter is

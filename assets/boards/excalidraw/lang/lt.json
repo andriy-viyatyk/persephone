@@ -1,0 +1,10 @@
+{
+  "messages": {
+    "manifest.name": "Excalidraw",
+    "manifest.description": "Įtaisytoji Excalidraw rengyklė.",
+    "manifest.settings.library-path.label": "Bibliotekos aplankas",
+    "manifest.settings.library-path.description": "Aplankas, kuriame saugomi Excalidraw bibliotekos elementai (pakartotinai naudojamos figūros)",
+    "manifest.capabilities.image.edit.title": "Redaguoti vaizdą",
+    "manifest.capabilities.diagram.edit.title": "Redaguoti diagramą"
+  }
+}

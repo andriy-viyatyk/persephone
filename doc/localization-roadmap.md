@@ -1,6 +1,6 @@
 # Persephone in other languages — localization roadmap
 
-> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10; phase 2 is [EPIC-125](epics/EPIC-125.md), completed 2026-10-10. Each phase below is sized to become
+> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10; phase 2 is [EPIC-125](epics/EPIC-125.md), completed 2026-10-10; phase 3 is [EPIC-126](epics/EPIC-126.md), completed 2026-10-10; phase 4 is [EPIC-127](epics/EPIC-127.md), implemented 2026-10-11 and awaiting the user's review of the packs, a local test, and the boards publish. Each phase below is sized to become
 > one epic; numbers are assigned when a phase moves to [active-work.md](active-work.md). Findings
 > are source-verified against the tree at commit `9fdd76e5` (v5.0.10 working branch); file
 > references are the seams a task document should start from.
@@ -257,7 +257,7 @@ in the shim and so had no locale in phase 2), catalog and board info showing loc
 own boards (Chess, Theme Editor and the rest) translatable, with their text in `lang/en.json`.
 Translated board packs are drafted in Phase 4 with the app's built-in packs (EPIC-126 F7).
 
-### Phase 4 — Language packs for agents (epic)
+### Phase 4 — Language packs for agents ([EPIC-127](epics/EPIC-127.md))
 
 1. **`app.languages` API** (scripting / MCP): `list()`, `current`, `get(code)`, `english(area?)`
    (keys, English text, plural forms, translator notes, source hashes), `validate(pack)` (the same
