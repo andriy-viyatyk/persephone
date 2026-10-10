@@ -118,7 +118,7 @@ export class NoteItemToolbarView extends VanillaView<NoteItemToolbarViewProps> {
                 name: "note-run-script",
                 size: "sm",
                 icon: RunIcon.createElement(),
-                title: "Run Script",
+                title: t("notebook.runScript"),
                 onClick: () => { void this.props.model.runScript(); },
             }));
             this.runButton.mount();
@@ -128,7 +128,7 @@ export class NoteItemToolbarView extends VanillaView<NoteItemToolbarViewProps> {
             name: "note-run-script",
             size: "sm",
             icon: RunIcon.createElement(),
-            title: hasSelection ? "Run Selected Script" : "Run Script",
+            title: hasSelection ? t("editors.runSelectedScript") : t("notebook.runScript"),
             onClick: () => { void this.props.model.runScript(); },
         });
 
@@ -137,7 +137,7 @@ export class NoteItemToolbarView extends VanillaView<NoteItemToolbarViewProps> {
                 name: "note-run-all-script",
                 size: "sm",
                 icon: RunAllIcon.createElement(),
-                title: "Run All Script",
+                title: t("editors.runAllScript"),
                 onClick: () => { void this.props.model.runScript(true); },
             }));
             this.runAllButton.mount();

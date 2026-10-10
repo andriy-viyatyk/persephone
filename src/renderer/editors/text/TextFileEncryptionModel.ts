@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { shell } from "../../api/shell";
 import type { TextFileModel } from "./TextEditorModel";
@@ -25,7 +26,7 @@ export class TextFileEncryptionModel {
      */
     encript = async (password: string): Promise<void> => {
         if (this.encrypted) {
-            ui.notify("File is already encrypted", "warning");
+            ui.notify(t("editors.fileAlreadyEncrypted"), "warning");
             return;
         }
         try {
@@ -62,7 +63,7 @@ export class TextFileEncryptionModel {
     encryptWithCurrentPassword = async (): Promise<void> => {
         const password = this.model.state.get().password;
         if (!password) {
-            ui.notify("No password set for encryption", "warning");
+            ui.notify(t("editors.noPasswordSetForEncryption"), "warning");
             return;
         }
 

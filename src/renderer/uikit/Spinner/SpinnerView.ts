@@ -2,6 +2,7 @@ import { applyRestProps, clearRestListeners, createRestPropsState } from "../sha
 import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
 import { createIconElement } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 
 export interface SpinnerProps
     extends Omit<NativeHTMLAttributes<HTMLSpanElement>, "style" | "className" | "color"> {
@@ -39,7 +40,7 @@ export class SpinnerView extends VanillaView<SpinnerProps> {
         else this.root.dataset.name = name;
         this.root.setAttribute("role", "status");
         this.root.setAttribute("aria-live", "polite");
-        this.root.setAttribute("aria-label", "Loading");
+        this.root.setAttribute("aria-label", uikitText("loading"));
         this.root.style.setProperty("--spinner-size", `${size}px`);
         if (color) this.root.style.setProperty("--spinner-color", color);
         else this.root.style.removeProperty("--spinner-color");

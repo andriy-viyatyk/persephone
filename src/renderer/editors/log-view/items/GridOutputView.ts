@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import { DataGridView } from "../../../uikit/DataGrid/DataGridView";
 import type { Column, DataGridProps } from "../../../uikit/DataGrid/types";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
@@ -49,7 +50,7 @@ export class GridOutputView extends VanillaView<GridOutputViewProps> {
         this.initialColumns = this.getInitialColumns(props);
         this.header = new DialogHeaderView({ title: props.entry.title });
         this.grid = new DataGridView(this.gridProps(props, this.initialColumns));
-        this.action = new IconButtonView({ name: "log-grid-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: "Open in Grid editor", onClick: this.handleOpenInGrid });
+        this.action = new IconButtonView({ name: "log-grid-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: t("logView.openInGridEditor"), onClick: this.handleOpenInGrid });
         const actions = createPanelElement({ name: "log-grid-hover-actions", position: "absolute", top: 4, right: 4, zIndex: 1 });
         actions.append(this.action.root);
         this.panel.append(this.header.root, this.grid.root, actions);

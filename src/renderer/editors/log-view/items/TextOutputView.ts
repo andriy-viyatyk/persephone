@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import type * as Monaco from "monaco-editor";
 import { errMessage } from "../../../../shared/utils";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
@@ -115,7 +116,7 @@ export class TextOutputView extends VanillaView<TextOutputViewProps> {
         this.root.style.display = "contents";
         this.header = new DialogHeaderView({ title: props.entry.title });
         this.host = new TextEditorHostView(this.hostProps(props));
-        this.action = new IconButtonView({ name: "log-text-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: "Open in Text editor", onClick: this.handleOpenInEditor });
+        this.action = new IconButtonView({ name: "log-text-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: t("logView.openInTextEditor"), onClick: this.handleOpenInEditor });
         this.hostPanel.append(this.host.root);
         const actions = createPanelElement({ name: "log-text-hover-actions", position: "absolute", top: 4, right: 4, zIndex: 1 });
         actions.append(this.action.root);
@@ -133,7 +134,7 @@ export class TextOutputView extends VanillaView<TextOutputViewProps> {
     }
 
     private readonly handleOpenInEditor = (): void => {
-        const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Text";
+        const title = typeof this.props.entry.title === "string" ? this.props.entry.title : t("editors.textOutputFallback");
         void guard("Failed to open text editor", () => app.capabilities.invoke("text.open", {
             content: this.props.entry.text,
             language: this.props.entry.language || "plaintext",

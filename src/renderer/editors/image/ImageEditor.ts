@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
     EditorModel,
@@ -164,7 +165,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
                     // right weight — but it has to say something.
                     if (!this.hasImage) {
                         ui.notify(
-                            `Failed to load image: ${errMessage(err)}`,
+                t("editors.failedToLoadImage", { error: errMessage(err) }),
                             "error",
                         );
                     }
@@ -248,11 +249,11 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         return filePath ? fpBasename(filePath).replace(/\.\w+$/, "") : "image";
     }
 
-    /** "Save as .png" menu action — convert the image to PNG and write it
+    /** t("editors.saveAsPngFile") menu action — convert the image to PNG and write it
      *  (prompts for a path; `savePngViaDialog` surfaces failures as a toast). */
     saveAsPng = (): Promise<void> => savePngViaDialog(this);
 
-    /** "Save original" menu action — write the source bytes in their original
+    /** t("editors.saveOriginal") menu action — write the source bytes in their original
      *  format (no re-encode). Reads via the content pipe (local / archive /
      *  cached URL) and falls back to fetching the runtime URL. */
     saveOriginal = async (): Promise<void> => {
@@ -267,7 +268,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         const baseName = sourceName ? sourceName.replace(/\.\w+$/, "") : "image";
 
         const savePath = await appFs.showSaveDialog({
-            title: "Save Image",
+            title: t("editors.saveImageLabel"),
             defaultPath: `${baseName}.${ext}`,
             filters: [
                 { name: ext.toUpperCase(), extensions: [ext] },
@@ -288,7 +289,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             }
             await appFs.saveBinaryFile(savePath, buffer);
         } catch (err) {
-            ui.notify(`Failed to save image: ${errMessage(err)}`, "error");
+            ui.notify(t("editors.failedToSaveImage", { error: errMessage(err) }), "error");
         }
     };
 

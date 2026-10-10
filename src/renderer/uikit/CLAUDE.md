@@ -3,6 +3,8 @@
 This folder contains Persephone's new component library (`src/renderer/uikit/`).
 Every component in this folder **must** follow these rules. Read this file before creating or modifying any component here.
 
+Default user-visible text in a UIKit component comes from `uikitText()`, never a literal.
+
 ---
 
 ## Folder structure

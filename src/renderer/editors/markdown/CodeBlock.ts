@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { toClipboard } from "../../core/utils/utils";
@@ -192,7 +193,7 @@ export class MermaidBlockView extends VanillaView<MermaidBlockProps> {
             if (this.mode === "loading") return;
             this.mode = "loading";
             this.root.className = "mermaid-diagram mermaid-loading";
-            this.root.replaceChildren(document.createTextNode("Rendering..."));
+            this.root.replaceChildren(document.createTextNode(t("logView.rendering")));
             return;
         }
 
@@ -212,15 +213,15 @@ export class MermaidBlockView extends VanillaView<MermaidBlockProps> {
 
     private createControls(): void {
         const image = document.createElement("img");
-        image.alt = "Mermaid Diagram";
+        image.alt = t("editors.mermaidDiagram");
         const openButton = document.createElement("button");
         openButton.className = "toolbar-btn";
-        openButton.title = "Open in Editor";
+        openButton.title = t("editors.openInEditor");
         const openIcon = OpenLinkIcon.createElement({ width: 14, height: 14 });
         if (openIcon) openButton.append(openIcon);
         const copyButton = document.createElement("button");
         copyButton.className = "toolbar-btn";
-        copyButton.title = "Copy";
+        copyButton.title = t("menus.copy");
         const copyIcon = CopyIcon.createElement({ width: 14, height: 14 });
         if (copyIcon) copyButton.append(copyIcon);
         this.toolbar.className = "diagram-toolbar";
@@ -236,7 +237,7 @@ export class MermaidBlockView extends VanillaView<MermaidBlockProps> {
             representation: "mermaid",
             content: this.props.code,
             language: "mermaid",
-            title: "Mermaid Diagram",
+            title: t("editors.mermaidDiagram"),
         }));
     };
 
@@ -286,7 +287,7 @@ class CodePreBlockView extends VanillaView<CodePreBlockProps> {
         if (codeNode) pre.append(this.props.context.renderNode(codeNode, "html"));
         const copyButton = document.createElement("button");
         copyButton.className = "copy-btn";
-        copyButton.title = "Copy";
+        copyButton.title = t("menus.copy");
         const copyIcon = CopyIcon.createElement({ width: 14, height: 14 });
         if (copyIcon) copyButton.append(copyIcon);
         this.pre = pre;

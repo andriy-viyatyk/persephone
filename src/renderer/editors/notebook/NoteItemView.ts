@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import color from "../../theme/color";
 import { CircleIcon, CloseIcon, DeleteIcon, PlusIcon, WindowMaximizeIcon } from "../../theme/icons";
 import { TraitTypeId, setTraitDragData } from "../../core/traits";
@@ -58,7 +59,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
         this.titleInput = this.child(new InputView({
             variant: "ghost",
             size: "sm",
-            placeholder: "note title...",
+            placeholder: t("notebook.noteTitlePlaceholder"),
             value: props.note.title,
             onChange: this.model.handleTitleChange,
         }));
@@ -81,14 +82,14 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
             name: "note-expand",
             size: "sm",
             icon: iconElement(WindowMaximizeIcon),
-            title: "Expand",
+            title: t("notebook.expand"),
             onClick: () => this.props.onExpand?.(this.props.note.id),
         }));
         this.deleteButton = this.child(new IconButtonView({
             name: "note-delete",
             size: "sm",
             icon: iconElement(DeleteIcon),
-            title: "Delete",
+            title: t("notebook.delete"),
             onClick: () => this.props.onDelete?.(this.props.note.id),
         }));
         this.configureRoot();
@@ -112,7 +113,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
         if (noteChanged) this.activeEditor.repoint(props.note);
         this.model.setProps(props);
         this.titleInput.update({
-            variant: "ghost", size: "sm", placeholder: "note title...",
+            variant: "ghost", size: "sm", placeholder: t("notebook.noteTitlePlaceholder"),
             value: props.note.title, onChange: this.model.handleTitleChange,
         });
         this.toolbar.update({ model: this.model.editModel, extrasVisible: this.focused || this.hovered });
@@ -172,7 +173,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
         this.firstToolbar.style.fontSize = "12px";
         this.firstToolbar.style.color = color.text.light;
         this.firstToolbar.style.transition = "opacity 0.15s ease";
-        this.categoryHost.title = "Category";
+        this.categoryHost.title = t("notebook.category");
         this.categoryHost.style.padding = "2px 6px";
         this.categoryHost.style.backgroundColor = color.background.light;
         this.categoryHost.style.borderRadius = "3px";
@@ -250,7 +251,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
                 this.categoryInput = this.child(new PathInputView({
                     size: "sm", value, onChange: this.model.handleCategoryChange,
                     onBlur: this.model.handleCategoryBlur, paths: this.model.props.categories,
-                    placeholder: "category...", autoFocus: true,
+                    placeholder: t("notebook.categoryPlaceholder"), autoFocus: true,
                 }));
                 this.categoryInput.mount();
             } else {
@@ -276,7 +277,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
             this.newTagInput = this.child(new PathInputView({
                 size: "sm", value: state.newTagValue, onChange: this.model.handleNewTagChange,
                 onBlur: this.model.handleNewTagBlur, paths: this.model.props.tags,
-                separator: ":", maxDepth: 1, placeholder: "tag...", autoFocus: true,
+                separator: ":", maxDepth: 1, placeholder: t("notebook.tagPlaceholder"), autoFocus: true,
             }));
             this.newTagInput.mount();
         }
@@ -290,7 +291,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
             this.editingTagInput = this.child(new PathInputView({
                 size: "sm", value: state.editingTagValue, onChange: this.model.handleTagEditChange,
                 onBlur: this.model.handleTagEditBlur, paths: this.model.props.tags,
-                separator: ":", maxDepth: 1, placeholder: "tag...", autoFocus: true,
+                separator: ":", maxDepth: 1, placeholder: t("notebook.tagPlaceholder"), autoFocus: true,
             }));
             this.editingTagInput.mount();
         }
@@ -321,7 +322,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
             const props = {
                 variant: "ghost" as const, size: "sm" as const, value: note.comment,
                 onChange: this.model.handleCommentChange, onBlur: this.model.handleCommentBlur,
-                placeholder: "Add a comment...", maxHeight: 160,
+                placeholder: t("notebook.addCommentPlaceholder"), maxHeight: 160,
             };
             if (!this.commentInput) {
                 this.commentInput = this.child(new TextareaView(props));
@@ -335,7 +336,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
             this.commentInput = undefined;
         }
         const add = document.createElement("span");
-        add.textContent = "+ Add comment";
+        add.textContent = t("notebook.addComment");
         add.style.opacity = this.hovered ? "0.5" : "0";
         add.style.fontSize = "11px";
         add.style.cursor = "pointer";
@@ -348,7 +349,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
 
     private createTagAddButton(listeners: Array<() => void>): HTMLSpanElement {
         const element = document.createElement("span");
-        element.title = "Add tag";
+        element.title = t("notebook.addTag");
         element.style.display = "inline-flex";
         element.style.alignItems = "center";
         element.style.justifyContent = "center";
@@ -394,7 +395,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
         return {
             size: "sm" as const, value, onChange: this.model.handleCategoryChange,
             onBlur: this.model.handleCategoryBlur, paths: this.model.props.categories,
-            placeholder: "category...", autoFocus: true,
+            placeholder: t("notebook.categoryPlaceholder"), autoFocus: true,
         };
     }
 

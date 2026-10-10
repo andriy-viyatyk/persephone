@@ -283,6 +283,16 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   `{"schemaVersion":1,"code":"de","name":"Deutsch","englishName":"German","messages":{}}` in
   `%APPDATA%\persephone\data\languages\de.lang.json`, pick it, press Ctrl+F in a text page.
 
+- **US-1662 — tools.** Checked live: MCP Inspector (connection form) and the Tools & Editors hub
+  (tabs, built-in editors, pinned list). Not opened live: MCP Inspector tools / resources / prompts /
+  history panels with a connected server, Search Boards and Site Extensions tabs, Storybook.
+
+- **US-1663 — remaining editors and uikit.** Lint now reports only the 11 strings in the board shim
+  (phase 3). uikit default texts (tree Expand / Collapse, Loading, Close, "no rows", search
+  placeholders, Remove tag, …) come from one uikit text table that Persephone fills at startup.
+  Checked live: the markdown Back button, the status bar, the tree. Not opened live: Notebook,
+  Log View dialogs, Grid, Video, Image, HTML, Mermaid, SVG editors.
+
 ## Notes
 
 ### 2026-10-10

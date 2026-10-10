@@ -1,0 +1,31 @@
+import type { EnglishCatalogEntry } from "./common";
+
+export const notebookCatalog = {
+    noteTitlePlaceholder: { message: "note title..." },
+    collapseEscape: { message: "Collapse ({shortcut})" },
+    category: { message: "Category" },
+    categoryPlaceholder: { message: "category..." },
+    tagPlaceholder: { message: "tag..." },
+    addCommentPlaceholder: { message: "Add a comment..." },
+    addComment: { message: "+ Add comment" },
+    expand: { message: "Expand" },
+    delete: { message: "Delete" },
+    addTag: { message: "Add tag" },
+    renderFailure: { message: "This note failed to render: {error}" },
+    notes: { message: "Notes" },
+    noNotesYet: { message: "No notes yet" },
+    createFirstNote: { message: "Click \"{action}\" to create your first note" },
+    noNotesMatchFilter: { message: "No notes match the current filter" },
+    confirmDeleteNote: { message: "Are you sure you want to delete \"{noteTitle}\"?" },
+    deleteNote: { message: "Delete Note" },
+    moveNote: { message: {
+        one: "Move {count} note from \"{fromCategory}\" to \"{newCategory}\"?",
+        other: "Move {count} notes from \"{fromCategory}\" to \"{newCategory}\"?",
+    } as const },
+    moveCategory: { message: "Move Category" },
+    addNote: { message: "Add Note" },
+    clearSearch: { message: "Clear search" },
+    runScript: { message: "Run Script" },
+    categories: { message: "Categories" },
+    tags: { message: "Tags" },
+} satisfies Record<string, EnglishCatalogEntry>;

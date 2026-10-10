@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { NotebookEditor, defaultNotebookEditorState, type NotebookEditorState } from "./NotebookEditor";
 import { NotebookBodyView } from "./NotebookBodyView";
@@ -83,7 +84,7 @@ class NotebookBreadcrumbView extends VanillaView<{ model: NotebookEditor }> {
         if (projection.expandedPanel === "tags") {
             return {
                 name: "notebook-breadcrumb",
-                rootLabel: "Tags",
+                rootLabel: t("notebook.tags"),
                 value: projection.selectedTag,
                 onChange: this.model.setSelectedTag,
                 separators: ":",
@@ -93,7 +94,7 @@ class NotebookBreadcrumbView extends VanillaView<{ model: NotebookEditor }> {
         }
         return {
             name: "notebook-breadcrumb",
-            rootLabel: "Categories",
+            rootLabel: t("notebook.categories"),
             value: projection.selectedCategory,
             onChange: this.model.setSelectedCategory,
             size: "sm",
@@ -164,9 +165,9 @@ class NotebookToolbarBitsView extends VanillaView<{ model: NotebookEditor }> {
             variant: "primary",
             size: "sm",
             icon: "plus",
-            title: "Add Note",
+            title: t("notebook.addNote"),
             onClick: this.model.addNote,
-            children: "Add Note",
+            children: t("notebook.addNote"),
         };
     }
 
@@ -177,7 +178,7 @@ class NotebookToolbarBitsView extends VanillaView<{ model: NotebookEditor }> {
             width: 200,
             value: searchText,
             onChange: this.model.setSearchText,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             endSlot: this.searchClear?.root,
         };
     }
@@ -187,7 +188,7 @@ class NotebookToolbarBitsView extends VanillaView<{ model: NotebookEditor }> {
             name: "notebook-search-clear",
             size: "sm",
             icon: "close",
-            title: "Clear search",
+            title: t("notebook.clearSearch"),
             onClick: this.model.clearSearch,
         };
     }

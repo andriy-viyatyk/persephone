@@ -8,6 +8,7 @@ import {
 } from "../shared/dom-props";
 import { createIconElement } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import { InputView } from "../Input/InputView";
 import { ListBoxView } from "../ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../ListBox/types";
@@ -303,7 +304,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
         list.setItems(this.model.listBoxItems);
         list.setSelection(this.model.isSelected, this.model.selectedKeys);
         list.setSearchText(searchText);
-        list.setEmptyMessage(props.emptyMessage ?? "no rows");
+        list.setEmptyMessage(props.emptyMessage ?? uikitText("noRows"));
         list.setLayout({
             rowHeight,
             growToHeight: props.height === undefined ? `${maxVisibleItems * rowHeight}px` : undefined,
@@ -344,7 +345,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
             this.appliedCheckState = checkState;
         }
 
-        const label = props.selectAllLabel ?? "Select all";
+        const label = props.selectAllLabel ?? uikitText("selectAll");
         if (this.appliedSelectAllLabel !== label) {
             selectAllLabelHost.textContent = label;
             this.appliedSelectAllLabel = label;
@@ -359,7 +360,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
             size: "sm",
             value: searchText,
             onChange: this.model.setSearchText,
-            placeholder: props.searchPlaceholder ?? "Search...",
+            placeholder: props.searchPlaceholder ?? uikitText("searchPlaceholder"),
             disabled: props.disabled,
             tone: searchText ? "accent" : "default",
         };
@@ -389,7 +390,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
             keyboardNav: true,
             rowHeight,
             growToHeight: props.height === undefined ? maxVisibleItems * rowHeight : undefined,
-            emptyMessage: props.emptyMessage ?? "no rows",
+            emptyMessage: props.emptyMessage ?? uikitText("noRows"),
         };
     }
 

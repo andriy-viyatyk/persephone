@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import type { SecondaryViewProps } from "../../../ui/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
@@ -40,7 +41,7 @@ export default class NotebookCategoriesSecondaryView extends VanillaView<Seconda
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Categories",
+            title: t("notebook.categories"),
         });
         this.own(() => this.header?.dispose());
         this.updateHeader(this.props);
@@ -134,7 +135,7 @@ export default class NotebookCategoriesSecondaryView extends VanillaView<Seconda
         this.header = createSideBarPanelHeader({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "Categories",
+            title: t("notebook.categories"),
         });
         this.own(() => this.header?.dispose());
     }
@@ -143,7 +144,7 @@ export default class NotebookCategoriesSecondaryView extends VanillaView<Seconda
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "Categories",
+            title: t("notebook.categories"),
         });
     }
 }

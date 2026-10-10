@@ -39,7 +39,7 @@ export class CheckboxesDialogView extends VanillaView<CheckboxesDialogViewProps>
         this.header.update({ title: props.entry.title });
         this.syncCheckboxes(props);
         const buttons = props.entry.buttons ?? DEFAULT_BUTTONS;
-        this.buttons.update({ buttons, button: props.entry.button, requirementNotMet: props.entry.items.every((item) => !item.checked), onClickButton: this.handleClick });
+        this.buttons.update({ buttons, builtInDefaults: props.entry.buttons === undefined, button: props.entry.button, requirementNotMet: props.entry.items.every((item) => !item.checked), onClickButton: this.handleClick });
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.dialogPanel], ownedChildren: [this.header, this.buttons] });
     }
 

@@ -209,7 +209,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
         const buttonProps: IconButtonViewProps = {
             name: "page-nav-panel",
             size: "sm",
-            title: "File Explorer",
+            title: t("editors.fileExplorer"),
             icon: "nav-panel",
             onClick: this.handleClick,
         };

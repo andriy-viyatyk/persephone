@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import * as monaco from "monaco-editor";
 
 import type {
@@ -436,7 +437,7 @@ function setupRichPaste(
     if (!host) return () => undefined;
     const action = ed.addAction({
         id: "paste-as-rich",
-        label: "Paste as Markdown / HTML",
+        label: t("editors.pasteAsMarkdownHtml"),
         keybindings: [
             monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
         ],
@@ -463,7 +464,7 @@ function setupWordWrapAction(
 ): () => void {
     const action = ed.addAction({
         id: "text.toggleWordWrap",
-        label: "Toggle Word Wrap",
+        label: t("editors.toggleWordWrap"),
         run: () => {
             model.toggleWordWrap();
         },

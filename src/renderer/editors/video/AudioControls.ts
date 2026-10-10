@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SliderView } from "../../uikit/Slider/SliderView";
@@ -110,7 +111,7 @@ export class AudioControlsView extends VanillaView<AudioControlsProps> {
             name: "audio-play-pause",
             size: "sm",
             icon: this.props.playing ? "pause" : "play",
-            title: this.props.playing ? "Pause" : "Play",
+            title: this.props.playing ? t("editors.pause") : t("editors.play"),
             hideUntilParentHover: true,
             onClick: this.togglePlay,
         };
@@ -121,7 +122,7 @@ export class AudioControlsView extends VanillaView<AudioControlsProps> {
             name: "audio-next",
             size: "sm",
             icon: "next-track",
-            title: "Next Track",
+            title: t("editors.nextTrack"),
             hideUntilParentHover: true,
             onClick: this.props.onNext,
         };
@@ -132,7 +133,7 @@ export class AudioControlsView extends VanillaView<AudioControlsProps> {
             name: "audio-mute",
             size: "sm",
             icon: this.muted ? "volume-muted" : "volume",
-            title: this.muted ? "Unmute" : "Mute",
+            title: this.muted ? t("editors.unmute") : t("editors.mute"),
             hideUntilParentHover: true,
             onClick: this.toggleMute,
         };
@@ -143,7 +144,7 @@ export class AudioControlsView extends VanillaView<AudioControlsProps> {
             name: "audio-shuffle",
             size: "sm",
             icon: "shuffle",
-            title: this.props.shuffle ? "Shuffle: On" : "Shuffle: Off",
+            title: this.props.shuffle ? t("editors.shuffleOn") : t("editors.shuffleOff"),
             active: this.props.shuffle,
             hideUntilParentHover: true,
             onClick: this.props.onToggleShuffle,

@@ -10,13 +10,14 @@ import type { TextFileModel } from "../text/TextEditorModel";
 export type EditorOrHost = EditorModel | TextFileModel;
 
 import type { IEditorState } from "../../../shared/types";
+import { untranslated } from "../../../shared/i18n/t";
 
 /** Create the base `IEditorState` fields that editor-specific default-state factories extend. */
 export function getDefaultEditorModelState(): IEditorState {
     return {
         id: crypto.randomUUID(),
         type: "textFile",
-        title: "untitled",
+        title: untranslated("untitled"),
         modified: false,
         language: undefined,
         filePath: undefined,

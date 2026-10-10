@@ -5,6 +5,7 @@ import { applyTextAttributes, resolveTextAttributes } from "../Text/text-style";
 import { SubtreeSwap } from "../shared/subtree-swap";
 import { VanillaView } from "../shared/vanilla-view";
 import { IconButtonView } from "../IconButton/IconButtonView";
+import { uikitText } from "../shared/uikit-text";
 import type { IconButtonProps } from "../IconButton/IconButtonView";
 import "./Notification.css";
 import "../Text/Text.css";
@@ -63,7 +64,7 @@ class CloseButtonView extends VanillaView<CloseButtonProps> {
         const buttonProps: IconButtonProps = {
             size: "sm",
             icon: "close",
-            title: "Close",
+            title: uikitText("close"),
             onClick: (event) => {
                 event.stopPropagation();
                 this.props.onClose();

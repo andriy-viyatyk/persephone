@@ -7,6 +7,7 @@ import { fillSlot } from "../shared/fill-slot";
 import type { SlotContent } from "../shared/fill-slot";
 import { SubtreeSwap } from "../shared/subtree-swap";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 
 // --- Types ---
 
@@ -273,7 +274,7 @@ export class DialogContentView extends VanillaView<DialogContentProps> {
             size: "sm" as const,
             icon: "close" as const,
             onClick: onClose,
-            "aria-label": "Close",
+            "aria-label": uikitText("close"),
         };
         if (this.closeView) {
             this.closeView.update(closeProps);

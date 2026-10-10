@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
@@ -21,7 +22,7 @@ export class MarkdownOutputView extends VanillaView<MarkdownOutputViewProps> {
         this.root.style.display = "contents";
         this.header = new DialogHeaderView({ title: props.entry.title });
         this.markdown = new MarkdownBlockView({ content: props.entry.text, compact: true });
-        this.action = new IconButtonView({ name: "log-markdown-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: "Open in Markdown editor", onClick: this.handleOpenInEditor });
+        this.action = new IconButtonView({ name: "log-markdown-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: t("logView.openInMarkdownEditor"), onClick: this.handleOpenInEditor });
         this.content.append(this.markdown.root);
         const actions = createPanelElement({ name: "log-markdown-hover-actions", position: "absolute", top: 4, right: 4, zIndex: 1 });
         actions.append(this.action.root);

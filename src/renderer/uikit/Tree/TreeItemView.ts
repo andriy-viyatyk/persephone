@@ -7,6 +7,7 @@ import type { IconRef, SlotText } from "../shared/slots";
 import { SpinnerView } from "../Spinner/SpinnerView";
 import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../Tooltip";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import { TreeIndents } from "./tree-indents";
 import type { TreeItemProps } from "./TreeItem";
 import "./TreeItem.css";
@@ -256,7 +257,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         if (mode === "spinner") {
             const stub = document.createElement("div");
             stub.dataset.part = "chevron-stub";
-            stub.setAttribute("aria-label", "Loading");
+            stub.setAttribute("aria-label", uikitText("loading"));
             const spinner = new SpinnerView({ size: 12 });
             spinner.mount();
             this.chevronSpinner = spinner;
@@ -291,7 +292,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         const button = this.chevronButton;
         if (!button || expanded === this.chevronExpanded) return;
         this.chevronExpanded = expanded;
-        button.setAttribute("aria-label", expanded ? "Collapse" : "Expand");
+        button.setAttribute("aria-label", expanded ? uikitText("collapse") : uikitText("expand"));
         this.chevronIcon?.remove();
         this.chevronIcon = createIconElement(expanded ? "chevron-down" : "chevron-right");
         button.append(this.chevronIcon);

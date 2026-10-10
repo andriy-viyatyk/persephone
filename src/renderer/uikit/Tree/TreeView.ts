@@ -5,6 +5,7 @@ import { createDepsGate, type DepsGate } from "../shared/deps-gate";
 import { nextElementId } from "../shared/element-id";
 import { fillSlot } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import { SpinnerView } from "../Spinner/SpinnerView";
 import { RenderGrid } from "../DataGrid";
 import type {
@@ -349,7 +350,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             fillSlot(messageHost, fragment);
             return;
         }
-        fillSlot(messageHost, props.emptyMessage ?? "no items");
+        fillSlot(messageHost, props.emptyMessage ?? uikitText("noItems"));
     }
 
     private gridProps(props: TreeProps<T>) {

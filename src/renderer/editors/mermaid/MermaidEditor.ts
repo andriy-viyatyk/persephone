@@ -8,6 +8,7 @@ import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
 import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
 import { app } from "../../api/app";
+import { t } from "../../../shared/i18n/t";
 import { getMissingEditCapabilityMessage, openImageForEdit } from "../../api/capability-feedback";
 import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
@@ -228,7 +229,7 @@ export class MermaidEditor
         }
         if (result.status === "conversion-failed") {
             ui.notify(
-                `Couldn't convert to editable shapes (${result.message}) - opening as an image instead.`,
+            t("editors.couldntConvertToEditableShapes", { reason: result.message }),
                 "info",
             );
             await this.openInDrawingEditor();
@@ -236,7 +237,7 @@ export class MermaidEditor
         }
         if (result.imageOnly) {
             ui.notify(
-                "This diagram type can't be converted to editable shapes - opened as an image.",
+            t("editors.diagramCannotConvertToEditableShapes"),
                 "info",
             );
         }

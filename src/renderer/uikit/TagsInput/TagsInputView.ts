@@ -12,6 +12,7 @@ import {
 } from "../shared/dom-props";
 import { claimViewOwnership, VanillaView } from "../shared/vanilla-view";
 import { KeyedList } from "../shared/keyed-list";
+import { uikitText } from "../shared/uikit-text";
 import "./TagsInput.css";
 
 // --- Types ---
@@ -161,7 +162,7 @@ export class TagsInputView extends VanillaView<TagsInputProps> {
             paths: props.items ?? [],
             separator: props.separator ?? ":",
             maxDepth: props.maxDepth ?? 1,
-            placeholder: props.placeholder ?? "Type + Enter to add",
+            placeholder: props.placeholder ?? uikitText("tagsInputPlaceholder"),
             disabled: props.disabled,
             size: props.size ?? "md",
         };

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import type { EditorConfig } from "../base/EditorConfig";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
@@ -61,7 +62,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     public constructor(props: HtmlBodyViewProps) {
         const iframe = document.createElement("iframe");
         iframe.setAttribute("sandbox", "allow-scripts");
-        iframe.title = "HTML Preview";
+        iframe.title = t("editors.htmlPreview");
         super(props, iframe);
         this.iframe = iframe;
         this.model = props.model;

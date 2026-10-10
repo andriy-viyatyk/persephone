@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import type { MermaidEditor, MermaidEditorState } from "./MermaidEditor";
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes, type PanelStyleProps } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -187,13 +188,13 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
     private viewportProps(svgUrl: string): ImageViewportProps {
         return {
             src: svgUrl,
-            alt: "Mermaid Diagram",
+            alt: t("editors.mermaidDiagram"),
         };
     }
 
     public copyImage = (): void => {
         void this.model.copyImageToClipboard().catch((error: unknown) => {
-            ui.notify(`Failed to copy Mermaid image: ${errMessage(error)}`, "error");
+        ui.notify(t("editors.failedToCopyMermaidImage", { error: errMessage(error) }), "error");
         });
     }
 }

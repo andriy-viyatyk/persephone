@@ -1,4 +1,5 @@
 import { TComponentState } from "../../core/state/state";
+import { t } from "../../../shared/i18n/t";
 import { MonacoEditor, defaultMonacoEditorState } from "./MonacoEditor";
 import { MonacoBodyView } from "./MonacoBodyView";
 import { TextChromeView } from "../base/TextChromeView";
@@ -71,7 +72,7 @@ class MonacoToolbarBitsView extends VanillaView<{ model: MonacoEditor }> {
             name: "text-word-wrap-toggle",
             size: "sm",
             active: wordWrap,
-            title: wordWrap ? "Turn Word Wrap off" : "Turn Word Wrap on",
+            title: wordWrap ? t("editors.turnWordWrapOff") : t("editors.turnWordWrapOn"),
             icon: "wrap-text",
             onClick: this.model.toggleWordWrap,
         };

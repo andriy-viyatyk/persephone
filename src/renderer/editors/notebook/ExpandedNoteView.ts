@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import color from "../../theme/color";
 import { CircleIcon, CloseIcon, PlusIcon, WindowRestoreIcon } from "../../theme/icons";
 import { TComponentState } from "../../core/state/state";
@@ -72,7 +73,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
         this.own(() => this.editModel.dispose());
         this.toolbar = this.child(new NoteItemToolbarView({ model: this.editModel, extrasVisible: true }));
         this.titleInput = this.child(new InputView({
-            variant: "ghost", size: "sm", placeholder: "note title...", value: props.note.title,
+            variant: "ghost", size: "sm", placeholder: t("notebook.noteTitlePlaceholder"), value: props.note.title,
             onChange: (value) => props.notebookModel.updateNoteTitle(props.note.id, value),
         }));
         this.activeEditor = this.child(new NoteItemActiveEditorView({
@@ -84,7 +85,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
             name: "notebook-expanded-collapse",
             size: "sm",
             icon: iconElement(WindowRestoreIcon),
-            title: "Collapse (Esc)",
+                title: t("notebook.collapseEscape", { shortcut: "Esc" }),
             onClick: props.onCollapse,
         }));
         this.root.style.display = "flex";
@@ -122,7 +123,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
         this.categoryHost.style.borderRadius = "3px";
         this.categoryHost.style.cursor = "pointer";
         this.categoryHost.style.flexShrink = "0";
-        this.categoryHost.title = "Category";
+        this.categoryHost.title = t("notebook.category");
         this.listen(this.categoryHost, "click", this.startCategoryEdit);
         this.tagsHost.style.display = "flex";
         this.tagsHost.style.alignItems = "center";
@@ -166,7 +167,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
     protected onUpdate(props: ExpandedNoteViewProps): void {
         this.editModel.syncFromNote(props.note);
         this.titleInput.update({
-            variant: "ghost", size: "sm", placeholder: "note title...", value: props.note.title,
+            variant: "ghost", size: "sm", placeholder: t("notebook.noteTitlePlaceholder"), value: props.note.title,
             onChange: (value) => props.notebookModel.updateNoteTitle(props.note.id, value),
         });
         this.toolbar.update({ model: this.editModel, extrasVisible: true });
@@ -177,7 +178,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
         });
         this.collapseButton.update({
             name: "notebook-expanded-collapse", size: "sm", icon: iconElement(WindowRestoreIcon),
-            title: "Collapse (Esc)", onClick: props.onCollapse,
+                title: t("notebook.collapseEscape", { shortcut: "Esc" }), onClick: props.onCollapse,
         });
         this.sync();
     }
@@ -204,12 +205,12 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
             if (!this.categoryInput) {
                 this.categoryInput = this.child(new PathInputView({
                     size: "sm", value: state.categoryValue, onChange: (value) => this.setState({ categoryValue: value }),
-                    onBlur: this.finishCategoryEdit, paths: this.props.categories, placeholder: "category...", autoFocus: true,
+                    onBlur: this.finishCategoryEdit, paths: this.props.categories, placeholder: t("notebook.categoryPlaceholder"), autoFocus: true,
                 }));
                 this.categoryInput.mount();
             } else this.categoryInput.update({
                 size: "sm", value: state.categoryValue, onChange: (value) => this.setState({ categoryValue: value }),
-                onBlur: this.finishCategoryEdit, paths: this.props.categories, placeholder: "category...", autoFocus: true,
+                onBlur: this.finishCategoryEdit, paths: this.props.categories, placeholder: t("notebook.categoryPlaceholder"), autoFocus: true,
             });
             this.categoryHost.replaceChildren(this.categoryInput.root);
         } else if (this.categoryInput) {
@@ -230,7 +231,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
             this.newTagInput = this.child(new PathInputView({
                 size: "sm", value: state.newTagValue, onChange: (value) => this.setState({ newTagValue: value }),
                 onBlur: this.finishNewTagEdit, paths: this.props.tags, separator: ":", maxDepth: 1,
-                placeholder: "tag...", autoFocus: true,
+                placeholder: t("notebook.tagPlaceholder"), autoFocus: true,
             }));
             this.newTagInput.mount();
         }
@@ -242,7 +243,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
             this.editingTagInput = this.child(new PathInputView({
                 size: "sm", value: state.editingTagValue, onChange: (value) => this.setState({ editingTagValue: value }),
                 onBlur: this.finishTagEdit, paths: this.props.tags, separator: ":", maxDepth: 1,
-                placeholder: "tag...", autoFocus: true,
+                placeholder: t("notebook.tagPlaceholder"), autoFocus: true,
             }));
             this.editingTagInput.mount();
         }
@@ -271,7 +272,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
                 variant: "ghost" as const, size: "sm" as const, value: note.comment,
                 onChange: (value: string) => this.props.notebookModel.updateNoteComment(note.id, value),
                 onBlur: () => { if (!note.comment?.trim()) this.props.notebookModel.removeComment(note.id); },
-                placeholder: "Add a comment...", maxHeight: 160,
+                placeholder: t("notebook.addCommentPlaceholder"), maxHeight: 160,
             };
             if (!this.commentInput) {
                 this.commentInput = this.child(new TextareaView(props));
@@ -284,7 +285,7 @@ export class ExpandedNoteView extends VanillaView<ExpandedNoteViewProps> {
                 this.commentInput = undefined;
             }
             const add = document.createElement("span");
-            add.textContent = "+ Add comment";
+            add.textContent = t("notebook.addComment");
             add.style.fontSize = "11px";
             add.style.cursor = "pointer";
             add.style.color = color.text.light;

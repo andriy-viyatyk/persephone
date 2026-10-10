@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { HtmlEditor, defaultHtmlEditorState } from "./HtmlEditor";
 import { HtmlBodyView } from "./HtmlBodyView";
@@ -91,7 +92,7 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
         return {
             name: "html-copy",
             size: "sm",
-            title: "Copy image to clipboard",
+            title: t("editors.copyImageToClipboard"),
             icon: "copy",
             disabled,
             onClick: () => { void this.model.copyImageToClipboard(); },
@@ -102,7 +103,7 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
         return {
             name: "html-more",
             size: "sm",
-            title: "More image actions",
+            title: t("editors.moreImageActions"),
             icon: "more-vert",
             disabled,
             onClick: this.handleMoreClick,
@@ -146,17 +147,20 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     private menuItems(): MenuItem[] {
         return [
             {
-                label: "Save as PNG",
+                id: "save-as-png",
+                label: t("editors.saveAsPng"),
                 icon: "save",
                 onClick: () => this.afterMenuClose(() => { void savePngViaDialog(this.model); }),
             },
             {
-                label: "Open in Image View",
+                id: "open-in-image-view",
+                label: t("editors.openInImageView"),
                 icon: "open-file",
                 onClick: () => this.afterMenuClose(() => { void this.model.openInImageView(); }),
             },
             {
-                label: "Edit Image",
+                id: "edit-image",
+                label: t("editors.editImage"),
                 icon: this.drawIcon,
                 onClick: () => this.afterMenuClose(() => { void this.model.editImage(); }),
             },

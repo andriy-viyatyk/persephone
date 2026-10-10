@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { errMessage } from "../../../shared/utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -212,7 +213,7 @@ export class LogBodyView extends VanillaView<LogBodyViewProps> {
         this.messageHost.style.display = showMessage ? "" : "none";
         this.messageHost.replaceChildren();
         if (projection.error) this.messageHost.append(createTextElement(projection.error, { color: "warning", preWrap: true }));
-        else if (projection.entryCount === 0) this.messageHost.append(createTextElement("No log entries", { size: "base", color: "light" }));
+        else if (projection.entryCount === 0) this.messageHost.append(createTextElement(t("logView.noEntries"), { size: "base", color: "light" }));
     }
 
     private entryProps(entry: LogEntry, index: number) { return { vm: this.editor, entry, index, showTimestamp: this.projection.showTimestamps }; }
@@ -232,7 +233,7 @@ export class LogBodyView extends VanillaView<LogBodyViewProps> {
         };
     }
 
-    private renderCellFailure(cell: HTMLElement, error: unknown): void { cell.replaceChildren(createTextElement(`This log entry failed to render: ${errMessage(error)}`, { color: "error", preWrap: true })); }
+    private renderCellFailure(cell: HTMLElement, error: unknown): void { cell.replaceChildren(createTextElement(t("logView.renderFailure", { error: errMessage(error) }), { color: "error", preWrap: true })); }
 
     private discardRecord(record: CellRecord): void {
         this.cells.delete(record.cell);

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { openMenu, type MenuHandle, type MenuAttachOptions } from "../../uikit/Menu/attach-menu";
@@ -36,21 +37,21 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
         const saveButton = new IconButtonView({
             name: "image-save",
             size: "sm",
-            title: "Save image…",
+            title: t("editors.saveImageEllipsis"),
             onClick: this.onSaveClick,
             icon: "save",
         });
         const drawButton = new IconButtonView({
             name: "image-open-draw",
             size: "sm",
-            title: "Open in Drawing Editor",
+            title: t("editors.openInDrawingEditor"),
             onClick: this.onDrawClick,
             icon: this.drawIcon,
         });
         const copyButton = new IconButtonView({
             name: "image-copy",
             size: "sm",
-            title: "Copy Image to Clipboard (Ctrl+C)",
+            title: t("editors.copyImageWithShortcut", { shortcut: "Ctrl+C" }),
             onClick: this.onCopyClick,
             icon: "copy",
         });
@@ -116,8 +117,8 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
 
     private saveMenuItems(model: ImageEditor = this.model): MenuItem[] {
         return [
-            { label: "Save as .png", onClick: () => void model.saveAsPng() },
-            { label: "Save original", onClick: () => void model.saveOriginal() },
+            { id: "save-as-png", label: t("editors.saveAsPngFile"), onClick: () => void model.saveAsPng() },
+            { id: "save-original", label: t("editors.saveOriginal"), onClick: () => void model.saveOriginal() },
         ];
     }
 
@@ -135,7 +136,7 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
         return {
             name: "image-save",
             size: "sm",
-            title: "Save image…",
+            title: t("editors.saveImageEllipsis"),
             onClick: this.onSaveClick,
             icon: "save",
         };
@@ -145,7 +146,7 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
         return {
             name: "image-open-draw",
             size: "sm",
-            title: "Open in Drawing Editor",
+            title: t("editors.openInDrawingEditor"),
             onClick: this.onDrawClick,
             icon: this.drawIcon,
         };
@@ -155,7 +156,7 @@ export class ImageToolbarView extends VanillaView<ImageToolbarViewProps> {
         return {
             name: "image-copy",
             size: "sm",
-            title: "Copy Image to Clipboard (Ctrl+C)",
+            title: t("editors.copyImageWithShortcut", { shortcut: "Ctrl+C" }),
             onClick: this.onCopyClick,
             icon: "copy",
         };

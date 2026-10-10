@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import * as monaco from "monaco-editor";
 
 import { TModel } from "../../core/state/model";
@@ -41,7 +42,7 @@ export interface ScriptDropdownEntry extends IListBoxItem {
     value: string;
     /** Display label (e.g. "my-script" or "all/my-script"). */
     label: string;
-    /** The underlying ScriptPanelEntry, or null for "(unsaved script)". */
+    /** The underlying ScriptPanelEntry, or null for t("editors.unsavedScript"). */
     entry: ScriptPanelEntry | null;
 }
 
@@ -240,7 +241,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
                 this.state.update((s) => { s.dirty = false; });
             } catch (err) {
                 const { ui } = await import("../../api/ui");
-                ui.notify(`Failed to save script: ${errMessage(err)}`, "error");
+                ui.notify(t("editors.failedToSaveScript", { error: errMessage(err) }), "error");
             }
             return;
         }
@@ -250,8 +251,8 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         const options = language !== "all" ? [language, "all"] : ["all"];
 
         const result = await showInputDialog({
-            title: "Save Script to Library",
-            message: "Script name:",
+            title: t("editors.saveScriptToLibrary"),
+            message: t("editors.scriptName"),
             value: "",
             options,
             selectedOption: options[0],
@@ -277,7 +278,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         if (await fs.exists(filePath)) {
             const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
             const confirmResult = await showConfirmationDialog({
-                message: `Script "${scriptName}" already exists in "${folder}/". Overwrite?`,
+                message: t("editors.scriptAlreadyExists", { scriptName, folder }),
                 buttons: [dialogButton(DialogButton.overwrite), dialogButton(DialogButton.cancel)],
             });
             if (confirmResult !== "Overwrite") {
@@ -293,7 +294,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             });
         } catch (err) {
             const { ui } = await import("../../api/ui");
-            ui.notify(`Failed to save script: ${errMessage(err)}`, "error");
+            ui.notify(t("editors.failedToSaveScript", { error: errMessage(err) }), "error");
         }
     };
 

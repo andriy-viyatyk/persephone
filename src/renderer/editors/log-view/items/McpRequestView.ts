@@ -1,3 +1,4 @@
+import { t, untranslated } from "../../../../shared/i18n/t";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { createTextElement } from "../../../uikit/Text/text-style";
 import { DividerView } from "../../../uikit/Divider/DividerView";
@@ -30,7 +31,7 @@ export class McpRequestView extends VanillaView<McpRequestViewProps> {
     private readonly methodText = createTextElement("", { size: "md", bold: true });
     private readonly detailText = createTextElement("", { size: "md", color: "light", truncate: true });
     private readonly spacer = createPanelElement({ flex: 1 });
-    private readonly errorText = createTextElement("ERROR", { size: "sm", color: "error", bold: true });
+    private readonly errorText = createTextElement(t("logView.error"), { size: "sm", color: "error", bold: true });
     private readonly durationText = createTextElement("", { size: "xs", color: "light" });
     private readonly card = createPanelElement({ name: "log-mcp-card", direction: "column", border: true, rounded: "md", overflow: "hidden", paddingLeft: "xxl" });
     private readonly requestCode: ColorizedCodeView;
@@ -70,11 +71,11 @@ export class McpRequestView extends VanillaView<McpRequestViewProps> {
     protected onUpdate(props: McpRequestViewProps): void { this.updateChildren(props); }
 
     private buildSections(): void {
-        this.requestSection.append(this.sectionTitle("Request"));
+        this.requestSection.append(this.sectionTitle(t("logView.request")));
         const requestBody = createPanelElement({ maxHeight: 180, overflowY: "auto" });
         requestBody.append(this.requestCode.root);
         this.requestSection.append(requestBody);
-        this.responseSection.append(this.sectionTitle("Response"));
+        this.responseSection.append(this.sectionTitle(t("logView.response")));
         const responseBody = createPanelElement({ maxHeight: 180, overflowY: "auto" });
         responseBody.append(this.responseCode.root);
         this.responseSection.append(responseBody);
@@ -95,10 +96,10 @@ export class McpRequestView extends VanillaView<McpRequestViewProps> {
         this.detailText.style.display = detail ? "" : "none";
         this.spacer.style.display = detail ? "none" : "";
         this.errorText.style.display = entry.error ? "" : "none";
-        this.durationText.textContent = `${entry.durationMs}ms`;
+        this.durationText.textContent = untranslated(`${entry.durationMs}ms`);
         this.toggleButton.update({ name: "log-mcp-toggle", size: "sm", icon: this.expanded ? "chevron-down" : "chevron-right", onClick: this.handleToggleClick });
-        this.requestCode.update({ code: entry.params != null ? JSON.stringify(entry.params, null, 2) : "(no params)", language: "json", tabSize: 2 });
-        this.responseCode.update({ code: entry.error ? entry.error : entry.result != null ? JSON.stringify(entry.result, null, 2) : "(no result)", language: "json", tabSize: 2 });
+        this.requestCode.update({ code: entry.params != null ? JSON.stringify(entry.params, null, 2) : t("logView.noParams"), language: "json", tabSize: 2 });
+        this.responseCode.update({ code: entry.error ? entry.error : entry.result != null ? JSON.stringify(entry.result, null, 2) : t("logView.noResult"), language: "json", tabSize: 2 });
         this.card.style.display = this.expanded ? "" : "none";
     }
 

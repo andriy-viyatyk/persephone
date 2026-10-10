@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { fpBasename, fpDirname, fpExtname, fpJoin } from "../../core/utils/file-path";
 
 import { api } from "../../../ipc/renderer/api";
@@ -195,7 +196,7 @@ export class TextFileIOModel {
         const newPath = fpJoin(fpDirname(filePath), newName);
         if (await appFs.exists(newPath)) {
             const { ui } = await import("../../api/ui");
-            ui.notify("A file or folder with that name already exists.", "warning");
+            ui.notify(t("editors.fileOrFolderAlreadyExists"), "warning");
             return false;
         }
         try {

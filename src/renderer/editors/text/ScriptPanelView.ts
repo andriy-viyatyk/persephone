@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { libraryService } from "../../api/library-service";
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -20,7 +21,7 @@ export interface ScriptPanelViewProps {
 
 const UNSAVED_ENTRY: ScriptDropdownEntry = {
     value: "__unsaved__",
-    label: "(unsaved script)",
+    label: t("editors.unsavedScript"),
     entry: null,
 };
 
@@ -292,7 +293,9 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private runButtonProps(state: ScriptPanelState): IconButtonProps {
         return {
             name: "script-run",
-            title: state.hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)",
+            title: state.hasSelection
+                ? t("editors.runSelectedScriptShortcut", { shortcut: "F5" })
+                : t("editors.runScriptShortcut", { shortcut: "F5" }),
             size: "sm",
             icon: "run",
             onClick: () => this.model.runRelatedScript(),
@@ -303,7 +306,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
         return {
             name: "script-run-all",
             size: "sm",
-            title: "Run All Script",
+            title: t("editors.runAllScript"),
             icon: "run-all",
             onClick: () => this.model.runRelatedScript(true),
         };
@@ -325,7 +328,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private saveButtonProps(state: ScriptPanelState): IconButtonProps {
         return {
             name: "script-save",
-            title: "Save Script to Library",
+            title: t("editors.saveScriptToLibrary"),
             size: "sm",
             icon: "save",
             disabled: !state.dirty,
@@ -336,7 +339,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private openTabButtonProps(): IconButtonProps {
         return {
             name: "script-open-tab",
-            title: "Open in New Tab",
+            title: t("editors.openInNewTab"),
             size: "sm",
             icon: "open-file",
             onClick: () => { void this.scriptModel.openInTab(); },
@@ -346,7 +349,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private closeButtonProps(): IconButtonProps {
         return {
             name: "script-close",
-            title: "Close Script Editor",
+            title: t("editors.closeScriptEditor"),
             size: "sm",
             icon: "close",
             onClick: this.scriptModel.toggleOpen,

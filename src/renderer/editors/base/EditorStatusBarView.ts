@@ -1,4 +1,5 @@
 import { app } from "../../api/app";
+import { t, englishMessage, untranslated } from "../../../shared/i18n/t";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { PagePipeStatusView } from "../../components/pipe-status/PagePipeStatusView";
 import { subscribePagePipe } from "../../components/pipe-status/page-pipe";
@@ -37,15 +38,15 @@ interface ProviderMeta {
 
 const PROVIDER_META: Record<string, ProviderMeta> = {
     file: {
-        label: "Local file",
+        label: t("editors.localFile"),
         createIcon: () => createIconElement("folder-open", { width: 16, height: 16, color: color.text.light }),
     },
     http: {
-        label: "HTTP",
+        label: untranslated("HTTP"),
         createIcon: () => createIconElement("globe", { width: 16, height: 16, color: DEFAULT_BROWSER_COLOR }),
     },
     mneme: {
-        label: "Mneme",
+        label: englishMessage("editors.mneme"),
         createIcon: () => createIconElement("memory", { width: 16, height: 16, color: MEMORY_ICON_COLOR }),
     },
 };
@@ -89,7 +90,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         if (host?.script) {
             const scriptLabel = document.createElement("span");
             scriptLabel.dataset.part = "script-label";
-            scriptLabel.textContent = "script";
+            scriptLabel.textContent = t("editors.script");
             const scriptButton = this.child(new ButtonView({
                 name: "text-toggle-script",
                 variant: "ghost",

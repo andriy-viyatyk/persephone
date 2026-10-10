@@ -1,4 +1,6 @@
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
+import { builtInDialogButtonLabel } from "../../ui/dialogs/dialog-buttons";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type {
@@ -83,10 +85,13 @@ class DialogEntryStubView extends VanillaView<{ entry: LogEntry }> {
     protected onUpdate(props: { entry: LogEntry }): void { this.applyProps(props); }
     private applyProps(props: { entry: LogEntry }): void {
         const label = props.entry.title || props.entry.message || "";
-        const answered = props.entry.button !== undefined
-            ? ` — answered: ${String(props.entry.buttonLabel ?? props.entry.button)}`
-            : "";
-        this.text.textContent = `[${props.entry.type}] ${typeof label === "string" ? label : ""}${answered}`;
+        const text = typeof label === "string" ? label : "";
+        if (props.entry.button === undefined) {
+            this.text.textContent = `[${props.entry.type}] ${text}`;
+            return;
+        }
+        const button = String(props.entry.buttonLabel ?? builtInDialogButtonLabel(String(props.entry.button)) ?? props.entry.button);
+        this.text.textContent = t("logView.dialogAnswered", { type: String(props.entry.type), text, button });
     }
 }
 
@@ -172,7 +177,7 @@ export class LogEntryContentView extends VanillaView<LogEntryContentProps> {
 
     private showFailure(entry: LogEntry, error: unknown): void {
         this.clearChild();
-        this.fallback = createTextElement(`[${entry.type}] render error: ${errMessage(error)}`, {
+        this.fallback = createTextElement(t("logView.entryRenderFailure", { type: entry.type, error: errMessage(error) }), {
             size: "md",
             color: "error",
         });

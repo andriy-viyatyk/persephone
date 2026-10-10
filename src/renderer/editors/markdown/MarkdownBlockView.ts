@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import type { NativeCSSProperties } from "../../uikit/shared/dom-props";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
@@ -271,8 +272,9 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
         const isExternal = href.startsWith("http://") || href.startsWith("https://");
         if (!isExternal && !href.startsWith("#")) {
             contextEvent.items.push({
+                id: "open-in-new-tab",
                 startGroup: true,
-                label: "Open in New Tab",
+                label: t("editors.openInNewTab"),
                 icon: OpenFileIcon.createElement(),
                 onClick: async () => {
                     const { app } = await import("../../api/app");
@@ -285,7 +287,8 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
         }
 
         contextEvent.items.push({
-            label: "Copy Link",
+            id: "copy-link",
+            label: t("editors.copyLink"),
             icon: CopyIcon.createElement(),
             onClick: () => { toClipboard(href); },
         });

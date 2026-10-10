@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { MarkdownEditor, defaultMarkdownEditorState } from "./MarkdownEditor";
 import { MarkdownBodyView } from "./MarkdownBodyView";
@@ -134,10 +135,10 @@ class MarkdownBackButtonView extends VanillaView<{ model: MarkdownEditor }> {
             name: "markdown-back",
             variant: "ghost",
             size: "sm",
-            title: "Back",
+            title: t("editors.back"),
             icon: "arrow-left",
             onClick: () => { void this.model.navigateBack(); },
-            children: "Back",
+            children: t("editors.back"),
         };
         if (!this.button) {
             this.button = this.child(new ButtonView(props));

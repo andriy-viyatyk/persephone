@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
@@ -122,7 +123,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
     copyImageToClipboard(): Promise<void> {
         return this.withCapture(async (blob) => {
             await copyPngBlobToClipboard(blob);
-            ui.notify("Image copied to clipboard", "success");
+            ui.notify(t("editors.imageCopiedToClipboard"), "success");
         }, "Failed to copy image");
     }
 

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
@@ -638,8 +639,8 @@ export class NotebookEditor extends TextHostEditorModel<NotebookEditorState, voi
             const noteTitle = note?.title || "this note";
 
             const result = await ui.confirm(
-                `Are you sure you want to delete "${noteTitle}"?`,
-                { title: "Delete Note", buttons: [DialogButton.delete, DialogButton.cancel] },
+            t("notebook.confirmDeleteNote", { noteTitle }),
+                { title: t("notebook.deleteNote"), buttons: [DialogButton.delete, DialogButton.cancel] },
             );
 
             if (result !== DialogButton.delete) {
@@ -839,8 +840,8 @@ export class NotebookEditor extends TextHostEditorModel<NotebookEditorState, voi
         ).length;
 
         const result = await ui.confirm(
-            `Move ${count} note${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            { title: "Move Category", buttons: [DialogButton.move, DialogButton.cancel] },
+            t("notebook.moveNote", { count, fromCategory, newCategory }),
+            { title: t("notebook.moveCategory"), buttons: [DialogButton.move, DialogButton.cancel] },
         );
 
         if (result !== DialogButton.move) return;

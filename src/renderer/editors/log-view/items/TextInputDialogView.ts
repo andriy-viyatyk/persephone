@@ -48,7 +48,7 @@ export class TextInputDialogView extends VanillaView<TextInputDialogViewProps> {
         this.field.update(this.inputProps(props));
         const buttons = props.entry.buttons ?? DEFAULT_BUTTONS;
         const value = props.entry.text ?? props.entry.defaultValue ?? "";
-        this.buttons.update({ buttons, button: props.entry.button, requirementNotMet: !value.trim(), onClickButton: this.handleClick });
+        this.buttons.update({ buttons, builtInDefaults: props.entry.buttons === undefined, button: props.entry.button, requirementNotMet: !value.trim(), onClickButton: this.handleClick });
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.dialogPanel], ownedChildren: [this.header, this.field, this.buttons] });
     }
 

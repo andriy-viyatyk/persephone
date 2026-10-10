@@ -9,6 +9,7 @@ import {
 } from "../shared/dom-props";
 import { KeyedList } from "../shared/keyed-list";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import "./CategoryList.css";
 
 export interface CategoryListProps
@@ -171,7 +172,7 @@ export class CategoryListView extends VanillaView<CategoryListProps> {
         const rows: RowData[] = [{
             key: "root",
             value: "",
-            name: props.rootLabel ?? "All",
+            name: props.rootLabel ?? uikitText("all"),
             selected: props.value === "",
             open: false,
             expandable: false,

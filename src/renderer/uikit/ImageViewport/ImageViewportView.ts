@@ -2,6 +2,7 @@ import { createComponentModelDriver } from "../../core/state/model";
 import { VanillaView } from "../shared/vanilla-view";
 import { copyPngBlobToClipboard } from "../../editors/shared/image-export";
 import { imageElementToPngBlob } from "./image-raster";
+import { uikitText } from "../shared/uikit-text";
 import {
     defaultImageViewportState,
     type ImageViewportContainerBounds,
@@ -43,7 +44,7 @@ export class ImageViewportView extends VanillaView<ImageViewportProps> {
         this.image = document.createElement("img");
         this.zoomIndicator = document.createElement("div");
         this.zoomIndicator.dataset.part = "zoom-indicator";
-        this.zoomIndicator.title = "Reset Zoom";
+        this.zoomIndicator.title = uikitText("resetZoom");
         this.root.dataset.type = "image-view";
         this.root.tabIndex = 0;
         this.image.draggable = false;

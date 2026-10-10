@@ -1,4 +1,5 @@
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
+import { t } from "../../../shared/i18n/t";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import {
     applyPanelAttributes,
@@ -102,7 +103,7 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
 
     public copyImage = (): void => {
         void this.model.copyImageToClipboard().catch((error: unknown) => {
-            ui.notify(`Failed to copy SVG image: ${errMessage(error)}`, "error");
+        ui.notify(t("editors.failedToCopySvgImage", { error: errMessage(error) }), "error");
         });
     }
 }

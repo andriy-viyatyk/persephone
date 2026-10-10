@@ -38,7 +38,7 @@ export class SelectDialogView extends VanillaView<SelectDialogViewProps> {
     private updateChildren(props: SelectDialogViewProps): void {
         this.header.update({ title: props.entry.title });
         this.select.update(this.selectProps(props));
-        this.buttons.update({ buttons: props.entry.buttons ?? DEFAULT_BUTTONS, button: props.entry.button, requirementNotMet: !props.entry.selected, onClickButton: this.handleClick });
+        this.buttons.update({ buttons: props.entry.buttons ?? DEFAULT_BUTTONS, builtInDefaults: props.entry.buttons === undefined, button: props.entry.button, requirementNotMet: !props.entry.selected, onClickButton: this.handleClick });
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.dialogPanel], ownedChildren: [this.header, this.select, this.buttons] });
     }
 

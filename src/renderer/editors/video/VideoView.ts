@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { ButtonView } from "../../uikit/Button/ButtonView";
@@ -88,8 +89,8 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
         this.recordingActions = document.createElement("div");
         this.recordingActions.dataset.name = "temporary-recording-actions";
         this.recordingActions.className = "video-recording-actions";
-        this.saveRecordingButton = this.child(new ButtonView({ name: "video-recording-save", variant: "default", icon: "save", children: "Save as…", onClick: () => { void this.runTemporaryAction(this.model.saveTemporaryRecording); } }));
-        this.discardRecordingButton = this.child(new ButtonView({ name: "video-recording-discard", variant: "default", icon: "delete", children: "Discard", onClick: () => { void this.runTemporaryAction(this.model.discardTemporaryRecording); } }));
+        this.saveRecordingButton = this.child(new ButtonView({ name: "video-recording-save", variant: "default", icon: "save", children: t("editors.saveAsEllipsis"), onClick: () => { void this.runTemporaryAction(this.model.saveTemporaryRecording); } }));
+        this.discardRecordingButton = this.child(new ButtonView({ name: "video-recording-discard", variant: "default", icon: "delete", children: t("editors.discard"), onClick: () => { void this.runTemporaryAction(this.model.discardTemporaryRecording); } }));
         this.recordingActions.append(this.saveRecordingButton.root, this.discardRecordingButton.root);
         this.toolbarChildren.append(this.recordingActions);
 
@@ -105,7 +106,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
         });
 
         this.player = this.child(new VPlayerView(this.playerProps(state)));
-        this.prompt = createTextElement("Enter a video URL above to start playing", {
+        this.prompt = createTextElement(t("editors.enterVideoUrlToStart"), {
             color: "light",
             size: "md",
         });
@@ -118,7 +119,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             name: "video-open-vlc",
             variant: "link",
             icon: "vlc",
-            children: "Open in VLC",
+            children: t("editors.openInVlc"),
             onClick: this.model.openInVlc,
         }));
         this.vlcContainer.append(this.vlcButton.root);
@@ -196,7 +197,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             name: "video-url-input",
             value,
             onChange: this.model.setInputText,
-            placeholder: "Enter video URL or paste cURL command... (Enter to play)",
+            placeholder: t("editors.videoUrlOrCurl", { shortcut: "Enter" }),
             singleLine: true,
             onKeyDown: (event: KeyboardEvent) => {
                 if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.altKey) {
@@ -244,6 +245,6 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
 
     private async runTemporaryAction(action: () => Promise<void>): Promise<void> {
         try { await action(); }
-        catch (error: unknown) { app.ui.notify(`Recording action failed: ${errMessage(error)}`, "error"); }
+        catch (error: unknown) { app.ui.notify(t("editors.recordingActionFailed", { error: errMessage(error) }), "error"); }
     }
 }

@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import { errMessage } from "../../../../shared/utils";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { createTextElement } from "../../../uikit/Text/text-style";
@@ -43,8 +44,8 @@ export class MermaidOutputView extends VanillaView<MermaidOutputViewProps> {
         super(props, document.createElement("div"));
         this.root.style.display = "contents";
         this.header = new DialogHeaderView({ title: props.entry.title });
-        this.openButton = new IconButtonView({ name: "log-mermaid-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: "Open in Mermaid editor", onClick: this.handleOpenInEditor });
-        this.copyButton = new IconButtonView({ name: "log-mermaid-copy", hideUntilParentHover: true, size: "sm", icon: "copy", title: "Copy image to clipboard", onClick: this.handleCopy });
+        this.openButton = new IconButtonView({ name: "log-mermaid-open-in-editor", hideUntilParentHover: true, size: "sm", icon: "open-link", title: t("logView.openInMermaidEditor"), onClick: this.handleOpenInEditor });
+        this.copyButton = new IconButtonView({ name: "log-mermaid-copy", hideUntilParentHover: true, size: "sm", icon: "copy", title: t("editors.copyImageToClipboard"), onClick: this.handleCopy });
         this.actions.append(this.openButton.root, this.copyButton.root);
         this.panel.append(this.header.root, this.content, this.actions);
         this.child(this.header);
@@ -102,17 +103,17 @@ export class MermaidOutputView extends VanillaView<MermaidOutputViewProps> {
             this.content.append(panel);
         } else if (!this.svgUrl) {
             const panel = createPanelElement({ paddingX: "xxl", paddingY: "xxl" });
-            panel.append(createTextElement("Rendering...", { size: "md", color: "light" }));
+            panel.append(createTextElement(t("logView.rendering"), { size: "md", color: "light" }));
             this.content.append(panel);
         } else {
             this.image = document.createElement("img");
             this.image.src = this.svgUrl;
-            this.image.alt = "Mermaid Diagram";
+            this.image.alt = t("editors.mermaidDiagram");
             this.image.style.maxWidth = "100%";
             this.image.style.height = "auto";
             this.content.append(this.image);
         }
-        this.copyButton.update({ name: "log-mermaid-copy", hideUntilParentHover: true, size: "sm", icon: "copy", title: "Copy image to clipboard", disabled: !this.svgUrl, onClick: this.handleCopy });
+        this.copyButton.update({ name: "log-mermaid-copy", hideUntilParentHover: true, size: "sm", icon: "copy", title: t("editors.copyImageToClipboard"), disabled: !this.svgUrl, onClick: this.handleCopy });
     }
 
     private readonly handleCopy = (): void => {
@@ -120,7 +121,7 @@ export class MermaidOutputView extends VanillaView<MermaidOutputViewProps> {
     };
 
     private readonly handleOpenInEditor = (): void => {
-        const title = typeof this.props.entry.title === "string" ? this.props.entry.title : "Mermaid Diagram";
+        const title = typeof this.props.entry.title === "string" ? this.props.entry.title : t("editors.mermaidDiagram");
         void guard("Failed to open Mermaid editor", () => app.capabilities.invoke("content.view", {
             representation: "mermaid",
             content: this.props.entry.text,

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
@@ -83,8 +84,8 @@ export class TextFileActionsModel {
 
         pagesModel.showPage(this.model.state.get().id);
         const confirmBt = await ui.confirm(
-            `Do you want to save the changes you made to "${title}"?`,
-            { title: "Unsaved Changes", buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
+            t("editors.doYouWantToSaveChanges", { title }),
+            { title: t("editors.unsavedChanges"), buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
         );
 
         switch (confirmBt) {

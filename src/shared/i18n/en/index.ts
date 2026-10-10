@@ -14,6 +14,9 @@ import { gitCatalog } from "./git";
 import { mnemeCatalog } from "./mneme";
 import { aboutCatalog } from "./about";
 import { toolsCatalog } from "./tools";
+import { uikitCatalog } from "./uikit";
+import { notebookCatalog } from "./notebook";
+import { logViewCatalog } from "./logView";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
@@ -33,6 +36,9 @@ export const englishCatalog = {
     mneme: Object.fromEntries(Object.entries(mnemeCatalog).map(([key, entry]) => [key, entry.message])),
     about: Object.fromEntries(Object.entries(aboutCatalog).map(([key, entry]) => [key, entry.message])),
     tools: Object.fromEntries(Object.entries(toolsCatalog).map(([key, entry]) => [key, entry.message])),
+    uikit: Object.fromEntries(Object.entries(uikitCatalog).map(([key, entry]) => [key, entry.message])),
+    notebook: Object.fromEntries(Object.entries(notebookCatalog).map(([key, entry]) => [key, entry.message])),
+    logView: Object.fromEntries(Object.entries(logViewCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;
@@ -50,6 +56,9 @@ export const englishCatalog = {
     mneme: MessagesOf<typeof mnemeCatalog>;
     about: MessagesOf<typeof aboutCatalog>;
     tools: MessagesOf<typeof toolsCatalog>;
+    uikit: MessagesOf<typeof uikitCatalog>;
+    notebook: MessagesOf<typeof notebookCatalog>;
+    logView: MessagesOf<typeof logViewCatalog>;
 };
 
 export type EnglishCatalog = typeof englishCatalog;
@@ -64,8 +73,11 @@ export type MessageFor<K extends MessageKey> = K extends `${infer Area}.${infer 
         : never
     : never;
 export type MessageParams<K extends MessageKey> = {
-    [Name in PlaceholderNames<MessageFor<K>>]: string | number;
+    [Name in PlaceholderNames<MessageText<MessageFor<K>>>]: string | number;
 } & (MessageFor<K> extends { one: string; other: string } ? { count: number } : object);
+type MessageText<T> = T extends { one: infer One extends string; other: infer Other extends string }
+    ? One | Other
+    : T;
 type PlaceholderNames<T> = T extends string
     ? T extends `${string}{${infer Name}}${infer Rest}` ? Name | PlaceholderNames<Rest> : never
     : T extends object ? PlaceholderNames<T[keyof T]> : never;

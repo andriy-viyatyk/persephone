@@ -7,6 +7,7 @@ type ParsedButton = LogDialogButton;
 
 export interface ButtonsPanelViewProps {
     buttons: string[];
+    builtInDefaults?: boolean;
     button?: string;
     requirementNotMet?: boolean;
     onClickButton: (id: string, label: string) => void;
@@ -36,28 +37,28 @@ export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
 
     private applyProps(props: ButtonsPanelViewProps): void {
         applyPanelAttributes(this.root, resolvePanelAttributes({ name: "log-buttons-panel", direction: "row", gap: "md", paddingX: "md", paddingY: "sm", wrap: true }));
-        for (const parsed of normalizeLogDialogButtons(props.buttons)) {
-            const view = this.buttonViews.get(parsed.label);
+        for (const parsed of normalizeLogDialogButtons(props.buttons, props.builtInDefaults)) {
+            const view = this.buttonViews.get(parsed.id);
             if (!view) continue;
             view.update(this.buttonProps(parsed));
         }
     }
 
     private syncButtons(): void {
-        const parsed = normalizeLogDialogButtons(this.props.buttons);
-        const wanted = new Set(parsed.map((button) => button.label));
-        for (const [label, view] of this.buttonViews) {
-            if (!wanted.has(label)) {
+        const parsed = normalizeLogDialogButtons(this.props.buttons, this.props.builtInDefaults);
+        const wanted = new Set(parsed.map((button) => button.id));
+        for (const [id, view] of this.buttonViews) {
+            if (!wanted.has(id)) {
                 this.releaseChild(view);
-                this.buttonViews.delete(label);
-                this.clickHandlers.delete(label);
+                this.buttonViews.delete(id);
+                this.clickHandlers.delete(id);
             }
         }
         parsed.forEach((button, index) => {
-            let view = this.buttonViews.get(button.label);
+            let view = this.buttonViews.get(button.id);
             if (!view) {
                 view = this.child(new ButtonView(this.buttonProps(button)));
-                this.buttonViews.set(button.label, view);
+                this.buttonViews.set(button.id, view);
                 view.mount();
             } else view.update(this.buttonProps(button));
             const expected = this.root.children[index];
@@ -73,7 +74,7 @@ export class ButtonsPanelView extends VanillaView<ButtonsPanelViewProps> {
         const resolved = this.props.button !== undefined;
         const isResult = resolved && this.props.button === button.id;
         return {
-            name: `log-button-${button.label}`,
+            name: `log-button-${button.id}`,
             size: "sm",
             disabled: resolved || (button.requiresInput && this.props.requirementNotMet === true),
             onClick: this.clickHandler(button.id, button.label),

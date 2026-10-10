@@ -5,6 +5,7 @@ import { createDepsGate, type DepsGate } from "../shared/deps-gate";
 import { nextElementId } from "../shared/element-id";
 import { fillSlot } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import { SpinnerView } from "../Spinner/SpinnerView";
 import { RenderGrid } from "../DataGrid";
 import type {
@@ -346,7 +347,7 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
             fillSlot(messageHost, fragment);
             return;
         }
-        fillSlot(messageHost, emptyMessage ?? "no rows");
+        fillSlot(messageHost, emptyMessage ?? uikitText("noRows"));
     }
 
     private gridProps() {

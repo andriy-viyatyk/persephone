@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { SvgEditor, defaultSvgEditorState } from "./SvgEditor";
 import { SvgBodyView } from "./SvgBodyView";
@@ -78,7 +79,7 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
         return {
             name: "svg-open-draw",
             size: "sm",
-            title: "Open in Drawing Editor",
+            title: t("editors.openInDrawingEditor"),
             onClick: () => { void this.onOpenDraw(); },
             icon: this.drawIcon,
         };
@@ -88,7 +89,7 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
         return {
             name: "svg-save",
             size: "sm",
-            title: "Save as PNG",
+            title: t("editors.saveAsPng"),
             onClick: () => { void savePngViaDialog(this.model); },
             icon: "save",
         };
@@ -98,7 +99,7 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
         return {
             name: "svg-copy",
             size: "sm",
-            title: "Copy Image to Clipboard (Ctrl+C)",
+            title: t("editors.copyImageWithShortcut", { shortcut: "Ctrl+C" }),
             onClick: this.copyImage,
             icon: "copy",
         };

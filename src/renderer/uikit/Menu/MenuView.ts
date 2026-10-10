@@ -8,6 +8,7 @@ import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import { SubtreeSwap } from "../shared/subtree-swap";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import {
     defaultMenuState,
     idOf,
@@ -137,7 +138,7 @@ class MenuContentView extends VanillaView<MenuModel> {
         return {
             value,
             onChange: this.model.onSearchChange,
-            placeholder: "Search...",
+            placeholder: uikitText("searchPlaceholder"),
             onKeyDown: this.model.onKeyDown,
         };
     }

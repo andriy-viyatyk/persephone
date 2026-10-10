@@ -3,6 +3,7 @@ import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import type { IconRef } from "../shared/slots";
 import "./Tag.css";
 
@@ -173,7 +174,7 @@ export class TagView extends VanillaView<TagProps> {
         if (!removeButton) return;
         removeButton.hidden = !props.onRemove;
         removeButton.tabIndex = props.onRemove ? 0 : -1;
-        removeButton.setAttribute("aria-label", props.removeAriaLabel ?? "Remove tag");
+        removeButton.setAttribute("aria-label", props.removeAriaLabel ?? uikitText("removeTag"));
         removeButton.disabled = Boolean(props.disabled || !props.onRemove);
     }
 

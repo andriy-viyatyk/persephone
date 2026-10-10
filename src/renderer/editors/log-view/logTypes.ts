@@ -1,4 +1,5 @@
 import type { GridColumn } from "../grid/utils/grid-utils";
+import { builtInDialogButtonLabel } from "../../ui/dialogs/dialog-buttons";
 export type { GridColumn };
 
 // =============================================================================
@@ -125,11 +126,11 @@ export interface LogDialogButton {
 }
 
 /** Caller-provided Log View button text remains its own id and displayed label. */
-export function normalizeLogDialogButtons(buttons: readonly string[]): LogDialogButton[] {
+export function normalizeLogDialogButtons(buttons: readonly string[], builtInDefaults = false): LogDialogButton[] {
     return buttons.map((button) => {
         const requiresInput = button.startsWith("!");
         const label = requiresInput ? button.slice(1) : button;
-        return { id: label, label, requiresInput };
+        return { id: label, label: builtInDefaults ? builtInDialogButtonLabel(label) ?? label : label, requiresInput };
     });
 }
 

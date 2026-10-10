@@ -36,7 +36,7 @@ export class ConfirmDialogView extends VanillaView<ConfirmDialogViewProps> {
 
     private updateChildren(props: ConfirmDialogViewProps): void {
         this.styledMessage.update({ text: props.entry.message });
-        this.buttons.update({ buttons: props.entry.buttons ?? DEFAULT_BUTTONS, button: props.entry.button, onClickButton: this.handleClick });
+        this.buttons.update({ buttons: props.entry.buttons ?? DEFAULT_BUTTONS, builtInDefaults: props.entry.buttons === undefined, button: props.entry.button, onClickButton: this.handleClick });
         this.container.update({ resolved: props.entry.button !== undefined, children: [this.messagePanel, this.buttons.root], ownedChildren: [this.styledMessage, this.buttons] });
     }
 

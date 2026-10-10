@@ -3,6 +3,7 @@ import type { RestPropsState } from "../shared/dom-props";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { nextElementId } from "../shared/element-id";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import { IconButtonView } from "../IconButton/IconButtonView";
 import { InputView } from "../Input/InputView";
 import { ListBoxView } from "../ListBox/ListBoxView";
@@ -210,7 +211,7 @@ export class SelectView<T = IListBoxItem> extends VanillaView<SelectViewProps<T>
         list.setValue(this.model.selectedResolved ?? null);
         list.setLoading(itemsLoading);
         list.setSearchText(searchText);
-        list.setEmptyMessage(props.emptyMessage ?? "no results");
+        list.setEmptyMessage(props.emptyMessage ?? uikitText("noResults"));
         list.setLayout({
             rowHeight: this.model.rowHeight,
             growToHeight: popoverResized
@@ -311,7 +312,7 @@ export class SelectView<T = IListBoxItem> extends VanillaView<SelectViewProps<T>
                 ? undefined
                 : this.model.maxVisibleItems * this.model.rowHeight,
             loading: itemsLoading,
-            emptyMessage: props.emptyMessage ?? "no results",
+            emptyMessage: props.emptyMessage ?? uikitText("noResults"),
         };
     }
 

@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
     EditorModel,
@@ -70,7 +71,7 @@ function sourceKind(url: string, format: VideoFormat): VideoSourceKind {
 
 export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
-    title: "Video Player",
+    title: t("editors.videoPlayer"),
     modified: false,
     type: "videoPage",
     editor: "video-view",
@@ -121,7 +122,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         const sourcePath = this.filePath;
         const extension = fpBasename(sourcePath).toLowerCase().endsWith(".mp4") ? "mp4" : "webm";
         const destination = await app.fs.showSaveDialog({
-            title: "Save recording as",
+            title: t("editors.saveRecordingAs"),
             defaultPath: `Persephone Recording.${extension}`,
             filters: [{ name: "Video", extensions: ["mp4", "webm"] }],
         });
@@ -612,11 +613,11 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             await api.openInVlc(vlcUrl, settings.get("vlc-path"));
         } catch (e: unknown) {
             const message = errMessage(e);
-            ui.textDialog({ title: "VLC Error", text: message, readOnly: true });
+            ui.textDialog({ title: t("editors.vlcError"), text: message, readOnly: true });
         }
     };
 
-    /** Surface the "File Explorer" nav button through PageToolbar's
+    /** Surface the t("editors.fileExplorer") nav button through PageToolbar's
      *  NavPanelButton. Returning `{ pipe: null, filePath }` gates on
      *  `canOpenNavigator(null, filePath)` — equivalent to the legacy
      *  `(canOpenNavigator(...) || filePath)` inline gate. */

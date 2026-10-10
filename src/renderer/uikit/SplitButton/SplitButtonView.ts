@@ -14,6 +14,7 @@ import {
     type RestPropsState,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import "./SplitButton.css";
 import "../Button/Button.css";
 import "../IconButton/IconButton.css";
@@ -147,7 +148,7 @@ export class SplitButtonView extends VanillaView<SplitButtonProps> {
         return {
             name: "split-caret",
             size: props.size,
-            title: props.menuTitle ?? "More actions",
+            title: props.menuTitle ?? uikitText("moreActions"),
             icon: "chevron-down",
             disabled: props.menuDisabled,
             onClick: this.onCaretClick,

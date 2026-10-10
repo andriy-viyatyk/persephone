@@ -11,6 +11,8 @@ export const commonCatalog = {
     cancel: { message: "Cancel" },
     open: { message: "Open" },
     remove: { message: "Remove" },
+    close: { message: "Close" },
+    apply: { message: "Apply" },
     loading: { message: "Loading…", note: "Shown while content is being loaded." },
     todayAt: { message: "Today at {time}" },
     items: { message: { one: "{count} item", other: "{count} items" } },

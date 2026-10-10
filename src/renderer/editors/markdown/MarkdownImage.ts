@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
@@ -37,7 +38,7 @@ export class MarkdownImageView extends VanillaView<MarkdownImageViewProps> {
         if (canOpen) {
             const openButton = document.createElement("button");
             openButton.className = "toolbar-btn";
-            openButton.title = "Open in new tab";
+            openButton.title = t("editors.openInNewTabLower");
             const openIcon = OpenLinkIcon.createElement({ width: 14, height: 14 });
             if (openIcon) openButton.append(openIcon);
             this.listen(openButton, "click", () => {
@@ -49,7 +50,7 @@ export class MarkdownImageView extends VanillaView<MarkdownImageViewProps> {
 
         const copyButton = document.createElement("button");
         copyButton.className = "toolbar-btn";
-        copyButton.title = "Copy";
+        copyButton.title = t("menus.copy");
         const copyIcon = CopyIcon.createElement({ width: 14, height: 14 });
         if (copyIcon) copyButton.append(copyIcon);
         this.listen(copyButton, "click", () => {

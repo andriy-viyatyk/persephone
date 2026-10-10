@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { themeState } from "../../theme/theme-state";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
@@ -98,9 +99,9 @@ function createNoneIconElement(): SVGElement {
 }
 
 const EFFECTS: { type: EffectType; createIcon: () => SVGElement; label: string }[] = [
-    { type: "bars", createIcon: createBarsIconElement, label: "Bars" },
-    { type: "circular", createIcon: createCircularIconElement, label: "Circular" },
-    { type: "none", createIcon: createNoneIconElement, label: "No effect" },
+    { type: "bars", createIcon: createBarsIconElement, label: t("editors.bars") },
+    { type: "circular", createIcon: createCircularIconElement, label: t("editors.circular") },
+    { type: "none", createIcon: createNoneIconElement, label: t("editors.noEffect") },
 ];
 
 interface TrackInfo {

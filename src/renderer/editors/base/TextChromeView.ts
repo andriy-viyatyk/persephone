@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
@@ -92,7 +93,7 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
         const buttonProps: IconButtonProps = {
             name: "text-compare-left",
             size: "sm",
-            title: "Compare with Left Page",
+            title: t("editors.compareWithLeftPage"),
             icon: "compare",
             onClick: this.handleClick,
         };
@@ -153,7 +154,9 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
         const runButtonProps: IconButtonProps = {
             name: "text-run-script",
             size: "sm",
-            title: hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)",
+            title: hasSelection
+                ? t("editors.runSelectedScriptShortcut", { shortcut: "F5" })
+                : t("editors.runScriptShortcut", { shortcut: "F5" }),
             icon: "run",
             onClick: () => this.runScript(),
         };
@@ -169,7 +172,7 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
             this.runAllButton = this.child(new IconButtonView({
                 name: "text-run-all-script",
                 size: "sm",
-                title: "Run All Script",
+                title: t("editors.runAllScript"),
                 icon: "run-all",
                 onClick: () => this.runScript(true),
             }));
@@ -233,7 +236,7 @@ class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
         const buttonProps: IconButtonProps = {
             name: "text-show-resources",
             size: "sm",
-            title: "Show Resources",
+            title: t("editors.showResources"),
             icon: "web-scraper",
             onClick: () => { void showHtmlResources(this.host); },
         };
@@ -532,7 +535,7 @@ async function showHtmlResources(host: TextFileModel): Promise<void> {
         : undefined;
     const links = extractHtmlResources(content, { baseUrl });
     if (links.length === 0) {
-        ui.notify("No resources found in this HTML.", "info");
+        ui.notify(t("editors.noResourcesFoundInHtml"), "info");
         return;
     }
     pagesModel.openLinks(links, (title || "HTML") + " — Resources");

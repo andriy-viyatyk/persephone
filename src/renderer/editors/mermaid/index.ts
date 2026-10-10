@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { MermaidEditor, defaultMermaidEditorState, type MermaidEditorState } from "./MermaidEditor";
 import { MermaidBodyView } from "./MermaidBodyView";
@@ -124,7 +125,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
         return {
             name: "mermaid-theme",
             size: "sm",
-            title: lightMode ? "Switch to Dark Theme" : "Switch to Light Theme",
+            title: lightMode ? t("editors.switchToDarkTheme") : t("editors.switchToLightTheme"),
             onClick: this.model.toggleLightMode,
             icon: lightMode ? "moon" : "sun",
         };
@@ -134,7 +135,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
         return {
             name: "mermaid-open-draw",
             size: "sm",
-            title: "Open in Drawing Editor",
+            title: t("editors.openInDrawingEditor"),
             disabled: !svgUrl,
             onClick: this.onOpenDraw,
             icon: this.drawIcon ?? createIconComponentElement(DrawIcon),
@@ -145,7 +146,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
         return {
             name: "mermaid-convert-excalidraw",
             size: "sm",
-            title: "Convert to Excalidraw (editable shapes)",
+            title: t("editors.convertToExcalidraw"),
             disabled: !svgUrl,
             onClick: this.onConvertToExcalidraw,
             icon: this.drawOrangeIcon ?? createIconComponentElement(DrawOrangeIcon),
@@ -156,7 +157,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
         return {
             name: "mermaid-save",
             size: "sm",
-            title: "Save as PNG",
+            title: t("editors.saveAsPng"),
             onClick: () => { void savePngViaDialog(this.model); },
             disabled: !svgUrl,
             icon: "save",
@@ -167,7 +168,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
         return {
             name: "mermaid-copy",
             size: "sm",
-            title: "Copy Image to Clipboard (Ctrl+C)",
+            title: t("editors.copyImageWithShortcut", { shortcut: "Ctrl+C" }),
             onClick: this.copyImage,
             disabled: !svgUrl,
             icon: "copy",

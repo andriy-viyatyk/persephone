@@ -10,6 +10,7 @@ import { hashEnglishMessage } from "../../shared/i18n/hash";
 import { formatDate, formatDateTime, formatTime, formatRelativeTime, formatNumber, formatUnit, formatBytes } from "../core/utils/format";
 import { api } from "../../ipc/renderer/api";
 import type { LanguagePack } from "../../shared/i18n/pack";
+import { setUikitText } from "../uikit/shared/uikit-text";
 
 const nodeFs = require("fs") as typeof import("fs");
 
@@ -85,6 +86,23 @@ const pseudoPack = activeLocale === "en-XA" ? createPseudoLocalePack() : undefin
 
 setActiveLocale(activeLocale);
 setLocalePacks(userPack ?? pseudoPack, builtInPack);
+setUikitText({
+    close: t("common.close"),
+    loading: t("common.loading"),
+    searchPlaceholder: t("menus.searchPlaceholder"),
+    collapse: t("uikit.collapse"),
+    expand: t("uikit.expand"),
+    resetZoom: t("uikit.resetZoom"),
+    noRows: t("uikit.noRows"),
+    noResults: t("uikit.noResults"),
+    noItems: t("uikit.noItems"),
+    progress: t("uikit.progress"),
+    removeTag: t("uikit.removeTag"),
+    moreActions: t("uikit.moreActions"),
+    tagsInputPlaceholder: t("uikit.tagsInputPlaceholder"),
+    all: t("uikit.all"),
+    selectAll: t("uikit.selectAll"),
+});
 
 export interface RefreshedLanguagePacks {
     readonly builtInPacks: LanguagePack[];

@@ -1,3 +1,4 @@
+import { t, untranslated } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { TextChromeView } from "../base/TextChromeView";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
@@ -77,7 +78,7 @@ class GridToolbarView extends VanillaView<GridToolbarProps> {
         return {
             name: "grid-columns",
             size: "sm",
-            title: "Edit Columns",
+            title: t("editors.editColumns"),
             icon: "columns",
             onClick: this.handleColumnsClick,
         };
@@ -88,12 +89,12 @@ class GridToolbarView extends VanillaView<GridToolbarProps> {
             name: "grid-csv-options",
             size: "sm",
             variant: "ghost",
-            title: "Csv Options",
+            title: t("editors.csvOptions"),
             onClick: () => {
                 const button = this.csvButton?.root;
                 if (button) void showCsvOptions(button, this.model);
             },
-            children: "⚙-csv",
+        children: untranslated("⚙-csv"),
         };
     }
 
@@ -173,7 +174,7 @@ class GridSearchInputView extends VanillaView<{ model: GridEditor }> {
             width: 200,
             value: search,
             onChange: this.model.setSearch,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             endSlot: this.clearButton?.root,
         };
     }
@@ -182,7 +183,7 @@ class GridSearchInputView extends VanillaView<{ model: GridEditor }> {
         return {
             name: "grid-search-clear",
             size: "sm",
-            title: "Clear Search",
+            title: t("menus.clearSearch"),
             icon: "close",
             onClick: this.model.clearSearch,
         };

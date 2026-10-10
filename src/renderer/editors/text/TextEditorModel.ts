@@ -1,3 +1,4 @@
+import { t, untranslated } from "../../../shared/i18n/t";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { TDialogModel } from "../../core/state/model";
 import { shell } from "../../api/shell";
@@ -46,7 +47,7 @@ export interface TextFileEditorModelState extends IEditorState {
 export const getDefaultTextFileEditorModelState = (): TextFileEditorModelState => ({
     id: crypto.randomUUID(),
     type: "textFile" as const,
-    title: "untitled",
+            title: untranslated("untitled"),
     modified: false,
     filePath: undefined,
     editor: undefined,
@@ -429,8 +430,8 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     /** Prompt for a new file name, then rename. Moved off the page tab so the
      *  text-file context menu can be contributed by the host (`onGetMenuItems`). */
     promptRename = async (): Promise<void> => {
-        const inputResult = await ui.input("Enter new file name:", {
-            title: "Rename File",
+        const inputResult = await ui.input(t("editors.enterNewFileName"), {
+            title: t("editors.renameFile"),
             value: this.state.get().title,
             buttons: [DialogButton.rename, DialogButton.cancel],
             selectAll: true,

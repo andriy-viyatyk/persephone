@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { errMessage } from "../../../shared/utils";
 import { panelExpanded } from "../../core/state/events";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -53,7 +54,7 @@ interface CellRecord {
 function renderCellFailure(cell: HTMLElement, error: unknown): void {
     cell.replaceChildren();
     const message = createTextElement(
-        `This note failed to render: ${errMessage(error)}`,
+                t("notebook.renderFailure", { error: errMessage(error) }),
         { color: "error", preWrap: true },
     );
     message.dataset.type = "note-cell-error";
@@ -388,15 +389,15 @@ export class NotebookBodyView extends VanillaView<NotebookBodyViewProps> {
 
     private emptyPanel(): HTMLDivElement {
         return createPanelElement({ direction: "column", flex: true, align: "center", justify: "center", gap: "xl", padding: "xl" }, [
-            createTextElement("Notes", { size: "xxl" }),
-            createTextElement("No notes yet", { color: "light" }),
-            createTextElement('Click "Add Note" to create your first note', { color: "light" }),
+            createTextElement(t("notebook.notes"), { size: "xxl" }),
+            createTextElement(t("notebook.noNotesYet"), { color: "light" }),
+        createTextElement(t("notebook.createFirstNote", { action: t("notebook.addNote") }), { color: "light" }),
         ]);
     }
 
     private filterEmptyPanel(): HTMLDivElement {
         return createPanelElement({ direction: "column", flex: true, align: "center", justify: "center", padding: "xl" }, [
-            createTextElement("No notes match the current filter", { color: "light" }),
+            createTextElement(t("notebook.noNotesMatchFilter"), { color: "light" }),
         ]);
     }
 }

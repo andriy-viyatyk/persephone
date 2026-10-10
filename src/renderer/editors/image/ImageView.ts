@@ -2,6 +2,7 @@ import { PageToolbarView } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { EditorModel } from "../base/EditorModel";
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
+import { t } from "../../../shared/i18n/t";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { fpBasename } from "../../core/utils/file-path";
@@ -88,7 +89,7 @@ export class ImageEditorView extends VanillaView<{ model: EditorModel }> {
     ): ImageViewportProps {
         return {
             src: url || "",
-            alt: filePath ? fpBasename(filePath) : "Image",
+            alt: filePath ? fpBasename(filePath) : t("editors.imageFallback"),
         };
     }
 }

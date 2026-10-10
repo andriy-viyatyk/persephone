@@ -1,3 +1,4 @@
+import { t, untranslated } from "../../../../shared/i18n/t";
 import { TComponentState } from "../../../core/state/state";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import "../../../uikit/Checkbox/Checkbox.css";
@@ -54,7 +55,7 @@ const showCsvOptionsId = Symbol("ShowCsvOptions");
 const delimiterItems: IRadio[] = [
     { value: ",", label: "," },
     { value: ";", label: ";" },
-    { value: "\t", label: "\\t" },
+                { value: "\t", label: untranslated("\\t") },
 ];
 
 class CsvOptionsContentView extends VanillaView<undefined> {
@@ -77,7 +78,7 @@ class CsvOptionsContentView extends VanillaView<undefined> {
             name: "csv-options-header",
             checked: state.csvWithColumns,
             onChange: this.model.toggleWithColumns,
-            children: "First row is header",
+            children: t("editors.firstRowIsHeader"),
         }));
         const radioGroupView = this.child(new RadioGroupView({
             name: "csv-options-delimiter",
@@ -95,7 +96,7 @@ class CsvOptionsContentView extends VanillaView<undefined> {
 
         const otherPanel = createPanelElement(
             { direction: "row", align: "center", gap: "sm" },
-            [createTextElement("Other:"), inputView.root],
+            [createTextElement(t("editors.other")), inputView.root],
         );
         const optionsPanel = createPanelElement(
             {
@@ -109,7 +110,7 @@ class CsvOptionsContentView extends VanillaView<undefined> {
             },
             [
                 checkboxView.root,
-                createTextElement("Delimiter:", { color: "light" }),
+                createTextElement(t("editors.delimiter"), { color: "light" }),
                 radioGroupView.root,
                 otherPanel,
             ],
@@ -139,7 +140,7 @@ class CsvOptionsContentView extends VanillaView<undefined> {
             name: "csv-options-header",
             checked: state.csvWithColumns,
             onChange: this.model.toggleWithColumns,
-            children: "First row is header",
+            children: t("editors.firstRowIsHeader"),
         });
         this.radioGroupView.update({
             name: "csv-options-delimiter",

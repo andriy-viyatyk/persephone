@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { LogViewEditor, defaultLogViewEditorState } from "./LogViewEditor";
 import { LogBodyView } from "./LogBodyView";
@@ -120,9 +121,9 @@ class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
             name: "log-clear",
             size: "sm",
             icon: createClearIconElement(),
-            title: "Clear log",
+            title: t("logView.clearLog"),
             onClick: async () => {
-                const result = await showConfirmationDialog({ message: "Clear all log entries?", buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)] });
+        const result = await showConfirmationDialog({ message: t("logView.confirmClearLog"), buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)] });
                 if (result === DialogButton.yes) this.model.clear();
             },
         };

@@ -1,3 +1,4 @@
+import { t } from "../../../../shared/i18n/t";
 import { TComponentState } from "../../../core/state/state";
 import type { CellEditEvent, Column, DataGridInstance, DataType } from "../../../uikit/DataGrid/types";
 import { resolveFilterMode, withFilterMode, type GridFilterMode } from "../utils/grid-utils";
@@ -361,13 +362,13 @@ class ColumnsOptionsFooterView extends VanillaView<ColumnsOptionsFooterProps> {
         const cancelButton = this.child(new ButtonView({
             name: "columns-options-cancel",
             onClick: () => this.props.model.close(undefined),
-            children: "Cancel",
+                    children: t("common.cancel"),
         }));
         const applyButton = this.child(new ButtonView({
             name: "columns-options-apply",
             variant: "primary",
             onClick: this.props.model.applyChanges,
-            children: "Apply",
+                    children: t("common.apply"),
         }));
         const spacer = this.child(new SpacerView({}));
         const children: Node[] = [];
@@ -409,7 +410,7 @@ class ColumnsOptionsContentView extends VanillaView<undefined> {
             paddingX: "sm",
             paddingY: "xs",
             borderBottom: true,
-        }, [createTextElement("Edit Columns", { size: "sm", color: "light" })]);
+        }, [createTextElement(t("editors.editColumns"), { size: "sm", color: "light" })]);
         outerPanel.append(headerPanel);
 
         const gridView = this.child(new DataGridView<EditColumnRow>(this.gridProps()));

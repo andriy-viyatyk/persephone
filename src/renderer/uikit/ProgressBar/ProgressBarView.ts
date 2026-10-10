@@ -6,6 +6,7 @@ import {
     type RestPropsState,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
+import { uikitText } from "../shared/uikit-text";
 import "./ProgressBar.css";
 
 type Variant = "default" | "success" | "warning" | "danger";
@@ -70,7 +71,7 @@ export class ProgressBarView extends VanillaView<ProgressBarProps> {
             width,
             height = 6,
             variant = "default",
-            "aria-label": ariaLabel = "Progress",
+            "aria-label": ariaLabel = uikitText("progress"),
             children: _children,
             ..._rest
         } = props;
