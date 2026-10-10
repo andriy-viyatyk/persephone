@@ -11,6 +11,7 @@ import { getHostname } from "../../components/icons/favicon-cache";
 import { fpBasename } from "../../core/utils/file-path";
 import { fs } from "../../api/fs";
 import type { ILinkSource, LinkItem } from "./linkTypes";
+import { untranslated } from "../../../shared/i18n/t";
 
 export class LinkTreeProvider implements ITreeProvider {
     readonly type = "link";
@@ -29,7 +30,7 @@ export class LinkTreeProvider implements ITreeProvider {
         sourceUrl: string,
     ) {
         this.sourceUrl = sourceUrl;
-        this.displayName = sourceUrl ? fpBasename(sourceUrl) : "Links";
+        this.displayName = sourceUrl ? fpBasename(sourceUrl) : untranslated("Links");
     }
 
     // =========================================================================

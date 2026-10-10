@@ -18,6 +18,7 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
 import type { ImageRoute } from "./routed-src";
 import { resolveRoutedSrc } from "./routed-src";
+import { t } from "../../../shared/i18n/t";
 import type { EditLinkDialogModel } from "./EditLinkDialog";
 import type { DialogViewProps } from "../../ui/dialogs/dialog-view-registry";
 import "../../uikit/Button/Button.css";
@@ -36,17 +37,21 @@ interface TargetOption {
 }
 
 /** Editor targets that handle the openRawLink flow for URL links. */
-const targetEditorOptions: TargetOption[] = [
-    { value: "", label: "(auto-detect)" },
-    { value: "monaco", label: "Text Editor" },
-    { value: "browser", label: "Browser" },
-    { value: "image-view", label: "Image Viewer" },
-    { value: "md-view", label: "Markdown Preview" },
-    { value: "html-view", label: "HTML Preview" },
-    { value: "svg-view", label: "SVG Preview" },
-    { value: "grid-json", label: "JSON Grid" },
-    { value: "grid-csv", label: "CSV Grid" },
-];
+const targetEditorValues = ["", "monaco", "browser", "image-view", "md-view", "html-view", "svg-view", "grid-json", "grid-csv"] as const;
+
+function getTargetEditorOptions(): TargetOption[] {
+    return [
+        { value: targetEditorValues[0], label: t("links.autoDetect") },
+        { value: targetEditorValues[1], label: t("links.targetTextEditor") },
+        { value: targetEditorValues[2], label: t("links.targetBrowser") },
+        { value: targetEditorValues[3], label: t("links.targetImageViewer") },
+        { value: targetEditorValues[4], label: t("links.targetMarkdownPreview") },
+        { value: targetEditorValues[5], label: t("links.targetHtmlPreview") },
+        { value: targetEditorValues[6], label: t("links.targetSvgPreview") },
+        { value: targetEditorValues[7], label: t("links.targetJsonGrid") },
+        { value: targetEditorValues[8], label: t("links.targetCsvGrid") },
+    ];
+}
 
 type EditLinkDialogState = ReturnType<EditLinkDialogModel["state"]["get"]>;
 
@@ -114,7 +119,7 @@ class PreviewView extends VanillaView<PreviewProps> {
         });
         const image = document.createElement("img");
         image.src = this.props.src;
-        image.alt = "Preview";
+            image.alt = t("links.preview");
         image.style.maxWidth = "100%";
         image.style.maxHeight = "192px";
         image.style.objectFit = "contain";
@@ -132,7 +137,7 @@ class DiscoveredImagesView extends VanillaView<DiscoveredImagesProps> {
     }
 
     protected onMount(): void {
-        const label = createTextElement("Discovered Images", { size: "xs", color: "light" });
+        const label = createTextElement(t("links.discoveredImages"), { size: "xs", color: "light" });
         const imagePanel = createPanelElement({ direction: "row", wrap: true, gap: "sm" });
         applyIndentedRow(this.root, [label, imagePanel]);
 
@@ -197,7 +202,7 @@ class DiscoveredImagesView extends VanillaView<DiscoveredImagesProps> {
 
         const image = document.createElement("img");
         image.src = thumbSrc;
-        image.alt = `Image ${record.index + 1}`;
+        image.alt = t("links.imageNumber", { number: record.index + 1 });
         image.width = 60;
         image.height = 60;
         image.style.objectFit = "cover";
@@ -240,7 +245,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             singleLine: true,
             value: state.linkTitle,
             onChange: this.model.setTitle,
-            placeholder: "Link title...",
+            placeholder: t("links.linkTitlePlaceholder"),
             autoFocus: true,
             size: "sm",
         }));
@@ -248,7 +253,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             name: "edit-link-href",
             value: state.href,
             onChange: this.model.setHref,
-            placeholder: "https://...",
+            placeholder: t("links.linkUrlPlaceholder"),
         }));
         const categoryView = this.mountChild(new PathInputView({
             name: "edit-link-category",
@@ -257,11 +262,11 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             onBlur: this.model.setCategoryFromBlur,
             paths: state.categories,
             separator: "/",
-            placeholder: "Category path...",
+            placeholder: t("links.categoryPathPlaceholder"),
         }));
         const targetView = this.mountChild(new SelectView<TargetOption>({
             name: "edit-link-target",
-            items: targetEditorOptions,
+            items: getTargetEditorOptions(),
             value: this.selectedTarget(state.target),
             onChange: (option) => this.model.setTarget(option.value),
         }));
@@ -272,14 +277,14 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             items: state.availableTags,
             separator: ":",
             maxDepth: 1,
-            placeholder: "Type + Enter to add",
+            placeholder: t("links.addTagPlaceholder"),
         }));
         const clearImageButton = state.imgSrc ? this.createClearImageButton() : undefined;
         const imageView = this.mountChild(new InputView({
             name: "edit-link-img-src",
             value: state.imgSrc,
             onChange: this.model.setImgSrc,
-            placeholder: "https://... (optional)",
+            placeholder: t("links.optionalImageUrlPlaceholder"),
             endSlot: clearImageButton?.root,
         }));
 
@@ -294,12 +299,12 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
         const bodyPanel = createPanelElement(
             { direction: "column", gap: "sm", paddingX: "xl", paddingY: "md" },
             [
-                createFormRow("Title", titleView.root),
-                createFormRow("URL", hrefView.root),
-                createFormRow("Category", categoryView.root),
-                createFormRow("Target", targetView.root),
-                createFormRow("Tags", tagsView.root),
-                createFormRow("Image URL", imageView.root),
+                createFormRow(t("links.titleLabel"), titleView.root),
+                createFormRow(t("links.urlLabel"), hrefView.root),
+                createFormRow(t("links.categoryLabel"), categoryView.root),
+                createFormRow(t("links.targetLabel"), targetView.root),
+                createFormRow(t("links.tagsLabel"), tagsView.root),
+                createFormRow(t("links.imageUrlLabel"), imageView.root),
             ],
         );
 
@@ -311,13 +316,13 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
         const cancelButton = this.mountChild(new ButtonView({
             name: "edit-link-cancel",
             onClick: () => { void this.model.close(undefined); },
-            children: "Cancel",
+            children: t("common.cancel"),
         }));
         const saveButton = this.mountChild(new ButtonView({
             name: "edit-link-save",
             variant: "primary",
             onClick: this.model.save,
-            children: "Save",
+            children: t("dialogs.buttonSave"),
         }));
         const footer = createPanelElement(
             { direction: "row", justify: "end", gap: "sm", padding: "md" },
@@ -358,14 +363,14 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             name: "edit-link-img-clear",
             size: "sm",
             icon: "close",
-            title: "Clear Image URL",
+            title: t("links.clearImageUrl"),
             onClick: () => this.model.setImgSrc(""),
         }));
     }
 
     private selectedTarget(value: string): TargetOption {
-        return targetEditorOptions.find((option) => option.value === value)
-            ?? targetEditorOptions[0];
+        const options = getTargetEditorOptions();
+        return options.find((option) => option.value === value) ?? options[0];
     }
 
     private syncState(state: EditLinkDialogState): void {
@@ -374,7 +379,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             singleLine: true,
             value: state.linkTitle,
             onChange: this.model.setTitle,
-            placeholder: "Link title...",
+            placeholder: t("links.linkTitlePlaceholder"),
             autoFocus: true,
             size: "sm",
         });
@@ -382,7 +387,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             name: "edit-link-href",
             value: state.href,
             onChange: this.model.setHref,
-            placeholder: "https://...",
+            placeholder: t("links.linkUrlPlaceholder"),
         });
         this.categoryView.update({
             name: "edit-link-category",
@@ -391,11 +396,11 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             onBlur: this.model.setCategoryFromBlur,
             paths: state.categories,
             separator: "/",
-            placeholder: "Category path...",
+            placeholder: t("links.categoryPathPlaceholder"),
         });
         this.targetView.update({
             name: "edit-link-target",
-            items: targetEditorOptions,
+            items: getTargetEditorOptions(),
             value: this.selectedTarget(state.target),
             onChange: (option) => this.model.setTarget(option.value),
         });
@@ -406,7 +411,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             items: state.availableTags,
             separator: ":",
             maxDepth: 1,
-            placeholder: "Type + Enter to add",
+            placeholder: t("links.addTagPlaceholder"),
         });
 
         const hadClearButton = this.clearImageButton;
@@ -434,7 +439,7 @@ export class EditLinkDialogView extends VanillaView<DialogViewProps> {
             name: "edit-link-img-src",
             value: state.imgSrc,
             onChange: this.model.setImgSrc,
-            placeholder: "https://... (optional)",
+            placeholder: t("links.optionalImageUrlPlaceholder"),
             endSlot,
         };
     }

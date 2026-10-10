@@ -15,6 +15,7 @@ import { LinkEditor } from "../LinkEditor";
 import { LinkTagsPanelView } from "./LinkTagsPanel";
 import "../../../uikit/Panel/Panel.css";
 import "../../../uikit/Splitter/Splitter.css";
+import { t } from "../../../../shared/i18n/t";
 
 interface NavigationState {
     selectedTag: string;
@@ -253,7 +254,7 @@ export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProp
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Tags",
+            title: t("shell.tags"),
         });
         this.own(() => this.header?.dispose());
         this.updateHeader();
@@ -277,7 +278,7 @@ export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProp
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Tags",
+            title: t("shell.tags"),
         });
     }
 }

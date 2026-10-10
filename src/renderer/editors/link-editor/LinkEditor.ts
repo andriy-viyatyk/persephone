@@ -14,11 +14,12 @@ import type { MenuItem } from "../../uikit/Menu/types";
 import type { ILinkData } from "../../../shared/link-data";
 import { createLinkData } from "../../../shared/link-data";
 import { LinkTreeProvider } from "./LinkTreeProvider";
+import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 import type { ILinkSource, LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
-const IMPORT_ALL = "Import All";
+const IMPORT_ALL = englishMessage("links.importAll");
 import type { ImageRoute } from "./routed-src";
 
 export type ExpandedPanel = "tags" | "categories" | "hostnames";
@@ -93,7 +94,7 @@ export class LinkEditor
     implements ILinkSource
 {
     readonly editorId = "link-view";
-    protected readonly displayName = "Link";
+    protected readonly displayName = untranslated("Link");
 
     // LK4 — ref-equality marker.
     private lastSerializedData: LinkEditorData | null = null;
@@ -753,8 +754,8 @@ export class LinkEditor
 
             if (scanned.limitReached) {
                 const choice = await ui.confirm(
-                    `The folder contains more than ${SCAN_LIMIT} files. Import all files?`,
-                    { title: "Import Folder", buttons: [IMPORT_ALL, DialogButton.cancel] },
+                    t("links.importFolderLimit", { count: SCAN_LIMIT }),
+                    { title: t("links.importFolderTitle"), buttons: [IMPORT_ALL, DialogButton.cancel] },
                 );
                 if (choice !== IMPORT_ALL) return;
 
@@ -782,8 +783,8 @@ export class LinkEditor
             const { app } = await import("../../api/app");
             app.ui.notify(
                 movedCount
-                    ? `Moved ${movedCount} link(s)`
-                    : "All items already exist in this collection",
+                    ? t("links.movedLinks", { count: movedCount })
+                    : t("links.allLinksAlreadyExist"),
                 "info",
             );
             return;
@@ -795,7 +796,7 @@ export class LinkEditor
 
         if (allLinks.length > 1) {
             const { app } = await import("../../api/app");
-            app.ui.notify(`Imported ${allLinks.length} links`, "info");
+            app.ui.notify(t("links.importedLinks", { count: allLinks.length }), "info");
         }
     };
 
@@ -867,10 +868,10 @@ export class LinkEditor
     deleteLink = async (id: string, skipConfirm = false): Promise<void> => {
         if (!skipConfirm) {
             const link = this.getLinkById(id);
-            const label = link?.title || link?.href || "this link";
+            const label = link?.title || link?.href || t("links.thisLink");
             const bt = await ui.confirm(
-                `Are you sure you want to delete "${label}"?`,
-                { title: "Delete Link", buttons: [DialogButton.delete, DialogButton.cancel] },
+                t("links.deleteLinkConfirmation", { label }),
+                { title: t("links.deleteLinkTitle"), buttons: [DialogButton.delete, DialogButton.cancel] },
             );
             this.containerElement?.focus();
             if (bt !== DialogButton.delete) return;
@@ -915,8 +916,8 @@ export class LinkEditor
         ).length;
 
         const result = await ui.confirm(
-            `Move ${count} link${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            { title: "Move Category", buttons: [DialogButton.move, DialogButton.cancel] },
+            t("links.moveCategoryConfirmation", { count, ...{ fromCategory, toCategory: newCategory } }),
+            { title: t("links.moveCategoryTitle"), buttons: [DialogButton.move, DialogButton.cancel] },
         );
 
         if (result !== DialogButton.move) return;
@@ -1019,7 +1020,7 @@ export class LinkEditor
         }
 
         const result = await showEditLinkDialog({
-            title: link ? "Edit Link" : "Add Link",
+            title: link ? t("links.editLink") : t("links.addLink"),
             link: defaults,
             categories: state.categories,
             tags: state.tags,

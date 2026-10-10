@@ -9,6 +9,7 @@ import "../../../uikit/Panel/Panel.css";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinkEditor } from "../LinkEditor";
 import { LinkCategoryPanelView } from "./LinkCategoryPanel";
+import { t } from "../../../../shared/i18n/t";
 
 export default class LinkCategorySecondaryView extends VanillaView<SecondaryViewProps> {
     private editor: LinkEditor | undefined;
@@ -38,7 +39,7 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
         this.saveButton = new IconButtonView({
             name: "link-category-secondary-save",
             size: "sm",
-            title: "Save",
+            title: t("dialogs.buttonSave"),
             icon: "save",
             onClick: (event) => {
                 event.stopPropagation();
@@ -54,7 +55,7 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Collections",
+            title: t("links.collections"),
         });
 
         this.syncHeaderBindings(editor, true);
@@ -120,11 +121,11 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
         header.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Collections",
+            title: t("links.collections"),
             actions: this.props.expanded === false || !editor.host?.state.get().modified
                 ? undefined
                 : saveButton.root,
-            showMainTitle: "Show links",
+            showMainTitle: t("links.showLinks"),
             showMainActive: editor.isMain,
             onShowMain: this.showMain,
         });

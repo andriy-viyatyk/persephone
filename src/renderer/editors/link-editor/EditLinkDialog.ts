@@ -5,6 +5,7 @@ import { registerDialogView } from "../../ui/dialogs/dialog-view-registry";
 import type { LinkItem } from "./linkTypes";
 import type { ImageRoute } from "./routed-src";
 import { EditLinkDialogView } from "./EditLinkDialogView";
+import { t } from "../../../shared/i18n/t";
 
 // =============================================================================
 // Types
@@ -116,7 +117,7 @@ export function showEditLinkDialog(options: ShowEditLinkDialogOptions = {}): Pro
     const { link = {}, categories = [], tags = [], discoveredImages = [] } = options;
 
     const modelState: EditLinkDialogState = {
-        dialogTitle: options.title || (link.id ? "Edit Link" : "Add Link"),
+        dialogTitle: options.title || (link.id ? t("links.editLink") : t("links.addLink")),
         linkTitle: link.title ?? "",
         href: link.href ?? "",
         category: link.category ?? "",

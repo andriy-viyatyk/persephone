@@ -115,7 +115,7 @@ Claude), as in EPIC-124.
 | [US-1657](../tasks/US-1657-browser-strings/README.md) | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
 | [US-1658](../tasks/US-1658-board-host-strings/README.md) | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
 | [US-1659](../tasks/US-1659-explorer-links-strings/README.md) | Explorer and link editor | Planned |
-| US-1660 | Git tree, file diff, compare, archive | Planned |
+| [US-1660](../tasks/US-1660-git-diff-strings/README.md) | Git tree, file diff, compare, archive | Planned |
 | US-1661 | Mneme editors and About | Planned |
 | US-1662 | MCP inspector, Tools hub, Storybook | Planned |
 | US-1663 | Remaining editors and uikit defaults | Planned |
@@ -255,6 +255,12 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   certificate prompts, profile colors (Settings > Browser Profiles). Checked live: tab title and
   toolbar. Not opened live: downloads, certificate, Tor/proxy, popup-blocked bar, webview right-click
   menu. Search-engine names stay as they are.
+
+- **US-1658 — board host.** Checked live: the Trust Board dialog (all host text translated; agents
+  still read it in English and click `"Trust Board"` by id), the board "…" menu (Reload board, Open
+  board log, Board properties). Not opened live: Board Info install/update screens, Environment
+  Variables editor, Toolset editor, the permission-change dialog, the untrusted/not-found board
+  states. Board-owned text (titles, status bar, toolbar items) stays as the board wrote it.
 
 ## Notes
 

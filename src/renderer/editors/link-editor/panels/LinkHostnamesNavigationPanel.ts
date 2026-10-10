@@ -11,6 +11,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinksListView } from "../LinksListView";
 import type { LinksListProps } from "../LinksList";
 import { LinkEditor } from "../LinkEditor";
+import { t } from "../../../../shared/i18n/t";
 
 interface NavigationState {
     selectedHostname: string;
@@ -95,7 +96,7 @@ export default class LinkHostnamesNavigationPanelView extends VanillaView<LinkEd
             onChange: this.props.setSelectedHostname,
             getCount: this.props.getHostnameCount,
             separator: "\0",
-            rootLabel: "All",
+            rootLabel: t("links.all"),
         };
     }
 

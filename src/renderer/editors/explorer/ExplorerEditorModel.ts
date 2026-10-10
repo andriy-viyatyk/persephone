@@ -22,6 +22,7 @@ import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { readToolsManifest } from "../../api/tools/tools-manifest";
 import { showRegisterToolsetDialog } from "../../ui/dialogs/RegisterToolsetDialog";
+import { untranslated } from "../../../shared/i18n/t";
 
 export type ExplorerBoardsTab = "boards" | "tools";
 
@@ -49,7 +50,7 @@ export interface ExplorerEditorState extends EditorStateBase {
 export function getDefaultExplorerEditorState(): ExplorerEditorState {
     return {
         id: crypto.randomUUID(),
-        title: "Explorer",
+        title: untranslated("Explorer"),
         modified: false,
         type: "fileExplorer",
         rootPath: "",

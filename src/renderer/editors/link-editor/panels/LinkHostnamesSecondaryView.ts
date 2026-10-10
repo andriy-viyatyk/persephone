@@ -8,6 +8,7 @@ import "../../../uikit/Panel/Panel.css";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinkEditor } from "../LinkEditor";
 import LinkHostnamesNavigationPanelView from "./LinkHostnamesNavigationPanel";
+import { t } from "../../../../shared/i18n/t";
 
 export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryViewProps> {
     private navigation: LinkHostnamesNavigationPanelView | undefined;
@@ -31,7 +32,7 @@ export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryVie
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Hostnames",
+            title: t("shell.hostnames"),
         });
         this.own(() => this.header?.dispose());
         this.updateHeader();
@@ -51,7 +52,7 @@ export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryVie
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Hostnames",
+            title: t("shell.hostnames"),
         });
     }
 }

@@ -35,6 +35,7 @@ import { ToolsTreeView } from "../tools/ToolsTreeView";
 import { isBoardRootBusy, subscribeBusyBoardRoots } from "../board/busy-boards";
 import "../../uikit/Button/Button.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
+import { t } from "../../../shared/i18n/t";
 
 type BodyView = BoardsTreeView | ToolsTreeView | BoardsEmptyBodyView;
 
@@ -70,7 +71,7 @@ class BoardsEmptyBodyView extends VanillaView<{
             align: "stretch",
         }, [this.createButton.root, this.createDemoButton.root]);
         this.root.append(
-            createTextElement("No boards under this folder.", {
+            createTextElement(t("explorer.noBoardsUnderFolder"), {
                 color: "light",
                 align: "center",
             }),
@@ -91,7 +92,7 @@ class BoardsEmptyBodyView extends VanillaView<{
             variant: "primary",
             icon: "plus",
             onClick: props.onCreate,
-            children: "Create board",
+            children: t("explorer.createBoard"),
         };
     }
 
@@ -100,7 +101,7 @@ class BoardsEmptyBodyView extends VanillaView<{
             name: "boards-create-demo-empty",
             icon: "board",
             onClick: props.onCreateDemo,
-            children: "Create Demo board",
+            children: t("explorer.createDemoBoard"),
         };
     }
 }
@@ -133,7 +134,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Boards",
+            title: t("shell.boards"),
             actions: this.closeButton.root,
         });
         this.own(() => this.header?.dispose());
@@ -195,7 +196,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         return {
             name: "boards-close",
             size: "sm",
-            title: "Close Panel",
+            title: t("explorer.closePanel"),
             icon: "close",
             onClick: (event: Parameters<NonNullable<IconButtonProps["onClick"]>>[0]) => {
                 event.stopPropagation();
@@ -213,8 +214,8 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
                 this.model.setBoardsTab(value as ExplorerBoardsTab);
             },
             items: [
-                { value: "boards", label: "Boards" },
-                { value: "tools", label: "Tools" },
+                { value: "boards", label: t("shell.boards") },
+                { value: "tools", label: t("shell.tools") },
             ],
         };
     }
@@ -225,13 +226,14 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             size: "sm" as const,
             icon: "plus" as const,
             onClick: () => { void this.createBoard(); },
-            menuTitle: "More board options",
+            menuTitle: t("explorer.moreBoardOptions"),
             items: [{
-                label: "Create Demo board",
+                id: "create-demo-board",
+                label: t("explorer.createDemoBoard"),
                 icon: createIconElement("board", { width: 14, height: 14 }),
                 onClick: () => { void this.createDemoBoard(); },
             }],
-            children: "New board",
+                children: t("explorer.newBoard"),
         };
     }
 
@@ -240,7 +242,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "Boards",
+            title: t("shell.boards"),
             actions: this.closeButton?.root,
         });
     }
@@ -301,7 +303,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             baseRoot: rootPath,
             onOpenToolset: (root: string) => { void this.model.openToolset(root); },
             getContextMenu: (root: string) => this.getToolsetContextMenu(root),
-            emptyMessage: "No registered tools under this folder.",
+                emptyMessage: t("explorer.noRegisteredToolsUnderFolder"),
         };
         if (this.bodyKind !== "tools" || !(this.body instanceof ToolsTreeView)) {
             this.replaceBody(new ToolsTreeView(props), "tools");
@@ -338,7 +340,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         if (!indicator) {
             indicator = this.child(new DotView({
                 color: "success",
-                title: "Board processes are running",
+                title: t("explorer.boardProcessesRunning"),
             }));
             indicator.mount();
             this.busyIndicators.set(key, indicator);
@@ -370,7 +372,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
 
     private async createBoard(): Promise<void> {
         const root = await showCreateBoardDialog({
-            title: "Create board",
+            title: t("explorer.createBoard"),
             template: "board-template",
             defaultFolder: this.model.rootPath,
         });
@@ -379,7 +381,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
 
     private async createDemoBoard(): Promise<void> {
         const root = await showCreateBoardDialog({
-            title: "Create Demo board",
+            title: t("explorer.createDemoBoard"),
             template: "demo-board",
             defaultName: "Demo",
             defaultFolder: this.model.rootPath,
@@ -390,24 +392,28 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
     private getBoardContextMenu(root: string): MenuItem[] {
         return [
             {
-                label: "Open in New Tab",
+                id: "open-in-new-tab",
+                label: t("shell.openInNewTab"),
                 icon: createIconElement("open-link", { width: 14, height: 14 }),
                 onClick: () => this.openBoardInNewTab(root),
             },
             {
-                label: "Copy board path",
+                id: "copy-board-path",
+                label: t("shell.copyBoardPath"),
                 icon: createIconElement("copy", { width: 14, height: 14 }),
                 onClick: () => { toClipboard(root); },
             },
             {
                 // The board's own root is not claimed by any folder editor, so this opens the
                 // workspace page with an Explorer rooted at the folder — not the board again.
-                label: "Open board folder",
+                id: "open-board-folder",
+                label: t("shell.openBoardFolder"),
                 icon: createIconElement("folder-open", { width: 14, height: 14 }),
                 onClick: () => { void app.pages.openFile(root); },
             },
             {
-                label: "Delete Board",
+                id: "delete-board",
+                label: t("explorer.deleteBoardMenu"),
                 icon: createIconElement("delete", { width: 14, height: 14 }),
                 onClick: () => { void this.deleteBoard(root); },
                 startGroup: true,
@@ -417,7 +423,8 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
 
     private getToolsetContextMenu(root: string): MenuItem[] {
         return [{
-            label: "Remove from Tools",
+            id: "remove-from-tools",
+            label: t("explorer.removeFromTools"),
             icon: createIconElement("remove", { width: 14, height: 14 }),
             onClick: () => { void this.removeToolset(root); },
         }];
@@ -425,17 +432,17 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
 
     private async removeToolset(root: string): Promise<void> {
         await toolsTrust.untrust(root);
-        ui.notify("Removed from tools", "info");
+        ui.notify(t("shell.removedFromTools"), "info");
     }
 
     private async deleteBoard(root: string): Promise<void> {
         const name = fpBasename(root);
         const onDisk = await fs.exists(root);
         const confirmed = await showConfirmationDialog({
-            title: onDisk ? "Delete board" : "Remove board",
+            title: onDisk ? t("api.deleteBoardTitle") : t("explorer.removeMissingBoardTitle"),
             message: onDisk
-                ? `Delete board "${name}"? This permanently removes its folder and all its files.`
-                : `Board "${name}" no longer exists on disk. Remove it from the list?`,
+                ? t("api.deleteBoardConfirmation", { name })
+                : t("explorer.removeMissingBoardConfirmation", { name }),
             buttons: [dialogButton(onDisk ? DialogButton.delete : DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
         if (confirmed === DialogButton.cancel || !confirmed) return;
@@ -449,7 +456,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             if (onDisk) await fs.removeDir(root, true);
         } catch (error) {
             ui.notify(
-                errMessage(error, "Failed to delete the board folder."),
+                errMessage(error, t("api.failedToDeleteBoardFolder")),
                 "error",
             );
             return;

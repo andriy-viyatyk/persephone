@@ -25,6 +25,7 @@ import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { BOARD_MANIFEST_FILE } from "../board/board-manifest";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
 import "../../uikit/IconButton/IconButton.css";
+import { t } from "../../../shared/i18n/t";
 
 export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps> {
     private model: ExplorerEditor;
@@ -58,7 +59,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Explorer",
+            title: t("shell.explorer"),
             actions: this.headerActions,
         });
         this.own(() => this.header?.dispose());
@@ -130,7 +131,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.upButton = this.child(new IconButtonView({
             name: "explorer-up",
             size: "sm",
-            title: "Already at root",
+            title: t("explorer.alreadyAtRoot"),
             icon: "folder-up",
             onClick: (event) => {
                 event.stopPropagation();
@@ -140,7 +141,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.searchButton = this.child(new IconButtonView({
             name: "explorer-search",
             size: "sm",
-            title: "Search",
+            title: t("shell.search"),
             icon: "search",
             onClick: (event) => {
                 event.stopPropagation();
@@ -150,7 +151,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.boardsButton = this.child(new IconButtonView({
             name: "explorer-boards",
             size: "sm",
-            title: "Boards",
+            title: t("shell.boards"),
             icon: "board",
             onClick: (event) => {
                 event.stopPropagation();
@@ -160,7 +161,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.collapseButton = this.child(new IconButtonView({
             name: "explorer-collapse-all",
             size: "sm",
-            title: "Collapse All",
+            title: t("explorer.collapseAll"),
             icon: "collapse-all",
             onClick: (event) => {
                 event.stopPropagation();
@@ -170,7 +171,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.closeButton = this.child(new IconButtonView({
             name: "explorer-close",
             size: "sm",
-            title: "Close Panel",
+            title: t("explorer.closePanel"),
             icon: "close",
             onClick: (event) => {
                 event.stopPropagation();
@@ -190,7 +191,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             this.clipboardButton = this.child(new IconButtonView({
                 name: "explorer-clipboard",
                 size: "sm",
-                title: "Clipboard",
+                title: t("shell.clipboard"),
                 icon: "paste",
                 onClick: (event) => {
                     event.stopPropagation();
@@ -307,7 +308,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             if (base === BOARD_MANIFEST_FILE) {
                 icon = "board";
                 name = "explorer-open-board";
-                title = "Open Board";
+                title = t("explorer.openBoardTitle");
                 onClick = (event) => {
                     event.stopPropagation();
                     const boardRoot = fpDirname(item.href);
@@ -316,7 +317,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             } else if (base === TOOLS_MANIFEST_FILE) {
                 icon = "tools";
                 name = "explorer-open-toolset";
-                title = "Open Toolset";
+                title = t("explorer.openToolsetTitle");
                 onClick = (event) => {
                     event.stopPropagation();
                     void this.model.openToolset(fpDirname(item.href));
@@ -359,12 +360,14 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         if (item.href.toLowerCase() !== rootPath.toLowerCase()) {
             event.items.push({
                 startGroup: true,
-                label: "Make Root",
+                id: "make-root",
+                label: t("explorer.makeRoot"),
                 onClick: () => this.model.makeRoot(item.href),
             });
         }
         event.items.push({
-            label: "Search in Folder",
+            id: "search-in-folder",
+            label: t("explorer.searchInFolder"),
             icon: createIconElement("search", { width: 14, height: 14 }),
             onClick: () => this.model.openSearch(item.href),
         });
@@ -393,7 +396,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.upButton?.update({
             name: "explorer-up",
             size: "sm",
-            title: canNavigateUp ? `Up to ${fpBasename(parentPath)}` : "Already at root",
+        title: canNavigateUp ? t("explorer.upToFolder", { folder: fpBasename(parentPath) }) : t("explorer.alreadyAtRoot"),
             icon: "folder-up",
             disabled: !canNavigateUp,
             onClick: (event) => {
@@ -412,7 +415,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            title: "Explorer",
+            title: t("shell.explorer"),
             actions: this.headerActions,
         });
     }

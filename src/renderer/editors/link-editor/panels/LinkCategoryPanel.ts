@@ -8,6 +8,7 @@ import { createTextElement } from "../../../uikit/Text/text-style";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinkEditor } from "../LinkEditor";
 import { createLinkTooltipContent } from "../LinkTooltipView";
+import { t } from "../../../../shared/i18n/t";
 
 export interface LinkCategoryPanelProps {
     vm: LinkEditor;
@@ -111,7 +112,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
             renderTrailing: (item: ITreeProviderItem) => item.isDirectory && item.size !== undefined
                 ? createTextElement(String(item.size), { color: "light", size: "sm" })
                 : null,
-            rootLabel: "All",
+            rootLabel: t("links.all"),
         };
     }
 
@@ -132,7 +133,8 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
         const item = event.target;
         if (!item || item.isDirectory) return;
         event.items.unshift({
-            label: "Edit Link",
+            id: "edit-link",
+            label: t("links.editLink"),
             onClick: () => this.props.vm.showLinkDialog(item.id),
         });
     };

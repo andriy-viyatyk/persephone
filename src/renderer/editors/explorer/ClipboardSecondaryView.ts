@@ -11,6 +11,7 @@ import type {
 } from "../../../ipc/clipboard-ipc";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
+import { t, untranslated } from "../../../shared/i18n/t";
 import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
 import {
@@ -92,7 +93,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.closeButton = this.child(new IconButtonView({
             name: "clipboard-close",
             size: "sm",
-            title: "Close Clipboard",
+            title: t("explorer.closeClipboard"),
             icon: "close",
             onClick: (event) => {
                 event.stopPropagation();
@@ -103,19 +104,19 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             name: "clipboard-clear",
             size: "sm",
             variant: "ghost",
-            children: "Clear",
+            children: t("menus.clear"),
             onClick: () => { void this.clearHistory(); },
         }));
         this.restartButton = this.child(new ButtonView({
             name: "clipboard-restart",
             size: "sm",
             variant: "ghost",
-            children: "Restart",
+            children: t("explorer.restartClipboard"),
             onClick: () => { void this.restart(); },
         }));
         this.healthBadge = this.child(new TagView({
             name: "clipboard-health",
-            label: "Unavailable",
+            label: t("explorer.unavailable"),
             tone: "warning",
             size: "sm",
         }));
@@ -134,7 +135,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.openSettingsButton = this.child(new ButtonView({
             name: "clipboard-open-settings",
             size: "sm",
-            children: "Open Settings",
+            children: t("shell.openQuickSettings"),
             onClick: () => { void pagesModel.showSettingsPage(); },
         }));
 
@@ -163,7 +164,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "Clipboard",
+            title: t("shell.clipboard"),
             actions: this.headerActions,
         });
         this.own(() => this.header?.dispose());
@@ -217,8 +218,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             }
         } catch (error: unknown) {
             if (!this.isDisposed) {
-                this.applyStatus(this.errorStatus(`Failed to start clipboard monitoring: ${errMessage(error)}`));
-                void ui.notify(errMessage(error, "Failed to start clipboard monitoring."), "error");
+        this.applyStatus(this.errorStatus(t("explorer.failedStartClipboardMonitoring", { error: errMessage(error) })));
+        void ui.notify(errMessage(error, t("explorer.failedStartClipboardMonitoringFallback")), "error");
             }
         }
         if (this.isDisposed) return;
@@ -238,8 +239,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             this.applyStatus(status);
         }).catch((error: unknown) => {
             if (this.isDisposed || requestGeneration !== this.statusRequestGeneration) return;
-            this.applyStatus(this.errorStatus(`Failed to query clipboard status: ${errMessage(error)}`));
-            void ui.notify(errMessage(error, "Failed to query clipboard status."), "error");
+        this.applyStatus(this.errorStatus(t("explorer.failedQueryClipboardStatus", { error: errMessage(error) })));
+        void ui.notify(errMessage(error, t("explorer.failedQueryClipboardStatusFallback")), "error");
         });
     }
 
@@ -266,7 +267,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             if (this.isDisposed || requestGeneration !== this.historyRequestGeneration) return;
             this.loading = false;
             this.updatePresentation();
-            void ui.notify(errMessage(error, "Failed to load clipboard history."), "error");
+        void ui.notify(errMessage(error, t("explorer.failedLoadClipboardHistory")), "error");
         });
     }
 
@@ -343,7 +344,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         const copyButton = this.child(new IconButtonView({
             name: `clipboard-copy-${item.id}`,
             size: "sm",
-            title: "Copy",
+            title: t("menus.copy"),
             icon: "copy",
             onClick: (event) => {
                 event.stopPropagation();
@@ -384,7 +385,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             activeIndex: this.activeIndex,
             keyboardNav: true,
             loading: this.loading,
-            emptyMessage: "No clipboard history yet.",
+            emptyMessage: t("explorer.noClipboardHistory"),
             onChange: this.handleSelection,
             getContextMenu: this.getContextMenu,
         };
@@ -434,7 +435,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             this.takeListFocus();
         }).catch((error: unknown) => {
             if (!this.isDisposed) {
-                void ui.notify(`Failed to open clipboard item: ${errMessage(error)}`, "error");
+        void ui.notify(t("explorer.failedOpenClipboardItem", { error: errMessage(error) }), "error");
             }
         });
     }
@@ -457,7 +458,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         root.focus({ preventScroll: true });
     }
     private readonly getContextMenu = (row: ClipboardListItem): MenuItem[] => [{
-        label: "Remove",
+        id: "remove-clipboard-item",
+        label: t("common.remove"),
         icon: createIconElement("delete", { width: 14, height: 14 }),
         onClick: () => { void this.removeItem(row.clipboardItem.id); },
     }];
@@ -465,7 +467,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private async openItem(item: ClipboardHistoryItem): Promise<void> {
         const path = item.payloads[item.primary];
         if (!path) {
-            void ui.notify("The clipboard item payload is unavailable.", "error");
+                void ui.notify(t("explorer.clipboardPayloadUnavailable"), "error");
             return;
         }
         try {
@@ -482,7 +484,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
                 await app.pages.openFile(path);
             }
         } catch (error: unknown) {
-            void ui.notify(`Failed to open clipboard item: ${errMessage(error)}`, "error");
+        void ui.notify(t("explorer.failedOpenClipboardItem", { error: errMessage(error) }), "error");
         }
     }
 
@@ -492,12 +494,12 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             const copied = await api.copyClipboardItem(id);
             if (!copied || this.isDisabled()) this.selectNextCapture = false;
             if (!copied && !this.isDisposed) {
-                void ui.notify("The clipboard item is no longer available.", "error");
+        void ui.notify(t("explorer.clipboardItemUnavailable"), "error");
             }
         } catch (error: unknown) {
             this.selectNextCapture = false;
             if (!this.isDisposed) {
-                void ui.notify(`Failed to copy clipboard item: ${errMessage(error)}`, "error");
+        void ui.notify(t("explorer.failedCopyClipboardItem", { error: errMessage(error) }), "error");
             }
         }
     }
@@ -505,8 +507,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private async removeItem(id: string): Promise<void> {
         const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
         const confirmed = await showConfirmationDialog({
-            title: "Remove clipboard item",
-            message: "Remove this clipboard item? Its stored payload will be permanently deleted.",
+            title: t("explorer.removeClipboardItemTitle"),
+            message: t("explorer.removeClipboardItemConfirmation"),
             buttons: [dialogButton(DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
         if (confirmed === DialogButton.cancel || !confirmed) return;
@@ -514,7 +516,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             await api.removeClipboardItem(id);
         } catch (error: unknown) {
             if (!this.isDisposed) {
-                void ui.notify(`Failed to remove clipboard item: ${errMessage(error)}`, "error");
+        void ui.notify(t("explorer.failedRemoveClipboardItem", { error: errMessage(error) }), "error");
             }
         }
     }
@@ -523,8 +525,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         if (this.items.length === 0) return;
         const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
         const confirmed = await showConfirmationDialog({
-            title: "Clear clipboard history",
-            message: "Clear all clipboard history? Stored payload files will be permanently deleted.",
+            title: t("explorer.clearClipboardHistoryTitle"),
+            message: t("explorer.clearClipboardHistoryConfirmation"),
             buttons: [dialogButton(DialogButton.clear), dialogButton(DialogButton.cancel)],
         });
         if (confirmed !== DialogButton.clear) return;
@@ -532,7 +534,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             await api.clearClipboardHistory();
         } catch (error: unknown) {
             if (!this.isDisposed) {
-                void ui.notify(`Failed to clear clipboard history: ${errMessage(error)}`, "error");
+        void ui.notify(t("explorer.failedClearClipboardHistory", { error: errMessage(error) }), "error");
             }
         }
     }
@@ -551,8 +553,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             }
         } catch (error: unknown) {
             if (!this.isDisposed) {
-                this.applyStatus(this.errorStatus(errMessage(error, "Failed to restart clipboard listener.")));
-                void ui.notify(errMessage(error, "Failed to restart clipboard listener."), "error");
+        this.applyStatus(this.errorStatus(errMessage(error, t("explorer.failedRestartClipboardListener"))));
+        void ui.notify(errMessage(error, t("explorer.failedRestartClipboardListener")), "error");
             }
         } finally {
             this.restarting = false;
@@ -576,10 +578,10 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
         const status = this.status;
         const message = disabled
-            ? "Clipboard history is disabled in Settings."
+            ? t("explorer.clipboardHistoryDisabled")
             : status?.error
-                ? `Clipboard listener is unavailable. No new items will be captured. ${status.error}`
-                : "Clipboard listener is unavailable. No new items will be captured.";
+            ? t("explorer.clipboardListenerUnavailableWithError", { error: status.error })
+            : t("explorer.clipboardListenerUnavailableNewItems");
         const type = disabled || status?.health !== "error" ? "warning" : "error";
         if (!this.unavailableNotification) {
             this.unavailableNotification = this.child(new NotificationView({
@@ -611,19 +613,19 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             const health = disabled ? "default" : status?.health === "error" ? "error" : "warning";
             badge.update({
                 name: "clipboard-health",
-                label: disabled ? "Disabled" : status?.health === "deaf" ? "Deaf" : "Error",
+                label: disabled ? t("explorer.clipboardDisabled") : status?.health === "deaf" ? t("explorer.clipboardDeaf") : t("explorer.clipboardError"),
                 tone: health,
                 size: "sm",
                 title: disabled
-                    ? "Clipboard history is disabled in Settings."
-                    : status?.error ?? "Clipboard listener is unavailable.",
+            ? t("explorer.clipboardHistoryDisabled")
+            : status?.error ?? t("explorer.clipboardListenerUnavailable"),
             });
         }
         this.clearButton?.update({
             name: "clipboard-clear",
             size: "sm",
             variant: "ghost",
-            children: "Clear",
+            children: t("menus.clear"),
             disabled: this.items.length === 0,
             onClick: () => { void this.clearHistory(); },
         });
@@ -631,7 +633,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             name: "clipboard-restart",
             size: "sm",
             variant: "ghost",
-            children: "Restart",
+            children: t("explorer.restartClipboard"),
             disabled: this.restarting,
             onClick: () => { void this.restart(); },
         });
@@ -647,7 +649,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             headerHost: props.headerHost,
             icon: props.iconElement,
             badge: showHealth ? this.healthBadge?.root : undefined,
-            title: "Clipboard",
+            title: t("shell.clipboard"),
             actions: this.headerActions,
         });
     }
@@ -687,14 +689,14 @@ function iconPathFor(item: ClipboardHistoryItem): string {
 function previewLabel(item: ClipboardHistoryItem): string {
     switch (item.primary) {
         case "image":
-            return "Image";
+            return t("explorer.clipboardImage");
         case "html":
-            return "HTML";
+            return untranslated("HTML");
         case "files":
             return item.preview;
         case "text": {
             const normalized = item.preview.replace(/\s+/g, " ").trim();
-            if (normalized.length <= MAX_PREVIEW_LENGTH) return normalized || "Text";
+            if (normalized.length <= MAX_PREVIEW_LENGTH) return normalized || t("explorer.clipboardText");
             return `${normalized.slice(0, MAX_PREVIEW_LENGTH - 1)}…`;
         }
     }

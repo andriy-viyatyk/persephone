@@ -5,6 +5,7 @@ import { spacing } from "../../uikit/tokens";
 import { toClipboard } from "../../core/utils/utils";
 import type { ILink } from "../../api/types/io.tree";
 import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Tag/Tag.css";
 import "../../uikit/Input/Input.css";
@@ -45,7 +46,7 @@ export function createLinkTooltipContent({
     title.style.color = color.text.strong;
     title.style.whiteSpace = "normal";
     title.style.wordBreak = "break-word";
-    title.textContent = link.title || "Untitled";
+    title.textContent = link.title || t("links.untitled");
     header.append(title);
 
     if (showCopyJson) {
@@ -54,7 +55,7 @@ export function createLinkTooltipContent({
         copy.style.color = color.text.light;
         copy.style.flexShrink = "0";
         copy.style.marginTop = "1px";
-        copy.title = "Copy link as JSON";
+        copy.title = t("links.copyLinkJson");
         copy.append(createIconElement("copy", { width: 14, height: 14 }));
         copy.addEventListener("click", () => {
             toClipboard(JSON.stringify(link, null, 4));
@@ -126,7 +127,7 @@ export function createLinkTooltipContent({
         const input = document.createElement("input");
         input.dataset.size = "sm";
         input.dataset.tone = "default";
-        input.placeholder = "+ tag (Enter)";
+        input.placeholder = t("links.addTagShortcutPlaceholder");
         inputRoot.append(input);
 
         const commitNewTag = (value: string): void => {

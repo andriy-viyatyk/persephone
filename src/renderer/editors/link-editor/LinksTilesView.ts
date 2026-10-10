@@ -15,6 +15,7 @@ import type { LinkViewMode } from "./linkTypes";
 import type { LinksTilesProps } from "./LinksTiles";
 import { getPipeImageSrcSync, resolvePipeImageSrc } from "./pipe-image-src";
 import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Panel/Panel.css";
 
@@ -419,7 +420,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         record.tileRoot.style.opacity = record.isDragging ? "0.4" : "";
         this.writeCellGeometry(record, params);
         record.imageHost.style.height = `${dimensions.imageHeight}px`;
-        record.titleElement.textContent = link.title || "Untitled";
+        record.titleElement.textContent = link.title || t("links.untitled");
         this.syncPanelState(record);
         this.syncImage(record, link);
         this.syncAdditionalIcon(record);
@@ -506,7 +507,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         const button = new IconButtonView({
             name: kind === "edit" ? "link-tile-edit" : "link-tile-delete",
             size: "sm",
-            title: kind === "edit" ? "Edit" : "Delete",
+            title: kind === "edit" ? t("links.edit") : t("menus.delete"),
             icon: kind === "edit" ? "rename" : "delete",
             hideUntilParentHover: true,
         });

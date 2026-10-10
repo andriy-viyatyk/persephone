@@ -26,6 +26,7 @@ import type { IconName } from "../../theme/icon-registry";
 import { createLinkTooltipContent } from "./LinkTooltipView";
 import type { LinksListProps } from "./LinksList";
 import type { ImageRoute } from "./routed-src";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/ListBox/ListItem.css";
 import "../../uikit/Panel/Panel.css";
@@ -229,7 +230,7 @@ export class LinksListView extends VanillaView<LinksListProps> {
             dropActive: false,
             searchText: "",
             iconElement: createTreeProviderItemIconElement(link),
-            label: link.title || "Untitled",
+            label: link.title || t("links.untitled"),
             trailingElement: actionsHost,
             drag: { draggable: false },
         });
@@ -323,7 +324,7 @@ export class LinksListView extends VanillaView<LinksListProps> {
             dropActive: dropTarget,
             searchText: record.searchText,
             iconElement: createTreeProviderItemIconElement(link),
-            label: link.title || "Untitled",
+            label: link.title || t("links.untitled"),
             trailingElement: record.actionsHost,
             drag: { draggable: !!record.dragSourceId },
         });
@@ -376,7 +377,7 @@ export class LinksListView extends VanillaView<LinksListProps> {
         const button = new IconButtonView({
             name: kind === "edit" ? "link-row-edit" : "link-row-delete",
             size: "sm",
-            title: kind === "edit" ? "Edit" : "Delete",
+            title: kind === "edit" ? t("links.edit") : t("menus.delete"),
             icon: createIconElement(kind === "edit" ? "rename" : "delete"),
             hideUntilParentHover: true,
         });

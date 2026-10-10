@@ -20,7 +20,7 @@ phase 3 (boards localization) and phase 4 (the 17 built-in language packs and th
   - [ ] [US-1657: Browser editor](tasks/US-1657-browser-strings/README.md)
   - [ ] [US-1658: Board host: board editor, board info, env vars, toolsets](tasks/US-1658-board-host-strings/README.md)
   - [ ] [US-1659: Explorer and link editor](tasks/US-1659-explorer-links-strings/README.md)
-  - [ ] US-1660: Git tree, file diff, compare, archive
+  - [ ] [US-1660: Git tree, file diff, compare, archive](tasks/US-1660-git-diff-strings/README.md)
   - [ ] US-1661: Mneme editors and About
   - [ ] US-1662: MCP inspector, Tools hub, Storybook
   - [ ] US-1663: Remaining editors and uikit defaults

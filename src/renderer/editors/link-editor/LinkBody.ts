@@ -16,6 +16,7 @@ import { LinksTilesView } from "./LinksTilesView";
 import type { LinksTilesProps } from "./LinksTiles";
 import { PinnedLinksPanelView } from "./PinnedLinksPanelView";
 import { getHostname, requestFaviconSave } from "../../components/icons/favicon-cache";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Splitter/Splitter.css";
 import "../../uikit/Text/Text.css";
@@ -160,15 +161,15 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
 
         if (projection.allLinks.length === 0) {
             this.showEmpty("link-editor-empty", [
-                createTextElement("Links", { size: "xxl", color: "default" }),
-                createTextElement("No links yet", { color: "light" }),
-                createTextElement('Click "Add Link" to create your first link', { color: "light" }),
+                createTextElement(t("links.linksHeading"), { size: "xxl", color: "default" }),
+                createTextElement(t("links.noLinksYet"), { color: "light" }),
+                createTextElement(t("links.addFirstLink"), { color: "light" }),
             ]);
             return;
         }
         if (projection.filteredLinks.length === 0) {
             this.showEmpty("link-editor-empty-filtered", [
-                createTextElement("No links match the current filter", { color: "light" }),
+                createTextElement(t("links.noLinksMatchFilter"), { color: "light" }),
             ]);
             return;
         }
@@ -429,13 +430,15 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
         const customItems = this.model.onGetLinkMenuItems?.(link as LinkItem);
         if (customItems?.length) contextEvent.items.push(...customItems);
         contextEvent.items.push({
-            label: "Edit",
+            id: "link-edit",
+            label: t("links.edit"),
             icon: "rename",
             onClick: () => { void this.model.showLinkDialog(link.id); },
             startGroup: customItems?.length ? true : undefined,
         });
         contextEvent.items.push({
-            label: "Copy URL",
+            id: "link-copy-url",
+            label: t("links.copyUrl"),
             icon: "copy",
             onClick: () => { if (link.href) clipboard.writeText(link.href); },
             disabled: !link.href,
@@ -444,13 +447,15 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
             const imageUrl = link.imgSrc;
             contextEvent.items.push(
                 {
-                    label: "Copy Image URL",
+                    id: "link-copy-image-url",
+                    label: t("links.copyImageUrl"),
                     icon: "copy",
                     onClick: () => clipboard.writeText(imageUrl),
                     startGroup: true,
                 },
                 {
-                    label: "Open Image in New Tab",
+                    id: "link-open-image-in-new-tab",
+                    label: t("links.openImageNewTab"),
                     icon: "open-file",
                     onClick: async () => {
                         const { pagesModel } = await import("../../api/pages");
@@ -462,13 +467,15 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
         const isPinned = this.model.isLinkPinned(link.id);
         contextEvent.items.push(
             {
-                label: isPinned ? "Unpin" : "Pin",
+                id: isPinned ? "link-unpin" : "link-pin",
+                label: isPinned ? t("shell.unpin") : t("links.pin"),
                 icon: isPinned ? "pin-filled" : "pin",
                 onClick: () => this.model.togglePinLink(link.id),
                 startGroup: true,
             },
             {
-                label: "Delete",
+                id: "link-delete",
+                label: t("menus.delete"),
                 icon: "delete",
                 onClick: () => { void this.model.deleteLink(link.id); },
             },

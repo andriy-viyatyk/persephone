@@ -15,14 +15,17 @@ import type { LinkViewMode } from "./linkTypes";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
+import { t } from "../../../shared/i18n/t";
 
-const VIEW_MODE_LABELS: Record<LinkViewMode, string> = {
-    "list": "List",
-    "tiles-landscape": "Landscape",
-    "tiles-landscape-big": "Landscape (Large)",
-    "tiles-portrait": "Portrait",
-    "tiles-portrait-big": "Portrait (Large)",
-};
+function viewModeLabel(mode: LinkViewMode): string {
+    switch (mode) {
+        case "list": return t("links.list");
+        case "tiles-landscape": return t("links.landscape");
+        case "tiles-landscape-big": return t("links.landscapeLarge");
+        case "tiles-portrait": return t("links.portrait");
+        case "tiles-portrait-big": return t("links.portraitLarge");
+    }
+}
 
 const VIEW_MODE_ICONS: Record<LinkViewMode, IconName> = {
     "list": "view-list",
@@ -118,7 +121,7 @@ export class LinkBreadcrumbView extends VanillaView<{ model: LinkEditor }> {
         if (projection.expandedPanel === "tags") {
             return {
                 name: "link-editor-breadcrumb-tags",
-                rootLabel: "Tags",
+            rootLabel: t("shell.tags"),
                 value: projection.selectedTag,
                 onChange: this.model.setSelectedTag,
                 separators: ":",
@@ -128,14 +131,14 @@ export class LinkBreadcrumbView extends VanillaView<{ model: LinkEditor }> {
         if (projection.expandedPanel === "hostnames") {
             return {
                 name: "link-editor-breadcrumb-hostnames",
-                rootLabel: "Hostnames",
+            rootLabel: t("shell.hostnames"),
                 value: projection.selectedHostname,
                 onChange: this.model.setSelectedHostname,
             };
         }
         return {
             name: "link-editor-breadcrumb-categories",
-            rootLabel: "Collections",
+            rootLabel: t("links.collections"),
             value: projection.selectedCategory,
             onChange: this.model.setSelectedCategory,
         };
@@ -244,10 +247,10 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
             name: "link-editor-add",
             size: "sm",
             variant: "link",
-            title: "Add Link",
+            title: t("links.addLink"),
             icon: "plus",
             onClick: () => { void this.model.showLinkDialog(); },
-            children: "Add Link",
+            children: t("links.addLink"),
         };
     }
 
@@ -256,10 +259,10 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
             name: "link-editor-view-mode",
             size: "sm",
             variant: "ghost",
-            title: "View Mode",
+            title: t("links.viewMode"),
             icon: VIEW_MODE_ICONS[viewMode],
             onClick: (event) => this.openViewModeMenu(event),
-            children: VIEW_MODE_LABELS[viewMode],
+            children: viewModeLabel(viewMode),
         };
     }
 
@@ -270,7 +273,7 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
             width: 180,
             value: searchText,
             onChange: this.model.setSearchText,
-            placeholder: "Search...",
+            placeholder: t("menus.searchPlaceholder"),
             endSlot: this.clearButton?.root,
         };
     }
@@ -279,7 +282,7 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
         return {
             name: "link-editor-search-clear",
             size: "sm",
-            title: "Clear search",
+            title: t("links.clearSearch"),
             icon: "close",
             onClick: this.model.clearSearch,
         };
@@ -287,7 +290,8 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
 
     private viewModeMenuItems(viewMode: LinkViewMode): MenuItem[] {
         return VIEW_MODE_ORDER.map((mode) => ({
-            label: VIEW_MODE_LABELS[mode],
+            id: mode,
+            label: viewModeLabel(mode),
             icon: VIEW_MODE_ICONS[mode],
             selected: mode === viewMode,
             onClick: () => this.model.setViewMode(mode),
@@ -367,8 +371,8 @@ export class LinkFooterView extends VanillaView<{ model: LinkEditor }> {
 
     private sync(projection: LinkFooterProjection): void {
         this.root.textContent = projection.filteredCount === projection.totalCount
-            ? `${projection.totalCount} links`
-            : `${projection.filteredCount} of ${projection.totalCount} links`;
+            ? t("links.footerLinkCount", { count: projection.totalCount })
+            : t("links.footerFilteredLinkCount", { count: projection.totalCount, ...{ shown: projection.filteredCount } });
     }
 }
 

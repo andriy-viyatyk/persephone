@@ -13,6 +13,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { spacing, height } from "../../uikit/tokens";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
+import { t } from "../../../shared/i18n/t";
 import type { LinkItem, LinkSource } from "./linkTypes";
 import { createLinkTooltipContent } from "./LinkTooltipView";
 import "../../uikit/ListBox/ListItem.css";
@@ -110,7 +111,7 @@ export class PinnedLinkItemView extends VanillaView<PinnedLinkItemProps> {
             showSelectionIcon: false,
             selected: props.isSelected,
             iconElement: createTreeProviderItemIconElement(props.link),
-            label: props.link.title || "Untitled",
+            label: props.link.title || t("links.untitled"),
             drag: {
                 draggable: true,
                 onDragStart: this.handleDragStart,
@@ -243,7 +244,7 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
         });
         const pin = createIconElement("pin-filled", { width: 14, height: 14 });
         pin.style.color = color.misc.blue;
-        header.append(pin, createTextElement("Pinned", { size: "xs", color: "light" }));
+        header.append(pin, createTextElement(t("links.pinned"), { size: "xs", color: "light" }));
 
         this.list = createPanelElement({
             name: "pinned-links-list",
@@ -355,14 +356,16 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
         const customItems = model.onGetLinkMenuItems?.(link);
         if (customItems?.length) contextEvent.items.push(...customItems);
         contextEvent.items.push({
-            label: "Edit",
+            id: "pinned-link-edit",
+            label: t("links.edit"),
             icon: "rename",
             onClick: () => { void model.showLinkDialog(link.id); },
             startGroup: customItems?.length ? true : undefined,
         });
         if (link.href) appendLinkOpenMenuItems(contextEvent.items, link.href, { startGroup: true });
         contextEvent.items.push({
-            label: "Copy URL",
+            id: "pinned-link-copy-url",
+            label: t("links.copyUrl"),
             icon: "copy",
             onClick: () => { if (link.href) clipboard.writeText(link.href); },
             disabled: !link.href,
@@ -371,13 +374,15 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
             const imageUrl = link.imgSrc;
             contextEvent.items.push(
                 {
-                    label: "Copy Image URL",
+                    id: "pinned-link-copy-image-url",
+                    label: t("links.copyImageUrl"),
                     icon: "copy",
                     onClick: () => clipboard.writeText(imageUrl),
                     startGroup: true,
                 },
                 {
-                    label: "Open Image in New Tab",
+                    id: "pinned-link-open-image-in-new-tab",
+                    label: t("links.openImageNewTab"),
                     icon: "open-file",
                     onClick: async () => {
                         const { pagesModel } = await import("../../api/pages");
@@ -388,13 +393,15 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
         }
         contextEvent.items.push(
             {
-                label: "Unpin",
+                id: "pinned-link-unpin",
+                label: t("shell.unpin"),
                 icon: "pin-filled",
                 onClick: () => model.togglePinLink(link.id),
                 startGroup: true,
             },
             {
-                label: "Delete",
+                id: "pinned-link-delete",
+                label: t("menus.delete"),
                 icon: "delete",
                 onClick: () => { void model.deleteLink(link.id); },
             },

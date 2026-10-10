@@ -10,6 +10,7 @@ import {
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
 import { fpBasename } from "../../core/utils/file-path";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
+import { t } from "../../../shared/i18n/t";
 
 function createFileSearchView(model: ExplorerEditor): FileSearchView {
     return new FileSearchView({
@@ -23,7 +24,7 @@ function createFileSearchView(model: ExplorerEditor): FileSearchView {
 function searchTitle(model: ExplorerEditor): { text: string; path: string } {
     const searchFolder = model.searchState?.searchFolder || model.rootPath;
     return {
-        text: `Search [${fpBasename(searchFolder)}]`,
+        text: t("explorer.searchFolderTitle", { folder: fpBasename(searchFolder) }),
         path: searchFolder,
     };
 }
@@ -102,7 +103,7 @@ export default class SearchSecondaryView extends VanillaView<SecondaryViewProps>
         return new IconButtonView({
             name: "search-secondary-close",
             size: "sm",
-            title: "Close Search",
+            title: t("explorer.closeSearch"),
             icon: "close",
             onClick: (event) => {
                 event.stopPropagation();
