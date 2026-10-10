@@ -16,6 +16,7 @@ import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { TextFileModel } from "../text/TextEditorModel";
 import { spacing } from "../../uikit/tokens";
 import { BoardStatusBarItems } from "./BoardStatusBarItems";
+import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -41,7 +42,7 @@ class ContentErrorView extends VanillaView<ContentErrorProps> {
             padding: "xl",
         }, [
             createIconElement("warning", { width: 32, height: 32 }),
-            createTextElement("Content unavailable", { size: "lg" }),
+            createTextElement(t("board.contentUnavailable"), { size: "lg" }),
             messageElement,
         ]));
         this.messageElement = messageElement;

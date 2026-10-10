@@ -10,6 +10,7 @@ import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view
 import { parseBoardSecondaryPanelId } from "./board-secondary";
 import { BoardWebview } from "./BoardWebview";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
+import { t, untranslated } from "../../../shared/i18n/t";
 
 export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> {
     private boardModel: BoardEditorModel | undefined;
@@ -48,7 +49,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         this.header = createSideBarPanelHeader({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: "View",
+            title: t("board.viewFallback"),
         });
 
         this.bindBoardState(boardModel);
@@ -117,17 +118,17 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,
-            title: declaration?.title ?? viewId ?? "View",
+            title: declaration?.title ?? (viewId ? untranslated(viewId) : t("board.viewFallback")),
         });
 
         if (!selectedRoot || !declaration || !permitted) {
             this.disposeBoardWebview();
             host.replaceChildren(this.placeholder(
                 !selectedRoot
-                    ? "Board not available"
+                    ? t("board.boardUnavailable")
                     : !permitted
-                      ? "Trust the board to view this panel"
-                      : "View not found",
+                      ? t("board.trustBoardToViewPanel")
+                      : t("board.viewNotFound"),
             ));
             return;
         }

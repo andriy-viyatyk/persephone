@@ -31,6 +31,7 @@ import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
@@ -182,7 +183,7 @@ function validateBoardPageStateValue(value: unknown): asserts value is string {
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
     // Per-instance UUID — keys this editor in `page.editors[]`.
     id: crypto.randomUUID(),
-    title: "Board",
+    title: t("board.editor"),
     modified: false,
     type: "boardPage",
     editor: "board-view",
@@ -526,14 +527,16 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return [
             ...super.onGetMenuItems(),
             {
-                label: "Copy Board Path",
+                id: "copy-board-path",
+                label: t("shell.copyBoardPath"),
                 icon: createIconElement("copy"),
                 onClick: () => { toClipboard(boardRoot ?? ""); },
                 disabled: !boardRoot,
                 startGroup: true,
             },
             {
-                label: "Open Board Folder",
+                id: "open-board-folder",
+                label: t("shell.openBoardFolder"),
                 icon: createIconElement("folder-open"),
                 onClick: () => { if (boardRoot) void app.pages.openFile(boardRoot); },
                 disabled: !boardRoot,
@@ -639,8 +642,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         const pageId = this.page?.id;
         if (pageId) pagesModel.showPage(pageId);
         const choice = await ui.confirm(
-            `Do you want to save the changes you made to "${this.title}"?`,
-            { title: "Unsaved Changes", buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
+            t("board.saveChangesConfirmation", { name: this.title }),
+            { title: t("board.saveChangesTitle"), buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
         );
         if (choice === DialogButton.dontSave) {
             // Best effort: let the board drop page-scoped drafts it keeps for app restarts before teardown.
@@ -664,7 +667,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             return true;
         } catch (error: unknown) {
             this.releaseError = errMessage(error, "The board did not finish saving.");
-            void ui.notify(`Failed to save board changes: ${this.releaseError}`, "error");
+            void ui.notify(t("board.saveChangesFailed", { error: this.releaseError }), "error");
             return false;
         }
     }

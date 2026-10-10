@@ -2,6 +2,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -24,9 +25,11 @@ export class BoardNotFoundView extends VanillaView<BoardNotFoundViewProps> {
             padding: "xl",
         }, [
             createIconElement("warning", { width: 32, height: 32 }),
-            createTextElement("Board not found", { size: "lg" }),
-            createTextElement(
-                "This board could not be opened — its folder is missing or is not a board (no board-manifest.json).",
+            createTextElement(t("board.notFoundTitle"), { size: "lg" }),
+            createTextElement(t(
+                "board.notFoundMessage",
+                { manifest: untranslated("board-manifest.json") },
+            ),
                 { color: "light", align: "center" },
             ),
             pathElement,

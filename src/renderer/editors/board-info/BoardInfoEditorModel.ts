@@ -46,6 +46,7 @@ import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 const DELETE_AND_CONTINUE = "Delete & continue";
 
@@ -141,7 +142,7 @@ export interface BoardInfoEditorState extends EditorStateBase {
 
 export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
     id: crypto.randomUUID(),
-    title: "Install editor",
+    title: t("board.infoInstallTitle"),
     modified: false,
     type: "boardInfoPage",
     editor: "board-info",
@@ -486,7 +487,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!props?.isCatalogInstall || !props.catalogId) return;
         if (!publishedBoards.isCompatible(version.minAppVersion)) {
             void ui.notify(
-                `This version requires Persephone ≥ ${version.minAppVersion}.`,
+                t("api.boardVersionRequiresApp", { version: version.minAppVersion }),
                 "warning",
             );
             return;
@@ -526,9 +527,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!props) return;
         const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
         const choice = await showConfirmationDialog({
-            title: "Remove board",
-            message:
-                `Remove board "${props.name}" from trusted boards? Its folder is left untouched on disk.`,
+            title: t("board.removeBoardTitle"),
+            message: t("board.removeBoardConfirmation", { name: props.name }),
             buttons: [dialogButton(DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
         if (choice !== DialogButton.remove) return;
@@ -597,7 +597,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     async changeInstallDir(): Promise<void> {
         const picked = await fs.showFolderDialog({
-            title: "Install location",
+            title: t("board.installLocation"),
             defaultPath: this.state.get().installDir,
         });
         if (picked?.[0]) this.state.update((s) => { s.installDir = picked[0]; });
@@ -625,10 +625,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                     "../../ui/dialogs/ConfirmationDialog"
                 );
                 const choice = await showConfirmationDialog({
-                    title: "Folder already exists",
-                    message:
-                        `The folder "${targetRoot}" already exists and will be deleted before ` +
-                        `installing. Continue?`,
+                    title: t("board.folderAlreadyExistsTitle"),
+                    message: t("board.folderWillBeDeleted", { path: targetRoot }),
                     buttons: [dialogButton(DELETE_AND_CONTINUE), dialogButton(DialogButton.cancel)],
                 });
                 if (choice !== DELETE_AND_CONTINUE) return;
@@ -637,7 +635,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 } catch (err) {
                     this.setInstallUi(entry.id, {
                         phase: "error",
-                        error: errMessage(err, "Failed to delete the existing folder."),
+                        error: errMessage(err, t("board.failedDeleteExistingFolder")),
                     });
                     return;
                 }
@@ -666,7 +664,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             } else {
                 this.setInstallUi(entry.id, {
                     phase: "error",
-                    error: errMessage(err, "Download failed."),
+                    error: errMessage(err, t("board.downloadFailed")),
                 });
             }
         } finally {
@@ -702,7 +700,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             );
             if (!trustedEntry || !claimsFolder) {
                 void ui.notify(
-                    "This board is trusted but no longer claims the current folder.",
+                    t("board.boardTrustedNoLongerClaimsFolder"),
                     "warning",
                 );
                 return;
@@ -733,7 +731,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 await fs.removeDir(root, true);
             } catch (err) {
                 ui.notify(
-                    errMessage(err, "Failed to delete the board folder."),
+                    errMessage(err, t("api.failedToDeleteBoardFolder")),
                     "error",
                 );
                 return;

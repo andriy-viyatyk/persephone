@@ -45,6 +45,7 @@ import type {
 import { isCapabilityErrorCode, type CapabilityErrorCode, type CapabilityOutcome, type IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace } from "../../api/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
+import { t } from "../../../shared/i18n/t";
 import {
     resolveBoardSettingsRequest,
     subscribeBoardSettings,
@@ -562,7 +563,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || host !== this.host || !grant || this.iframe) return;
         const { entry = "index.html", view = "main" } = this.props;
         const iframe = document.createElement("iframe");
-        iframe.title = "board";
+        iframe.title = t("board.frameTitle");
         iframe.allow = iframeFeaturesForGrant(grant).join("; ");
         this.iframeGrant = grant;
         iframe.src = `board://${host}/${entry}?v=${this.boardId}&view=${encodeURIComponent(view)}`;

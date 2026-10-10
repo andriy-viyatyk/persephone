@@ -3,6 +3,7 @@ import { publishedBoards } from "../../api/published-boards";
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { listBoardUpdates } from "../../api/board-updates";
 import { createLinkData } from "../../../shared/link-data";
+import { t } from "../../../shared/i18n/t";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement, applyTextAttributes, resolveTextAttributes } from "../../uikit/Text/text-style";
@@ -59,7 +60,7 @@ export class BoardToolbarView extends VanillaView<{
         }));
         this.model = props.model;
         this.explorerButton = new IconButtonView({
-            name: "board-toolbar-explorer", size: "sm", title: "File Explorer",
+            name: "board-toolbar-explorer", size: "sm", title: t("board.fileExplorer"),
             icon: createIconElement("nav-panel", { width: 14, height: 14 }),
             onClick: () => void this.model.page?.toggleNavigator(null, this.boardRoot),
         });
@@ -68,7 +69,7 @@ export class BoardToolbarView extends VanillaView<{
         // controls read as if they belonged to the board. One … button keeps them one
         // click away without competing with what the board put there.
         this.moreButton = new IconButtonView({
-            name: "board-toolbar-more", size: "sm", title: "Board actions",
+            name: "board-toolbar-more", size: "sm", title: t("board.boardActions"),
             icon: createIconElement("more-horiz", { width: 14, height: 14 }),
             onClick: () => this.openBoardMenu(),
         });
@@ -155,7 +156,7 @@ export class BoardToolbarView extends VanillaView<{
         this.moreButton.update({
             name: "board-toolbar-more",
             size: "sm",
-            title: hasUpdate ? "Board actions — update available" : "Board actions",
+            title: hasUpdate ? t("board.boardActionsUpdateAvailable") : t("board.boardActions"),
             icon: createIconElement("more-horiz", { width: 14, height: 14 }),
             onClick: () => this.openBoardMenu(),
         });
@@ -183,10 +184,11 @@ export class BoardToolbarView extends VanillaView<{
         const boardItems = this.boardControls.boardMenuItems();
         return [
             ...boardItems,
-            { label: "Reload board", icon: "refresh", startGroup: boardItems.length > 0, onClick: () => this.model.reloadBoard() },
-            { label: "Open board log", icon: "log", onClick: () => void this.openLog() },
+            { id: "reload-board", label: t("board.reloadBoard"), icon: "refresh", startGroup: boardItems.length > 0, onClick: () => this.model.reloadBoard() },
+            { id: "open-board-log", label: t("board.openBoardLog"), icon: "log", onClick: () => void this.openLog() },
             {
-                label: hasUpdate ? "Board properties — update available" : "Board properties",
+                id: "board-properties",
+                label: hasUpdate ? t("board.boardPropertiesUpdateAvailable") : t("board.boardProperties"),
                 icon: "info",
                 startGroup: true,
                 onClick: () => void this.openProperties(),

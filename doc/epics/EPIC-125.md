@@ -113,8 +113,8 @@ Claude), as in EPIC-124.
 | [US-1655](../tasks/US-1655-menu-strings/README.md) | Menus and context menus, tree providers, shared editor menus, file components | Planned |
 | [US-1656](../tasks/US-1656-api-strings/README.md) | API layer, content pipeline, notifications outside editors | Planned |
 | [US-1657](../tasks/US-1657-browser-strings/README.md) | Browser editor (toolbar, downloads, profiles, Tor, context menu) | Planned |
-| US-1658 | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
-| US-1659 | Explorer and link editor | Planned |
+| [US-1658](../tasks/US-1658-board-host-strings/README.md) | Board host: board editor, board info, env vars, toolsets, board context menu | Planned |
+| [US-1659](../tasks/US-1659-explorer-links-strings/README.md) | Explorer and link editor | Planned |
 | US-1660 | Git tree, file diff, compare, archive | Planned |
 | US-1661 | Mneme editors and About | Planned |
 | US-1662 | MCP inspector, Tools hub, Storybook | Planned |
@@ -226,7 +226,7 @@ Claude), as in EPIC-124.
 - Switch `vanilla-view/no-hardcoded-ui-strings` to `error`. Exempt `src/board-context-menu.ts` by file, with a comment pointing
   at phase 3, if phase 3 has not translated it yet.
 - Update `doc/standards/localization.md` with what the extraction taught (new lint positions, the
-  E2 split pattern, the uikit prop pattern).
+  E2 split pattern, the uikit prop pattern, the `untranslated()` marker for deliberate English).
 - Prepare the phase-4 inputs: count the final catalog size by area for the roadmap.
 - **Acceptance:** `npm run lint` passes with the rule at error; an `en-XA` walk through the main
   screens finds no plain English outside E5.
@@ -246,6 +246,15 @@ dev build) before it is committed. Things worth a human look, and layout notes f
   (Browser/Markdown `Ctrl+F`), File Search placeholders, the Git tree grid headers and "Load more",
   and the page loading shell (`Retry` / `Close page`). Not opened live: the move/copy/overwrite
   confirmations from drag-and-drop in the tree.
+
+- **US-1656 — API layer.** Toasts and confirmations raised by the app itself (board install /
+  update, page navigation, clipboard image, terminal, board variables). Script-supplied
+  `app.ui.notify(...)` text is shown as given. Not opened live: most of these need a real
+  workflow (installing a board, a failed save) — glance at them as they come up.
+- **US-1657 — browser.** Toolbar tooltips, tab title, URL bar menu, downloads popup, permission and
+  certificate prompts, profile colors (Settings > Browser Profiles). Checked live: tab title and
+  toolbar. Not opened live: downloads, certificate, Tor/proxy, popup-blocked bar, webview right-click
+  menu. Search-engine names stay as they are.
 
 ## Notes
 

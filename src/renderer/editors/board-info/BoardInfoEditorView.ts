@@ -2,7 +2,7 @@ import { app } from "../../api/app";
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
 import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
-import { LEGACY_PERMISSION_EXPLANATION, legacyBoardDeprecationWarning } from "../board/board-permission-copy";
+import { legacyBoardDeprecationWarningForUi } from "../board/board-permission-copy";
 import { createBoardPermissionChangeList, createBoardPermissionList } from "../board/board-permission-list";
 import { publishedBoards } from "../../api/published-boards";
 import { createLinkData } from "../../../shared/link-data";
@@ -24,6 +24,8 @@ import { ProgressBarView } from "../../uikit/ProgressBar/ProgressBarView";
 import { createPanelElement, type PanelStyleProps } from "../../uikit/Panel/panel-style";
 import { createTextElement, type TextStyleProps } from "../../uikit/Text/text-style";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
+import { t, untranslated } from "../../../shared/i18n/t";
+import type { MessageKey } from "../../../shared/i18n/en";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/ProgressBar/ProgressBar.css";
@@ -193,20 +195,20 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     private renderInstall(props: BoardInfoBodyProps): void {
         this.root.append(text(
             props.folderPath !== undefined
-                ? "Install an editor for this folder"
-                : "Install an editor for this file",
+                ? t("shell.installEditorForFolder")
+                : t("board.infoInstallFile"),
             { size: "lg", bold: true },
         ));
 
         const location = panel({ direction: "column", gap: "xs", align: "stretch" },
-            text("Install location", { size: "sm", color: "light" }));
+            text(t("board.installLocation"), { size: "sm", color: "light" }));
         const locationRow = panel({ direction: "row", gap: "sm", align: "center" },
             text(props.installDir ?? "", { size: "sm" }));
         this.addButton(locationRow, {
             name: "board-info-browse",
             size: "sm",
             variant: "link",
-            children: "Browse…",
+            children: t("dialogs.createBoardBrowse"),
             onClick: () => void props.model.changeInstallDir(),
         });
         location.append(locationRow);
@@ -215,8 +217,8 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         if (props.matches.length === 0) {
             this.root.append(text(
                 props.folderPath !== undefined
-                    ? "No installable editor is published for this folder."
-                    : "No installable editor is published for this file type.",
+                    ? t("board.noInstallableFolder")
+                    : t("board.noInstallableFileType"),
                 {
                     size: "sm",
                     color: "light",
@@ -247,17 +249,17 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         if (entry.description) details.append(text(entry.description, { size: "sm" }));
         if ((entry.fileMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true },
-                text("Files:", { size: "sm", color: "light" }));
+                text(t("board.filesLabel"), { size: "sm", color: "light" }));
             for (const mask of entry.fileMasks ?? []) masks.append(this.maskChip(mask));
             if ((entry.folderMasks?.length ?? 0) > 0) {
-                masks.append(text("in", { size: "sm", color: "light" }));
+                masks.append(text(t("board.inLabel"), { size: "sm", color: "light" }));
                 for (const mask of entry.folderMasks ?? []) masks.append(this.maskChip(mask));
             }
             details.append(masks);
         }
         if ((entry.folderEditorMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true },
-                text("Folder:", { size: "sm", color: "light" }));
+                text(t("dialogs.createBoardFolderLabel"), { size: "sm", color: "light" }));
             for (const mask of entry.folderEditorMasks ?? []) masks.append(this.maskChip(mask));
             details.append(masks);
         }
@@ -268,7 +270,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             this.addButton(actions, {
                 name: "board-info-download",
                 variant: "link",
-                children: "Download",
+                children: t("board.download"),
                 onClick: () => void props.model.download(entry),
             });
             details.append(actions);
@@ -288,28 +290,28 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 name: "board-info-cancel",
                 size: "sm",
                 variant: "link",
-                children: "Cancel",
+                children: t("common.cancel"),
                 onClick: () => props.model.cancelDownload(entry),
             });
             downloading.append(progressRow);
             details.append(downloading);
         } else if (status.kind === "error") {
             const error = panel({ direction: "column", gap: "xs", align: "stretch" },
-                text(status.error ?? "Download failed.", { size: "sm", color: "danger" }));
+                text(status.error ?? t("board.downloadFailed"), { size: "sm", color: "danger" }));
             const actions = panel({ direction: "row", gap: "sm" });
             this.addButton(actions, {
                 name: "board-info-retry",
                 variant: "link",
-                children: "Retry",
+                children: t("menus.retry"),
                 onClick: () => void props.model.download(entry),
             });
             error.append(actions);
             details.append(error);
         } else if (status.kind === "downloaded") {
             const downloaded = panel({ direction: "column", gap: "sm", align: "stretch" },
-                text("Downloaded — not registered", { size: "sm", color: "warning" }),
+                text(t("board.downloadedNotRegistered"), { size: "sm", color: "warning" }),
                 text(status.root, { size: "sm", color: "light" }),
-                text("You can ask your AI agent to review this board's files before trusting it.", {
+                text(t("board.askAgentReviewBoard"), {
                     size: "sm",
                     color: "light",
                 }));
@@ -317,19 +319,19 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             this.addButton(actions, {
                 name: "board-info-register",
                 variant: "link",
-                children: "Register board",
+                children: t("board.registerBoard"),
                 onClick: () => void props.model.register(entry),
             });
             this.addButton(actions, {
                 name: "board-info-delete",
                 variant: "danger",
-                children: "Delete download",
+                children: t("board.deleteDownload"),
                 onClick: () => void props.model.deleteDownload(entry),
             });
             downloaded.append(actions);
             details.append(downloaded);
         } else {
-            details.append(text("Installed", { size: "sm", color: "success" }));
+            details.append(text(t("board.installed"), { size: "sm", color: "success" }));
         }
         tile.append(details);
         this.root.append(tile);
@@ -341,7 +343,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         if (info.missing) {
             this.root.append(
                 text(info.name, { size: "lg", bold: true }),
-                text("This board is no longer installed (its folder was not found on disk).", {
+                text(t("board.boardMissingOnDisk"), {
                     size: "sm",
                     color: "warning",
                 }),
@@ -356,9 +358,9 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.addChild(heading, new BoardScreenshotView({ url: screenshotUrl }));
         const headingDetails = panel({ direction: "row", align: "baseline", gap: "sm", wrap: true, flex: 1, minWidth: 0 },
             text(info.name, { size: "lg", bold: true }));
-        if (info.installedVersion) headingDetails.append(text(`v${info.installedVersion}`, { size: "sm", color: "light" }));
+        if (info.installedVersion) headingDetails.append(text(`${untranslated("v")}${info.installedVersion}`, { size: "sm", color: "light" }));
         const trusted = boardTrust.isTrusted(info.root);
-        headingDetails.append(text(trusted ? "Trusted" : "Not trusted", {
+        headingDetails.append(text(trusted ? t("board.trusted") : t("board.notTrusted"), {
             size: "sm",
             color: trusted ? "success" : "warning",
         }));
@@ -366,8 +368,8 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.root.append(heading);
 
         const metadata = panel({ direction: "column", gap: "xs", align: "stretch" });
-        if (info.description) metadata.append(this.infoRow("Description", text(info.description, { size: "sm" })));
-        if (info.author) metadata.append(this.infoRow("Author", text(info.author, { size: "sm" })));
+        if (info.description) metadata.append(this.infoRow(t("board.descriptionLabel"), text(info.description, { size: "sm" })));
+        if (info.author) metadata.append(this.infoRow(t("board.authorLabel"), text(info.author, { size: "sm" })));
         if (info.repository) {
             const repository = text(info.repository, { size: "sm", hoverUnderline: isHttpUrl(info.repository) });
             if (isHttpUrl(info.repository)) {
@@ -377,114 +379,112 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 };
                 this.transientCleanups.push(this.listen(repository, "click", openRepository));
             }
-            metadata.append(this.infoRow("Repository", repository));
+            metadata.append(this.infoRow(t("board.repositoryLabel"), repository));
         }
-        metadata.append(this.infoRow("Location", text(info.root, { size: "sm" })));
+        metadata.append(this.infoRow(t("board.locationLabel"), text(info.root, { size: "sm" })));
         if ((info.fileMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
             if (info.editorName) masks.append(text(info.editorName, { size: "sm" }));
             for (const mask of info.fileMasks ?? []) masks.append(this.maskChip(mask));
             if ((info.folderMasks?.length ?? 0) > 0) {
-                masks.append(text("in", { size: "sm", color: "light" }));
+                masks.append(text(t("board.inLabel"), { size: "sm", color: "light" }));
                 for (const mask of info.folderMasks ?? []) masks.append(this.maskChip(mask));
             }
-            if (info.editorKind) masks.append(text(`(${info.editorKind})`, { size: "sm", color: "light" }));
-            metadata.append(this.infoRow("File editor for", masks));
+            if (info.editorKind) masks.append(text(`(${untranslated(info.editorKind)})`, { size: "sm", color: "light" }));
+            metadata.append(this.infoRow(t("board.fileEditorFor"), masks));
         }
         if ((info.folderEditorMasks?.length ?? 0) > 0) {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
             if (info.editorName) masks.append(text(info.editorName, { size: "sm" }));
             for (const mask of info.folderEditorMasks ?? []) masks.append(this.maskChip(mask));
             if (info.folderEditorPriority !== undefined) {
-                masks.append(text(`(priority ${info.folderEditorPriority})`, {
+                masks.append(text(t("board.editorPriority", { value: info.folderEditorPriority }), {
                     size: "sm",
                     color: "light",
                 }));
             }
-            metadata.append(this.infoRow("Folder editor", masks));
+            metadata.append(this.infoRow(t("board.folderEditor"), masks));
         }
         if (!info.trusted && !info.permissions) {
-            metadata.append(text("Not trusted — no permissions granted", { size: "sm", color: "warning" }));
+            metadata.append(text(t("board.notTrustedNoPermissions"), { size: "sm", color: "warning" }));
             if (info.proposedPermissions) {
-                metadata.append(text("Proposed permissions", { size: "sm", bold: true }));
+                metadata.append(text(t("board.proposedPermissions"), { size: "sm", bold: true }));
                 metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
             }
         } else if (info.permissions) {
-            metadata.append(text("Granted permissions", { size: "sm", bold: true }));
+            metadata.append(text(t("board.grantedPermissions"), { size: "sm", bold: true }));
             metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, info.name));
         }
         if (info.permissionChangePending && info.proposedPermissions) {
             const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
-            pending.append(text("Pending permission change", { size: "sm", bold: true, color: "warning" }));
+            pending.append(text(t("board.pendingPermissionChange"), { size: "sm", bold: true, color: "warning" }));
             if (info.permissions) {
                 pending.append(createBoardPermissionChangeList(info.permissions, info.proposedPermissions, "sm"));
             } else {
                 pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, info.name));
             }
-            if (info.service) pending.append(text("Service: declared", { size: "sm", color: "light" }));
+            if (info.service) pending.append(text(t("board.serviceDeclared"), { size: "sm", color: "light" }));
             this.addButton(pending, {
-                children: "Review permission change",
+                children: t("board.reviewPermissionChange"),
                 onClick: () => { void requestBoardTrust(info.root); },
             });
             metadata.append(pending);
         } else if (info.service) {
-            metadata.append(text("Service: declared", { size: "sm", color: "light" }));
+            metadata.append(text(t("board.serviceDeclared"), { size: "sm", color: "light" }));
         }
         if ((info.contentProviders?.length ?? 0) > 0) {
             const providers = panel({ direction: "column", gap: "xs", align: "stretch" });
             for (const provider of info.contentProviders ?? []) {
                 const schemes = (provider.schemes?.length ?? 0) > 0
-                    ? ` (${provider.schemes?.join(", ")})`
+                    ? ` (${untranslated(provider.schemes?.join(", ") ?? "")})`
                     : "";
-                providers.append(text(`${provider.type}${schemes}`, { size: "sm" }));
+                providers.append(text(`${untranslated(provider.type)}${schemes}`, { size: "sm" }));
             }
-            metadata.append(this.infoRow("Content providers", providers));
+            metadata.append(this.infoRow(t("board.contentProviders"), providers));
         }
         if ((info.capabilities?.length ?? 0) > 0) {
             const capabilities = panel({ direction: "column", gap: "xs", align: "stretch" });
             for (const declaration of info.capabilities ?? []) {
-                const id = declaration.id || "<empty id>";
+                const id = untranslated(declaration.id || "<empty id>");
                 const details = [
-                    `${id} (version ${declaration.version ?? 1}, priority ${declaration.priority ?? 50})`,
+                    t("board.capabilityDetails", { id, version: declaration.version ?? 1, priority: declaration.priority ?? 50 }),
                 ];
-                if (declaration.title) details.push(`title: ${declaration.title}`);
+                if (declaration.title) details.push(t("board.capabilityTitle", { value: untranslated(declaration.title) }));
                 if ((declaration.accepts?.length ?? 0) > 0) {
-                    details.push(`accepts: ${declaration.accepts?.join(", ")}`);
+                    details.push(t("board.capabilityAccepts", { values: untranslated(declaration.accepts?.join(", ") ?? "") }));
                 }
-                if ("payloadSchema" in declaration) details.push("schema: declared");
+                if ("payloadSchema" in declaration) details.push(t("board.schemaDeclared"));
                 capabilities.append(text(details.join("; "), { size: "sm" }));
             }
-            metadata.append(this.infoRow("Capabilities", capabilities));
+            metadata.append(this.infoRow(t("board.capabilities"), capabilities));
         }
         if ((info.registrationIssues?.length ?? 0) > 0) {
             const issues = panel({ direction: "column", gap: "xs", align: "stretch" });
             for (const issue of info.registrationIssues ?? []) {
-                const owner = issue.owner ? ` Owner: ${issue.owner}.` : "";
-                issues.append(text(
-                    `${issue.kind === "provider"
-                        ? "Provider"
-                        : issue.kind === "scheme"
-                        ? "Scheme"
-                          : issue.kind === "settings"
-                            ? "Settings"
-                            : issue.kind === "browser-url-mask" ? "Browser URL mask" : "Capability"} "${issue.name}": ${issue.reason}${owner}`,
-                    { size: "sm", color: "warning" },
-                ));
+                const kindKey: MessageKey = issue.kind === "provider" ? "board.registrationIssueProvider"
+                    : issue.kind === "scheme" ? "board.registrationIssueScheme"
+                        : issue.kind === "settings" ? "board.registrationIssueSettings"
+                            : issue.kind === "browser-url-mask" ? "board.registrationIssueBrowserMask"
+                                : "board.registrationIssueCapability";
+                const owner = issue.owner ? t("board.registrationIssueOwner", { owner: untranslated(issue.owner) }) : "";
+                issues.append(text(t("board.registrationIssue", {
+                    kind: t(kindKey), name: untranslated(issue.name), reason: untranslated(issue.reason), owner,
+                }), { size: "sm", color: "warning" }));
             }
-            metadata.append(this.infoRow("Registration warnings", issues));
+            metadata.append(this.infoRow(t("board.registrationWarnings"), issues));
         }
         if (info.minBridgeVersion) {
             metadata.append(this.infoRow(
-                "Minimum bridge",
+                t("board.minimumBridge"),
                 text(info.minBridgeVersion, { size: "sm" }),
             ));
         }
         if (info.service) {
-            metadata.append(this.infoRow("Service", text(info.service, { size: "sm" })));
+            metadata.append(this.infoRow(t("board.serviceLabel"), text(info.service, { size: "sm" })));
         }
         if (info.bridgeCompatibilityReason) {
             metadata.append(this.infoRow(
-                "Bridge compatibility",
+                t("board.bridgeCompatibility"),
                 text(info.bridgeCompatibilityReason, { size: "sm", color: "warning" }),
             ));
         }
@@ -492,20 +492,20 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             const status = info.serviceStatus;
             const serviceDetails = panel({ direction: "column", gap: "xs", align: "stretch" });
             if (!status) {
-                serviceDetails.append(text("Status unavailable", { size: "sm", color: "light" }));
+                serviceDetails.append(text(t("board.statusUnavailable"), { size: "sm", color: "light" }));
             } else {
-                serviceDetails.append(text(`State: ${status.state}`, { size: "sm" }));
-                if (status.reason) serviceDetails.append(text(`Reason: ${status.reason}`, { size: "sm" }));
-                if (status.pid !== undefined) serviceDetails.append(text(`PID: ${status.pid}`, { size: "sm" }));
+                serviceDetails.append(text(t("board.stateLabel", { value: untranslated(status.state) }), { size: "sm" }));
+                if (status.reason) serviceDetails.append(text(t("board.reasonLabel", { value: untranslated(status.reason) }), { size: "sm" }));
+                if (status.pid !== undefined) serviceDetails.append(text(t("board.pidLabel", { value: status.pid }), { size: "sm" }));
                 if (status.startedAt !== undefined) {
-                    serviceDetails.append(text(`Started: ${formatDateTime(status.startedAt)}`, { size: "sm" }));
+                    serviceDetails.append(text(t("board.startedLabel", { value: formatDateTime(status.startedAt) }), { size: "sm" }));
                 }
-                serviceDetails.append(text(`Restarts: ${status.restartCount}`, { size: "sm" }));
+                serviceDetails.append(text(t("board.restartsLabel", { count: status.restartCount }), { size: "sm" }));
             }
-            metadata.append(this.infoRow("Service status", serviceDetails));
+            metadata.append(this.infoRow(t("board.serviceLabel"), serviceDetails));
         }
         if (info.isCatalogInstall && info.catalogId) {
-            metadata.append(this.infoRow("Catalog id", text(info.catalogId, { size: "sm" })));
+            metadata.append(this.infoRow(t("board.catalogId"), text(untranslated(info.catalogId), { size: "sm" })));
         }
         this.root.append(metadata);
 
@@ -515,16 +515,16 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.addButton(actions, {
             name: "board-info-open",
             variant: "primary",
-            children: "Open board",
+            children: t("board.openBoard"),
             onClick: () => void props.model.openBoard(),
         });
         this.addButton(actions, {
             name: info.isCatalogInstall ? "board-info-uninstall" : "board-info-unregister",
             variant: "danger",
             title: info.isCatalogInstall
-                ? "Delete the board folder and remove it from trusted boards"
-                : "Remove from trusted boards; the folder is kept on disk",
-            children: info.isCatalogInstall ? "Uninstall" : "Unregister",
+                ? t("board.deleteBoardFolderTitle")
+                : t("board.removeFromTrustedTitle"),
+            children: info.isCatalogInstall ? t("board.uninstall") : t("board.unregister"),
             onClick: info.isCatalogInstall
                 ? () => void props.model.uninstall()
                 : () => void props.model.unregister(),
@@ -533,21 +533,21 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     }
 
     private renderVersions(props: BoardInfoBodyProps, info: BoardPropsInfo): void {
-        const versions = panel({ direction: "column", gap: "sm", align: "stretch" }, text("Versions", { bold: true }));
+        const versions = panel({ direction: "column", gap: "sm", align: "stretch" }, text(t("board.versions"), { bold: true }));
         if (props.versionsState === "loading") {
             const loading = panel({ direction: "column", gap: "xs", align: "stretch" });
             this.addChild(loading, new ProgressBarView({ name: "board-info-versions-loading" }));
-            loading.append(text("Loading versions…", { size: "sm", color: "light" }));
+            loading.append(text(t("board.loadingVersions"), { size: "sm", color: "light" }));
             versions.append(loading);
         }
         if (props.versionsState === "error") {
             const error = panel({ direction: "row", gap: "sm", align: "center" },
-                text("Couldn't load version history.", { size: "sm", color: "danger" }));
+                text(t("board.versionsLoadFailed"), { size: "sm", color: "danger" }));
             this.addButton(error, {
                 name: "board-info-versions-retry",
                 size: "sm",
                 variant: "link",
-                children: "Retry",
+                children: t("menus.retry"),
                 onClick: () => {
                     const id = props.model.state.get().props?.catalogId;
                     if (id) void props.model.loadVersions(id);
@@ -556,7 +556,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             versions.append(error);
         }
         if (props.versionsState === "idle" && (props.versions?.length ?? 0) === 0) {
-            versions.append(text("No published versions found.", { size: "sm", color: "light" }));
+            versions.append(text(t("board.noPublishedVersions"), { size: "sm", color: "light" }));
         }
         if (props.versionsState === "idle" && (props.versions?.length ?? 0) > 0) {
             const rows = panel({ direction: "column", gap: "xs", align: "stretch" });
@@ -590,12 +590,12 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         });
         const details = panel({ direction: "column", flex: 1, minWidth: 0, gap: "xs" });
         const heading = panel({ direction: "row", align: "baseline", gap: "sm", wrap: true },
-            text(`v${version.version}`, { bold: true }));
+            text(`${untranslated("v")}${version.version}`, { bold: true }));
         if (version.date) heading.append(text(version.date, { size: "sm", color: "light" }));
-        if (isCurrent) heading.append(text("Current", { size: "sm", color: "success" }));
+        if (isCurrent) heading.append(text(t("board.currentVersion"), { size: "sm", color: "success" }));
         details.append(heading);
         if (version.notes) details.append(text(version.notes, { size: "sm" }));
-        if (!compatible) details.append(text(`Requires Persephone ≥ ${version.minAppVersion}`, {
+        if (!compatible) details.append(text(t("api.boardVersionRequiresApp", { version: untranslated(version.minAppVersion) }), {
             size: "sm",
             color: "warning",
         }));
@@ -606,7 +606,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 size: "sm",
                 variant: "link",
                 disabled: !compatible,
-                children: isNewer ? "Update" : "Install",
+                children: isNewer ? t("shell.update") : t("board.installVersion"),
                 onClick: () => void model.installBoardVersion(version),
             });
         }
@@ -660,8 +660,8 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         const list = panel({ direction: "column", gap: "xs", align: "stretch" });
         list.append(createBoardPermissionList(permissions, "sm"));
         if (permissions.kind === "legacy") {
-            list.append(text(LEGACY_PERMISSION_EXPLANATION, { size: "sm", color: "light" }));
-            if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarning(boardName), { size: "sm", color: "warning" }));
+            list.append(text(t("board.legacyPermissionExplanation"), { size: "sm", color: "light" }));
+            if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarningForUi(boardName), { size: "sm", color: "warning" }));
         }
         return list;
     }

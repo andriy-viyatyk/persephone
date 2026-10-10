@@ -11,6 +11,7 @@ import {
     writeBoardManifest,
 } from "./board-manifest";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Populate a fresh board folder by recursively copying a bundled template into
@@ -62,12 +63,7 @@ export async function createBoardFromTemplate(name: string, dir: string, templat
     } catch (err) {
         // Template missing / copy failed — still produce a usable (empty) board.
         await fs.mkdir(boardRoot);
-        ui.notify(
-            `Board created, but the template could not be copied: ${
-                errMessage(err)
-            }`,
-            "warning",
-        );
+        ui.notify(t("board.boardCreatedTemplateCopyFailed", { error: errMessage(err) }), "warning");
     }
     // Guarantee the board-identity manifest exists regardless of which path ran
     // above (template copy or empty fallback) — a board is identified by it.

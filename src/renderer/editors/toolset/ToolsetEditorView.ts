@@ -11,6 +11,7 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { ToolsetEditorState, ToolsetEditorModel } from "./ToolsetEditorModel";
+import { t } from "../../../shared/i18n/t";
 
 interface ToolsetProjection {
     toolsetRoot?: string;
@@ -75,7 +76,7 @@ export class ToolsetEditorView extends VanillaView<{ model: ToolsetEditorModel }
         this.refreshButton = this.child(new IconButtonView({
             name: "toolset-refresh",
             size: "sm",
-            title: "Refresh",
+            title: t("board.refresh"),
             icon: "refresh",
             onClick: () => { void this.handleRefresh(); },
         }));
@@ -94,13 +95,13 @@ export class ToolsetEditorView extends VanillaView<{ model: ToolsetEditorModel }
             name: "toolset-open-folder",
             icon: "folder-open",
             onClick: () => this.handleOpenFolder(),
-            children: "Open Folder",
+            children: t("shell.openFolder"),
         }));
         this.openLogButton = this.child(new ButtonView({
             name: "toolset-open-log",
             icon: "log",
             onClick: () => { void this.handleOpenLog(); },
-            children: "Open Log",
+            children: t("board.openLog"),
         }));
 
         const actions = createPanelElement(
@@ -170,7 +171,7 @@ export class ToolsetEditorView extends VanillaView<{ model: ToolsetEditorModel }
         this.descriptionElement.textContent = projection.manifest?.description ?? "";
         this.descriptionElement.hidden = !projection.manifest?.description;
         this.authorElement.textContent = projection.manifest?.author
-            ? `Author: ${projection.manifest.author}`
+            ? t("board.authorValue", { value: projection.manifest.author })
             : "";
         this.authorElement.hidden = !projection.manifest?.author;
         this.applyTrustState();
@@ -189,7 +190,7 @@ export class ToolsetEditorView extends VanillaView<{ model: ToolsetEditorModel }
             size: "sm",
             color: registered ? "success" : "light",
         }));
-        this.statusElement.textContent = registered ? "Registered" : "Not registered";
+        this.statusElement.textContent = registered ? t("board.registered") : t("board.notRegistered");
     }
 
     private syncErrorBranch(errors: ErrorEntry[]): void {
@@ -250,7 +251,7 @@ class ErrorBranchView extends VanillaView<ErrorBranchProps> {
             createPanelElement(
                 { direction: "column", gap: "sm", align: "stretch" },
                 [
-                    createTextElement("This toolset's manifest has problems:", { color: "warning", bold: true }),
+                    createTextElement(t("board.toolsetManifestProblems"), { color: "warning", bold: true }),
                     errorListHost,
                 ],
             ),
@@ -292,7 +293,7 @@ class ToolListBranchView extends VanillaView<ToolListBranchProps> {
     public constructor(props: ToolListBranchProps) {
         const toolListHost = createPanelElement({ direction: "column", gap: "xs", align: "stretch" });
         const titleElement = createTextElement("", { bold: true });
-        const emptyElement = createTextElement("This toolset declares no tools yet.", { size: "sm", color: "light" });
+        const emptyElement = createTextElement(t("board.toolsetNoTools"), { size: "sm", color: "light" });
         super(
             props,
             createPanelElement(
@@ -320,7 +321,7 @@ class ToolListBranchView extends VanillaView<ToolListBranchProps> {
     }
 
     private updateTools(tools: ToolDef[]): void {
-        this.titleElement.textContent = `Tools (${tools.length})`;
+        this.titleElement.textContent = t("board.toolCount", { count: tools.length });
         this.emptyElement.hidden = tools.length !== 0;
         this.toolList.update(tools);
     }
@@ -356,12 +357,12 @@ class ToolListBranchView extends VanillaView<ToolListBranchProps> {
         if (!fields) return;
         fields.name.textContent = tool.name;
         fields.description.textContent = tool.description ?? "";
-        fields.command.textContent = `Command: ${tool.command}`;
-        fields.requirements.textContent = tool.requirements ? `Requires: ${tool.requirements}` : "";
+        fields.command.textContent = t("board.commandLabel", { value: tool.command });
+        fields.requirements.textContent = tool.requirements ? t("board.requiresLabel", { value: tool.requirements }) : "";
         fields.requirements.hidden = !tool.requirements;
-        fields.env.textContent = tool.env?.length ? `Env: ${tool.env.join(", ")}` : "";
+        fields.env.textContent = tool.env?.length ? t("board.environmentLabel", { value: tool.env.join(", ") }) : "";
         fields.env.hidden = !tool.env?.length;
-        fields.timeout.textContent = tool.timeoutMs != null ? `Timeout: ${tool.timeoutMs} ms` : "";
+        fields.timeout.textContent = tool.timeoutMs != null ? t("board.timeoutLabel", { value: tool.timeoutMs }) : "";
         fields.timeout.hidden = tool.timeoutMs == null;
     }
 }

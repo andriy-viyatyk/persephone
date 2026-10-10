@@ -9,6 +9,7 @@ import { debounce, errMessage } from "../../../shared/utils";
 import { DEFAULT_PROFILE, type BoardVarsFile } from "../../api/board-vars/types";
 import type { ILinkData } from "../../../shared/link-data";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { t } from "../../../shared/i18n/t";
 
 /** HS1 host-slot shape — the two per-window selection fields ride
  *  `host.editorSettings["env-vars-view"]`. Survives EnvVars↔Monaco switches AND app restarts. */
@@ -212,8 +213,9 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
         if (!skipConfirm) {
             const keyCount = Object.keys(this.state.get().data[namespace]?.[profile] ?? {}).length;
             const result = await ui.confirm(
-                `Delete profile "${profile}"${keyCount > 0 ? ` and its ${keyCount} variable${keyCount !== 1 ? "s" : ""}` : ""}?`,
-                { title: "Delete Profile", buttons: [DialogButton.delete, DialogButton.cancel] },
+                keyCount > 0 ? t("board.deleteProfileConfirmation", { profile, count: keyCount } as never)
+                    : t("board.deleteProfileConfirmationNoVariables", { profile }),
+                { title: t("board.deleteProfileConfirmationTitle"), buttons: [DialogButton.delete, DialogButton.cancel] },
             );
             if (result !== DialogButton.delete) return;
         }
@@ -245,8 +247,9 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
         if (!skipConfirm) {
             const profileCount = Object.keys(this.state.get().data[namespace] ?? {}).length;
             const result = await ui.confirm(
-                `Delete namespace "${namespace}"${profileCount > 0 ? ` and its ${profileCount} profile${profileCount !== 1 ? "s" : ""}` : ""}?`,
-                { title: "Delete Namespace", buttons: [DialogButton.delete, DialogButton.cancel] },
+                profileCount > 0 ? t("board.deleteNamespaceConfirmation", { namespace, count: profileCount } as never)
+                    : t("board.deleteNamespaceConfirmationNoProfiles", { namespace }),
+                { title: t("board.deleteNamespaceConfirmationTitle"), buttons: [DialogButton.delete, DialogButton.cancel] },
             );
             if (result !== DialogButton.delete) return;
         }

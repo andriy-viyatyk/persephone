@@ -14,6 +14,7 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
+import { t } from "../../../shared/i18n/t";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { DEFAULT_PROFILE } from "../../api/board-vars/types";
 import type { EditorConfig } from "../base/EditorConfig";
@@ -61,7 +62,7 @@ class LockedStateView extends VanillaView<{ model: EnvVarsEditor }> {
     }
 
     protected onMount(): void {
-        const message = createTextElement("This environment variables file is encrypted.", { color: "light" });
+        const message = createTextElement(t("board.envEncrypted"), { color: "light" });
         this.unlockButton = this.child(new ButtonView(this.buttonProps()));
         this.root.append(message, this.unlockButton.root);
         this.unlockButton.mount();
@@ -77,9 +78,9 @@ class LockedStateView extends VanillaView<{ model: EnvVarsEditor }> {
             variant: "primary",
             icon: "unlock",
             onClick: () => void this.props.model.host?.showEncryptionDialog(
-                "Decrypt the environment variables file to continue.",
+                t("board.envDecryptFilePrompt"),
             ),
-            children: "Unlock…",
+            children: t("board.envUnlock"),
         };
     }
 }
@@ -93,9 +94,9 @@ class ErrorStateView extends VanillaView<{ message: string | undefined }> {
         super(props, createPanelElement(
             { direction: "column", justify: "center", align: "center", gap: "sm", padding: "xxl", flex: 1, minHeight: 0 },
             [
-                createTextElement("This file isn't valid Environment Variables JSON.", { color: "warning" }),
+                createTextElement(t("board.envInvalidJson"), { color: "warning" }),
                 messageElement,
-                createTextElement("Use the tab's \"+\" switcher to open it as Text Editor and fix it by hand.", { color: "light", size: "xs" }),
+                createTextElement(t("board.envRepairHint"), { color: "light", size: "xs" }),
             ],
         ));
         this.messageElement = messageElement;
@@ -175,7 +176,7 @@ class NamespaceRowView extends VanillaView<NamespaceRowProps> {
             name: "env-vars-delete-namespace",
             size: "sm",
             icon: "delete",
-            title: "Delete namespace",
+            title: t("board.deleteNamespace"),
             onClick: (event) => {
                 event.stopPropagation();
                 void this.props.model.deleteNamespace(this.props.namespace);
@@ -246,7 +247,7 @@ class NamespaceListView extends VanillaView<{
     private inputProps(): InputProps {
         return {
             name: "env-vars-add-namespace",
-            placeholder: "+ Add namespace",
+            placeholder: t("board.addNamespace"),
             value: this.newName,
             onChange: (value) => {
                 this.newName = value;
@@ -270,8 +271,8 @@ class NamespaceListView extends VanillaView<{
 type VarRow = { _rowKey: string; name: string; value: string };
 
 const VAR_COLUMNS: Column<VarRow>[] = [
-    { key: "name", name: "Name", width: 220, resizable: true },
-    { key: "value", name: "Value", width: 400, resizable: true },
+    { key: "name", name: t("board.envName"), width: 220, resizable: true },
+    { key: "value", name: t("board.envValue"), width: 400, resizable: true },
 ];
 
 function validateRows(rows: VarRow[]): string | undefined {
@@ -287,14 +288,15 @@ function validateRows(rows: VarRow[]): string | undefined {
     }
     const duplicates = [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
     const reasons: string[] = [];
-    if (hasEmpty) reasons.push("one or more variable names are empty");
+    if (hasEmpty) reasons.push(t("board.emptyVariableNames"));
     if (duplicates.length) {
-        reasons.push(
-            `duplicate variable name${duplicates.length > 1 ? "s" : ""}: ${duplicates.map((name) => `"${name}"`).join(", ")}`,
-        );
+        reasons.push(t("board.duplicateVariableName", {
+            count: duplicates.length,
+            names: duplicates.map((name) => `"${name}"`).join(", "),
+        } as never));
     }
     if (!reasons.length) return undefined;
-    return `Not saved — ${reasons.join("; ")}. Fix to apply changes.`;
+    return t("board.envNotSaved", { reasons: reasons.join("; ") });
 }
 
 function rowsToRecord(rows: VarRow[]): Record<string, string> {
@@ -546,7 +548,7 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
     private inputProps(): InputProps {
         return {
             name: "env-vars-add-profile",
-            placeholder: "+ Add profile",
+            placeholder: t("board.addProfile"),
             value: this.newProfile,
             onChange: (value) => {
                 this.newProfile = value;
@@ -596,7 +598,7 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
         }
         this.contentRegion.replaceChildren(createPanelElement(
             { direction: "column", flex: true, justify: "center", align: "center", padding: "xxl" },
-            [createTextElement("Add or select a profile to edit variables.", { color: "light", size: "xs" })],
+            [createTextElement(t("board.addOrSelectProfile"), { color: "light", size: "xs" })],
         ));
     }
 
@@ -615,7 +617,7 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
             name: "env-vars-delete-profile",
             size: "sm",
             icon: "delete",
-            title: "Delete profile",
+            title: t("board.deleteProfile"),
             onClick: () => void this.props.model.deleteProfile(this.props.namespace, this.props.profile),
         };
     }
@@ -702,7 +704,7 @@ class NormalStateView extends VanillaView<NormalStateProps> {
         }
         this.contentRegion.replaceChildren(createPanelElement(
             { flex: true, direction: "column", justify: "center", align: "center", padding: "xxl" },
-            [createTextElement("No namespaces yet — add one on the left.", { color: "light" })],
+            [createTextElement(t("board.noNamespaces"), { color: "light" })],
         ));
     }
 }

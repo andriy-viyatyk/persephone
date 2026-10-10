@@ -287,6 +287,7 @@ function menuItems(
     onClick: (id: string) => void,
 ): MenuItem[] {
     return descriptor.items.map((item) => ({
+        id: `board-control-${descriptor.id}-${item.id}`,
         label: item.label,
         disabled: item.disabled,
         onClick: () => onClick(item.id),

@@ -4,8 +4,9 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import type { TextSize } from "../../uikit/Text/text-style";
 import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
-import { FULL_ACCESS_DETAIL, boardPermissionDiffLines, boardPermissionLines } from "./board-permission-copy";
+import { boardPermissionDiffLines, boardPermissionLines } from "./board-permission-copy";
 import type { BoardPermissionLine } from "./board-permission-copy";
+import { t } from "../../../shared/i18n/t";
 
 const ICON_SIZE = 14;
 
@@ -29,18 +30,18 @@ export function createBoardPermissionList(
     const granted = permissions.kind === "legacy" || Object.values(permissions.flags).some((value) => value !== false);
     for (const line of boardPermissionLines(permissions)) {
         if (!granted) {
-            list.append(createTextElement(line.text, { size, color: "light" }));
+            list.append(createTextElement(t(line.textKey, line.textParams as never), { size, color: "light" }));
             continue;
         }
         const legacy = permissions.kind === "legacy";
         const detailSize = size === "sm" ? "xs" : size;
         const heading = createPanelElement({ direction: "row", gap: "lg", align: "center", wrap: true }, [
-            createTextElement(line.text, { size }),
+            createTextElement(t(line.textKey, line.textParams as never), { size }),
         ]);
         const content = createPanelElement({ direction: "column", gap: "xs", flex: 1 }, [heading]);
         if (line.fullAccess) {
-            heading.append(createTextElement("Full access", { size: detailSize, bold: true, color: "warning" }));
-            content.append(createTextElement(FULL_ACCESS_DETAIL, { size: detailSize, color: "light" }));
+            heading.append(createTextElement(t("board.fullAccess"), { size: detailSize, bold: true, color: "warning" }));
+            if (line.detailKey) content.append(createTextElement(t(line.detailKey), { size: detailSize, color: "light" }));
         }
         const row = createPanelElement({ direction: "row", gap: "sm", align: "start" }, [
             rowIcon(legacy ? "warning" : "check", line.fullAccess || legacy ? color.warning.text : color.success.text),
@@ -54,13 +55,13 @@ export function createBoardPermissionList(
 
 function lineContent(line: BoardPermissionLine, size: TextSize | undefined, struck: boolean): HTMLElement {
     const detailSize = size === "sm" ? "xs" : size;
-    const label = createTextElement(line.text, { size, color: struck ? "light" : undefined });
+    const label = createTextElement(t(line.textKey, line.textParams as never), { size, color: struck ? "light" : undefined });
     if (struck) label.style.textDecoration = "line-through";
     const heading = createPanelElement({ direction: "row", gap: "lg", align: "center", wrap: true }, [label]);
     const content = createPanelElement({ direction: "column", gap: "xs", flex: 1 }, [heading]);
     if (line.fullAccess && !struck) {
-        heading.append(createTextElement("Full access", { size: detailSize, bold: true, color: "warning" }));
-        content.append(createTextElement(FULL_ACCESS_DETAIL, { size: detailSize, color: "light" }));
+        heading.append(createTextElement(t("board.fullAccess"), { size: detailSize, bold: true, color: "warning" }));
+        if (line.detailKey) content.append(createTextElement(t(line.detailKey), { size: detailSize, color: "light" }));
     }
     return content;
 }
@@ -83,7 +84,7 @@ export function createBoardPermissionChangeList(
     const list = createPanelElement({ direction: "column", gap: "xs", align: "stretch" });
     list.setAttribute("role", "list");
     for (const line of boardPermissionDiffLines(granted, proposed)) {
-        const legacy = line.text === "Unrestricted";
+        const legacy = line.kind === "unrestricted";
         const marker = line.mark === "kept"
             ? rowIcon(legacy ? "warning" : "check", line.fullAccess || legacy ? color.warning.text : color.success.text)
             : signMarker(line.mark === "added" ? "+" : "−", line.mark === "added" ? "success" : "light", size);

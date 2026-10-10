@@ -8,11 +8,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { DialogViewProps } from "./dialog-view-registry";
 import type { TrustBoardDialogProps, TrustBoardDialogResult } from "./TrustBoardDialog";
 import {
-    BOARD_PERMISSION_INTRODUCTION,
-    LEGACY_PERMISSION_EXPLANATION,
-    PERMISSION_CHANGE_TITLE,
-    legacyBoardDeprecationWarning,
-    permissionChangeMessage,
+    legacyBoardDeprecationWarningForUi,
 } from "../../editors/board/board-permission-copy";
 import { createBoardPermissionChangeList, createBoardPermissionList } from "../../editors/board/board-permission-list";
 import { t } from "../../../shared/i18n/t";
@@ -39,13 +35,13 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
 
         const body = change
             ? [
-                createTextElement(permissionChangeMessage(state.boardName)),
+                createTextElement(t("board.permissionChangeMessage", { boardName: state.boardName })),
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createBoardPermissionChangeList(change.granted, change.proposed),
             ]
             : [
-                createTextElement(BOARD_PERMISSION_INTRODUCTION),
+                createTextElement(t("board.permissionIntroduction")),
                 createTextElement(t("dialogs.trustOnlyBoards")),
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
@@ -53,8 +49,8 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     createBoardPermissionList(state.permissions),
                     ...(state.permissions.kind === "legacy"
                         ? [
-                            createTextElement(LEGACY_PERMISSION_EXPLANATION, { color: "light" }),
-                            createTextElement(legacyBoardDeprecationWarning(state.boardName), { color: "warning" }),
+                            createTextElement(t("board.legacyPermissionExplanation"), { color: "light" }),
+                            createTextElement(legacyBoardDeprecationWarningForUi(state.boardName), { color: "warning" }),
                         ]
                         : []),
                     ...(state.capabilities.length > 0
@@ -80,7 +76,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const contentChildren = document.createDocumentFragment();
         contentChildren.append(bodyPanel, buttonsPanel);
         const contentView = new DialogContentView({
-            title: change ? PERMISSION_CHANGE_TITLE : t("dialogs.trustTitle"),
+            title: change ? t("board.permissionChangeTitle") : t("dialogs.trustTitle"),
             icon: "warning",
             // Closing the change dialog takes the board off its page (see requestBoardTrust).
             onClose: () => model.close(change ? undefined : false),

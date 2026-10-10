@@ -12,6 +12,7 @@ import { registeredTools } from "../../api/tools/registered-tools";
 import { pagesModel } from "../../api/pages";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
+import { t } from "../../../shared/i18n/t";
 
 export interface ToolsetEditorState extends EditorStateBase {
     type: "toolsetPage";
@@ -32,7 +33,7 @@ export interface ToolsetEditorState extends EditorStateBase {
 
 export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
     id: crypto.randomUUID(),
-    title: "Agent Tool",
+    title: t("board.agentTool"),
     modified: false,
     type: "toolsetPage",
     editor: "toolset-view",
@@ -133,7 +134,7 @@ export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
         const logPath = this.getLogPath();
         if (!logPath) return;
         if (!(await fs.exists(logPath))) {
-            ui.notify("No execution log yet — run a tool first.", "info");
+            ui.notify(t("board.noSavedExecutionLog"), "info");
             return;
         }
         void pagesModel.openFile(logPath);

@@ -7,6 +7,7 @@ import { editorsCatalog } from "./editors";
 import { menusCatalog } from "./menus";
 import { apiCatalog } from "./api";
 import { browserCatalog } from "./browser";
+import { boardCatalog } from "./board";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
@@ -19,6 +20,7 @@ export const englishCatalog = {
     menus: Object.fromEntries(Object.entries(menusCatalog).map(([key, entry]) => [key, entry.message])),
     api: Object.fromEntries(Object.entries(apiCatalog).map(([key, entry]) => [key, entry.message])),
     browser: Object.fromEntries(Object.entries(browserCatalog).map(([key, entry]) => [key, entry.message])),
+    board: Object.fromEntries(Object.entries(boardCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;
@@ -29,6 +31,7 @@ export const englishCatalog = {
     menus: MessagesOf<typeof menusCatalog>;
     api: MessagesOf<typeof apiCatalog>;
     browser: MessagesOf<typeof browserCatalog>;
+    board: MessagesOf<typeof boardCatalog>;
 };
 
 export type EnglishCatalog = typeof englishCatalog;

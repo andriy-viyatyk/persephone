@@ -1,6 +1,6 @@
 import { ui } from "../../api/ui";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
-import { legacyBoardsDeprecationToast } from "./board-permission-copy";
+import { legacyBoardsDeprecationToastForUi } from "./board-permission-copy";
 
 const pendingBoards = new Map<string, string>();
 const pendingEditorIds = new Set<string>();
@@ -21,6 +21,6 @@ export function queueLegacyBoardDeprecationNotice(
         pendingBoards.clear();
         pendingEditorIds.clear();
         flushTimer = undefined;
-        if (names.length > 0) void ui.notify(legacyBoardsDeprecationToast(names), "warning", { persistent: true });
+        if (names.length > 0) void ui.notify(legacyBoardsDeprecationToastForUi(names), "warning", { persistent: true });
     }, 1000);
 }
