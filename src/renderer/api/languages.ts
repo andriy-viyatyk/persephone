@@ -156,12 +156,13 @@ function combinePacks(builtIn: LanguagePack | undefined, user: LanguagePack | un
         else delete source[key as MessageKey];
     }
     const metadata = user ?? builtIn;
+    if (!metadata) return undefined;
     return {
         schemaVersion: 1,
-        code: metadata!.code,
-        name: metadata!.name,
-        englishName: metadata!.englishName,
-        ...(metadata!.direction ? { direction: metadata!.direction } : {}),
+        code: metadata.code,
+        name: metadata.name,
+        englishName: metadata.englishName,
+        ...(metadata.direction ? { direction: metadata.direction } : {}),
         messages,
         source,
     };
@@ -356,8 +357,9 @@ async function getLanguage(code: string, area?: string, options?: LanguagePageOp
         const builtInPack = builtIn.get(normalizedCode);
         const userPack = user.get(normalizedCode);
         if (!builtInPack && !userPack) return undefined;
+        const merged = combinePacks(builtInPack, userPack);
+        if (!merged) return undefined;
         if (area === undefined) {
-            const merged = combinePacks(builtInPack, userPack)!;
             const summary = languageSummary(code, builtInPack, userPack);
             return {
                 code: summary.code,
@@ -373,14 +375,19 @@ async function getLanguage(code: string, area?: string, options?: LanguagePageOp
                 },
             };
         }
-        const merged = combinePacks(builtInPack, userPack)!;
         const entries: LanguageMessageEntry[] = Object.keys(merged.messages)
             .filter((key) => key.startsWith(`${area}.`))
             .sort()
-            .map((key) => ({
-                key,
-                message: cloneMessage(merged.messages[key as MessageKey]!),
-                from: Object.hasOwn(userPack?.messages ?? {}, key) ? "user" : "builtIn",
-            }));
+            .map((key) => {
+                const message = merged.messages[key as MessageKey];
+                if (message === undefined) {
+                    throw new Error(`Language pack key disappeared while reading ${key}`);
+                }
+                return {
+                    key,
+                    message: cloneMessage(message),
+                    from: Object.hasOwn(userPack?.messages ?? {}, key) ? "user" : "builtIn",
+                };
+            });
         return page(area, entries, options);
 }

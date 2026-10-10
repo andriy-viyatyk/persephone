@@ -90,6 +90,15 @@ function editorTypesPlugin(): Plugin {
 }
 
 export default defineConfig({
+  // The renderer runs with nodeIntegration, so `process.env` is the real environment. A
+  // browser-target build otherwise replaces `process.env` with `{}`, which made every read
+  // undefined in the packaged app only: the language loader's APPDATA path threw at module
+  // load and left a blank window, the saved language and custom themes were never read, and
+  // MCP Inspector spawned stdio servers with an empty environment. Vite's own, more specific
+  // `process.env.NODE_ENV` replacement still applies.
+  define: {
+    'process.env': 'globalThis.process.env',
+  },
   // Pin a dedicated dev-server port (Vite's default 5173 conflicts with another
   // local React app whose redirect URI is locked to that port in its app
   // registration). strictPort fails fast instead of hopping to 5174+, so the

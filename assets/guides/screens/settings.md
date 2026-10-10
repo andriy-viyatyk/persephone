@@ -104,10 +104,8 @@ names and translation completeness percentage. To load a compatible pack, place 
 `<code>.lang.json` file in `%APPDATA%\persephone\data\languages\`, then reopen Settings or restart
 Persephone to refresh the list. Choosing a language saves the setting and immediately reloads all
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
-uses English. Ask your agent to add a language or fix a translation.
-
-This release bundles only English. Built-in translations arrive in a later release, along with a way
-for your AI agent to create a pack for any other language.
+uses English. Persephone includes 17 built-in translations alongside English. Ask your agent to add
+a language, update a pack, or fix a translation; the agent can validate changes before saving them.
 When a translation pack is active, Monaco's own widgets use a translation for languages Monaco
 ships; otherwise those widgets remain in English. Number formatting, byte sizes, and relative day
 labels use the active locale when one is available.

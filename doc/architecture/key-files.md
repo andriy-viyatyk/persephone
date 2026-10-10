@@ -23,7 +23,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser URL glob matcher (case-insensitive whole-URL compiler anchored at both ends) | `/src/shared/browser-url-masks.ts` |
 | Board manifest normalization shared by main and renderer (manifest filename, reusable string-list normalizer, permissions, service path, and browser URL masks) | `/src/shared/board-manifest-utils.ts` |
 | First-owner claim registry shared by main and renderer; callers normalize keys and clear claims by origin | `/src/shared/ownership-registry.ts` |
-| Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
+| Renderer Vite configuration (preserves Node `process.env` in renderer builds and sets the dev-server port/watch exclusions) | `/vite.renderer.config.ts` |
 | Excalidraw board library snapshot generator (manual, pinned-vendor copy plus dependency import-map scan and validation; not part of the Persephone build) | `/scripts/build-board-lib.mjs` |
 | App object model and renderer startup orchestration (services, pages, events, and launch-input dispatch) | `/src/renderer/api/app.ts` |
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
@@ -92,6 +92,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process locale and pack loading (tray and native dialogs) | `/src/main/i18n-locale.ts` |
 | Locale-aware date, relative-time, number, unit, and byte-size formatting | `/src/renderer/core/utils/format.ts` |
 | Language setting and picker (including completeness and reload-all) | `/src/renderer/editors/settings/sections/LanguageSection.ts`, `/src/renderer/api/settings.ts` |
+| Agent language-pack API (`app.languages`: inspect English messages and packs, audit, validate, save/delete user packs, validate board packs, and apply a locale) | `/src/renderer/api/languages.ts`, `/src/renderer/api/types/languages.d.ts` |
+| Windows installer languages and localized NSIS custom pages/fallback strings | `/electron-builder.yml`, `/build/installer.nsh` |
 | Language pack validation command (`npm run i18n:check`) | `/scripts/i18n-check.mjs`, `/scripts/i18n-check-entry.ts` |
 | Site-extension store (manifest validation, exact-host index/conflicts, configured/default root, and fresh script reads) | `/src/renderer/api/site-extensions.ts` |
 | Site-extension trust mirror (renderer snapshot, host-set comparison, folder binding, enable/revoke/trust operations) | `/src/renderer/api/site-extension-trust.ts` |

@@ -27,10 +27,12 @@ persephone/
 │   ├── build-rest-client-lib.mjs # Build the REST Client board's committed CodeMirror browser module
 │   ├── i18n-check.mjs      # Bundle and run the language-pack validation command
 │   ├── i18n-check-entry.ts # Check pack completeness/source hashes and generated en-XA
+│   ├── i18n-export.mjs     # Export the English app catalog as pack-drafting JSON
 │   └── vmp-sign.mjs        # electron-builder afterPack hook for Widevine VMP signing
 ├── assets/                 # Static assets
 │   ├── editor-types/       # GENERATED — Vite plugin auto-copies .d.ts files from src/renderer/api/types/ (never hand-edit)
 │   ├── icons/              # App icons
+│   ├── languages/          # Built-in app language packs and their authoring/validation notes
 │   ├── excalidraw/fonts/   # Self-hosted Excalidraw fonts (woff2, OFL-1.1 licensed)
 │   ├── script-library/     # Bundled example scripts (copied to user library on setup)
 │   ├── guides/             # Shared user and agent guide corpus, shipped inside the app

@@ -1,3 +1,29 @@
+## EPIC-127 — Language packs (interface languages, phase 4)
+
+Completed 2026-10-11. Phase 4, the last phase of the [localization roadmap](../localization-roadmap.md):
+agents read, write and validate language packs through an API, and Persephone ships 17 built-in
+languages for the app, its bundled boards and the 15 catalog boards. Epic document:
+[EPIC-127](EPIC-127.md).
+
+- [x] **`app.languages` API (US-1676, US-1677).** Scripts and MCP `languages.*`: list, get, english,
+  missing, stale, validate, validateBoard (warnings plus untranslated `missing` keys), save, delete
+  and apply; `save()` writes user packs only and refuses any warning.
+- [x] **Notes and checks (US-1678).** Translator notes on ambiguous English messages; `i18n:check`
+  catches broken characters and missing plural categories; `i18n:export`, `--identical` and
+  `i18n:check-boards`.
+- [x] **Agent guide (US-1679).** `guides.agents.languages` and the per-language glossary.
+- [x] **QA run (US-1680).** A weak agent added a pack, fixed a message and checked a board pack from
+  the guide alone; `validateBoard` gained `missing` and the guide explains `manifest.*` keys.
+- [x] **Packs (US-1681–US-1685).** uk, pl, lt, lv, et, be, ro, sk, hu, de, fr, es, pt-BR, it, zh-CN, ja
+  and ko: 1524/1524 app messages each, plus REST Client, Excalidraw and all catalog boards
+  (`persephone-boards` `develop`, unpublished).
+- [x] **Installer (US-1686).** Multi-language NSIS installer with a language dialog shown once (outer
+  UAC instance only), a translated options page, and overrides for electron-builder's untranslated
+  messages.
+- [x] **Closing sweep (US-1687).** Layout checked under German, Hungarian and Japanese; the catalog's
+  `localized` map fills for all boards. The packaged renderer no longer replaces `process.env` with
+  `{}`, which had left the installed app blank.
+
 ## EPIC-126 — Boards localization (interface languages, phase 3)
 
 Completed 2026-10-10. Phase 3 of the [localization roadmap](../localization-roadmap.md): every

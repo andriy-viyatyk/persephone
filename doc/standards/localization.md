@@ -63,6 +63,17 @@ optional `direction: "ltr"`, `messages`, and optional `source` hashes. See
 message, calculated by [`hashEnglishMessage()`](../../src/shared/i18n/hash.ts); it supports finding
 translations whose English source changed.
 
+For runtime pack work, `app.languages` exposes the English catalog and installed packs to agents:
+`english()` returns paged source entries with notes, placeholders and source hashes; `get()` reads
+pack metadata or area messages; `missing()` and `stale()` audit translation coverage; and
+`validate()` checks an app pack while `validateBoard()` checks a board pack without changing the
+active locale. `save()` validates and atomically writes a user pack under the user data directory,
+`delete()` removes a user pack, and `apply()` selects an available locale and schedules a reload of
+all windows. User packs can supply translations for missing built-in entries or override them.
+See the [language-pack agent guide](../../assets/guides/agents/languages.md) for the workflow and
+the API declarations in [`languages.d.ts`](../../src/renderer/api/types/languages.d.ts) for the
+complete contract.
+
 [`createPseudoLocalePack()`](../../src/shared/i18n/pseudo-locale.ts) generates `en-XA` from the
 English catalog. Use it to expose missed extraction and longer-label layout issues. It is generated
 validation data, not a checked-in translated pack.

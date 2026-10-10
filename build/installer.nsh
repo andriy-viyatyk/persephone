@@ -44,7 +44,7 @@
     LangString InstallerAdditionalOptions ${LANG_HUNGARIAN} "További beállítások"
     LangString InstallerAdditionalOptions ${LANG_GERMAN} "Zusätzliche Optionen"
     LangString InstallerAdditionalOptions ${LANG_FRENCH} "Options supplémentaires"
-    LangString InstallerAdditionalOptions ${LANG_SPANISH} "Opciones adicionales"
+    LangString InstallerAdditionalOptions ${LANG_SPANISHINTERNATIONAL} "Opciones adicionales"
     LangString InstallerAdditionalOptions ${LANG_PORTUGUESEBR} "Opções adicionais"
     LangString InstallerAdditionalOptions ${LANG_ITALIAN} "Opzioni aggiuntive"
     LangString InstallerAdditionalOptions ${LANG_SIMPCHINESE} "其他选项"
@@ -63,7 +63,7 @@
     LangString InstallerOptionsSubtitle ${LANG_HUNGARIAN} "Válassza ki a beállítani kívánt további funkciókat."
     LangString InstallerOptionsSubtitle ${LANG_GERMAN} "Wählen Sie zusätzliche Funktionen zur Konfiguration aus."
     LangString InstallerOptionsSubtitle ${LANG_FRENCH} "Sélectionnez les fonctionnalités supplémentaires à configurer."
-    LangString InstallerOptionsSubtitle ${LANG_SPANISH} "Seleccione las funciones adicionales que desea configurar."
+    LangString InstallerOptionsSubtitle ${LANG_SPANISHINTERNATIONAL} "Seleccione las funciones adicionales que desea configurar."
     LangString InstallerOptionsSubtitle ${LANG_PORTUGUESEBR} "Selecione os recursos adicionais que deseja configurar."
     LangString InstallerOptionsSubtitle ${LANG_ITALIAN} "Seleziona le funzionalità aggiuntive da configurare."
     LangString InstallerOptionsSubtitle ${LANG_SIMPCHINESE} "选择要配置的其他功能。"
@@ -82,7 +82,7 @@
     LangString InstallerShortcuts ${LANG_HUNGARIAN} "Parancsikonok:"
     LangString InstallerShortcuts ${LANG_GERMAN} "Verknüpfungen:"
     LangString InstallerShortcuts ${LANG_FRENCH} "Raccourcis :"
-    LangString InstallerShortcuts ${LANG_SPANISH} "Accesos directos:"
+    LangString InstallerShortcuts ${LANG_SPANISHINTERNATIONAL} "Accesos directos:"
     LangString InstallerShortcuts ${LANG_PORTUGUESEBR} "Atalhos:"
     LangString InstallerShortcuts ${LANG_ITALIAN} "Collegamenti:"
     LangString InstallerShortcuts ${LANG_SIMPCHINESE} "快捷方式："
@@ -101,7 +101,7 @@
     LangString InstallerDesktopShortcut ${LANG_HUNGARIAN} "Asztali parancsikon létrehozása"
     LangString InstallerDesktopShortcut ${LANG_GERMAN} "Desktop-Verknüpfung erstellen"
     LangString InstallerDesktopShortcut ${LANG_FRENCH} "Créer un raccourci sur le bureau"
-    LangString InstallerDesktopShortcut ${LANG_SPANISH} "Crear acceso directo en el escritorio"
+    LangString InstallerDesktopShortcut ${LANG_SPANISHINTERNATIONAL} "Crear acceso directo en el escritorio"
     LangString InstallerDesktopShortcut ${LANG_PORTUGUESEBR} "Criar atalho na área de trabalho"
     LangString InstallerDesktopShortcut ${LANG_ITALIAN} "Crea un collegamento sul desktop"
     LangString InstallerDesktopShortcut ${LANG_SIMPCHINESE} "创建桌面快捷方式"
@@ -120,7 +120,7 @@
     LangString InstallerStartMenuShortcut ${LANG_HUNGARIAN} "Parancsikon létrehozása a Start menüben"
     LangString InstallerStartMenuShortcut ${LANG_GERMAN} "Verknüpfung im Startmenü erstellen"
     LangString InstallerStartMenuShortcut ${LANG_FRENCH} "Créer un raccourci dans le menu Démarrer"
-    LangString InstallerStartMenuShortcut ${LANG_SPANISH} "Crear acceso directo en el menú Inicio"
+    LangString InstallerStartMenuShortcut ${LANG_SPANISHINTERNATIONAL} "Crear acceso directo en el menú Inicio"
     LangString InstallerStartMenuShortcut ${LANG_PORTUGUESEBR} "Criar atalho no menu Iniciar"
     LangString InstallerStartMenuShortcut ${LANG_ITALIAN} "Crea un collegamento nel menu Start"
     LangString InstallerStartMenuShortcut ${LANG_SIMPCHINESE} "在开始菜单中创建快捷方式"
@@ -139,7 +139,7 @@
     LangString InstallerSystemIntegration ${LANG_HUNGARIAN} "Rendszerintegráció:"
     LangString InstallerSystemIntegration ${LANG_GERMAN} "Systemintegration:"
     LangString InstallerSystemIntegration ${LANG_FRENCH} "Intégration système :"
-    LangString InstallerSystemIntegration ${LANG_SPANISH} "Integración con el sistema:"
+    LangString InstallerSystemIntegration ${LANG_SPANISHINTERNATIONAL} "Integración con el sistema:"
     LangString InstallerSystemIntegration ${LANG_PORTUGUESEBR} "Integração com o sistema:"
     LangString InstallerSystemIntegration ${LANG_ITALIAN} "Integrazione di sistema:"
     LangString InstallerSystemIntegration ${LANG_SIMPCHINESE} "系统集成："
@@ -158,7 +158,7 @@
     LangString InstallerOpenWithFiles ${LANG_HUNGARIAN} "„Megnyitás persephone-nal” hozzáadása a fájlok Intéző helyi menüjéhez"
     LangString InstallerOpenWithFiles ${LANG_GERMAN} "„Mit persephone öffnen” zum Explorer-Kontextmenü für Dateien hinzufügen"
     LangString InstallerOpenWithFiles ${LANG_FRENCH} "Ajouter « Ouvrir avec persephone » au menu contextuel des fichiers de l’Explorateur"
-    LangString InstallerOpenWithFiles ${LANG_SPANISH} "Añadir «Abrir con persephone» al menú contextual de archivos del Explorador"
+    LangString InstallerOpenWithFiles ${LANG_SPANISHINTERNATIONAL} "Añadir «Abrir con persephone» al menú contextual de archivos del Explorador"
     LangString InstallerOpenWithFiles ${LANG_PORTUGUESEBR} "Adicionar “Abrir com persephone” ao menu de contexto de arquivos do Explorador"
     LangString InstallerOpenWithFiles ${LANG_ITALIAN} "Aggiungi “Apri con persephone” al menu contestuale dei file di Esplora file"
     LangString InstallerOpenWithFiles ${LANG_SIMPCHINESE} "在文件资源管理器的文件上下文菜单中添加“使用 persephone 打开”"
@@ -177,7 +177,7 @@
     LangString InstallerOpenWithFolders ${LANG_HUNGARIAN} "„Megnyitás persephone-nal” hozzáadása a mappák Intéző helyi menüjéhez"
     LangString InstallerOpenWithFolders ${LANG_GERMAN} "„Mit persephone öffnen” zum Explorer-Kontextmenü für Ordner hinzufügen"
     LangString InstallerOpenWithFolders ${LANG_FRENCH} "Ajouter « Ouvrir avec persephone » au menu contextuel des dossiers de l’Explorateur"
-    LangString InstallerOpenWithFolders ${LANG_SPANISH} "Añadir «Abrir con persephone» al menú contextual de carpetas del Explorador"
+    LangString InstallerOpenWithFolders ${LANG_SPANISHINTERNATIONAL} "Añadir «Abrir con persephone» al menú contextual de carpetas del Explorador"
     LangString InstallerOpenWithFolders ${LANG_PORTUGUESEBR} "Adicionar “Abrir com persephone” ao menu de contexto de pastas do Explorador"
     LangString InstallerOpenWithFolders ${LANG_ITALIAN} "Aggiungi “Apri con persephone” al menu contestuale delle cartelle di Esplora file"
     LangString InstallerOpenWithFolders ${LANG_SIMPCHINESE} "在文件资源管理器的文件夹上下文菜单中添加“使用 persephone 打开”"
@@ -196,12 +196,216 @@
     LangString InstallerDefaultBrowser ${LANG_HUNGARIAN} "A Persephone regisztrálása böngészőként"
     LangString InstallerDefaultBrowser ${LANG_GERMAN} "Persephone als Browser registrieren"
     LangString InstallerDefaultBrowser ${LANG_FRENCH} "Enregistrer Persephone comme navigateur"
-    LangString InstallerDefaultBrowser ${LANG_SPANISH} "Registrar Persephone como navegador"
+    LangString InstallerDefaultBrowser ${LANG_SPANISHINTERNATIONAL} "Registrar Persephone como navegador"
     LangString InstallerDefaultBrowser ${LANG_PORTUGUESEBR} "Registrar o Persephone como navegador"
     LangString InstallerDefaultBrowser ${LANG_ITALIAN} "Registra Persephone come browser"
     LangString InstallerDefaultBrowser ${LANG_SIMPCHINESE} "将 Persephone 注册为浏览器"
     LangString InstallerDefaultBrowser ${LANG_JAPANESE} "Persephone をブラウザーとして登録"
     LangString InstallerDefaultBrowser ${LANG_KOREAN} "Persephone을 브라우저로 등록"
+
+    ; Override electron-builder's English fallbacks for messages missing from its NSIS catalogs.
+    ; These translations follow the installer terminology used by NSIS and the language glossary.
+    ; Ukrainian
+    LangString win7Required ${LANG_UKRAINIAN} "Потрібна Windows 7 або новіша версія"
+    LangString x64WinRequired ${LANG_UKRAINIAN} "Потрібна 64-розрядна версія Windows"
+    LangString installing ${LANG_UKRAINIAN} "Триває встановлення, зачекайте..."
+    LangString areYouSureToUninstall ${LANG_UKRAINIAN} "Ви впевнені, що хочете видалити ${PRODUCT_NAME}?"
+    LangString chooseInstallationOptions ${LANG_UKRAINIAN} "Вибір параметрів встановлення"
+    LangString chooseUninstallationOptions ${LANG_UKRAINIAN} "Вибір параметрів видалення"
+    LangString whichInstallationShouldBeRemoved ${LANG_UKRAINIAN} "Яке встановлення слід видалити?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_UKRAINIAN} "Для кого встановити цю програму?"
+    LangString selectUserMode ${LANG_UKRAINIAN} "Виберіть, чи зробити програму доступною для всіх користувачів, чи лише для вас"
+    LangString whichInstallationRemove ${LANG_UKRAINIAN} "Цю програму встановлено для всіх користувачів і окремо для користувача.\nЯке встановлення потрібно видалити?"
+    LangString freshInstallForAll ${LANG_UKRAINIAN} "Нове встановлення для всіх користувачів (потрібні облікові дані адміністратора)"
+    LangString freshInstallForCurrent ${LANG_UKRAINIAN} "Нове встановлення лише для поточного користувача."
+    LangString onlyForMe ${LANG_UKRAINIAN} "Лише для &мене"
+    LangString forAll ${LANG_UKRAINIAN} "Для &всіх користувачів цього комп’ютера"
+    LangString loginWithAdminAccount ${LANG_UKRAINIAN} "Щоб продовжити, увійдіть за допомогою облікового запису з групи адміністраторів..."
+    LangString perUserInstallExists ${LANG_UKRAINIAN} "Вже встановлено для окремого користувача."
+    LangString perUserInstall ${LANG_UKRAINIAN} "Програму встановлено для окремого користувача."
+    LangString perMachineInstallExists ${LANG_UKRAINIAN} "Програму вже встановлено для всіх користувачів."
+    LangString perMachineInstall ${LANG_UKRAINIAN} "Програму встановлено для всіх користувачів."
+    LangString reinstallUpgrade ${LANG_UKRAINIAN} "Буде виконано повторне встановлення або оновлення."
+    LangString uninstall ${LANG_UKRAINIAN} "Програму буде видалено."
+
+    ; Lithuanian
+    LangString win7Required ${LANG_LITHUANIAN} "Reikalinga Windows 7 arba naujesnė versija"
+    LangString x64WinRequired ${LANG_LITHUANIAN} "Reikalinga 64 bitų Windows versija"
+    LangString installing ${LANG_LITHUANIAN} "Diegiama, palaukite..."
+    LangString areYouSureToUninstall ${LANG_LITHUANIAN} "Ar tikrai norite pašalinti ${PRODUCT_NAME}?"
+    LangString chooseInstallationOptions ${LANG_LITHUANIAN} "Diegimo parinkčių pasirinkimas"
+    LangString chooseUninstallationOptions ${LANG_LITHUANIAN} "Pašalinimo parinkčių pasirinkimas"
+    LangString whichInstallationShouldBeRemoved ${LANG_LITHUANIAN} "Kurį diegimą pašalinti?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_LITHUANIAN} "Kam įdiegti šią programą?"
+    LangString selectUserMode ${LANG_LITHUANIAN} "Pasirinkite, ar padaryti šią programą prieinamą visiems naudotojams, ar tik jums"
+    LangString whichInstallationRemove ${LANG_LITHUANIAN} "Ši programa įdiegta visiems naudotojams ir atskirai naudotojui.\nKurį diegimą norite pašalinti?"
+    LangString freshInstallForAll ${LANG_LITHUANIAN} "Naujai įdiegti visiems naudotojams (reikės administratoriaus prisijungimo duomenų)"
+    LangString freshInstallForCurrent ${LANG_LITHUANIAN} "Naujai įdiegti tik dabartiniam naudotojui."
+    LangString onlyForMe ${LANG_LITHUANIAN} "Tik &man"
+    LangString forAll ${LANG_LITHUANIAN} "Visiems šio kompiuterio naudotojams (&visiems)"
+    LangString loginWithAdminAccount ${LANG_LITHUANIAN} "Norėdami tęsti, prisijunkite paskyra, priklausančia administratorių grupei..."
+    LangString perUserInstallExists ${LANG_LITHUANIAN} "Programa jau įdiegta tik šiam naudotojui."
+    LangString perUserInstall ${LANG_LITHUANIAN} "Programa įdiegta tik šiam naudotojui."
+    LangString perMachineInstallExists ${LANG_LITHUANIAN} "Programa jau įdiegta visiems naudotojams."
+    LangString perMachineInstall ${LANG_LITHUANIAN} "Programa įdiegta visiems naudotojams."
+    LangString reinstallUpgrade ${LANG_LITHUANIAN} "Programa bus įdiegta iš naujo arba atnaujinta."
+    LangString uninstall ${LANG_LITHUANIAN} "Programa bus pašalinta."
+
+    ; Latvian
+    LangString win7Required ${LANG_LATVIAN} "Nepieciešama Windows 7 vai jaunāka versija"
+    LangString x64WinRequired ${LANG_LATVIAN} "Nepieciešama 64 bitu Windows versija"
+    LangString appRunning ${LANG_LATVIAN} "${PRODUCT_NAME} darbojas.$\r$\nNoklikšķiniet uz Labi, lai to aizvērtu.$\r$\nJa tas netiek aizvērts, aizveriet to manuāli."
+    LangString appCannotBeClosed ${LANG_LATVIAN} "${PRODUCT_NAME} nevar aizvērt. $\r$\nLūdzu, aizveriet to manuāli un noklikšķiniet uz Mēģināt vēlreiz, lai turpinātu."
+    LangString installing ${LANG_LATVIAN} "Notiek instalēšana, lūdzu, uzgaidiet..."
+    LangString areYouSureToUninstall ${LANG_LATVIAN} "Vai tiešām vēlaties atinstalēt ${PRODUCT_NAME}?"
+    LangString chooseInstallationOptions ${LANG_LATVIAN} "Izvēlieties instalēšanas opcijas"
+    LangString chooseUninstallationOptions ${LANG_LATVIAN} "Izvēlieties atinstalēšanas opcijas"
+    LangString whichInstallationShouldBeRemoved ${LANG_LATVIAN} "Kura instalācija jāatinstalē?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_LATVIAN} "Kam instalēt šo lietojumprogrammu?"
+    LangString selectUserMode ${LANG_LATVIAN} "Izvēlieties, vai padarīt šo programmatūru pieejamu visiem lietotājiem vai tikai jums"
+    LangString whichInstallationRemove ${LANG_LATVIAN} "Šī programmatūra ir instalēta visiem lietotājiem un atsevišķam lietotājam.\nKuru instalāciju vēlaties atinstalēt?"
+    LangString freshInstallForAll ${LANG_LATVIAN} "Jauna instalēšana visiem lietotājiem (tiks pieprasīti administratora akreditācijas dati)"
+    LangString freshInstallForCurrent ${LANG_LATVIAN} "Jauna instalēšana tikai pašreizējam lietotājam."
+    LangString onlyForMe ${LANG_LATVIAN} "Tikai &man"
+    LangString forAll ${LANG_LATVIAN} "Visiem šī datora lietotājiem (&visiem)"
+    LangString loginWithAdminAccount ${LANG_LATVIAN} "Lai turpinātu, piesakieties ar kontu, kas ir administratoru grupā..."
+    LangString perUserInstallExists ${LANG_LATVIAN} "Programma jau ir instalēta atsevišķam lietotājam."
+    LangString perUserInstall ${LANG_LATVIAN} "Programma ir instalēta atsevišķam lietotājam."
+    LangString perMachineInstallExists ${LANG_LATVIAN} "Programma jau ir instalēta visiem lietotājiem."
+    LangString perMachineInstall ${LANG_LATVIAN} "Programma ir instalēta visiem lietotājiem."
+    LangString reinstallUpgrade ${LANG_LATVIAN} "Programma tiks instalēta atkārtoti vai atjaunināta."
+    LangString uninstall ${LANG_LATVIAN} "Programma tiks atinstalēta."
+
+    ; Estonian
+    LangString win7Required ${LANG_ESTONIAN} "Vajalik on Windows 7 või uuem versioon"
+    LangString x64WinRequired ${LANG_ESTONIAN} "Vajalik on 64-bitine Windows"
+    LangString appRunning ${LANG_ESTONIAN} "${PRODUCT_NAME} töötab.$\r$\nKlõpsake sulgemiseks nuppu OK.$\r$\nKui see ei sulgu, sulgege see käsitsi."
+    LangString installing ${LANG_ESTONIAN} "Installimine, palun oodake..."
+    LangString areYouSureToUninstall ${LANG_ESTONIAN} "Kas soovite kindlasti ${PRODUCT_NAME}i desinstallida?"
+    LangString chooseInstallationOptions ${LANG_ESTONIAN} "Installisuvandite valimine"
+    LangString chooseUninstallationOptions ${LANG_ESTONIAN} "Desinstallimissuvandite valimine"
+    LangString whichInstallationShouldBeRemoved ${LANG_ESTONIAN} "Milline install tuleks eemaldada?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_ESTONIAN} "Kelle jaoks see rakendus installida?"
+    LangString selectUserMode ${LANG_ESTONIAN} "Valige, kas teha see tarkvara kättesaadavaks kõigile kasutajatele või ainult teile"
+    LangString whichInstallationRemove ${LANG_ESTONIAN} "See tarkvara on installitud kõigile kasutajatele ja eraldi kasutajale.\nMillise installi soovite eemaldada?"
+    LangString freshInstallForAll ${LANG_ESTONIAN} "Uus install kõigile kasutajatele (küsitakse administraatori mandaati)"
+    LangString freshInstallForCurrent ${LANG_ESTONIAN} "Uus install ainult praegusele kasutajale."
+    LangString onlyForMe ${LANG_ESTONIAN} "Ainult &mulle"
+    LangString forAll ${LANG_ESTONIAN} "Kõigile selle arvuti kasutajatele (&kõigile)"
+    LangString loginWithAdminAccount ${LANG_ESTONIAN} "Jätkamiseks logige sisse administraatorite rühma kuuluva kontoga..."
+    LangString perUserInstallExists ${LANG_ESTONIAN} "Rakendus on juba konkreetsele kasutajale installitud."
+    LangString perUserInstall ${LANG_ESTONIAN} "Rakendus on konkreetsele kasutajale installitud."
+    LangString perMachineInstallExists ${LANG_ESTONIAN} "Rakendus on juba kõigile kasutajatele installitud."
+    LangString perMachineInstall ${LANG_ESTONIAN} "Rakendus on kõigile kasutajatele installitud."
+    LangString reinstallUpgrade ${LANG_ESTONIAN} "Rakendus installitakse uuesti või värskendatakse."
+    LangString uninstall ${LANG_ESTONIAN} "Rakendus desinstallitakse."
+
+    ; Belarusian
+    LangString win7Required ${LANG_BELARUSIAN} "Патрабуецца Windows 7 або навейшая версія"
+    LangString x64WinRequired ${LANG_BELARUSIAN} "Патрабуецца 64-разрадная версія Windows"
+    LangString appRunning ${LANG_BELARUSIAN} "${PRODUCT_NAME} запушчана.$\r$\nНацісніце «ОК», каб закрыць праграму.$\r$\nКалі яна не закрыецца, паспрабуйце закрыць яе ўручную."
+    LangString appCannotBeClosed ${LANG_BELARUSIAN} "Не ўдалося закрыць ${PRODUCT_NAME}. $\r$\nЗакрыйце праграму ўручную і націсніце «Паўтарыць», каб працягнуць."
+    LangString installing ${LANG_BELARUSIAN} "Ідзе ўсталяванне, пачакайце..."
+    LangString areYouSureToUninstall ${LANG_BELARUSIAN} "Вы сапраўды хочаце выдаліць ${PRODUCT_NAME}?"
+    LangString chooseInstallationOptions ${LANG_BELARUSIAN} "Выбар параметраў усталявання"
+    LangString chooseUninstallationOptions ${LANG_BELARUSIAN} "Выбар параметраў выдалення"
+    LangString whichInstallationShouldBeRemoved ${LANG_BELARUSIAN} "Якое ўсталяванне трэба выдаліць?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_BELARUSIAN} "Для каго ўсталяваць гэту праграму?"
+    LangString selectUserMode ${LANG_BELARUSIAN} "Выберыце, зрабіць праграму даступнай усім карыстальнікам ці толькі вам"
+    LangString whichInstallationRemove ${LANG_BELARUSIAN} "Гэта праграма ўсталявана для ўсіх карыстальнікаў і асобна для карыстальніка.\nЯкое ўсталяванне вы хочаце выдаліць?"
+    LangString freshInstallForAll ${LANG_BELARUSIAN} "Новае ўсталяванне для ўсіх карыстальнікаў (спатрэбяцца ўліковыя даныя адміністратара)"
+    LangString freshInstallForCurrent ${LANG_BELARUSIAN} "Новае ўсталяванне толькі для бягучага карыстальніка."
+    LangString onlyForMe ${LANG_BELARUSIAN} "Толькі для &мяне"
+    LangString forAll ${LANG_BELARUSIAN} "Для ўсіх карыстальнікаў гэтага камп'ютара (&усіх)"
+    LangString loginWithAdminAccount ${LANG_BELARUSIAN} "Каб працягнуць, увайдзіце з дапамогай уліковага запісу з групы адміністратараў..."
+    LangString perUserInstallExists ${LANG_BELARUSIAN} "Праграма ўжо ўсталявана для асобнага карыстальніка."
+    LangString perUserInstall ${LANG_BELARUSIAN} "Праграма ўсталявана для асобнага карыстальніка."
+    LangString perMachineInstallExists ${LANG_BELARUSIAN} "Праграма ўжо ўсталявана для ўсіх карыстальнікаў."
+    LangString perMachineInstall ${LANG_BELARUSIAN} "Праграма ўсталявана для ўсіх карыстальнікаў."
+    LangString reinstallUpgrade ${LANG_BELARUSIAN} "Будзе выканана паўторнае ўсталяванне або абнаўленне."
+    LangString uninstall ${LANG_BELARUSIAN} "Праграма будзе выдалена."
+
+    ; Romanian
+    LangString win7Required ${LANG_ROMANIAN} "Este necesar Windows 7 sau o versiune mai recentă"
+    LangString x64WinRequired ${LANG_ROMANIAN} "Este necesară o versiune Windows pe 64 de biți"
+    LangString installing ${LANG_ROMANIAN} "Se instalează, așteptați..."
+    LangString areYouSureToUninstall ${LANG_ROMANIAN} "Sigur doriți să dezinstalați ${PRODUCT_NAME}?"
+    LangString chooseInstallationOptions ${LANG_ROMANIAN} "Alegeți opțiunile de instalare"
+    LangString chooseUninstallationOptions ${LANG_ROMANIAN} "Alegeți opțiunile de dezinstalare"
+    LangString whichInstallationShouldBeRemoved ${LANG_ROMANIAN} "Care instalare trebuie eliminată?"
+    LangString whoShouldThisApplicationBeInstalledFor ${LANG_ROMANIAN} "Pentru cine să fie instalată această aplicație?"
+    LangString selectUserMode ${LANG_ROMANIAN} "Alegeți dacă doriți ca acest software să fie disponibil pentru toți utilizatorii sau doar pentru dvs."
+    LangString whichInstallationRemove ${LANG_ROMANIAN} "Acest software este instalat pentru toți utilizatorii și pentru un singur utilizator.\nCare instalare doriți să o eliminați?"
+    LangString freshInstallForAll ${LANG_ROMANIAN} "Instalare nouă pentru toți utilizatorii (se vor solicita datele de administrator)"
+    LangString freshInstallForCurrent ${LANG_ROMANIAN} "Instalare nouă doar pentru utilizatorul curent."
+    LangString onlyForMe ${LANG_ROMANIAN} "Doar pentru &mine"
+    LangString forAll ${LANG_ROMANIAN} "Pentru toți utilizatorii acestui computer (&toți)"
+    LangString loginWithAdminAccount ${LANG_ROMANIAN} "Pentru a continua, conectați-vă cu un cont membru al grupului de administratori..."
+    LangString perUserInstallExists ${LANG_ROMANIAN} "Există deja o instalare pentru un singur utilizator."
+    LangString perUserInstall ${LANG_ROMANIAN} "Există o instalare pentru un singur utilizator."
+    LangString perMachineInstallExists ${LANG_ROMANIAN} "Există deja o instalare pentru toți utilizatorii."
+    LangString perMachineInstall ${LANG_ROMANIAN} "Există o instalare pentru toți utilizatorii."
+    LangString reinstallUpgrade ${LANG_ROMANIAN} "Se va reinstala sau actualiza."
+    LangString uninstall ${LANG_ROMANIAN} "Se va dezinstala."
+
+    ; Korean
+    LangString appCannotBeClosed ${LANG_KOREAN} "${PRODUCT_NAME}을(를) 닫을 수 없습니다. $\r$\n수동으로 닫은 다음 다시 시도를 눌러 계속하세요."
+    LangString decompressionFailed ${LANG_KOREAN} "파일 압축을 풀지 못했습니다. 설치 프로그램을 다시 실행해 주세요."
+    LangString uninstallFailed ${LANG_KOREAN} "이전 앱 파일을 제거하지 못했습니다. 설치 프로그램을 다시 실행해 주세요."
+    LangString appClosing ${LANG_KOREAN} "실행 중인 ${PRODUCT_NAME}을(를) 닫는 중..."
+
+    ; Simplified Chinese
+    LangString decompressionFailed ${LANG_SIMPCHINESE} "解压文件失败。请重新运行安装程序。"
+    LangString uninstallFailed ${LANG_SIMPCHINESE} "卸载旧应用文件失败。请重新运行安装程序。"
+    LangString appClosing ${LANG_SIMPCHINESE} "正在关闭运行中的 ${PRODUCT_NAME}..."
+
+    ; Polish
+    LangString appClosing ${LANG_POLISH} "Zamykanie uruchomionego programu ${PRODUCT_NAME}..."
+
+    ; Slovak
+    LangString appClosing ${LANG_SLOVAK} "Zatvára sa spustený program ${PRODUCT_NAME}..."
+    LangString freshInstallForCurrent ${LANG_SLOVAK} "Nová inštalácia len pre aktuálneho používateľa."
+    LangString perUserInstallExists ${LANG_SLOVAK} "Inštalácia pre jedného používateľa už existuje."
+    LangString perUserInstall ${LANG_SLOVAK} "Existuje inštalácia pre jedného používateľa."
+    LangString perMachineInstallExists ${LANG_SLOVAK} "Inštalácia pre všetkých používateľov už existuje."
+    LangString perMachineInstall ${LANG_SLOVAK} "Existuje inštalácia pre všetkých používateľov."
+    LangString reinstallUpgrade ${LANG_SLOVAK} "Prebehne opätovná inštalácia alebo aktualizácia."
+    LangString uninstall ${LANG_SLOVAK} "Prebehne odinštalovanie."
+
+    ; Hungarian
+    LangString appClosing ${LANG_HUNGARIAN} "A futó ${PRODUCT_NAME} bezárása..."
+
+    ; German
+    LangString appClosing ${LANG_GERMAN} "${PRODUCT_NAME} wird geschlossen..."
+
+    ; French
+    LangString appClosing ${LANG_FRENCH} "Fermeture de ${PRODUCT_NAME} en cours..."
+
+    ; Spanish
+    LangString appClosing ${LANG_SPANISHINTERNATIONAL} "Cerrando ${PRODUCT_NAME}..."
+
+    ; Brazilian Portuguese
+    LangString appClosing ${LANG_PORTUGUESEBR} "Fechando o ${PRODUCT_NAME} em execução..."
+
+    ; Italian
+    LangString appClosing ${LANG_ITALIAN} "Chiusura di ${PRODUCT_NAME} in esecuzione..."
+
+    ; Japanese
+    LangString appClosing ${LANG_JAPANESE} "実行中の${PRODUCT_NAME}を終了しています..."
+
+    ; Remaining messages absent from the NSIS catalogs
+    LangString decompressionFailed ${LANG_LATVIAN} "Neizdevās atspiest failus. Lūdzu, mēģiniet vēlreiz palaist instalēšanas programmu."
+    LangString uninstallFailed ${LANG_LATVIAN} "Neizdevās atinstalēt iepriekšējās lietojumprogrammas failus. Lūdzu, mēģiniet vēlreiz palaist instalēšanas programmu."
+    LangString appClosing ${LANG_UKRAINIAN} "Закриття запущеної програми ${PRODUCT_NAME}..."
+    LangString appClosing ${LANG_LITHUANIAN} "Uždaroma veikianti ${PRODUCT_NAME} programa..."
+    LangString appClosing ${LANG_LATVIAN} "Tiek aizvērta palaistā programma ${PRODUCT_NAME}..."
+    LangString decompressionFailed ${LANG_ESTONIAN} "Failide lahtipakkimine nurjus. Käivitage installiprogramm uuesti."
+    LangString uninstallFailed ${LANG_ESTONIAN} "Eelmise rakenduse failide desinstallimine nurjus. Käivitage installiprogramm uuesti."
+    LangString appClosing ${LANG_ESTONIAN} "Töötava ${PRODUCT_NAME} sulgemine..."
+    LangString decompressionFailed ${LANG_BELARUSIAN} "Не ўдалося распакаваць файлы. Паспрабуйце зноў запусціць праграму ўсталявання."
+    LangString uninstallFailed ${LANG_BELARUSIAN} "Не ўдалося выдаліць файлы старой праграмы. Паспрабуйце зноў запусціць праграму ўсталявання."
+    LangString appClosing ${LANG_BELARUSIAN} "Закрыццё запушчанай праграмы ${PRODUCT_NAME}..."
+    LangString appClosing ${LANG_ROMANIAN} "Se închide aplicația ${PRODUCT_NAME}..."
 !macroend
 
 ; --- Variables (installer only — the uninstaller reads from the registry) --
@@ -248,6 +452,24 @@ Var OptBrowser
             DeleteRegValue HKCU "Software\Classes\.${EXT}" ""
         ${EndIf}
     ${EndIf}
+!macroend
+
+; ========================================================================
+; preInit — installer language selection
+; ========================================================================
+; electron-builder's displayLanguageSelector shows the dialog in .onInit, which also
+; runs in the elevated copy started for a per-machine install, so the user was asked
+; twice. Ask only in the outer instance and copy its choice into the elevated one.
+; LangDLL preselects the OS language and stays hidden in silent mode.
+
+!macro preInit
+    !ifndef BUILD_UNINSTALLER
+        ${If} ${UAC_IsInnerInstance}
+            !insertmacro UAC_AsUser_GetGlobalVar $LANGUAGE
+        ${Else}
+            !insertmacro MUI_LANGDLL_DISPLAY
+        ${EndIf}
+    !endif
 !macroend
 
 ; ========================================================================

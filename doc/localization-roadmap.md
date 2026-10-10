@@ -1,6 +1,6 @@
 # Persephone in other languages — localization roadmap
 
-> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10; phase 2 is [EPIC-125](epics/EPIC-125.md), completed 2026-10-10; phase 3 is [EPIC-126](epics/EPIC-126.md), completed 2026-10-10; phase 4 is [EPIC-127](epics/EPIC-127.md), implemented 2026-10-11 and awaiting the user's review of the packs, a local test, and the boards publish. Each phase below is sized to become
+> Status: **accepted by the user, 2026-10-09.** Phase 1 is [EPIC-124](epics/EPIC-124.md), completed 2026-10-10; phase 2 is [EPIC-125](epics/EPIC-125.md), completed 2026-10-10; phase 3 is [EPIC-126](epics/EPIC-126.md), completed 2026-10-10; phase 4 is [EPIC-127](epics/EPIC-127.md), completed 2026-10-11; the boards publish follows the user's local test. Each phase below is sized to become
 > one epic; numbers are assigned when a phase moves to [active-work.md](active-work.md). Findings
 > are source-verified against the tree at commit `9fdd76e5` (v5.0.10 working branch); file
 > references are the seams a task document should start from.
