@@ -13,7 +13,7 @@ document: [EPIC-125](EPIC-125.md).
   titles and board permission lines keep an English field for scripts and MCP and translate only on
   screen; `untranslated()` marks deliberate English in UI positions.
 - **uikit defaults** come from one text table (`uikit/shared/uikit-text.ts`) filled at startup.
-- **Monaco (US-1664)** loads its own translations for the languages it ships; never Russian.
+- **Monaco (US-1664)** loads its own translations for the languages it ships, except Russian (no built-in pack).
 - **Completion.** `/review` (two module-scope `t()` calls fixed), `/document`, `/userdoc` run by
   Codex. Task folders kept until the localization roadmap is finished.
 
@@ -25,8 +25,8 @@ dialogs. No translated packs ship yet; they are phase 4. Epic document: [EPIC-12
 
 - **i18n core (US-1647).** Typed English catalog in `src/shared/i18n/en/`, `t()` with `{placeholders}`
   and CLDR plurals, `<code>.lang.json` packs layered user → built-in → English, generated `en-XA`
-  pseudo-locale. Russian is blocked by code and name (D15); Russian words and Russian-only letters
-  in non-built-in packs are scrambled (D16).
+  pseudo-locale. Russian was blocked by code and name (D15) and scrambled in non-built-in packs
+  (D16); both were removed on 2026-10-10 (US-1666), and Russian simply has no built-in pack.
 - **Stable identity (US-1648).** Dialog buttons have ids separate from labels (`button` +
   `buttonLabel`), menu items take ids, ai-vision resolves by id or label.
 - **Language setting (US-1649).** Settings > General > Language (Automatic, English, packs with

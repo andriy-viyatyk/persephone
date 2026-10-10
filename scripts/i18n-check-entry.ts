@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import process from "node:process";
 import { errMessage } from "../src/shared/utils";
 import { englishCatalog } from "../src/shared/i18n/en";
-import { filterLanguagePack } from "../src/shared/i18n/filter-pack";
 import { hashEnglishMessage } from "../src/shared/i18n/hash";
 import { createPseudoLocalePack } from "../src/shared/i18n/pseudo-locale";
 import { validateLanguagePack } from "../src/shared/i18n/validate-pack";
@@ -44,26 +43,9 @@ async function readPackFile(file: PackFile): Promise<LoadedPack> {
     }
 }
 
-function deepEqual(left: unknown, right: unknown): boolean {
-    if (left === right) return true;
-    if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
-    if (Array.isArray(left) || Array.isArray(right)) {
-        return Array.isArray(left) && Array.isArray(right)
-            && left.length === right.length
-            && left.every((value, index) => deepEqual(value, right[index]));
-    }
-    const leftRecord = left as Record<string, unknown>;
-    const rightRecord = right as Record<string, unknown>;
-    const leftKeys = Object.keys(leftRecord).sort();
-    const rightKeys = Object.keys(rightRecord).sort();
-    return leftKeys.length === rightKeys.length
-        && leftKeys.every((key, index) => key === rightKeys[index] && deepEqual(leftRecord[key], rightRecord[key]));
-}
-
 function reportPack(
     filename: string,
     loaded: LoadedPack,
-    builtIn: boolean,
     fatal: { value: boolean },
 ): void {
     if (loaded.error) {
@@ -94,14 +76,6 @@ function reportPack(
     console.log(`${filename}: ${packKeys.size}/${englishKeys.length} translated messages.`);
     if (missing.length > 0) console.log(`  Missing (${missing.length}): ${missing.join(", ")}`);
     if (stale.length > 0) console.log(`  Stale source hashes (${stale.length}): ${stale.join(", ")}`);
-
-    if (builtIn) {
-        const filtered = filterLanguagePack(pack);
-        if (!deepEqual(filtered.messages, pack.messages)) {
-            console.error(`INVALID ${filename}: D16 would change one or more built-in messages.`);
-            fatal.value = true;
-        }
-    }
 }
 
 function validatePseudoLocale(fatal: { value: boolean }): void {
@@ -144,14 +118,14 @@ export async function runI18nCheck(arguments_: readonly string[]): Promise<void>
     }
 
     if (builtIns.length === 0) console.log("No built-in language pack files found in assets/languages/.");
-    for (const file of builtIns) reportPack(file.filename, await readPackFile(file), true, fatal);
+    for (const file of builtIns) reportPack(file.filename, await readPackFile(file), fatal);
 
     if (arguments_[0]) {
         const userDirectory = resolve(process.cwd(), arguments_[0]);
         try {
             const userPacks = await listPackFiles(userDirectory);
             if (userPacks.length === 0) console.log(`No user language pack files found in ${userDirectory}.`);
-            for (const file of userPacks) reportPack(file.filename, await readPackFile(file), false, fatal);
+            for (const file of userPacks) reportPack(file.filename, await readPackFile(file), fatal);
         } catch (error) {
             console.error(`Could not read user language directory: ${errMessage(error)}`);
             fatal.value = true;

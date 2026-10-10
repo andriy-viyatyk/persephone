@@ -14,7 +14,7 @@ import { setUikitText } from "../uikit/shared/uikit-text";
 
 const nodeFs = require("fs") as typeof import("fs");
 
-function readDirectory(directory: string, builtIn: boolean): LanguagePack[] {
+function readDirectory(directory: string): LanguagePack[] {
     try {
         if (!nodeFs.existsSync(directory)) return [];
         const files = nodeFs.readdirSync(directory, { withFileTypes: true });
@@ -35,7 +35,7 @@ function readDirectory(directory: string, builtIn: boolean): LanguagePack[] {
                 return [];
             }
         });
-        const result = loadLanguagePacks(packFiles, builtIn);
+        const result = loadLanguagePacks(packFiles);
         result.warnings.forEach((warning) => console.warn(`[i18n] ${warning}`));
         return result.packs;
     } catch (error) {
@@ -75,8 +75,8 @@ function readStartupArguments(): { preferred: string[]; assetDirectory: string }
 }
 
 const startupArguments = readStartupArguments();
-const builtInPacks = readDirectory(startupArguments.assetDirectory, true);
-const userPacks = readDirectory(fpJoin(process.env.APPDATA, "persephone", "data", "languages"), false);
+const builtInPacks = readDirectory(startupArguments.assetDirectory);
+const userPacks = readDirectory(fpJoin(process.env.APPDATA, "persephone", "data", "languages"));
 const allPacks = [...builtInPacks, ...userPacks];
 const requestedLocale = readStartupLanguage();
 const activeLocale = resolveLocale(requestedLocale, startupArguments.preferred, allPacks);
@@ -117,8 +117,8 @@ export async function refreshLanguagePacks(): Promise<RefreshedLanguagePacks> {
         api.getCommonFolder("userData"),
     ]);
     return {
-        builtInPacks: readDirectory(assetDirectory, true),
-        userPacks: readDirectory(fpJoin(userDataDirectory, "data", "languages"), false),
+        builtInPacks: readDirectory(assetDirectory),
+        userPacks: readDirectory(fpJoin(userDataDirectory, "data", "languages")),
         preferredLanguages: [...startupArguments.preferred],
     };
 }

@@ -50,7 +50,8 @@ The ones this epic implements:
 - **D8** One `core/utils/format.ts` over `Intl`; data dates (file names, logs) stay ISO.
 - **D11** Local ESLint rule for literals in UI positions, warning mode in this epic.
 - **D12** Hidden `en-XA` pseudo-language generated from English.
-- **D16** Russian words in non-built-in packs are scrambled at load (roadmap D16).
+- **D16** Russian words in non-built-in packs are scrambled at load (roadmap D16). *Withdrawn
+  2026-10-10 (US-1666) with the D15 block below: the code was removed; Russian just has no built-in pack.*
 - **D15** Russian is never supported: the shared pack validator rejects `ru` / `ru-*` codes and
   the names `Russian`, `Русский`, `Руский` (case-insensitive), for user and board packs alike.
 

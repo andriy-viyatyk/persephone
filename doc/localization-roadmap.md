@@ -166,47 +166,15 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
   an agent from the English catalog with key context (D1 allows a translator note per key) and are
   marked "community review welcome" in the Language Editor. Ukrainian is reviewed by the user
   before release.
-- **D15 — Russian is not supported, and cannot be added (user decision, 2026-10-09).** Ukraine is
-  at war with Russia. Persephone ships no Russian pack, never loads Monaco's
-  `nls.messages.ru.js`, and the pack validator rejects — with a clear message, at load, save and
-  import — any pack whose `code` is `ru` or starts with `ru-`, or whose `name` or `englishName` is,
-  case-insensitively and after trimming, `Russian`, `Русский` or `Руский`. The rule lives in the
-  shared pack validator, so the loader, `app.languages.save`, the bridge and the Language Editor
-  all enforce it. `"auto"` on a Russian OS falls back to English. The same rule applies to board
-  packs (D10): a board's `lang/ru*.json` is ignored.
-- **D16 — Russian text is scrambled even under another name (user decision, 2026-10-09).** D15 stops
-  a pack that says it is Russian; D16 covers one that does not. A deny-list of Russian UI words is
-  matched against every message of every pack that is not built in (user packs, board packs), and
-  each match is replaced with unreadable characters (e.g. `▒▒▒▒`) when the pack loads, so the
-  label is visibly broken rather than silently Russian. Built-in packs are not filtered at runtime;
-  they are reviewed instead.
-  - **The list is predicted from our own catalog.** Once phase 2 has extracted every string, an
-    agent translates the English catalog into Russian, counts word frequency, and keeps the most
-    frequent words (roughly the top 300). A small seed list of common UI words (open, save, delete,
-    close, settings, search, cancel, copy, paste, create, …) ships with US-1647 so the mechanism
-    exists from phase 1.
-  - **No false hits on Ukrainian or Belarusian.** Most risk is shared vocabulary: `Файл`, `Редактор`,
-    `Вид`, `Текст` and many more are also Ukrainian, Belarusian, Bulgarian or Serbian words. A word
-    enters the list only if it is Russian-only: it must not occur in any built-in pack (Ukrainian
-    and Belarusian above all) or in a Bulgarian / Serbian / Macedonian translation of the same
-    catalog. `npm run i18n:check` fails if any built-in pack would trip the filter, which catches a
-    bad list entry before release.
-  - **Matching** is whole-word and case-insensitive, after normalizing `ё` → `е` and mapping Latin
-    look-alike letters (`a e o p c x y`, …) to Cyrillic, so swapping one letter for its Latin twin
-    does not slip through. The list is stored as hashes of the normalized words, so it does not
-    have to sit in the source as plain Russian text.
-  - **Russian-only letters are scrambled too.** The letters Russian has and Ukrainian does not are
-    `ъ`, `ы`, `э`, `ё` (the "yo" sound Ukrainian writes as `йо`/`ьо`). They cannot be scrambled
-    unconditionally, because Belarusian (built in) uses `ы`, `э`, `ё`, and Bulgarian uses `ъ`. The
-    rule is a signature instead: a pack is marked as Russian text when any of its messages contains
-    one of `ы э ё` **and** one of `и щ ъ` — a combination that never occurs in Ukrainian (no
-    `ы э ё`), Belarusian (no `и щ ъ`) or Bulgarian, Serbian, Macedonian (no `ы э ё`). In a marked
-    pack every `ъ`, `ы`, `э`, `ё` (either case) in every message becomes `▒`, on top of the word
-    list. Known casualties, accepted: Cyrillic Central Asian languages (Kazakh, Kyrgyz, Tatar…) also
-    combine these letters and would be marked if someone made a pack for them.
-  - **Limits, accepted:** a determined translator can still use synonyms or spelling tricks, and
-    Persephone is MIT-licensed, so a fork can remove the filter. The goal is that Russian does not
-    work out of the box or through the Language Editor, not that it is impossible.
+- **D15 — No built-in Russian pack (user decision, 2026-10-09; revised 2026-10-10).** Persephone
+  ships no Russian pack and does not bundle Monaco's `nls.messages.ru.js`. Nothing blocks Russian:
+  a user who wants it can write a `ru.lang.json` pack, as for any other language, and the loader
+  treats it like any other pack. *Revised 2026-10-10:* the original D15 also rejected packs by
+  code and name, and D16 scrambled Russian words and letters in non-built-in packs. Both were
+  removed: many people who are not Russian speak Russian, and an app that breaks their text would
+  draw well-deserved criticism. Not shipping a pack is enough.
+- **D16 — Withdrawn 2026-10-10.** (Was: scramble Russian words and letters in user and board packs.)
+  See D15.
 
 ## 4. Built-in languages
 
@@ -231,7 +199,7 @@ pinned rail 240px (`ui/sidebar/PinnedRail.css:19`), dialogs at `width: 520`
 | `ja` | 日本語 (Japanese) | large developer audience | yes |
 | `ko` | 한국어 (Korean) | large developer audience | yes |
 
-Eighteen languages: Ukrainian and all its neighbours except Russia (D15), the Baltic states, and the
+Eighteen languages: Ukrainian and all its neighbours except Russia (no built-in pack, D15), the Baltic states, and the
 largest developer audiences. Any other language is a user pack away (Phase 4).
 
 ## 5. Phases
@@ -292,10 +260,7 @@ where a board has almost no text.
    localized (Phase 3).
 4. **Built-in packs:** the seventeen non-English languages of §4, drafted by an agent per D14,
    checked with `npm run i18n:check`, Ukrainian reviewed by the user.
-5. **Russian deny-list (D16):** translate the full English catalog into Russian (and into
-   Bulgarian, Serbian and Macedonian as the exclusion set), keep the ~300 most frequent Russian-only
-   words, store them hashed, and make `npm run i18n:check` fail if a built-in pack trips the filter.
-6. **Installer languages:** `electron-builder.yml` `nsis` gets `multiLanguageInstaller` and the
+5. **Installer languages:** `electron-builder.yml` `nsis` gets `multiLanguageInstaller` and the
    matching `installerLanguages`.
 
 ## 6. Out of scope

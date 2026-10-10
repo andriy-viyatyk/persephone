@@ -64,18 +64,12 @@ translations whose English source changed.
 English catalog. Use it to expose missed extraction and longer-label layout issues. It is generated
 validation data, not a checked-in translated pack.
 
-## D15 and D16 safeguards
+## Russian (D15)
 
-D15 rejects packs whose code is `ru` or starts with `ru-`, and packs whose localized or English
-language name is a blocked Russian name. No built-in Russian pack is allowed.
-
-D16 runs on non-built-in packs in [`load-packs.ts`](../../src/shared/i18n/load-packs.ts), through
-[`filter-pack.ts`](../../src/shared/i18n/filter-pack.ts). It detects blocked whole words by
-hashing normalized words and replaces hash matches. It also checks the message set for a Russian
-letter signature: when both marker letters and companion letters occur outside placeholders, it
-scrambles the configured Russian letters throughout that user pack. Built-in packs are not
-filtered at runtime; they must pass the checker’s no-false-hit gate, which rejects a built-in pack
-if applying D16 would change any message.
+Persephone ships no built-in Russian pack, and Monaco's Russian messages are not in the
+`monaco-nls.ts` allow-list. Nothing in the loader or validator rejects or alters a Russian user
+pack; it loads like any other pack. Roadmap D16 (scrambling Russian text) was withdrawn on
+2026-10-10, so do not add code that inspects a pack's language or text.
 
 ## Phase 2 reference
 
@@ -116,8 +110,8 @@ overrides once with `setUikitText()` at startup. Explicit caller-provided text r
 
 Monaco NLS uses the explicit language allow-list in `src/renderer/i18n/monaco-nls.ts` (`cs`, `de`,
 `es`, `fr`, `it`, `ja`, `ko`, `pl`, `pt-BR`, `tr`, `zh-CN`, `zh-TW`). Unsupported languages keep
-Monaco's English widgets; never construct a message-module path from a locale or add Russian to the
-list.
+Monaco's English widgets; never construct a message-module path from a locale. Russian is not in the
+list because no Russian pack ships (D15).
 
 Keep each sentence in one catalog message with placeholders; do not assemble sentences from
 translated fragments. Use CLDR plural category objects for counts. Every plural form must contain
@@ -126,5 +120,5 @@ the same placeholders, which `npm run i18n:check` enforces for `{count}`.
 Resolve `t()` while building view props or rendering. Module-level translated constants can capture
 the English fallback before the active language pack is ready. The pack validator in
 [`validate-pack.ts`](../../src/shared/i18n/validate-pack.ts) checks the pack filename/code, known
-keys, message forms, placeholders, and D15 restrictions. Keep keys in the current flat shape and
+keys, message forms and placeholders. Keep keys in the current flat shape and
 include hashes for translated entries when maintaining a pack.

@@ -11,7 +11,7 @@ import type { LanguagePack } from "../shared/i18n/pack";
 import { getAssetPath, getDataFolder } from "./utils";
 import { rebuildTray } from "./tray-setup";
 
-function readPacks(directory: string, builtIn: boolean): LanguagePack[] {
+function readPacks(directory: string): LanguagePack[] {
     try {
         if (!fs.existsSync(directory)) return [];
         const files = fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -24,7 +24,7 @@ function readPacks(directory: string, builtIn: boolean): LanguagePack[] {
                 return [];
             }
         });
-        const result = loadLanguagePacks(files, builtIn);
+        const result = loadLanguagePacks(files);
         result.warnings.forEach((warning) => console.warn(`[i18n] ${warning}`));
         return result.packs;
     } catch (error) {
@@ -34,8 +34,8 @@ function readPacks(directory: string, builtIn: boolean): LanguagePack[] {
 }
 
 export function setMainLocale(reportedCode: string): void {
-    const builtInPacks = readPacks(getAssetPath("languages"), true);
-    const userPacks = readPacks(path.join(getDataFolder(), "languages"), false);
+    const builtInPacks = readPacks(getAssetPath("languages"));
+    const userPacks = readPacks(path.join(getDataFolder(), "languages"));
     const available = [...builtInPacks, ...userPacks];
     const locale = resolveLocale(reportedCode, [reportedCode], available);
     const builtInPack = builtInPacks.find((pack) => pack.code.toLowerCase() === locale.toLowerCase());

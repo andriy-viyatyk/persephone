@@ -2,16 +2,6 @@ import { englishCatalog, type MessageKey } from "./en";
 import type { EnglishMessage } from "./en/common";
 import type { LanguagePack, PackMessage } from "./pack";
 
-// D15 blocked names, lowercase (names are compared lowercased), written as escapes so the source
-// holds no Russian text.
-const blockedNames = ["russian", "русский", "руский"];
-
-export function isBlockedLanguagePack(pack: { code?: unknown; name?: unknown; englishName?: unknown }): boolean {
-    const code = typeof pack.code === "string" ? pack.code.trim().toLowerCase() : "";
-    if (code === "ru" || code.startsWith("ru-")) return true;
-    return [pack.name, pack.englishName].some((name) => typeof name === "string" && blockedNames.includes(name.trim().toLowerCase()));
-}
-
 function placeholders(message: string): string[] {
     return [...message.matchAll(/\{([\w.-]+)\}/g)].map((match) => match[1]).sort();
 }
@@ -40,7 +30,6 @@ export function validateLanguagePack(input: unknown, filename: string): PackVali
     const warnings: string[] = [];
     if (!input || typeof input !== "object" || Array.isArray(input)) return { warnings: [`${filename}: expected an object.`] };
     const candidate = input as Record<string, unknown>;
-    if (isBlockedLanguagePack(candidate)) return { warnings: [`${filename}: rejected by D15 because the language code or name is blocked.`] };
     const code = candidate.code;
     const match = filename.match(/^(.+)\.lang\.json$/i);
     if (!match || typeof code !== "string" || match[1].toLowerCase() !== code.toLowerCase()) {
