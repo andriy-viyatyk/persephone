@@ -163,6 +163,12 @@ export interface BoardEditorState extends EditorStateBase {
     toolbarTextFrameGeneration?: number;
     /** Prevents a restored board from handing a private claimed HTTP source back to the board. */
     sourceRestoreBlocked?: boolean;
+    /** Muted state the board reported with `persephone.page.setMuted()`; the page tab draws its
+     *  mute button from it (the same field the Video Player and Browser use). TRANSIENT. */
+    pageMuted?: boolean;
+    /** Frame generation that asked for the page tab's mute button; the button shows while it is
+     *  set. TRANSIENT: cleared with the frame and on restore, never persisted. */
+    muteButtonFrameGeneration?: number;
 }
 
 const BOARD_PAGE_STATE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}(?![\s\S])/;
@@ -645,6 +651,39 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.requestBoardSave = undefined;
     }
 
+    private muteToggleHandler: (() => void) | undefined;
+
+    /** Shows the page tab's mute button in `muted` state (`null` removes it). A click on it runs
+     *  `onToggle`, which asks the board to flip its mute; the board then reports the new state. */
+    setBoardMuted(muted: boolean | null, frameGeneration: number, onToggle: () => void): void {
+        if (muted === null) {
+            this.clearMuteButtonForFrame(frameGeneration);
+            return;
+        }
+        this.muteToggleHandler = onToggle;
+        const s = this.state.get();
+        if (s.pageMuted === muted && s.muteButtonFrameGeneration === frameGeneration) return;
+        this.state.update((st) => {
+            st.pageMuted = muted;
+            st.muteButtonFrameGeneration = frameGeneration;
+        });
+    }
+
+    clearMuteButtonForFrame(frameGeneration: number): void {
+        if (this.state.get().muteButtonFrameGeneration !== frameGeneration) return;
+        this.muteToggleHandler = undefined;
+        this.state.update((s) => {
+            s.pageMuted = undefined;
+            s.muteButtonFrameGeneration = undefined;
+        });
+    }
+
+    /** Read by the page tab: present only while the board has asked for the mute button. */
+    get toggleMuteAll(): (() => void) | undefined {
+        if (this.state.get().muteButtonFrameGeneration === undefined) return undefined;
+        return this.muteToggleHandler;
+    }
+
     setBoardModified(modified: boolean): void {
         if (this.state.get().modified === modified) return;
         this.state.update((state) => { state.modified = modified; });
@@ -1088,6 +1127,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             statusText: undefined,
             toolbarText: undefined,
             toolbarTextFrameGeneration: undefined,
+            pageMuted: undefined,
+            muteButtonFrameGeneration: undefined,
             contentPath: undefined,
             sourceRestoreBlocked: s.sourceRestoreBlocked === true ? true : undefined,
             modified: false,
@@ -1162,6 +1203,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         }
         this.statusBarFrameGeneration = undefined;
         this.liveStatusBarElements = [];
+        // The tab mute button belongs to a live frame; the board asks for it again after loading.
+        this.muteToggleHandler = undefined;
+        if (s.pageMuted !== undefined || s.muteButtonFrameGeneration !== undefined) {
+            this.state.update((st) => {
+                st.pageMuted = undefined;
+                st.muteButtonFrameGeneration = undefined;
+            });
+        }
         // Same for a materialized content path carried in from a pre-fix persisted blob: the cache
         // file is gone (or stale), so force a re-resolve on the next `ensureContentPath()`.
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
@@ -1371,7 +1420,10 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.liveToolbarElements = [];
         this.statusBarFrameGeneration = undefined;
         this.liveStatusBarElements = [];
+        this.muteToggleHandler = undefined;
         this.state.update((s) => {
+            s.pageMuted = undefined;
+            s.muteButtonFrameGeneration = undefined;
             s.toolbarTextFrameGeneration = undefined;
             s.toolbarText = undefined;
         });

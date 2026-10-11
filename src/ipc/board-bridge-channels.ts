@@ -457,6 +457,10 @@ export interface BoardBusyMsg { __persephone: "board:busy"; busy: boolean }
 export interface BoardSetContentMsg { __persephone: "board:setContent"; content: string }
 export interface BoardSaveMsg { __persephone: "board:save" }
 export interface BoardSetModifiedMsg { __persephone: "board:setModified"; modified: boolean }
+/** Board -> host: show the page tab's mute button in this state (`null` removes it). */
+export interface BoardSetMutedMsg { __persephone: "board:setMuted"; muted: boolean | null }
+/** Host -> board: the user clicked the page tab's mute button. */
+export interface BoardMuteToggleMsg { __persephone: "page:muteToggle" }
 export interface BoardSaveHandlerMsg { __persephone: "board:saveHandler"; handlerId: number; registered: boolean }
 /** `discard: true` tells the board the user chose Don't Save, so it can drop drafts kept for app restarts. */
 export interface BoardSaveRequestMsg { __persephone: "board:saveRequest"; requestId: number; discard?: boolean }
@@ -542,6 +546,7 @@ export type BoardToHostMsg =
     | BoardSetContentMsg
     | BoardSaveMsg
     | BoardSetModifiedMsg
+    | BoardSetMutedMsg
     | BoardSaveHandlerMsg
     | BoardSaveResultMsg
     | BoardSetStateMsg
@@ -807,7 +812,8 @@ export type BoardHostFrameMsg =
     | BoardSaveHandlerSyncMsg
     | BoardNavigationReturnMsg
     | BoardToolbarControlEventMsg
-    | BoardStatusBarActionMsg;
+    | BoardStatusBarActionMsg
+    | BoardMuteToggleMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

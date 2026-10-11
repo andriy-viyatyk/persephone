@@ -15,7 +15,8 @@ The board bridge is version **1.38.0** in this build. Check `persephone.version`
 bridge member that may not exist in an older app. Bridge `1.38.0` adds paged folder listing,
 confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
 and session read access to delivered source files. Confirmation dialogs use the manifest name when
-available. It also adds `placement: "start"` for toolbar buttons and menus.
+available. It also adds `placement: "start"` for toolbar buttons and menus, a clear button on
+toolbar inputs, and the page tab mute button (`persephone.page.setMuted()` / `onMuteToggle()`).
 Bridge `1.37.0` adds source-panel snapshots as
 `persephone.source.initialSourceContext` and `context` on `source.onOpen()` events. The initial
 snapshot is restored with the page; runtime snapshots are transient. Bridge `1.36.0` adds registration-time
@@ -1218,6 +1219,25 @@ icons are drawn in the current theme's icon colour: request again from `persepho
 The CSP blocks remote requests made directly from the board frame; use `persephone.fetch()` for
 intentional remote HTTP requests, with `network: "internet"` for public services or `network: "full"`
 for local/LAN access.
+
+### Tab mute button
+
+A board that plays sound can show the page tab's mute button, like the built-in Video Player
+(bridge `1.38.0`, main frame only):
+
+```js
+persephone.page.setMuted(audio.muted);              // show the button in the board's state
+persephone.page.onMuteToggle(() => {                 // the user clicked it
+  audio.muted = !audio.muted;
+});
+audio.addEventListener("volumechange", () => persephone.page.setMuted(audio.muted));
+```
+
+`persephone.page.setMuted(muted: boolean | null)` shows the button as muted or unmuted; `null`
+removes it. Persephone only draws the state the board reports: a click calls the
+`onMuteToggle(callback)` handlers (which returns an unsubscribe function), and the board flips its
+own mute and reports the new state. Report every change, including ones from the board's own
+controls, so the tab and the board always agree. The button goes away with the frame on reload.
 
 ### Secondary views & shared state
 

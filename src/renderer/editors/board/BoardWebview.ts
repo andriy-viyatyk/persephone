@@ -37,6 +37,7 @@ import type {
     BoardToolbarControlEventMsg,
     BoardToolbarControlPatch,
     BoardStatusBarActionMsg,
+    BoardMuteToggleMsg,
     BoardStatusBarPatch,
     BoardToHostMsg,
     BoardHostFrameMsg,
@@ -238,6 +239,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         "board:setModified": {
             gate: { kind: "mainTrusted", rejectionLog: "Ignored dirty-state update from a secondary or unavailable board frame." },
             handle: (message, current) => current.model.setBoardModified(message.modified === true),
+        },
+        "board:setMuted": {
+            gate: { kind: "mainTrusted", rejectionLog: "Ignored tab mute state from a secondary or unavailable board frame." },
+            handle: (message, current) => {
+                const muted = message.muted === null ? null : message.muted === true;
+                current.model.setBoardMuted(muted, current.generation, () => this.sendMuteToggle(current.generation));
+            },
         },
         "board:saveHandler": {
             gate: { kind: "mainTrusted", rejectionLog: "Ignored Save handler registration from a secondary or unavailable board frame." },
@@ -479,6 +487,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (!isBoardPermitted(this.props.boardRoot)) {
                 this.props.model.clearStatusBarItemsForFrame(this.generation);
                 this.props.onStatusBarClear?.(this.generation);
+                if (this.isMain) this.props.model.clearMuteButtonForFrame(this.generation);
                 this.fetchBridge.dispose();
                 this.rejectPendingAiVision(new Error("The board is no longer trusted."));
                 this.unregisterCapabilityFrame();
@@ -503,6 +512,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
+        if (this.isMain) this.props.model.clearMuteButtonForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
         this.props.onStatusBarClear?.(retiredGeneration);
         this.generation++;
@@ -783,6 +793,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.clearToolbarControlsForFrame(retiredGeneration);
         this.props.model.clearStatusBarItemsForFrame(retiredGeneration);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(retiredGeneration);
+        if (this.isMain) this.props.model.clearMuteButtonForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
         this.props.onStatusBarClear?.(retiredGeneration);
         // The reloaded frame restarts its request ids, so its old fetches must not survive.
@@ -971,6 +982,17 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
             || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
         const message: BoardStatusBarActionMsg = { __persephone: "statusBar:action", id: event.id };
+        try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
+    }
+
+    /** Tell the current main board frame that the page tab's mute button was clicked. */
+    private sendMuteToggle(generation: number): void {
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
+            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
+        const message: BoardMuteToggleMsg = { __persephone: "page:muteToggle" };
         try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
     }
 
@@ -1212,6 +1234,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.model.clearStatusBarItemsForFrame(this.generation);
         this.props.onStatusBarClear?.(this.generation);
         if (this.isMain) this.props.model.clearToolbarTextForFrame(this.generation);
+        if (this.isMain) this.props.model.clearMuteButtonForFrame(this.generation);
         this.rejectPendingCapability("crashed", "The board frame failed to load.");
         const pageId = this.props.model.page?.id;
         if (pageId) {

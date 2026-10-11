@@ -59,6 +59,7 @@ import type {
     BoardStatusBarSetMsg,
     BoardStatusBarUpdateMsg,
     BoardStatusBarActionMsg,
+    BoardMuteToggleMsg,
     BoardSaveRequestMsg,
     BoardSaveHandlerSyncMsg,
     BoardSaveResultMsg,
@@ -880,6 +881,7 @@ interface PersephoneToolbarActionEvent {
 }
 const toolbarActionCbs = new Set<(event: PersephoneToolbarActionEvent) => void>();
 const statusBarActionCbs = new Set<(event: { id: string }) => void>();
+const muteToggleCbs = new Set<() => void>();
 
 function navigationReturnUrlRpc(): Promise<string> {
     return hostRequest({ __persephone: "navigation:createReturnUrl" }, "navigation:returnUrl", (reply) => {
@@ -1521,6 +1523,15 @@ onHostMessage((event) => {
     }
 });
 
+onHostMessage((event) => {
+    const data = event.data as BoardMuteToggleMsg | undefined;
+    if (!data || data.__persephone !== "page:muteToggle") return;
+    for (const callback of muteToggleCbs) {
+        try { callback(); }
+        catch (error: unknown) { console.error("persephone.page.onMuteToggle callback error:", error); }
+    }
+});
+
 // Capability request delivered to an ALREADY-OPEN board page — renderer → board.
 // The initial request of a page arrives on `BoardPortInitMsg` instead, because the page is
 // created for it; every later request reuses this frame and arrives here. Without this
@@ -1801,6 +1812,17 @@ function createHandle(
     page: {
         setModified(modified: boolean): void {
             window.parent.postMessage({ __persephone: "board:setModified", modified: modified === true }, hostPostTarget);
+        },
+        /** Show the page tab's mute button in this state, like the Video Player's; `null` removes it.
+         *  Call it again whenever the board's own mute changes so the tab stays in step. */
+        setMuted(muted: boolean | null): void {
+            window.parent.postMessage({ __persephone: "board:setMuted", muted: muted === null ? null : muted === true }, hostPostTarget);
+        },
+        /** Run when the user clicks the page tab's mute button; flip the mute and call setMuted. */
+        onMuteToggle(callback: () => void): () => void {
+            if (typeof callback !== "function") throw new TypeError("persephone.page.onMuteToggle expects a function.");
+            muteToggleCbs.add(callback);
+            return () => { muteToggleCbs.delete(callback); };
         },
     },
 
