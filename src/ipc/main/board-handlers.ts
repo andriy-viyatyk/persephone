@@ -37,6 +37,9 @@ export type BoardEndpoint =
     | Endpoint.setBoardTrust
     | Endpoint.getBoardTrustPaths
     | Endpoint.getBoardPermissionGrants
+    | Endpoint.getBoardFileAccessGrants
+    | Endpoint.revokeBoardFileAccessGrant
+    | Endpoint.grantBoardSourceReads
     | Endpoint.getBoardMcpEndpoint
     | Endpoint.authorizeBoardFilePath
     | Endpoint.bindBoardSessionSource
@@ -134,6 +137,22 @@ export function initBoardHandlers(): void {
             ...(manifestChanged ? { manifestChanged: true } : {}),
             canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
         }));
+    });
+    bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
+        return (await import("../../main/board-trust-service")).boardTrustService.getFileAccessGrants(boardRoot);
+    });
+    bindEndpoint(Endpoint.revokeBoardFileAccessGrant, async (_event: IpcMainEvent, boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> => {
+        if (kind !== "folder" && kind !== "file") throw new TypeError("Invalid board file-access grant kind.");
+        await (await import("../../main/board-trust-service")).boardTrustService.revokeFileAccessGrant(boardRoot, kind, canonicalPath);
+    });
+    bindEndpoint(Endpoint.grantBoardSourceReads, async (_event: IpcMainEvent, boardRoot: string, sourcePaths: string[], contextPaths: string[] = []): Promise<void> => {
+        const { boardTrustService } = await import("../../main/board-trust-service");
+        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+        if (!permissions) throw new Error("This board is not trusted.");
+        const mode = permissions.kind === "legacy" ? "full" : permissions.flags.fileSystem;
+        await (await import("../../main/board-file-access")).grantBoardSourceReads(
+            boardRoot, sourcePaths, mode === "board" ? contextPaths : [],
+        );
     });
     bindEndpoint(Endpoint.getBoardMcpEndpoint, async (): Promise<string> => {
         return (await import("../../main/mcp-http-server")).getMcpUrl();

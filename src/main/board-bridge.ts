@@ -29,6 +29,7 @@ import {
     MessagePortMain,
     WebContents,
     clipboard,
+    dialog,
     nativeImage,
 } from "electron";
 import {
@@ -43,6 +44,8 @@ import {
     OpenFileDialogParams,
     OpenFolderDialogParams,
     SaveFileDialogParams,
+    BoardFolderEntry,
+    BoardFolderListOptions,
 } from "../ipc/board-bridge-channels";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
 import { EventEndpoint } from "../ipc/api-types";
@@ -76,10 +79,156 @@ import {
 } from "./board-storage";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
-import { boardPermissionError } from "../shared/board-manifest-utils";
-import { recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
+import { BOARD_MANIFEST_FILE, boardPermissionError } from "../shared/board-manifest-utils";
+import { isDeliveredSourceFile, isDialogPickedPath, recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
+import { t } from "../shared/i18n/t";
+
+interface FolderCursor { root: string; boardRoot: string; boardId: string; entries: BoardFolderEntry[]; offset: number; expires: number; truncated: boolean }
+const folderCursors = new Map<string, FolderCursor>();
+const MAX_FOLDER_PAGE_SIZE = 1000;
+const MAX_FOLDER_RESULTS = 100000;
+const FOLDER_CURSOR_TTL_MS = 5 * 60 * 1000;
+
+class BoardRpcError extends Error {
+    constructor(readonly code: string, message: string) { super(message); this.name = "BoardRpcError"; }
+}
+
+function rpcFailure(code: string, message: string): BoardRpcError { return new BoardRpcError(code, message); }
+
+function fileAccessError(error: unknown): Error & { code: string } {
+    const existingCode = (error as { code?: unknown } | null)?.code;
+    if (typeof existingCode === "string") return error as Error & { code: string };
+    const code = errMessage(error).startsWith("permission-denied:")
+        ? "permission-denied"
+        : existingCode === "ENOENT" ? "not-found" : "io-error";
+    return Object.assign(error instanceof Error ? error : new Error(errMessage(error)), { code });
+}
+
+async function boardName(entry: BoardPortEntry): Promise<string> {
+    try {
+        const content = await fs.promises.readFile(path.join(entry.root, BOARD_MANIFEST_FILE), "utf8");
+        const manifest: unknown = JSON.parse(content);
+        if (manifest && typeof manifest === "object" && !Array.isArray(manifest)) {
+            const name = (manifest as { name?: unknown }).name;
+            if (typeof name === "string" && name.trim()) return name.trim();
+        }
+    } catch { /* Use the folder name when the board has no readable manifest name. */ }
+    return path.basename(entry.root) || entry.root;
+}
+
+async function getBoardFileAccess(entry: BoardPortEntry, requestedPath: unknown): Promise<{ read: boolean; write: boolean }> {
+    if (typeof requestedPath !== "string" || requestedPath.trim().length === 0) {
+        throw rpcFailure("invalid-argument", "A file path is required.");
+    }
+    const grant = await boardTrustService.getGrantedPermissions(entry.root);
+    if (!grant) return { read: false, write: false };
+    const canAccess = async (intent: "read" | "write"): Promise<boolean> => {
+        try {
+            await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent });
+            return true;
+        } catch (error: unknown) {
+            if (errMessage(error).startsWith("permission-denied:")) return false;
+            if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return false;
+            throw error;
+        }
+    };
+    const [read, write] = await Promise.all([canAccess("read"), canAccess("write")]);
+    return { read, write };
+}
+
+function parseFolderOptions(value: unknown): Required<Pick<BoardFolderListOptions, "recursive" | "limit">> & Pick<BoardFolderListOptions, "masks" | "cursor"> {
+    if (value === undefined) value = {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw rpcFailure("invalid-argument", "Folder listing options must be an object.");
+    const options = value as BoardFolderListOptions;
+    if (options.recursive !== undefined && typeof options.recursive !== "boolean") throw rpcFailure("invalid-argument", "recursive must be a boolean.");
+    if (options.limit !== undefined && (!Number.isInteger(options.limit) || options.limit < 1)) throw rpcFailure("invalid-argument", "limit must be a positive integer.");
+    if ((options.limit ?? 500) > MAX_FOLDER_PAGE_SIZE) throw rpcFailure("too-many-entries", `A folder page can contain at most ${MAX_FOLDER_PAGE_SIZE} entries.`);
+    if (options.cursor !== undefined && typeof options.cursor !== "string") throw rpcFailure("invalid-argument", "cursor must be a string.");
+    if (options.masks !== undefined && (!Array.isArray(options.masks) || options.masks.length > 32
+        || options.masks.some((mask) => typeof mask !== "string" || mask.length > 256 || /[\\/]/.test(mask)))) {
+        throw rpcFailure("invalid-argument", "masks must contain at most 32 basename masks of at most 256 characters using only * and ? as wildcard operators.");
+    }
+    return { recursive: options.recursive ?? false, limit: options.limit ?? MAX_FOLDER_PAGE_SIZE, masks: options.masks, cursor: options.cursor };
+}
+
+function folderMaskMatches(name: string, masks: string[] | undefined): boolean {
+    if (!masks?.length) return true;
+    const escaped = masks.map((mask) => [...mask].map((character) => character === "*" ? ".*"
+        : character === "?" ? "."
+            : character.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(""));
+    const flags = process.platform === "win32" ? "i" : "";
+    return escaped.some((mask) => new RegExp(`^${mask}$`, flags).test(name));
+}
+
+async function listBoardFolder(entry: BoardPortEntry, requestedPath: unknown, rawOptions: unknown): Promise<unknown> {
+    if (typeof requestedPath !== "string") throw rpcFailure("invalid-argument", "A folder path is required.");
+    const options = parseFolderOptions(rawOptions);
+    const grant = await boardTrustService.getGrantedPermissions(entry.root);
+    if (!grant) throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" });
+    let cursor: FolderCursor | undefined;
+    if (options.cursor) {
+        cursor = folderCursors.get(options.cursor);
+        if (!cursor) throw rpcFailure("invalid-argument", "The folder cursor is invalid.");
+        folderCursors.delete(options.cursor);
+        if (cursor.expires < Date.now()) throw rpcFailure("cursor-expired", "The folder cursor has expired.");
+        if (path.resolve(cursor.boardRoot) !== path.resolve(entry.root)) throw rpcFailure("invalid-argument", "The folder cursor belongs to another board.");
+        if (cursor.boardId !== entry.boardId) throw rpcFailure("invalid-argument", "The folder cursor belongs to another board frame.");
+        try { await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: cursor.root, permissions: grant, intent: "list" }); }
+        catch { folderCursors.delete(options.cursor); throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" }); }
+    } else {
+        let root: string;
+        try { root = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "list" }); }
+        catch (error: unknown) {
+            const errorCode = (error as NodeJS.ErrnoException)?.code;
+            if (errorCode === "ENOENT") throw rpcFailure("not-found", "The folder does not exist.");
+            throw Object.assign(error instanceof Error ? error : new Error("Folder access denied."), { code: "permission-denied" });
+        }
+        let rootStat;
+        try { rootStat = await fs.promises.stat(root); } catch { throw rpcFailure("not-found", "The folder does not exist."); }
+        if (!rootStat.isDirectory()) throw rpcFailure("not-directory", "The requested path is not a folder.");
+        const entries: BoardFolderEntry[] = [];
+        let truncated = false;
+        const visit = async (directory: string, depth: number): Promise<void> => {
+            if (depth > 32) throw rpcFailure("depth-limit", "Folder recursion exceeds the depth limit of 32.");
+            const authorizedDirectory = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: directory, permissions: grant, intent: "list" });
+            let children;
+            try { children = await fs.promises.readdir(authorizedDirectory, { withFileTypes: true }); }
+            catch (error: unknown) { throw rpcFailure("io-error", errMessage(error, "Could not read the folder.")); }
+            for (const child of children) {
+                const childPath = path.join(authorizedDirectory, child.name);
+                const lstat = await fs.promises.lstat(childPath);
+                if (lstat.isSymbolicLink()) continue;
+                let canonical: string;
+                try { canonical = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: childPath, permissions: grant, intent: child.isDirectory() ? "list" : "read" }); }
+                catch { throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" }); }
+                const stat = await fs.promises.stat(canonical);
+                if (stat.isDirectory() || folderMaskMatches(child.name, options.masks)) {
+                    if (entries.length >= MAX_FOLDER_RESULTS) { truncated = true; return; }
+                    entries.push({ name: child.name, path: canonical, isDirectory: stat.isDirectory(), size: stat.isDirectory() ? 0 : stat.size, mtime: stat.mtimeMs });
+                }
+                if (options.recursive && stat.isDirectory()) await visit(canonical, depth + 1);
+                if (truncated) return;
+            }
+        };
+        try { await visit(root, 0); }
+        catch (error: unknown) { if (error instanceof BoardRpcError) throw error; throw rpcFailure("io-error", errMessage(error, "Could not list the folder.")); }
+        cursor = { root, boardRoot: entry.root, boardId: entry.boardId, entries, offset: 0, expires: Date.now() + FOLDER_CURSOR_TTL_MS, truncated };
+    }
+    const end = Math.min(cursor.offset + options.limit, cursor.entries.length);
+    const pageEntries: BoardFolderEntry[] = [];
+    for (const item of cursor.entries.slice(cursor.offset, end)) {
+        try { await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: item.path, permissions: grant, intent: item.isDirectory ? "list" : "read" }); pageEntries.push(item); }
+        catch { throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" }); }
+    }
+    cursor.offset = end;
+    let nextCursor: string | undefined;
+    if (end < cursor.entries.length) { nextCursor = crypto.randomUUID(); folderCursors.set(nextCursor, cursor); }
+    return { entries: pageEntries, ...(nextCursor ? { nextCursor } : {}), truncated: cursor.truncated };
+}
 
 interface BoardPortEntry {
+    /** Per-frame identity used to bind paged listing cursors. */
+    boardId: string;
     /** Main's end of the per-board channel. */
     port: MessagePortMain;
     /** Absolute board root — default `execute()` cwd + relative-path base. */
@@ -227,6 +376,29 @@ function toBytes(data: unknown, requirement = 'writeFile with encoding "binary"'
     throw new Error(`${requirement} needs a Uint8Array or ArrayBuffer.`);
 }
 
+/** True when `requestedPath` is already a persisted grant of this kind for the board, so a repeat
+ *  remember call (for example after a restart) succeeds without asking the user again. */
+async function isAlreadyRemembered(boardRoot: string, requestedPath: string, kind: "folder" | "file"): Promise<boolean> {
+    if (!path.isAbsolute(requestedPath)) return false;
+    const canonical = await fs.promises.realpath(requestedPath).catch((): undefined => undefined);
+    if (!canonical) return false;
+    const grants = await boardTrustService.getFileAccessGrants(boardRoot);
+    const list = kind === "folder" ? grants.folderGrants : grants.fileGrants;
+    const key = path.normalize(canonical).toLowerCase();
+    return list.some((granted) => {
+        const grantedKey = path.normalize(granted).toLowerCase();
+        // A folder inside a remembered folder is covered by it; a file grant is exact.
+        return grantedKey === key || (kind === "folder" && key.startsWith(grantedKey.endsWith(path.sep) ? grantedKey : grantedKey + path.sep));
+    });
+}
+
+/** True when the user trusted this board with full file access (or it predates permission flags),
+ *  so every path is already covered and remembering one needs no prompt and no stored grant. */
+async function hasFullFileAccess(boardRoot: string): Promise<boolean> {
+    const grant = await boardTrustService.getGrantedPermissions(boardRoot);
+    return !!grant && (grant.kind === "legacy" || grant.flags.fileSystem === "full");
+}
+
 type BoardRpcHandler = (entry: BoardPortEntry, args: unknown[]) => Promise<unknown> | unknown;
 
 /** Board RPC handlers are exhaustive over the public bridge contract. */
@@ -255,18 +427,74 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         await recordPickedPaths(entry.root, result, true, grant);
         return result;
     },
+    async listFolder(entry, args) { return listBoardFolder(entry, args[0], args[1]); },
+    async rememberFolder(entry, args) {
+        const requestedPath = args[0];
+        if (typeof requestedPath !== "string") throw rpcFailure("invalid-argument", "A folder path is required.");
+        if (await isAlreadyRemembered(entry.root, requestedPath, "folder")) return true;
+        if (await hasFullFileAccess(entry.root)) return true;
+        const picked = await isDialogPickedPath(entry.root, requestedPath, true);
+        if (!picked) throw rpcFailure("permission-denied", "Only a folder picked by this board can be remembered.");
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw rpcFailure("permission-denied", "This board is not trusted.");
+        if (grant.kind !== "flags" || grant.flags.fileSystem !== "board") return false;
+        const folderStat = await fs.promises.stat(picked).catch((): undefined => undefined);
+        if (!folderStat?.isDirectory()) throw rpcFailure("not-directory", "The selected folder is no longer a folder.");
+        const response = await dialog.showMessageBox(ownerWindow(entry.hostWebContents), {
+            type: "question", title: t("board.rememberFolderTitle"),
+            message: t("board.rememberFolderPrompt", { name: await boardName(entry) }),
+            detail: t("board.rememberFolderDetail", { path: picked, root: entry.root }),
+            buttons: [t("board.rememberFolderAllow"), t("board.rememberCancel")], defaultId: 1, cancelId: 1, noLink: true,
+        });
+        if (response.response !== 0) return false;
+        await boardTrustService.addFileAccessGrant(entry.root, "folder", picked);
+        return true;
+    },
+    async rememberFile(entry, args) {
+        const requestedPath = args[0];
+        if (typeof requestedPath !== "string") throw rpcFailure("invalid-argument", "A file path is required.");
+        if (await isAlreadyRemembered(entry.root, requestedPath, "file")) return true;
+        if (await hasFullFileAccess(entry.root)) return true;
+        const picked = await isDialogPickedPath(entry.root, requestedPath, false)
+            ?? await isDeliveredSourceFile(entry.root, requestedPath);
+        if (!picked) throw rpcFailure("permission-denied", "Only a file picked or delivered as a source to this board can be remembered.");
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw rpcFailure("permission-denied", "This board is not trusted.");
+        if (grant.kind !== "flags" || grant.flags.fileSystem !== "board") return false;
+        const selectedStat = await fs.promises.stat(picked).catch((): undefined => undefined);
+        if (selectedStat && !selectedStat.isFile()) throw rpcFailure("permission-denied", "Only regular files can be remembered.");
+        if (!selectedStat) {
+            const parentStat = await fs.promises.stat(path.dirname(picked));
+            if (!parentStat.isDirectory()) throw rpcFailure("not-directory", "The selected file's parent path is not a folder.");
+        }
+        const response = await dialog.showMessageBox(ownerWindow(entry.hostWebContents), {
+            type: "question", title: t("board.rememberFileTitle"),
+            message: t("board.rememberFilePrompt", { name: await boardName(entry) }),
+            detail: t("board.rememberFileDetail", { path: picked, root: entry.root }),
+            buttons: [t("board.rememberFileAllow"), t("board.rememberCancel")], defaultId: 1, cancelId: 1, noLink: true,
+        });
+        if (response.response !== 0) return false;
+        await boardTrustService.addFileAccessGrant(entry.root, "file", picked);
+        return true;
+    },
+    async getFileAccess(entry, args) { return getBoardFileAccess(entry, args[0]); },
     async readFile(entry, args) {
         const grant = await boardTrustService.getGrantedPermissions(entry.root);
         if (!grant) throw boardPermissionError("fileSystem");
         const requestedPath = args[0] as string;
-        const filePath = await resolveHostedReadOrAuthorizedPath({
-            boardRoot: entry.root,
-            requestedPath,
-            hostedPath: entry.hostedFilePath,
-            permissions: grant,
-        });
+        let filePath: string;
+        try {
+            filePath = await resolveHostedReadOrAuthorizedPath({
+                boardRoot: entry.root,
+                requestedPath,
+                hostedPath: entry.hostedFilePath,
+                permissions: grant,
+            });
+        } catch (error: unknown) { throw fileAccessError(error); }
         const encoding = fileEncoding(args[1]);
-        const buf = await fs.promises.readFile(filePath);
+        let buf: Buffer;
+        try { buf = await fs.promises.readFile(filePath); }
+        catch (error: unknown) { throw fileAccessError(error); }
         if (encoding === "binary") {
             return new Uint8Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
         }
@@ -276,15 +504,28 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         const grant = await boardTrustService.getGrantedPermissions(entry.root);
         if (!grant) throw boardPermissionError("fileSystem");
         const requestedPath = args[0] as string;
-        const filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "write" });
+        let filePath: string;
+        try { filePath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "write" }); }
+        catch (error: unknown) { throw fileAccessError(error); }
         const encoding = fileEncoding(args[2]);
         const data = args[1];
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-        const checkedPath = await recheckWriteTarget(entry.root, requestedPath, grant);
+        try {
+            await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: path.dirname(requestedPath), permissions: grant, intent: "write" });
+            await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        } catch {
+            const parentStat = await fs.promises.stat(path.dirname(filePath)).catch((): undefined => undefined);
+            if (!parentStat?.isDirectory()) throw rpcFailure("permission-denied", "A file grant does not authorize creating its parent folder.");
+        }
+        let checkedPath: string;
+        try { checkedPath = await recheckWriteTarget(entry.root, requestedPath, grant); }
+        catch (error: unknown) { throw fileAccessError(error); }
+        const existing = await fs.promises.lstat(checkedPath).catch((): undefined => undefined);
+        if (existing && !existing.isFile()) throw rpcFailure("permission-denied", "The write target must be a regular file.");
         const body = encoding === "binary"
             ? Buffer.from(toBytes(data))
             : Buffer.from((data as string) ?? "", encoding);
-        await fs.promises.writeFile(checkedPath, body);
+        try { await fs.promises.writeFile(checkedPath, body); }
+        catch (error: unknown) { throw fileAccessError(error); }
     },
     getJobs(entry) {
         const owner = ownerSinks.get(entry.ownerId);
@@ -555,7 +796,7 @@ export function createBoardPort(
 
     const root = getBoardRootForHost(host) ?? "";
     const { port1, port2 } = new MessageChannelMain();
-    const entry: BoardPortEntry = { port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token };
+    const entry: BoardPortEntry = { boardId, port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token };
     boardPorts.set(boardId, entry);
     indexOwnerSink(ownerId, boardId, hostWebContents.id);
 

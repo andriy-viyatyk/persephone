@@ -101,6 +101,7 @@ export class BoardToolbarView extends VanillaView<{
         this.morePanel.append(this.moreButton.root);
         this.root.append(
             this.explorerButton.root,
+            this.boardControls.startRoot,
             this.pathPanel,
             this.boardControls.root,
             this.morePanel,

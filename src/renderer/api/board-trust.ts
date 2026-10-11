@@ -72,6 +72,7 @@ class BoardTrust {
     private pathsRevision = 0;
     private grants = new Map<string, NormalizedBoardPermissions>();
     private manifests = new Map<string, NormalizedBoardPermissions>();
+    private fileAccess = new Map<string, { folderGrants: string[]; fileGrants: string[] }>();
     private grantsPromise: Promise<void> | undefined;
     private readonly grantListeners = new Set<(changedRoots: string[]) => void>();
 
@@ -106,13 +107,18 @@ class BoardTrust {
         const entries = await api.getBoardPermissionGrants();
         const next = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
         const nextManifests = new Map(entries.map(({ boardRoot, manifestPermissions }) => [fpNormalizeForCompare(boardRoot), manifestPermissions]));
+        const nextFileAccess = new Map(await Promise.all(entries.map(async ({ boardRoot }) => [
+            fpNormalizeForCompare(boardRoot), await api.getBoardFileAccessGrants(boardRoot),
+        ] as const)));
         const changedRoots = new Set<string>();
-        for (const root of new Set([...this.grants.keys(), ...next.keys(), ...this.manifests.keys(), ...nextManifests.keys()])) {
+        for (const root of new Set([...this.grants.keys(), ...next.keys(), ...this.manifests.keys(), ...nextManifests.keys(), ...this.fileAccess.keys(), ...nextFileAccess.keys()])) {
             if (JSON.stringify(this.grants.get(root)) !== JSON.stringify(next.get(root))
-                || JSON.stringify(this.manifests.get(root)) !== JSON.stringify(nextManifests.get(root))) changedRoots.add(root);
+                || JSON.stringify(this.manifests.get(root)) !== JSON.stringify(nextManifests.get(root))
+                || JSON.stringify(this.fileAccess.get(root)) !== JSON.stringify(nextFileAccess.get(root))) changedRoots.add(root);
         }
         this.grants = next;
         this.manifests = nextManifests;
+        this.fileAccess = nextFileAccess;
         if (changedRoots.size) {
             for (const listener of this.grantListeners) listener([...changedRoots]);
         }
@@ -157,6 +163,22 @@ class BoardTrust {
                 changes: diffBoardPermissions(permissions, manifestPermissions),
             };
         } catch { return undefined; }
+    }
+
+    async getFileAccessGrants(boardRoot: string): Promise<{ folderGrants: string[]; fileGrants: string[] }> {
+        try {
+            await this.loadGrants();
+            const key = fpNormalizeForCompare(boardRoot);
+            const match = [...this.fileAccess].find(([root]) => root === key)?.[1];
+            return match ? { folderGrants: [...match.folderGrants], fileGrants: [...match.fileGrants] } : await api.getBoardFileAccessGrants(boardRoot);
+        }
+        catch { return { folderGrants: [], fileGrants: [] }; }
+    }
+
+    async revokeFileAccessGrant(boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> {
+        await api.revokeBoardFileAccessGrant(boardRoot, kind, canonicalPath);
+        this.grantsPromise = undefined;
+        await this.loadGrants();
     }
 
     /** Refresh main's live manifest metadata before an open/reload permission preflight. */
@@ -207,6 +229,7 @@ class BoardTrust {
         const previousRoots = [...this.grants.keys()];
         this.grantsPromise = this.refreshGrants().catch(() => {
             this.grants.clear();
+            this.fileAccess.clear();
             if (previousRoots.length) {
                 for (const listener of this.grantListeners) listener(previousRoots);
             }

@@ -17,6 +17,7 @@
  * runner message shapes from `runner-channels.ts`.
  */
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
+import type { BoardSourceContext } from "../shared/board-source-context";
 import type {
     OpenFileDialogParams,
     OpenFolderDialogParams,
@@ -200,6 +201,10 @@ export type BoardRpcMethod =
     | "openFileDialog"
     | "saveFileDialog"
     | "openFolderDialog"
+    | "listFolder"
+    | "rememberFolder"
+    | "rememberFile"
+    | "getFileAccess"
     | "readFile"
     | "writeFile"
     | "getJobs"
@@ -212,6 +217,11 @@ export type BoardRpcMethod =
     | "storageKeys"
     | "clipboardWriteImage"
     | "clipboardWriteText";
+
+export interface BoardFolderListOptions { recursive?: boolean; masks?: string[]; limit?: number; cursor?: string }
+export interface BoardFolderEntry { name: string; path: string; isDirectory: boolean; size: number; mtime: number }
+export interface BoardFolderPage { entries: BoardFolderEntry[]; nextCursor?: string; truncated: boolean }
+export interface BoardFileAccess { read: boolean; write: boolean }
 
 /** JSON values accepted by the board-owned storage API. Runtime validation also rejects
  * non-finite numbers, cyclic values, class instances, oversized documents, and deep values. */
@@ -305,6 +315,8 @@ export interface BoardPortInitMsg {
     /** The raw persisted source identity — carried at handshake so the board can read
      *  `persephone.getSourceUrl()` without materializing the source. Undefined for a plain board. */
     sourceUrl?: string;
+    /** Bounded source-panel snapshot captured for the initial open. */
+    sourceContext?: BoardSourceContext;
     /** True when the initial source was opened with a private browser session. */
     initialSourcePrivateSession?: boolean;
     /** The absolute directory claimed by a folder editor; distinct from the board root and
@@ -337,6 +349,8 @@ export type BoardToolbarControlDescriptor =
         title?: string;
         icon?: BoardToolbarIcon;
         disabled?: boolean;
+        /** `"start"` draws the button at the left of the toolbar, before the text slot. Fixed at `set()`. */
+        placement?: "toolbar" | "start";
     }
     | {
         id: string;
@@ -356,8 +370,9 @@ export type BoardToolbarControlDescriptor =
         items: readonly { id: string; label: string; disabled?: boolean }[];
         disabled?: boolean;
         /** `"board-menu"` adds the items to the top of Persephone's own … menu instead of drawing a
-         *  menu button. Fixed at `set()`; `update()` cannot move a control. */
-        placement?: "toolbar" | "board-menu";
+         *  menu button; `"start"` draws the menu button at the left of the toolbar, before the text
+         *  slot. Fixed at `set()`; `update()` cannot move a control. */
+        placement?: "toolbar" | "board-menu" | "start";
     }
     | {
         id: string;
@@ -577,6 +592,8 @@ export interface BoardSourceOpenedMsg {
     sourceUrl: string;
     /** Present only when the source was opened with a private browser session. */
     privateSession?: boolean;
+    /** Bounded source-panel snapshot captured for this runtime open. */
+    context?: BoardSourceContext;
 }
 
 /** Shared state pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-044).

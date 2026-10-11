@@ -153,6 +153,9 @@ export enum Endpoint {
     setBoardTrust = "setBoardTrust",
     getBoardTrustPaths = "getBoardTrustPaths",
     getBoardPermissionGrants = "getBoardPermissionGrants",
+    getBoardFileAccessGrants = "getBoardFileAccessGrants",
+    revokeBoardFileAccessGrant = "revokeBoardFileAccessGrant",
+    grantBoardSourceReads = "grantBoardSourceReads",
     getBoardMcpEndpoint = "getBoardMcpEndpoint",
     authorizeBoardFilePath = "authorizeBoardFilePath",
     bindBoardSessionSource = "bindBoardSessionSource",
@@ -350,6 +353,9 @@ export type Api = {
     /** Read the main-owned trusted path list. */
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
+    [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
+    [Endpoint.revokeBoardFileAccessGrant]: (boardRoot: string, kind: "folder" | "file", canonicalPath: string) => Promise<void>;
+    [Endpoint.grantBoardSourceReads]: (boardRoot: string, sourcePaths: string[], contextPaths?: string[]) => Promise<void>;
     [Endpoint.getBoardMcpEndpoint]: () => Promise<string>;
     [Endpoint.authorizeBoardFilePath]: (boardRoot: string, requestedPath: string, intent?: "read" | "write") => Promise<string>;
     [Endpoint.bindBoardSessionSource]: (handle: string, boardRoot: string) => Promise<string>;

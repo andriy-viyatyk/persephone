@@ -13,6 +13,36 @@ import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { PageModel } from "../../api/pages/PageModel";
 import { guard } from "../../core/utils/guard";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { captureBoardSourceContext } from "../shared/source-context";
+import { matchesFileMask } from "../board/board-manifest";
+import type { ILinkData } from "../../../shared/link-data";
+
+function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {
+    return (editor.state.get() as { sourceLink?: ILinkData }).sourceLink
+        ?? (editor.contentHost?.state.get() as { sourceLink?: ILinkData } | undefined)?.sourceLink;
+}
+
+async function boardSwitchSourceLink(
+    page: PageModel,
+    oldEditor: EditorModel,
+    newEditorId: string,
+    filePath: string,
+): Promise<ILinkData | undefined> {
+    const board = customEditorRegistry.entries.find((entry) => entry.editorId === newEditorId);
+    const sourceLink = sourceLinkFromEditor(oldEditor);
+    if (!board || !sourceLink || !["explorer", "link-category", "link-tag"].includes(sourceLink.sourceId ?? "")) {
+        return undefined;
+    }
+
+    const sourceContext = await captureBoardSourceContext({
+        page,
+        sourceLink,
+        currentHref: sourceLink.url ?? sourceLink.href ?? filePath,
+        include: (item) => board.fileMasks.length === 0
+            || board.fileMasks.some((mask) => matchesFileMask(fpBasename(item.href), mask)),
+    });
+    return { ...sourceLink, sourceContext };
+}
 
 function isFolderEditor(editor: EditorModel): boolean {
     return editor.folderAnchor !== undefined;
@@ -35,6 +65,7 @@ async function rebuildEditorOverFile(
     oldEditor: EditorModel,
     filePath: string,
     newEditorId: string,
+    sourceLink?: ILinkData,
 ): Promise<void> {
     const released = await oldEditor.confirmRelease();
     if (!released) return; // Cancel → stay on the current editor
@@ -54,6 +85,9 @@ async function rebuildEditorOverFile(
         built.state.update((s) => {
             (s as { editor?: string }).editor = newEditorId;
         });
+    }
+    if (sourceLink) {
+        built.state.update((state) => { state.sourceLink = sourceLink; });
     }
     await page.setMainEditor(attachEditorToPage(built));
 }
@@ -170,6 +204,13 @@ export async function switchMainEditor(
                 ? newBoardKind === "content-host"
                 : !!editorRegistry.getById(newEditorId)?.hasContentHost;
 
+        const filePath =
+            (oldEditor.contentHost as { filePath?: string } | null)?.filePath
+            ?? oldEditor.filePath;
+        const sourceLink = newBoardRoot !== null && filePath
+            ? await boardSwitchSourceLink(page, oldEditor, newEditorId, filePath)
+            : undefined;
+
         if (oldHostCapable && newHostCapable) {
             // Host-transfer switch — no reload, no confirmRelease (nothing is lost).
             let newEditor: EditorModel;
@@ -190,17 +231,17 @@ export async function switchMainEditor(
                 newEditor = await editorRegistry.createEditor(newEditorId);
             }
             newEditor.switchFrom(oldEditor); // extracts + adopts the shared host
+            if (sourceLink) {
+                newEditor.state.update((state) => { state.sourceLink = sourceLink; });
+            }
             await newEditor.restore();
             await page.setMainEditor(newEditor);
             return;
         }
 
         // Simple board (either direction) — dispose-and-rebuild + confirmRelease (EPIC-042).
-        const filePath =
-            (oldEditor.contentHost as { filePath?: string } | null)?.filePath
-            ?? oldEditor.filePath;
         if (!filePath) return;
-        await rebuildEditorOverFile(page, oldEditor, filePath, newEditorId);
+        await rebuildEditorOverFile(page, oldEditor, filePath, newEditorId, sourceLink);
         return;
     }
 

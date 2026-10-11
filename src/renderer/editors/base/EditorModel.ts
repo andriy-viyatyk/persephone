@@ -10,6 +10,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
 import type { ILinkData } from "../../../shared/link-data";
+import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { MenuItem } from "../../uikit";
 
 export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "title" | "modified"> {
@@ -38,7 +39,7 @@ export type RestoreData<S extends EditorStateBase = EditorStateBase> = Partial<S
 
 export type EditorOpenContext =
     | { mode: "register-session"; sourceUrl: string; sessionHandle: string }
-    | { mode: "enqueue-source"; sourceUrl: string; sessionHandle?: string };
+    | { mode: "enqueue-source"; sourceUrl: string; sessionHandle?: string; sourceContext?: BoardSourceContext };
 
 export interface EditorRestoreOptions {
     signal?: AbortSignal;

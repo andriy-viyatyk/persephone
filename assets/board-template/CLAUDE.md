@@ -5,8 +5,14 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.36.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.36.0` adds registration-time
+The board bridge is version **1.38.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.38.0` adds paged folder listing,
+confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
+and session read access to delivered source files. Confirmation dialogs use the manifest name when
+available.
+Bridge `1.37.0` adds source-panel snapshots as
+`persephone.source.initialSourceContext` and `context` on `source.onOpen()` events. The initial
+snapshot is restored with the page; runtime snapshots are transient. Bridge `1.36.0` adds registration-time
 `persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; boards using these APIs
 must set `minBridgeVersion: "1.36.0"`. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
@@ -864,6 +870,16 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)`
   — native dialogs; each returns a path you hand to `execute()`. They require
   `fileSystem: "board"` or `fileSystem: "full"`.
+- `persephone.listFolder(path, options?)` — paged listing, non-recursive by default; supports
+  basename masks using `*` and `?`. Pages cap at 1,000 entries and a listing at 100,000.
+- `persephone.rememberFolder(path)` asks the user to persist read/list access to a folder picked by
+  this board. `persephone.rememberFile(path)` asks for read/write access to one exact plain local
+  file picked by this board or delivered to it as its initial/runtime source; source-context items
+  are not eligible. It never covers the parent or siblings. Both require `fileSystem: "board"` and
+  can be revoked in Board Info.
+- `persephone.getFileAccess(path)` returns `{ read, write }` for the current path authorization
+  without prompting or changing grants. Call it at startup to check whether a remembered catalog is
+  writable; `rememberFile()` may prompt and should not be used as an access check.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file
   directly, no backend script needed. A **relative** `path` resolves against the board folder (the
   same default as `execute()`'s cwd); access outside the hosted document is limited by
@@ -927,17 +943,27 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   board's initial source without materializing it; `undefined` means there is no initial source.
   Pair it with `persephone.source.initialSourcePrivateSession` to read whether that initial source
   came from a private browser session. For later sources routed to this board, subscribe with
-  `persephone.source.onOpen(callback)`: each event contains `url` and `sourceUrl`, and includes
-  `privateSession: true` only for a private-session source. These fields describe the source
-  session; they do not mean later network activity is anonymous. A board can keep any
+  `persephone.source.initialSourceContext` is the bounded Explorer-folder or Link-Editor
+  category/tag snapshot captured for the initial open. It includes `kind`, `sourcePath`, optional
+  raw `category` or `tag`, `label`, ordered non-directory `items`, and the opened item's `index`;
+  link items also carry `id`, `category`, and `tags`. Each later `source.onOpen(callback)` event
+  contains `url` and `sourceUrl`, optional `privateSession: true`, and the `context` snapshot
+  captured for that specific open. These are open-time snapshots, limited to 5,000 items and 1 MiB
+  serialized UTF-8. Only the initial context is stored in `sourceLink` and restored with the page;
+  runtime events are transient, so persist accepted later hrefs/context in board-owned restorable
+  state when needed. Initial page state is serialized by `PagesPersistenceModel.saveState()` and
+  written through `appFs.saveDataFile()`. Context and privacy fields do not mean later network
+  activity is anonymous. A board can keep any
   source-specific explanation in its own UI:
   ```js
   const initialUrl = await persephone.getSourceUrl();
+  const initialContext = persephone.source.initialSourceContext;
   if (initialUrl && persephone.source.initialSourcePrivateSession === true) {
       showPrivateSourceInfo(initialUrl);
   }
-  persephone.source.onOpen(({ url, sourceUrl, privateSession }) => {
+  persephone.source.onOpen(({ url, sourceUrl, privateSession, context }) => {
       if (privateSession === true) showPrivateSourceInfo(sourceUrl || url);
+      if (context) addQueueSources(context.items, context.index, sourceUrl);
   });
   ```
 
@@ -945,6 +971,13 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   a direct-folder editor, or `undefined` for plain boards and file-only openings. It waits for the
   same host handshake as `getFilePath()`. This is separate from `boardRoot`, the folder containing
   the board app, and from the file-only `getFilePath()` value.
+
+Listing and remembered grants require bridge `1.38.0`; declare `minBridgeVersion: "1.38.0"` when
+using them. Listing skips symlinks and junctions, limits recursive depth to 32, and expires cursors
+after five minutes. Stable listing errors include `permission-denied`, `invalid-argument`, `not-found`,
+`not-directory`, `too-many-entries`, `depth-limit`, `cursor-expired`, and `io-error`. Delivered local
+source files (including local source-context items) receive session-only read access, never write
+access. `fileSystem: false` boards cannot read context siblings.
 
 ### Expose a board model to agents
 

@@ -1,5 +1,6 @@
 import type { IContentPipe, IPipeDescriptor } from "./io.pipe";
 import type { ILink } from "./io.tree";
+import type { BoardSourceContext } from "../../../shared/board-source-context";
 
 /**
  * A single revision selector for the File Diff editor (target === "file-diff").
@@ -56,6 +57,8 @@ export interface ILinkNav {
     explorerRoot?: string;
     /** File a custom-editor board edits; rides its `persephone-board://` source link. */
     filePath?: string;
+    /** Open-time sibling snapshot for a custom-editor board; persisted with its source identity. */
+    sourceContext?: BoardSourceContext;
 }
 
 /**

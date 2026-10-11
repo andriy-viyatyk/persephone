@@ -197,7 +197,13 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.36.0**. Bridge `1.36.0` adds registration-time
+The current board bridge is **1.38.0**. Bridge `1.38.0` adds `persephone.listFolder()`, user-confirmed
+`rememberFolder()` / `rememberFile()` grants, `getFileAccess()` for checking current path access
+without prompting, and session read access to local source files delivered to a board. Persistent
+access confirmations use the manifest name when available. Bridge `1.37.0` adds source-panel snapshots as
+`persephone.source.initialSourceContext` and `context` on `source.onOpen()` events. The initial
+snapshot is stored with the page's `sourceLink` and restored with the page; runtime snapshots are
+transient. Bridge `1.36.0` adds registration-time
 `persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; a board using them
 requires `minBridgeVersion: "1.36.0"`. Bridge `1.35.0` adds the permission-gated
 `persephone.themes.*` API described below. Bridge `1.33.0` adds
@@ -361,6 +367,31 @@ This contract applies only to Browser downloads, before the save dialog; ordinar
 captured. A live run confirmed that a matching download is cancelled, creates no save path or
 download entry, and opens the source URL in the board that won the claim. Persephone also notifies
 you with the board's name.
+
+### Source opens and sibling context
+
+`persephone.getSourceUrl()` returns the identity of the initial source. When a custom-editor board
+is opened from an Explorer folder or a Link Editor category/tag, bridge `1.37.0` also provides
+`persephone.source.initialSourceContext`: a bounded snapshot with `kind`, `sourcePath`, the raw
+`category` or `tag` where applicable, a display `label`, ordered non-directory `items`, and the
+opened item's `index` (`-1` when it is outside the snapshot). Link items include their collection
+`id`, `category`, and `tags`; folder items do not. The host filters items by the receiving board's
+file masks when it declares them. Context is capped at 5,000 items and 1 MiB of serialized UTF-8.
+
+Later opens routed to a single-instance board arrive through `persephone.source.onOpen()` and each
+event carries the context captured for that particular open. Both contexts are open-time snapshots.
+Only the initial one is host-restored: it lives in `sourceLink` in the page descriptor saved by
+`PagesPersistenceModel.saveState()` through `appFs.saveDataFile()`. Runtime events are transient;
+persist any accepted later hrefs or contexts in board-owned restorable state if they must survive a
+restart. The context uses the same JSON-serialized page-state path and 1 MiB member bound described
+above, separate from the board storage value limit.
+
+```js
+const initialContext = persephone.source.initialSourceContext;
+persephone.source.onOpen(({ sourceUrl, context }) => {
+    if (context) addQueueSources(context.items, context.index, sourceUrl);
+});
+```
 
 When a matching download starts from a Tor or Incognito page, Persephone fetches the source through
 that page's browser session. With bridge 1.24.0, the board receives `privateSession: true` on
@@ -871,8 +902,27 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.openFileDialog(params?)` | Show a native Open File dialog; returns the selected path. |
 | `persephone.saveFileDialog(params?)` | Show a native Save File dialog; returns the chosen path. |
 | `persephone.openFolderDialog(params?)` | Show a native Open Folder dialog; returns the selected path. |
+| `persephone.listFolder(path, options?)` | List at most 1,000 entries per page (`limit`, `nextCursor`, `truncated`). Non-recursive by default; `recursive: true`, `masks: ["*.mp3"]` (basename `*` / `?` masks) are supported. |
+| `persephone.rememberFolder(path)` | Ask the user to persist read/list access to a folder picked by this board. The grant is read-only and individually revocable in Board Info. |
+| `persephone.rememberFile(path)` | Ask the user to persist read/write access to one exact plain local file picked by this board, or delivered to it as its initial/runtime source. Source-context items are not eligible. It does not grant its parent or siblings; individually revocable in Board Info. |
+| `persephone.getFileAccess(path)` | Return `{ read, write }` for current authorization without prompting or changing grants. Useful at startup to check whether a remembered catalog is writable; `rememberFile()` may prompt. |
 | `persephone.readFile(path, options?)` | Read a file and return its contents (Promise). A relative `path` resolves against the board folder; absolute reads anywhere. Text by default; `{ encoding: "binary" }` returns a `Uint8Array` (the right choice for binary files — app 4.0.21+), `{ encoding: "base64" }` a base64 string. |
 | `persephone.writeFile(path, data, options?)` | Write a file (Promise); creates parent folders. A relative `path` resolves against the board folder. Text by default; `{ encoding: "binary" }` takes a `Uint8Array`, `{ encoding: "base64" }` a base64 string. |
+
+With `fileSystem: "board"`, listing is limited to the board folder, folders picked in the current
+session, and folders the user explicitly remembered. `rememberFile()` adds read/write access to one
+exact file picked by this board or delivered as its initial/runtime source. Source-context items are
+not eligible, and the grant never includes the file's parent or siblings. Listing is capped at
+100,000 entries, recursion depth 32, and cursors expire after
+five minutes. Symlinks and junctions are skipped. Listing errors use stable codes including
+`permission-denied`, `invalid-argument`, `not-found`, `not-directory`, `too-many-entries`,
+`depth-limit`, `cursor-expired`, and `io-error`.
+
+Persephone also gives a board session read access to the exact local source files it delivers: the
+initial document, later `source.onOpen()` URLs, and local files in a delivered source context. This
+access is read-only and ends when Persephone restarts. A `fileSystem: false` board receives only the
+initial and later source files themselves, not context siblings; `content.open()` does not widen
+the scope of the delivered files.
 
 ### `persephone.openContent(options)`
 

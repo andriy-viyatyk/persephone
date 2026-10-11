@@ -654,7 +654,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             }
             this.closePendingPort();
             this.pendingPort = port;
-            this.transferPort();
+            void this.transferPort();
         }));
 
         const contentHost = model.contentHost;
@@ -721,7 +721,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         });
     }
 
-    private transferPort(): void {
+    private async transferPort(): Promise<void> {
         const host = this.host;
         const frame = this.iframe;
         const port = this.pendingPort;
@@ -739,6 +739,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             pipeUrlEnabled,
             filePath,
             sourceUrl,
+            sourceContext: this.props.model.initialSourceContext(),
             ...(this.props.model.isInitialSourcePrivateSession() ? { initialSourcePrivateSession: true } : {}),
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
@@ -748,6 +749,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const contentWindow = frame.contentWindow;
         if (!contentWindow) return;
         try {
+            const sourcePaths = sourceUrl && isPlainLocalPath(sourceUrl) ? [sourceUrl] : [];
+            const contextPaths = (init.sourceContext?.items ?? []).map((item) => item.href).filter(isPlainLocalPath).slice(0, Math.max(0, 5000 - sourcePaths.length));
+            if (sourcePaths.length || contextPaths.length) await api.grantBoardSourceReads(this.props.boardRoot, sourcePaths, contextPaths);
+            if (!this.live || this.pendingPort !== port || !frame.contentWindow) return;
             contentWindow.postMessage(init, `board://${host}`, [port]);
             this.pendingPort = null;
             if (this.capabilityFrame && this.capabilityFrame.generation === this.generation) {
@@ -864,30 +869,42 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     /** Push queued runtime source identities to the live main board frame in FIFO order. */
-    private flushPendingSourceUrls(): void {
+    private flushingPendingSources = false;
+
+    private async flushPendingSourceUrls(): Promise<void> {
         if (!this.isMain || !this.live || !this.host) return;
+        if (this.flushingPendingSources) return;
+        this.flushingPendingSources = true;
         const frame = this.iframe;
         const generation = this.generation;
-        if (!frame?.contentWindow) return;
-
-        while (true) {
-            const pending = this.props.model.peekPendingSourceUrl();
-            if (pending === undefined) return;
-            if (!this.live || this.generation !== generation || this.iframe !== frame
-                || this.props.model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
-            const message: BoardSourceOpenedMsg = {
-                __persephone: "source:opened",
-                sourceUrl: pending.sourceUrl,
-                ...(pending.privateSession ? { privateSession: true } : {}),
-            };
-            try {
+        try {
+            if (!frame?.contentWindow) return;
+            while (true) {
+                const pending = this.props.model.peekPendingSourceUrl();
+                if (pending === undefined) return;
+                if (!this.live || this.generation !== generation || this.iframe !== frame
+                    || this.props.model.frames.get(this.tabId) !== frame || !frame.contentWindow) return;
+                const sourcePaths = isPlainLocalPath(pending.sourceUrl) ? [pending.sourceUrl] : [];
+                const contextPaths = (pending.context?.items ?? []).map((item) => item.href).filter(isPlainLocalPath).slice(0, Math.max(0, 5000 - sourcePaths.length));
+                if (sourcePaths.length || contextPaths.length) await api.grantBoardSourceReads(this.props.boardRoot, sourcePaths, contextPaths);
+                if (!this.live || this.generation !== generation || this.iframe !== frame || !frame.contentWindow) return;
+                const message: BoardSourceOpenedMsg = {
+                    __persephone: "source:opened",
+                    sourceUrl: pending.sourceUrl,
+                    ...(pending.privateSession ? { privateSession: true } : {}),
+                    ...(pending.context ? { context: pending.context } : {}),
+                };
+                try {
                 frame.contentWindow.postMessage(message, `board://${this.host}`);
-            } catch {
-                return;
+                } catch { return; }
+                if (!this.live || this.generation !== generation || this.iframe !== frame
+                    || this.props.model.frames.get(this.tabId) !== frame) return;
+                this.props.model.consumePendingSourceUrl();
             }
-            if (!this.live || this.generation !== generation || this.iframe !== frame
-                || this.props.model.frames.get(this.tabId) !== frame) return;
-            this.props.model.consumePendingSourceUrl();
+        } catch (error: unknown) {
+            this.appendLog("warn", `Could not grant source file reads to the board: ${errMessage(error)}`);
+        } finally {
+            this.flushingPendingSources = false;
         }
     }
 

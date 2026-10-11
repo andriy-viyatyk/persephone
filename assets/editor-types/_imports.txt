@@ -3,6 +3,7 @@ app.d.ts
 archive-editor.d.ts
 board-editor.d.ts
 board-info-editor.d.ts
+board-source-context.d.ts
 board-vars.d.ts
 boards.d.ts
 browser-editor.d.ts

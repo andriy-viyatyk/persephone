@@ -32,6 +32,7 @@ import {
     resolveBoardToolbarIcon,
 } from "./board-toolbar-icon";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
 
 export const BOARD_TOOLBAR_CONTROL_LIMIT = 8;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
@@ -47,6 +48,7 @@ type ToolbarWarning = (message: string) => void;
 type BoardToolbarToggleDescriptor = Extract<BoardToolbarControlDescriptor, { type: "toggle" }>;
 type BoardToolbarSelectDescriptor = Extract<BoardToolbarControlDescriptor, { type: "select" }>;
 type BoardToolbarSegmentedDescriptor = Extract<BoardToolbarControlDescriptor, { type: "segmented" }>;
+type BoardToolbarInputDescriptor = Extract<BoardToolbarControlDescriptor, { type: "input" }>;
 type ToolbarRecordView = IconButtonView | ButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -150,7 +152,14 @@ export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning)
         warning(`Ignored invalid icon on board toolbar control "${id}".`);
         return undefined;
     }
-    if (type === "button") return { ...common, type, ...(icon ? { icon } : {}) };
+    if (type === "button") {
+        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "start") {
+            warning(`Ignored board toolbar button "${id}" with an unknown placement; use "toolbar" or "start".`);
+            return undefined;
+        }
+        const placement = value.placement === "start" ? { placement: "start" as const } : {};
+        return { ...common, type, ...(icon ? { icon } : {}), ...placement };
+    }
     if (type === "toggle") {
         if (typeof value.value !== "boolean") {
             warning(`Ignored board toolbar toggle "${id}" without a boolean value.`);
@@ -164,11 +173,12 @@ export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning)
             warning(`Ignored board toolbar menu "${id}" without an items array.`);
             return undefined;
         }
-        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "board-menu") {
-            warning(`Ignored board toolbar menu "${id}" with an unknown placement; use "toolbar" or "board-menu".`);
+        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "board-menu" && value.placement !== "start") {
+            warning(`Ignored board toolbar menu "${id}" with an unknown placement; use "toolbar", "board-menu", or "start".`);
             return undefined;
         }
-        const placement = value.placement === "board-menu" ? { placement: "board-menu" as const } : {};
+        const placement = value.placement === "board-menu" || value.placement === "start"
+            ? { placement: value.placement as "board-menu" | "start" } : {};
         return { ...common, type, items, ...(icon ? { icon } : {}), ...placement };
     }
     if (type === "select") {
@@ -274,6 +284,11 @@ function inBoardMenu(descriptor: BoardToolbarControlDescriptor): boolean {
     return descriptor.type === "menu" && descriptor.placement === "board-menu";
 }
 
+/** A `placement: "start"` button or menu sits at the left of the toolbar, before the text slot. */
+function atStart(descriptor: BoardToolbarControlDescriptor): boolean {
+    return (descriptor.type === "button" || descriptor.type === "menu") && descriptor.placement === "start";
+}
+
 function hasTextLabel(descriptor: BoardToolbarControlDescriptor): boolean {
     return (descriptor.type === "button" || descriptor.type === "menu") && !!descriptor.label;
 }
@@ -354,6 +369,8 @@ class ToolbarControlRecord {
     private segmentIcons = new Map<string, IconRef>();
     private menu: MenuHandle | undefined;
     private inputDebounce: ReturnType<typeof setTimeout> | undefined;
+    /** An input's clear button, shown inside the field while it holds text. */
+    private clearButton: IconButtonView | undefined;
     private iconRequest = 0;
     private disposed = false;
 
@@ -381,11 +398,11 @@ class ToolbarControlRecord {
             this.view = new SegmentedControlView(this.segmentedProps(descriptor));
             this.root = this.view.root;
         } else if (descriptor.type === "input") {
-            this.view = new InputView({
-                name: this.dataName(), value: descriptor.value, placeholder: descriptor.placeholder,
-                disabled: descriptor.disabled, size: "sm", "aria-label": labelOf(descriptor),
-                onChange: (value) => this.inputChanged(value),
+            this.clearButton = new IconButtonView({
+                name: `${this.dataName()}-clear`, icon: "close", title: t("menus.clear"), size: "sm",
+                onClick: this.clearInput,
             });
+            this.view = new InputView(this.inputProps(descriptor));
             this.root = this.view.root;
         } else if (descriptor.type === "toggle") {
             const toggle = new SwitchView(this.switchProps(descriptor));
@@ -407,6 +424,7 @@ class ToolbarControlRecord {
     }
 
     mount(): void {
+        this.clearButton?.mount();
         this.view.mount();
         this.startIconResolution();
     }
@@ -414,7 +432,7 @@ class ToolbarControlRecord {
     /** Whether `descriptor` can be shown by this record's view; otherwise the record is rebuilt. */
     accepts(descriptor: BoardToolbarControlDescriptor): boolean {
         return descriptor.type === this.descriptor.type && hasTextLabel(descriptor) === hasTextLabel(this.descriptor)
-            && inBoardMenu(descriptor) === inBoardMenu(this.descriptor);
+            && inBoardMenu(descriptor) === inBoardMenu(this.descriptor) && atStart(descriptor) === atStart(this.descriptor);
     }
 
     /** Items this control adds to Persephone's … menu (a `placement: "board-menu"` menu only). */
@@ -440,11 +458,7 @@ class ToolbarControlRecord {
             this.view.update(this.selectProps(descriptor));
         } else if (this.view instanceof SegmentedControlView && descriptor.type === "segmented") {
             this.view.update(this.segmentedProps(descriptor));
-        } else if (this.view instanceof InputView && descriptor.type === "input") this.view.update({
-            name: this.dataName(), value: descriptor.value, placeholder: descriptor.placeholder,
-            disabled: descriptor.disabled, size: "sm", "aria-label": labelOf(descriptor),
-            onChange: (value) => this.inputChanged(value),
-        });
+        } else if (this.view instanceof InputView && descriptor.type === "input") this.view.update(this.inputProps(descriptor));
         if (this.labelElement) this.labelElement.textContent = descriptor.label ?? "";
         if (this.menu && descriptor.type === "menu") {
             this.menu.update({ items: menuItems(descriptor, (id) => this.menuChanged(id)), placement: "bottom-start", offset: [0, 2], onClose: this.menuClosed });
@@ -472,6 +486,8 @@ class ToolbarControlRecord {
         this.inputDebounce = undefined;
         this.menu?.dispose();
         this.menu = undefined;
+        this.clearButton?.dispose();
+        this.clearButton = undefined;
     }
 
     private dataName(): string {
@@ -596,9 +612,35 @@ class ToolbarControlRecord {
         this.emit({ id: this.descriptor.id, type: "segmented", value });
     };
 
+    private inputProps(descriptor: BoardToolbarInputDescriptor) {
+        return {
+            name: this.dataName(), value: descriptor.value, placeholder: descriptor.placeholder,
+            disabled: descriptor.disabled, size: "sm" as const, "aria-label": labelOf(descriptor),
+            onChange: this.inputChanged,
+            // Every board input gets a clear button while it holds text.
+            endSlot: descriptor.value && !descriptor.disabled ? this.clearButton?.root : undefined,
+        };
+    }
+
+    /** Empties the field and tells the board at once, without the typing debounce. */
+    private readonly clearInput = (): void => {
+        if (this.descriptor.type !== "input" || this.disposed) return;
+        if (this.inputDebounce !== undefined) clearTimeout(this.inputDebounce);
+        this.inputDebounce = undefined;
+        this.descriptor = { ...this.descriptor, value: "" };
+        if (this.view instanceof InputView) {
+            this.view.update(this.inputProps(this.descriptor));
+            this.view.inputElement.focus();
+        }
+        this.emit({ id: this.descriptor.id, type: "input", value: "" });
+    };
+
     private readonly inputChanged = (value: string): void => {
         if (this.descriptor.type !== "input") return;
+        const hadText = !!this.descriptor.value;
         this.descriptor = { ...this.descriptor, value };
+        // Show or hide the clear button as the field gains or loses its text.
+        if (hadText !== !!value && this.view instanceof InputView) this.view.update(this.inputProps(this.descriptor));
         if (this.inputDebounce !== undefined) clearTimeout(this.inputDebounce);
         this.inputDebounce = setTimeout(() => {
             this.inputDebounce = undefined;
@@ -634,12 +676,17 @@ export class BoardToolbarControls extends VanillaView<{
     private readonly model: BoardEditorModel;
     private readonly records = new Map<string, ToolbarControlRecord>();
     private frameGeneration: number | undefined;
+    /** Holds the `placement: "start"` controls; the toolbar places it before the text slot. */
+    readonly startRoot = createPanelElement({
+        name: "board-toolbar-start-controls", direction: "row", align: "center", gap: "sm", shrink: false,
+    });
 
     constructor(props: { model: BoardEditorModel; onAction: (event: ToolbarAction) => void }) {
         super(props, createPanelElement({
             name: "board-toolbar-controls", direction: "row", align: "center", gap: "sm", shrink: false,
         }));
         this.model = props.model;
+        this.startRoot.style.display = "none";
     }
 
     set(controls: readonly BoardToolbarControlDescriptor[], frameGeneration: number, warning: ToolbarWarning): void {
@@ -662,7 +709,8 @@ export class BoardToolbarControls extends VanillaView<{
         this.records.clear();
         for (const [id, record] of next) {
             this.records.set(id, record);
-            if (record.view.root.parentElement !== this.root) this.root.append(record.root);
+            const host = atStart(record.descriptor) ? this.startRoot : this.root;
+            if (record.root.parentElement !== host) host.append(record.root);
         }
         this.restoreFocus(previousFocus);
         this.publishDeclarations();
@@ -780,13 +828,17 @@ export class BoardToolbarControls extends VanillaView<{
     }
 
     private publishDeclarations(): void {
+        // An empty start group would still take a toolbar gap, so it is shown only with controls in it.
+        this.startRoot.style.display = this.startRoot.childElementCount ? "" : "none";
         if (this.frameGeneration === undefined) return;
         // Board-menu items live inside Persephone's … menu, so they have no element of their own.
         const declarations = [...this.records.values()].filter((record) => !inBoardMenu(record.descriptor)).map((record) => ({
             name: `board-toolbar-control-${record.descriptor.id}`,
             selector: `[data-name="board-toolbar-control-${record.descriptor.id}"]`,
             purpose: `Locate the board toolbar ${record.descriptor.type} "${record.descriptor.label ?? record.descriptor.id}" control.`,
-            where: "board toolbar, between the board path and Persephone controls",
+            where: atStart(record.descriptor)
+                ? "board toolbar, at the left before the board text slot"
+                : "board toolbar, between the board text slot and Persephone controls",
         }));
         this.model.setLiveToolbarElementDeclarations(this.frameGeneration, declarations);
     }

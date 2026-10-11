@@ -440,6 +440,31 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         } else if (info.service) {
             metadata.append(text(t("board.serviceDeclared"), { size: "sm", color: "light" }));
         }
+        const fileAccessGrants = info.fileAccessGrants;
+        if (trusted) {
+            {
+                const folders = panel({ direction: "column", gap: "xs", align: "stretch" });
+                for (const folder of fileAccessGrants?.folderGrants ?? []) {
+                    const row = panel({ direction: "row", align: "center", gap: "sm", wrap: true });
+                    row.append(text(folder, { size: "sm" }));
+                    this.addButton(row, { children: t("board.revokeFolderGrant"), onClick: () => { void this.props.model.revokeFileAccessGrant("folder", folder); } });
+                    folders.append(row);
+                }
+                if (!(fileAccessGrants?.folderGrants.length)) folders.append(text(t("board.noRememberedFolders"), { size: "sm", color: "light" }));
+                metadata.append(this.infoRow(t("board.rememberedFolders"), folders));
+            }
+            {
+                const files = panel({ direction: "column", gap: "xs", align: "stretch" });
+                for (const file of fileAccessGrants?.fileGrants ?? []) {
+                    const row = panel({ direction: "row", align: "center", gap: "sm", wrap: true });
+                    row.append(text(file, { size: "sm" }));
+                    this.addButton(row, { children: t("board.revokeFileGrant"), onClick: () => { void this.props.model.revokeFileAccessGrant("file", file); } });
+                    files.append(row);
+                }
+                if (!(fileAccessGrants?.fileGrants.length)) files.append(text(t("board.noRememberedFiles"), { size: "sm", color: "light" }));
+                metadata.append(this.infoRow(t("board.rememberedFiles"), files));
+            }
+        }
         if ((info.contentProviders?.length ?? 0) > 0) {
             const providers = panel({ direction: "column", gap: "xs", align: "stretch" });
             for (const provider of info.contentProviders ?? []) {

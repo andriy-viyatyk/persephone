@@ -20,7 +20,8 @@ import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { createLinkData } from "../../../shared/link-data";
 import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
-import type { ITreeProvider, ILink } from "../../api/types/io.tree";
+import type { ILink } from "../../api/types/io.tree";
+import { findSourceProvider, getSiblingItems } from "../shared/source-context";
 import { errMessage } from "../../../shared/utils";
 import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
@@ -390,63 +391,16 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         return sourceId === "explorer" || sourceId === "link-category" || sourceId === "link-tag";
     }
 
-    /**
-     * Find the ITreeProvider that provided the currently playing track.
-     * Scans page.panelEditors[] matching sourceLink.sourceId.
-     */
-    private findSourceProvider(): ITreeProvider | null {
+    private async getSiblingTracks(): Promise<{ items: ILink[]; currentIndex: number } | null> {
         const page = this.page;
         if (!page) return null;
-        const sourceId = this.state.get().sourceLink?.sourceId;
-        if (!sourceId) return null;
-
-        for (const editor of page.panelEditors) {
-            if (!("treeProvider" in editor)) continue;
-            const tp = (editor as any).treeProvider as ITreeProvider | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-            if (sourceId === "explorer" && tp?.type === "file") return tp;
-            if ((sourceId === "link-category" || sourceId === "link-tag") && tp?.type === "link") return tp;
-        }
-        return null;
-    }
-
-    /**
-     * List audio files in the same directory/category as the current track.
-     * Returns the list and the index of the current track within it.
-     */
-    private async getSiblingTracks(): Promise<{ items: ILink[]; currentIndex: number } | null> {
-        const provider = this.findSourceProvider();
-        if (!provider) return null;
-
         const { sourceLink, url } = this.state.get();
-        const sourceId = sourceLink?.sourceId;
-
-        // Tag-based listing: getTagItems handles both specific tag and "All" (empty = no filter)
-        if (sourceId === "link-tag" && provider.getTagItems) {
-            const tag = sourceLink?.selectedTag ?? "";
-            const allItems = provider.getTagItems(tag);
-            const audioItems = allItems.filter((item) => !item.isDirectory && isAudioFile(item.href));
-            if (audioItems.length === 0) return null;
-            const currentHref = (url || sourceLink?.href || "").toLowerCase();
-            const currentIndex = audioItems.findIndex((item) => item.href.toLowerCase() === currentHref);
-            return { items: audioItems, currentIndex };
-        }
-
-        let parentPath: string;
-        if (provider.type === "file") {
-            parentPath = fpDirname(url || sourceLink?.href || "");
-            if (!parentPath) return null;
-        } else {
-            parentPath = sourceLink?.category ?? provider.rootPath;
-        }
-
-        const allItems = await provider.list(parentPath);
-        const audioItems = allItems.filter((item) => !item.isDirectory && isAudioFile(item.href));
-        if (audioItems.length === 0) return null;
-
-        const currentHref = (url || sourceLink?.href || "").toLowerCase();
-        const currentIndex = audioItems.findIndex((item) => item.href.toLowerCase() === currentHref);
-
-        return { items: audioItems, currentIndex };
+        return getSiblingItems({
+            page,
+            sourceLink,
+            currentHref: url,
+            include: (item) => isAudioFile(item.href),
+        });
     }
 
     /**
@@ -475,7 +429,10 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     /** Navigate to a new track via the openRawLink pipeline. */
     private navigateToTrack(item: ILink): void {
-        const provider = this.findSourceProvider();
+        const sourcePage = this.page;
+        const provider = sourcePage
+            ? findSourceProvider(sourcePage, this.state.get().sourceLink?.sourceId)
+            : null;
         if (!provider) return;
 
         const sourceId = this.state.get().sourceLink?.sourceId;

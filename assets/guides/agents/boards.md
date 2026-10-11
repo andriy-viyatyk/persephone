@@ -11,8 +11,14 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.36.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.36.0` adds registration-time
+The board bridge is version **1.38.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.38.0` adds paged folder listing,
+confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
+and session read access to delivered source files. Confirmation dialogs use the manifest name when
+available. It also adds `placement: "start"` for toolbar buttons and menus.
+Bridge `1.37.0` adds source-panel snapshots as
+`persephone.source.initialSourceContext` and `context` on `source.onOpen()` events. The initial
+snapshot is restored with the page; runtime snapshots are transient. Bridge `1.36.0` adds registration-time
 `persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; boards using them must set
 `minBridgeVersion: "1.36.0"`. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
@@ -179,7 +185,8 @@ const off = persephone.toolbar.onAction(({ id, type, value }) => {
 The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`, and `input`. A button
 action has `{ id, type: "button" }`; toggles send a boolean, menus send the selected item id,
 selects and segmented controls send the selected option value, and inputs send the current string
-after 500 ms of quiet time. Menu items are `{ id, label, disabled? }`; select options are
+after 500 ms of quiet time. An input shows a clear (×) button while it holds text; clicking it
+sends `""` at once, without the delay (Persephone 1.38.0). Menu items are `{ id, label, disabled? }`; select options are
 `{ value, label }`.
 
 A `button` or `menu` takes an `icon`, a `label`, or both. With a `label` it is a text button —
@@ -187,6 +194,12 @@ the label is inside the clickable button, after the icon when there is one; with
 icon button (give it a `title` for the tooltip). Adding or removing a label through `update()`
 rebuilds that control in place. Text buttons need bridge `1.35.0`; an older host shows the label as
 plain text beside an icon button, so text-only buttons should set `minBridgeVersion: "1.35.0"`.
+
+A `button` or `menu` with `placement: "start"` is drawn at the left of the toolbar, before the
+`setText()` slot, instead of in the right-hand group — the place for a control that names what the
+board has open (for example a text button showing the open file, which opens the board's own file
+dialog). Like `board-menu`, the placement is fixed at `set()`. Needs bridge `1.38.0`; an older host
+draws such a button in the right-hand group and ignores such a menu with a warning.
 
 A `menu` with `placement: "board-menu"` draws no button: its items go at the top of Persephone's
 own **…** menu, above Reload board, so a board needs no "More" button of its own. Picks arrive
@@ -707,6 +720,24 @@ explanation owns that UI; for example, a torrent board can explain that only the
 fetch uses the page's session, while tracker and peer connections are not routed through Tor and
 swarm peers can see the user's real IP.
 
+For source-panel opens, `persephone.source.initialSourceContext` contains the bounded snapshot
+captured from the Explorer folder or Link Editor category/tag that opened the initial source. Its
+`kind`, `sourcePath`, raw `category`/`tag`, `label`, ordered non-directory `items`, and `index` let a
+board seed a sibling queue; link items also include `id`, `category`, and `tags`. Later
+`source.onOpen()` events carry their own `context` snapshot, captured for that specific open before
+single-instance routing. Both snapshots describe the source at open time; each is limited to 5,000
+items and 1 MiB of serialized UTF-8. The initial context is part of `sourceLink` and is restored by
+page persistence (`PagesPersistenceModel.saveState()` serializes the descriptor through
+`appFs.saveDataFile()`). Runtime event context is not persisted by the host, so a board that needs
+later accepted items after restart must save them in its own restorable state.
+
+```js
+const initialContext = persephone.source.initialSourceContext;
+persephone.source.onOpen(({ sourceUrl, context }) => {
+    if (context) addQueueSources(context.items, context.index, sourceUrl);
+});
+```
+
 Only trusted boards and enabled bundled boards contribute claims. Trusted roots register before
 bundled boards; an exact normalized duplicate is refused and reported as a
 `browser-url-mask` registration issue, while distinct overlapping masks keep their order and the
@@ -934,6 +965,19 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   native dialogs returning a path you hand to `execute()`. The board needs
   `fileSystem: "board"` or `fileSystem: "full"` for these dialogs. An agent may dismiss a
   picker with `windows[i].nativeDialog.dismiss()`, but cannot choose or confirm a path.
+- `persephone.listFolder(path, options?)` — paged listing (1,000 entries per page, 100,000 per
+  listing), non-recursive by default. `masks` match basenames with `*` and `?`; directories remain
+  included. Follow `nextCursor` and check `truncated`.
+- `persephone.rememberFolder(path)` asks the user to persist read/list access to a folder picked by
+  this board. `persephone.rememberFile(path)` asks for read/write access to one exact plain local
+  file picked by this board or delivered to it as its initial/runtime source; source-context items
+  are not eligible. It never covers the parent or siblings. Both prompt only under
+  `fileSystem: "board"` and can be revoked in Board Info. Under `fileSystem: "full"` every path is
+  already covered, so both return `true` at once without a prompt or a stored grant — a board that
+  needs arbitrary user folders (a music library, say) should request `"full"` and be trusted once.
+- `persephone.getFileAccess(path)` returns `{ read, write }` for the current path authorization
+  without prompting or changing grants. Call it at startup to check whether a remembered catalog is
+  writable; `rememberFile()` may prompt and should not be used as an access check.
 - `persephone.readFile(path, options?)` / `writeFile(path, data, options?)` — read/write a file with
   `fileSystem: "board"` or `fileSystem: "full"` (full allows any accessible path). With
   `fileSystem: false`, `readFile()` may read only the exact current `getFilePath()` target; all other
@@ -949,6 +993,12 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   ```js
   const bytes = await persephone.readFile(path, { encoding: "binary" });  // Uint8Array
   ```
+- `listFolder()` skips symlinks and junctions, limits recursive depth to 32, and expires cursors
+  after five minutes. Stable error codes include `permission-denied`, `invalid-argument`, `not-found`,
+  `not-directory`, `too-many-entries`, `depth-limit`, `cursor-expired`, and `io-error`. Persephone
+  grants session-only read access to exact local source files delivered to the board and to local
+  items in delivered source contexts; this also lets `content.open()` read those files. It grants no
+  writes. A `fileSystem: false` board cannot read context siblings.
 - `persephone.getFilePath()` → `Promise<string | undefined>` — when the board is opened as a **custom
   editor** for a file (associated via `fileMasks` in `board-manifest.json`), resolves to that file's
   absolute path (read/write it with `readFile`/`writeFile`); `undefined` for a board opened plainly.

@@ -57,7 +57,13 @@ function parseTrustedPaths(data: string): string[] {
     return paths;
 }
 
-interface TrustedBoardGrant { root: string; permissions: NormalizedBoardPermissions; manifestChanged?: boolean }
+interface TrustedBoardGrant {
+    root: string;
+    permissions: NormalizedBoardPermissions;
+    folderGrants?: string[];
+    fileGrants?: string[];
+    manifestChanged?: boolean;
+}
 
 function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrated: boolean } | null {
     try {
@@ -73,7 +79,7 @@ function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrat
                 console.warn("[BoardTrustService] Skipping malformed trusted board record", { index, root: undefined, reason });
                 continue;
             }
-            const record = item as { root?: unknown; permissions?: unknown };
+            const record = item as { root?: unknown; permissions?: unknown; folderGrants?: unknown; fileGrants?: unknown };
             if (typeof record.root !== "string" || !path.isAbsolute(record.root)) reason = "root is not an absolute path";
             const permissions = record.permissions;
             if (!reason && (!permissions || typeof permissions !== "object")) reason = "permissions are not an object";
@@ -101,7 +107,22 @@ function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrat
                 console.warn("[BoardTrustService] Skipping malformed trusted board record", { index, root: record.root, reason });
                 continue;
             }
-            result.push({ root: path.resolve(record.root as string), permissions: permissions as NormalizedBoardPermissions });
+            const validPaths = (input: unknown): string[] => {
+                if (!Array.isArray(input)) return [];
+                const result: string[] = [];
+                const seen = new Set<string>();
+                for (const candidate of input) {
+                    if (typeof candidate !== "string" || !path.isAbsolute(candidate)) continue;
+                    const canonical = path.resolve(candidate);
+                    const key = normalizePathForCompare(canonical);
+                    if (!key || seen.has(key)) continue;
+                    seen.add(key);
+                    result.push(canonical);
+                }
+                return result;
+            };
+            result.push({ root: path.resolve(record.root as string), permissions: permissions as NormalizedBoardPermissions,
+                folderGrants: validPaths(record.folderGrants), fileGrants: validPaths(record.fileGrants) });
         }
         return { records: result, migrated };
     } catch { return null; }
@@ -226,6 +247,45 @@ class BoardTrustService {
         return this.permissionSnapshot.find(({ root }) => normalizePathForCompare(root) === key)?.permissions;
     }
 
+    async getFileAccessGrants(boardRoot: string): Promise<{ folderGrants: string[]; fileGrants: string[] }> {
+        await this.ready();
+        const key = normalizePathForCompare(boardRoot);
+        const grant = this.grants.find((entry) => normalizePathForCompare(entry.root) === key);
+        return { folderGrants: [...(grant?.folderGrants ?? [])], fileGrants: [...(grant?.fileGrants ?? [])] };
+    }
+
+    async addFileAccessGrant(boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> {
+        await this.ready();
+        await this.serialize(async () => {
+            const nextGrants = this.grants.map((entry) => ({ ...entry, folderGrants: [...(entry.folderGrants ?? [])], fileGrants: [...(entry.fileGrants ?? [])] }));
+            const grant = nextGrants.find((entry) => normalizePathForCompare(entry.root) === normalizePathForCompare(boardRoot));
+            if (!grant) throw new Error("This board is not trusted.");
+            const property = kind === "folder" ? "folderGrants" : "fileGrants";
+            const values = [...(grant[property] ?? [])];
+            if (!values.some((value) => normalizePathForCompare(value) === normalizePathForCompare(canonicalPath))) values.push(path.resolve(canonicalPath));
+            grant[property] = values;
+            await this.writeGrantsAtomically(nextGrants);
+            this.grants = nextGrants;
+            (await import("./board-file-access")).invalidatePersistedBoardGrants(boardRoot);
+            openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
+        });
+    }
+
+    async revokeFileAccessGrant(boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> {
+        await this.ready();
+        await this.serialize(async () => {
+            const nextGrants = this.grants.map((entry) => ({ ...entry, folderGrants: [...(entry.folderGrants ?? [])], fileGrants: [...(entry.fileGrants ?? [])] }));
+            const grant = nextGrants.find((entry) => normalizePathForCompare(entry.root) === normalizePathForCompare(boardRoot));
+            if (!grant) return;
+            const property = kind === "folder" ? "folderGrants" : "fileGrants";
+            grant[property] = (grant[property] ?? []).filter((value) => normalizePathForCompare(value) !== normalizePathForCompare(canonicalPath));
+            await this.writeGrantsAtomically(nextGrants);
+            this.grants = nextGrants;
+            (await import("./board-file-access")).invalidatePersistedBoardGrants(boardRoot);
+            openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
+        });
+    }
+
     async allows(boardRoot: string, flag: keyof import("../shared/board-manifest-utils").BoardPermissionFlags): Promise<boolean> {
         await this.ready();
         const grant = this.permissionSnapshot.find(({ root }) =>
@@ -263,6 +323,7 @@ class BoardTrustService {
                 nextGrants.splice(0, nextGrants.length, ...nextGrants.filter(({ root }) => normalizePathForCompare(root) !== key));
             }
             await this.writeGrantsAtomically(nextGrants);
+            if (!trusted) (await import("./board-file-access")).clearBoardFileAccess(boardRoot);
             this.grants = nextGrants;
             this.paths = nextGrants.map(({ root }) => root);
             const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);

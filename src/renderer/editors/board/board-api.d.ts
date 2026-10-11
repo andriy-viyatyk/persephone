@@ -115,6 +115,10 @@ interface PersephoneOpenFolderDialogParams {
     multiSelections?: boolean;
 }
 
+interface BoardFolderEntry { name: string; path: string; isDirectory: boolean; size: number; mtime: number }
+interface BoardFolderPage { entries: BoardFolderEntry[]; nextCursor?: string; truncated: boolean }
+interface BoardFolderListOptions { recursive?: boolean; masks?: string[]; limit?: number; cursor?: string }
+
 /**
  * The host palette + metric tokens, exposed as `--p-*` CSS variables on the board's
  * `<html>` (use `var(--p-bg)`, `padding: var(--p-space-md)`, etc.) and mirrored here in JS.
@@ -432,21 +436,48 @@ interface PersephoneSourceOpenEvent {
     readonly sourceUrl: string;
     /** True when this source was opened with a private browser session. */
     readonly privateSession?: boolean;
+    /** Source-panel snapshot captured when this source was opened. */
+    readonly context?: PersephoneBoardSourceContext;
+}
+
+interface PersephoneBoardSourceContext {
+    readonly kind: "folder" | "link-category" | "link-tag";
+    readonly sourcePath: string;
+    /** Raw category path for `kind: "link-category"`. */
+    readonly category?: string;
+    /** Raw selected tag for `kind: "link-tag"`; empty string means All. */
+    readonly tag?: string;
+    readonly label: string;
+    readonly items: readonly PersephoneBoardSourceContextItem[];
+    /** Opened href index, or -1 when it is outside the bounded snapshot. */
+    readonly index: number;
+}
+
+interface PersephoneBoardSourceContextItem {
+    readonly href: string;
+    readonly title: string;
+    /** Link collection identity fields; absent for folder items. */
+    readonly id?: string;
+    readonly category?: string;
+    readonly tags?: readonly string[];
 }
 
 interface PersephoneSourceApi {
     /** Subscribe to runtime source opens for this board's main frame. Buffered events are
-     * delivered FIFO. The initial source is delivered only through `getSourceUrl()`. */
+     * delivered FIFO. Each event's context is the source-panel snapshot captured for that open. */
     onOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void;
+    /** Source-panel snapshot captured for the initial open. It is persisted with `sourceLink`;
+     * runtime events are transient, so boards that need them after restart must persist them. */
+    readonly initialSourceContext: PersephoneBoardSourceContext | undefined;
     /** Whether the initial source from `getSourceUrl()` was opened with a private browser session. */
     readonly initialSourcePrivateSession: boolean;
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.17.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.13.0" — 1.13.0 adds renderer-owned `settings.get()` and
-     *  `settings.onChange()`. Compare it before using a newer member; do not narrow it to a
-     *  literal, it moves with the app. */
+    /** The current host bridge is 1.37.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.37.0"; 1.37.0 adds source-panel context snapshots.
+     * Compare it before using a newer member; do not narrow it to a
+     * literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
     readonly aiVision: PersephoneAiVisionApi;
@@ -499,6 +530,21 @@ interface PersephoneBoardApi {
     saveFileDialog(params?: PersephoneSaveFileDialogParams): Promise<string | undefined>;
     /** Native pick-folder dialog → selected folder(s), or undefined if cancelled. */
     openFolderDialog(params?: PersephoneOpenFolderDialogParams): Promise<string[] | undefined>;
+    /** List a picked, remembered, or board-owned folder (bridge 1.38.0). Directories always survive masks. */
+    listFolder(path: string, options?: BoardFolderListOptions): Promise<BoardFolderPage>;
+    /** Ask the user to persist read/list access to a folder returned by this board's folder dialog.
+     *  Under `fileSystem: "full"` it resolves `true` at once without a prompt. */
+    rememberFolder(path: string): Promise<boolean>;
+    /** Ask the user to persist read/write access to one exact plain local file: either a file returned
+     *  by this board's file dialog, this board's initial source (`getSourceUrl()`), or a runtime
+     *  source URL delivered to this board this session. Source-context items are not eligible.
+     *  Prompts under `fileSystem: "board"` (revocable in Board Info); under `"full"` it resolves
+     *  `true` at once without a prompt. */
+    rememberFile(path: string): Promise<boolean>;
+    /** Check current read/write authorization for a path without prompting or changing grants.
+     *  Use at startup to determine whether a remembered catalog is writable; calling
+     *  `rememberFile()` to check may show a confirmation prompt. */
+    getFileAccess(path: string): Promise<{ read: boolean; write: boolean }>;
     /** Declare that this board's spawned processes must outlive the board (US-799).
      *  While busy, unloading the board (page navigation / reload) KEEPS its processes
      *  running; they are still killed on page/tab close, app quit, or after

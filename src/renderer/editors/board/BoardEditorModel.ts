@@ -37,6 +37,7 @@ import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
+import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export interface BoardToolbarElementDeclaration {
@@ -233,7 +234,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
     private readonly boardThemePreviewGenerations = new Map<string, number>();
     private readonly contentResources = new Map<string, ContentResource>();
-    private readonly pendingSourceUrls: Array<{ sourceUrl: string; privateSession: boolean }> = [];
+    private readonly pendingSourceUrls: Array<{
+        sourceUrl: string;
+        privateSession: boolean;
+        context?: BoardSourceContext;
+    }> = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
     private readonly pageStateQueues = new Map<string, Promise<void>>();
@@ -315,14 +320,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             this.registerSourceSessionHandle(context.sourceUrl, context.sessionHandle);
             return;
         }
-        this.enqueueSourceUrl(context.sourceUrl, context.sessionHandle);
+        this.enqueueSourceUrl(context.sourceUrl, context.sessionHandle, context.sourceContext);
     }
 
     /** Queue a raw source identity for the main board frame. It is transient and never persisted. */
-    enqueueSourceUrl(sourceUrl: string, sessionHandle?: string): void {
+    enqueueSourceUrl(sourceUrl: string, sessionHandle?: string, context?: BoardSourceContext): void {
         if (!sourceUrl) return;
         this.registerSourceSessionHandle(sourceUrl, sessionHandle);
-        this.pendingSourceUrls.push({ sourceUrl, privateSession: Boolean(sessionHandle) });
+        this.pendingSourceUrls.push({ sourceUrl, privateSession: Boolean(sessionHandle), context });
         // A live frame flushes immediately; a frame still loading flushes on load/handshake.
         for (const listener of this.pendingSourceListeners) listener();
     }
@@ -339,8 +344,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             || (sourceUrl !== undefined && this.sessionBoundSources.has(sourceUrl));
     }
 
-    peekPendingSourceUrl(): { sourceUrl: string; privateSession: boolean } | undefined {
+    peekPendingSourceUrl(): {
+        sourceUrl: string;
+        privateSession: boolean;
+        context?: BoardSourceContext;
+    } | undefined {
         return this.pendingSourceUrls[0];
+    }
+
+    /** Initial sibling context persisted with the board's source link. */
+    initialSourceContext(): BoardSourceContext | undefined {
+        return this.state.get().sourceLink?.sourceContext;
     }
 
     consumePendingSourceUrl(): void {

@@ -124,8 +124,9 @@ are deprecated and asks the authoring agent to add an object-form `permissions` 
 secondary text is “Can reach everything your user account can.”
 
 New blank boards use all-false object manifests and `minBridgeVersion: "1.36.0"` for the starter's
-board-pack i18n; object-form manifests require `minBridgeVersion >= 1.30.0`. Auto-trust on creation
-does not widen their grants.
+board-pack i18n; object-form manifests require `minBridgeVersion >= 1.30.0`. Keep that starter
+minimum while it does not call the 1.38.0 folder-listing or remembered-grant methods; boards that do
+use them must require bridge `1.38.0`. Auto-trust on creation does not widen their grants.
 Keep only flags used by reachable code. Native
 `fetch("./data.json")` and `fetch("board://<host>/data.json")` read own board files with
 `fileSystem: false`; `persephone.fetch()` needs `network`. An exact refusal is
@@ -147,6 +148,17 @@ Viewer boards rendering untrusted documents keep `fileSystem: false` and `networ
 never request `execute` or `appScripting`: injected document code must not rewrite viewer files or
 reach outward. The viewer can read its exact hosted document with `fileSystem: false`; other file
 reads and writes remain denied. Document display and own board assets continue to work.
+
+For boards using folder libraries, verify `listFolder()` stays within the board folder, a current
+dialog pick, a remembered folder, or `fileSystem: "full"`; masks must match basenames and directories
+must remain navigable. Check the 1,000-entry page, 100,000-entry total, depth 32 and five-minute cursor
+limits, plus symlink/junction skipping. `rememberFolder()` must confirm and grant read/list only.
+`rememberFile()` must confirm the exact path of a file picked by this board or delivered as its
+initial/runtime source, state that the board can read and change it, and never grant its parent or
+siblings. A `BoardSourceContext` item is not eligible for `rememberFile()`. Confirm Board Info can
+revoke each scope and untrust clears all grants. Delivered local source files and context items get
+session-only exact-file read access; source grants never enable writes, and a `fileSystem: false`
+board cannot read context siblings.
 
 For the service-versus-`executeNode()` ownership decision, use the canonical wording in the
 [board-authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice)

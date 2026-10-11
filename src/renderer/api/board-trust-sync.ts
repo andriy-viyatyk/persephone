@@ -12,6 +12,7 @@ export async function initBoardTrustSync(): Promise<void> {
     if (initialized) return;
     await settings.wait();
     rendererEvents[EventEndpoint.eBoardTrustChanged].subscribe((paths) => {
+        // BoardTrust hydrates permission snapshots and remembered file-access grants from main.
         boardTrust.applyAuthoritativePaths(paths);
     });
     const pushDisabledBoards = (ids: string[]): void => {

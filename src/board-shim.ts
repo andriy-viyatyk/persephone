@@ -28,6 +28,7 @@ import {
 } from "./ipc/runner-channels";
 import { createExecuteHandle } from "./shared/execute-handle";
 import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
+import type { BoardSourceContext } from "./shared/board-source-context";
 import type {
     BoardFetchErrorMsg,
     BoardFetchHeadMsg,
@@ -324,14 +325,20 @@ const filePathResolvers: Array<(p: string | undefined) => void> = [];
 let sourceUrlSettled = false;
 let sourceUrlValue: string | undefined;
 let initialSourcePrivateSession = false;
+let initialSourceContext: BoardSourceContext | undefined;
 const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
 interface PersephoneSourceOpenEvent {
     readonly url: string;
     readonly sourceUrl: string;
     readonly privateSession?: boolean;
+    readonly context?: BoardSourceContext;
 }
 const sourceOpenCallbacks = new Set<(event: PersephoneSourceOpenEvent) => void>();
-const pendingSourceOpenEvents: Array<{ sourceUrl: string; privateSession?: boolean }> = [];
+const pendingSourceOpenEvents: Array<{
+    sourceUrl: string;
+    privateSession?: boolean;
+    context?: BoardSourceContext;
+}> = [];
 let folderPathValue: string | undefined;
 let pipePageId: string | undefined;
 let pipeUrlEnabled = false;
@@ -358,11 +365,16 @@ function settleSourceUrl(value: string | undefined): void {
     sourceUrlResolvers.length = 0;
 }
 
-function deliverSourceOpen(sourceUrl: string, privateSession?: boolean): void {
+function deliverSourceOpen(
+    sourceUrl: string,
+    privateSession?: boolean,
+    context?: BoardSourceContext,
+): void {
     const event: PersephoneSourceOpenEvent = {
         url: sourceUrl,
         sourceUrl,
         ...(privateSession ? { privateSession: true } : {}),
+        ...(context ? { context } : {}),
     };
     for (const callback of [...sourceOpenCallbacks]) {
         try {
@@ -377,7 +389,7 @@ function onSourceOpen(callback: (event: PersephoneSourceOpenEvent) => void): () 
     sourceOpenCallbacks.add(callback);
     while (pendingSourceOpenEvents.length > 0) {
         const pending = pendingSourceOpenEvents.shift();
-        if (pending !== undefined) deliverSourceOpen(pending.sourceUrl, pending.privateSession);
+        if (pending !== undefined) deliverSourceOpen(pending.sourceUrl, pending.privateSession, pending.context);
     }
     return () => sourceOpenCallbacks.delete(callback);
 }
@@ -1337,6 +1349,7 @@ onHostMessage((event) => {
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
             sourceUrl?: string;
+            sourceContext?: BoardSourceContext;
             initialSourcePrivateSession?: boolean;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
             pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
@@ -1359,6 +1372,7 @@ onHostMessage((event) => {
     // `undefined`, so `getSourceUrl()` still resolves (to undefined).
     if (!sourceUrlSettled) {
         initialSourcePrivateSession = data.initialSourcePrivateSession === true;
+        initialSourceContext = data.sourceContext;
         settleSourceUrl(data.sourceUrl);
     }
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
@@ -1443,9 +1457,10 @@ onHostMessage((event) => {
     const pending = {
         sourceUrl: data.sourceUrl,
         ...(data.privateSession === true ? { privateSession: true } : {}),
+        ...(data.context ? { context: data.context } : {}),
     };
     if (sourceOpenCallbacks.size === 0) pendingSourceOpenEvents.push(pending);
-    else deliverSourceOpen(pending.sourceUrl, pending.privateSession);
+    else deliverSourceOpen(pending.sourceUrl, pending.privateSession, pending.context);
 });
 
 // A single listener settles all hostRequest replies by request id and expected reply type.
@@ -1768,6 +1783,7 @@ function createHandle(
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
     // 1.28.0 adds the `segmented` board toolbar control (US-1577).
+    // 1.37.0 adds initial and runtime source-panel snapshots to `source`.
     // 1.36.0 adds registration-time `locale` and board-pack `i18n.t()` / `has()`.
     // 1.35.0 adds the themes bridge (EPIC-123), the plain-page unsaved-changes protocol (US-1641),
     //   text toolbar buttons (a labelled button/menu) and `placement: "board-menu"` (US-1642).
@@ -2102,6 +2118,15 @@ function createHandle(
         return rpc("openFolderDialog", [params ?? {}]) as Promise<string[] | undefined>;
     },
 
+    listFolder(path: string, options?: unknown): Promise<unknown> {
+        return rpc("listFolder", [path, options ?? {}]);
+    },
+    rememberFolder(path: string): Promise<boolean> { return rpc("rememberFolder", [path]) as Promise<boolean>; },
+    rememberFile(path: string): Promise<boolean> { return rpc("rememberFile", [path]) as Promise<boolean>; },
+    getFileAccess(path: string): Promise<{ read: boolean; write: boolean }> {
+        return rpc("getFileAccess", [path]) as Promise<{ read: boolean; write: boolean }>;
+    },
+
     /** Read a file. `encoding` picks what you get back: "utf8" (default) or "base64" give
      *  a string, "binary" gives a `Uint8Array` of the bytes — no base64 round-trip, which
      *  is both faster and the only way to read a file over ~400 MB (base64 of one exceeds
@@ -2185,6 +2210,9 @@ function createHandle(
      * persists the initial source through `getSourceUrl()`; boards that need later sources after
      * restart must persist their accepted hrefs through `persephone.state.init`. */
     source: {
+        get initialSourceContext(): BoardSourceContext | undefined {
+            return initialSourceContext;
+        },
         get initialSourcePrivateSession(): boolean {
             return initialSourcePrivateSession;
         },

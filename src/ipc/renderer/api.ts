@@ -600,6 +600,13 @@ class ApiCalls implements Api {
         return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
     };
 
+    getBoardFileAccessGrants = async (boardRoot: string) =>
+        executeOnce<{ folderGrants: string[]; fileGrants: string[] }>(Endpoint.getBoardFileAccessGrants, boardRoot);
+    revokeBoardFileAccessGrant = async (boardRoot: string, kind: "folder" | "file", canonicalPath: string) =>
+        executeOnce<void>(Endpoint.revokeBoardFileAccessGrant, boardRoot, kind, canonicalPath);
+    grantBoardSourceReads = async (boardRoot: string, sourcePaths: string[], contextPaths: string[] = []) =>
+        executeOnce<void>(Endpoint.grantBoardSourceReads, boardRoot, sourcePaths, contextPaths);
+
     getSiteExtensionTrust = async () => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.getSiteExtensionTrust);
     bindSiteExtensionFolder = async (folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.bindSiteExtensionFolder, folder);
     trustSiteExtension = async (id: string, hosts: string[], folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts, folder);

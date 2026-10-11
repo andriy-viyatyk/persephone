@@ -50,6 +50,9 @@ import { ContentPipe } from "../../content/ContentPipe";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { pipeFromPersistedSource, pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { openImageForEdit } from "../capability-feedback";
+import { captureBoardSourceContext } from "../../editors/shared/source-context";
+import type { BoardSourceContext } from "../../../shared/board-source-context";
+import { matchesFileMask } from "../../editors/board/board-manifest";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
 
@@ -128,6 +131,7 @@ export class PagesLifecycleModel {
             mode: "enqueue-source",
             sourceUrl,
             sessionHandle,
+            sourceContext: sourceLink?.sourceContext,
         });
     }
 
@@ -906,9 +910,38 @@ export class PagesLifecycleModel {
         newFilePath: string,
         options?: NavigatePageToOptions,
     ): Promise<boolean> {
-        const singletonPage = await this.openSingleInstanceBoard(newFilePath, options?.pipe, options);
+        const resolvedTarget = options?.target ?? (resolveEditorIdForFile(newFilePath) ?? "monaco");
+        const boardRoot = parseBoardEditorId(resolvedTarget);
+        const board = boardRoot === null
+            ? undefined
+            : customEditorRegistry.entries.find((entry) =>
+                fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
+            );
+        let sourceContext: BoardSourceContext | undefined;
+        const sourcePage = this.model.query.findPage(pageId);
+        if (board && sourcePage && options?.sourceLink) {
+            const sourceLink = options.sourceLink;
+            const currentHref = sourceLink.url ?? sourceLink.href ?? newFilePath;
+            sourceContext = await captureBoardSourceContext({
+                page: sourcePage,
+                sourceLink,
+                currentHref,
+                include: (item) => board.fileMasks.length === 0
+                    || board.fileMasks.some((mask) => matchesFileMask(fpBasename(item.href), mask)),
+            });
+        }
+        const routedOptions = board
+            ? {
+                ...options,
+                target: resolvedTarget,
+                ...(options?.sourceLink
+                    ? { sourceLink: { ...options.sourceLink, sourceContext } }
+                    : {}),
+            }
+            : options;
+        const singletonPage = await this.openSingleInstanceBoard(newFilePath, options?.pipe, routedOptions);
         if (singletonPage) return true;
-        return navigatePageTo(this.model, pageId, newFilePath, options);
+        return navigatePageTo(this.model, pageId, newFilePath, routedOptions);
     }
 
     // ── Closing ──────────────────────────────────────────────────────

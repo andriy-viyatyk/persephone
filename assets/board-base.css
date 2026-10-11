@@ -185,6 +185,8 @@ input[type="checkbox"]:disabled { cursor: default; opacity: 0.5; }
 .p-btn.primary:hover { background: var(--p-accent, #0078d4); filter: brightness(1.1); }
 .p-btn.primary:active { background: var(--p-accent, #0078d4); filter: brightness(0.9); }
 
+/* `.p-btn` sets `display`, which beats the user-agent `[hidden]` rule, so restore it. */
+.p-btn[hidden] { display: none; }
 .p-btn.ghost { background: transparent; }
 .p-btn.ghost:hover { background: var(--pb-hover); }
 .p-btn.ghost:active { background: var(--pb-active); }

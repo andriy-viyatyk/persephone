@@ -104,6 +104,7 @@ export interface BoardPropsInfo {
     registrationIssues?: CustomEditorRegistrationIssue[];
     root: string;
     trusted: boolean;
+    fileAccessGrants?: { folderGrants: string[]; fileGrants: string[] };
     /** True when the board has an install-registry entry (came from the catalog). Drives
      *  "Uninstall" (delete folder) vs "Unregister" (untrust only) and the Versions section. */
     isCatalogInstall: boolean;
@@ -404,6 +405,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         await boardTrust.load();
         await boardTrust.refreshPermissionSnapshot();
         const permissionSnapshot = await boardTrust.getPermissionSnapshot(root);
+        const fileAccessGrants = boardTrust.isTrusted(root)
+            ? await boardTrust.getFileAccessGrants(root)
+            : { folderGrants: [], fileGrants: [] };
         const assoc = manifest?.association ?? null;
         const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
         const bridgeCompatibility = getBoardCompatibility(
@@ -454,6 +458,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             registrationIssues: registrationIssues.length > 0 ? [...registrationIssues] : undefined,
             root,
             trusted: boardTrust.isTrusted(root),
+            fileAccessGrants,
             isCatalogInstall: !!reg,
             catalogId: reg?.id,
             installedVersion: reg?.version ?? manifest?.version,
@@ -464,6 +469,18 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         });
         if (reg) void this.loadVersions(reg.id);
         else this.state.update((s) => { s.versions = undefined; s.versionsState = "idle"; });
+    }
+
+    async revokeFileAccessGrant(kind: "folder" | "file", canonicalPath: string): Promise<void> {
+        const root = this.state.get().props?.root;
+        if (!root) return;
+        try {
+            await boardTrust.revokeFileAccessGrant(root, kind, canonicalPath);
+            const fileAccessGrants = await boardTrust.getFileAccessGrants(root);
+            this.state.update((state) => { if (state.props?.root === root) state.props.fileAccessGrants = fileAccessGrants; });
+        } catch (error: unknown) {
+            void ui.notify(errMessage(error, "Could not revoke the remembered board path."), "warning");
+        }
     }
 
     /** Fetch the board's published version history on demand (catalog installs only). */
