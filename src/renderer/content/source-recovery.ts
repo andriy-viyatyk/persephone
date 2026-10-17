@@ -7,11 +7,12 @@ import { errMessage } from "../../shared/utils";
 export function watchSourceRecovery(
     pipe: IContentPipe | null | undefined,
     onAvailable: () => void,
+    label?: string,
 ): () => void {
     if (!pipe?.watch) return () => {};
     return pipe.watch((event) => {
         if (event === "available") onAvailable();
-    });
+    }, label);
 }
 
 /** Report typed provider failures, optionally deduplicating against owner state. */

@@ -32,6 +32,7 @@ import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
 import { initPermissionPolicy } from "./permission-policy-service";
+import { shutdownPathWatchService } from "./path-watch-service";
 
 export function setupMainProcess() {
     // Permission handlers must be present before any renderer or webview session is created.
@@ -199,6 +200,7 @@ export function setupMainProcess() {
     let serviceQuitGateReleased = false;
 
     app.on("will-quit", (event) => {
+        shutdownPathWatchService();
         if (!serviceQuitGateReleased) {
             event.preventDefault();
             if (!serviceQuitGateStarted) {

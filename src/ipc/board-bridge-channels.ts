@@ -34,6 +34,7 @@ import type {
     RunnerStdinMsg,
 } from "./runner-channels";
 import type { CapabilityErrorCode, IntentEnvelope } from "./capability-bus-channels";
+import type { PathWatchBatch } from "./api-types";
 
 export type { BoardServiceStatus } from "./module-service-channels";
 
@@ -182,6 +183,8 @@ export interface BoardReadFileMsg {
     encoding?: BoardFileEncoding;
 }
 
+export type BoardWatchOptions = { recursive?: boolean; debounceMs?: number };
+
 export interface BoardWriteFileMsg {
     /** Absolute, or relative to the board root. */
     path: string;
@@ -207,6 +210,8 @@ export type BoardRpcMethod =
     | "getFileAccess"
     | "readFile"
     | "writeFile"
+    | "watch"
+    | "unwatch"
     | "getJobs"
     | "serviceRequest"
     | "serviceStatus"
@@ -292,6 +297,7 @@ export type BoardToMain =
 export type MainToBoard =
     | { kind: "rpc-result"; id: number; result?: unknown; error?: string; code?: string }
     | BoardCallResultMsg
+    | { kind: "watch"; watchId: number; batch: PathWatchBatch }
     | { kind: "theme"; palette: BoardThemePalette }
     | BoardRunnerInMsg;
 

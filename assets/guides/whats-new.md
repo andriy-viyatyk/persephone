@@ -12,7 +12,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.11 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Boards can watch authorized files and folders:** `persephone.watch()` reports file changes in
+  batches, respects the board's existing file access, and stops when access is revoked or the board
+  closes.
 
 ---
 

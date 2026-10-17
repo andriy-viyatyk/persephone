@@ -80,9 +80,11 @@ import type {
     BoardVarResultMsg,
     BoardThemePalette,
     BoardToMain,
+    BoardWatchOptions,
     BoardServiceStatus,
     MainToBoard,
 } from "./ipc/board-bridge-channels";
+import type { PathWatchBatch } from "./ipc/api-types";
 import { isCapabilityErrorCode, type CapabilityErrorCode, type IntentEnvelope } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
@@ -335,6 +337,8 @@ interface PersephoneSourceOpenEvent {
     readonly context?: BoardSourceContext;
 }
 const sourceOpenCallbacks = new Set<(event: PersephoneSourceOpenEvent) => void>();
+const watchCallbacks = new Map<number, (batch: PathWatchBatch) => void>();
+let watchIdCounter = 0;
 const pendingSourceOpenEvents: Array<{
     sourceUrl: string;
     privateSession?: boolean;
@@ -1239,6 +1243,14 @@ function onPortMessage(data: MainToBoard): void {
         }
         return;
     }
+    if (data.kind === "watch") {
+        const callback = watchCallbacks.get(data.watchId);
+        if (!callback) return;
+        try { callback(data.batch); }
+        catch (error: unknown) { console.error("persephone.watch callback error:", errMessage(error)); }
+        if (data.batch.ended) watchCallbacks.delete(data.watchId);
+        return;
+    }
     if (data.kind === "runner") {
         const jobId = (data.msg as { jobId: string }).jobId;
         const h = runnerHandlers.get(jobId);
@@ -1264,8 +1276,11 @@ function attachPort(p: MessagePort): void {
     if (port === p) return; // already connected (ignore a duplicate handshake)
     if (port) {
         port.close();
-        failPendingBoardFetches(new Error("Persephone bridge was replaced."));
         const bridgeReplaced = new Error("Persephone bridge was replaced.");
+        for (const pending of pendingRpc.values()) pending.reject(bridgeReplaced);
+        pendingRpc.clear();
+        watchCallbacks.clear();
+        failPendingBoardFetches(new Error("Persephone bridge was replaced."));
         for (const pending of pendingCalls.values()) {
             clearTimeout(pending.timer);
             pending.reject(bridgeReplaced);
@@ -1793,6 +1808,7 @@ function createHandle(
     // 1.18.0 adds persephone.icons.forFiles() (US-1533).
     // 1.26.0 adds live board service provider status subscriptions (US-1562).
     // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
+    // 1.39.0 adds authorized, classified file and folder watches (US-1694).
     // 1.28.0 adds the `segmented` board toolbar control (US-1577).
     // 1.37.0 adds initial and runtime source-panel snapshots to `source`.
     // 1.36.0 adds registration-time `locale` and board-pack `i18n.t()` / `has()`.
@@ -2142,6 +2158,30 @@ function createHandle(
 
     listFolder(path: string, options?: unknown): Promise<unknown> {
         return rpc("listFolder", [path, options ?? {}]);
+    },
+    /** Watch an authorized file or folder. The callback stays in this frame; only classified
+     * batches cross the bridge. Call the returned disposer to stop receiving changes. */
+    watch(path: string, callback: (batch: PathWatchBatch) => void, options?: BoardWatchOptions): Promise<() => void> {
+        if (typeof callback !== "function") {
+            return Promise.reject(Object.assign(new Error("persephone.watch() needs a callback function."), { code: "invalid-argument" }));
+        }
+        if (watchIdCounter >= Number.MAX_SAFE_INTEGER) return Promise.reject(new Error("persephone.watch() exhausted its local watch ids."));
+        const watchId = ++watchIdCounter;
+        watchCallbacks.set(watchId, callback);
+        return rpc("watch", [watchId, path, options]).then(() => {
+            let disposed = false;
+            return () => {
+                if (disposed) return;
+                disposed = true;
+                watchCallbacks.delete(watchId);
+                void rpc("unwatch", [watchId]).catch((error: unknown) => {
+                    console.warn("persephone.watch disposer failed:", errMessage(error));
+                });
+            };
+        }, (error: unknown) => {
+            watchCallbacks.delete(watchId);
+            throw error;
+        });
     },
     rememberFolder(path: string): Promise<boolean> { return rpc("rememberFolder", [path]) as Promise<boolean>; },
     rememberFile(path: string): Promise<boolean> { return rpc("rememberFile", [path]) as Promise<boolean>; },

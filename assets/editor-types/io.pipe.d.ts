@@ -77,7 +77,11 @@ export interface IContentPipe {
     /** Display name for UI (delegated to provider). */
     readonly displayName: string;
     /** Watch for external changes (delegated to provider). */
-    watch?(callback: (event: string) => void): () => void;
+    watch?(
+        callback: (event: string) => void,
+        /** Diagnostic label shown in main.watchers; default 'content pipe'. */
+        label?: string,
+    ): () => void;
     /** Clone this pipe with a different provider, keeping all transformers. */
     cloneWithProvider(provider: IProvider): IContentPipe;
     /** Clone this pipe with same provider and transformers (deep copy). */

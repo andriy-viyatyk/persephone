@@ -1,25 +1,10 @@
 const nodefs = require("fs");
 
 import { FileStats } from "../../../shared/types";
-import { debounce } from "../../../shared/utils";
+import type { PathWatchBatch } from "../../../ipc/api-types";
+import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";
-import { isArchivePath, isAsarPath } from "./file-path";
-
-function watchFile(filePath: string, callback: (event: string) => void): () => void {
-    try {
-        const watcher = nodefs.watch(filePath, (eventType: string) => {
-            callback(eventType);
-        });
-        return () => {
-            watcher.close();
-        };
-    } catch (err) {
-        console.error("Error watching file:", err);
-        return () => {
-            /**/
-        };
-    }
-}
+import { fpRelative, isArchivePath, isAsarPath } from "./file-path";
 
 function getFileStats(filePath: string): FileStats {
     try {
@@ -50,7 +35,7 @@ export class FileWatcher {
     }
     encoding = "utf-8";
 
-    constructor(filePath: string, onChange: () => void) {
+    constructor(filePath: string, onChange: () => void, label = "file watcher") {
         this.path = filePath;
         this.onChange = onChange;
         if (isArchivePath(filePath) || isAsarPath(filePath)) {
@@ -58,7 +43,7 @@ export class FileWatcher {
             this.unWatch = () => {};
             this.stat = { size: 0, mtime: 0, exists: true };
         } else {
-            this.unWatch = watchFile(this.path, this.onFileChange);
+            this.unWatch = subscribe(this.path, this.onFileChange, { debounceMs: 300, label });
             this.stat = getFileStats(this.path);
         }
     }
@@ -90,24 +75,22 @@ export class FileWatcher {
         return this.path;
     }
 
-    private onFileChange = (_eventType: string) => {
+    private onFileChange = (batch: PathWatchBatch) => {
+        if (batch.ended && !this.hasReceivedBatch) return;
+        if (!batch.ended) this.hasReceivedBatch = true;
+        if (!batch.ended && batch.changes.length === 0 && !batch.rescan) return;
         const newStat = getFileStats(this.path);
         this.stat = newStat;
-        this.onChangeDebounced();
+        this.onChange();
     }
 
-    private onChangeDebounced = debounce(() => {
-        this.onChange();
-    }, 300);
+    private hasReceivedBatch = false;
 }
 
 /**
- * Recursive directory watcher (US-624). A disposable wrapper over
- * `fs.watch(dir, { recursive: true })` with a debounced callback — mirrors
- * `FileTreeProvider.watch` but as a class consistent with `FileWatcher`. Used by
- * the Git Tree editor to auto-refresh when the repo changes on disk. Degrades
- * gracefully (no-op) when a watch can't be established (network drives, missing
- * dir, platforms without recursive support).
+ * Recursive directory watcher (US-624). A disposable wrapper over the shared
+ * path-watch service. Used by the Git Tree editor to auto-refresh when the repo
+ * changes on disk.
  *
  * `onChange` receives the changed path relative to `dirPath` (when the platform
  * reports it; `undefined` otherwise). Callers that don't care which file changed
@@ -119,21 +102,37 @@ export class FileWatcher {
 export class DirectoryWatcher {
     private unWatch: () => void;
 
-    constructor(dirPath: string, onChange: (filename?: string) => void, debounceMs = 500) {
-        const debouncedOnChange = debounce((filename?: string) => onChange(filename), debounceMs);
-        try {
-            const watcher = nodefs.watch(
-                dirPath,
-                { recursive: true },
-                (_eventType: string, filename: string | null) => debouncedOnChange(filename ?? undefined),
-            );
-            this.unWatch = () => watcher.close();
-        } catch (err) {
-            console.error("Error watching directory:", err);
-            this.unWatch = () => {
-                /**/
-            };
+    constructor(
+        dirPath: string,
+        onChange: (filename?: string) => void,
+        debounceMs = 500,
+        label = "directory watcher",
+    ) {
+        if (isArchivePath(dirPath) || isAsarPath(dirPath)) {
+            this.unWatch = () => {};
+            return;
         }
+
+        let hasReceivedBatch = false;
+        let isEnded = false;
+        let canonicalDirPath = dirPath;
+        try {
+            canonicalDirPath = nodefs.realpathSync.native(dirPath);
+        } catch {
+            // Keep the requested path; the service will report an unsupported target.
+        }
+        this.unWatch = subscribe(dirPath, (batch) => {
+            if (isEnded) return;
+            if (batch.ended) {
+                isEnded = true;
+                if (hasReceivedBatch) onChange();
+                return;
+            }
+            hasReceivedBatch = true;
+            if (!batch.changes.length && !batch.rescan) return;
+            const lastPath = batch.changes.at(-1)?.path;
+            onChange(lastPath ? fpRelative(canonicalDirPath, lastPath) : undefined);
+        }, { recursive: true, debounceMs, label });
     }
 
     dispose = () => {

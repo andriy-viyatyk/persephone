@@ -1,6 +1,7 @@
 import type { IProvider, IProviderDescriptor, IProviderStat } from "../../api/types/io.provider";
-import { debounce } from "../../../shared/utils";
-import { fpBasename } from "../../core/utils/file-path";
+import type { PathWatchBatch } from "../../../ipc/api-types";
+import { subscribe } from "../../api/path-watch";
+import { fpBasename, isArchivePath, isAsarPath } from "../../core/utils/file-path";
 
 const nodefs = require("fs");
 
@@ -51,19 +52,23 @@ export class FileProvider implements IProvider {
         }
     }
 
-    watch(callback: (event: string) => void): () => void {
-        const debouncedCallback = debounce((event: string) => {
-            callback(event);
-        }, 300);
+    watch(callback: (event: string) => void, label = "content pipe"): () => void {
+        if (isArchivePath(this.filePath) || isAsarPath(this.filePath)) return () => {};
 
-        try {
-            const watcher = nodefs.watch(this.filePath, (eventType: string) => {
-                debouncedCallback(eventType);
-            });
-            return () => watcher.close();
-        } catch {
-            return () => { /* watch failed — no-op */ };
-        }
+        let hasReceivedBatch = false;
+        let isEnded = false;
+        return subscribe(this.filePath, (batch: PathWatchBatch) => {
+            if (isEnded) return;
+            if (batch.ended) {
+                isEnded = true;
+                if (hasReceivedBatch) callback("change");
+                return;
+            }
+            hasReceivedBatch = true;
+            // One callback per batch, as the old debounced fs.watch delivered one per window.
+            if (!batch.rescan && batch.changes.length === 0) return;
+            callback(batch.changes.some(change => change.type !== "changed") ? "rename" : "change");
+        }, { debounceMs: 300, label });
     }
 
     toDescriptor(): IProviderDescriptor {

@@ -308,7 +308,8 @@ class Settings implements ISettings {
         await fs.prepareDataFile(settingsFileName, "{}");
         this.fileWatcher = new FileWatcher(
             await fs.dataFileName(settingsFileName),
-            this.fileChanged
+            this.fileChanged,
+            "settings",
         );
         await this.loadSettings();
     };

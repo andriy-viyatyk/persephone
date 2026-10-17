@@ -309,7 +309,7 @@ const nodefs = require("fs");
 - `file-path.ts` itself — the one module that wraps `require("path")`
 - `fs.ts` itself — the one module that wraps `require("fs")`
 - `archive-service.ts` — low-level archive I/O provider that `fs.ts` routes to (using `fs.ts` would create circular dependency)
-- `file-watcher.ts` — uses `fs.watch()` (callback-based watcher, not a simple read/write)
+- `file-watcher.ts` — synchronous `statSync` snapshot used to keep `FileWatcher.stat` current
 - `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
 - `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files
 - `content/tree-providers/FileTreeProvider.ts` — filesystem tree provider that intentionally bypasses `app.fs` archive transparency (archive browsing is handled by ArchiveTreeProvider)
@@ -318,7 +318,8 @@ const nodefs = require("fs");
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
 - `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized
 - `i18n/startup.ts` — reads the language setting and language packs synchronously before UI startup
-- Other files that use `require("fs")` for low-level operations not covered by `app.fs` (e.g., `fs.watch`, `fs.createReadStream`)
+- `src/main/path-watch-service.ts` — the sole owner of `fs.watch()`; renderer consumers subscribe through `src/renderer/api/path-watch.ts`
+- Other files that use `require("fs")` for low-level operations not covered by `app.fs` (e.g., `fs.createReadStream`)
 
 When in doubt: if `app.fs` or `file-path` can do the job, use them.
 

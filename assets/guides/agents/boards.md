@@ -11,8 +11,9 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.38.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.38.0` adds paged folder listing,
+The board bridge is version **1.39.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.39.0` adds permission-scoped
+`persephone.watch()` file and folder change batches. Bridge `1.38.0` adds paged folder listing,
 confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
 and session read access to delivered source files. Confirmation dialogs use the manifest name when
 available. It also adds `placement: "start"` for toolbar buttons and menus, a clear button on
@@ -969,6 +970,20 @@ page. Persephone closes the tab the return created and leaves the tab the user w
 - `persephone.listFolder(path, options?)` — paged listing (1,000 entries per page, 100,000 per
   listing), non-recursive by default. `masks` match basenames with `*` and `?`; directories remain
   included. Follow `nextCursor` and check `truncated`.
+- `persephone.watch(path, callback, options?)` → `Promise<() => void>` — watch an authorized file or
+  folder. Options are `{ recursive?: boolean, debounceMs?: number }`; it watches immediate folder
+  entries by default and descendants with `recursive: true`. Debounce defaults to 300 ms and accepts
+  integers from 50 through 60000. Each callback receives
+  `{ changes: [{ path, type }], rescan?, ended? }`, where paths are absolute canonical paths and types
+  are `created | changed | deleted`. `rescan: true` means reload the watched scope; `ended` is
+  `removed`, `error`, or `revoked`, after which the subscription closes. Folder watches use `list`
+  permission and include only the canonical folder and descendants; file watches use `read`
+  permission and include only that exact file.
+  `fileSystem: false` permits only the exact hosted document. The returned disposer is idempotent;
+  subscriptions end on board-port teardown or permission revocation, and each board may have 64 live
+  watches. Stable errors are `invalid-argument`, `permission-denied`, `not-found`, and
+  `too-many-watches`. A missing exact-file target returns `not-found` in v1; watch its containing
+  folder to wait for the file to appear.
 - `persephone.rememberFolder(path)` asks the user to persist read/list access to a folder picked by
   this board. `persephone.rememberFile(path)` asks for read/write access to one exact plain local
   file picked by this board or delivered to it as its initial/runtime source; source-context items

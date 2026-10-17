@@ -35,6 +35,9 @@ interface BoardSource {
     bundledId?: string;
 }
 
+type BoardAccessChangedListener = (boardRoot: string) => Promise<void>;
+const boardAccessChangedListeners = new Set<BoardAccessChangedListener>();
+
 function normalizePathForCompare(filePath: string): string {
     return normalizeBoardRoot(filePath).replace(/\/+$/, "");
 }
@@ -214,6 +217,21 @@ class BoardTrustService {
         await this.init();
     }
 
+    onBoardAccessChanged(listener: BoardAccessChangedListener): () => void {
+        boardAccessChangedListeners.add(listener);
+        return () => boardAccessChangedListeners.delete(listener);
+    }
+
+    private async notifyBoardAccessChanged(boardRoots: string[]): Promise<void> {
+        const results = await Promise.allSettled(boardRoots.flatMap((boardRoot) =>
+            [...boardAccessChangedListeners].map((listener) => listener(boardRoot))));
+        for (const result of results) {
+            if (result.status === "rejected") {
+                console.error("[BoardTrustService] Board access-change listener failed", result.reason);
+            }
+        }
+    }
+
     async getPaths(): Promise<string[]> {
         await this.ready();
         return [...this.paths];
@@ -267,6 +285,7 @@ class BoardTrustService {
             await this.writeGrantsAtomically(nextGrants);
             this.grants = nextGrants;
             (await import("./board-file-access")).invalidatePersistedBoardGrants(boardRoot);
+            await this.notifyBoardAccessChanged([boardRoot]);
             openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
         });
     }
@@ -282,6 +301,7 @@ class BoardTrustService {
             await this.writeGrantsAtomically(nextGrants);
             this.grants = nextGrants;
             (await import("./board-file-access")).invalidatePersistedBoardGrants(boardRoot);
+            await this.notifyBoardAccessChanged([boardRoot]);
             openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
         });
     }
@@ -329,6 +349,7 @@ class BoardTrustService {
             const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
             const stop = moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
             downloadService.setBrowserUrlMaskClaims(claims);
+            await this.notifyBoardAccessChanged([boardRoot]);
             openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
             await stop;
             return [...this.paths];
@@ -397,7 +418,6 @@ class BoardTrustService {
             await Promise.all(reductionLogs.map((entry) => entry.catch((error: unknown) => {
                 console.error("[BoardTrustService] Failed to write a permission-reduction board-log entry", error);
             })));
-            openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
         }
         const bundledSources = await this.readBundledSources();
         const allSources = [...trustedSources, ...bundledSources];
@@ -423,6 +443,11 @@ class BoardTrustService {
         this.permissionSnapshot = boards.map(({ boardRoot, permissions, manifestPermissions, manifestChanged }) => ({
             root: boardRoot, permissions, manifestPermissions, ...(manifestChanged ? { manifestChanged: true } : {}),
         }));
+
+        if (reductionsApplied) {
+            await this.notifyBoardAccessChanged(nextGrants.map(({ root }) => root));
+            openWindows.send(EventEndpoint.eBoardTrustChanged, [...this.paths]);
+        }
 
         const browserUrlMaskOwners = new OwnershipRegistry<BoardSource>();
         const claims: BrowserUrlMaskClaim[] = [];

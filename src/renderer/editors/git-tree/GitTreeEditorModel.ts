@@ -419,7 +419,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         if (this.repoWatcher && this.watchedRoot === repoRoot) return;
         this.repoWatcher?.dispose();
         this.watchedRoot = repoRoot;
-        this.repoWatcher = new DirectoryWatcher(repoRoot, this.refresh, 500);
+        this.repoWatcher = new DirectoryWatcher(repoRoot, this.refresh, 500, "git tree");
     }
 
     /** Tree body visible ⟺ the Git Tree is the page's main editor. */

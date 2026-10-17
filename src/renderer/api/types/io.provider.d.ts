@@ -71,7 +71,11 @@ export interface IProvider {
     /** Get resource metadata (size, modified date, existence). */
     stat?(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Watch for external changes. Returns a disposer to stop watching. */
-    watch?(callback: (event: string) => void): () => void;
+    watch?(
+        callback: (event: string) => void,
+        /** Diagnostic label shown in main.watchers; default 'content pipe'. */
+        label?: string,
+    ): () => void;
     /** Serialize to descriptor for persistence. */
     toDescriptor(): IProviderDescriptor;
     /** Release resources (file handles, connections, etc.). */

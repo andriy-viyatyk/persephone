@@ -23,6 +23,8 @@ import {
     EventEndpoint,
     McpStatus,
     MnemeStatus,
+    type PathWatchSubscribeRequest,
+    type PathWatchUnsubscribeRequest,
     type BoardLogLevel,
     type ModuleServicePortPayload,
 } from "../api-types";
@@ -72,6 +74,14 @@ function executeOnce<T = unknown>(command: Endpoint, ...args: unknown[]): Promis
 }
 
 class ApiCalls implements Api {
+    subscribePathWatch = async (request: PathWatchSubscribeRequest) => {
+        return executeOnce<void>(Endpoint.subscribePathWatch, request);
+    };
+
+    unsubscribePathWatch = async (request: PathWatchUnsubscribeRequest) => {
+        return executeOnce<void>(Endpoint.unsubscribePathWatch, request);
+    };
+
     getAppRootPath = async () => {
         return executeOnce<string>(Endpoint.getAppRootPath);
     };

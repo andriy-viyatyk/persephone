@@ -38,6 +38,7 @@ class SearchHistoryStorage extends TModel<SearchHistoryState> {
         this.fileWatcher = new FileWatcher(
             await fs.dataFileName(fileName),
             this.fileChanged,
+            "search history",
         );
         await this.load();
     };

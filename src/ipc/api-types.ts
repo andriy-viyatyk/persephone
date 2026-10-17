@@ -170,6 +170,40 @@ export enum Endpoint {
     requestModuleService = "requestModuleService",
     startModuleService = "startModuleService",
     stopModuleService = "stopModuleService",
+    subscribePathWatch = "subscribePathWatch",
+    unsubscribePathWatch = "unsubscribePathWatch",
+}
+
+export interface PathWatchChange {
+    path: string;
+    type: "created" | "changed" | "deleted";
+}
+
+export interface PathWatchBatch {
+    changes: PathWatchChange[];
+    rescan?: true;
+    ended?: "removed" | "error" | "revoked";
+}
+
+export type PathWatchOwner =
+    | { kind: "window"; windowIndex: number }
+    | { kind: "board"; boardRoot: string; boardName: string };
+
+export interface PathWatchSubscribeRequest {
+    clientId: string;
+    path: string;
+    recursive: boolean;
+    debounceMs: number;
+    label: string;
+}
+
+export interface PathWatchUnsubscribeRequest {
+    clientId: string;
+}
+
+export interface PathWatchEvent {
+    clientId: string;
+    batch: PathWatchBatch;
 }
 
 /** Synthetic CDP "tab" id for a board (boards have no tabs). The automation
@@ -375,6 +409,8 @@ export type Api = {
     [Endpoint.startModuleService]: (boardRoot: string) => Promise<void>;
     /** Explicitly stop a board module service. */
     [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
+    [Endpoint.subscribePathWatch]: (request: PathWatchSubscribeRequest) => Promise<void>;
+    [Endpoint.unsubscribePathWatch]: (request: PathWatchUnsubscribeRequest) => Promise<void>;
     [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.bindSiteExtensionFolder]: (folder: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.trustSiteExtension]: (id: string, hosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;
@@ -434,6 +470,7 @@ export enum EventEndpoint {
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
     eBoardTrustChanged = "eBoardTrustChanged",
     eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
+    ePathWatchBatch = "ePathWatchBatch",
 }
 
 export interface EventObject<T> {
@@ -492,6 +529,7 @@ export type EventApi = {
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
     [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
     [EventEndpoint.eSiteExtensionTrustChanged]: EventObject<SiteExtensionTrustSnapshot>;
+    [EventEndpoint.ePathWatchBatch]: EventObject<PathWatchEvent>;
 };
 
 export enum RendererEvent {

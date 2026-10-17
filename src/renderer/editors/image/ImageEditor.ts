@@ -122,13 +122,13 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             if (!this.pipeWatch && this.pipe.watch) {
                 this.pipeWatch = this.pipe.watch((event) => {
                     if (event !== "available" && !this.hasImage) void this.restore();
-                });
+                }, "image editor");
                 this.own(() => this.pipeWatch?.());
             }
             if (!this.recoveryWatch) {
                 this.recoveryWatch = watchSourceRecovery(this.pipe, () => {
                     if (!this.hasImage) void this.restore();
-                });
+                }, "image editor");
                 this.own(() => this.recoveryWatch?.());
             }
             if (!url) {

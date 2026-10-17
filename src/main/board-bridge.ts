@@ -46,9 +46,10 @@ import {
     SaveFileDialogParams,
     BoardFolderEntry,
     BoardFolderListOptions,
+    BoardWatchOptions,
 } from "../ipc/board-bridge-channels";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
-import { EventEndpoint } from "../ipc/api-types";
+import { EventEndpoint, type PathWatchBatch, type PathWatchOwner } from "../ipc/api-types";
 import {
     showOpenFileDialog,
     showOpenFolderDialog,
@@ -82,6 +83,7 @@ import { boardTrustService } from "./board-trust-service";
 import { BOARD_MANIFEST_FILE, boardPermissionError } from "../shared/board-manifest-utils";
 import { isDeliveredSourceFile, isDialogPickedPath, recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
 import { t } from "../shared/i18n/t";
+import { pathWatchService } from "./path-watch-service";
 
 interface FolderCursor { root: string; boardRoot: string; boardId: string; entries: BoardFolderEntry[]; offset: number; expires: number; truncated: boolean }
 const folderCursors = new Map<string, FolderCursor>();
@@ -253,10 +255,42 @@ interface BoardPortEntry {
 
 /** Live board ports keyed by the per-mount boardId minted at the handshake. */
 const boardPorts = new Map<string, BoardPortEntry>();
+interface BoardWatchRecord {
+    boardId: string;
+    watchId: number;
+    entry: BoardPortEntry;
+    boardRoot: string;
+    requestedPath: string;
+    authorizedPath: string;
+    filterScope: { path: string };
+    scopeKind: "file" | "folder";
+    intent: "read" | "list";
+    hostedDocument: boolean;
+    recursive: boolean;
+    serviceId: string;
+    dispose: () => void;
+}
+const boardWatches = new Map<string, BoardWatchRecord>();
+const MAX_BOARD_WATCHES = 64;
 const BOARD_CALL_TIMEOUT_MIN_MS = 1_000;
 const BOARD_CALL_TIMEOUT_MAX_MS = 3_600_000;
 /** Unset until the renderer pushes one; see the same reasoning in `src/renderer/api/boards.ts`. */
 let boardCallTimeoutMs: number | undefined;
+
+function boardWatchKey(boardId: string, watchId: number): string { return `${boardId}:${watchId}`; }
+
+function normalizeWatchPath(value: string): string {
+    const normalized = path.normalize(value);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function watchPathInScope(scopePath: string, candidatePath: string, kind: "file" | "folder"): boolean {
+    const scope = normalizeWatchPath(scopePath);
+    const candidate = normalizeWatchPath(candidatePath);
+    if (kind === "file") return scope === candidate;
+    const relative = path.relative(scope, candidate);
+    return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
 
 // ── Busy owners — job retention across mounts (US-799) ────────────────────────
 // A board that called `persephone.setBoardBusy(true)` keeps its spawned jobs when
@@ -287,6 +321,9 @@ function indexOwnerSink(ownerId: string, sinkId: string, hostWcId: number): void
  *  Idempotent. The final-teardown path: model dispose (page close), a non-busy
  *  port dispose, host crash, or an explicit busy=false with no live port. */
 export function reapBoardOwner(ownerId: string): void {
+    for (const record of [...boardWatches.values()]) {
+        if (record.entry.ownerId === ownerId) removeBoardWatch(record, true);
+    }
     const entry = ownerSinks.get(ownerId);
     if (entry) {
         for (const sinkId of entry.sinkIds) reapJobsBySinkId(sinkId);
@@ -399,7 +436,205 @@ async function hasFullFileAccess(boardRoot: string): Promise<boolean> {
     return !!grant && (grant.kind === "legacy" || grant.flags.fileSystem === "full");
 }
 
+function validateWatchOptions(value: unknown): Required<Pick<BoardWatchOptions, "recursive" | "debounceMs">> {
+    if (value !== undefined && (!value || typeof value !== "object" || Array.isArray(value)
+        || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null))) {
+        throw rpcFailure("invalid-argument", "Watch options must be a plain object.");
+    }
+    const options = (value ?? {}) as BoardWatchOptions;
+    if (options.recursive !== undefined && typeof options.recursive !== "boolean") {
+        throw rpcFailure("invalid-argument", "Watch recursive must be a boolean.");
+    }
+    if (options.debounceMs !== undefined && (!Number.isInteger(options.debounceMs)
+        || options.debounceMs < 50 || options.debounceMs > 60_000)) {
+        throw rpcFailure("invalid-argument", "Watch debounceMs must be an integer from 50 to 60000.");
+    }
+    return { recursive: options.recursive ?? false, debounceMs: options.debounceMs ?? 300 };
+}
+
+function watchAuthorizationError(error: unknown): BoardRpcError {
+    const code = (error as NodeJS.ErrnoException | null)?.code;
+    return code === "ENOENT"
+        ? rpcFailure("not-found", "The watch target does not exist.")
+        : rpcFailure("permission-denied", "The board is not authorized to watch this path.");
+}
+
+async function resolveBoardWatchTarget(entry: BoardPortEntry, requestedPath: string, grant: NonNullable<Awaited<ReturnType<typeof boardTrustService.getGrantedPermissions>>>): Promise<{
+    path: string;
+    kind: "file" | "folder";
+    intent: "read" | "list";
+    hostedDocument: boolean;
+}> {
+    const verifyStat = async (authorizedPath: string): Promise<import("node:fs").Stats> => {
+        try { return await fs.promises.stat(authorizedPath); }
+        catch (error: unknown) { throw watchAuthorizationError(error); }
+    };
+    if (grant.kind === "flags" && grant.flags.fileSystem === false) {
+        try {
+            const authorizedPath = await resolveHostedReadOrAuthorizedPath({
+                boardRoot: entry.root, requestedPath, hostedPath: entry.hostedFilePath, permissions: grant,
+            });
+            if (!entry.hostedFilePath || normalizeWatchPath(authorizedPath)
+                !== normalizeWatchPath(await fs.promises.realpath(entry.hostedFilePath))) {
+                throw rpcFailure("permission-denied", "Only the exact hosted document can be watched.");
+            }
+            const stats = await verifyStat(authorizedPath);
+            if (!stats.isFile()) throw rpcFailure("permission-denied", "Only a regular hosted document can be watched.");
+            return { path: authorizedPath, kind: "file", intent: "read", hostedDocument: true };
+        } catch (error: unknown) {
+            if ((error as { code?: unknown } | null)?.code === "permission-denied") throw error;
+            throw watchAuthorizationError(error);
+        }
+    }
+
+    try {
+        const listPath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "list" });
+        const stats = await verifyStat(listPath);
+        if (stats.isDirectory()) return { path: listPath, kind: "folder", intent: "list", hostedDocument: false };
+        const readPath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "read" });
+        const fileStats = await verifyStat(readPath);
+        if (!fileStats.isFile()) throw rpcFailure("permission-denied", "Only regular files and folders can be watched.");
+        return { path: readPath, kind: "file", intent: "read", hostedDocument: false };
+    } catch (listError: unknown) {
+        if ((listError as { code?: unknown } | null)?.code === "not-found") throw listError;
+        try {
+            const readPath = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "read" });
+            const stats = await verifyStat(readPath);
+            if (!stats.isFile()) throw rpcFailure("permission-denied", "Only regular files and folders can be watched.");
+            return { path: readPath, kind: "file", intent: "read", hostedDocument: false };
+        } catch (readError: unknown) {
+            if ((readError as { code?: unknown } | null)?.code === "not-found") throw readError;
+            throw watchAuthorizationError(readError);
+        }
+    }
+}
+
 type BoardRpcHandler = (entry: BoardPortEntry, args: unknown[]) => Promise<unknown> | unknown;
+
+const pendingWatchReservations = new Map<string, number>();
+
+function removeBoardWatch(record: BoardWatchRecord, disposeService: boolean): void {
+    const key = boardWatchKey(record.boardId, record.watchId);
+    if (boardWatches.get(key) !== record) return;
+    boardWatches.delete(key);
+    if (disposeService) record.dispose();
+}
+
+function cleanupBoardWatches(boardId: string): void {
+    for (const record of [...boardWatches.values()]) {
+        if (record.boardId === boardId) removeBoardWatch(record, true);
+    }
+}
+
+async function startBoardWatch(entry: BoardPortEntry, args: unknown[]): Promise<void> {
+    const [watchId, requestedPath, rawOptions] = args;
+    if (!Number.isSafeInteger(watchId) || (watchId as number) <= 0) {
+        throw rpcFailure("invalid-argument", "Watch id must be a positive integer.");
+    }
+    if (typeof requestedPath !== "string" || requestedPath.trim().length === 0) {
+        throw rpcFailure("invalid-argument", "A non-empty watch path is required.");
+    }
+    const options = validateWatchOptions(rawOptions);
+    const key = boardWatchKey(entry.boardId, watchId as number);
+    if (boardWatches.has(key)) throw rpcFailure("invalid-argument", "This watch id is already in use.");
+    const grant = await boardTrustService.getGrantedPermissions(entry.root);
+    if (!grant) throw rpcFailure("permission-denied", "This board is not trusted.");
+    let target: Awaited<ReturnType<typeof resolveBoardWatchTarget>>;
+    try { target = await resolveBoardWatchTarget(entry, requestedPath, grant); }
+    catch (error: unknown) {
+        if ((error as { code?: unknown } | null)?.code) throw error;
+        throw watchAuthorizationError(error);
+    }
+    if (target.kind === "file" && options.recursive) {
+        throw rpcFailure("invalid-argument", "Recursive watches require a folder.");
+    }
+
+    const rootKey = normalizeWatchPath(entry.root);
+    const liveCount = [...boardWatches.values()].filter((watch) => normalizeWatchPath(watch.boardRoot) === rootKey).length;
+    const pendingCount = pendingWatchReservations.get(rootKey) ?? 0;
+    if (liveCount + pendingCount >= MAX_BOARD_WATCHES) {
+        throw rpcFailure("too-many-watches", "A board can have at most 64 live watches.");
+    }
+    pendingWatchReservations.set(rootKey, pendingCount + 1);
+    try {
+        const scope = { path: target.path };
+        const owner: PathWatchOwner = { kind: "board", boardRoot: entry.root, boardName: await boardName(entry) };
+        const subscription = await pathWatchService.subscribe(target.path, {
+            owner,
+            recursive: options.recursive,
+            debounceMs: options.debounceMs,
+            // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- diagnostics label, not UI text.
+            label: "board watch",
+            pathFilter: (candidatePath) => watchPathInScope(scope.path, candidatePath, target.kind),
+        }, (batch: PathWatchBatch) => {
+            const record = boardWatches.get(key);
+            if (!record || record.entry !== entry || boardPorts.get(entry.boardId) !== entry) return;
+            try { entry.port.postMessage({ kind: "watch", watchId: record.watchId, batch }); }
+            catch { /* The port may close between the identity check and post. */ }
+            if (batch.ended) removeBoardWatch(record, false);
+        });
+        if (boardPorts.get(entry.boardId) !== entry) {
+            subscription.dispose();
+            return;
+        }
+        boardWatches.set(key, {
+            boardId: entry.boardId, watchId: watchId as number, entry, boardRoot: entry.root,
+            requestedPath, authorizedPath: target.path, filterScope: scope,
+            scopeKind: target.kind, intent: target.intent,
+            hostedDocument: target.hostedDocument, recursive: options.recursive,
+            serviceId: subscription.id, dispose: subscription.dispose,
+        });
+    } finally {
+        const pending = pendingWatchReservations.get(rootKey) ?? 1;
+        if (pending <= 1) pendingWatchReservations.delete(rootKey);
+        else pendingWatchReservations.set(rootKey, pending - 1);
+    }
+}
+
+async function recheckBoardWatches(boardRoot: string): Promise<void> {
+    const matching = [...boardWatches.values()].filter((watch) => normalizeWatchPath(watch.boardRoot) === normalizeWatchPath(boardRoot));
+    for (const record of matching) {
+        if (boardPorts.get(record.boardId) !== record.entry) {
+            removeBoardWatch(record, true);
+            continue;
+        }
+        const grant = await boardTrustService.getGrantedPermissions(record.boardRoot);
+        if (!grant) {
+            pathWatchService.endSubscription(record.serviceId, "revoked");
+            continue;
+        }
+        try {
+            let authorizedPath: string;
+            if (record.hostedDocument) {
+                authorizedPath = await resolveHostedReadOrAuthorizedPath({
+                    boardRoot: record.boardRoot, requestedPath: record.requestedPath,
+                    hostedPath: record.entry.hostedFilePath, permissions: grant,
+                });
+                if (!record.entry.hostedFilePath || normalizeWatchPath(authorizedPath)
+                    !== normalizeWatchPath(await fs.promises.realpath(record.entry.hostedFilePath))) {
+                    throw rpcFailure("permission-denied", "Hosted document access changed.");
+                }
+            } else {
+                authorizedPath = await resolveAuthorizedPath({
+                    boardRoot: record.boardRoot, requestedPath: record.requestedPath,
+                    permissions: grant, intent: record.intent,
+                });
+            }
+            const stats = await fs.promises.stat(authorizedPath);
+            if ((record.scopeKind === "folder" && !stats.isDirectory())
+                || (record.scopeKind === "file" && !stats.isFile())
+                || (record.recursive && !stats.isDirectory())) {
+                throw rpcFailure("permission-denied", "The authorized watch target changed type.");
+            }
+            record.authorizedPath = authorizedPath;
+            record.filterScope.path = authorizedPath;
+        } catch {
+            pathWatchService.endSubscription(record.serviceId, "revoked");
+        }
+    }
+}
+
+boardTrustService.onBoardAccessChanged(recheckBoardWatches);
 
 /** Board RPC handlers are exhaustive over the public bridge contract. */
 const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
@@ -526,6 +761,15 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
             : Buffer.from((data as string) ?? "", encoding);
         try { await fs.promises.writeFile(checkedPath, body); }
         catch (error: unknown) { throw fileAccessError(error); }
+    },
+    async watch(entry, args) { await startBoardWatch(entry, args); },
+    unwatch(entry, args) {
+        const watchId = args[0];
+        if (!Number.isSafeInteger(watchId) || (watchId as number) <= 0) {
+            throw rpcFailure("invalid-argument", "Watch id must be a positive integer.");
+        }
+        const record = boardWatches.get(boardWatchKey(entry.boardId, watchId as number));
+        if (record) removeBoardWatch(record, true);
     },
     getJobs(entry) {
         const owner = ownerSinks.get(entry.ownerId);
@@ -848,6 +1092,7 @@ export function disposeBoardPort(boardId: string): void {
         clearTimeout(entry.watchdog);
         entry.watchdog = undefined;
     }
+    cleanupBoardWatches(boardId);
     try { entry.port.close(); } catch { /* already closed */ }
     boardPorts.delete(boardId);
     if (!busyOwners.has(entry.ownerId)) {

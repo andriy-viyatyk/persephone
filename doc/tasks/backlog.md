@@ -11,6 +11,25 @@ Ideas and future tasks not yet planned for implementation.
 
 ---
 
+## Follow-ups from EPIC-129 (shared path-watch service, completed 2026-10-17)
+
+The main-process path-watch service (`src/main/path-watch-service.ts`) reports classified,
+per-path changes. These were left out of scope (EPIC-129 decision W7):
+
+- [ ] **Incremental Explorer refresh.** `FileTreeProvider.watch` still triggers a full tree
+  rebuild per batch; the batch already says which paths were created, changed or deleted.
+- [ ] **Script API `app.fs.watch()`.** A script-facing subscribe over the renderer client
+  (`src/renderer/api/path-watch.ts`), released with the script context.
+- [ ] **Auto-resubscribe after a watched root is recreated.** On `ended` the migrated consumers
+  stop (parity with the old `fs.watch` behavior); an Explorer root or library folder that is
+  deleted and recreated stays unwatched until the page or service is reopened.
+- [ ] **Watcher consolidation.** Opening a recursive watcher does not move existing narrower
+  watchers under it (W2). Reconsider only if `main.watchers` shows many redundant handles.
+- [ ] **Live check of `ended: "revoked"`.** Board watch revocation on a trust or grant change
+  was verified by reading the code only.
+
+---
+
 ## `window.screen` automation on board-frame refs (found 2026-10-09, US-1640 verification)
 
 Seen while driving the Theme Editor board through `window.screen.*` with `f1-eNN` refs from the

@@ -175,7 +175,7 @@ export async function initCustomThemeStorage(): Promise<void> {
                 void reloadRegistry().catch((error: unknown) => {
                     console.warn("[Custom themes] Failed to reload changed theme files", error);
                 });
-            });
+            }, 500, "custom themes");
         })();
     }
     await initialization;

@@ -1,6 +1,6 @@
 import { PageDescriptor } from "../../shared/types";
 import { DownloadEntry, PublishedBoardsCatalog, UpdateCheckResult } from "../api-param-types";
-import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus } from "../api-types";
+import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus, type PathWatchEvent } from "../api-types";
 import type { ClipboardHistoryChanged, ClipboardStatus } from "../clipboard-ipc";
 import type { BoardServiceStatus } from "../module-service-channels";
 
@@ -174,6 +174,10 @@ class RendererEvents implements EventApi {
     );
     [EventEndpoint.eSiteExtensionTrustChanged] = new RendererEventObject<import("../api-types").SiteExtensionTrustSnapshot>(
         EventEndpoint.eSiteExtensionTrustChanged,
+    );
+
+    [EventEndpoint.ePathWatchBatch] = new RendererEventObject<PathWatchEvent>(
+        EventEndpoint.ePathWatchBatch,
     );
 }
 

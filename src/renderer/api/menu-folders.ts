@@ -34,7 +34,8 @@ class MenuFoldersModel extends TModel<MenuFoldersState> implements IMenuFolders 
         await fs.prepareDataFile(menuFoldersFileName, "{}");
         this.fileWatcher = new FileWatcher(
             await fs.dataFileName(menuFoldersFileName),
-            this.fileChanged
+            this.fileChanged,
+            "menu folders",
         );
         await this.loadState();
     };

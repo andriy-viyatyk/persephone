@@ -1,13 +1,12 @@
-import { debounce } from "../../shared/utils";
 import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
 import { settings } from "./settings";
 import { scriptRunner } from "../scripting/ScriptRunner";
 
-// nodefs kept only for fs.watch() (documented exception — callback-based watcher)
-const nodefs = require("fs") as typeof import("fs");
 import { fs } from "./fs";
-import { fpBasename, fpExtname, fpJoin, fpRelative } from "../core/utils/file-path";
+import { fpBasename, fpExtname, fpJoin, fpRelative, isArchivePath, isAsarPath } from "../core/utils/file-path";
+import type { PathWatchBatch } from "../../ipc/api-types";
+import { subscribe } from "./path-watch";
 
 // =============================================================================
 // Types
@@ -40,7 +39,7 @@ const defaultState: LibraryServiceState = {
 
 class LibraryService extends TModel<LibraryServiceState> {
     private initialized = false;
-    private watcher: ReturnType<typeof nodefs.watch> | undefined;
+    private watcher: (() => void) | undefined;
 
     constructor() {
         super(new TGlobalState(defaultState));
@@ -193,28 +192,40 @@ class LibraryService extends TModel<LibraryServiceState> {
     // ── File Watching ────────────────────────────────────────────────────
 
     private startWatching(libraryPath: string): void {
-        try {
-            this.watcher = nodefs.watch(libraryPath, { recursive: true }, () => {
-                this.onChangeDebounced(libraryPath);
-            });
-        } catch {
-            // Watcher setup failed — service works without live updates
-        }
+        if (isArchivePath(libraryPath) || isAsarPath(libraryPath)) return;
+        let hasReceivedBatch = false;
+        let isEnded = false;
+        this.watcher = subscribe(libraryPath, (batch: PathWatchBatch) => {
+            if (isEnded) return;
+            if (batch.ended) {
+                isEnded = true;
+                if (hasReceivedBatch) void this.refreshAfterChange(libraryPath);
+                this.watcher = undefined;
+                return;
+            }
+            hasReceivedBatch = true;
+            if (batch.changes.length || batch.rescan) void this.refreshAfterChange(libraryPath);
+        }, {
+            recursive: true,
+            debounceMs: 300,
+            // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Diagnostic label, not user-facing text.
+            label: "library",
+        });
     }
 
     private stopWatching(): void {
-        this.watcher?.close();
+        this.watcher?.();
         this.watcher = undefined;
     }
 
-    private onChangeDebounced = debounce(async (libraryPath: string) => {
+    private async refreshAfterChange(libraryPath: string): Promise<void> {
         await this.scan(libraryPath);
         scriptRunner.invalidateLibraryCache();
 
         // Mark autoload scripts as needing reload (user-controlled via header button)
         const { autoloadService } = await import("./autoload-service");
         autoloadService.markNeedsReload();
-    }, 300);
+    }
 }
 
 export const libraryService = new LibraryService();

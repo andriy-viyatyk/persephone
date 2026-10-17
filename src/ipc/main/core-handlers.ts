@@ -34,10 +34,11 @@ import path from "node:path";
 import type { BoardEndpoint } from "./board-handlers";
 import type { GitEndpoint } from "./git-handlers";
 import type { SiteExtensionEndpoint } from "./site-extension-handlers";
+import type { PathWatchEndpoint } from "./path-watch-handlers";
 
 let siteExtensionRuntime: string | null = null;
 
-class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint> {
+class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
         return getAppRootPath();
     }

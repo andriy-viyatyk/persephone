@@ -213,9 +213,9 @@ export class ContentPipe implements IContentPipe {
 
     // ── Watch ───────────────────────────────────────────────────────
 
-    get watch(): ((callback: (event: string) => void) => () => void) | undefined {
+    get watch(): ((callback: (event: string) => void, label?: string) => () => void) | undefined {
         if (!this.provider.watch) return undefined;
-        return (callback) => this.provider.watch(callback);
+        return (callback, label) => this.provider.watch(callback, label);
     }
 
     // ── Clone ───────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "minBridgeVersion": "1.36.0",
+  "minBridgeVersion": "1.39.0",
   "languages": { "folder": "lang", "default": "en" },
   "permissions": {
     "execute": false,

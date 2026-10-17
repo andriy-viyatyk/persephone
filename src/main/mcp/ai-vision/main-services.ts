@@ -11,6 +11,7 @@ import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision"
 import { MAIN_SCRIPT_DISABLED_MESSAGE, isMainScriptsEnabled } from "./main-script-gate";
 import { executeMainScript, MAIN_SCRIPT_TIMEOUT_MS } from "./main-script";
 import type { WindowsNode } from "./main-root";
+import { pathWatchService } from "../../path-watch-service";
 
 const CAUTION_TOR_RESTART = "restarts the shared Tor daemon and disrupts every active Tor browser partition; bootstrap can take up to 90 seconds.";
 const CAUTION_BOARD_CANCEL = "aborts the board archive download and removes its partial ZIP.";
@@ -27,6 +28,14 @@ const MAIN_MEMBERS: readonly IAiMember[] = [
     { name: "networkLog", kind: "property", node: true, summary: "Bounded browser network metadata by registration key." },
     { name: "runtime", kind: "property", node: true, summary: "Bounded application, runtime, path, uptime, and memory diagnostics." },
     { name: "script", kind: "property", node: true, summary: "Settings-gated main-process script execution." },
+    { name: "watchers", kind: "property", node: true, summary: "Read-only bounded path-watch diagnostics." },
+];
+
+const WATCHERS_MEMBERS: readonly IAiMember[] = [
+    { name: "summary", kind: "property", summary: "Watcher and subscription counts plus aggregate events, batches, and rescans." },
+    { name: "watchers", kind: "property", summary: "At most 100 OS watcher snapshots." },
+    { name: "subscriptions", kind: "property", summary: "At most 100 subscription snapshots, including owner and served root." },
+    { name: "recent", kind: "method", signature: "recent(limit = 50)", summary: "Recent bounded raw events and batches from the 500-entry ring buffer." },
 ];
 
 const MCP_MEMBERS: readonly IAiMember[] = [
@@ -254,6 +263,23 @@ export class MainScriptNode implements IAiVisible {
     }
 }
 
+export class MainWatchersNode implements IAiVisible {
+    get summary() { return pathWatchService.getSummary(); }
+    get watchers() { return pathWatchService.getWatchers(); }
+    get subscriptions() { return pathWatchService.getSubscriptions(); }
+    recent(limit = 50) { return pathWatchService.getRecent(limit); }
+
+    get aiVision(): IAiVisionDescriptor {
+        return {
+            kind: "MainWatchers",
+            summary: "Read-only bounded path-watch service diagnostics.",
+            members: WATCHERS_MEMBERS,
+            help: "Snapshots are read-only. Watchers and subscriptions are limited to 100 entries; recent(limit = 50) reads at most 500 in-memory event and batch records.",
+            summarize: () => ({ kind: "MainWatchers", summary: this.summary }),
+        };
+    }
+}
+
 export class MainNode implements IAiVisible {
     readonly mcp = new MainMcpNode();
     readonly tor = new MainTorNode();
@@ -262,6 +288,7 @@ export class MainNode implements IAiVisible {
     readonly networkLog = new MainNetworkLogNode();
     readonly runtime = new MainRuntimeNode();
     readonly script = new MainScriptNode();
+    readonly watchers = new MainWatchersNode();
 
     constructor(readonly windows: WindowsNode) {}
 
@@ -270,7 +297,7 @@ export class MainNode implements IAiVisible {
             kind: "Main",
             summary: "Main-process diagnostics and gated scripting.",
             members: MAIN_MEMBERS,
-            help: "Main is process-wide. It exposes windows, mcp, tor, boards, downloads, networkLog, runtime, and the settings-gated script branch.",
+            help: "Main is process-wide. It exposes windows, mcp, tor, boards, downloads, networkLog, runtime, read-only watchers diagnostics, and the settings-gated script branch.",
             children: (): readonly IAiChild[] => MAIN_MEMBERS.map(member => ({ segment: `.${member.name}`, kind: member.name === "windows" ? "Windows" : `Main${member.name[0].toUpperCase()}${member.name.slice(1)}`, summary: member.summary })),
             summarize: () => ({ kind: "Main", services: MAIN_MEMBERS.map(member => member.name) }),
         };

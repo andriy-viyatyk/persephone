@@ -13,7 +13,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 ## The mental model
 
 - **`main` is process-wide.** `call` resolves `main.windows`, `main.mcp`, `main.tor`,
-  `main.boards`, `main.downloads`, `main.networkLog`, `main.runtime`, and the settings-gated
+  `main.boards`, `main.downloads`, `main.networkLog`, `main.runtime`, `main.watchers`, and the settings-gated
   `main.script.execute(code)` branch in the main process. `windows[i].main` is invalid.
 - **Windows → pages → editors.** A window holds tabbed **pages**; each page renders through an
   **editor** (`monaco` text, `grid-json`, `md-view`, `notebook-view`, `browser-view`,

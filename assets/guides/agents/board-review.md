@@ -36,6 +36,7 @@ the HTML.
 | `persephone.execute(command)` / `executeNode(script, args)` | Requires `execute: true`. Runs a command through the OS shell or a script on Persephone's bundled Node, with the user's privileges and inherited environment. **Full access.** |
 | Declared `service` / `scripts/service.mjs` | Requires `service: true`. A platform-owned Node process can run without a page; inspect its imports, storage, network, handshake, request routing, and failure behavior. **Full access.** |
 | `persephone.readFile` / `writeFile` | Requires `fileSystem: "board"` for the board folder and files selected in its dialogs, or `"full"` for any accessible file. `"full"` is **Full access**. With `false`, `readFile()` can read only the exact currently hosted document; writes and dialogs remain unavailable. |
+| `persephone.watch` | Folders require `list` authorization and files require `read` authorization. Events are restricted to the authorized canonical folder or exact file; `fileSystem: false` allows only the exact hosted document. Watching adds no permission. |
 | `persephone.call(path, options)` | The **renderer** Persephone object model, gated by `appScripting: true`: `fs`, `proc`, `shell`, `settings`, `tools.execute`, `boardVars` (administration of stored environment variables and secrets across namespaces), and `script.execute` — arbitrary JavaScript in the renderer with Node access. It cannot reach the process-owned `main` or `windows` roots. A board rarely needs most of this. |
 | Trust scope | Per board-root folder, remembered across restarts, and **inherited**: trusting a folder trusts every board nested inside it, including ones added later. |
 
@@ -123,10 +124,10 @@ starts only when the old array includes `"service"`. The dialog also warns that 
 are deprecated and asks the authoring agent to add an object-form `permissions` block. Full access
 secondary text is “Can reach everything your user account can.”
 
-New blank boards use all-false object manifests and `minBridgeVersion: "1.36.0"` for the starter's
-board-pack i18n; object-form manifests require `minBridgeVersion >= 1.30.0`. Keep that starter
-minimum while it does not call the 1.38.0 folder-listing or remembered-grant methods; boards that do
-use them must require bridge `1.38.0`. Auto-trust on creation does not widen their grants.
+New blank boards use all-false object manifests and `minBridgeVersion: "1.39.0"` for the starter's
+board-pack i18n and watch API reference. Object-form manifests require `minBridgeVersion >= 1.30.0`.
+Boards using folder listing or remembered-grant methods require bridge `1.38.0`; boards using
+`persephone.watch()` require `1.39.0`. Auto-trust on creation does not widen their grants.
 Keep only flags used by reachable code. Native
 `fetch("./data.json")` and `fetch("board://<host>/data.json")` read own board files with
 `fileSystem: false`; `persephone.fetch()` needs `network`. An exact refusal is

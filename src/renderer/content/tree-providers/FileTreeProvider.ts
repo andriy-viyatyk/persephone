@@ -13,7 +13,9 @@ import {
     customEditorRegistry,
     resolveEditorIdForFolder,
 } from "../../editors/board/custom-editor-registry";
-import { debounce } from "../../../shared/utils";
+import type { PathWatchBatch } from "../../../ipc/api-types";
+import { subscribe } from "../../api/path-watch";
+import { isArchivePath, isAsarPath } from "../../core/utils/file-path";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
 // that intentionally bypasses app.fs archive transparency. Listed in
@@ -208,18 +210,28 @@ export class FileTreeProvider implements ITreeProvider {
 
     /**
      * Watch the root directory recursively for changes.
-     * Uses a single fs.watch({ recursive: true }) handle — efficient on Windows
-     * (ReadDirectoryChangesW). Debounces at 500ms to batch rapid changes.
+     * Uses the shared main-process watcher with a 500ms per-subscriber batch delay.
      * Returns a disposer to stop watching.
-     * Gracefully degrades on failure (network drives, unmounted volumes).
      */
     watch(callback: () => void): () => void {
-        try {
-            const debouncedCallback = debounce(callback, 500);
-            const watcher = nodefs.watch(this.sourceUrl, { recursive: true }, debouncedCallback);
-            return () => watcher.close();
-        } catch {
-            return () => {};
-        }
+        if (isArchivePath(this.sourceUrl) || isAsarPath(this.sourceUrl)) return () => {};
+
+        let hasReceivedBatch = false;
+        let isEnded = false;
+        return subscribe(this.sourceUrl, (batch: PathWatchBatch) => {
+            if (isEnded) return;
+            if (batch.ended) {
+                isEnded = true;
+                if (hasReceivedBatch) callback();
+                return;
+            }
+            hasReceivedBatch = true;
+            if (batch.changes.length || batch.rescan) callback();
+        }, {
+            recursive: true,
+            debounceMs: 500,
+            // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Diagnostic label, not user-facing text.
+            label: "Explorer",
+        });
     }
 }

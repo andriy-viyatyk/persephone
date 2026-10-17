@@ -197,7 +197,8 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.38.0**. Bridge `1.38.0` adds `persephone.listFolder()`, user-confirmed
+The current board bridge is **1.39.0**. Bridge `1.39.0` adds `persephone.watch()` for permission-scoped
+file and folder change batches. Bridge `1.38.0` adds `persephone.listFolder()`, user-confirmed
 `rememberFolder()` / `rememberFile()` grants, `getFileAccess()` for checking current path access
 without prompting, and session read access to local source files delivered to a board. Persistent
 access confirmations use the manifest name when available. Bridge `1.37.0` adds source-panel snapshots as
@@ -906,8 +907,11 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.rememberFolder(path)` | Ask the user to persist read/list access to a folder picked by this board. The grant is read-only and individually revocable in Board Info. |
 | `persephone.rememberFile(path)` | Ask the user to persist read/write access to one exact plain local file picked by this board, or delivered to it as its initial/runtime source. Source-context items are not eligible. It does not grant its parent or siblings; individually revocable in Board Info. |
 | `persephone.getFileAccess(path)` | Return `{ read, write }` for current authorization without prompting or changing grants. Useful at startup to check whether a remembered catalog is writable; `rememberFile()` may prompt. |
+| `persephone.watch(path, callback, options?)` | Watch an authorized file or folder and receive `PathWatchBatch` updates; returns a Promise for an idempotent disposer. |
 | `persephone.readFile(path, options?)` | Read a file and return its contents (Promise). A relative `path` resolves against the board folder; absolute reads anywhere. Text by default; `{ encoding: "binary" }` returns a `Uint8Array` (the right choice for binary files — app 4.0.21+), `{ encoding: "base64" }` a base64 string. |
 | `persephone.writeFile(path, data, options?)` | Write a file (Promise); creates parent folders. A relative `path` resolves against the board folder. Text by default; `{ encoding: "binary" }` takes a `Uint8Array`, `{ encoding: "base64" }` a base64 string. |
+
+`persephone.watch(path, callback, options?)` accepts `{ recursive?: boolean, debounceMs?: number }`; it watches the target folder's immediate entries by default, or descendants with `recursive: true`. Debounce defaults to 300 ms and accepts integers from 50 through 60000. Each callback receives `{ changes: [{ path, type }], rescan?, ended? }`; paths are absolute canonical paths and types are `created`, `changed`, or `deleted`. `rescan: true` means reload the watched scope; `ended` is `removed`, `error`, or `revoked`, after which the subscription is closed. The Promise resolves to an idempotent disposer. Folder watches use list permission and emit only that canonical folder or descendants; file watches use read permission and emit only that exact file. `fileSystem: false` may watch only the exact hosted document. Watches add no permission, end when the board port closes or access is revoked, and are limited to 64 per board. Errors use `invalid-argument`, `permission-denied`, `not-found`, or `too-many-watches`. A missing exact-file target returns `not-found` in v1; watch its containing folder to wait for a file to appear.
 
 With `fileSystem: "board"`, listing is limited to the board folder, folders picked in the current
 session, and folders the user explicitly remembered. `rememberFile()` adds read/write access to one

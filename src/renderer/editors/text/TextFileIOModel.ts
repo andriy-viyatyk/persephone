@@ -93,11 +93,11 @@ export class TextFileIOModel {
         if (pipe?.watch) {
             this.watchSubscription = this.disposables.add(pipe.watch((event) => {
                 if (event !== "available") void this.onFileChanged();
-            }));
+            }, "text editor"));
             this.recoveryWatchSubscription = this.disposables.add(
                 // Re-read through onFileChanged, not restore(): restore() re-runs setupWatch()
                 // synchronously, which would re-subscribe from inside this callback.
-                watchSourceRecovery(pipe, () => { void this.onFileChanged(); }),
+                watchSourceRecovery(pipe, () => { void this.onFileChanged(); }, "text editor"),
             );
         }
     }

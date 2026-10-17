@@ -1,2 +1,2 @@
 /** Bridge contract version exposed to board frames and local manifest compatibility checks. */
-export const BOARD_BRIDGE_VERSION = "1.38.0";
+export const BOARD_BRIDGE_VERSION = "1.39.0";

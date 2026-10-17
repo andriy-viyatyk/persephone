@@ -1,3 +1,26 @@
+## EPIC-129 — Shared path-watch service and board file watching
+
+Completed 2026-10-17. One main-process service owns every `fs.watch` in the app, shares OS
+watchers across windows and boards by reference count, and reports classified per-path changes.
+Epic document: [EPIC-129](EPIC-129.md).
+
+- [x] **Path-watch service (US-1693).** `src/main/path-watch-service.ts` with the renderer client
+  `src/renderer/api/path-watch.ts`: `created`/`changed`/`deleted` batches, `rescan` and `ended`
+  signals, ancestor reuse, and read-only `main.watchers` diagnostics (snapshots plus a 500-entry
+  recent-event buffer). Live testing fixed three Windows `fs.watch` defects: drive paths rejected,
+  8.3 short-name roots misreporting filenames, and an endless event storm after the watched root
+  is deleted.
+- [x] **Board `persephone.watch()` (US-1694).** Bridge 1.39.0. Authorized like `readFile` and
+  `listFolder`, filtered to the authorized scope, 64 watches per board, released with the board
+  port, ended as `revoked` on trust or grant changes.
+- [x] **Migration (US-1695).** Settings, menu folders, search history, custom themes, Git Tree, text
+  and image editors, Explorer and the script library all subscribe through the service, with
+  labels; their callbacks and delays are unchanged.
+- [x] **Dev Dashboard live refresh (US-1696).** The EverGreen Dev Dashboard board re-parses on any
+  `.md` change under its `dev` folder (outside this repo).
+
+---
+
 ## EPIC-127 — Language packs (interface languages, phase 4)
 
 Completed 2026-10-11. Phase 4, the last phase of the localization roadmap:
