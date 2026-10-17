@@ -308,6 +308,8 @@ export interface BoardPortInitMsg {
     __persephoneInit: true;
     /** Stable page identity used by the host-local pipe URL. */
     pageId?: string;
+    /** Whether the page hosting this board is currently displayed. */
+    pageVisible: boolean;
     /** One-shot capability request delivered to a newly opened handler board. */
     intent?: IntentEnvelope;
     /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
@@ -467,6 +469,8 @@ export interface BoardSetModifiedMsg { __persephone: "board:setModified"; modifi
 export interface BoardSetMutedMsg { __persephone: "board:setMuted"; muted: boolean | null }
 /** Host -> board: the user clicked the page tab's mute button. */
 export interface BoardMuteToggleMsg { __persephone: "page:muteToggle" }
+/** Host -> board: the page hosting this board became or ceased to be displayed. */
+export interface BoardPageVisibilityMsg { __persephone: "page:visibility"; visible: boolean }
 export interface BoardSaveHandlerMsg { __persephone: "board:saveHandler"; handlerId: number; registered: boolean }
 /** `discard: true` tells the board the user chose Don't Save, so it can drop drafts kept for app restarts. */
 export interface BoardSaveRequestMsg { __persephone: "board:saveRequest"; requestId: number; discard?: boolean }
@@ -539,9 +543,11 @@ export interface BoardOpenContentRequestMsg {
 export interface BoardPageStateGetRequestMsg { __persephone: "board:pageState:get"; reqId: number; key: string }
 export interface BoardPageStateSetRequestMsg { __persephone: "board:pageState:set"; reqId: number; key: string; value: string }
 export interface BoardPageStateRemoveRequestMsg { __persephone: "board:pageState:remove"; reqId: number; key: string }
+export interface BoardSourceNavigateRequestMsg { __persephone: "board:source:navigate"; reqId: number; href: string }
 export interface BoardPageStateGetResultMsg { __persephone: "pageState:get:result"; reqId: number; value?: string; error?: string }
 export interface BoardPageStateSetResultMsg { __persephone: "pageState:set:result"; reqId: number; error?: string }
 export interface BoardPageStateRemoveResultMsg { __persephone: "pageState:remove:result"; reqId: number; error?: string }
+export interface BoardSourceNavigateResultMsg { __persephone: "source:navigate:result"; reqId: number; error?: string }
 
 /** Board-to-host window messages. Each discriminator has its own exact payload. */
 export type BoardToHostMsg =
@@ -577,6 +583,7 @@ export type BoardToHostMsg =
     | BoardPageStateGetRequestMsg
     | BoardPageStateSetRequestMsg
     | BoardPageStateRemoveRequestMsg
+    | BoardSourceNavigateRequestMsg
     | BoardContentOpenRequestMsg
     | BoardAiVisionRegistrationMsg
     | BoardAiVisionNotifyMsg
@@ -792,6 +799,7 @@ export type BoardHostFrameMsg =
     | BoardPageStateGetResultMsg
     | BoardPageStateSetResultMsg
     | BoardPageStateRemoveResultMsg
+    | BoardSourceNavigateResultMsg
     | BoardFileIconsResultMsg
     | BoardContentOpenResultMsg
     | BoardOpenContentResultMsg
@@ -819,7 +827,8 @@ export type BoardHostFrameMsg =
     | BoardNavigationReturnMsg
     | BoardToolbarControlEventMsg
     | BoardStatusBarActionMsg
-    | BoardMuteToggleMsg;
+    | BoardMuteToggleMsg
+    | BoardPageVisibilityMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

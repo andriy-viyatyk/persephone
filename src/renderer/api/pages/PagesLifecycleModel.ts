@@ -144,6 +144,7 @@ export class PagesLifecycleModel {
             target?: string;
             sessionHandle?: string;
             normalizedManifest?: NormalizedBoardManifest | null;
+            preferredPageId?: string;
         },
     ): Promise<PageModel | undefined> {
         const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
@@ -152,7 +153,20 @@ export class PagesLifecycleModel {
             : boardRoot ? await readNormalizedBoardManifest(boardRoot) : null;
         if (!boardRoot || normalizedManifest?.singleInstance !== true) return undefined;
 
-        const existingPage = this.model.query.findPageByBoardRoot(boardRoot);
+        const masks = normalizedManifest.singleInstanceMasks;
+        const preferredPage = masks !== undefined && options?.preferredPageId
+            ? this.model.query.findPage(options.preferredPageId)
+            : undefined;
+        const preferredIsFullPlayer = masks !== undefined
+            && this.model.query.isFullPlayerBoardPage(preferredPage, boardRoot, masks);
+        const isBoardOpen = !filePath || filePath.startsWith(PERSEPHONE_BOARD_PREFIX);
+        const matchesMask = !!filePath
+            && masks?.some((mask) => matchesFileMask(fpBasename(filePath), mask));
+        if (masks !== undefined && !isBoardOpen && !matchesMask && !preferredIsFullPlayer) return undefined;
+
+        const existingPage = preferredIsFullPlayer
+            ? preferredPage
+            : this.model.query.findPageByBoardRoot(boardRoot, masks);
         if (!existingPage) return undefined;
 
         this.model.navigation.showPage(existingPage.id);
@@ -934,6 +948,7 @@ export class PagesLifecycleModel {
             ? {
                 ...options,
                 target: resolvedTarget,
+                preferredPageId: pageId,
                 ...(options?.sourceLink
                     ? { sourceLink: { ...options.sourceLink, sourceContext } }
                     : {}),

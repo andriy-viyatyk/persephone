@@ -460,9 +460,13 @@ interface PersephoneBoardSourceContextItem {
     readonly id?: string;
     readonly category?: string;
     readonly tags?: readonly string[];
+    readonly target?: string;
 }
 
 interface PersephoneSourceApi {
+    /** Navigate the page hosting this board to an item in its initial source-panel snapshot.
+     *  Only hrefs delivered in `initialSourceContext.items` are accepted. */
+    navigate(href: string): Promise<void>;
     /** Subscribe to runtime source opens for this board's main frame. Buffered events are
      * delivered FIFO. Each event's context is the source-panel snapshot captured for that open. */
     onOpen(callback: (event: PersephoneSourceOpenEvent) => void): () => void;
@@ -474,11 +478,14 @@ interface PersephoneSourceApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.37.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.37.0"; 1.37.0 adds source-panel context snapshots.
+    /** The current host bridge is 1.40.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.40.0"; 1.40.0 adds singleton file-mask routing and
+     *  `source.navigate()` for items in the initial source context.
      * Compare it before using a newer member; do not narrow it to a
      * literal, it moves with the app. */
     readonly version: string;
+    /** State and lifecycle events for the page hosting this board. */
+    readonly page: PersephonePageApi;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
     readonly aiVision: PersephoneAiVisionApi;
     /** Spawn a command line on the host machine; returns a process handle. */
@@ -597,6 +604,18 @@ interface PersephoneBoardApi {
     /** Resolve links to bytes for in-frame consumers; the URL is revoked with this frame/page. */
     readonly content: PersephoneContentApi;
     readonly host: PersephoneHostApi;
+}
+
+interface PersephonePageApi {
+    /** Whether the hosting page is active or grouped beside the active page. Window minimization
+     *  does not affect this page-level value. */
+    readonly visible: boolean;
+    /** Subscribe to visibility changes. Calls immediately with the current value and returns an
+     *  unsubscribe function. */
+    onVisibilityChange(callback: (visible: boolean) => void): () => void;
+    setModified(modified: boolean): void;
+    setMuted(muted: boolean | null): void;
+    onMuteToggle(callback: () => void): () => void;
 }
 
 interface Window {

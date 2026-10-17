@@ -1,7 +1,9 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import type { TextFileModel } from "../../editors/text";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { PERSEPHONE_BOARD_PREFIX } from "../../content/persephone-board-link";
+import { matchesFileMask } from "../../editors/board/board-manifest";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -42,15 +44,35 @@ export class PagesQueryModel {
     };
 
     /** Find the most recently shown page for a board in this renderer window. */
-    findPageByBoardRoot = (boardRoot?: string): PageModel | undefined => {
+    findPageByBoardRoot = (
+        boardRoot?: string,
+        singleInstanceMasks?: readonly string[],
+    ): PageModel | undefined => {
         if (!boardRoot) return undefined;
-        const normalizedRoot = fpNormalizeForCompare(boardRoot);
         const { ordered } = this.model.state.get();
         return [...ordered].reverse().find((page) => {
+            if (singleInstanceMasks !== undefined) {
+                return this.isFullPlayerBoardPage(page, boardRoot, singleInstanceMasks);
+            }
             const editor = page.mainEditorInstance as { boardRoot?: string } | null;
             return !!editor?.boardRoot
-                && fpNormalizeForCompare(editor.boardRoot) === normalizedRoot;
+                && fpNormalizeForCompare(editor.boardRoot) === fpNormalizeForCompare(boardRoot);
         });
+    };
+
+    isFullPlayerBoardPage = (
+        page: PageModel | undefined,
+        boardRoot: string,
+        masks: readonly string[],
+    ): boolean => {
+        if (!page) return false;
+        const editor = page.mainEditorInstance as { boardRoot?: string; filePath?: string } | null;
+        if (!editor?.boardRoot
+            || fpNormalizeForCompare(editor.boardRoot) !== fpNormalizeForCompare(boardRoot)) return false;
+        const filePath = editor.filePath;
+        return !filePath
+            || filePath.startsWith(PERSEPHONE_BOARD_PREFIX)
+            || masks.some((mask) => matchesFileMask(fpBasename(filePath), mask));
     };
 
     get activePage(): PageModel | undefined {

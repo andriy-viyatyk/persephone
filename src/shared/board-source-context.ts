@@ -11,6 +11,7 @@ export interface BoardSourceContext {
         id?: string;
         category?: string;
         tags?: string[];
+        target?: string;
     }>;
     index: number;
 }

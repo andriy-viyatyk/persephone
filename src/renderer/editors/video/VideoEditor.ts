@@ -18,12 +18,10 @@ import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
-import { createLinkData } from "../../../shared/link-data";
 import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import type { ILink } from "../../api/types/io.tree";
-import { findSourceProvider, getSiblingItems } from "../shared/source-context";
+import { getSiblingItems, navigateToSourceItem } from "../shared/source-context";
 import { errMessage } from "../../../shared/utils";
-import { afterPaint } from "../../core/utils/scheduling";
 import type { EffectType } from "./effects/types";
 import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
 import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
@@ -430,67 +428,8 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Navigate to a new track via the openRawLink pipeline. */
     private navigateToTrack(item: ILink): void {
         const sourcePage = this.page;
-        const provider = sourcePage
-            ? findSourceProvider(sourcePage, this.state.get().sourceLink?.sourceId)
-            : null;
-        if (!provider) return;
-
-        const sourceId = this.state.get().sourceLink?.sourceId;
-        const pageId = this.page?.id;
-        const navUrl = provider.getNavigationUrl(item);
-
-        // Update the source panel's selection highlight.
-        // Explorer uses synchronous selectionState (works before navigation).
-        // Link panels use selectByHref → vm.selectLink which must run AFTER navigation
-        // completes, otherwise the openRawLink pipeline's synchronous state changes
-        // cause the navigation update and selection update to observe different selectedLinkId snapshots.
-        if (this.page) {
-            for (const editor of this.page.panelEditors) {
-                if (!("treeProvider" in editor)) continue;
-                const tp = (editor as any).treeProvider; // eslint-disable-line @typescript-eslint/no-explicit-any
-                if (sourceId === "explorer" && tp?.type === "file" && "selectionState" in editor) {
-                    (editor as any).selectionState.set({ selectedHref: item.href }); // eslint-disable-line @typescript-eslint/no-explicit-any
-                }
-            }
-        }
-
-        const page = this.page;
-        const itemHref = item.href;
-        app.events.openRawLink.sendAsync(
-            createLinkData(navUrl, {
-                pageId,
-                sourceId,
-                category: item.category,
-                selectedTag: sourceId === "link-tag"
-                    ? this.state.get().sourceLink?.selectedTag
-                    : undefined,
-                target: item.target || undefined,
-                title: item.title,
-            }),
-        ).then(() => {
-            // Update link panel selection AFTER navigation completes, so the navigation's own
-            // state changes have reached the DOM before this second update lands.
-            //
-            // Owned by nobody on purpose. The navigation above REPLACES this editor: the page
-            // adopts a fresh VideoEditor for the next track and this instance is detached
-            // (`this.page` becomes null) and then disposed, all before this callback would run.
-            // So anything editor-scoped here is dead on arrival — `this.schedule.raf` is
-            // cancelled by (and throws on) disposal, and a `this.page !== page` guard can never
-            // pass. That is what stopped the Collections/Tags highlight following the track from
-            // one auto-advance to the next (US-1288). The callback closes over everything it
-            // needs, touches no editor state, and re-reads `page.panelEditors` — which is empty
-            // once the page is gone — so it is safe to outlive the editor that scheduled it.
-            afterPaint(() => {
-                if (!page) return;
-                for (const editor of page.panelEditors) {
-                    if (!("treeProvider" in editor) || !("selectByHref" in editor)) continue;
-                    const tp = (editor as any).treeProvider; // eslint-disable-line @typescript-eslint/no-explicit-any
-                    if ((sourceId === "link-category" || sourceId === "link-tag") && tp?.type === "link") {
-                        (editor as any).selectByHref(itemHref); // eslint-disable-line @typescript-eslint/no-explicit-any
-                    }
-                }
-            });
-        });
+        const sourceLink = this.state.get().sourceLink;
+        if (sourcePage && sourceLink) void navigateToSourceItem(sourcePage, sourceLink, item);
     }
 
     /**

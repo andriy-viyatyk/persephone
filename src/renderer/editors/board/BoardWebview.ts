@@ -28,6 +28,7 @@ import type {
     BoardPageStateGetRequestMsg,
     BoardPageStateSetRequestMsg,
     BoardPageStateRemoveRequestMsg,
+    BoardSourceNavigateRequestMsg,
     BoardNavigationCreateReturnUrlMsg,
     BoardNavigationReturnUrlResultMsg,
     BoardPortInitMsg,
@@ -38,6 +39,7 @@ import type {
     BoardToolbarControlPatch,
     BoardStatusBarActionMsg,
     BoardMuteToggleMsg,
+    BoardPageVisibilityMsg,
     BoardStatusBarPatch,
     BoardToHostMsg,
     BoardHostFrameMsg,
@@ -194,6 +196,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private lastBoardContent: string | undefined;
     private live = false;
     private generation = 0;
+    private lastPageVisibility: boolean | undefined;
     private hasLoaded = false;
     private portDeliveryUnsubscribe: (() => void) | undefined;
     private contentHostUnsubscribe: (() => void) | undefined;
@@ -359,6 +362,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             gate: { kind: "trusted", rejectionLog: "Ignored page-state request from an untrusted board." },
             handle: (message, current) => { void this.resolvePageStateRemove(message, current); },
         },
+        "board:source:navigate": {
+            gate: { kind: "mainTrusted", rejectionLog: "Ignored source navigation from a secondary or unavailable board frame." },
+            handle: (message, current) => { void this.resolveSourceNavigate(message, current); },
+        },
         "board:contentOpen": {
             handle: (message, current) => {
                 if (typeof message.reqId === "number") {
@@ -442,6 +449,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                         ? { __persephone: "pageState:set:result", reqId: message.reqId, error }
                         : type === "board:pageState:remove"
                         ? { __persephone: "pageState:remove:result", reqId: message.reqId, error }
+                        : type === "board:source:navigate"
+                        ? { __persephone: "source:navigate:result", reqId: message.reqId, error }
                         : undefined;
                     if (reply) this.replyToFrame(context.frame, context.generation, reply);
                 }
@@ -478,6 +487,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             });
             this.focusUnsubscribe = this.ownSubscription(focusSubscription);
         }
+        this.lastPageVisibility = this.getPageVisibility();
+        this.ownSubscription(pagesModel.state.subscribe(() => this.updatePageVisibility()));
         this.ownSubscription(boardTrust.subscribeGrants((changedRoots) => {
             const boardKey = fpNormalizeForCompare(this.props.boardRoot);
             if (!changedRoots.some((root) => pathCovers(root, boardKey) || pathCovers(boardKey, root))) return;
@@ -750,6 +761,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             filePath,
             sourceUrl,
             sourceContext: this.props.model.initialSourceContext(),
+            pageVisible: this.getPageVisibility(),
             ...(this.props.model.isInitialSourcePrivateSession() ? { initialSourcePrivateSession: true } : {}),
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
@@ -763,6 +775,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             const contextPaths = (init.sourceContext?.items ?? []).map((item) => item.href).filter(isPlainLocalPath).slice(0, Math.max(0, 5000 - sourcePaths.length));
             if (sourcePaths.length || contextPaths.length) await api.grantBoardSourceReads(this.props.boardRoot, sourcePaths, contextPaths);
             if (!this.live || this.pendingPort !== port || !frame.contentWindow) return;
+            init.pageVisible = this.getPageVisibility();
             contentWindow.postMessage(init, `board://${host}`, [port]);
             this.pendingPort = null;
             if (this.capabilityFrame && this.capabilityFrame.generation === this.generation) {
@@ -973,6 +986,21 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.replyToFrame(context.frame, context.generation, reply);
     }
 
+    private async resolveSourceNavigate(message: BoardSourceNavigateRequestMsg, context: BoardMessageContext): Promise<void> {
+        let reply: BoardHostFrameMsg;
+        try {
+            await context.model.navigateSource(message.href);
+            reply = { __persephone: "source:navigate:result", reqId: message.reqId };
+        } catch (error: unknown) {
+            reply = {
+                __persephone: "source:navigate:result",
+                reqId: message.reqId,
+                error: errMessage(error, "Could not navigate to the source item."),
+            };
+        }
+        this.replyToFrame(context.frame, context.generation, reply);
+    }
+
     /** Deliver one catalog interaction to the current main board frame. */
     public sendStatusBarAction(event: { id: string }, generation: number): void {
         const host = this.host;
@@ -993,6 +1021,29 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
             || this.props.model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
         const message: BoardMuteToggleMsg = { __persephone: "page:muteToggle" };
+        try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
+    }
+
+    private getPageVisibility(): boolean {
+        const pageId = this.props.model.page?.id;
+        const activePage = pagesModel.query.activePage;
+        if (!pageId || !activePage) return false;
+        return activePage.id === pageId
+            || pagesModel.query.getGroupedPage(activePage.id)?.id === pageId;
+    }
+
+    private updatePageVisibility(): void {
+        this.sendPageVisibility(this.getPageVisibility());
+    }
+
+    private sendPageVisibility(visible: boolean): void {
+        if (this.lastPageVisibility === visible) return;
+        this.lastPageVisibility = visible;
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        if (!this.live || !host || !frame || !contentWindow) return;
+        const message: BoardPageVisibilityMsg = { __persephone: "page:visibility", visible };
         try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
     }
 

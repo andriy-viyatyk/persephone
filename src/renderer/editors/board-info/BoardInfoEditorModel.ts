@@ -77,6 +77,7 @@ export interface BoardPropsInfo {
     permissionChangePending?: boolean;
     standalone?: boolean;
     singleInstance?: boolean;
+    singleInstanceMasks?: string[];
     minAppVersion?: string;
     minBridgeVersion?: string;
     service?: string;
@@ -435,6 +436,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             permissionChangePending: permissionSnapshot?.manifestChanged,
             standalone: manifest?.standalone,
             singleInstance: manifest?.singleInstance,
+            singleInstanceMasks: manifest?.singleInstanceMasks,
             minAppVersion: manifest?.minAppVersion,
             minBridgeVersion,
             service: manifest?.service,

@@ -197,7 +197,13 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.39.0**. Bridge `1.39.0` adds `persephone.watch()` for permission-scoped
+The current board bridge is **1.40.0**. Bridge `1.40.0` adds the optional
+`singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,
+and `persephone.source.navigate(href)`, which navigates the hosting page to an item in its initial
+Explorer or Link Editor source context, and `persephone.page.visible` / `onVisibilityChange()` for
+whether the hosting page is active or grouped beside the active page. This visibility is page-level
+and ignores window minimization. When `singleInstanceMasks` is omitted, existing route-everything
+behavior remains. Bridge `1.39.0` adds `persephone.watch()` for permission-scoped
 file and folder change batches. Bridge `1.38.0` adds `persephone.listFolder()`, user-confirmed
 `rememberFolder()` / `rememberFile()` grants, `getFileAccess()` for checking current path access
 without prompting, and session read access to local source files delivered to a board. Persistent
@@ -1245,11 +1251,11 @@ Scripts running on an open board can call `page.editor.getManifest()` after narr
 to `board-view` or `board-editor:<id>`. It returns a copied snapshot of the normalized manifest
 values Persephone applies; it returns `undefined` if the manifest is missing or malformed. The
 snapshot includes the supported manifest fields, including `browserUrlMasks`, `contentMasks`,
-`singleInstance`, `settings`, `guides`, and capability `alwaysOpensNewPage`.
+`singleInstance`, `singleInstanceMasks`, `settings`, `guides`, and capability `alwaysOpensNewPage`.
 
 Normalization is visible in the returned values. `permissions` are trimmed and deduplicated while
 preserving case; browser URL masks are lowercased, deduplicated, filtered, and capped at 64; file
-masks are lowercased and bare extensions become globs such as `*.drawio`; folder masks normalize
+masks and `singleInstanceMasks` are lowercased and bare extensions become globs such as `*.drawio`; folder masks normalize
 slashes; content masks omit invalid or overlong expressions. Provider types are trimmed and blank
 types removed, while schemes are lowercased and deduplicated. Capability ids, representations, and
 titles are trimmed, accepted values are deduplicated, and malformed `alwaysOpensNewPage` values

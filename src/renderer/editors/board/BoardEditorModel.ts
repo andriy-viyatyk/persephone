@@ -38,6 +38,8 @@ import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
+import type { ILink } from "../../api/types/io.tree";
+import { findSourceProvider, navigateToSourceItem } from "../shared/source-context";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 
 export interface BoardToolbarElementDeclaration {
@@ -361,6 +363,38 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Initial sibling context persisted with the board's source link. */
     initialSourceContext(): BoardSourceContext | undefined {
         return this.state.get().sourceLink?.sourceContext;
+    }
+
+    /** Navigate only to items included in this board page's initial source snapshot. */
+    async navigateSource(href: string): Promise<void> {
+        const sourceLink = this.state.get().sourceLink;
+        const sourceId = sourceLink?.sourceId;
+        const context = sourceLink?.sourceContext;
+        const supportedSource = sourceId === "explorer"
+            || sourceId === "link-category"
+            || sourceId === "link-tag";
+        const item = typeof href === "string" ? context?.items.find((candidate) => {
+            if (isPlainLocalPath(href) && isPlainLocalPath(candidate.href)) {
+                return fpNormalizeForCompare(href) === fpNormalizeForCompare(candidate.href);
+            }
+            return href === candidate.href;
+        }) : undefined;
+        if (!sourceLink || !supportedSource || !item) {
+            throw new Error("The href must match an item in this page's initial source context.");
+        }
+        const page = this.page;
+        if (!page) throw new Error("The board page is unavailable.");
+        if (!findSourceProvider(page, sourceId)) throw new Error("The source panel for this board page is unavailable.");
+        const link: ILink = {
+            id: item.id,
+            title: item.title,
+            href: item.href,
+            category: item.category ?? sourceLink?.category ?? "",
+            tags: item.tags ?? [],
+            isDirectory: false,
+            target: item.target,
+        };
+        await navigateToSourceItem(page, sourceLink, link);
     }
 
     consumePendingSourceUrl(): void {

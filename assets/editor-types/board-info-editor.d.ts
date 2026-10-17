@@ -64,6 +64,7 @@ export interface IBoardInfoProperties {
     readonly permissionChangePending?: boolean;
     readonly standalone?: boolean;
     readonly singleInstance?: boolean;
+    readonly singleInstanceMasks?: readonly string[];
     readonly minAppVersion?: string;
     readonly minBridgeVersion?: string;
     readonly service?: string;

@@ -103,6 +103,8 @@ export interface BoardManifest {
     standalone?: boolean;
     /** Whether claimed sources should converge on one board page per renderer window. */
     singleInstance?: boolean;
+    /** File-name masks that route claimed sources to the single-instance board page. */
+    singleInstanceMasks?: string[];
     /**
      * Minimum Persephone version this board version requires (semver; absent = no
      * requirement, EPIC-045). Per-version app-compatibility gate.
@@ -283,6 +285,7 @@ export interface NormalizedBoardManifest {
     version?: string;
     standalone?: boolean;
     singleInstance?: boolean;
+    singleInstanceMasks?: string[];
     minAppVersion?: string;
     minBridgeVersion?: string;
     languages?: BoardLanguages;
@@ -859,6 +862,9 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     }
     if (typeof source.standalone === "boolean") normalized.standalone = source.standalone;
     if (typeof source.singleInstance === "boolean") normalized.singleInstance = source.singleInstance;
+    if (has("singleInstanceMasks") && Array.isArray(source.singleInstanceMasks)) {
+        normalized.singleInstanceMasks = normalizeFileMasks(source.singleInstanceMasks);
+    }
     if (typeof source.service === "string") {
         const service = normalizeBoardServicePath(source.service);
         if (service !== null) normalized.service = service;

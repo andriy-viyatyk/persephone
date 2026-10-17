@@ -71,6 +71,7 @@ import type {
     BoardPageStateGetResultMsg,
     BoardPageStateSetResultMsg,
     BoardPageStateRemoveResultMsg,
+    BoardSourceNavigateResultMsg,
     BoardRpcMethod,
     BoardStateSyncMsg,
     BoardSettingsChangedMsg,
@@ -329,6 +330,8 @@ let sourceUrlSettled = false;
 let sourceUrlValue: string | undefined;
 let initialSourcePrivateSession = false;
 let initialSourceContext: BoardSourceContext | undefined;
+let pageVisible = false;
+const pageVisibilityCbs = new Set<(visible: boolean) => void>();
 const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
 interface PersephoneSourceOpenEvent {
     readonly url: string;
@@ -582,6 +585,7 @@ type BoardHostRequestReply =
     | BoardPageStateGetResultMsg
     | BoardPageStateSetResultMsg
     | BoardPageStateRemoveResultMsg
+    | BoardSourceNavigateResultMsg
     | BoardVarResultMsg
     | BoardSettingsResultMsg
     | BoardNavigationReturnUrlResultMsg
@@ -600,7 +604,8 @@ type BoardHostRequestPayload =
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:get" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:set" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:remove" }>, "reqId">;
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:remove" }>, "reqId">
+    | Omit<Extract<BoardToHostMsg, { __persephone: "board:source:navigate" }>, "reqId">;
 
 const pendingHostRequests = new Map<number, {
     requestType: BoardHostRequestPayload["__persephone"];
@@ -1368,6 +1373,7 @@ onHostMessage((event) => {
             sourceUrl?: string;
             sourceContext?: BoardSourceContext;
             initialSourcePrivateSession?: boolean;
+            pageVisible?: boolean;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
             pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
         }
@@ -1392,6 +1398,7 @@ onHostMessage((event) => {
         initialSourceContext = data.sourceContext;
         settleSourceUrl(data.sourceUrl);
     }
+    if (typeof data.pageVisible === "boolean") setPageVisibility(data.pageVisible);
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
@@ -1546,6 +1553,21 @@ onHostMessage((event) => {
         catch (error: unknown) { console.error("persephone.page.onMuteToggle callback error:", error); }
     }
 });
+
+onHostMessage((event) => {
+    const data = event.data as { __persephone?: unknown; visible?: unknown } | undefined;
+    if (data?.__persephone !== "page:visibility" || typeof data.visible !== "boolean") return;
+    setPageVisibility(data.visible);
+});
+
+function setPageVisibility(visible: boolean): void {
+    if (pageVisible === visible) return;
+    pageVisible = visible;
+    for (const callback of pageVisibilityCbs) {
+        try { callback(visible); }
+        catch (error: unknown) { console.error("persephone.page.onVisibilityChange callback error:", error); }
+    }
+}
 
 // Capability request delivered to an ALREADY-OPEN board page — renderer → board.
 // The initial request of a page arrives on `BoardPortInitMsg` instead, because the page is
@@ -1826,6 +1848,8 @@ function createHandle(
 
     /** Lifecycle state for this board's own page (main frame only). */
     page: {
+        /** Whether this page is active or shown beside the active page. */
+        get visible(): boolean { return pageVisible; },
         setModified(modified: boolean): void {
             window.parent.postMessage({ __persephone: "board:setModified", modified: modified === true }, hostPostTarget);
         },
@@ -1839,6 +1863,14 @@ function createHandle(
             if (typeof callback !== "function") throw new TypeError("persephone.page.onMuteToggle expects a function.");
             muteToggleCbs.add(callback);
             return () => { muteToggleCbs.delete(callback); };
+        },
+        /** Subscribe to page visibility; calls immediately with the current value. */
+        onVisibilityChange(callback: (visible: boolean) => void): () => void {
+            if (typeof callback !== "function") throw new TypeError("persephone.page.onVisibilityChange expects a function.");
+            pageVisibilityCbs.add(callback);
+            try { callback(pageVisible); }
+            catch (error: unknown) { console.error("persephone.page.onVisibilityChange callback error:", error); }
+            return () => { pageVisibilityCbs.delete(callback); };
         },
     },
 
@@ -2277,6 +2309,19 @@ function createHandle(
         },
         get initialSourcePrivateSession(): boolean {
             return initialSourcePrivateSession;
+        },
+        navigate(href: string): Promise<void> {
+            if (typeof href !== "string" || !href) {
+                return Promise.reject(new TypeError("persephone.source.navigate() requires a non-empty href."));
+            }
+            return hostRequest(
+                { __persephone: "board:source:navigate", href },
+                "source:navigate:result",
+                (reply) => {
+                    const data = reply as BoardSourceNavigateResultMsg;
+                    if (data.error != null) throw new Error(data.error);
+                },
+            );
         },
         onOpen: onSourceOpen,
     },

@@ -11,8 +11,13 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.39.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.39.0` adds permission-scoped
+The board bridge is version **1.40.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.40.0` adds optional
+`singleInstanceMasks` manifest masks to choose which claimed file names route to a singleton board page,
+`persephone.source.navigate(href)` to navigate the hosting page to an item in its initial source context,
+and `persephone.page.visible` / `persephone.page.onVisibilityChange(callback)` for page-level visibility
+(active or grouped beside the active page; independent of window minimization).
+Bridge `1.39.0` adds permission-scoped
 `persephone.watch()` file and folder change batches. Bridge `1.38.0` adds paged folder listing,
 confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
 and session read access to delivered source files. Confirmation dialogs use the manifest name when
@@ -738,7 +743,12 @@ const initialContext = persephone.source.initialSourceContext;
 persephone.source.onOpen(({ sourceUrl, context }) => {
     if (context) addQueueSources(context.items, context.index, sourceUrl);
 });
+await persephone.source.navigate(initialContext.items[nextIndex].href);
 ```
+
+`source.navigate(href)` accepts only an href in the page's initial `source.initialSourceContext.items`
+and only when that context came from Explorer or a Link Editor category/tag panel. It updates that
+panel's selection and navigates the page hosting the board; it cannot navigate another page.
 
 Only trusted boards and enabled bundled boards contribute claims. Trusted roots register before
 bundled boards; an exact normalized duplicate is refused and reported as a
@@ -1254,6 +1264,19 @@ removes it. Persephone only draws the state the board reports: a click calls the
 own mute and reports the new state. Report every change, including ones from the board's own
 controls, so the tab and the board always agree. The button goes away with the frame on reload.
 
+### Page visibility
+
+`persephone.page.visible` reports whether the hosting page is the active page or is grouped beside
+the active page. It is initialized from the board handshake and does not depend on whether the app
+window is minimized. Subscribe to changes with `onVisibilityChange`; it immediately calls the
+callback with the current value and returns an unsubscribe function:
+
+```js
+const unsubscribe = persephone.page.onVisibilityChange((visible) => {
+  player.setVisible(visible);
+});
+```
+
 ### Secondary views & shared state
 
 A board can contribute **secondary views** — extra sidebar panels, each its own `board://`
@@ -1505,6 +1528,8 @@ the manifest's `loadOrder`.
   normalized, anchored, and limited to trusted or enabled bundled boards),
   optional `singleInstance: true` (converges claimed sources on one board page per renderer window;
   windows keep separate pages, so use the shared module service when their state must agree),
+  optional `singleInstanceMasks` (file-name masks that route matching claimed files to that singleton;
+  when omitted, every claimed source keeps the legacy singleton routing behavior),
   optional `editorPriority` (a number; makes the board the *default* editor for those masks when it
   strictly outranks the built-in that also claims the file — omit/`0` = switch option only. Built-in
   ladder: Monaco `0`, Markdown Preview `10`, compound-name editors like `*.grid.json` `20`, Drawing

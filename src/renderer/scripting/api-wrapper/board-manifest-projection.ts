@@ -26,6 +26,7 @@ export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardM
     if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
     if (typeof manifest.service === "string") copy.service = manifest.service;
     if (manifest.singleInstance !== undefined) copy.singleInstance = manifest.singleInstance;
+    if (manifest.singleInstanceMasks !== undefined) copy.singleInstanceMasks = [...manifest.singleInstanceMasks];
     if (manifest.contentProviders !== undefined) {
         copy.contentProviders = manifest.contentProviders.map(projectBoardContentProvider);
     }

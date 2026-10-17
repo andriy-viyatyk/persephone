@@ -3,6 +3,9 @@ import type { ITreeProvider, ILink } from "../../api/types/io.tree";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import type { ILinkData } from "../../../shared/link-data";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
+import { createLinkData } from "../../../shared/link-data";
+import { app } from "../../api/app";
+import { afterPaint } from "../../core/utils/scheduling";
 
 const MAX_SOURCE_CONTEXT_ITEMS = 5_000;
 const MAX_SOURCE_CONTEXT_BYTES = 1024 * 1024;
@@ -33,6 +36,57 @@ export function findSourceProvider(page: Pick<IPageHost, "panelEditors">, source
         }
     }
     return null;
+}
+
+/** Navigate to a sibling source item and keep its source panel selection in sync. */
+export async function navigateToSourceItem(
+    page: IPageHost,
+    sourceLink: ILinkData,
+    item: ILink,
+): Promise<void> {
+    const sourceId = sourceLink.sourceId;
+    const provider = findSourceProvider(page, sourceId);
+    if (!provider) return;
+
+    if (sourceId === "explorer") {
+        for (const editor of page.panelEditors) {
+            if (!("treeProvider" in editor)) continue;
+            const treeProvider = (editor as { treeProvider?: ITreeProvider | null }).treeProvider;
+            if (treeProvider?.type === "file" && "selectionState" in editor) {
+                (editor as { selectionState: { set(value: { selectedHref: string }): void } })
+                    .selectionState.set({ selectedHref: item.href });
+            }
+        }
+    }
+
+    const itemHref = item.href;
+    await app.events.openRawLink.sendAsync(createLinkData(provider.getNavigationUrl(item), {
+        pageId: page.id,
+        sourceId,
+        category: item.category,
+        selectedTag: sourceId === "link-tag" ? sourceLink.selectedTag : undefined,
+        target: item.target || undefined,
+        title: item.title,
+    }));
+
+    // Update link panel selection AFTER navigation completes, so the navigation's own state changes
+    // have reached the DOM before this second update lands.
+    //
+    // Owned by nobody on purpose. Navigation can REPLACE the editor that scheduled it, detaching
+    // and disposing that editor before this callback runs. Editor-scoped scheduling is cancelled
+    // by disposal, and a guard against the editor's page changing cannot pass. That is what stopped
+    // Collections/Tags selection from following Video Player auto-advance (US-1288). This callback
+    // closes over the page and item, touches no editor state, and re-reads panelEditors after paint;
+    // it remains safe to outlive the editor that scheduled it.
+    afterPaint(() => {
+        for (const editor of page.panelEditors) {
+            if (!("treeProvider" in editor) || !("selectByHref" in editor)) continue;
+            const treeProvider = (editor as { treeProvider?: ITreeProvider | null }).treeProvider;
+            if ((sourceId === "link-category" || sourceId === "link-tag") && treeProvider?.type === "link") {
+                (editor as { selectByHref(href: string): void }).selectByHref(itemHref);
+            }
+        }
+    });
 }
 
 /** Enumerate siblings using the same source selection rules shared by boards and Video Player. */
@@ -103,6 +157,7 @@ function buildContext(
             category: item.category,
             tags: item.tags,
         } : {}),
+        ...(item.target !== undefined ? { target: item.target } : {}),
     }));
     const currentIndex = items.findIndex((item) => sameHref(item.href, currentHref));
     const index = currentIndex >= start && currentIndex < end ? currentIndex - start : -1;

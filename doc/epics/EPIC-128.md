@@ -135,6 +135,49 @@ Proposals; the user may change them.
   the Audio Player. Until then the Video Player uses the shared helper of A3 and behaves as
   today.
 
+- **A11 — Full player and light pages** (user decision 2026-10-18; replaces "every open lands
+  on one player page" from A2 and the Goals).
+  - **Full player (singleton):** opening the board itself (Boards panel, launcher,
+    `persephone-board://` link) or a file matching the manifest's new `singleInstanceMasks`
+    (`*.music.link.json`, `*.m3u`, `*.pls`) still routes to the one full player page and queues
+    there through `source.onOpen`.
+  - **Light page:** any other audio file (Explorer click, link editor, Open dialog, drag-and-drop)
+    opens in place on the page it was opened from, like every other viewer. It shows the
+    visualizer, the transport and the track title with the add/edit button only — no catalog
+    panel, catalog list, double-click playing list, toolbar search, Import or catalog button.
+    Previous/next play the rest of the captured source context (folder or link category/tag)
+    within the light page, and the title follows the playing track. Play counts are recorded
+    in the catalog. Light pages expose no ai-vision model. With no catalog yet (a freshly
+    installed board), the add/edit button stays hidden and the file still plays; a light page
+    never offers to open or create a catalog (today's `catalog-view.js` already hides
+    `#add-current` when `!doc` — keep it).
+  - **Mode** is chosen by the board at startup: an audio-file source is a light page; a catalog,
+    a playlist or no source is the full player.
+  - **Platform:** `openSingleInstanceBoard` routes only board opens and `singleInstanceMasks`
+    matches; `findPageByBoardRoot` (used for routing) matches only a page opened without an
+    audio file, so a light page never captures a board launch. A manifest without
+    `singleInstanceMasks` keeps today's route-everything behavior. Link Editor panel clicks
+    (category tree, tags list; `LinkEditor.openLinkFromPanel`) dispatch with the page's
+    `pageId` and reach the same `navigatePageToWithSingletonRouting` as Explorer clicks, so a
+    track clicked in e.g. `music.link.json` plays in place on the Link Editor's page (as the
+    Video Player did), with previous/next over the clicked category or tag. Acceptance checks
+    both the Explorer and the Link Editor click. The manifest field is a
+    board-facing contract change: **bump `BOARD_BRIDGE_VERSION`**, and the board's
+    `minBridgeVersion` follows.
+  - **Light-page source navigation** (user decision 2026-10-18): expose
+    `persephone.source.navigate(href)` so a light-page board can navigate its hosting page only to
+    hrefs in its initial Explorer or Link Editor category/tag source snapshot, preserving the
+    source panel selection and using the same page-local navigation path as Video Player Next.
+  - **Page visibility** (user decision 2026-10-18): expose `persephone.page.visible` and
+    `persephone.page.onVisibilityChange(callback)`; a page is visible when active or grouped
+    beside the active page, independent of whether the window is minimized.
+  - **Catalog sync:** the full player watches its catalog with `persephone.watch()` (EPIC-129)
+    instead of the 4-second visible-only poll, so a track added from a light page appears at
+    once. Writes stay merge-safe through the catalog store.
+  - Two pages playing at the same time is expected (as with two browser tabs); there is no
+    cross-page pause. Pages restored from an older session that were opened from a file come
+    back as light pages.
+
 ## Linked Tasks
 
 ### Persephone (this repo)
@@ -145,6 +188,7 @@ Proposals; the user may change them.
 | [US-1689](../tasks/US-1689-board-source-context/README.md) | Source context for board opens (sibling tracks from folder / link category / tag) | Implemented (unreviewed) |
 | [US-1690](../tasks/US-1690-board-folder-listing/README.md) | Board folder listing, persisted folder and file grants, and source read grants | Implemented, verified live (native-dialog flows: user check) |
 | ~~US-1691~~ | ~~Media-key or background-playback support for boards~~ | Dropped: US-1688 found both already work |
+| [US-1700](../tasks/US-1700-single-instance-masks/README.md) | Single-instance routing by mask: full player for board/catalog/playlist opens, in-place light pages for audio files (A11) | Planned |
 | US-1692 | Remove the audio features from the Video Player (after BT-042) | Planned |
 
 ### persephone-boards
@@ -156,10 +200,12 @@ Proposals; the user may change them.
 | BT-040 | Audio Player: play counts, smart and saved playlists, M3U/PLS | Implemented, verified live |
 | BT-041 | Audio Player: equalizer, crossfade, gapless | Implemented, verified live |
 | BT-043 | Audio Player: ai-vision model (read, bulk edit, playback control) | Implemented, verified live |
+| BT-044 | Audio Player: light mode (A11), `singleInstanceMasks`, watch-based catalog refresh | Planned |
 | BT-042 | Publish Audio Player; site page and demo video | Planned |
 
-Order: US-1688 → US-1689 → BT-038 → US-1690 → BT-039 → BT-040 → BT-043 → BT-041 → BT-042 → US-1692.
-US-1689 bumps `BOARD_BRIDGE_VERSION` from 1.36.0 to 1.37.0; US-1690 then bumps it to 1.38.0.
+Order: US-1688 → US-1689 → BT-038 → US-1690 → BT-039 → BT-040 → BT-043 → BT-041 → US-1700 →
+BT-044 → BT-042 → US-1692.
+US-1689 bumps `BOARD_BRIDGE_VERSION` from 1.36.0 to 1.37.0; US-1690 then bumps it to 1.38.0; US-1700 bumps it to 1.40.0.
 The board's `minBridgeVersion` / `minAppVersion` follow the release that ships each feature.
 
 ## Notes
