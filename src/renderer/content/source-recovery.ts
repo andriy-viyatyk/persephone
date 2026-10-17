@@ -15,6 +15,18 @@ export function watchSourceRecovery(
     }, label);
 }
 
+/** Watch a pipe for a confirmed source move. */
+export function watchSourceMove(
+    pipe: IContentPipe | null | undefined,
+    onMoved: (newPath: string) => void,
+    label?: string,
+): () => void {
+    if (!pipe?.watch) return () => {};
+    return pipe.watch((event, details) => {
+        if (event === "moved" && details) onMoved(details.newPath);
+    }, label);
+}
+
 /** Report typed provider failures, optionally deduplicating against owner state. */
 export function reportProviderError(
     error: unknown,

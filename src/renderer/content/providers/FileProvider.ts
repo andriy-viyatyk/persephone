@@ -52,13 +52,14 @@ export class FileProvider implements IProvider {
         }
     }
 
-    watch(callback: (event: string) => void, label = "content pipe"): () => void {
+    watch(callback: (event: string, details?: { newPath: string }) => void, label = "content pipe"): () => void {
         if (isArchivePath(this.filePath) || isAsarPath(this.filePath)) return () => {};
 
         let hasReceivedBatch = false;
+        let hasDeliveredMove = false;
         let isEnded = false;
         return subscribe(this.filePath, (batch: PathWatchBatch) => {
-            if (isEnded) return;
+            if (isEnded || hasDeliveredMove) return;
             if (batch.ended) {
                 isEnded = true;
                 if (hasReceivedBatch) callback("change");
@@ -67,6 +68,14 @@ export class FileProvider implements IProvider {
             hasReceivedBatch = true;
             // One callback per batch, as the old debounced fs.watch delivered one per window.
             if (!batch.rescan && batch.changes.length === 0) return;
+            // A file subscription only receives changes for its own path, and main reports the
+            // canonical form of it (long name, backslashes), so do not compare against filePath.
+            const movedChange = batch.changes.find(change => change.type === "moved");
+            if (movedChange?.type === "moved") {
+                hasDeliveredMove = true;
+                callback("moved", { newPath: movedChange.to });
+                return;
+            }
             callback(batch.changes.some(change => change.type !== "changed") ? "rename" : "change");
         }, { debounceMs: 300, label });
     }

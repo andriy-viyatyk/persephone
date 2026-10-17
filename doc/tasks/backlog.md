@@ -28,6 +28,19 @@ per-path changes. These were left out of scope (EPIC-129 decision W7):
 - [ ] **Live check of `ended: "revoked"`.** Board watch revocation on a trust or grant change
   was verified by reading the code only.
 
+## Follow-ups from EPIC-130 (editors follow file and folder moves)
+
+- [ ] **Follow moved video sources.** Pipe-backed video sources currently recover only when a
+  provider becomes available, and local video sessions own no content pipe. Rebind/restart video
+  playback after a confirmed source move with explicit handling for active stream state.
+- [ ] **External folder renames are blocked by Persephone's watchers.** Windows refuses to rename a
+  folder from outside Persephone (Windows Explorer, `git`, an agent's `mv`) while Persephone holds
+  an `fs.watch` handle on a folder inside it — and every open file holds one on its parent folder.
+  US-1697 suspends watchers only around in-app moves. Options: watch the nearest common ancestor
+  recursively instead of each parent folder, or reopen handles lazily.
+- [ ] **Explorer page follows its moved root folder**, and **non-content-host boards follow a moved
+  source file** (EPIC-130 out of scope).
+
 ---
 
 ## `window.screen` automation on board-frame refs (found 2026-10-09, US-1640 verification)

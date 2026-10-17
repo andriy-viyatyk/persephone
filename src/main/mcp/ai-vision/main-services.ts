@@ -35,6 +35,8 @@ const WATCHERS_MEMBERS: readonly IAiMember[] = [
     { name: "summary", kind: "property", summary: "Watcher and subscription counts plus aggregate events, batches, and rescans." },
     { name: "watchers", kind: "property", summary: "At most 100 OS watcher snapshots." },
     { name: "subscriptions", kind: "property", summary: "At most 100 subscription snapshots, including owner and served root." },
+    { name: "recentMoves", kind: "property", summary: "The latest 100 confirmed intent moves, with source and timestamp." },
+    { name: "pendingMoves", kind: "property", summary: "At most 256 live move intents with phase, expiry, and matched subscription count." },
     { name: "recent", kind: "method", signature: "recent(limit = 50)", summary: "Recent bounded raw events and batches from the 500-entry ring buffer." },
 ];
 
@@ -267,6 +269,8 @@ export class MainWatchersNode implements IAiVisible {
     get summary() { return pathWatchService.getSummary(); }
     get watchers() { return pathWatchService.getWatchers(); }
     get subscriptions() { return pathWatchService.getSubscriptions(); }
+    get recentMoves() { return pathWatchService.getRecentMoves(); }
+    get pendingMoves() { return pathWatchService.getPendingMoves(); }
     recent(limit = 50) { return pathWatchService.getRecent(limit); }
 
     get aiVision(): IAiVisionDescriptor {
@@ -274,8 +278,8 @@ export class MainWatchersNode implements IAiVisible {
             kind: "MainWatchers",
             summary: "Read-only bounded path-watch service diagnostics.",
             members: WATCHERS_MEMBERS,
-            help: "Snapshots are read-only. Watchers and subscriptions are limited to 100 entries; recent(limit = 50) reads at most 500 in-memory event and batch records.",
-            summarize: () => ({ kind: "MainWatchers", summary: this.summary }),
+            help: "Snapshots are read-only. Watchers and subscriptions are limited to 100 entries, pendingMoves to 256 intents, and recentMoves to 100 confirmed moves; recent(limit = 50) reads at most 500 in-memory event and batch records.",
+            summarize: () => ({ kind: "MainWatchers", summary: this.summary, recentMoves: this.recentMoves, pendingMoves: this.pendingMoves }),
         };
     }
 }

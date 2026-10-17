@@ -1,4 +1,4 @@
-import type { IProvider, IProviderDescriptor, IProviderStat, IPipeStageStatus } from "./io.provider";
+import type { IProvider, IProviderDescriptor, IProviderStat, IPipeStageStatus, ProviderWatchDetails } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 
 /** Serializable pipe descriptor for persistence (stored in IEditorState). */
@@ -78,12 +78,14 @@ export interface IContentPipe {
     readonly displayName: string;
     /** Watch for external changes (delegated to provider). */
     watch?(
-        callback: (event: string) => void,
+        callback: (event: string, details?: ProviderWatchDetails) => void,
         /** Diagnostic label shown in main.watchers; default 'content pipe'. */
         label?: string,
     ): () => void;
     /** Clone this pipe with a different provider, keeping all transformers. */
     cloneWithProvider(provider: IProvider): IContentPipe;
+    /** Clone this pipe onto a moved file source, updating path-aware transformers. */
+    cloneForMovedSource(newPath: string): IContentPipe;
     /** Clone this pipe with same provider and transformers (deep copy). */
     clone(): IContentPipe;
     /** Dispose the provider. */

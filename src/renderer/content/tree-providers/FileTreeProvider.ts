@@ -15,6 +15,7 @@ import {
 } from "../../editors/board/custom-editor-registry";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
+import { fs } from "../../api/fs";
 import { isArchivePath, isAsarPath } from "../../core/utils/file-path";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
@@ -196,7 +197,7 @@ export class FileTreeProvider implements ITreeProvider {
     }
 
     async rename(oldPath: string, newPath: string): Promise<void> {
-        nodefs.renameSync(oldPath, newPath);
+        await fs.rename(oldPath, newPath);
     }
 
     async deleteItem(href: string): Promise<void> {

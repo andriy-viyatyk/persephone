@@ -17,6 +17,12 @@ export interface IProviderStat {
     exists: boolean;
 }
 
+/** Provider watch event. `details` is present for `moved`. */
+export type ProviderWatchEvent = "available" | "change" | "rename" | "moved";
+export interface ProviderWatchDetails {
+    newPath: string;
+}
+
 /** Live status reported by one content-pipeline stage. Progress is measured in bytes and rate in bytes per second. */
 export interface IPipeStageStatus {
     readonly state: "idle" | "connecting" | "active" | "done" | "error";
@@ -72,7 +78,7 @@ export interface IProvider {
     stat?(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Watch for external changes. Returns a disposer to stop watching. */
     watch?(
-        callback: (event: string) => void,
+        callback: (event: string, details?: ProviderWatchDetails) => void,
         /** Diagnostic label shown in main.watchers; default 'content pipe'. */
         label?: string,
     ): () => void;

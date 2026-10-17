@@ -80,7 +80,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Git-root detection for Markdown wiki links (walk up to nearest `.git`, cached) | `/src/renderer/editors/markdown/detect-git-root.ts` |
 | Markdown heading anchors (GitHub-style slug ids + `-1`/`-2` dedupe; exports `slugifyHeading`, reused by `MarkdownBlock.scrollToAnchor` to match a `#fragment` against heading text so Azure-DevOps and GitHub dialects meet) | `/src/renderer/editors/markdown/rehypeHeadingIds.ts` |
 | File / directory watchers (`FileWatcher`, `DirectoryWatcher`) | `/src/renderer/core/utils/file-watcher.ts` |
-| Shared path-watch service (main-process `fs.watch` ownership, shared watcher roots, classified batches, rescan/terminal signals, and bounded diagnostics) | `/src/main/path-watch-service.ts` |
+| Shared path-watch service (main-process `fs.watch` ownership, classified move events, file-identity matching, and bounded diagnostics) | `/src/main/path-watch-service.ts` |
 | Path-watch IPC handlers (window-owned subscriptions and cleanup on sender navigation/destruction) | `/src/ipc/main/path-watch-handlers.ts` |
 | Renderer path-watch client (local reference-counted subscriptions over IPC) | `/src/renderer/api/path-watch.ts` |
 | JSON parsing helpers (`tryParseJson<T>` parse-or-fall-back; `parseObject` / `parseJSON5`) | `/src/renderer/core/utils/parse-utils.ts` |
@@ -113,7 +113,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Trait registry + TraitTypeId | `/src/renderer/core/traits/TraitRegistry.ts`  |
 | Drag-and-drop utilities  | `/src/renderer/core/traits/dnd.ts`                |
 | ILink trait definition   | `/src/renderer/core/traits/linkTraits.ts` |
-| Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
+| Content pipe (including moved-source cloning) | `/src/renderer/content/ContentPipe.ts` |
 | Pipe status snapshots and loading/status UI (page badge/popover, stage list, loading shell) | `/src/renderer/components/pipe-status/` |
 | Content-pipe rate sampling | `/src/renderer/content/RateMeter.ts` |
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
@@ -121,7 +121,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board provider factory (constructs the renderer-side service delegate) | `/src/renderer/content/board-provider-factory.ts` |
 | URL scheme registry      | `/src/renderer/content/scheme-registry.ts`        |
 | Built-in URL-scheme hooks | `/src/renderer/content/builtin-schemes.ts`       |
-| File provider            | `/src/renderer/content/providers/FileProvider.ts` |
+| File provider (including typed moved-source watch events) | `/src/renderer/content/providers/FileProvider.ts` |
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
 | Board provider delegate (read/write, optional ranged read, stat and watch over the renderer service lease; operation deadlines and control cap are policy-driven) | `/src/renderer/content/providers/ProxyProvider.ts` |
@@ -129,7 +129,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Pipe rebuild from persisted source data (`pipeFromSourcePath` and descriptor-first `pipeFromPersistedSource`) | `/src/renderer/content/rebuild-pipe.ts` |
-| Provider-availability recovery watches and shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
+| Provider-availability and source-move watches; shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
 | Pipe resolvers (Layer 2; the HTTP resolver's content-extension set decides browser-vs-content, then normal registry matching and eligible board resolution choose the editor; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution and URL path/fragment helpers | `/src/renderer/content/link-utils.ts` |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |

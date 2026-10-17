@@ -4,6 +4,7 @@
 
 import { fs } from "../../api/fs";
 import { fpBasename, fpJoin, fpNormalizeForCompare } from "./file-path";
+import { beginPathMove, completePathMove } from "../../api/path-watch";
 
 export interface CopyPathsOptions {
     /** Move (cut-paste) instead of copy. Sources are removed only after their
@@ -91,10 +92,17 @@ export async function copyPathsInto(
                     }
                 }
                 result.copied += await copyEntry(source.path, dest, source.isDirectory, tick);
-                if (source.isDirectory) {
-                    await fs.removeDir(source.path, true);
-                } else {
-                    await fs.delete(source.path);
+                const moveId = await beginPathMove(source.path, dest);
+                let succeeded = false;
+                try {
+                    if (source.isDirectory) {
+                        await fs.removeDir(source.path, true);
+                    } else {
+                        await fs.delete(source.path);
+                    }
+                    succeeded = true;
+                } finally {
+                    await completePathMove(moveId, succeeded);
                 }
             } else {
                 result.copied += await copyEntry(source.path, dest, source.isDirectory, tick);

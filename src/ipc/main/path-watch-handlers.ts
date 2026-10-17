@@ -1,10 +1,10 @@
 import { BrowserWindow, type IpcMainEvent, type WebContents } from "electron";
-import { Endpoint, EventEndpoint, type PathWatchSubscribeRequest, type PathWatchUnsubscribeRequest, type PathWatchOwner } from "../api-types";
+import { Endpoint, EventEndpoint, type PathWatchSubscribeRequest, type PathWatchUnsubscribeRequest, type PathWatchOwner, type BeginPathMoveRequest, type CompletePathMoveRequest } from "../api-types";
 import { bindEndpoint } from "./endpoint-registry";
 import { openWindows } from "../../main/open-windows";
 import { pathWatchService, type PathWatchSubscribeResult } from "../../main/path-watch-service";
 
-export type PathWatchEndpoint = "subscribePathWatch" | "unsubscribePathWatch";
+export type PathWatchEndpoint = "subscribePathWatch" | "unsubscribePathWatch" | "beginPathMove" | "completePathMove";
 
 interface ClientSubscription {
     cancelled: boolean;
@@ -95,5 +95,13 @@ export function initPathWatchHandlers(): void {
             clients?.delete(request.clientId);
             if (clients?.size === 0) clientsBySender.delete(event.sender.id);
         }
+    });
+
+    bindEndpoint(Endpoint.beginPathMove, async (_event, request: BeginPathMoveRequest) => {
+        return pathWatchService.beginMove(request.from, request.to);
+    });
+
+    bindEndpoint(Endpoint.completePathMove, async (_event, request: CompletePathMoveRequest) => {
+        pathWatchService.completeMove(request.moveId, request.succeeded);
     });
 }

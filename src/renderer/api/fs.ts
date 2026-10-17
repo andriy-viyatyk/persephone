@@ -9,6 +9,7 @@ import type { CommonFolder } from "../../ipc/api-param-types";
 import type { IFileSystem, ITextFile, IFileStat, IDirEntry } from "./types/fs";
 import { isArchivePath, parseArchivePath, isAsarFile, isAsarPath } from "../core/utils/file-path";
 import { archiveService } from "./archive-service";
+import { beginPathMove, completePathMove } from "./path-watch";
 
 class FileSystem implements IFileSystem {
     // ── Init state ────────────────────────────────────────────────────
@@ -350,7 +351,14 @@ class FileSystem implements IFileSystem {
             await archiveService.renameFile(oldParsed.archivePath, oldParsed.innerPath, newParsed.innerPath);
             return;
         }
-        nodefs.renameSync(oldPath, newPath);
+        const moveId = await beginPathMove(oldPath, newPath);
+        let succeeded = false;
+        try {
+            nodefs.renameSync(oldPath, newPath);
+            succeeded = true;
+        } finally {
+            await completePathMove(moveId, succeeded);
+        }
     }
 
     async stat(filePath: string): Promise<IFileStat> {

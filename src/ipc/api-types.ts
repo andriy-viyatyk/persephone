@@ -172,12 +172,13 @@ export enum Endpoint {
     stopModuleService = "stopModuleService",
     subscribePathWatch = "subscribePathWatch",
     unsubscribePathWatch = "unsubscribePathWatch",
+    beginPathMove = "beginPathMove",
+    completePathMove = "completePathMove",
 }
 
-export interface PathWatchChange {
-    path: string;
-    type: "created" | "changed" | "deleted";
-}
+export type PathWatchChange =
+    | { path: string; type: "created" | "changed" | "deleted" }
+    | { path: string; type: "moved"; to: string };
 
 export interface PathWatchBatch {
     changes: PathWatchChange[];
@@ -200,6 +201,9 @@ export interface PathWatchSubscribeRequest {
 export interface PathWatchUnsubscribeRequest {
     clientId: string;
 }
+
+export interface BeginPathMoveRequest { from: string; to: string }
+export interface CompletePathMoveRequest { moveId: string; succeeded: boolean }
 
 export interface PathWatchEvent {
     clientId: string;
@@ -411,6 +415,8 @@ export type Api = {
     [Endpoint.stopModuleService]: (boardRoot: string) => Promise<void>;
     [Endpoint.subscribePathWatch]: (request: PathWatchSubscribeRequest) => Promise<void>;
     [Endpoint.unsubscribePathWatch]: (request: PathWatchUnsubscribeRequest) => Promise<void>;
+    [Endpoint.beginPathMove]: (request: BeginPathMoveRequest) => Promise<string>;
+    [Endpoint.completePathMove]: (request: CompletePathMoveRequest) => Promise<void>;
     [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.bindSiteExtensionFolder]: (folder: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.trustSiteExtension]: (id: string, hosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;

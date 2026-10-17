@@ -18,7 +18,7 @@ import { filePathMenuItems } from "../shared/editor-menu-items";
 import { openImageForEdit } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 import { mimeTypeForPath } from "../../../shared/mime-types";
-import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
+import { reportProviderError, watchSourceMove, watchSourceRecovery } from "../../content/source-recovery";
 
 function extToMime(ext: string): string {
     const mime = mimeTypeForPath(`file${ext.toLowerCase()}`);
@@ -66,6 +66,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
     private cacheFileCreated = false;
     private pipeWatch: (() => void) | undefined;
     private recoveryWatch: (() => void) | undefined;
+    private moveWatch: (() => void) | undefined;
 
     constructor(state: TComponentState<ImageEditorState>) {
         super(state);
@@ -108,6 +109,55 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         return !!this.state.get().url;
     }
 
+    private watchPipe(pipe: NonNullable<ImageEditor["pipe"]>, registerOwnership: boolean): void {
+        if (!this.pipeWatch && pipe.watch) {
+            this.pipeWatch = pipe.watch((event) => {
+                if (event !== "available" && event !== "moved" && !this.hasImage) void this.restore();
+            }, "image editor");
+            if (registerOwnership) this.own(() => this.pipeWatch?.());
+        }
+        if (!this.recoveryWatch) {
+            this.recoveryWatch = watchSourceRecovery(pipe, () => {
+                if (!this.hasImage) void this.restore();
+            }, "image editor");
+            if (registerOwnership) this.own(() => this.recoveryWatch?.());
+        }
+        if (!this.moveWatch) {
+            this.moveWatch = watchSourceMove(pipe, (newPath) => {
+                if (newPath !== pipe.provider.sourceUrl) this.followMovedSource(newPath);
+            }, "image editor");
+            if (registerOwnership) this.own(() => this.moveWatch?.());
+        }
+    }
+
+    private followMovedSource(newSourcePath: string): void {
+        const currentPipe = this.pipe;
+        if (!currentPipe) return;
+        const oldFilePath = this.state.get().filePath;
+        const archiveEntry = currentPipe.transformers.find(transformer => transformer.type === "archive")
+            ?.config.entryPath;
+        const newFilePath = typeof archiveEntry === "string"
+            ? `${newSourcePath}!${archiveEntry}`
+            : newSourcePath;
+        this.pipeWatch?.();
+        this.recoveryWatch?.();
+        this.moveWatch?.();
+        this.pipeWatch = undefined;
+        this.recoveryWatch = undefined;
+        this.moveWatch = undefined;
+        const newPipe = currentPipe.cloneForMovedSource(newSourcePath);
+        this.pipe = newPipe;
+        this.state.update((state) => {
+            state.filePath = newFilePath;
+            state.title = fpBasename(newFilePath);
+            if (state.sourceLink?.filePath === oldFilePath) state.sourceLink.filePath = newFilePath;
+            if (state.sourceLink?.url === oldFilePath) state.sourceLink.url = newFilePath;
+        });
+        // The existing image URL and cache still represent the open image; rebinding only
+        // changes where future saves and restores point.
+        this.watchPipe(newPipe, false);
+    }
+
     async restore(options?: { signal?: AbortSignal }): Promise<void> {
         await super.restore();
         const { filePath, url, title } = this.state.get();
@@ -119,18 +169,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
 
         await this.ensurePipe();
         if (this.pipe) {
-            if (!this.pipeWatch && this.pipe.watch) {
-                this.pipeWatch = this.pipe.watch((event) => {
-                    if (event !== "available" && !this.hasImage) void this.restore();
-                }, "image editor");
-                this.own(() => this.pipeWatch?.());
-            }
-            if (!this.recoveryWatch) {
-                this.recoveryWatch = watchSourceRecovery(this.pipe, () => {
-                    if (!this.hasImage) void this.restore();
-                }, "image editor");
-                this.own(() => this.recoveryWatch?.());
-            }
+            this.watchPipe(this.pipe, true);
             if (!url) {
                 // No URL yet — read from pipe and create blob URL
                 try {

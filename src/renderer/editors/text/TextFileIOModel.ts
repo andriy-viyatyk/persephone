@@ -14,13 +14,14 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 import { PipePair } from "../../content/PipePair";
 import { DisposableStore } from "../../core/utils/DisposableStore";
-import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
+import { reportProviderError, watchSourceMove, watchSourceRecovery } from "../../content/source-recovery";
 
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
     private readonly pipes: PipePair;
     private watchSubscription: (() => void) | null = null;
     private recoveryWatchSubscription: (() => void) | null = null;
+    private moveWatchSubscription: (() => void) | null = null;
     private readonly disposables = new DisposableStore();
     private modificationSaved = true;
     private isSavingModifications = false;
@@ -77,6 +78,8 @@ export class TextFileIOModel {
         this.watchSubscription = null;
         this.recoveryWatchSubscription?.();
         this.recoveryWatchSubscription = null;
+        this.moveWatchSubscription?.();
+        this.moveWatchSubscription = null;
         this.pipes.setPrimary(pipe);
         // Assigning `pipe` publishes on `pipeState` — it is an accessor over that channel.
         this.model.pipe = this.pipes.primary;
@@ -89,15 +92,22 @@ export class TextFileIOModel {
         this.watchSubscription = null;
         this.recoveryWatchSubscription?.();
         this.recoveryWatchSubscription = null;
+        this.moveWatchSubscription?.();
+        this.moveWatchSubscription = null;
         const pipe = this.model.pipe;
         if (pipe?.watch) {
             this.watchSubscription = this.disposables.add(pipe.watch((event) => {
-                if (event !== "available") void this.onFileChanged();
+                if (event !== "available" && event !== "moved") void this.onFileChanged();
             }, "text editor"));
             this.recoveryWatchSubscription = this.disposables.add(
                 // Re-read through onFileChanged, not restore(): restore() re-runs setupWatch()
                 // synchronously, which would re-subscribe from inside this callback.
                 watchSourceRecovery(pipe, () => { void this.onFileChanged(); }, "text editor"),
+            );
+            this.moveWatchSubscription = this.disposables.add(
+                watchSourceMove(pipe, (newPath) => {
+                    if (newPath !== pipe.provider.sourceUrl) void this.applyRenamedPath(newPath);
+                }, "text editor"),
             );
         }
     }
@@ -211,23 +221,28 @@ export class TextFileIOModel {
     };
 
     /** Update filePath, title, pipe and recent-files after a rename on disk. */
-    applyRenamedPath = async (newPath: string) => {
+    applyRenamedPath = async (newSourcePath: string, movedPipe?: IContentPipe) => {
+        const currentPipe = this.model.pipe;
         const oldPath = this.model.state.get().filePath;
-
-        // Preserve transformers from existing pipe (e.g., ArchiveTransformer, DecryptTransformer)
-        const newProvider = new FileProvider(newPath);
-        const newPipe = this.model.pipe
-            ? this.model.pipe.cloneWithProvider(newProvider)
-            : new ContentPipe(newProvider);
+        const archiveEntry = currentPipe?.transformers.find(transformer => transformer.type === "archive")
+            ?.config.entryPath;
+        const newFilePath = typeof archiveEntry === "string"
+            ? `${newSourcePath}!${archiveEntry}`
+            : newSourcePath;
+        const newPipe = movedPipe ?? (currentPipe
+            ? currentPipe.cloneForMovedSource(newSourcePath)
+            : new ContentPipe(new FileProvider(newSourcePath)));
         this.setPrimary(newPipe);
 
         this.model.state.update((s) => {
-            s.filePath = newPath;
-            s.title = fpBasename(newPath);
+            s.filePath = newFilePath;
+            s.title = fpBasename(newFilePath);
+            if (s.sourceLink?.filePath === oldPath) s.sourceLink.filePath = newFilePath;
+            if (s.sourceLink?.url === oldPath) s.sourceLink.url = newFilePath;
         });
-        if (oldPath && newPath !== oldPath) {
+        if (oldPath && newFilePath !== oldPath) {
             await recent.remove(oldPath);
-            recent.add(newPath);
+            recent.add(newFilePath);
         }
 
         // Rename can move a file across repo boundaries — re-detect (EPIC-030).
@@ -412,6 +427,8 @@ export class TextFileIOModel {
         this.watchSubscription = null;
         this.recoveryWatchSubscription?.();
         this.recoveryWatchSubscription = null;
+        this.moveWatchSubscription?.();
+        this.moveWatchSubscription = null;
         this.disposables.dispose();
         this.pipes.dispose();
         this.model.pipe = null;

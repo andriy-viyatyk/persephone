@@ -18,6 +18,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   batches, respects the board's existing file access, and stops when access is revoked or the board
   closes.
 
+### Bug Fixes
+
+- **Open files follow moves:** Renaming or moving a file from Persephone's Explorer keeps its tab
+  open at the new location, including unsaved edits. Renames made outside Persephone are followed
+  when the file watcher can see both paths; deleted files remain marked as deleted.
+
 ---
 
 ## Version 5.0.10

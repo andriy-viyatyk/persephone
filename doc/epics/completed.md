@@ -1,3 +1,20 @@
+## EPIC-130 — Editors follow file and folder moves
+
+Completed 2026-10-18. A file open in an editor that is renamed or moved — directly or with its
+folder, from inside Persephone or outside it — stays open on its new path instead of being marked
+deleted. Epic document: [EPIC-130](EPIC-130.md).
+
+- [x] **Move intents and the `moved` change (US-1697).** `app.fs.rename`, the Explorer rename and
+  cut/paste or drag moves report two-phase intents to `src/main/path-watch-service.ts`, which
+  emits a validated `{ path, type: "moved", to }` change (folder moves map every open file under
+  them) and suspends watchers inside the moved folder, which Windows would otherwise refuse to
+  rename. Boards still see `deleted` + `created`; `main.watchers` lists recent and pending moves.
+- [x] **Pipes and editors follow (US-1698).** `FileProvider` emits `moved`, `pipe.cloneForMovedSource()`
+  rebinds the provider and archive transformer, and the text host (Monaco, Grid, Notebook,
+  Markdown, content-host boards) and image editor rebind silently, keeping unsaved edits.
+- [x] **External renames by file identity (US-1699).** A renamed file seen by the same OS watcher is
+  matched by NTFS `dev` + `ino`; delete-and-recreate stays a delete.
+
 ## EPIC-129 — Shared path-watch service and board file watching
 
 Completed 2026-10-17. One main-process service owns every `fs.watch` in the app, shares OS

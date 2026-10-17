@@ -111,6 +111,11 @@ export class BoardContentEditorModel extends BoardEditorModel {
         this._host = host;
         this._hostStateUnsub?.();
         this._hostStateUnsub = host.state.subscribe(() => {
+            const { filePath, title } = host.state.get();
+            const hostTitle = title || (filePath ? fpBasename(filePath) : this.state.get().title);
+            if (this.state.get().title !== hostTitle) {
+                this.state.update((s) => { s.title = hostTitle; });
+            }
             this.descriptorChanged.send(undefined);
             if (!host.io.providerError && this.state.get().contentHostError) {
                 this.state.update((s) => { s.contentHostError = undefined; });

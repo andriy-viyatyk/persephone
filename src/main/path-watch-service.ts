@@ -9,10 +9,17 @@ const MIN_DEBOUNCE_MS = 50;
 const MAX_PENDING_PATHS = 1000;
 const MAX_DIAGNOSTIC_ENTRIES = 500;
 const MAX_DIAGNOSTIC_CHANGES = 20;
+const MAX_MOVE_INTENTS = 256;
+const MAX_RECENT_MOVES = 100;
+const MAX_RECENT_RENAME_PATHS = 256;
+const RECENT_RENAME_PATH_TTL_MS = 5_000;
+const BEGUN_MOVE_TTL_MS = 60_000;
+const COMPLETED_MOVE_TTL_MS = 5_000;
 
 type WatchEventType = "rename" | "change";
-type ChangeType = PathWatchChange["type"];
+type ChangeType = Extract<PathWatchChange, { type: "created" | "changed" | "deleted" }>["type"];
 type SubscriptionKind = "file" | "folder";
+interface FileIdentity { dev: bigint; ino: bigint }
 type RawEventRecord = { at: string; kind: "raw"; watcherRoot: string; eventType: WatchEventType; filename: string | null };
 type BatchRecord = { at: string; kind: "batch"; subscriptionId: string; changes: PathWatchChange[]; changeCount: number; rescan?: true; ended?: PathWatchBatch["ended"] };
 type DiagnosticEntry = RawEventRecord | BatchRecord;
@@ -28,7 +35,27 @@ interface WatcherRecord {
     eventCount: number;
     lastEventAt: string | null;
     lastError: string | null;
+    suspensionOwners: Set<string>;
+    successfulMoveIds: Set<string>;
+    recentRenamePaths: Map<string, { path: string; observedAt: number }>;
 }
+
+interface MoveIntent {
+    moveId: string;
+    from: string;
+    fromKey: string;
+    to: string;
+    toKey: string;
+    phase: "begun" | "completed";
+    createdAt: string;
+    expiresAt: number;
+    matchedSubscriptionIds: Set<string>;
+    suspendedWatcherIds: Set<string>;
+    confirmedPaths: Set<string>;
+    succeeded?: boolean;
+}
+
+interface RecentMove { from: string; to: string; source: "intent" | "identity"; time: string; identity?: string }
 
 interface PathWatchSubscribeOptions {
     owner: PathWatchOwner;
@@ -50,6 +77,7 @@ interface SubscriptionRecord {
     debounceMs: number;
     pathFilter?: (candidatePath: string) => boolean;
     onBatch: (batch: PathWatchBatch) => void;
+    fileIdentity?: FileIdentity;
     pending: Map<string, { events: WatchEventType[]; path: string }>;
     pendingRescan: boolean;
     timer?: NodeJS.Timeout;
@@ -66,6 +94,8 @@ let idCounter = 0;
 const watchers = new Map<string, WatcherRecord>();
 const subscriptions = new Map<string, SubscriptionRecord>();
 const diagnosticEntries: DiagnosticEntry[] = [];
+const moveIntents = new Map<string, MoveIntent>();
+const recentMoves: RecentMove[] = [];
 let totalEvents = 0;
 let totalBatches = 0;
 let totalRescans = 0;
@@ -83,6 +113,10 @@ function isMissingPathError(error: unknown): boolean {
 function makeId(): string {
     idCounter += 1;
     return `path-watch-${idCounter}`;
+}
+
+function moveId(): string {
+    return `path-move-${Date.now()}-${++idCounter}`;
 }
 
 function normalizePath(input: string): { path: string; key: string } {
@@ -112,6 +146,37 @@ async function statPath(target: string): Promise<Stats | undefined> {
             console.warn(`Path-watch stat failed: ${errMessage(error)}`);
         }
         return undefined;
+    }
+}
+
+async function statFileIdentity(filePath: string): Promise<FileIdentity | undefined> {
+    try {
+        const stats = await fs.promises.stat(filePath, { bigint: true });
+        return stats.isFile() ? { dev: stats.dev, ino: stats.ino } : undefined;
+    } catch (error: unknown) {
+        if (!isMissingPathError(error)) {
+            console.warn(`Path-watch identity stat failed: ${errMessage(error)}`);
+        }
+        return undefined;
+    }
+}
+
+function pruneRecentRenamePaths(watcher: WatcherRecord, at = Date.now()): void {
+    for (const [key, candidate] of watcher.recentRenamePaths) {
+        if (at - candidate.observedAt >= RECENT_RENAME_PATH_TTL_MS) watcher.recentRenamePaths.delete(key);
+    }
+}
+
+function recordRecentRenamePath(watcher: WatcherRecord, candidatePath: string): void {
+    const candidate = normalizePath(candidatePath);
+    const at = Date.now();
+    pruneRecentRenamePaths(watcher, at);
+    watcher.recentRenamePaths.delete(candidate.key);
+    watcher.recentRenamePaths.set(candidate.key, { path: candidate.path, observedAt: at });
+    while (watcher.recentRenamePaths.size > MAX_RECENT_RENAME_PATHS) {
+        const oldestKey = watcher.recentRenamePaths.keys().next().value;
+        if (oldestKey === undefined) break;
+        watcher.recentRenamePaths.delete(oldestKey);
     }
 }
 
@@ -159,18 +224,26 @@ function openWatcher(rootPath: string, recursive: boolean): WatcherRecord {
         eventCount: 0,
         lastEventAt: null,
         lastError: null,
+        suspensionOwners: new Set(),
+        successfulMoveIds: new Set(),
+        recentRenamePaths: new Map(),
     };
-    const watcher = fs.watch(normalizedRoot.path, recursive ? { recursive: true } : {}, (eventType, filename) => {
-        if (watchers.get(id) === record) {
+    watchers.set(record.id, record);
+    openWatcherHandle(record);
+    return record;
+}
+
+function openWatcherHandle(record: WatcherRecord): void {
+    if (record.watcher || record.suspensionOwners.size > 0 || !watchers.has(record.id)) return;
+    const watcher = fs.watch(record.root, record.recursive ? { recursive: true } : {}, (eventType, filename) => {
+        if (watchers.get(record.id) === record && record.watcher === watcher) {
             void handleRawEvent(record, eventType, filename === null ? null : filename.toString());
         }
     });
     record.watcher = watcher;
-    watchers.set(record.id, record);
     watcher.on("error", error => {
         void handleWatcherError(record, errMessage(error, "Filesystem watcher failed."));
     });
-    return record;
 }
 
 function scopeAccepts(subscription: SubscriptionRecord, candidate: string): boolean {
@@ -219,6 +292,109 @@ async function canonicalPath(input: string): Promise<string> {
     }
 }
 
+function intentMatchesPath(intent: MoveIntent, candidatePath: string): boolean {
+    const candidate = normalizePath(candidatePath);
+    return candidate.key === intent.fromKey || isWithin(intent.from, candidate.path);
+}
+
+function scheduleIntentExpiry(intent: MoveIntent): void {
+    const delay = Math.max(0, intent.expiresAt - Date.now());
+    const timer = setTimeout(() => {
+        if (moveIntents.get(intent.moveId) !== intent || intent.expiresAt > Date.now()) return;
+        expireMoveIntent(intent);
+    }, delay);
+    timer.unref?.();
+}
+
+function expireMoveIntent(intent: MoveIntent): void {
+    if (moveIntents.get(intent.moveId) !== intent) return;
+    moveIntents.delete(intent.moveId);
+    for (const watcherId of intent.suspendedWatcherIds) {
+        const watcher = watchers.get(watcherId);
+        if (!watcher) continue;
+        watcher.suspensionOwners.delete(intent.moveId);
+        if (intent.phase === "completed" && intent.succeeded) continue;
+        if (watcher.suspensionOwners.size === 0 && watcher.successfulMoveIds.size === 0) {
+            try {
+                if (fs.statSync(watcher.root).isDirectory()) openWatcherHandle(watcher);
+            } catch (error: unknown) {
+                watcher.lastError = errMessage(error, "Failed to restore filesystem watcher.");
+            }
+        }
+    }
+    for (const subscription of subscriptions.values()) {
+        if ([...subscription.pending.values()].some(candidate => intentMatchesPath(intent, candidate.path))) scheduleFlush(subscription);
+    }
+}
+
+async function beginMove(fromInput: string, toInput: string): Promise<string> {
+    const fromPath = normalizePath(await canonicalPath(fromInput));
+    const toPath = normalizePath(await canonicalPath(toInput));
+    if (!(await statPath(fromPath.path))) throw new Error("The move source does not exist.");
+    const id = moveId();
+    const intent: MoveIntent = {
+        moveId: id,
+        from: fromPath.path,
+        fromKey: fromPath.key,
+        to: toPath.path,
+        toKey: toPath.key,
+        phase: "begun",
+        createdAt: now(),
+        expiresAt: Date.now() + BEGUN_MOVE_TTL_MS,
+        matchedSubscriptionIds: new Set(),
+        suspendedWatcherIds: new Set(),
+        confirmedPaths: new Set(),
+    };
+    if (moveIntents.size >= MAX_MOVE_INTENTS) {
+        const oldestIntent = moveIntents.values().next();
+        if (!oldestIntent.done) expireMoveIntent(oldestIntent.value);
+    }
+    moveIntents.set(id, intent);
+    for (const watcher of watchers.values()) {
+        if (!isWithin(intent.from, watcher.root)) continue;
+        intent.suspendedWatcherIds.add(watcher.id);
+        watcher.suspensionOwners.add(id);
+        const handle = watcher.watcher;
+        watcher.watcher = undefined;
+        try { handle?.close(); }
+        catch (error: unknown) { watcher.lastError = errMessage(error, "Failed to suspend filesystem watcher."); }
+    }
+    scheduleIntentExpiry(intent);
+    return id;
+}
+
+function completeMove(id: string, succeeded: boolean): void {
+    const intent = moveIntents.get(id);
+    if (!intent || intent.phase !== "begun") return;
+    if (!succeeded) {
+        expireMoveIntent(intent);
+        return;
+    }
+    intent.phase = "completed";
+    intent.succeeded = true;
+    intent.expiresAt = Date.now() + COMPLETED_MOVE_TTL_MS;
+    for (const watcherId of intent.suspendedWatcherIds) {
+        watchers.get(watcherId)?.successfulMoveIds.add(id);
+    }
+    scheduleIntentExpiry(intent);
+    for (const subscription of subscriptions.values()) {
+        if (intent.matchedSubscriptionIds.has(subscription.id) || !isWithin(intent.from, subscription.path)) continue;
+        const ownPathKey = subscription.key;
+        if (!subscription.pending.has(ownPathKey)) enqueue(subscription, subscription.path, "rename");
+        else scheduleFlush(subscription);
+    }
+}
+
+function mapMovePath(intent: MoveIntent, candidatePath: string): string {
+    const relative = path.relative(intent.from, candidatePath);
+    return relative ? path.resolve(intent.to, relative) : intent.to;
+}
+
+function recordConfirmedMove(from: string, to: string, source: "intent" | "identity"): void {
+    recentMoves.push({ from, to, source, time: now() });
+    if (recentMoves.length > MAX_RECENT_MOVES) recentMoves.shift();
+}
+
 function enqueue(subscription: SubscriptionRecord, candidate: string, eventType: WatchEventType): void {
     const key = normalizePath(candidate).key;
     const pending = subscription.pending.get(key);
@@ -259,11 +435,19 @@ function sendBatch(subscription: SubscriptionRecord, batch: PathWatchBatch): voi
 
 async function flushSubscription(subscription: SubscriptionRecord, ended?: PathWatchBatch["ended"]): Promise<void> {
     if (!subscriptions.has(subscription.id)) return;
-    const pendingEntries = [...subscription.pending.entries()];
-    subscription.pending.clear();
+    const allEntries = [...subscription.pending.entries()];
+    const blockedKeys = new Set(allEntries
+        .filter(([, candidate]) => [...moveIntents.values()].some(intent => intent.phase === "begun" && intent.expiresAt > Date.now() && intentMatchesPath(intent, candidate.path)))
+        .map(([key]) => key));
+    const pendingEntries = allEntries.filter(([key]) => !blockedKeys.has(key));
+    for (const [key] of pendingEntries) subscription.pending.delete(key);
+    if (blockedKeys.size > 0) scheduleFlush(subscription);
     let changes: PathWatchChange[] = [];
     let rescan = subscription.pendingRescan;
     subscription.pendingRescan = false;
+    const matchedIntents = new Set<MoveIntent>();
+    const watcher = watchers.get(subscription.watcherKey);
+    if (watcher) pruneRecentRenamePaths(watcher);
 
     if (pendingEntries.length > MAX_PENDING_PATHS) {
         rescan = true;
@@ -272,27 +456,95 @@ async function flushSubscription(subscription: SubscriptionRecord, ended?: PathW
         const rootKey = subscription.key;
         const hasChildEvent = candidates.some(candidate => candidate.key !== rootKey && isWithin(subscription.path, candidate.path));
         for (const candidate of candidates) {
-            if (candidate.key === rootKey && hasChildEvent) continue;
+            const moveEligible = subscription.key === candidate.key && [...moveIntents.values()].some(intent =>
+                intent.phase === "completed" && intent.expiresAt > Date.now()
+                && !intent.matchedSubscriptionIds.has(subscription.id) && intentMatchesPath(intent, candidate.path));
+            if (candidate.key === rootKey && hasChildEvent && !moveEligible) continue;
             const displayPath = candidate.path;
-            const result = classify(candidate.events, Boolean(await statPath(displayPath)));
+            const sourceExists = Boolean(await statPath(displayPath));
+            const result = classify(candidate.events, sourceExists);
             changes = changes.filter(change => normalizePath(change.path).key !== candidate.key);
+            if (result === "deleted" || candidate.key === subscription.key) {
+                const intent = [...moveIntents.values()].find(value => value.phase === "completed"
+                    && value.expiresAt > Date.now()
+                    && !value.matchedSubscriptionIds.has(subscription.id)
+                    && intentMatchesPath(value, displayPath));
+                if (intent) {
+                    const destination = mapMovePath(intent, displayPath);
+                    if (!(await statPath(displayPath)) && await statPath(destination)) {
+                        changes.push({ path: displayPath, type: "moved", to: destination });
+                        intent.matchedSubscriptionIds.add(subscription.id);
+                        matchedIntents.add(intent);
+                        const confirmedKey = normalizePath(displayPath).key;
+                        if (!intent.confirmedPaths.has(confirmedKey)) {
+                            intent.confirmedPaths.add(confirmedKey);
+                            recordConfirmedMove(displayPath, destination, "intent");
+                        }
+                        if (subscription.kind === "file" && candidate.key === subscription.key) subscription.fileIdentity = undefined;
+                        continue;
+                    }
+                }
+            }
+            if (result === "deleted" && subscription.kind === "file" && candidate.key === subscription.key && subscription.fileIdentity && watcher) {
+                const savedIdentity = subscription.fileIdentity;
+                let identityMoveFound = false;
+                for (const [destinationKey, renameCandidate] of watcher.recentRenamePaths) {
+                    if (Date.now() - renameCandidate.observedAt >= RECENT_RENAME_PATH_TTL_MS) continue;
+                    if (destinationKey === candidate.key) continue;
+                    const destinationIdentity = await statFileIdentity(renameCandidate.path);
+                    if (!destinationIdentity || destinationIdentity.dev !== savedIdentity.dev || destinationIdentity.ino !== savedIdentity.ino) continue;
+
+                    let oldPathMissing = false;
+                    try {
+                        await fs.promises.stat(displayPath);
+                    } catch (error: unknown) {
+                        if (isMissingPathError(error)) oldPathMissing = true;
+                        else console.warn(`Path-watch move validation failed: ${errMessage(error)}`);
+                    }
+                    if (!oldPathMissing) continue;
+
+                    const confirmedDestinationIdentity = await statFileIdentity(renameCandidate.path);
+                    if (!confirmedDestinationIdentity
+                        || confirmedDestinationIdentity.dev !== savedIdentity.dev
+                        || confirmedDestinationIdentity.ino !== savedIdentity.ino
+                        || Date.now() - renameCandidate.observedAt >= RECENT_RENAME_PATH_TTL_MS) continue;
+
+                    changes.push({ path: subscription.path, type: "moved", to: renameCandidate.path });
+                    recordConfirmedMove(subscription.path, renameCandidate.path, "identity");
+                    subscription.fileIdentity = undefined;
+                    identityMoveFound = true;
+                    break;
+                }
+                if (identityMoveFound) continue;
+            }
+            if (subscription.kind === "file" && candidate.key === subscription.key) {
+                if (result === "created" || result === "changed") {
+                    subscription.fileIdentity = await statFileIdentity(subscription.path);
+                } else if (result === "deleted") {
+                    subscription.fileIdentity = undefined;
+                }
+            }
             if (result) changes.push({ path: displayPath, type: result });
         }
     }
 
     const ownFolderDeleted = subscription.kind === "folder"
         && changes.some(change => normalizePath(change.path).key === subscription.key && change.type === "deleted");
+    const movedWatcherEnd = [...matchedIntents].some(intent => intent.suspendedWatcherIds.has(subscription.watcherKey));
     const terminal = ended ?? (ownFolderDeleted ? "removed" : undefined);
     sendBatch(subscription, {
         changes,
         ...(rescan ? { rescan: true as const } : {}),
-        ...(terminal ? { ended: terminal } : {}),
+        ...(!movedWatcherEnd && terminal ? { ended: terminal } : {}),
     });
-    if (terminal) removeSubscription(subscription.id);
+    if (movedWatcherEnd) {
+        sendBatch(subscription, { changes: [], ended: "removed" });
+        removeSubscription(subscription.id);
+    } else if (terminal) removeSubscription(subscription.id);
 }
 
 async function handleRawEvent(record: WatcherRecord, eventType: string, filename: string | null): Promise<void> {
-    if (!watchers.has(record.id)) return;
+    if (!watchers.has(record.id) || !record.watcher) return;
     const normalizedType: WatchEventType = eventType === "rename" ? "rename" : "change";
     const at = now();
     record.eventCount += 1;
@@ -311,12 +563,15 @@ async function handleRawEvent(record: WatcherRecord, eventType: string, filename
         endWatcher(record, "removed");
         return;
     }
+    if (candidate && normalizedType === "rename" && !isRootEvent && isWithin(record.root, candidate)) {
+        recordRecentRenamePath(record, candidate);
+    }
     if (filename === null || isRootEvent) {
         try {
             await fs.promises.stat(record.root);
-            if (!watchers.has(record.id)) return;
+            if (!watchers.has(record.id) || !record.watcher) return;
         } catch (error: unknown) {
-            if (!watchers.has(record.id)) return;
+            if (!watchers.has(record.id) || !record.watcher) return;
             if (isMissingPathError(error) || (error as NodeJS.ErrnoException).code === "EPERM") {
                 endWatcher(record, "removed");
                 return;
@@ -411,6 +666,9 @@ async function createSubscription(targetPath: string, options: PathWatchSubscrib
 
     const requestedRoot = kind === "file" ? parentPath : target.path;
     const requestedRecursive = kind === "folder" && recursive;
+    // Read the identity before choosing a watcher: nothing may await between findWatcher() and
+    // registering the subscription, or a concurrent removal can close the watcher in between.
+    const fileIdentity = kind === "file" ? await statFileIdentity(target.path) : undefined;
     let watcher = findWatcher(target.key, recursive, kind, target.path);
     if (!watcher) watcher = openWatcher(requestedRoot, requestedRecursive);
 
@@ -431,6 +689,7 @@ async function createSubscription(targetPath: string, options: PathWatchSubscrib
         debounceMs,
         pathFilter: options.pathFilter,
         onBatch,
+        ...(fileIdentity ? { fileIdentity } : {}),
         pending: new Map(),
         pendingRescan: false,
         batchesSent: 0,
@@ -443,6 +702,8 @@ async function createSubscription(targetPath: string, options: PathWatchSubscrib
 
 export const pathWatchService = {
     subscribe: createSubscription,
+    beginMove,
+    completeMove,
     unsubscribeOwner(owner: PathWatchOwner): void {
         for (const subscription of [...subscriptions.values()]) {
             if (JSON.stringify(subscription.owner) === JSON.stringify(owner)) removeSubscription(subscription.id);
@@ -487,6 +748,19 @@ export const pathWatchService = {
             batchesSent: subscription.batchesSent,
             lastBatchAt: subscription.lastBatchAt,
             pendingChanges: subscription.pending.size,
+        }));
+    },
+    getRecentMoves() {
+        return recentMoves.map(move => ({ ...move }));
+    },
+    getPendingMoves() {
+        return [...moveIntents.values()].filter(intent => intent.expiresAt > Date.now()).slice(0, MAX_MOVE_INTENTS).map(intent => ({
+            from: intent.from,
+            to: intent.to,
+            phase: intent.phase,
+            createdAt: intent.createdAt,
+            expiresAt: new Date(intent.expiresAt).toISOString(),
+            matchedSubscriptionCount: intent.matchedSubscriptionIds.size,
         }));
     },
     getRecent(limit = 50): DiagnosticEntry[] {

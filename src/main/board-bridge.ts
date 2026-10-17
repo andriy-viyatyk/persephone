@@ -569,7 +569,23 @@ async function startBoardWatch(entry: BoardPortEntry, args: unknown[]): Promise<
         }, (batch: PathWatchBatch) => {
             const record = boardWatches.get(key);
             if (!record || record.entry !== entry || boardPorts.get(entry.boardId) !== entry) return;
-            try { entry.port.postMessage({ kind: "watch", watchId: record.watchId, batch }); }
+            const changes: PathWatchBatch["changes"] = [];
+            const seen = new Set<string>();
+            const addChange = (path: string, type: "created" | "changed" | "deleted") => {
+                const dedupeKey = JSON.stringify([path, type]);
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+                changes.push({ path, type });
+            };
+            for (const change of batch.changes) {
+                if (change.type === "moved") {
+                    if (watchPathInScope(record.filterScope.path, change.path, record.scopeKind)) addChange(change.path, "deleted");
+                    if (watchPathInScope(record.filterScope.path, change.to, record.scopeKind)) addChange(change.to, "created");
+                } else {
+                    addChange(change.path, change.type);
+                }
+            }
+            try { entry.port.postMessage({ kind: "watch", watchId: record.watchId, batch: { ...batch, changes } }); }
             catch { /* The port may close between the identity check and post. */ }
             if (batch.ended) removeBoardWatch(record, false);
         });

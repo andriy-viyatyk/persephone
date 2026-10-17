@@ -364,3 +364,7 @@ When a file that is open in persephone is modified by another application:
 - The editor detects the change automatically
 - If you haven't made local edits, the content refreshes silently
 - The file status updates in real time (including deletion detection)
+
+If you rename or move an open file from Persephone's Explorer, its tab follows the file to its
+new location and keeps any unsaved edits. Renames made outside Persephone are followed when the
+file watcher can see both the old and new paths. A file that is deleted still shows as deleted.

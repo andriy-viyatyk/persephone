@@ -9,6 +9,26 @@ export interface PathWatchOptions {
     label: string;
 }
 
+/** Register a local filesystem move before mutating its source path. Best-effort: move tracking
+ *  must never block or change the outcome of the move itself, so a failure returns undefined. */
+export async function beginPathMove(from: string, to: string): Promise<string | undefined> {
+    try {
+        return await api.beginPathMove({ from, to });
+    } catch {
+        return undefined;
+    }
+}
+
+/** Complete a previously registered local filesystem move. */
+export async function completePathMove(moveId: string | undefined, succeeded: boolean): Promise<void> {
+    if (!moveId) return;
+    try {
+        await api.completePathMove({ moveId, succeeded });
+    } catch {
+        // Unmatched intents expire in the service.
+    }
+}
+
 interface LocalSubscription {
     key: string;
     clientId: string;

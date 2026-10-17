@@ -208,6 +208,24 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 - `writable` -- true only if the provider is writable AND all transformers implement `write`.
 - `watch` -- delegates to `provider.watch()` if supported. Returns a `() => void` disposer.
 
+### Following moved file sources
+
+Local file watches are owned by the main-process `PathWatchService`; renderer providers subscribe
+through the shared path-watch client. The service reports a `moved` change only after validating
+that the old path is missing and the destination exists. Moves initiated by Persephone register
+an intent before the filesystem operation. External file renames can be followed when the same OS
+watcher reports the destination and its file identity (`dev` and `ino`) matches the subscribed
+file. The board bridge translates this internal event to its existing deleted/created contract.
+
+`FileProvider.watch()` forwards a confirmed move as `("moved", { newPath })`. Pipe owners use
+`watchSourceMove()` to handle it separately from ordinary change/recovery notifications. They
+rebind with `IContentPipe.cloneForMovedSource(newPath)`, which creates a provider for the new path
+and updates path-aware transformers such as `ArchiveTransformer` while preserving other
+transformers and encoding. Text editors replace the primary pipe through `PipePair`, rebuilding
+the cache pipe while retaining its transformer chain; text and image editors update their source
+metadata without rereading the already-open content. The old watch is disposed as the owner
+rebinds to the new source.
+
 ### Missing providers and recovery
 
 `createProviderFromDescriptor()` preserves a valid descriptor even when its provider type is not

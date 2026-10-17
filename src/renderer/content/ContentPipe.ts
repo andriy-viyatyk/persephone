@@ -1,8 +1,10 @@
 import type { IContentPipe, IPipeDescriptor, IPipeStage } from "../api/types/io.pipe";
-import type { IProvider, IProviderStat, IPipeStageStatus } from "../api/types/io.provider";
+import type { IProvider, IProviderStat, IPipeStageStatus, ProviderWatchDetails } from "../api/types/io.provider";
 import type { ITransformer } from "../api/types/io.transformer";
 import { createProviderFromDescriptor } from "./registry";
 import { decodeBuffer, encodeString } from "./encoding";
+import { FileProvider } from "./providers/FileProvider";
+import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
 
 /**
  * ContentPipe — chains a provider with an ordered list of transformers.
@@ -213,7 +215,7 @@ export class ContentPipe implements IContentPipe {
 
     // ── Watch ───────────────────────────────────────────────────────
 
-    get watch(): ((callback: (event: string) => void, label?: string) => () => void) | undefined {
+    get watch(): ((callback: (event: string, details?: ProviderWatchDetails) => void, label?: string) => () => void) | undefined {
         if (!this.provider.watch) return undefined;
         return (callback, label) => this.provider.watch(callback, label);
     }
@@ -223,6 +225,17 @@ export class ContentPipe implements IContentPipe {
     cloneWithProvider(provider: IProvider): IContentPipe {
         const transformers = this._transformers.map((t) => t.clone());
         return new ContentPipe(provider, transformers, this._encoding);
+    }
+
+    cloneForMovedSource(newPath: string): IContentPipe {
+        const transformers = this._transformers.map((transformer) => {
+            if (transformer.type !== "archive") return transformer.clone();
+            const entryPath = transformer.config.entryPath;
+            return typeof entryPath === "string"
+                ? new ArchiveTransformer(newPath, entryPath)
+                : transformer.clone();
+        });
+        return new ContentPipe(new FileProvider(newPath), transformers, this._encoding);
     }
 
     clone(): IContentPipe {

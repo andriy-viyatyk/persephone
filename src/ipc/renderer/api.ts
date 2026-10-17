@@ -25,6 +25,8 @@ import {
     MnemeStatus,
     type PathWatchSubscribeRequest,
     type PathWatchUnsubscribeRequest,
+    type BeginPathMoveRequest,
+    type CompletePathMoveRequest,
     type BoardLogLevel,
     type ModuleServicePortPayload,
 } from "../api-types";
@@ -80,6 +82,14 @@ class ApiCalls implements Api {
 
     unsubscribePathWatch = async (request: PathWatchUnsubscribeRequest) => {
         return executeOnce<void>(Endpoint.unsubscribePathWatch, request);
+    };
+
+    beginPathMove = async (request: BeginPathMoveRequest) => {
+        return executeOnce<string>(Endpoint.beginPathMove, request);
+    };
+
+    completePathMove = async (request: CompletePathMoveRequest) => {
+        return executeOnce<void>(Endpoint.completePathMove, request);
     };
 
     getAppRootPath = async () => {
