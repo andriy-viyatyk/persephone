@@ -114,15 +114,15 @@ task starts.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1636](../tasks/US-1636-theme-derivation/README.md) | Theme derivation and the custom theme model | Done |
-| [US-1637](../tasks/US-1637-custom-theme-storage/README.md) | Saved custom themes — storage, startup, Settings, cycling | Done |
-| [US-1638](../tasks/US-1638-app-themes-api/README.md) | `app.themes` scripting / MCP API | Done |
-| [US-1639](../tasks/US-1639-board-themes-bridge/README.md) | `themes` board permission and `persephone.themes` bridge | Done |
+| US-1636 | Theme derivation and the custom theme model | Done |
+| US-1637 | Saved custom themes — storage, startup, Settings, cycling | Done |
+| US-1638 | `app.themes` scripting / MCP API | Done |
+| US-1639 | `themes` board permission and `persephone.themes` bridge | Done |
 | US-1640 | Theme Editor board (`persephone-boards`, tracked there as BT-034: `doc/tasks/BT-034-theme-editor/README.md`) | Done |
-| [US-1641](../tasks/US-1641-board-unsaved-changes/README.md) | Unsaved-changes protocol for plain board pages | Done |
+| US-1641 | Unsaved-changes protocol for plain board pages | Done |
 | US-1642 | Board toolbar text buttons: a labelled `button`/`menu` renders the label inside the button, icon optional; a `menu` with `placement: "board-menu"` adds its items to the top of the … menu (`BoardToolbarControls.ts`, `BoardToolbar.ts`); lets the Theme Editor move its actions to the page toolbar | Done |
 | US-1643 | Settings theme picker: tiles left-aligned, Persephone and Persephone Light lead their rows, Abyss / Red / Tomorrow Night Blue dropped; a hover × on custom tiles deletes the theme after confirmation (`themes/index.ts`, `ThemeSection.ts`, `index.html` startup background map) | Done |
-| [US-1644](../tasks/US-1644-theme-edit-capability/README.md) | `theme.edit` capability — Edit and + on Settings theme tiles open the board-provided Theme Editor | Done |
+| US-1644 | `theme.edit` capability — Edit and + on Settings theme tiles open the board-provided Theme Editor | Done |
 
 ### US-1636 — Theme derivation and the custom theme model
 
