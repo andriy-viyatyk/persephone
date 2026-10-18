@@ -1,3 +1,31 @@
+## EPIC-128 — Audio Player board
+
+Completed 2026-10-18. A catalog board, `audio-player` v1.0.0 in persephone-boards, is now the
+music player. It has a queue, a visualizer, an equalizer, crossfade, a `*.music.link.json` catalog
+with ratings, tags, play counts, smart and saved playlists, and M3U/PLS import. The built-in Video
+Player plays audio with the native controls only. Epic document: [EPIC-128](EPIC-128.md).
+
+- [x] **Background playback and media keys (US-1688).** A check only: both already work in a
+  board frame, so US-1691 was dropped.
+- [x] **Source context for board opens (US-1689).** Bridge 1.37.0. `persephone.source.initialSourceContext`
+  and `onOpen` events carry a bounded snapshot of the sibling tracks in the Explorer folder or
+  link-editor category or tag a file was opened from.
+- [x] **Folder listing and persisted grants (US-1690).** Bridge 1.38.0. Boards list folders, and
+  folder and file grants persist. Source read grants cover the sibling tracks.
+- [x] **Single-instance masks (US-1700).** Bridge 1.40.0. `singleInstanceMasks` routes board,
+  catalog and playlist opens to one full player, while audio-file opens get light in-place pages.
+  It also adds `persephone.source.navigate(href)` within the initial snapshot, and page-visibility
+  events.
+- [x] **`persephone.trashFile(path)` (US-1701).** Bridge 1.41.0. Authorized like `writeFile`, it
+  moves a file to the Recycle Bin.
+- [x] **Video Player audio removal (US-1692).** The audio visualizer, Next and auto-advance, shuffle,
+  and their settings and script members are removed. Audio plays through the native `<video>`
+  element with a themed control bar (`--color-bg-media-controls`). The editor switch offers the
+  Audio Player board through "+".
+- Board tasks BT-038 – BT-045 are logged in persephone-boards `doc/tasks/completed.md`. The close
+  review left one finding open: `src/renderer/api/pages/PagesQueryModel.ts` imports from
+  `content/` and `editors/`, against the layer direction. A clean fix needs a helper extraction.
+
 ## EPIC-130 — Editors follow file and folder moves
 
 Completed 2026-10-18. A file open in an editor that is renamed or moved — directly or with its

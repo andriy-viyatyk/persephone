@@ -681,9 +681,28 @@ persephone.toolbar.onAction(({ id, type, value }) => {
 });
 ```
 
+Text inputs include a clear button while they have a value; clicking it clears the field and
+immediately sends an empty string to the board.
+
 The `segmented` type requires board bridge `1.28.0`; set `minBridgeVersion: "1.28.0"` in the
 board manifest when using it. See the [board authoring reference](./agents/boards.md#host-rendered-board-toolbar)
 for all control types and option details.
+
+### Page tab mute button
+
+A board that plays audio can show a mute button on its page tab. Report the current mute state with
+`persephone.page.setMuted(muted)`; pass `null` to remove the button. When the user clicks the tab
+button, `persephone.page.onMuteToggle(callback)` runs the callback. The board remains responsible
+for changing its audio and reporting the resulting state, including changes made through its own
+controls:
+
+```js
+persephone.page.setMuted(audio.muted);
+persephone.page.onMuteToggle(() => { audio.muted = !audio.muted; });
+audio.addEventListener("volumechange", () => persephone.page.setMuted(audio.muted));
+```
+
+These methods require board bridge `1.38.0` and work in the main board view.
 
 ---
 
@@ -917,6 +936,7 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.watch(path, callback, options?)` | Watch an authorized file or folder and receive `PathWatchBatch` updates; returns a Promise for an idempotent disposer. |
 | `persephone.readFile(path, options?)` | Read a file and return its contents (Promise). A relative `path` resolves against the board folder; absolute reads anywhere. Text by default; `{ encoding: "binary" }` returns a `Uint8Array` (the right choice for binary files — app 4.0.21+), `{ encoding: "base64" }` a base64 string. |
 | `persephone.writeFile(path, data, options?)` | Write a file (Promise); creates parent folders. A relative `path` resolves against the board folder. Text by default; `{ encoding: "binary" }` takes a `Uint8Array`, `{ encoding: "base64" }` a base64 string. |
+| `persephone.trashFile(path)` | Move an authorized regular file to the OS Recycle Bin so it can be restored. Requires write access; folders are rejected. Added in board bridge `1.41.0`. |
 
 `persephone.watch(path, callback, options?)` accepts `{ recursive?: boolean, debounceMs?: number }`; it watches the target folder's immediate entries by default, or descendants with `recursive: true`. Debounce defaults to 300 ms and accepts integers from 50 through 60000. Each callback receives `{ changes: [{ path, type }], rescan?, ended? }`; paths are absolute canonical paths and types are `created`, `changed`, or `deleted`. `rescan: true` means reload the watched scope; `ended` is `removed`, `error`, or `revoked`, after which the subscription is closed. The Promise resolves to an idempotent disposer. Folder watches use list permission and emit only that canonical folder or descendants; file watches use read permission and emit only that exact file. `fileSystem: false` may watch only the exact hosted document. Watches add no permission, end when the board port closes or access is revoked, and are limited to 64 per board. Errors use `invalid-argument`, `permission-denied`, `not-found`, or `too-many-watches`. A missing exact-file target returns `not-found` in v1; watch its containing folder to wait for a file to appear.
 

@@ -5,12 +5,17 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.39.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.39.0` adds permission-scoped
-`persephone.watch()` file and folder change batches. Bridge `1.38.0` adds paged folder listing,
+The board bridge is version **1.41.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.41.0` adds `persephone.trashFile(path)`
+to move an authorized file to the OS Recycle Bin. Bridge `1.40.0` adds optional
+`singleInstanceMasks` manifest routing, `persephone.source.navigate(href)` for navigating within the
+initial source context, and `persephone.page.visible` / `onVisibilityChange()` for page-level
+visibility. Bridge `1.39.0` adds permission-scoped `persephone.watch()` file and folder change
+batches. Bridge `1.38.0` adds paged folder listing,
 confirmed persistent folder and exact-file grants, `getFileAccess()` for non-prompting access checks,
-and session read access to delivered source files. Confirmation dialogs use the manifest name when
-available.
+and session read access to delivered source files. It also adds toolbar button/menu start placement,
+the toolbar input clear button, and the page tab mute button (`persephone.page.setMuted()` /
+`onMuteToggle()`). Confirmation dialogs use the manifest name when available.
 Bridge `1.37.0` adds source-panel snapshots as
 `persephone.source.initialSourceContext` and `context` on `source.onOpen()` events. The initial
 snapshot is restored with the page; runtime snapshots are transient. Bridge `1.36.0` adds registration-time
@@ -77,6 +82,10 @@ without one an icon button that should carry a `title`. A `menu` with `placement
 puts its items at the top of Persephone's own **…** menu instead of drawing a button. Every live control is addressed by
 `data-name="board-toolbar-control-${id}"` in `BoardEditor.elements`, while host/window automation
 is the correct way to operate it (the board iframe methods target iframe content).
+
+Buttons and menus may use `placement: "start"` (bridge 1.38.0) to appear at the left of the
+toolbar before its text slot. An input with a non-empty value shows a clear button; clicking it
+immediately emits an empty-string action. Start placement is fixed when the control is declared.
 
 Icons accept exactly `{ name }`, `{ svg, preserveColors? }`, or board-root-relative
 `{ file, preserveColors? }`. Names use the registered icon set. Relative files reject absolute,
@@ -187,8 +196,8 @@ and author workflow.
 ## Board permissions
 
 Trust decides whether the board runs; the manifest's object-form permissions gate capabilities.
-Persephone-created blank boards begin all-false with `minBridgeVersion: "1.36.0"` for the starter's
-board-pack i18n. Auto-trust does not widen those grants. Object-form manifests require
+Persephone-created blank boards begin all-false with `minBridgeVersion: "1.39.0"` for the starter's
+board-pack i18n and watch API reference. Auto-trust does not widen those grants. Object-form manifests require
 `minBridgeVersion >= 1.30.0`. The
 exact hosted-document `readFile()` exception requires bridge `1.32.0`; set that as the minimum
 when a board depends on it. Enable only flags the code uses. Approved permission wording:
@@ -274,6 +283,8 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
   ],
 
   "fileMasks": ["*.drawio"],
+  "singleInstance": true,
+  "singleInstanceMasks": ["*.drawio"],
   "editorPriority": 100,
   "editorName": "DrawIO"
 }
@@ -286,10 +297,13 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
 - `minBridgeVersion` (optional) — the bridge version required by the board. A board above the
   shipped bridge is listed as incompatible and does not register its editors.
 - `permissions` — an object of enforced grants. New boards start with every flag false and
-  `minBridgeVersion: "1.30.0"`; set only flags used by reachable code. `service: true` is required
+  `minBridgeVersion: "1.39.0"`; set only flags used by reachable code. `service: true` is required
   to start a background service. Auto-trust on creation does not widen the manifest grants.
 - `service` (optional) — a board-relative ESM entry for a platform-owned module service. A board
   with only this field is still a valid service board even when it has no editor association.
+- `singleInstance` (optional) — reuse one board page per renderer window for claimed sources.
+  `singleInstanceMasks` (optional, bridge 1.40.0) narrows this routing to matching file names;
+  other claimed files open in ordinary pages. When omitted, all claimed sources use the singleton.
 
 ### Capability handlers
 
@@ -923,6 +937,10 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   let state = {};
   try { state = JSON.parse(await persephone.readFile("state.json")); } catch {}
   ```
+- `persephone.trashFile(path)` (bridge 1.41.0) moves an authorized file to the OS Recycle Bin,
+  where the user can restore it. It requires the same `fileSystem: "board"` or `"full"` access as
+  `writeFile()`; it rejects for missing files and folders. Ask for confirmation in the board before
+  calling it.
 - `persephone.getFilePath()` → `Promise<string | undefined>` — when this board is opened as a
   **custom editor** for a file (associated via `fileMasks` in `board-manifest.json`), this resolves
   to that file's **absolute path**; `readFile()` can read it with `fileSystem: false` on bridge
@@ -957,11 +975,11 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
 - `persephone.getSourceUrl()` → `Promise<string | undefined>` — returns the identity URL of the
   board's initial source without materializing it; `undefined` means there is no initial source.
   Pair it with `persephone.source.initialSourcePrivateSession` to read whether that initial source
-  came from a private browser session. For later sources routed to this board, subscribe with
-  `persephone.source.initialSourceContext` is the bounded Explorer-folder or Link-Editor
-  category/tag snapshot captured for the initial open. It includes `kind`, `sourcePath`, optional
-  raw `category` or `tag`, `label`, ordered non-directory `items`, and the opened item's `index`;
-  link items also carry `id`, `category`, and `tags`. Each later `source.onOpen(callback)` event
+  came from a private browser session. `persephone.source.initialSourceContext` is the bounded
+  Explorer-folder or Link-Editor category/tag snapshot captured for the initial open. It includes
+  `kind`, `sourcePath`, optional raw `category` or `tag`, `label`, ordered non-directory `items`,
+  and the opened item's `index`; link items also carry `id`, `category`, and `tags`. Subscribe to
+  later opens with `persephone.source.onOpen(callback)`; each event
   contains `url` and `sourceUrl`, optional `privateSession: true`, and the `context` snapshot
   captured for that specific open. These are open-time snapshots, limited to 5,000 items and 1 MiB
   serialized UTF-8. Only the initial context is stored in `sourceLink` and restored with the page;
@@ -982,10 +1000,31 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   });
   ```
 
+  `persephone.source.navigate(href)` (bridge 1.40.0) navigates the hosting page to an item in its
+  initial context. It accepts only an `href` present in that snapshot and rejects other URLs:
+  ```js
+  const context = persephone.source.initialSourceContext;
+  if (context?.items[context.index + 1]) {
+      await persephone.source.navigate(context.items[context.index + 1].href);
+  }
+  ```
+
 - `persephone.getFolderPath()` → `Promise<string | undefined>` — the absolute directory claimed by
   a direct-folder editor, or `undefined` for plain boards and file-only openings. It waits for the
   same host handshake as `getFilePath()`. This is separate from `boardRoot`, the folder containing
   the board app, and from the file-only `getFilePath()` value.
+
+`persephone.page.visible` (bridge 1.40.0) is true while the hosting page is active or grouped beside
+the active page; it does not track whether the app window is minimized. Subscribe to changes with
+`persephone.page.onVisibilityChange(callback)`, which immediately reports the current value and
+returns an unsubscribe function. `persephone.page.setMuted(boolean | null)` controls the page-tab
+mute indicator, and `onMuteToggle(callback)` receives clicks on that indicator (bridge 1.38.0):
+```js
+const audio = document.querySelector("audio");
+persephone.page.setMuted(audio.muted);
+persephone.page.onMuteToggle(() => { audio.muted = !audio.muted; });
+audio.addEventListener("volumechange", () => persephone.page.setMuted(audio.muted));
+```
 
 Listing and remembered grants require bridge `1.38.0`; declare `minBridgeVersion: "1.38.0"` when
 using them. Listing skips symlinks and junctions, limits recursive depth to 32, and expires cursors

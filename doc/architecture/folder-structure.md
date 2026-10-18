@@ -656,7 +656,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, singleInstance, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
+│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, singleInstance/singleInstanceMasks routing, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
 │   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)

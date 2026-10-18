@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-10-11
+**Completed:** 2026-10-18
 
 ## Overview
 
@@ -184,24 +185,26 @@ Proposals; the user may change them.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1688](../tasks/US-1688-board-audio-check/README.md) | Check: background playback and media keys in a board frame | Done |
-| [US-1689](../tasks/US-1689-board-source-context/README.md) | Source context for board opens (sibling tracks from folder / link category / tag) | Implemented (unreviewed) |
-| [US-1690](../tasks/US-1690-board-folder-listing/README.md) | Board folder listing, persisted folder and file grants, and source read grants | Implemented, verified live (native-dialog flows: user check) |
+| US-1688 | Check: background playback and media keys in a board frame | Done |
+| US-1689 | Source context for board opens (sibling tracks from folder / link category / tag) | Done |
+| US-1690 | Board folder listing, persisted folder and file grants, and source read grants | Done |
 | ~~US-1691~~ | ~~Media-key or background-playback support for boards~~ | Dropped: US-1688 found both already work |
-| [US-1700](../tasks/US-1700-single-instance-masks/README.md) | Single-instance routing by mask: full player for board/catalog/playlist opens, in-place light pages for audio files (A11) | Planned |
-| [US-1692](../tasks/US-1692-video-player-audio-removal/README.md) | Remove the audio features from the Video Player (after BT-042) | Planned |
+| US-1700 | Single-instance routing by mask: full player for board/catalog/playlist opens, in-place light pages for audio files (A11) | Done |
+| US-1701 | Board bridge `trashFile(path)`: move a file to the Recycle Bin (bridge 1.41.0) | Done |
+| US-1692 | Remove the audio features from the Video Player (after BT-042) | Done |
 
 ### persephone-boards
 
 | Task | Title | Status |
 |------|-------|--------|
-| BT-038 | Audio Player: player, queue, volume, visualizer, source mode (folder / link category / tag) | Implemented, verified live |
-| BT-039 | Audio Player: music catalog and catalog mode (link-editor format, `*.music.link.json`, categories, tags, ratings, add-on-open, add tracks from folder, search, file tags and cover art, mode switch) | Implemented, verified live |
-| BT-040 | Audio Player: play counts, smart and saved playlists, M3U/PLS | Implemented, verified live |
-| BT-041 | Audio Player: equalizer, crossfade, gapless | Implemented, verified live |
-| BT-043 | Audio Player: ai-vision model (read, bulk edit, playback control) | Implemented, verified live |
-| BT-044 | Audio Player: light mode (A11), `singleInstanceMasks`, watch-based catalog refresh | Planned |
-| BT-042 | Publish Audio Player; site page and demo video | Planned |
+| BT-038 | Audio Player: player, queue, volume, visualizer, source mode (folder / link category / tag) | Done |
+| BT-039 | Audio Player: music catalog and catalog mode (link-editor format, `*.music.link.json`, categories, tags, ratings, add-on-open, add tracks from folder, search, file tags and cover art, mode switch) | Done |
+| BT-040 | Audio Player: play counts, smart and saved playlists, M3U/PLS | Done |
+| BT-041 | Audio Player: equalizer, crossfade, gapless | Done |
+| BT-043 | Audio Player: ai-vision model (read, bulk edit, playback control) | Done |
+| BT-044 | Audio Player: light mode (A11), `singleInstanceMasks`, watch-based catalog refresh | Done |
+| BT-045 | Audio Player: in-place rating and tags, playing-list remove/delete menu | Done |
+| BT-042 | Publish Audio Player; site page and demo video | Done (`audio-player` v1.0.0 published) |
 
 Order: US-1688 → US-1689 → BT-038 → US-1690 → BT-039 → BT-040 → BT-043 → BT-041 → US-1700 →
 BT-044 → BT-042 → US-1692.

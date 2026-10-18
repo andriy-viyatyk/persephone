@@ -35,6 +35,19 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
    - **Improvements = enhancements to previously released features only.** An entry belongs in "Improvements" only if it enhances something that existed in a prior release.
    - **Bug Fixes = fixes for bugs that existed in a prior release.** Only list fixes for issues users could have encountered in a published version.
 
+   **Condense releases that leave the detail window.** Only the 10 most recent released versions
+   keep full notes; the `(Upcoming)` section does not count. Once this release is marked released,
+   the version that is now 11th newest (and any older one that was missed) gets condensed:
+
+   - Keep only **New Features** and **Breaking Changes**. Fold `Features` and `Other New Features`
+     into New Features. Drop every other subsection: Improvements, Bug Fixes, UI Polish, Security,
+     Under the hood, and the rest.
+   - Each entry becomes one line: a bold name plus at most one short sentence. Drop sub-bullets,
+     code samples and explanation.
+   - Merge closely related features into one line, and keep the `## Version X.Y.Z` heading. The
+     `guides.whatsNew` reader finds sections by that heading.
+   - If nothing is left, write `*Maintenance release: bug fixes and improvements.*`.
+
    After consolidation:
    - Change the current version header from `(Upcoming)` to a release (remove the word "Upcoming").
    - Add a new section above it for the next version:

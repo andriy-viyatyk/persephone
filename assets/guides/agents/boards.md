@@ -66,7 +66,8 @@ are backward-compatible with existing boards.
 
 Trust controls whether a board runs. Its object-form `permissions` separately gates bridge
 capabilities. New blank boards start with every flag false and
-`minBridgeVersion: "1.30.0"`; auto-trust of a board created by Persephone does not add grants.
+`minBridgeVersion: "1.39.0"` for the starter's board-pack i18n and watch API reference; auto-trust
+of a board created by Persephone does not add grants.
 Keep only permissions used by reachable code. The permission lines below are the approved
 user-facing wording:
 
