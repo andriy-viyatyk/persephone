@@ -235,6 +235,8 @@ local caller ids use a hash instead of exposing the board path. Refuse with
 `channel.close({ code: "connection-refused", message: "..." })`. Cross-board channels keep the
 same bounds and lifecycle as `service.openChannel()` and close when either board loses the needed
 trust or grant. Boards using this API declare `minBridgeVersion: "1.42.0"`.
+For a streaming coding-agent provider and consumer protocol over this channel, see the normative
+[`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`).
 Bridge `1.41.0` adds `persephone.trashFile(path)`, which
 moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,

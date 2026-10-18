@@ -13,7 +13,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1704: Phase 0 — cross-board service interfaces with trust disclosure](tasks/US-1704-cross-board-service-interfaces/README.md)
   - [ ] [US-1709: Phase 0 — private Persephone MCP endpoint for in-app agents](tasks/US-1709-private-agent-mcp-endpoint/README.md)
   - [ ] [US-1710: Phase 0 — multi-line board settings](tasks/US-1710-multiline-board-settings/README.md)
-  - [ ] US-1705: Phase 1 — `agent.session` v1 contract
+  - [ ] [US-1705: Phase 1 — `agent.session` v1 contract](tasks/US-1705-agent-session-contract/README.md)
   - [ ] US-1706: Phase 1 — `claude-agent` provider board
   - [ ] US-1707: Phase 1 — `codex-agent` provider board
   - [ ] US-1708: Phase 2 — team chat board

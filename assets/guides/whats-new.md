@@ -25,6 +25,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Cross-board service interfaces:** Trusted boards can declare exact-version service interfaces
   and connect through the existing bounded channel. Consumer `uses` grants are disclosed as Full
   access; provider trust and service permission are checked independently.
+- **Agent Session guide:** Board authors can follow the `agent.session` v1 contract for streaming,
+  resumable CLI sessions with bounded permissions and approvals.
 
 ---
 

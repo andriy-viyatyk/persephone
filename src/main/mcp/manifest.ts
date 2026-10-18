@@ -85,6 +85,12 @@ export const resourceFiles: IGuideResource[] = [
         description: "Boards authoring reference: board lifecycle, the execute channel, theme contract, local vendoring, and automation.",
     },
     {
+        name: "agent-session-guide",
+        uri: "persephone://guides/agent-session",
+        file: "guides/agents/agent-session.md",
+        description: "Normative provider and consumer contract for streaming, resumable agent sessions over board service channels.",
+    },
+    {
         name: "languages-guide",
         uri: "persephone://guides/languages",
         file: "guides/agents/languages.md",
