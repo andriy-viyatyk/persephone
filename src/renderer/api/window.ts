@@ -29,6 +29,7 @@ interface WindowState {
     zoomLevel: number;
     mcpRunning: boolean;
     mcpClientCount: number;
+    inAppAgentCount: number;
 }
 
 export class Window implements IWindow {
@@ -40,6 +41,7 @@ export class Window implements IWindow {
         zoomLevel: 0,
         mcpRunning: false,
         mcpClientCount: 0,
+        inAppAgentCount: 0,
     });
 
     constructor() {
@@ -57,6 +59,7 @@ export class Window implements IWindow {
             this._state.update(s => {
                 s.mcpRunning = status.running;
                 s.mcpClientCount = status.clientCount;
+                s.inAppAgentCount = status.inAppAgentCount;
             });
         } catch { /* MCP may not be enabled */ }
 
@@ -66,6 +69,7 @@ export class Window implements IWindow {
             this._state.update(s => {
                 s.mcpRunning = status.running;
                 s.mcpClientCount = status.clientCount;
+                s.inAppAgentCount = status.inAppAgentCount;
             });
         });
     }

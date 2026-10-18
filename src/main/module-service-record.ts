@@ -32,6 +32,8 @@ export interface RendererLease {
     lifecycleListeners: Array<{ event: string; listener: () => void }>;
 }
 
+export interface ServiceChannelOwner { boardId: string; generation: number; host: WebContents; consumerRoot?: string; interfaceId?: string; version?: number }
+
 export interface ServiceRecord {
     key: string;
     boardRoot: string;
@@ -51,6 +53,7 @@ export interface ServiceRecord {
     requests: Map<string, PendingRequest>;
     pendingRequestSlots: number;
     leases: Map<number, RendererLease>;
+    channels: Map<string, ServiceChannelOwner>;
     storageAdapter?: ModuleServiceStorageAdapter;
     leaseCounter: number;
     stopRequested: boolean;

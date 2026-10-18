@@ -113,6 +113,19 @@ export function boardPermissionLines(permissions: NormalizedBoardPermissions): B
     return lines;
 }
 
+export function boardServiceUsesLine(uses: readonly { id: string; version: number }[]): BoardPermissionLine | undefined {
+    if (!uses.length) return undefined;
+    const textParams = { uses: uses.map(({ id, version }) => `${id}@${version}`).join(", ") };
+    return {
+        kind: "service-uses",
+        textKey: "board.serviceUsesGrant",
+        textParams,
+        text: englishMessage("board.serviceUsesGrant", textParams),
+        detailKey: "board.serviceUsesExplanation",
+        fullAccess: true,
+    };
+}
+
 export const PERMISSION_CHANGE_TITLE = englishMessage("board.permissionChangeTitle");
 
 export function permissionChangeMessage(boardName: string): string {

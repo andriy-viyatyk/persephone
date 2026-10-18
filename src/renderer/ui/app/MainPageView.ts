@@ -36,6 +36,7 @@ interface MainPageState {
     zoomLevel: number;
     mcpRunning: boolean;
     mcpClientCount: number;
+    inAppAgentCount: number;
 }
 
 export class MainPageView extends VanillaView<object> {
@@ -194,17 +195,23 @@ export class MainPageView extends VanillaView<object> {
         this.zoomButton.textContent = `${Math.round(Math.pow(1.2, state.zoomLevel) * 100)}%`;
         this.toggleWindowButton.replaceChildren(createIconElement(state.isMaximized ? "window-restore" : "window-maximize"));
         this.toggleWindowButton.title = state.isMaximized ? t("shell.restore") : t("shell.maximize");
-        this.mcpIndicator.style.display = this.hiddenChromeState ? "none" : state.mcpRunning ? "" : "none";
+        const mcpVisible = state.mcpRunning || state.inAppAgentCount > 0;
+        const totalClients = state.mcpClientCount + state.inAppAgentCount;
+        this.mcpIndicator.style.display = this.hiddenChromeState ? "none" : mcpVisible ? "" : "none";
         this.mcpIndicator.dataset.name = "mcp-indicator";
         this.mcpIndicator.className = "mcp-indicator";
-        this.mcpIndicator.title = state.mcpClientCount > 0
+        const externalTitle = state.mcpClientCount > 0
             ? t("shell.activeMcpConnections", { product: englishMessage("shell.mCP"), count: state.mcpClientCount } as never)
-            : t("shell.mcpServerRunning", { product: englishMessage("shell.mCP") } as never);
+            : state.mcpRunning ? t("shell.mcpServerRunning", { product: englishMessage("shell.mCP") } as never) : "";
+        const agentTitle = state.inAppAgentCount > 0
+            ? t("shell.activeInAppMcpConnections", { count: state.inAppAgentCount } as never)
+            : "";
+        this.mcpIndicator.title = [externalTitle, agentTitle].filter(Boolean).join("; ");
         this.mcpIndicator.onclick = () => showMcpRequestLog();
-        if (state.mcpClientCount > 0) {
+        if (totalClients > 0) {
             const count = document.createElement("span");
             count.className = "mcp-count";
-            count.textContent = String(state.mcpClientCount);
+            count.textContent = `${state.mcpClientCount}/${state.inAppAgentCount}`;
             this.mcpIndicator.replaceChildren(count, document.createTextNode(" MCP"));
         } else {
             const dot = document.createElement("span");

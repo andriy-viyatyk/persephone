@@ -30,6 +30,9 @@ import type {
 import type { BoardServiceStatus, ModuleServicePortResult } from "./module-service-channels";
 import type { LaunchInput } from "../shared/launch-input";
 
+/** Metadata carried with `eBoardServiceChannel`; the endpoint itself is `event.ports[0]`. */
+export interface BoardServiceChannelDelivery { boardId: string; channelId: string }
+
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
     getAssetsPath = "getAssetsPath",
@@ -153,6 +156,7 @@ export enum Endpoint {
     setBoardTrust = "setBoardTrust",
     getBoardTrustPaths = "getBoardTrustPaths",
     getBoardPermissionGrants = "getBoardPermissionGrants",
+    getBoardServiceProviders = "getBoardServiceProviders",
     getBoardFileAccessGrants = "getBoardFileAccessGrants",
     revokeBoardFileAccessGrant = "revokeBoardFileAccessGrant",
     grantBoardSourceReads = "grantBoardSourceReads",
@@ -238,6 +242,7 @@ export interface McpStatus {
     running: boolean;
     url: string;
     clientCount: number;
+    inAppAgentCount: number;
 }
 
 export interface MnemeStatus {
@@ -387,10 +392,11 @@ export type Api = {
     [Endpoint.downloadBoardArchive]: (req: BoardArchiveDownloadRequest) => Promise<string>;
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Request a main-owned trust mutation and return its authoritative path list. */
-    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions) => Promise<string[]>;
+    [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions, expectedUses?: import("../shared/board-manifest-utils").BoardServiceUseDeclaration[]) => Promise<string[]>;
     /** Read the main-owned trusted path list. */
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
+    [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge-channels").BoardServiceProvider[]>;
     [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
     [Endpoint.revokeBoardFileAccessGrant]: (boardRoot: string, kind: "folder" | "file", canonicalPath: string) => Promise<void>;
     [Endpoint.grantBoardSourceReads]: (boardRoot: string, sourcePaths: string[], contextPaths?: string[]) => Promise<void>;
@@ -466,6 +472,8 @@ export enum EventEndpoint {
     // is consumed through the preload's ports-aware `onPort` (NOT the typed event
     // system, which drops `event.ports`). No EventApi entry for that reason.
     eBoardPort = "eBoardPort",
+    // Main → host renderer: board-service channel endpoint for one board frame.
+    eBoardServiceChannel = "eBoardServiceChannel",
     // Main → host renderer: a live module-service MessagePort (US-1467/US-1468).
     // It is delivered with webContents.postMessage and therefore is not an EventApi entry.
     eModuleServicePort = "eModuleServicePort",

@@ -4,7 +4,7 @@ import { boardTrust } from "../../api/board-trust";
 import { requestBoardTrust } from "../board/request-board-trust";
 import { legacyBoardDeprecationWarningForUi } from "../board/board-permission-copy";
 import { boardDisplayText, boardMetadataKeys } from "../board/board-display-text";
-import { createBoardPermissionChangeList, createBoardPermissionList } from "../board/board-permission-list";
+import { createBoardPermissionChangeList, createBoardPermissionList, createBoardServiceUsesPermissionList } from "../board/board-permission-list";
 import { publishedBoards } from "../../api/published-boards";
 import { publishedBoardDisplayText } from "../../api/published-board-display-text";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
@@ -492,6 +492,35 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 capabilities.append(text(details.join("; "), { size: "sm" }));
             }
             metadata.append(this.infoRow(t("board.capabilities"), capabilities));
+        }
+        if ((info.serviceInterfaces?.length ?? 0) > 0) {
+            const interfaces = panel({ direction: "column", gap: "xs", align: "stretch" });
+            for (const declaration of info.serviceInterfaces ?? []) {
+                const title = declaration.title
+                    ? ` (${boardDisplayText(info.root, undefined, boardMetadataKeys.serviceInterfaceTitle(declaration.id), declaration.title)})`
+                    : "";
+                interfaces.append(text(`${untranslated(declaration.id)}@${declaration.version}${title}`, { size: "sm" }));
+            }
+            metadata.append(this.infoRow(t("board.serviceInterfaces"), interfaces));
+        }
+        if ((info.requestedUses?.length ?? 0) > 0 || (info.grantedUses?.length ?? 0) > 0) {
+            const useGrant = createBoardServiceUsesPermissionList(info.requestedUses?.length ? info.requestedUses : info.grantedUses ?? [], "sm");
+            if (useGrant) metadata.append(useGrant);
+            if (info.pendingUseChanges?.length) {
+                metadata.append(text(t("board.serviceUseChanges", { changes: info.pendingUseChanges.map(({ kind, use }) => `${kind}: ${use.id}@${use.version}`).join(", ") }), { size: "sm", color: "warning" }));
+            }
+        }
+        if ((info.currentServiceProviders?.length ?? 0) > 0) {
+            const providers = panel({ direction: "column", gap: "xs", align: "stretch" });
+            for (const provider of info.currentServiceProviders ?? []) {
+                providers.append(text(`${provider.title} · ${provider.boardName} · ${provider.version} · ${t("board.permissionService")} (${t("board.fullAccessDetail")})`, { size: "sm" }));
+            }
+            metadata.append(this.infoRow(t("board.serviceProviders"), providers));
+        }
+        if ((info.serviceDeclarationIssues?.length ?? 0) > 0) {
+            for (const issue of info.serviceDeclarationIssues ?? []) {
+                metadata.append(text(`${untranslated(issue.name)}: ${untranslated(issue.reason)}`, { size: "sm", color: "warning" }));
+            }
         }
         if ((info.registrationIssues?.length ?? 0) > 0) {
             const issues = panel({ direction: "column", gap: "xs", align: "stretch" });

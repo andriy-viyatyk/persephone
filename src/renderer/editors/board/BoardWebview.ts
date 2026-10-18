@@ -678,6 +678,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             void this.transferPort();
         }));
 
+        this.ownSubscription(api.onBoardServiceChannel((boardId, channelId, port) => {
+            if (boardId !== this.boardId) return;
+            if (!this.live) { port.close(); return; }
+            const frame = this.iframe;
+            const generation = this.generation;
+            const message: BoardHostFrameMsg = { __persephone: "service:channelPort", channelId };
+            if (!frame || !this.replyToFrame(frame, generation, message, [port])) port.close();
+        }));
+
         const contentHost = model.contentHost;
         if (contentHost) {
             this.contentHostUnsubscribe = this.ownSubscription(contentHost.state.subscribe(

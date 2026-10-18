@@ -197,7 +197,45 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.41.0**. Bridge `1.41.0` adds `persephone.trashFile(path)`, which
+The current board bridge is **1.42.0**. Bridge `1.42.0` adds `format: "multiline"` for string board
+settings, rendered as a multi-line Textarea in Persephone's Settings page; boards that rely on it
+must set `minBridgeVersion: "1.42.0"`. It also adds the host-service API
+`persephone.mcp.issueSessionEndpoint()` for explicitly authorized board services. The returned
+handle contains `url`, `headers` (including `Authorization: Bearer …`), `token`, and an idempotent
+`revoke()` method. The service host revokes outstanding handles during shutdown; providers should
+revoke them when an agent session ends. This grants full app control through MCP, so the board's
+trusted permission snapshot must include `appScripting`. Service boards using the endpoint must set
+`minBridgeVersion: "1.42.0"`. The same bridge release adds
+`persephone.service.openChannel(openMessage)` for a permission-granted board to open a long-lived,
+ordered channel to its own module service. The service registers one
+`persephone.service.onChannel((channel, openMessage, info) => ...)` handler; same-board channels
+provide `info.page.boardId`. Both endpoints support `send`, `onMessage`, `onClose`, `close`,
+`writable`, and `whenWritable()`. Messages are structured-cloneable, with at most 256
+unacknowledged messages per direction; service-to-page messages are additionally limited to 1 MiB.
+Page-to-service messages have no byte limit because board frames cannot measure V8 serialization.
+There are at most 16 channels per frame and 128 per service. Use
+`if (!channel.writable) await channel.whenWritable(); channel.send(x)` to respect backpressure;
+`send()` throws `channel-backpressure` at the limit. Oversized service messages throw
+`channel-message-too-large`. `close()` without a reason reports `channel-closed` to the other side. Channels close on page reload, service exit or stop, trust loss, and
+app quit (`renderer-reloaded`, `service-exited`, `untrusted`, and `quit`). Boards using this API
+must declare `minBridgeVersion: "1.42.0"`.
+The same release also supports cross-board service interfaces. A provider declares
+`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Claude Agent" }]`; a consumer
+declares `uses: [{ id: "agent.session", version: 1 }]`. The trust dialog treats every non-empty
+`uses` list as Full access because it grants messaging access to providers trusted now or later.
+The consumer receives no provider permissions; each provider independently needs trust and its
+Full-access `service` grant, and must treat messages as untrusted. Use
+`persephone.services.list(id)` to choose among current providers, then
+`persephone.services.connect(id, { provider, version }, openMessage?)`. Version selection is an
+exact positive integer match, and main rechecks both boards when connecting. Provider
+cross-board calls are page-only; use `persephone.service.openChannel(openMessage)` when the
+consumer and provider are the same board. Provider
+`onChannel(channel, openMessage, info)` receives `info.interface` and a descriptive `info.caller`;
+local caller ids use a hash instead of exposing the board path. Refuse with
+`channel.close({ code: "connection-refused", message: "..." })`. Cross-board channels keep the
+same bounds and lifecycle as `service.openChannel()` and close when either board loses the needed
+trust or grant. Boards using this API declare `minBridgeVersion: "1.42.0"`.
+Bridge `1.41.0` adds `persephone.trashFile(path)`, which
 moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,
 and `persephone.source.navigate(href)`, which navigates the hosting page to an item in its initial
@@ -595,12 +633,14 @@ Settings page live; toggle trust off and on or restart Persephone to refresh it.
 A board can declare user-editable settings in its manifest. The declaration requires stable,
 non-empty `name` and `author` fields, and each setting needs a unique `id`, a scalar `type`, and a
 default value. Supported types are `string`, `number`, `boolean`, and `enum`; enum settings also
-provide a non-empty `options` array. Use `format: "folderPath"` for a string that should be edited
-with a folder picker.
+provide a non-empty `options` array. A string may use `format: "folderPath"` for a folder picker or
+`format: "multiline"` for a multi-line Textarea. Multiline values save when the field loses focus.
+Boards that rely on multiline settings must declare `minBridgeVersion: "1.42.0"` in their manifest.
 
 ```json
 {
   "schemaVersion": 1,
+  "minBridgeVersion": "1.42.0",
   "name": "Weather Board",
   "author": "Example",
   "settings": [
@@ -618,6 +658,14 @@ with a folder picker.
       "format": "folderPath",
       "default": "",
       "label": "Data folder"
+    },
+    {
+      "id": "notes",
+      "type": "string",
+      "format": "multiline",
+      "default": "",
+      "label": "Notes",
+      "description": "Optional notes for this board."
     }
   ]
 }

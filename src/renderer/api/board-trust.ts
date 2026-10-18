@@ -20,7 +20,7 @@
 import { api } from "../../ipc/renderer/api";
 import { TGlobalState } from "../core/state/state";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
-import type { NormalizedBoardPermissions, BoardPermissionFlags } from "../../shared/board-manifest-utils";
+import type { NormalizedBoardPermissions, BoardPermissionFlags, BoardServiceUseDeclaration } from "../../shared/board-manifest-utils";
 
 /**
  * True when `ancestorKey` equals or contains `descendantKey` (path-boundary aware).
@@ -48,6 +48,9 @@ export interface BoardPermissionSnapshot {
     manifestPermissions: NormalizedBoardPermissions;
     manifestChanged: boolean;
     changes: BoardPermissionChange[];
+    uses: BoardServiceUseDeclaration[];
+    manifestUses: BoardServiceUseDeclaration[];
+    useChanges: Array<{ kind: "added" | "removed"; use: BoardServiceUseDeclaration }>;
 }
 
 export function diffBoardPermissions(
@@ -72,6 +75,8 @@ class BoardTrust {
     private pathsRevision = 0;
     private grants = new Map<string, NormalizedBoardPermissions>();
     private manifests = new Map<string, NormalizedBoardPermissions>();
+    private uses = new Map<string, BoardServiceUseDeclaration[]>();
+    private manifestUses = new Map<string, BoardServiceUseDeclaration[]>();
     private fileAccess = new Map<string, { folderGrants: string[]; fileGrants: string[] }>();
     private grantsPromise: Promise<void> | undefined;
     private readonly grantListeners = new Set<(changedRoots: string[]) => void>();
@@ -107,17 +112,23 @@ class BoardTrust {
         const entries = await api.getBoardPermissionGrants();
         const next = new Map(entries.map(({ boardRoot, permissions }) => [fpNormalizeForCompare(boardRoot), permissions]));
         const nextManifests = new Map(entries.map(({ boardRoot, manifestPermissions }) => [fpNormalizeForCompare(boardRoot), manifestPermissions]));
+        const nextUses = new Map(entries.map(({ boardRoot, uses }) => [fpNormalizeForCompare(boardRoot), uses ?? []]));
+        const nextManifestUses = new Map(entries.map(({ boardRoot, manifestUses }) => [fpNormalizeForCompare(boardRoot), manifestUses ?? []]));
         const nextFileAccess = new Map(await Promise.all(entries.map(async ({ boardRoot }) => [
             fpNormalizeForCompare(boardRoot), await api.getBoardFileAccessGrants(boardRoot),
         ] as const)));
         const changedRoots = new Set<string>();
-        for (const root of new Set([...this.grants.keys(), ...next.keys(), ...this.manifests.keys(), ...nextManifests.keys(), ...this.fileAccess.keys(), ...nextFileAccess.keys()])) {
+        for (const root of new Set([...this.grants.keys(), ...next.keys(), ...this.manifests.keys(), ...nextManifests.keys(), ...this.uses.keys(), ...nextUses.keys(), ...this.manifestUses.keys(), ...nextManifestUses.keys(), ...this.fileAccess.keys(), ...nextFileAccess.keys()])) {
             if (JSON.stringify(this.grants.get(root)) !== JSON.stringify(next.get(root))
                 || JSON.stringify(this.manifests.get(root)) !== JSON.stringify(nextManifests.get(root))
+                || JSON.stringify(this.uses.get(root)) !== JSON.stringify(nextUses.get(root))
+                || JSON.stringify(this.manifestUses.get(root)) !== JSON.stringify(nextManifestUses.get(root))
                 || JSON.stringify(this.fileAccess.get(root)) !== JSON.stringify(nextFileAccess.get(root))) changedRoots.add(root);
         }
         this.grants = next;
         this.manifests = nextManifests;
+        this.uses = nextUses;
+        this.manifestUses = nextManifestUses;
         this.fileAccess = nextFileAccess;
         if (changedRoots.size) {
             for (const listener of this.grantListeners) listener([...changedRoots]);
@@ -159,8 +170,12 @@ class BoardTrust {
                 root: boardRoot,
                 permissions,
                 manifestPermissions,
-                manifestChanged: JSON.stringify(permissions) !== JSON.stringify(manifestPermissions),
+                manifestChanged: JSON.stringify(permissions) !== JSON.stringify(manifestPermissions)
+                    || JSON.stringify(this.uses.get(matchedRoot) ?? []) !== JSON.stringify(this.manifestUses.get(matchedRoot) ?? []),
                 changes: diffBoardPermissions(permissions, manifestPermissions),
+                uses: this.uses.get(matchedRoot) ?? [],
+                manifestUses: this.manifestUses.get(matchedRoot) ?? [],
+                useChanges: diffBoardUses(this.uses.get(matchedRoot) ?? [], this.manifestUses.get(matchedRoot) ?? []),
             };
         } catch { return undefined; }
     }
@@ -244,8 +259,8 @@ class BoardTrust {
     }
 
     /** Request a main-owned trust mutation after the caller's user confirmation. */
-    async trust(boardRoot: string, expectedPermissions?: NormalizedBoardPermissions): Promise<void> {
-        this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true, expectedPermissions));
+    async trust(boardRoot: string, expectedPermissions?: NormalizedBoardPermissions, expectedUses?: BoardServiceUseDeclaration[]): Promise<void> {
+        this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, true, expectedPermissions, expectedUses));
         await this.loadGrants();
     }
 
@@ -254,6 +269,16 @@ class BoardTrust {
         this.applyAuthoritativePaths(await api.setBoardTrust(boardRoot, false));
         await this.loadGrants();
     }
+}
+
+function diffBoardUses(granted: BoardServiceUseDeclaration[], proposed: BoardServiceUseDeclaration[]): Array<{ kind: "added" | "removed"; use: BoardServiceUseDeclaration }> {
+    const key = (use: BoardServiceUseDeclaration) => `${use.id}\u0000${use.version}`;
+    const grantedKeys = new Set(granted.map(key));
+    const proposedKeys = new Set(proposed.map(key));
+    return [
+        ...proposed.filter((use) => !grantedKeys.has(key(use))).map((use) => ({ kind: "added" as const, use })),
+        ...granted.filter((use) => !proposedKeys.has(key(use))).map((use) => ({ kind: "removed" as const, use })),
+    ];
 }
 
 export const boardTrust = new BoardTrust();

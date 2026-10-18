@@ -813,6 +813,25 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         crypto.randomUUID(),
         args[0],
     ),
+    serviceOpenChannel: (entry, args) => moduleServiceSupervisor.openChannel(
+        entry.root, entry.hostWebContents, entry.boardId, args[0],
+    ),
+    async servicesList(entry, args) {
+        const interfaceId = args[0];
+        if (typeof interfaceId !== "string") throw rpcFailure("invalid-argument", "A service interface id is required.");
+        await boardTrustService.getPermissionGrants();
+        const uses = boardTrustService.getGrantedUsesFromSnapshot(entry.root);
+        const allowedVersions = new Set(uses.filter((use) => use.id === interfaceId).map((use) => use.version));
+        if (!allowedVersions.size) throw rpcFailure("permission-denied", "The board has no trusted grant for this service interface.");
+        return moduleServiceSupervisor.listServiceProviders(interfaceId).filter((provider) => allowedVersions.has(provider.version));
+    },
+    async servicesConnect(entry, args) {
+        const interfaceId = args[0];
+        const selector = args[1] as { provider: string; version: number } | undefined;
+        if (typeof interfaceId !== "string" || !selector || typeof selector.provider !== "string") throw rpcFailure("invalid-argument", "A service interface and provider selector are required.");
+        await boardTrustService.getPermissionGrants();
+        return moduleServiceSupervisor.connectServiceChannel(entry.root, entry.hostWebContents, entry.boardId, interfaceId, selector, args[2]);
+    },
     serviceStatus: (entry) => moduleServiceSupervisor.getStatus(entry.root),
     serviceStop: (entry) => moduleServiceSupervisor.stop(entry.root, "explicit"),
     storageGet: (entry, args) => getBoardStorageValue(entry.root, validateBoardStorageKey(args[0])),
@@ -842,7 +861,9 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
 
 /** Run a request/reply RPC and return its result (thrown errors reject the caller). */
 async function runRpc(entry: BoardPortEntry, method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
-    if (method === "serviceRequest" || method === "serviceStatus" || method === "serviceStop") {
+    if (method === "servicesList" || method === "servicesConnect") {
+        if (!boardTrustService.getGrantedUsesFromSnapshot(entry.root).length) throw boardPermissionError("service interface");
+    } else if (method === "serviceRequest" || method === "serviceOpenChannel" || method === "serviceStatus" || method === "serviceStop") {
         if (!(await boardTrustService.allows(entry.root, "service"))) throw boardPermissionError("service");
     }
     const handler = boardRpcHandlers[method];
@@ -1121,6 +1142,10 @@ export function disposeBoardPort(boardId: string): void {
     if (!entry) return;
     entry.hostedFilePath = null;
     entry.token = "";
+    moduleServiceSupervisor.closeBoardChannels(boardId, {
+        code: "renderer-reloaded",
+        message: "The board page closed or was reloaded.",
+    });
     if (entry.watchdog) {
         clearTimeout(entry.watchdog);
         entry.watchdog = undefined;

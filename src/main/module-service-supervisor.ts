@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import {
+    MessageChannelMain,
     type UtilityProcess,
     type WebContents,
     utilityProcess,
@@ -8,6 +10,11 @@ import {
 import { EventEndpoint } from "../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
+    MAX_SERVICE_CHANNELS_PER_BOARD,
+    MAX_SERVICE_CHANNELS_PER_SERVICE,
+    MAX_SERVICE_CHANNEL_IN_FLIGHT,
+    MAX_SERVICE_CHANNEL_MESSAGE_BYTES,
+    SERVICE_CHANNEL_ACK_BATCH,
     type BoardServiceState,
     SERVICE_HANDSHAKE_TIMEOUT_MS,
     SERVICE_REQUEST_DEADLINE_MS,
@@ -25,6 +32,7 @@ import {
     type TrustedBoardSnapshotEntry,
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
+import { boardPermissionAllows } from "../shared/board-manifest-utils";
 import { MAX_BUFFERED_PIPE_BYTES, MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
 import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
@@ -34,6 +42,7 @@ import { ServiceError, type ServiceRecord, isCurrent, killUtilityProcessSync } f
 import { RestartBudget, RESTART_BUDGET } from "./module-service-restart-budget";
 import { Handshake, routeProcessMessage } from "./module-service-handshake";
 import { failLease, transferRendererLease, type LeaseCallbacks } from "./module-service-leases";
+import { issuePrivateMcpEndpoint, revokePrivateMcpEndpointForBoard, revokePrivateMcpEndpointsForBoard } from "./mcp/private-session-endpoints";
 
 function normalizeRoot(boardRoot: string): string {
     const normalized = path.resolve(boardRoot).replace(/\\/g, "/").replace(/\/+$/, "");
@@ -55,16 +64,30 @@ class ModuleServiceSupervisor {
         postMessage: (process, message, ports) => process.postMessage(message, ports),
     };
     private trustedSnapshot: BoardServiceTrustSnapshot | undefined;
+    private readonly providerKeys = new Map<string, string>();
+    private providerIndex = new Map<string, TrustedBoardSnapshotEntry[]>();
     private disposing = false;
 
     async applyBoardServiceTrustSnapshot(snapshot: BoardServiceTrustSnapshot): Promise<void> {
         if (this.disposing) return;
+        const previousSnapshot = this.trustedSnapshot;
         const previouslyUntrusted = new Set(
             [...this.records.values()]
                 .filter((record) => !this.isEffectivelyTrusted(record.boardRoot))
                 .map((record) => record.key),
         );
         this.trustedSnapshot = snapshot;
+        const currentRoots = new Set(snapshot.boards.map((entry) => normalizeRoot(entry.boardRoot)));
+        for (const root of this.providerKeys.keys()) if (!currentRoots.has(root)) this.providerKeys.delete(root);
+        this.providerIndex = new Map();
+        for (const entry of snapshot.boards) {
+            if (!entry.service || !entry.canStartService || !boardPermissionAllows(entry.permissions, "service")) continue;
+            for (const declaration of entry.serviceInterfaces ?? []) {
+                const providers = this.providerIndex.get(declaration.id) ?? [];
+                if (!providers.includes(entry)) providers.push(entry);
+                this.providerIndex.set(declaration.id, providers);
+            }
+        }
         const stopPromises: Promise<void>[] = [];
 
         const serviceEntries = new Map<string, TrustedBoardSnapshotEntry>();
@@ -77,9 +100,21 @@ class ModuleServiceSupervisor {
         for (const [key, entry] of serviceEntries) {
             const existing = this.records.get(key);
             if (existing) {
+                const previous = previousSnapshot?.boards.find((board) => normalizeRoot(board.boardRoot) === key);
+                if (previous && boardPermissionAllows(previous.permissions, "appScripting")
+                    && !boardPermissionAllows(entry.permissions, "appScripting")) {
+                    await revokePrivateMcpEndpointsForBoard(existing.boardRoot);
+                }
+                const serviceEntryChanged = existing.serviceEntry !== entry.service;
                 existing.boardRoot = entry.boardRoot;
                 existing.serviceEntry = entry.service;
                 existing.canStartService = entry.canStartService;
+                if (previous?.canStartService && !entry.canStartService) {
+                    this.closeChannelsForProvider(existing, { code: "permission-denied", message: "The provider no longer grants service access." });
+                    stopPromises.push(this.stopRecord(existing, "explicit"));
+                } else if (serviceEntryChanged && (existing.process || existing.startPromise)) {
+                    stopPromises.push(this.stopRecord(existing, "explicit"));
+                }
                 if (existing.state === "stopped" && !entry.canStartService) {
                     this.transition(existing, "stopped", "permission-denied");
                 }
@@ -98,6 +133,7 @@ class ModuleServiceSupervisor {
                 requests: new Map(),
                 pendingRequestSlots: 0,
                 leases: new Map(),
+                channels: new Map(),
                 leaseCounter: 0,
                 stopRequested: false,
             };
@@ -136,6 +172,27 @@ class ModuleServiceSupervisor {
                 }
             } else {
                 stopPromises.push(this.stopRecord(record, "untrusted"));
+            }
+        }
+        for (const record of this.records.values()) {
+            const provider = snapshot.boards.find((entry) => normalizeRoot(entry.boardRoot) === record.key);
+            for (const [channelId, owner] of record.channels) {
+                if (owner.interfaceId && owner.version !== undefined
+                    && !(provider?.serviceInterfaces ?? []).some((item) => item.id === owner.interfaceId && item.version === owner.version)) {
+                    this.closeChannel(record, channelId, { code: "service-not-declared", message: "The provider no longer declares this service interface." });
+                    continue;
+                }
+                if (!owner.consumerRoot) continue;
+                const consumer = snapshot.boards.find((entry) => normalizeRoot(entry.boardRoot) === normalizeRoot(owner.consumerRoot));
+                const previous = previousSnapshot?.boards.find((entry) => normalizeRoot(entry.boardRoot) === normalizeRoot(owner.consumerRoot));
+                const granted = consumer?.uses.some((use) => use.id === owner.interfaceId && use.version === owner.version) === true;
+                const wasGranted = previous?.uses.some((use) => use.id === owner.interfaceId && use.version === owner.version) === true;
+                const lostTrust = !consumer && this.isEffectivelyTrusted(owner.consumerRoot) === false;
+                if (lostTrust || (wasGranted && !granted)) {
+                    this.closeChannel(record, channelId, lostTrust
+                        ? { code: "untrusted", message: "The consumer board was untrusted." }
+                        : { code: "permission-denied", message: "The consumer no longer grants this service interface." });
+                }
             }
         }
         await Promise.all(stopPromises);
@@ -193,6 +250,7 @@ class ModuleServiceSupervisor {
     async stop(boardRoot: string, reason: ServiceStopReason): Promise<void> {
         const record = this.records.get(normalizeRoot(boardRoot));
         if (!record) return;
+        await revokePrivateMcpEndpointsForBoard(record.boardRoot);
         await this.stopRecord(record, reason);
     }
 
@@ -239,6 +297,118 @@ class ModuleServiceSupervisor {
         return transferRendererLease(record, target, this.leaseCallbacks);
     }
 
+    async openChannel(boardRoot: string, target: WebContents, boardId: string, openMessage: unknown): Promise<string> {
+        await this.awaitTrustReady();
+        await this.start(boardRoot, "request");
+        const record = this.requireRecord(boardRoot);
+        if (!record.process || record.state !== "running") throw new ServiceError("service-exited");
+        const boardChannels = [...record.channels.values()].filter((owner) => owner.boardId === boardId).length;
+        if (boardChannels >= MAX_SERVICE_CHANNELS_PER_BOARD || record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) {
+            throw new ServiceError("service-busy", "The service has reached its open channel limit.");
+        }
+        const channelId = crypto.randomUUID();
+        const generation = record.generation;
+        const { port1, port2 } = new MessageChannelMain();
+        record.channels.set(channelId, { boardId, generation, host: target });
+        try {
+            record.process.postMessage({ kind: "channel-open", channelId, boardId, generation, openMessage, info: { page: { boardId } } }, [port2]);
+            target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId, channelId }, [port1]);
+        } catch (error) {
+            try { record.process?.postMessage({ kind: "channel-close", channelId, reason: { code: "service-exited", message: "The channel could not be delivered." } } satisfies ServiceParentMessage); } catch { /* service exited */ }
+            record.channels.delete(channelId);
+            try { port1.close(); } catch { /* transferred or already closed */ }
+            try { port2.close(); } catch { /* transferred or already closed */ }
+            throw new ServiceError("service-exited", errMessage(error));
+        }
+        return channelId;
+    }
+
+    listServiceProviders(interfaceId: string): Array<{ provider: string; title: string; version: number; boardName: string }> {
+        if (!this.trustedSnapshot) throw new ServiceError("trust-not-ready");
+        const providers: Array<{ provider: string; title: string; version: number; boardName: string }> = [];
+        for (const entry of this.providerIndex.get(interfaceId) ?? []) {
+            const root = normalizeRoot(entry.boardRoot);
+            let provider = this.providerKeys.get(root);
+            if (!provider) { provider = crypto.randomUUID(); this.providerKeys.set(root, provider); }
+            for (const declaration of entry.serviceInterfaces ?? []) {
+                if (declaration.id !== interfaceId) continue;
+                providers.push({ provider, title: declaration.title || entry.boardName || path.basename(entry.boardRoot), version: declaration.version, boardName: entry.boardName || path.basename(entry.boardRoot) });
+            }
+        }
+        return providers;
+    }
+
+    async connectServiceChannel(consumerRoot: string, target: WebContents, boardId: string, interfaceId: string, selector: { provider: string; version: number }, openMessage?: unknown): Promise<string> {
+        await this.awaitTrustReady();
+        if (!selector || typeof selector.provider !== "string" || !Number.isSafeInteger(selector.version) || selector.version <= 0) throw new ServiceError("invalid-argument");
+        const snapshot = this.trustedSnapshot;
+        const consumer = snapshot?.boards.find((entry) => normalizeRoot(entry.boardRoot) === normalizeRoot(consumerRoot));
+        if (!consumer || !(consumer.uses ?? []).some((use) => use.id === interfaceId && use.version === selector.version)) throw new ServiceError("permission-denied");
+        const providerEntry = snapshot?.boards.find((entry) => {
+            const key = this.providerKeys.get(normalizeRoot(entry.boardRoot));
+            return key === selector.provider;
+        });
+        if (!providerEntry || !providerEntry.service) throw new ServiceError("service-not-declared");
+        if (!providerEntry.canStartService || !boardPermissionAllows(providerEntry.permissions, "service")) throw new ServiceError("permission-denied");
+        const declaration = (providerEntry.serviceInterfaces ?? []).find((item) => item.id === interfaceId && item.version === selector.version);
+        if (!declaration) throw new ServiceError("service-not-declared");
+        const providerRoot = normalizeRoot(providerEntry.boardRoot);
+        const record = this.requireRecord(providerRoot);
+        await this.start(providerEntry.boardRoot, "request");
+        const latestSnapshot = this.trustedSnapshot;
+        const latestConsumer = latestSnapshot?.boards.find((entry) => normalizeRoot(entry.boardRoot) === normalizeRoot(consumerRoot));
+        const latestProvider = latestSnapshot?.boards.find((entry) => this.providerKeys.get(normalizeRoot(entry.boardRoot)) === selector.provider);
+        if (!latestConsumer || !(latestConsumer.uses ?? []).some((use) => use.id === interfaceId && use.version === selector.version)) throw new ServiceError("permission-denied");
+        if (!latestProvider) throw new ServiceError("untrusted");
+        if (!latestProvider.service || !latestProvider.canStartService || !boardPermissionAllows(latestProvider.permissions, "service")) throw new ServiceError("permission-denied");
+        if (!(latestProvider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === selector.version)) throw new ServiceError("service-not-declared");
+        if (!record.process || record.state !== "running") throw new ServiceError("service-exited");
+        const boardChannels = [...record.channels.values()].filter((owner) => owner.boardId === boardId).length;
+        if (boardChannels >= MAX_SERVICE_CHANNELS_PER_BOARD || record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) throw new ServiceError("service-busy");
+        const channelId = crypto.randomUUID();
+        const generation = record.generation;
+        const { port1, port2 } = new MessageChannelMain();
+        record.channels.set(channelId, { boardId, generation, host: target, consumerRoot: normalizeRoot(consumerRoot), interfaceId, version: selector.version });
+        const caller = latestConsumer;
+        const info = {
+            page: { boardId },
+            interface: { id: interfaceId, version: selector.version },
+            caller: { id: caller?.callerId ?? this.localCallerId(consumerRoot), name: caller?.boardName ?? path.basename(consumerRoot) },
+        };
+        try {
+            record.process.postMessage({ kind: "channel-open", channelId, boardId, generation, openMessage, info }, [port2]);
+            target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId, channelId }, [port1]);
+        } catch (error) {
+            record.channels.delete(channelId);
+            try { port1.close(); } catch { /* already transferred */ }
+            try { port2.close(); } catch { /* already transferred */ }
+            throw new ServiceError("service-exited", errMessage(error));
+        }
+        return channelId;
+    }
+
+    private localCallerId(boardRoot: string): string {
+        return `local:${createHash("sha256").update(normalizeRoot(boardRoot)).digest("hex")}`;
+    }
+
+    private closeChannel(record: ServiceRecord, channelId: string, reason: { code: string; message: string }): void {
+        if (!record.channels.delete(channelId)) return;
+        try { record.process?.postMessage({ kind: "channel-close", channelId, reason } satisfies ServiceParentMessage); } catch { /* exiting */ }
+    }
+
+    private closeChannelsForProvider(record: ServiceRecord, reason: { code: string; message: string }): void {
+        for (const channelId of record.channels.keys()) this.closeChannel(record, channelId, reason);
+    }
+
+    closeBoardChannels(boardId: string, reason: { code: string; message: string }): void {
+        for (const record of this.records.values()) {
+            for (const [channelId, owner] of record.channels) {
+                if (owner.boardId !== boardId) continue;
+                this.closeChannel(record, channelId, reason);
+            }
+        }
+    }
+
     async disposeAll(): Promise<void> {
         if (this.disposing) {
             await Promise.all([...this.records.values()].map((record) => record.stopPromise).filter(Boolean));
@@ -251,7 +421,9 @@ class ModuleServiceSupervisor {
     /** Synchronously stops any process left during app quit. */
     forceKillAllSync(): void {
         for (const record of this.records.values()) {
+            void revokePrivateMcpEndpointsForBoard(record.boardRoot);
             const process = record.process;
+            this.closeRecordChannels(record, { code: "quit", message: "Persephone is closing." });
             record.process = undefined;
             // Killing comes first and stands alone: it is the part that must happen.
             try {
@@ -434,6 +606,37 @@ class ModuleServiceSupervisor {
                 routeProcessMessage(record, process, generation, rawMessage, handshake, {
                     isTrusted: (boardRoot) => this.isEffectivelyTrusted(boardRoot),
                     onStorageRequest: (message) => record.storageAdapter?.handle(message),
+                    onMcpEndpointRequest: (message) => {
+                        void (async () => {
+                            try {
+                                if (!isCurrent(record, process, generation) || record.state !== "running" || record.stopRequested) throw new ServiceError("service-exited");
+                                const grant = this.trustedSnapshot?.boards.find((board) => normalizeRoot(board.boardRoot) === record.key);
+                                if (!grant || !this.isEffectivelyTrusted(record.boardRoot)) throw new ServiceError("untrusted");
+                                if (!boardPermissionAllows(grant.permissions, "appScripting")) throw new ServiceError("permission-denied");
+                                let result: unknown;
+                                if (message.operation === "issue") {
+                                    const issued = await issuePrivateMcpEndpoint(record.boardRoot);
+                                    const latestGrant = this.trustedSnapshot?.boards.find((board) => normalizeRoot(board.boardRoot) === record.key);
+                                    if (!isCurrent(record, process, generation) || record.state !== "running" || record.stopRequested
+                                        || !latestGrant || !this.isEffectivelyTrusted(record.boardRoot)
+                                        || !boardPermissionAllows(latestGrant.permissions, "appScripting")) {
+                                        await revokePrivateMcpEndpointForBoard(record.boardRoot, issued.token);
+                                        throw new ServiceError("permission-denied");
+                                    }
+                                    result = issued;
+                                } else if (typeof message.token === "string") {
+                                    await revokePrivateMcpEndpointForBoard(record.boardRoot, message.token);
+                                }
+                                process.postMessage({ kind: "mcp-endpoint-response", requestId: message.requestId, result });
+                            } catch (error) {
+                                const serviceError = this.asServiceError(error, "service-error");
+                                try {
+                                    process.postMessage({ kind: "mcp-endpoint-response", requestId: message.requestId,
+                                        error: { code: serviceError.code, message: serviceError.message } });
+                                } catch { /* Service exited before the reply. */ }
+                            }
+                        })();
+                    },
                     onResponse: (request, message) => {
                         clearTimeout(request.timer);
                         record.requests.delete(message.requestId);
@@ -483,6 +686,9 @@ class ModuleServiceSupervisor {
                     maxOutstandingRequestsPerService: MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
                     maxBufferedPipeBytes: MAX_BUFFERED_PIPE_BYTES,
                     maxBoardPipeChunkBytes: MAX_BOARD_PIPE_CHUNK_BYTES,
+                    maxServiceChannelInFlight: MAX_SERVICE_CHANNEL_IN_FLIGHT,
+                    maxServiceChannelMessageBytes: MAX_SERVICE_CHANNEL_MESSAGE_BYTES,
+                    serviceChannelAckBatch: SERVICE_CHANNEL_ACK_BATCH,
                     providerRequestClasses,
                 };
                 process.postMessage({ kind: "init", nonce: generation, config } satisfies ServiceParentMessage);
@@ -536,7 +742,9 @@ class ModuleServiceSupervisor {
 
     private handleUnexpectedExit(record: ServiceRecord, process: UtilityProcess, generation: number, code: number): void {
         if (!isCurrent(record, process, generation)) return;
+        void revokePrivateMcpEndpointsForBoard(record.boardRoot);
         record.process = undefined;
+        this.closeRecordChannels(record, { code: "service-exited", message: "The board service exited." });
         record.pid = undefined;
         record.startedAt = undefined;
         this.rejectRequests(record, "service-exited");
@@ -568,9 +776,16 @@ class ModuleServiceSupervisor {
     private async stopRecord(record: ServiceRecord, reason: ServiceStopReason): Promise<void> {
         if (record.stopPromise) return record.stopPromise;
         record.stopRequested = true;
+        void revokePrivateMcpEndpointsForBoard(record.boardRoot);
         const process = record.process;
         const generation = record.generation;
         record.generation += 1;
+        this.closeRecordChannels(record, {
+            code: STOP_REASON_CODE[reason],
+            message: reason === "untrusted" ? "Board service trust was revoked."
+                : reason === "quit" ? "Persephone is closing."
+                    : "The board service was stopped.",
+        });
         record.process = undefined;
         this.transition(record, "stopping", reason);
         const stopCode = STOP_REASON_CODE[reason];
@@ -621,6 +836,13 @@ class ModuleServiceSupervisor {
             request.reject(new ServiceError(code));
             record.requests.delete(requestId);
         }
+    }
+
+    private closeRecordChannels(record: ServiceRecord, reason: { code: string; message: string }): void {
+        for (const [channelId] of record.channels) {
+            try { record.process?.postMessage({ kind: "channel-close", channelId, reason } satisfies ServiceParentMessage); } catch { /* exiting */ }
+        }
+        record.channels.clear();
     }
 
     private countFailure(record: ServiceRecord): void {

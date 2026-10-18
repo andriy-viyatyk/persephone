@@ -11,9 +11,40 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.41.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.41.0` adds `persephone.trashFile(path)`,
-which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
+The board bridge is version **1.42.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
+boards that rely on them must set `minBridgeVersion: "1.42.0"`. It also adds the host-service API
+`persephone.mcp.issueSessionEndpoint()`. The returned handle has `url`, `headers` containing the
+Bearer authorization header, `token`, and an idempotent `revoke()` method. Revoke it when the agent
+session ends; the host also revokes active handles during service shutdown. Because it exposes full
+app control, issuance requires the board's granted `appScripting` permission. Service boards using
+this API must declare `minBridgeVersion: "1.42.0"`. The same bridge release adds
+`persephone.service.openChannel(openMessage)` for ordered, two-way streaming to the board's own
+service. Register one `persephone.service.onChannel((channel, openMessage, info) => ...)` handler in
+the service entry; same-board opens include `info.page.boardId`, while cross-board opens add
+`info.interface` and descriptive `info.caller` metadata. Both channel endpoints support `send`,
+`onMessage`, `onClose`, `close`, `writable`, and `whenWritable()`. Each direction allows 256
+unacknowledged messages; service-to-page payloads are capped at 1 MiB, while page-to-service has
+only the count bound. Limits are 16 channels per frame and 128 per service. Use
+`if (!channel.writable) await channel.whenWritable(); channel.send(x)`; errors include
+`channel-backpressure` and `channel-message-too-large`. Channels close with `renderer-reloaded`,
+`service-exited`, `untrusted`, or `quit` on the matching lifecycle event. Boards using channels
+must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use provider
+`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Claude Agent" }]` and consumer
+`uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
+access and covers providers trusted now or later. This grants messaging only: providers need their
+own trust and `service` permission, and must enforce their own approval policy for untrusted
+messages. `agent.session` is the reserved platform id; third-party ids use exactly `author/name`.
+Consumers call `services.list(id)` to choose a provider and
+`services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
+Only board pages can make these cross-board calls in this release; use
+`persephone.service.openChannel(openMessage)` for same-board communication.
+The provider's existing `onChannel` callback receives `info.interface = { id, version }` and
+`info.caller = { id, name }`. Refuse with the normal close reason `connection-refused`. Main
+rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle
+changes. Local caller ids are hashed so the board path is not disclosed. Boards using this API
+must declare `minBridgeVersion: "1.42.0"`. Bridge `1.41.0` adds
+`persephone.trashFile(path)`, which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest masks to choose which claimed file names route to a singleton board page,
 `persephone.source.navigate(href)` to navigate the hosting page to an item in its initial source context,
 and `persephone.page.visible` / `persephone.page.onVisibilityChange(callback)` for page-level visibility
@@ -128,7 +159,9 @@ Declare user-editable settings as an array in `board-manifest.json`. Settings re
 non-empty `name` and `author` manifest fields, and each declaration has a unique `id`, a `type`,
 and a scalar `default`. Supported types are `string`, `number`, `boolean`, and `enum`; enum
 declarations also require non-empty string `options`. A string may use `format: "folderPath"` to
-get a folder picker in Persephone's Settings page.
+get a folder picker or `format: "multiline"` to get a multi-line Textarea in Persephone's Settings
+page. Multiline values save when the field loses focus; boards relying on this behavior must set
+`minBridgeVersion: "1.42.0"` in their manifest.
 
 ```json
 {
@@ -695,6 +728,23 @@ makes the host exit nonzero. The main process allows 2 seconds for shutdown. Do 
 `process.parentPort` message listeners together with this API: raw mode takes ownership of
 lifecycle and request replies, and `onRequest` is ignored. Unmigrated raw services remain supported
 during the transition.
+
+For page-to-service streaming, a board opens a channel with `await
+persephone.service.openChannel(openMessage)`. The service's single `onChannel` handler receives
+`(channel, openMessage, info)`; same-board `info` contains `page: { boardId }`. US-1704 extends that
+object with `interface: { id, version }` and `caller: { id, name }` for cross-board opens. A channel
+supports `send`, `onMessage`, `onClose`, `close`, `writable`, and `whenWritable()` on both sides.
+The channel preserves FIFO order and caps each direction at 256 unacknowledged messages; only
+service-to-page payloads also have a 1 MiB serialized-size cap. At most 16 channels can belong to
+one frame and 128 to one service. Wait for capacity before sending:
+
+```js
+if (!channel.writable) await channel.whenWritable();
+channel.send({ type: "update", value });
+```
+
+`send()` can throw `channel-backpressure`; an oversized service-to-page payload throws
+`channel-message-too-large`. Close reasons identify reload, service exit, trust loss, and app quit.
 
 ### Browser-download URL claims
 

@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { serialize } from "node:v8";
 
 const parentPort = process.parentPort;
 const [serviceEntry] = process.argv.slice(-1);
@@ -8,7 +9,11 @@ if (!parentPort || !serviceEntry) {
     process.exit(1);
 }
 
+// Tail-ack delay (mirrors SERVICE_CHANNEL_ACK_DELAY_MS): each port message is its own task, so a microtask would ack every message.
+const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
 const storagePending = new Map();
+const mcpEndpointPending = new Map();
+const activeMcpEndpoints = new Set();
 let requestNumber = 0;
 let hostConfig;
 let resolveConfig;
@@ -96,10 +101,57 @@ async function storageRequest(operation, args) {
     });
 }
 
+async function mcpEndpointRequest(operation, token) {
+    await configReady;
+    if (mcpEndpointPending.size >= hostConfig.maxOutstandingRequestsPerService) {
+        throw Object.assign(new Error("Service is busy."), { code: "service-busy" });
+    }
+    const requestId = `mcp-${process.pid}-${Date.now()}-${++requestNumber}`;
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            mcpEndpointPending.delete(requestId);
+            reject(Object.assign(new Error("Service request timed out."), { code: "service-timeout" }));
+        }, hostConfig.serviceRequestDeadlineMs);
+        mcpEndpointPending.set(requestId, { resolve, reject, timer });
+        try { parentPort.postMessage({ kind: "mcp-endpoint-request", requestId, operation, ...(token ? { token } : {}) }); }
+        catch {
+            clearTimeout(timer);
+            mcpEndpointPending.delete(requestId);
+            reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
+        }
+    });
+}
+
+async function issueSessionEndpoint() {
+    if (protocolMode === "raw") throw new Error("MCP session endpoints require the host service API.");
+    const grant = await mcpEndpointRequest("issue");
+    let token = grant.token;
+    const headers = { ...grant.headers };
+    let revoked = false;
+    const handle = {
+        url: grant.url,
+        headers,
+        get token() { return token; },
+        set token(value) { token = value; if (!value) headers.Authorization = ""; },
+        async revoke() {
+            if (revoked) return;
+            revoked = true;
+            const currentToken = token;
+            handle.token = "";
+            activeMcpEndpoints.delete(handle);
+            if (currentToken) await mcpEndpointRequest("revoke", currentToken);
+        },
+    };
+    activeMcpEndpoints.add(handle);
+    return handle;
+}
+
 const providers = new Map();
 const rendererLeases = new Map();
 let serviceEntryLoaded = false;
 let serviceRequestHandler;
+let serviceChannelHandler;
+const serviceChannels = new Map();
 const shutdownHandlers = [];
 let initNonce;
 let readySent = false;
@@ -596,7 +648,12 @@ async function runServiceRequest(message) {
 async function runShutdown(message) {
     if (shutdownStarted) return;
     shutdownStarted = true;
+    for (const channel of [...serviceChannels.values()]) channel.close({ code: "service-exited", message: "The board service is shutting down." });
     let failed = false;
+    for (const endpoint of [...activeMcpEndpoints]) {
+        try { await endpoint.revoke(); }
+        catch (error) { failed = true; console.error("MCP endpoint revocation failed:", errorMessage(error, "service-error")); }
+    }
     for (const handler of shutdownHandlers) {
         try {
             await handler({ reason: message.reason });
@@ -608,6 +665,88 @@ async function runShutdown(message) {
     process.exit(failed ? 1 : 0);
 }
 
+function makeServiceChannel(channelId, port) {
+    const messageHandlers = new Set();
+    const closeHandlers = new Set();
+    const writableWaiters = new Set();
+    let closed = false;
+    let closeReason;
+    let outgoingSequence = 0;
+    let acknowledgedSequence = 0;
+    let incomingSequence = 0;
+    let lastAck = 0;
+    let ackQueued = false;
+    const notifyClose = (reason) => {
+        if (closed) return;
+        closed = true;
+        closeReason = reason;
+        serviceChannels.delete(channelId);
+        try { port.close(); } catch { /* closed */ }
+        for (const waiter of writableWaiters) waiter.reject(Object.assign(new Error(reason.message), { code: reason.code }));
+        writableWaiters.clear();
+        for (const handler of closeHandlers) { try { handler(reason); } catch (error) { console.error(error); } }
+        closeHandlers.clear();
+        messageHandlers.clear();
+        try { parentPort.postMessage({ kind: "channel-ended", channelId }); } catch { /* exiting */ }
+    };
+    const channel = {
+        send(value) {
+            if (closed) throw Object.assign(new Error(closeReason?.message ?? "Channel is closed."), { code: closeReason?.code ?? "service-exited" });
+            if (outgoingSequence - acknowledgedSequence >= hostConfig.maxServiceChannelInFlight) throw Object.assign(new Error("Channel send window is full."), { code: "channel-backpressure" });
+            let bytes;
+            try { bytes = serialize(value).byteLength; }
+            catch { throw Object.assign(new Error("Channel message is not structured-cloneable."), { code: "service-error" }); }
+            if (bytes > hostConfig.maxServiceChannelMessageBytes) throw Object.assign(new Error("Service channel message exceeds 1 MiB."), { code: "channel-message-too-large" });
+            const sequence = ++outgoingSequence;
+            try { port.postMessage({ kind: "data", sequence, value }); }
+            catch (error) { throw Object.assign(new Error(errorMessage(error, "Channel send failed.")), { code: "service-error" }); }
+        },
+        onMessage(handler) { messageHandlers.add(handler); return () => messageHandlers.delete(handler); },
+        onClose(handler) { if (closed) handler(closeReason); else closeHandlers.add(handler); return () => closeHandlers.delete(handler); },
+        close(reason = { code: "channel-closed", message: "The service closed the channel." }) {
+            if (closed) return;
+            try { port.postMessage({ kind: "close", reason }); } catch { /* peer may be gone */ }
+            notifyClose(reason);
+        },
+        get writable() { return !closed && outgoingSequence - acknowledgedSequence < hostConfig.maxServiceChannelInFlight; },
+        whenWritable() {
+            if (closed) return Promise.reject(Object.assign(new Error(closeReason.message), { code: closeReason.code }));
+            if (outgoingSequence - acknowledgedSequence < hostConfig.maxServiceChannelInFlight) return Promise.resolve();
+            return new Promise((resolve, reject) => writableWaiters.add({ resolve, reject }));
+        },
+    };
+    port.on("message", (event) => {
+        const message = eventData(event);
+        if (!isRecord(message)) return;
+        if (message.kind === "ack" && Number.isSafeInteger(message.sequence) && message.sequence > acknowledgedSequence) {
+            acknowledgedSequence = Math.min(message.sequence, outgoingSequence);
+            for (const waiter of writableWaiters) waiter.resolve();
+            writableWaiters.clear();
+        } else if (message.kind === "data" && Number.isSafeInteger(message.sequence)) {
+            if (message.sequence !== incomingSequence + 1) return;
+            incomingSequence = message.sequence;
+            for (const handler of messageHandlers) { try { handler(message.value); } catch (error) { console.error(error); } }
+            if (incomingSequence - lastAck >= hostConfig.serviceChannelAckBatch) { lastAck = incomingSequence; port.postMessage({ kind: "ack", sequence: lastAck }); }
+            else if (!ackQueued) { ackQueued = true; setTimeout(() => { ackQueued = false; if (!closed && incomingSequence > lastAck) { lastAck = incomingSequence; port.postMessage({ kind: "ack", sequence: lastAck }); } }, SERVICE_CHANNEL_ACK_DELAY_MS); }
+        } else if (message.kind === "close") notifyClose(message.reason ?? { code: "service-exited", message: "The channel peer closed." });
+    });
+    port.on("close", () => notifyClose({ code: "service-exited", message: "The channel peer disconnected." }));
+    port.start();
+    serviceChannels.set(channelId, channel);
+    return channel;
+}
+
+function openServiceChannel(message, port) {
+    if (!port || typeof message.channelId !== "string") return;
+    const channel = makeServiceChannel(message.channelId, port);
+    if (typeof serviceChannelHandler !== "function") {
+        channel.close({ code: "service-handler-not-registered", message: "The service entry did not register onChannel()." });
+        return;
+    }
+    Promise.resolve().then(() => serviceChannelHandler(channel, message.openMessage, message.info))
+        .catch((error) => channel.close(serviceError(error)));
+}
+
 function handleHostLifecycle(message) {
     if (message.kind === "init" && message.nonce === initNonce && serviceEntryLoaded && !readySent) {
         readySent = true;
@@ -616,6 +755,10 @@ function handleHostLifecycle(message) {
         parentPort.postMessage({ kind: "probe-ack", nonce: initNonce });
     } else if (message.kind === "request") {
         void runServiceRequest(message);
+    } else if (message.kind === "channel-open") {
+        openServiceChannel(message, message.eventPort);
+    } else if (message.kind === "channel-close") {
+        serviceChannels.get(message.channelId)?.close(message.reason);
     } else if (message.kind === "shutdown" && message.nonce === initNonce) {
         void runShutdown(message);
     }
@@ -627,6 +770,9 @@ function validateHostConfig(config) {
         || !Number.isInteger(config.maxOutstandingRequestsPerService) || config.maxOutstandingRequestsPerService <= 0
         || !Number.isInteger(config.maxBufferedPipeBytes) || config.maxBufferedPipeBytes <= 0
         || !Number.isInteger(config.maxBoardPipeChunkBytes) || config.maxBoardPipeChunkBytes <= 0
+        || !Number.isInteger(config.maxServiceChannelInFlight) || config.maxServiceChannelInFlight <= 0
+        || !Number.isInteger(config.maxServiceChannelMessageBytes) || config.maxServiceChannelMessageBytes <= 0
+        || !Number.isInteger(config.serviceChannelAckBatch) || config.serviceChannelAckBatch <= 0
         || !isRecord(config.providerRequestClasses)) return false;
     const entries = Object.entries(config.providerRequestClasses);
     return entries.length > 0 && entries.every(([, requestClass]) =>
@@ -745,6 +891,20 @@ originalPortMethods.on("message", (event) => {
         forwardEntryEvent(event, message);
         return;
     }
+    if (message.kind === "mcp-endpoint-response" && typeof message.requestId === "string") {
+        const request = mcpEndpointPending.get(message.requestId);
+        if (request) {
+            clearTimeout(request.timer);
+            mcpEndpointPending.delete(message.requestId);
+            if (message.error) request.reject(Object.assign(
+                new Error(errorMessage(message.error, "MCP endpoint request failed.")),
+                { code: message.error.code ?? "service-error" },
+            ));
+            else request.resolve(message.result);
+        }
+        forwardEntryEvent(event, message);
+        return;
+    }
     if (message.kind === "attach-renderer") {
         attachRenderer(message, event?.ports?.[0]);
         forwardEntryEvent(event, message);
@@ -753,6 +913,14 @@ originalPortMethods.on("message", (event) => {
     if (message.kind === "drop-renderer") {
         dropRenderer(message);
         forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "channel-open") {
+        openServiceChannel(message, event?.ports?.[0]);
+        return;
+    }
+    if (message.kind === "channel-close") {
+        serviceChannels.get(message.channelId)?.close(message.reason);
         return;
     }
     if (message.kind === "init") {
@@ -774,16 +942,26 @@ persephone.service = {
         if (serviceRequestHandler) throw new Error("A service request handler is already registered.");
         serviceRequestHandler = handler;
     },
+    onChannel(handler) {
+        if (typeof handler !== "function") throw new TypeError("onChannel(handler) requires a function.");
+        if (serviceChannelHandler) throw new Error("A service channel handler is already registered.");
+        serviceChannelHandler = handler;
+    },
     onShutdown(handler) {
         if (typeof handler !== "function") throw new TypeError("onShutdown(fn) requires a function.");
         shutdownHandlers.push(handler);
     },
 };
+persephone.mcp = { issueSessionEndpoint };
 
 process.on("exit", () => {
     for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
     for (const request of storagePending.values()) clearTimeout(request.timer);
     storagePending.clear();
+    for (const request of mcpEndpointPending.values()) clearTimeout(request.timer);
+    mcpEndpointPending.clear();
+    for (const endpoint of activeMcpEndpoints) endpoint.token = "";
+    activeMcpEndpoints.clear();
 });
 
 try {

@@ -12,7 +12,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.13 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Board bridge 1.42.0:** Boards can declare multi-line settings. String settings with
+  `format: "multiline"` use a multi-line editor in Persephone's Settings page and save when focus leaves the field. Boards that
+  rely on this behavior require bridge `1.42.0` through `minBridgeVersion`.
+- **Private MCP sessions for board agents:** Authorized board services can issue a loopback MCP
+  endpoint for one agent session, then revoke it when that session ends. Issuance requires the
+  board's `appScripting` permission and uses the existing bridge `1.42.0` release.
+- **Board service channels:** Board frames can open ordered, two-way streaming channels to their
+  own module service, with bounded backpressure and lifecycle cleanup under the same bridge release.
+- **Cross-board service interfaces:** Trusted boards can declare exact-version service interfaces
+  and connect through the existing bounded channel. Consumer `uses` grants are disclosed as Full
+  access; provider trust and service permission are checked independently.
 
 ---
 

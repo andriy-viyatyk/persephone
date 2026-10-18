@@ -565,6 +565,13 @@ class ApiCalls implements Api {
         });
     };
 
+    onBoardServiceChannel = (cb: (boardId: string, channelId: string, port: MessagePort) => void): (() => void) => {
+        return window.electron.ipcRenderer.onPort(EventEndpoint.eBoardServiceChannel, (payload, ports) => {
+            const value = payload as { boardId?: string; channelId?: string } | undefined;
+            if (value?.boardId && value.channelId && ports[0]) cb(value.boardId, value.channelId, ports[0]);
+        });
+    };
+
     // Register a board's board:// frame for CDP automation (EPIC-037 / US-773). Main
     // attaches the debugger to the calling window's webContents and routes commands to
     // the board frame. Call on each iframe load (a reload recreates the frame).
@@ -608,8 +615,8 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
     };
 
-    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions) => {
-        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions);
+    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions, expectedUses?: import("../../shared/board-manifest-utils").BoardServiceUseDeclaration[]) => {
+        return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions, expectedUses);
     };
 
     getBoardTrustPaths = async () => {
@@ -619,6 +626,9 @@ class ApiCalls implements Api {
     getBoardPermissionGrants = async () => {
         return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
     };
+
+    getBoardServiceProviders = async (interfaceId: string) =>
+        executeOnce<import("../board-bridge-channels").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
 
     getBoardFileAccessGrants = async (boardRoot: string) =>
         executeOnce<{ folderGrants: string[]; fileGrants: string[] }>(Endpoint.getBoardFileAccessGrants, boardRoot);

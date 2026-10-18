@@ -6,6 +6,8 @@ import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
+import { TextareaView } from "../../../uikit/Textarea/TextareaView";
+import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
@@ -14,6 +16,7 @@ import { t } from "../../../../shared/i18n/t";
 import { LibraryPathSectionView } from "./SettingsSections";
 import { createSectionRoot, panel, settingsFieldLabel, text } from "./settings-native";
 import { boardDisplayText, boardMetadataKeys } from "../../board/board-display-text";
+import "../../../uikit/Textarea/Textarea.css";
 
 export interface BoardSettingsSectionProps {
     boardRoot: string;
@@ -24,9 +27,11 @@ export interface BoardSettingsSectionProps {
 interface BoardSettingControl {
     declaration: BoardSettingDeclaration;
     input?: InputView;
+    textarea?: TextareaView;
     checkbox?: CheckboxView;
     select?: SelectView<IListBoxItem>;
     draft?: string;
+    persistedValue?: string;
     readGeneration: number;
 }
 
@@ -78,6 +83,11 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
 
     protected onDispose(): void {
         this.lifecycleGeneration++;
+        for (const control of this.controls.values()) {
+            if (control.textarea && control.draft !== control.persistedValue) {
+                void this.writeValue(control, control.draft ?? "");
+            }
+        }
         this.controls.clear();
     }
 
@@ -86,6 +96,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             declaration,
             readGeneration: 0,
             draft: settingText(declaration.default),
+            persistedValue: settingText(declaration.default),
         };
         this.controls.set(declaration.id, control);
 
@@ -139,6 +150,11 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             control.select = select;
             row.append(select.root);
             select.mount();
+        } else if (declaration.type === "string" && declaration.format === "multiline") {
+            const textarea = this.child(new TextareaView(this.textareaProps(control)));
+            control.textarea = textarea;
+            row.append(textarea.root);
+            textarea.mount();
         } else {
             const input = this.child(new InputView(this.inputProps(control)));
             control.input = input;
@@ -172,6 +188,18 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         };
     }
 
+    private textareaProps(control: BoardSettingControl): TextareaProps {
+        return {
+            name: `board-setting-${control.declaration.id}`,
+            value: control.draft ?? settingText(control.declaration.default),
+            size: "sm",
+            onChange: (value: string) => { control.draft = value; },
+            onBlur: () => {
+                if (control.draft !== control.persistedValue) void this.writeValue(control, control.draft ?? "");
+            },
+        };
+    }
+
     private selectProps(control: BoardSettingControl): SelectViewProps<IListBoxItem> {
         const declaration = control.declaration;
         const items = (declaration.options ?? []).map((value) => ({ value, label: value }));
@@ -185,8 +213,15 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
     }
 
     private applyValue(control: BoardSettingControl, value: BoardSettingValue): void {
-        control.draft = settingText(value);
+        const nextValue = settingText(value);
+        if (control.textarea && document.activeElement === control.textarea.root && control.draft !== nextValue) {
+            control.persistedValue = nextValue;
+            return;
+        }
+        control.draft = nextValue;
+        control.persistedValue = nextValue;
         control.input?.update(this.inputProps(control));
+        control.textarea?.update(this.textareaProps(control));
         control.checkbox?.update({
             checked: value === true,
             onChange: (nextValue) => { void this.writeValue(control, nextValue); },
@@ -212,6 +247,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
     private async writeValue(control: BoardSettingControl, value: BoardSettingValue): Promise<void> {
         try {
             await setBoardSetting(this.props.boardRoot, control.declaration.id, value);
+            control.persistedValue = settingText(value);
             if (!this.isDisposed) this.applyValue(control, value);
         } catch (error: unknown) {
             if (this.isDisposed) return;

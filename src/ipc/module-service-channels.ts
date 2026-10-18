@@ -5,7 +5,7 @@
  * that the wire contract can be consumed by the service adapter and US-1468.
  */
 
-import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration, NormalizedBoardPermissions } from "../shared/board-manifest-utils";
 
 export const SERVICE_HANDSHAKE_TIMEOUT_MS = 5000;
 export const SERVICE_SHUTDOWN_TIMEOUT_MS = 2000;
@@ -13,6 +13,24 @@ export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
 export const MAX_OUTSTANDING_REQUESTS_PER_SERVICE = 32;
 export const SERVICE_REQUEST_DEADLINE_MS = 10_000;
+export const MAX_SERVICE_CHANNELS_PER_BOARD = 16;
+export const MAX_SERVICE_CHANNELS_PER_SERVICE = 128;
+export const MAX_SERVICE_CHANNEL_IN_FLIGHT = 256;
+export const MAX_SERVICE_CHANNEL_MESSAGE_BYTES = 1024 * 1024;
+export const SERVICE_CHANNEL_ACK_BATCH = 32;
+/** Tail-ack delay: each port message is its own task, so a microtask would ack every message. */
+export const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
+/** How long an opened channel waits for its port to reach the board frame. */
+export const SERVICE_CHANNEL_OPEN_TIMEOUT_MS = 10_000;
+
+export interface ServiceChannelCloseReason { code: string; message: string }
+export type ServiceChannelWireMessage =
+    | { kind: "channel-open"; channelId: string; boardId: string; generation: number; openMessage: unknown; info: { page: { boardId: string }; interface?: { id: string; version: number }; caller?: { id: string; name: string } } }
+    | { kind: "channel-close"; channelId: string; reason: ServiceChannelCloseReason };
+export type ServiceChannelMainMessage =
+    | { kind: "channel-message"; channelId: string; sequence: number; message: unknown }
+    | { kind: "channel-ack"; channelId: string; sequence: number }
+    | { kind: "channel-closed"; channelId: string; reason: ServiceChannelCloseReason };
 
 export type BoardServiceState = "stopped" | "starting" | "running" | "stopping" | "failed";
 export type ServiceStopReason = "untrusted" | "explicit" | "quit";
@@ -52,6 +70,9 @@ export interface ServiceHostConfig {
     maxOutstandingRequestsPerService: number;
     maxBufferedPipeBytes: number;
     maxBoardPipeChunkBytes: number;
+    maxServiceChannelInFlight: number;
+    maxServiceChannelMessageBytes: number;
+    serviceChannelAckBatch: number;
     providerRequestClasses: Record<ProviderOperation, "content-read" | "control">;
 }
 
@@ -80,6 +101,11 @@ export interface TrustedBoardSnapshotEntry {
     /** Current normalized manifest declaration; never used for enforcement. */
     manifestPermissions: NormalizedBoardPermissions;
     manifestChanged?: boolean;
+    uses?: BoardServiceUseDeclaration[];
+    manifestUses?: BoardServiceUseDeclaration[];
+    serviceInterfaces?: BoardServiceInterfaceDeclaration[];
+    boardName?: string;
+    callerId?: string;
 }
 
 export interface BoardServiceTrustSnapshot {
@@ -99,8 +125,11 @@ export type ServiceParentMessage =
         leaseNonce: string;
     }
     | { kind: "drop-renderer"; generation: number; leaseNonce: string; reason: RendererLeaseLostReason }
+    | { kind: "channel-open"; channelId: string; boardId: string; generation: number; openMessage: unknown; info: { page: { boardId: string }; interface?: { id: string; version: number }; caller?: { id: string; name: string } } }
+    | { kind: "channel-close"; channelId: string; reason: ServiceChannelCloseReason }
     | { kind: "shutdown"; nonce: number; reason: ServiceStopReason }
-    | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown };
+    | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown }
+    | { kind: "mcp-endpoint-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload };
 
 export type ServiceMainMessage =
     | { kind: "ready"; nonce: number }
@@ -113,7 +142,9 @@ export type ServiceMainMessage =
         requestId: string;
         operation: ServiceStorageOperation;
         args: unknown[];
-    };
+    }
+    | { kind: "mcp-endpoint-request"; requestId: string; operation: "issue" | "revoke"; token?: string }
+    | { kind: "channel-ended"; channelId: string };
 
 export type ProviderOperation =
     | "readBinary"

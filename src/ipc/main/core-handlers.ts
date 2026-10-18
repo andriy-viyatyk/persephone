@@ -15,6 +15,7 @@ import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
 import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
+import { getPrivateMcpClientCount } from "../../main/mcp/private-session-endpoints";
 import { startMneme, stopMneme, restartMneme, getMnemeStatus as getMnemeServiceStatus } from "../../main/mneme-service";
 import type { ClipboardFileList } from "../clipboard-ipc";
 import {
@@ -272,6 +273,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
             running: isMcpHttpServerRunning(),
             url: getMcpUrl(),
             clientCount: getMcpClientCount(),
+            inAppAgentCount: getPrivateMcpClientCount(),
         };
     }
 

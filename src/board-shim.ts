@@ -28,6 +28,7 @@ import {
 } from "./ipc/runner-channels";
 import { createExecuteHandle } from "./shared/execute-handle";
 import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
+import { MAX_SERVICE_CHANNEL_IN_FLIGHT, SERVICE_CHANNEL_ACK_BATCH, SERVICE_CHANNEL_ACK_DELAY_MS, SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "./ipc/module-service-channels";
 import type { BoardSourceContext } from "./shared/board-source-context";
 import type {
     BoardFetchErrorMsg,
@@ -478,6 +479,9 @@ let port: MessagePort | null = null;
 const sendQueue: BoardToMain[] = [];
 /** Pending request/reply promises keyed by rpc id. */
 const pendingRpc = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+const channelPortWaiters = new Map<string, { resolve: (port: MessagePort) => void; reject: (error: Error) => void }>();
+const earlyChannelPorts = new Map<string, MessagePort>();
+const activeServiceChannels = new Set<BoardServiceChannel>();
 let rpcId = 0;
 const pendingCalls = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 let callId = 0;
@@ -1101,6 +1105,116 @@ function rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
         post({ kind: "rpc", id, method, args });
     });
 }
+
+interface BoardServiceChannel {
+    send(message: unknown): void;
+    onMessage(handler: (message: unknown) => void): () => void;
+    onClose(handler: (reason: { code: string; message: string }) => void): () => void;
+    close(reason?: { code: string; message: string }): void;
+    readonly writable: boolean;
+    whenWritable(): Promise<void>;
+}
+
+function wrapServiceChannel(port: MessagePort): BoardServiceChannel {
+    const messageHandlers = new Set<(message: unknown) => void>();
+    const closeHandlers = new Set<(reason: { code: string; message: string }) => void>();
+    const writableWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
+    let closed = false;
+    let closeReason = { code: "service-exited", message: "The service channel disconnected." };
+    let sent = 0;
+    let acked = 0;
+    let received = 0;
+    let ackedReceived = 0;
+    let ackQueued = false;
+    const finish = (reason: { code: string; message: string }) => {
+        if (closed) return;
+        closed = true; closeReason = reason;
+        try { port.close(); } catch { /* already closed */ }
+        for (const waiter of writableWaiters) waiter.reject(Object.assign(new Error(reason.message), { code: reason.code }));
+        writableWaiters.clear();
+        for (const handler of closeHandlers) { try { handler(reason); } catch (error) { console.error(error); } }
+        closeHandlers.clear(); messageHandlers.clear();
+    };
+    port.onmessage = (event) => {
+        const value = event.data;
+        if (!value || typeof value !== "object") return;
+        if (value.kind === "ack" && Number.isSafeInteger(value.sequence)) {
+            acked = Math.max(acked, Math.min(value.sequence, sent));
+            for (const waiter of writableWaiters) waiter.resolve();
+            writableWaiters.clear();
+        } else if (value.kind === "data" && value.sequence === received + 1) {
+            received = value.sequence;
+            for (const handler of messageHandlers) { try { handler(value.value); } catch (error) { console.error(error); } }
+            if (received - ackedReceived >= SERVICE_CHANNEL_ACK_BATCH) { ackedReceived = received; port.postMessage({ kind: "ack", sequence: ackedReceived }); }
+            else if (!ackQueued) { ackQueued = true; setTimeout(() => { ackQueued = false; if (!closed && received > ackedReceived) { ackedReceived = received; port.postMessage({ kind: "ack", sequence: ackedReceived }); } }, SERVICE_CHANNEL_ACK_DELAY_MS); }
+        } else if (value.kind === "close") finish(value.reason ?? closeReason);
+    };
+    port.onmessageerror = () => finish({ code: "service-exited", message: "The service channel received an invalid message." });
+    port.addEventListener("close", () => finish({ code: "service-exited", message: "The board service exited." }));
+    port.start();
+    return {
+        send(value) {
+            if (closed) throw Object.assign(new Error(closeReason.message), { code: closeReason.code });
+            if (sent - acked >= MAX_SERVICE_CHANNEL_IN_FLIGHT) throw Object.assign(new Error("Service channel send window is full."), { code: "channel-backpressure" });
+            const sequence = ++sent;
+            try { port.postMessage({ kind: "data", sequence, value }); }
+            catch (error) { sent--; throw Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" }); }
+        },
+        onMessage(handler) { messageHandlers.add(handler); return () => messageHandlers.delete(handler); },
+        onClose(handler) { if (closed) handler(closeReason); else closeHandlers.add(handler); return () => closeHandlers.delete(handler); },
+        close(reason = { code: "channel-closed", message: "The board page closed the channel." }) { if (closed) return; try { port.postMessage({ kind: "close", reason }); } catch { /* disconnected */ } finish(reason); },
+        get writable() { return !closed && sent - acked < MAX_SERVICE_CHANNEL_IN_FLIGHT; },
+        whenWritable() {
+            if (closed) return Promise.reject(Object.assign(new Error(closeReason.message), { code: closeReason.code }));
+            if (sent - acked < MAX_SERVICE_CHANNEL_IN_FLIGHT) return Promise.resolve();
+            return new Promise((resolve, reject) => writableWaiters.add({ resolve, reject }));
+        },
+    };
+}
+
+function waitForServiceChannel(channelId: string): Promise<BoardServiceChannel> {
+    return new Promise<BoardServiceChannel>((resolve, reject) => {
+        const finish = (channelPort: MessagePort) => {
+            const channel = wrapServiceChannel(channelPort);
+            activeServiceChannels.add(channel);
+            channel.onClose(() => activeServiceChannels.delete(channel));
+            resolve(channel);
+        };
+        const earlyPort = earlyChannelPorts.get(channelId);
+        if (earlyPort) { earlyChannelPorts.delete(channelId); finish(earlyPort); return; }
+        const timer = setTimeout(() => {
+            if (!channelPortWaiters.delete(channelId)) return;
+            reject(Object.assign(new Error("The service channel did not reach this board page."), { code: "service-timeout" }));
+        }, SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
+        channelPortWaiters.set(channelId, {
+            resolve: (channelPort) => { clearTimeout(timer); finish(channelPort); },
+            reject: (error) => { clearTimeout(timer); reject(error); },
+        });
+    });
+}
+
+function openServiceChannel(openMessage: unknown): Promise<BoardServiceChannel> {
+    try { structuredClone(openMessage); }
+    catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" })); }
+    return rpc("serviceOpenChannel", [openMessage]).then((value) => waitForServiceChannel(String(value)));
+}
+
+window.addEventListener("pagehide", () => {
+    for (const channel of activeServiceChannels) channel.close({ code: "renderer-reloaded", message: "The board page closed or navigated away." });
+    activeServiceChannels.clear();
+    for (const pending of channelPortWaiters.values()) pending.reject(new Error("The board page closed before the channel opened."));
+    channelPortWaiters.clear();
+    for (const channelPort of earlyChannelPorts.values()) channelPort.close();
+    earlyChannelPorts.clear();
+});
+
+onHostMessage((event) => {
+    const message = event.data as { __persephone?: string; channelId?: string } | undefined;
+    if (message?.__persephone !== "service:channelPort" || typeof message.channelId !== "string" || !event.ports[0]) return;
+    const waiter = channelPortWaiters.get(message.channelId);
+    if (waiter) { channelPortWaiters.delete(message.channelId); waiter.resolve(event.ports[0]); }
+    else earlyChannelPorts.set(message.channelId, event.ports[0]);
+});
 
 function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLength?: number; timeoutMs?: number }): Promise<unknown> {
     if (typeof path !== "string" || !path) return Promise.reject(new Error("persephone.call() needs a non-empty path."));
@@ -2095,6 +2209,10 @@ function createHandle(
         request(message: unknown): Promise<unknown> {
             return rpc("serviceRequest", [message]);
         },
+        /** Open a long-lived two-way channel to this board's lazily started service. */
+        openChannel(openMessage: unknown): Promise<BoardServiceChannel> {
+            return openServiceChannel(openMessage);
+        },
         /** Read this board's service lifecycle without starting it. Resolves to undefined when
          * there is no supervisor record for the board. */
         status(): Promise<BoardServiceStatus | undefined> {
@@ -2103,6 +2221,18 @@ function createHandle(
         /** Stop this board's service without starting it when it is not already running. */
         stop(): Promise<void> {
             return rpc("serviceStop", []) as Promise<void>;
+        },
+    },
+
+    /** Cross-board service interfaces declared by this consumer board's trusted `uses` grant. */
+    services: {
+        list(interfaceId: string): Promise<Array<{ provider: string; title: string; version: number; boardName: string }>> {
+            return rpc("servicesList", [interfaceId]) as Promise<Array<{ provider: string; title: string; version: number; boardName: string }>>;
+        },
+        connect(interfaceId: string, selector: { provider: string; version: number }, openMessage?: unknown): Promise<BoardServiceChannel> {
+            try { structuredClone(openMessage); }
+            catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" })); }
+            return rpc("servicesConnect", [interfaceId, selector, openMessage]).then((value) => waitForServiceChannel(String(value)));
         },
     },
 

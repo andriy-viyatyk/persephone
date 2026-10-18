@@ -4,7 +4,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import type { TextSize } from "../../uikit/Text/text-style";
 import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
-import { boardPermissionDiffLines, boardPermissionLines } from "./board-permission-copy";
+import { boardPermissionDiffLines, boardPermissionLines, boardServiceUsesLine } from "./board-permission-copy";
 import type { BoardPermissionLine } from "./board-permission-copy";
 import { t } from "../../../shared/i18n/t";
 
@@ -50,6 +50,28 @@ export function createBoardPermissionList(
         row.setAttribute("role", "listitem");
         list.append(row);
     }
+    return list;
+}
+
+/** A non-empty cross-board service-use grant is always Full access, independent of current providers. */
+export function createBoardServiceUsesPermissionList(uses: readonly { id: string; version: number }[], size?: TextSize): HTMLElement | undefined {
+    const line = boardServiceUsesLine(uses);
+    if (!line) return undefined;
+    const detailSize = size === "sm" ? "xs" : size;
+    const heading = createPanelElement({ direction: "row", gap: "lg", align: "center", wrap: true }, [
+        createTextElement(t(line.textKey, line.textParams as never), { size }),
+        createTextElement(t("board.fullAccess"), { size: detailSize, bold: true, color: "warning" }),
+    ]);
+    const content = createPanelElement({ direction: "column", gap: "xs", flex: 1 }, [
+        heading,
+        createTextElement(t(line.detailKey!), { size: detailSize, color: "light" }),
+    ]);
+    const row = createPanelElement({ direction: "row", gap: "sm", align: "start" }, [
+        rowIcon("warning", color.warning.text), content,
+    ]);
+    row.setAttribute("role", "listitem");
+    const list = createPanelElement({ direction: "column", gap: "xs", align: "stretch" }, [row]);
+    list.setAttribute("role", "list");
     return list;
 }
 

@@ -22,6 +22,7 @@ export class Handshake {
 export interface ProcessMessageCallbacks {
     isTrusted: (boardRoot: string) => boolean;
     onStorageRequest: (message: Extract<ServiceMainMessage, { kind: "storage-request" }>) => void;
+    onMcpEndpointRequest: (message: Extract<ServiceMainMessage, { kind: "mcp-endpoint-request" }>) => void;
     onResponse: (pending: PendingRequest, message: Extract<ServiceMainMessage, { kind: "response" }>) => void;
     onReady: (process: UtilityProcess) => void;
     fail: (error: ServiceError) => void;
@@ -37,8 +38,16 @@ export function routeProcessMessage(
 ): void {
     if (!isCurrent(record, process, generation)) return;
     const message = rawMessage as ServiceMainMessage;
+    if (message.kind === "channel-ended") {
+        record.channels.delete(message.channelId);
+        return;
+    }
     if (message.kind === "storage-request") {
         callbacks.onStorageRequest(message);
+        return;
+    }
+    if (message.kind === "mcp-endpoint-request") {
+        callbacks.onMcpEndpointRequest(message);
         return;
     }
     if (message.kind === "renderer-attached") {

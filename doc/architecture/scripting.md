@@ -399,6 +399,31 @@ APIs with raw `process.parentPort` message listeners: a raw listener selects the
 and gives the entry ownership of lifecycle and request replies. If entry import fails, the host
 logs the error and does not send `ready`.
 
+For page-to-service streaming, the board frame opens a channel and the service registers one
+`persephone.service.onChannel((channel, openMessage, info) => ...)` callback. Each endpoint has
+`send`, `onMessage`, `onClose`, idempotent `close`, `writable`, and `whenWritable()`. Messages
+remain FIFO; each direction allows 256 unacknowledged messages, and service-to-page messages are
+limited to 1 MiB after V8 serialization. Board frames cannot measure that serialized size, so
+page-to-service traffic uses only the count bound. Channel limits are 16 per board frame and 128
+per service. Same-board `info` contains `page: { boardId }`; US-1704 adds optional `interface` and
+`caller` properties for cross-board callers without changing the callback. Close reasons use
+`renderer-reloaded`, `service-exited`, `untrusted`, and `quit`; full windows throw
+`channel-backpressure`, oversized service messages throw `channel-message-too-large`.
+
+Cross-board services use normalized manifest fields `serviceInterfaces: [{ id, version, title? }]`
+and `uses: [{ id, version }]`. `agent.session` is the reserved platform id; other ids use exactly
+`author/name`. Versions are positive safe integers and require exact matches. The consumer's
+trusted `uses` set is the specific messaging grant; it does not require its own `service` or
+`execute` permission. Each provider must separately be trusted and have its `service` permission.
+Every non-empty uses grant is disclosed as Full access because it covers future providers as well
+as providers listed now; it does not convey provider permissions. `persephone.services.list(id)`
+returns current trusted providers with opaque keys, and `connect(id, { provider, version },
+openMessage?)` opens the same channel type. Main rechecks both declarations and grants during
+connect. The existing `onChannel` callback receives `info.interface = { id, version }` and
+`info.caller = { id, name }`; local caller ids are hashed. Provider refusal uses close code
+`connection-refused`. Interface registration is many-to-many and does not use the one-owner content
+provider registry.
+
 ### `io` — Content Delivery API
 
 Provides access to content pipe providers, transformers, pipe assembly, and link events.

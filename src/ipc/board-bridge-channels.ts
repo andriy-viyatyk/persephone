@@ -215,6 +215,9 @@ export type BoardRpcMethod =
     | "unwatch"
     | "getJobs"
     | "serviceRequest"
+    | "serviceOpenChannel"
+    | "servicesList"
+    | "servicesConnect"
     | "serviceStatus"
     | "serviceStop"
     | "storageGet"
@@ -225,6 +228,8 @@ export type BoardRpcMethod =
     | "clipboardWriteText";
 
 export interface BoardFolderListOptions { recursive?: boolean; masks?: string[]; limit?: number; cursor?: string }
+export interface BoardServiceProvider { provider: string; title: string; version: number; boardName: string }
+export interface BoardServiceProviderSelector { provider: string; version: number }
 export interface BoardFolderEntry { name: string; path: string; isDirectory: boolean; size: number; mtime: number }
 export interface BoardFolderPage { entries: BoardFolderEntry[]; nextCursor?: string; truncated: boolean }
 export interface BoardFileAccess { read: boolean; write: boolean }
@@ -541,6 +546,8 @@ export interface BoardOpenContentRequestMsg {
     openContent: BoardOpenContentRequest;
 }
 
+export interface BoardServiceChannelPortMsg { __persephone: "service:channelPort"; channelId: string }
+
 export interface BoardPageStateGetRequestMsg { __persephone: "board:pageState:get"; reqId: number; key: string }
 export interface BoardPageStateSetRequestMsg { __persephone: "board:pageState:set"; reqId: number; key: string; value: string }
 export interface BoardPageStateRemoveRequestMsg { __persephone: "board:pageState:remove"; reqId: number; key: string }
@@ -829,7 +836,8 @@ export type BoardHostFrameMsg =
     | BoardToolbarControlEventMsg
     | BoardStatusBarActionMsg
     | BoardMuteToggleMsg
-    | BoardPageVisibilityMsg;
+    | BoardPageVisibilityMsg
+    | BoardServiceChannelPortMsg;
 
 // Re-export the dialog param shapes so the shim + bridge import one place.
 export type {

@@ -5,9 +5,25 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.41.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.41.0` adds `persephone.trashFile(path)`
-to move an authorized file to the OS Recycle Bin. Bridge `1.40.0` adds optional
+The board bridge is version **1.42.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
+boards that rely on them must set `minBridgeVersion: "1.42.0"`. It also adds
+`persephone.mcp.issueSessionEndpoint()` to host-API services. The returned handle contains `url`,
+`headers`, `token`, and an idempotent `revoke()` method. Revoke it at the end of each agent session;
+the host revokes active handles during shutdown. Issuance requires the granted `appScripting`
+permission because MCP provides full app control. Service boards using this API must declare
+`minBridgeVersion: "1.42.0"`. Cross-board service interfaces use provider
+`serviceInterfaces: [{ id: "agent.session", version: 1 }]` and consumer
+`uses: [{ id: "agent.session", version: 1 }]` manifest declarations. Every non-empty consumer
+grant is Full access and applies to currently or later trusted providers; it grants messaging only,
+not the provider's permissions. Each provider needs its own trust and `service` permission, and
+must treat messages as untrusted. Use `persephone.services.list(id)` to choose among providers and
+`persephone.services.connect(id, { provider, version }, openMessage?)` to open a channel. Version
+matching is exact. The existing service `onChannel` callback receives `info.interface` and
+descriptive `info.caller`; refuse using close code `connection-refused`. Main rechecks current
+trust and declarations at connect time. Boards using this API must declare
+`minBridgeVersion: "1.42.0"`. Bridge `1.41.0` adds
+`persephone.trashFile(path)` to move an authorized file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest routing, `persephone.source.navigate(href)` for navigating within the
 initial source context, and `persephone.page.visible` / `onVisibilityChange()` for page-level
 visibility. Bridge `1.39.0` adds permission-scoped `persephone.watch()` file and folder change

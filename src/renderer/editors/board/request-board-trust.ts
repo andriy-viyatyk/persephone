@@ -38,7 +38,8 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
         const requiresPrompt = legacyTransition
             || snapshot.permissions.kind !== proposed.kind
             || (snapshot.permissions.kind === "legacy" && proposed.kind === "legacy" && proposed.service)
-            || changes.some(({ kind }) => kind !== "removed");
+            || changes.some(({ kind }) => kind !== "removed")
+            || snapshot.useChanges.some(({ kind }) => kind === "added");
         if (!requiresPrompt) return true;
         const manifest = await readNormalizedBoardManifest(boardRoot);
         const englishName = manifest?.name?.trim() || fpBasename(boardRoot);
@@ -50,7 +51,9 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
                 permissions: proposed,
                 serviceDeclared: false,
                 capabilities: [],
-                change: { granted: snapshot.permissions, proposed, changes, legacyTransition },
+                serviceInterfaces: [],
+                uses: snapshot.manifestUses,
+                change: { granted: snapshot.permissions, proposed, changes, legacyTransition, grantedUses: snapshot.uses, proposedUses: snapshot.manifestUses, useChanges: snapshot.useChanges },
             });
             // Closed without a decision: the board does not run, and comes off its pages. The
             // dialog appears again on the next open.
@@ -64,7 +67,7 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
                 continue;
             }
             try {
-                await boardTrust.trust(boardRoot, proposed);
+                await boardTrust.trust(boardRoot, proposed, [...snapshot.manifestUses]);
                 return true;
             } catch (error) {
                 if (!errMessage(error).includes("Board permissions changed while the trust dialog was open")) throw error;
@@ -78,7 +81,7 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
     if (manifest) await ensureBoardDisplayText(boardRoot, manifest).catch((): void => undefined);
     const disclosure = manifest
         ? boardTrustDisclosure(manifest)
-        : { permissions: { kind: "legacy" as const, service: false }, serviceDeclared: false, capabilities: [] as string[] };
+        : { permissions: { kind: "legacy" as const, service: false }, serviceDeclared: false, capabilities: [] as string[], serviceInterfaces: [], uses: [] };
     const englishName = manifest?.name?.trim() || fpBasename(boardRoot);
     const boardName = boardDisplayText(boardRoot, manifest, boardMetadataKeys.name, englishName);
     const accepted = await showTrustBoardDialog(boardRoot, { ...disclosure, boardName });
@@ -86,7 +89,7 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
     if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
 
     try {
-        await boardTrust.trust(boardRoot, disclosure.permissions);
+        await boardTrust.trust(boardRoot, disclosure.permissions, [...disclosure.uses]);
         return true;
     } catch (error) {
         if (!errMessage(error).includes("Board permissions changed while the trust dialog was open")) throw error;

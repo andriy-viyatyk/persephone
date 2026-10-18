@@ -5,6 +5,7 @@ import { EventEndpoint } from "../ipc/api-types";
 import { cancelPendingRequests, initMcpIpc } from "./mcp/renderer-bridge";
 import { loadSdk, McpTransportInstance, requireSdk, McpServerInstance } from "./mcp/sdk";
 import { createMcpServer } from "./mcp/server-factory";
+import { getPrivateMcpClientCount, setPrivateMcpStatusChanged } from "./mcp/private-session-endpoints";
 
 // The Streamable HTTP transport for Persephone's MCP server: sessions, HTTP plumbing
 // and lifecycle. What the server OFFERS — instructions, tools, guides — is defined as
@@ -67,8 +68,11 @@ function broadcastMcpStatus(): void {
         running: isMcpHttpServerRunning(),
         url: getMcpUrl(),
         clientCount: getMcpClientCount(),
+        inAppAgentCount: getPrivateMcpClientCount(),
     });
 }
+
+setPrivateMcpStatusChanged(broadcastMcpStatus);
 
 // ── HTTP Body Parser ───────────────────────────────────────────────
 

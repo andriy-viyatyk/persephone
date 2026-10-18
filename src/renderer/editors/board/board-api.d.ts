@@ -305,6 +305,9 @@ interface PersephoneServiceApi {
      * and `service-exited` when the running service exits.
      */
     request(message: unknown): Promise<unknown>;
+    /** Open a structured-clone channel to this board's service. Messages are FIFO and each
+     * direction allows 256 unacknowledged messages. Service-to-page messages are limited to 1 MiB. */
+    openChannel(openMessage: unknown): Promise<PersephoneServiceChannel>;
     /** Read the existing service lifecycle without starting it. Resolves to `undefined` when
      * this board has no supervisor service record; otherwise returns its current state and
      * optional failure reason/process details. */
@@ -312,6 +315,62 @@ interface PersephoneServiceApi {
     /** Stop this board's module service explicitly. This does not start the service. */
     stop(): Promise<void>;
 }
+
+interface PersephoneServiceProvider {
+    /** Opaque selection key. It is descriptive and is revalidated by main when connecting. */
+    provider: string;
+    title: string;
+    version: number;
+    boardName: string;
+}
+
+interface PersephoneServiceProviderSelector { provider: string; version: number }
+
+/** Cross-board service interface access. The board must declare and be trusted for each exact id/version. */
+interface PersephoneServicesApi {
+    /** List current trusted providers for an interface covered by this board's `uses` grant. */
+    list(interfaceId: string): Promise<PersephoneServiceProvider[]>;
+    /** Connect to a selected provider using the same bounded channel contract as service.openChannel(). */
+    connect(interfaceId: string, selector: PersephoneServiceProviderSelector, openMessage?: unknown): Promise<PersephoneServiceChannel>;
+}
+
+interface PersephoneServiceInterfaceDeclaration { id: string; version: number; title?: string }
+interface PersephoneServiceUseDeclaration { id: string; version: number }
+
+/** Board manifest declarations that participate in cross-board service discovery and trust. */
+interface PersephoneBoardServiceManifest {
+    serviceInterfaces?: PersephoneServiceInterfaceDeclaration[];
+    uses?: PersephoneServiceUseDeclaration[];
+}
+
+interface PersephoneServiceChannel {
+    send(message: unknown): void;
+    onMessage(handler: (message: unknown) => void): () => void;
+    onClose(handler: (reason: { code: string; message: string }) => void): () => void;
+    close(reason?: { code: string; message: string }): void;
+    readonly writable: boolean;
+    whenWritable(): Promise<void>;
+}
+
+/** Service callback identity shape. Same-board channels contain `page` and omit the two
+ * cross-board extension points until that API is available. */
+interface PersephoneServiceChannelInfo {
+    page: { boardId: string };
+    interface?: { id: string; version: number };
+    caller?: { id: string; name: string };
+}
+
+type PersephoneServiceChannelErrorCode =
+    | "channel-backpressure"
+    | "channel-closed"
+    | "channel-message-too-large"
+    | "service-busy"
+    | "service-exited"
+    | "renderer-reloaded"
+    | "untrusted"
+    | "connection-refused"
+    | "quit"
+    | "service-error";
 
 /** The frame-side failure returned by the service-only provider registration guard. */
 interface PersephoneProviderRegistrationServiceOnlyError extends Error {
@@ -478,8 +537,10 @@ interface PersephoneSourceApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.41.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.41.0"; 1.41.0 adds `trashFile()`; 1.40.0 adds singleton
+    /** The current host bridge is 1.42.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.42.0"; 1.42.0 adds multiline board settings and private MCP session
+     *  endpoints for authorized host-API services (requires `appScripting`);
+     *  1.41.0 adds `trashFile()`; 1.40.0 adds singleton
      *  file-mask routing and `source.navigate()` for items in the initial source context.
      * Compare it before using a newer member; do not narrow it to a
      * literal, it moves with the app. */
@@ -597,6 +658,8 @@ interface PersephoneBoardApi {
     readonly pageState: PersephonePageStateApi;
     /** Lazily-started request/reply access to this board's trusted module service. */
     readonly service: PersephoneServiceApi;
+    /** Cross-board service interfaces declared under this board's `uses` manifest field. */
+    readonly services: PersephoneServicesApi;
     /** Service-only provider registration guard. */
     readonly providers: PersephoneProviderApi;
     readonly intent: PersephoneIntentApi;

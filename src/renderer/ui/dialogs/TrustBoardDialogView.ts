@@ -10,7 +10,7 @@ import type { TrustBoardDialogProps, TrustBoardDialogResult } from "./TrustBoard
 import {
     legacyBoardDeprecationWarningForUi,
 } from "../../editors/board/board-permission-copy";
-import { createBoardPermissionChangeList, createBoardPermissionList } from "../../editors/board/board-permission-list";
+import { createBoardPermissionChangeList, createBoardPermissionList, createBoardServiceUsesPermissionList } from "../../editors/board/board-permission-list";
 import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
@@ -39,6 +39,8 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createBoardPermissionChangeList(change.granted, change.proposed),
+                ...(createBoardServiceUsesPermissionList(change.proposedUses.length ? change.proposedUses : change.grantedUses) ? [createBoardServiceUsesPermissionList(change.proposedUses.length ? change.proposedUses : change.grantedUses)!] : []),
+                ...(change.useChanges.length ? [createTextElement(t("board.serviceUseChanges", { changes: change.useChanges.map(({ kind, use }) => `${kind}: ${use.id}@${use.version}`).join(", ") }))] : []),
             ]
             : [
                 createTextElement(t("board.permissionIntroduction")),
@@ -56,6 +58,10 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     ...(state.capabilities.length > 0
                         ? [createTextElement(t("dialogs.trustCapabilities", { capabilities: state.capabilities.map((id) => id || "<empty id>").join(", ") }), { color: "light" })]
                         : []),
+                    ...(state.serviceInterfaces.length > 0
+                        ? [createTextElement(t("dialogs.trustServiceInterfaces", { interfaces: state.serviceInterfaces.map(({ id, version, title }) => `${id}@${version}${title ? ` (${title})` : ""}`).join(", ") }), { color: "light" })]
+                        : []),
+                    ...(createBoardServiceUsesPermissionList(state.uses) ? [createBoardServiceUsesPermissionList(state.uses)!] : []),
                 ]),
             ];
         const bodyPanel = createPanelElement({ direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" }, body);

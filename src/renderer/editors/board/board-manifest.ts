@@ -13,8 +13,12 @@ import {
     normalizeBoardServicePath,
     normalizeBrowserUrlMasks,
     normalizePermissions,
+    normalizeServiceInterfaces,
+    normalizeServiceUses,
     normalizeStringList,
     type BoardPermissionFlags,
+    type BoardServiceInterfaceDeclaration,
+    type BoardServiceUseDeclaration,
     type NormalizedBoardPermissions,
 } from "../../../shared/board-manifest-utils";
 import type {
@@ -75,6 +79,8 @@ export interface BoardCapabilityDeclaration {
     alwaysOpensNewPage?: boolean;
 }
 
+export type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration };
+
 export type { BoardLanguages } from "../../../shared/i18n/board-pack";
 
 export interface BoardManifest {
@@ -122,6 +128,8 @@ export interface BoardManifest {
     permissions?: BoardPermissionFlags | string[];
     /** Board-relative Node service entry path, honored only by the service supervisor. */
     service?: string;
+    serviceInterfaces?: BoardServiceInterfaceDeclaration[];
+    uses?: BoardServiceUseDeclaration[];
     /** Provider types and URL schemes contributed by a trusted board. */
     contentProviders?: BoardContentProviderDeclaration[];
     /** Capability handlers contributed by a trusted board. */
@@ -291,6 +299,8 @@ export interface NormalizedBoardManifest {
     languages?: BoardLanguages;
     permissions: NormalizedBoardPermissions;
     service?: string;
+    serviceInterfaces?: BoardServiceInterfaceDeclaration[];
+    uses?: BoardServiceUseDeclaration[];
     contentProviders?: BoardContentProviderDeclaration[];
     capabilities?: BoardCapabilityDeclaration[];
     settings?: BoardSettingDeclaration[];
@@ -307,7 +317,7 @@ export interface NormalizedBoardManifest {
     secondaryViews?: SecondaryViewDecl[];
     guides?: string;
     association: BoardEditorAssociation | null;
-    issues: { kind: "capability" | "settings"; name: string; reason: string }[];
+    issues: { kind: "capability" | "settings" | "service-interface"; name: string; reason: string }[];
 }
 
 export type BoardSettingsIssueReporter = (name: string, reason: string) => void;
@@ -869,6 +879,16 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
         const service = normalizeBoardServicePath(source.service);
         if (service !== null) normalized.service = service;
     }
+    if (has("serviceInterfaces")) {
+        normalized.serviceInterfaces = normalizeServiceInterfaces(source.serviceInterfaces, (name, reason) => {
+            issues.push({ kind: "service-interface", name, reason });
+        });
+    }
+    if (has("uses")) {
+        normalized.uses = normalizeServiceUses(source.uses, (name, reason) => {
+            issues.push({ kind: "service-interface", name, reason });
+        });
+    }
     if (has("contentProviders") && Array.isArray(source.contentProviders)) {
         normalized.contentProviders = normalizeContentProviders(source.contentProviders);
     }
@@ -911,11 +931,15 @@ export function boardTrustDisclosure(manifest: NormalizedBoardManifest): {
     permissions: NormalizedBoardPermissions;
     serviceDeclared: boolean;
     capabilities: readonly string[];
+    serviceInterfaces: readonly BoardServiceInterfaceDeclaration[];
+    uses: readonly BoardServiceUseDeclaration[];
 } {
     return {
         permissions: manifest.permissions,
         serviceDeclared: manifest.service !== undefined,
         capabilities: (manifest.capabilities ?? []).map((declaration) => declaration.id),
+        serviceInterfaces: manifest.serviceInterfaces ?? [],
+        uses: manifest.uses ?? [],
     };
 }
 

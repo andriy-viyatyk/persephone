@@ -2,6 +2,7 @@ import type { EnglishCatalogEntry } from "./common";
 
 export const shellCatalog = {
     activeMcpConnections: { message: { one: "{product} is active, {count} active connection — click to view request log", other: "{product} is active, {count} active connections — click to view request log" }, note: "Keep MCP unchanged as the protocol name. Use the product placeholder." },
+    activeInAppMcpConnections: { message: { one: "{count} in-app agent connection", other: "{count} in-app agent connections" }, note: "Keep MCP unchanged as the protocol name; these connections come from board agents." },
     boardView: { message: "Board View" },
     categories: { message: "Categories" },
     archive: { message: "Archive" },

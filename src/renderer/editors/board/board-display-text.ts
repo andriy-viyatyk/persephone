@@ -90,6 +90,7 @@ export const boardMetadataKeys = {
     settingLabel: (id: string) => `manifest.settings.${id}.label`,
     settingDescription: (id: string) => `manifest.settings.${id}.description`,
     capabilityTitle: (id: string) => `manifest.capabilities.${id}.title`,
+    serviceInterfaceTitle: (id: string) => `manifest.serviceInterfaces.${id}.title`,
 };
 
 /** Subscribe to metadata cache changes. The listener receives the original board root. */

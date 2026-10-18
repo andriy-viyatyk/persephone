@@ -37,6 +37,7 @@ export type BoardEndpoint =
     | Endpoint.setBoardTrust
     | Endpoint.getBoardTrustPaths
     | Endpoint.getBoardPermissionGrants
+    | Endpoint.getBoardServiceProviders
     | Endpoint.getBoardFileAccessGrants
     | Endpoint.revokeBoardFileAccessGrant
     | Endpoint.grantBoardSourceReads
@@ -122,21 +123,33 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
     });
-    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions): Promise<string[]> => {
-        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions);
+    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions, expectedUses?: import("../../shared/board-manifest-utils").BoardServiceUseDeclaration[]): Promise<string[]> => {
+        return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions, expectedUses);
     });
     bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
     });
     bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
         const grants = await (await import("../../main/board-trust-service")).boardTrustService.getPermissionGrants();
-        return grants.map(({ root, permissions, manifestPermissions, manifestChanged }) => ({
+        return grants.map(({ root, permissions, manifestPermissions, manifestChanged, uses, manifestUses, service, serviceInterfaces, boardName, callerId }) => ({
             boardRoot: root,
             permissions,
             manifestPermissions,
             ...(manifestChanged ? { manifestChanged: true } : {}),
             canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
+            uses,
+            manifestUses,
+            service,
+            serviceInterfaces: serviceInterfaces ?? [],
+            boardName,
+            callerId,
         }));
+    });
+    bindEndpoint(Endpoint.getBoardServiceProviders, async (_event, interfaceId: string): Promise<import("../board-bridge-channels").BoardServiceProvider[]> => {
+        if (typeof interfaceId !== "string") throw new TypeError("A service interface id is required.");
+        const trust = (await import("../../main/board-trust-service")).boardTrustService;
+        await trust.getPermissionGrants();
+        return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.listServiceProviders(interfaceId);
     });
     bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
         return (await import("../../main/board-trust-service")).boardTrustService.getFileAccessGrants(boardRoot);

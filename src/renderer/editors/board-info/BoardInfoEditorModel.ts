@@ -18,6 +18,7 @@ import {
     readNormalizedBoardManifest,
     type BoardContentProviderDeclaration,
     type BoardCapabilityDeclaration,
+    type BoardServiceInterfaceDeclaration,
     type SecondaryViewDecl,
 } from "../board/board-manifest";
 import { ensureBoardDisplayText } from "../board/board-display-text";
@@ -41,6 +42,8 @@ import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
+import type { BoardServiceUseDeclaration } from "../../../shared/board-manifest-utils";
+import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
 import type { BoardSettingDeclaration } from "../../api/board-settings/types";
 import { BoardColorIcon } from "../../theme/icons";
@@ -99,6 +102,13 @@ export interface BoardPropsInfo {
     editorSources?: "local" | "any";
     contentProviders?: BoardContentProviderDeclaration[];
     capabilities?: BoardCapabilityDeclaration[];
+    serviceInterfaces?: BoardServiceInterfaceDeclaration[];
+    requestedUses?: BoardServiceUseDeclaration[];
+    grantedUses?: BoardServiceUseDeclaration[];
+    pendingUses?: BoardServiceUseDeclaration[];
+    pendingUseChanges?: Array<{ kind: "added" | "removed"; use: BoardServiceUseDeclaration }>;
+    currentServiceProviders?: BoardServiceProvider[];
+    serviceDeclarationIssues?: Array<{ name: string; reason: string }>;
     settings?: BoardSettingDeclaration[];
     secondaryViews?: SecondaryViewDecl[];
     guides?: string;
@@ -205,6 +215,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     private _pendingHost: HostDescriptor | undefined = undefined;
     private _catalogSub: (() => void) | null = null;
     private _serviceStatusSub: (() => void) | null = null;
+    private _trustSub: (() => void) | null = null;
     /** installId of the in-flight download per catalog id (for Cancel). */
     private readonly _activeDownloads = new Map<string, string>();
     /** installIds the user cancelled — so the rejected download isn't shown as an error. */
@@ -215,6 +226,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this.own(() => this._hostStateUnsub?.());
         this.own(() => this._catalogSub?.());
         this.own(() => this._serviceStatusSub?.());
+        this.own(() => this._trustSub?.());
+        this._trustSub = rendererEvents[EventEndpoint.eBoardTrustChanged].subscribe(() => {
+            if (this.mode !== "properties") return;
+            void boardTrust.refreshPermissionSnapshot().then(() => this.loadProperties());
+        });
         this._serviceStatusSub = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
             const root = this.state.get().boardRoot;
             if (!root || fpNormalizeForCompare(root) !== fpNormalizeForCompare(status.boardRoot)) return;
@@ -422,6 +438,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const serviceStatus = moduleServiceStatus.getStatus(root);
         const contentProviders = manifest?.contentProviders;
         const capabilities = manifest?.capabilities;
+        const serviceInterfaces = manifest?.serviceInterfaces ?? [];
+        const requestedUses = manifest?.uses ?? [];
+        const currentServiceProviders = (await Promise.all([...new Set([...serviceInterfaces, ...requestedUses].map(({ id }) => id))]
+            .map((id) => api.getBoardServiceProviders(id).catch((): BoardServiceProvider[] => [])))).flat();
         const registrationIssues = customEditorRegistry.getRegistrationIssues(root);
         const props: BoardPropsInfo = {
             name: manifest?.name?.trim() || assoc?.editorName || fpBasename(root),
@@ -454,6 +474,13 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             editorSources: manifest?.editorSources,
             contentProviders,
             capabilities,
+            serviceInterfaces,
+            requestedUses,
+            grantedUses: permissionSnapshot?.uses ?? [],
+            pendingUses: permissionSnapshot?.manifestChanged ? permissionSnapshot.manifestUses : undefined,
+            pendingUseChanges: permissionSnapshot?.manifestChanged ? permissionSnapshot.useChanges : undefined,
+            currentServiceProviders,
+            serviceDeclarationIssues: manifest?.issues.filter((issue) => issue.kind === "service-interface"),
             settings: manifest?.settings,
             secondaryViews: manifest?.secondaryViews,
             guides: manifest?.guides,

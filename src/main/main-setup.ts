@@ -20,6 +20,7 @@ import { initCommandRunner, killAllCommands } from "./command-runner";
 import { disposeAllBoardPorts } from "./board-bridge";
 import { startPipeServer, stopPipeServer } from "./pipe-server";
 import { stopMcpHttpServer } from "./mcp-http-server";
+import { shutdownPrivateMcpEndpoint } from "./mcp/private-session-endpoints";
 import { shutdownMneme } from "./mneme-service";
 import { shutdownClipboard } from "./clipboard-service";
 import { stopVideoStreamServer } from "./video-stream-server";
@@ -201,6 +202,7 @@ export function setupMainProcess() {
 
     app.on("will-quit", (event) => {
         shutdownPathWatchService();
+        void shutdownPrivateMcpEndpoint();
         if (!serviceQuitGateReleased) {
             event.preventDefault();
             if (!serviceQuitGateStarted) {

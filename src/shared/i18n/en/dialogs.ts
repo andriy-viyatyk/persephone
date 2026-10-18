@@ -85,6 +85,7 @@ export const dialogsCatalog = {
     trustBoard: { message: "Trust Board" },
     trustTitle: { message: "Trust this board?" },
     trustCapabilities: { message: "Capabilities: {capabilities}" },
+    trustServiceInterfaces: { message: "Provider service interfaces: {interfaces}", note: "The placeholder lists interface ids and exact versions declared by this provider board." },
     trustCancel: { message: "Cancel" },
     torTitle: { message: "Tor connection" },
     proxyTitle: { message: "Proxy connection" },
