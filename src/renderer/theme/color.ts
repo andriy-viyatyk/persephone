@@ -13,6 +13,8 @@ const color = {
         overlay: "var(--color-bg-overlay)",
         overlayHover: "var(--color-bg-overlay-hover)",
         backdrop: "var(--color-bg-backdrop)",
+        /** Native media control bar behind Chromium's always-white icons; dark in every theme. */
+        mediaControls: "var(--color-bg-media-controls)",
         webview: "var(--color-bg-webview)",
     },
     text: {

@@ -602,18 +602,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── renderGridStory.ts        # RenderGrid virtualization story
 │   │   ├── storyTypes.ts
 │   │   └── index.ts
-│   ├── video/              # Audio/Video player (non-text, no trait)
-│   │   ├── VideoEditor.ts            # EditorModel — playback state, streaming integration, temporary recording save/discard lifecycle
+│   ├── video/              # Video/audio player (non-text, no trait)
+│   │   ├── VideoEditor.ts            # EditorModel: playback state, streaming integration, temporary recording lifecycle
 │   │   ├── VideoView.ts              # Native editor view
-│   │   ├── VPlayer.ts                # Video playback view (video.js + hls.js)
-│   │   ├── AudioPlayer.ts             # Audio file playback with visualizer
-│   │   ├── AudioVisualizer.ts         # Frequency visualization (switchable effects)
-│   │   ├── AudioControls.ts
+│   │   ├── VPlayer.ts                # Native media and HLS playback view
 │   │   ├── video-editor.css           # Static video-editor presentation styles
-│   │   ├── effects/                  # Audio visualizer effect implementations
-│   │   │   ├── types.ts
-│   │   │   ├── BarsEffect.ts
-│   │   │   └── CircularEffect.ts
 │   │   ├── NodeFetchHlsLoader.ts     # Custom hls.js loader via nodeFetch
 │   │   ├── video-types.ts
 │   │   └── index.ts

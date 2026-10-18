@@ -204,6 +204,7 @@ export function deriveTheme(base: CustomThemeBase, isDark?: boolean | null): The
         "--color-bg-overlay-hover": withAlpha(overlayBase, mode.overlayHoverAlpha),
         "--color-bg-webview": fallback.webview,
         "--color-bg-backdrop": withAlpha(fallback.backdrop, mode.backdropAlpha),
+        "--color-bg-media-controls": withAlpha(fallback.neutralOverlayDark, 0.8),
         "--color-text-default": text,
         "--color-text-dark": text,
         "--color-text-light": muted,

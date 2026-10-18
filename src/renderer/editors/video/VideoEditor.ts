@@ -11,7 +11,7 @@ import { PlayerIcon } from "../../theme/icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { parseHttpRequest } from "../../core/utils/curl-parser";
-import { detectVideoFormat, isAudioFile } from "./video-types";
+import { detectVideoFormat } from "./video-types";
 import type { VideoFormat, PlayerState } from "./video-types";
 import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
@@ -19,10 +19,7 @@ import { ui } from "../../api/ui";
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
-import type { ILink } from "../../api/types/io.tree";
-import { getSiblingItems, navigateToSourceItem } from "../shared/source-context";
 import { errMessage } from "../../../shared/utils";
-import type { EffectType } from "./effects/types";
 import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
 import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
 import { isProviderResolutionError } from "../../content/registry";
@@ -153,6 +150,13 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         if (!page) return;
         const { url, parsedRequest } = this.state.get();
         if (url) void this.startSource(url, parsedRequest);
+    }
+
+    /** Lists itself so the editor switch renders once a board for the file is installed, or the
+     *  catalog offers one through "+" (an audio file and the Audio Player). Alone it is a
+     *  single-entry list, which the switch hides. */
+    override findCompatibleEditors(): string[] {
+        return this.filePath ? [this.editorId] : [];
     }
 
     /** The same source was opened onto this page again. A pipe-backed source that failed gets
@@ -360,105 +364,6 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         this.state.update((s) => { s.pageMuted = newMuted; });
     };
 
-    // ── Next track / shuffle ──────────────────────────────────────
-
-    /** Whether shuffle mode is enabled (persisted in app.settings). */
-    get shuffle(): boolean {
-        return settings.get("audio-shuffle") === true;
-    }
-
-    /** Toggle shuffle mode. */
-    toggleShuffle = () => {
-        settings.set("audio-shuffle", !this.shuffle);
-    };
-
-    /** Whether the shared audio visualizer uses bars, circular, or no effect. */
-    get visualizerEffect(): EffectType {
-        const effect = settings.get("visualizer-effect");
-        return effect === "circular" || effect === "none" ? effect : "bars";
-    }
-
-    /** Set the shared audio visualizer effect. */
-    setVisualizerEffect = (effect: EffectType): void => {
-        settings.set("visualizer-effect", effect);
-    };
-
-    /** Whether the player can potentially play a next track (has a source provider). */
-    get canPlayNext(): boolean {
-        const sourceId = this.state.get().sourceLink?.sourceId;
-        return sourceId === "explorer" || sourceId === "link-category" || sourceId === "link-tag";
-    }
-
-    private async getSiblingTracks(): Promise<{ items: ILink[]; currentIndex: number } | null> {
-        const page = this.page;
-        if (!page) return null;
-        const { sourceLink, url } = this.state.get();
-        return getSiblingItems({
-            page,
-            sourceLink,
-            currentHref: url,
-            include: (item) => isAudioFile(item.href),
-        });
-    }
-
-    /**
-     * Play the next (or random) track from the source provider.
-     *
-     * An arrow property, like every other handler this editor hands to its
-     * view: `VideoView` passes it unbound as both `onNext` and `onEnded`, and
-     * a prototype method loses its receiver there (US-1190).
-     */
-    playNext = async (): Promise<void> => {
-        const result = await this.getSiblingTracks();
-        if (!result || result.items.length <= 1) return;
-
-        const { items, currentIndex } = result;
-        let nextIndex: number;
-
-        if (this.shuffle) {
-            nextIndex = this.getShuffleBagNext(items, currentIndex);
-        } else {
-            nextIndex = currentIndex >= 0 ? (currentIndex + 1) % items.length : 0;
-        }
-
-        const nextItem = items[nextIndex];
-        this.navigateToTrack(nextItem);
-    }
-
-    /** Navigate to a new track via the openRawLink pipeline. */
-    private navigateToTrack(item: ILink): void {
-        const sourcePage = this.page;
-        const sourceLink = this.state.get().sourceLink;
-        if (sourcePage && sourceLink) void navigateToSourceItem(sourcePage, sourceLink, item);
-    }
-
-    /**
-     * Pick the next index from a shuffle bag stored in page transient state.
-     * The bag is a shuffled array of indices. When exhausted, it reshuffles.
-     */
-    private getShuffleBagNext(items: ILink[], currentIndex: number): number {
-        const page = this.page;
-        if (!page) return 0;
-
-        const key = "audio-shuffle-bag";
-        let bag = page.getTransient<number[]>(key);
-
-        // Invalidate bag if track count changed
-        if (bag && bag.length > items.length) bag = null;
-
-        if (!bag || bag.length === 0) {
-            bag = Array.from({ length: items.length }, (_, i) => i)
-                .filter((i) => i !== currentIndex);
-            for (let i = bag.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [bag[i], bag[j]] = [bag[j], bag[i]];
-            }
-        }
-
-        const nextIndex = bag.shift() ?? 0;
-        page.setTransient(key, bag);
-        return nextIndex;
-    }
 
     /** Clean up streaming server sessions when the editor tab is closed. */
     async dispose(): Promise<void> {

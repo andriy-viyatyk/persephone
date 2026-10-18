@@ -189,7 +189,7 @@ Proposals; the user may change them.
 | [US-1690](../tasks/US-1690-board-folder-listing/README.md) | Board folder listing, persisted folder and file grants, and source read grants | Implemented, verified live (native-dialog flows: user check) |
 | ~~US-1691~~ | ~~Media-key or background-playback support for boards~~ | Dropped: US-1688 found both already work |
 | [US-1700](../tasks/US-1700-single-instance-masks/README.md) | Single-instance routing by mask: full player for board/catalog/playlist opens, in-place light pages for audio files (A11) | Planned |
-| US-1692 | Remove the audio features from the Video Player (after BT-042) | Planned |
+| [US-1692](../tasks/US-1692-video-player-audio-removal/README.md) | Remove the audio features from the Video Player (after BT-042) | Planned |
 
 ### persephone-boards
 

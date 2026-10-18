@@ -50,15 +50,14 @@ opened from a discoverable provider when possible. Obtain all page ids without c
 **Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
 
 **Call:** Read each `pages[id].editor` identity, `source`, `format`, `playerState`, `pageMuted`,
-`canPlayNext`, `shuffle`, `visualizerEffect`, and `summarize()` without scripting.
+and `summarize()` without scripting.
 
 **Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
 
 **Verify:** The registered facade has `id: "video-view"`, preserves each page's name, reports the
 raw source or `undefined`, detects `mp4`/`m3u8`/`audio`, and exposes the current player state and
-page mute state. `canPlayNext` reflects the source provider. `shuffle` and `visualizerEffect` are
-the same global settings on every open video page, and summaries identify source, format, state,
-and whether live media is mounted.
+page mute state. Audio retains the `audio` format while using native media controls. Summaries
+identify source, format, state, and whether live media is mounted.
 
 ## Test M.4: Video live media state
 
@@ -83,26 +82,23 @@ and reads from an inactive page do not switch tabs.
 ## Test M.5: Video elements and read-mostly actions
 
 **Preparation:** Use video pages in video, audio, unsupported/error, and provider-backed audio
-states. Open one audio page with more than one sibling track when possible.
+states.
 
 **Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
 
 **Call:** Read `editor.elements`, then exercise `submitUrl()`, `play()`, `pause()`, `seek()`,
-`toggleMute()`, `playNext()`, `toggleShuffle()`, `setVisualizerEffect()`, and `openInVlc()` as
-appropriate. Highlight a conditional audio, next, or VLC control on a page where it is present and
-absent.
+`toggleMute()`, and `openInVlc()` as appropriate. Highlight `video-open-vlc` when available and
+when hidden.
 
 **Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
 
-**Verify:** The inventory contains exactly the 10 curated names: `video-url-input`,
-`video-open-vlc`, `audio-play-pause`, `audio-next`, `audio-mute`, `audio-shuffle`, `audio-seek`,
-`visualizer-bars`, `visualizer-circular`, and `visualizer-none`. Conditional controls remain in
-the inventory with `visible: false`. Submit replaces the source; reachable playback, next, mute,
-shuffle, visualizer, and VLC behavior follows the existing UI. Audible/source/external actions are
-marked `caution`; `setVisualizerEffect` has no caution because it changes only visual rendering.
-The help says commands do not activate pages, so play/seek/next can affect an off-screen open page,
-and no volume/rate/subtitle/track controls are invented. With no handoff, play rejects and pause/
-seek throw the documented mounted-media diagnostic.
+**Verify:** The inventory contains exactly `video-url-input` and `video-open-vlc`. VLC remains in
+the inventory with `visible: false` when unavailable. Submit replaces the source; reachable
+playback, mute, and VLC behavior follows the existing UI. Audio uses native play/pause, seek, and
+volume controls and has no sibling navigation or automatic end-of-track advance. Audible/source/
+external actions are marked `caution`. The help says commands do not activate pages, so play and
+seek can affect an off-screen open page. With no handoff, play rejects and pause/seek throw the
+documented mounted-media diagnostic.
 
 ## Test M.6: Video dialogs and menus
 

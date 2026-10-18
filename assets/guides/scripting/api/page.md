@@ -158,8 +158,7 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
 - `mneme-root`: Mneme search query, mode, tag/date filters, result state, and search/filter actions.
 - `image-view`: image source, bounded inline PNG reads, PNG/original save, drawing export, and
   clipboard copy.
-- `video-view`: video/audio source and playback state, playback controls, next-track and
-  visualizer settings, and VLC handoff.
+- `video-view`: video/audio source and playback state, native media controls, and VLC handoff.
 - `file-diff`: selected original/modified revisions, staged-state detection, and read-only state.
 - `env-vars-view`: environment-variable namespaces, profiles, values, and encryption state.
 - `archive-view`: archive entries, selection, entry opening, and extraction.
@@ -388,11 +387,11 @@ owner id to distinguish them.
 
 ### Video facade (`video-view`)
 
-The video facade exposes the current source, detected `format`, `playerState`, mute state, live
-media values (`duration`, `currentTime`, `paused`, `volume`, `muted`, and `playbackRate`), and
-audio navigation settings. Use `submitUrl`, `play`, `pause`, `seek`, `toggleMute`, `playNext`,
-`toggleShuffle`, `setVisualizerEffect`, and `openInVlc` for playback actions. `play`, `seek`,
-`playNext`, and VLC handoff can affect a page that is not currently on screen.
+The video facade exposes the current source, detected `format`, `playerState`, page mute state, and
+live media values (`duration`, `currentTime`, `paused`, `volume`, `muted`, and `playbackRate`). Use
+`submitUrl`, `play`, `pause`, `seek`, `toggleMute`, and `openInVlc` for playback actions. `play`,
+`seek`, and VLC handoff can affect a page that is not currently on screen. Audio uses the same native
+media controls for play/pause, seek, and volume.
 
 ```javascript
 const player = page.editor;

@@ -1,5 +1,4 @@
 import { t } from "../../../shared/i18n/t";
-import { settings } from "../../api/settings";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -50,7 +49,6 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
     private saveRecordingButton!: ButtonView;
     private discardRecordingButton!: ButtonView;
     private recordingActions!: HTMLDivElement;
-    private shuffle = false;
 
     public constructor(props: { model: EditorModel }) {
         super(props, createPanelElement({
@@ -150,13 +148,6 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             this.syncSurface,
         );
 
-        this.shuffle = settings.get("audio-shuffle") === true;
-        const settingsSubscription = settings.onChanged.subscribe(({ key, value }) => {
-            if (key !== "audio-shuffle") return;
-            this.shuffle = value === true;
-            this.player.update(this.playerProps(this.surfaceState()));
-        });
-        this.own(settingsSubscription);
     }
 
     protected onUpdate(props: { model: EditorModel }): void {
@@ -216,15 +207,9 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             format: state.format,
             muted: state.muted,
             parsedRequest: state.parsedRequest,
-            sourceUrl: state.url,
             reloadKey: state.reloadKey,
             onStateChange: this.model.onPlayerStateChange,
             onMutedChange: this.model.onMutedChange,
-            onEnded: this.model.playNext,
-            hasNext: this.model.canPlayNext,
-            shuffle: this.shuffle,
-            onNext: this.model.playNext,
-            onToggleShuffle: this.model.toggleShuffle,
             onMediaElementChange: this.model.setMediaElement,
         };
     }

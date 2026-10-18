@@ -277,7 +277,7 @@ whole reason the catalog lives on `settings` rather than on a page facade
 ## Test S.17: A real setting with no row on the page
 **Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
 
-**Request:** "Show me where to change the audio shuffle setting."
+**Request:** "Show me where to change the maximum file size for content search."
 **Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
 
 **Expected:** the error says it is a real setting with no Settings-page row and points at
@@ -336,8 +336,8 @@ irreversible *from the agent's side*, refuse it and say what to do instead.
 
 **Run 2026-09-05 (by hand through `call`): PASS.**
 `settings.highlight("mcp.enabled", "…")` returned `found: true, count: 1`, scrolled the Settings
-page to the MCP section, ringed it and drew the message. `audio-shuffle` and `not-a-real-setting`
-produced the two distinct errors as specified.
+page to the MCP section, ringed it and drew the message. The real no-row setting and
+`not-a-real-setting` produced the two distinct errors as specified.
 
 The finding worth keeping is one the investigation caught **before** any run, by reading the
 overlay's hit-testing rather than assuming: `settings.css` gives section roots

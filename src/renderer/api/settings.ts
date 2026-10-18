@@ -57,8 +57,6 @@ export type AppSettingsKey =
     | "vlc-path"
     | "terminal.command"
     | "video-stream.port"
-    | "visualizer-effect"
-    | "audio-shuffle"
     | "git.enabled"
     | "window.close-to-tray"
     | "editor.word-wrap"
@@ -139,8 +137,6 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "vlc-path": "Absolute path to vlc.exe, used for formats Chromium cannot decode (AVI, MKV, WMA).\nLeave empty to auto-detect C:\\Program Files\\VideoLAN\\VLC\\vlc.exe.",
     "terminal.command": "Terminal launched by \"Open Terminal here\".\nCommand name or absolute path — pwsh, powershell, cmd, or wt.\nLeave empty to auto-detect on first use (pwsh -> powershell -> cmd).",
     "video-stream.port": "Port for the local video streaming server, which serves media to the player and to VLC.\nNumber. Default: 7866. Change if 7866 is already in use.",
-    "visualizer-effect": "Audio visualizer style shown while playing audio files.\nOne of: bars, circular, none. Default: bars.",
-    "audio-shuffle": "Shuffle mode for audio playback across a folder, category, or tag set.\nBoolean. Default: false. Toggled by the Shuffle button in the player.",
     "git.enabled": "Enable Git integration — the Git Tree and Git Diff editors.\nBoolean. Default: false, and with it off Persephone performs no git activity at all.\nRequires git installed and on PATH. This is usually why a user cannot find git features.",
     "window.close-to-tray": "Keep Persephone running in the notification tray after its last window is closed.\nBoolean. Default: true — closing the last window only hides it, and the app is\nrestored from the tray icon. Background services (MCP server, Mneme, the launcher\npipe that makes \"Open with persephone\" instant) stay up, which is the point.\nSet false to make closing the last window quit the app outright. The tray icon is\nstill there while the app runs; Quit from it always exits regardless of this setting.",
     "editor.word-wrap": "Default word wrapping for newly shown Text Editor pages.\nBoolean. Default: false. This is read when a Text Editor page is first shown\nwithout saved page state; existing pages keep their own persisted choice.",
@@ -189,8 +185,6 @@ const defaultAppSettingsState = {
         "vlc-path": "",
         "terminal.command": "",
         "video-stream.port": 7866,
-        "visualizer-effect": "bars" as string,
-        "audio-shuffle": false,
         "git.enabled": false,
         "window.close-to-tray": true,
         "editor.word-wrap": false,

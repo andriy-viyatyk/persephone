@@ -421,14 +421,11 @@ await media.play()
 media.pause()
 media.seek(seconds)
 media.toggleMute()
-await media.playNext()
-media.toggleShuffle()
-media.setVisualizerEffect("bars")
 await media.openInVlc()
 ```
 
-Live media getters are undefined before a media element is mounted. Playback, source, playlist,
-and VLC actions can affect an open page that is not currently visible; use them deliberately.
+Live media getters are undefined before a media element is mounted. Playback, source, and VLC
+actions can affect an open page that is not currently visible; use them deliberately.
 
 ### `page.editor` when `id === "file-diff"` — File Diff facade
 

@@ -357,11 +357,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | MCP server factory (manifest assembly and guide-resource registration) | `/src/main/mcp/server-factory.ts` |
 | MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, pending script results, path prefixing, native image content blocks, and recent-request tracking for beforeunload handling; renderer reply IPC is initialized before first send, including board bridge requests) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
 | Per-window native dialog tracking, attention snapshots, and cancellation through the native dialog helper | `/src/main/native-dialog-tracker.ts` |
-| Audio/Video player editor view | `/src/renderer/editors/video/VideoView.ts` |
+| Video/audio player editor view | `/src/renderer/editors/video/VideoView.ts` |
 | Video playback view (video.js + hls.js and stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |
-| Audio player view | `/src/renderer/editors/video/AudioPlayer.ts` |
-| Audio controls view | `/src/renderer/editors/video/AudioControls.ts` |
-| Audio visualizer view | `/src/renderer/editors/video/AudioVisualizer.ts` |
 | Video streaming server (main-side HTTP range sessions for local, HTTP, and renderer-pipe sources; shares range response handling with faststart and plain-file paths) | `/src/main/video-stream-server.ts` |
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
 | Terminal launcher (main; `detectTerminal` via `where`, `openTerminalAt` via `cmd /c start` so a console shell gets a visible window; supports pwsh/powershell/cmd/wt) | `/src/main/terminal-launcher.ts` |

@@ -601,7 +601,7 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `MnemeConfigEditorFacade` | `MnemeConfigEditorModel` | Mneme configuration/status/actions |
 | `page.editor` | `MnemeRootEditorFacade` | `MnemeRootEditorModel` | Mneme search state/actions |
 | `page.editor` | `ImageEditorFacade` | `ImageEditor` | `source`, bounded `read()` PNG result, `savePngToFile()` |
-| `page.editor` | `VideoEditorFacade` | `VideoEditor` | source/player state, live media state, playback, playlist, and visualizer actions |
+| `page.editor` | `VideoEditorFacade` | `VideoEditor` | source/player state, live media state, native playback controls, and VLC handoff |
 | `page.editor` | `FileDiffEditorFacade` | `FileDiffEditor` | selected revisions, staged-state and read-only projection |
 | `page.editor` | `ArchiveEditorFacade` | `ArchiveEditor` | archive entry snapshots, open entry, extract |
 | `page.editor` | `EnvVarsEditorFacade` | `EnvVarsEditor` | namespace/profile state and model-backed variable-store actions |
@@ -829,9 +829,9 @@ inner Settings panel stack owns scrolling: Content-tree clicks scroll to the fir
 group or to the selected section, and the scroll-spy selects the topmost visible section without
 scrolling the Content pane. The Clipboard section owns
 `clipboard.enabled` and `clipboard.max-items`; the clipboard root is exposed to AiVision only while
-history is enabled. Five real settings have no Settings-page row (`tab-recent-languages`,
-`search-max-file-size`, `pinned-editors`, `visualizer-effect`, and `audio-shuffle`) and remain
-available through `get`/`set`. The AiVision descriptor's `set` seam refuses only the self-severing
+history is enabled. Three real settings have no Settings-page row (`tab-recent-languages`,
+`search-max-file-size`, and `pinned-editors`) and remain available through `get`/`set`.
+The AiVision descriptor's `set` seam refuses only the self-severing
 `mcp.enabled` and `mcp.port` changes; direct `app.settings.set` is unchanged. Computed catalog
 lookups use own-property checks so prototype names are not treated as setting keys.
 

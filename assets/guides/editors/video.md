@@ -1,13 +1,14 @@
 ---
 title: "Video Player"
 audience: both
-summary: "Video and audio playback with streams, visualizer effects, navigation, and VLC fallback."
+summary: "Video and audio playback with streams, native controls, and VLC fallback."
 editorId: "video-view"
 ---
 
 # Video Player
 
-Video Player handles local media, URLs, HLS streams, and audio with an optional spectrum visualizer.
+Video Player handles local media, URLs, HLS streams, and audio. Audio files use the same native
+HTML media controls as video for play/pause, seeking, and volume.
 
 ## How to Open
 
@@ -24,65 +25,38 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 
 ```
 +---------------------------------------------------------------------+
-| [Video URL]                                   [Save as…] [Discard]  |  Save and discard appear only for an unsaved recording
+| [Video URL]                                   [Save as...] [Discard]  |  Save and discard appear only for an unsaved recording
 +---------------------------------------------------------------------+
-| [Player]                                      [Visualizer]          |  media player below the toolbar; visualizer selector at its right
-| [Open in VLC]                                                       |  fallback action below the video player when available
+| [Player]                                                            |  native video/audio controls
+| [Open in VLC]                                                       |  fallback action below the player when available
 +---------------------------------------------------------------------+
 ```
 
-### User-facing label → `elements` name
+### User-facing label ? `elements` name
 
-- Video URL → `video-url-input`
-- Save as… / Discard → `video-recording-save`, `video-recording-discard` (temporary recordings only)
-- Open in VLC → `video-open-vlc`
-- Play/Pause → `audio-play-pause`
-- Next → `audio-next`
-- Mute → `audio-mute`
-- Shuffle → `audio-shuffle`
-- Seek → `audio-seek`
-- Bars → `visualizer-bars`
-- Circular → `visualizer-circular`
-- None → `visualizer-none`
-- Native media and video.js controls → no entry: media-internal controls
+- Video URL ? `video-url-input`
+- Save as... / Discard map to `video-recording-save` and `video-recording-discard` (temporary recordings only)
+- Open in VLC ? `video-open-vlc`
+- Native media and video.js controls ? no entry: media-internal controls
 
 ### When VLC fallback is available
 
 ```
 +---------------------------------------------------------------------+
-| [Video player] [Open in VLC]                                        |  video player with VLC fallback below it when available
+| [Video player] [Open in VLC]                                        |  player with VLC fallback below it when available
 +---------------------------------------------------------------------+
 ```
-
-### When the audio player is mounted
-
-```
-+---------------------------------------------------------------------+
-| [Play/Pause] [Next] [Mute] [Shuffle] [Seek]                         |  audio controls in the bottom overlay of the player
-+---------------------------------------------------------------------+
-```
-
-### When the audio visualizer selector is open
-
-```
-+---------------------------------------------------------------------+
-| [Bars] [Circular] [None]                                            |  visualizer choices in one selector, ordered left to right
-+---------------------------------------------------------------------+
-```
-
-### Drawn controls without `elements`
-
-- Native media and video.js controls — no entry: media-internal controls.
 
 ## Playback
 
+Audio plays in the dark media area through the browser's native controls for play/pause, seek, and
+volume. Video playback keeps its native controls, and `.m3u8` sources use HLS playback when
+supported.
 Local and archive-hosted media use the streaming server where needed, so seeking does not require
-loading the entire source first. Audio offers Bars, Circular, and None visualizer effects, plus
-play/pause, mute, seek, and track navigation. When opened from Explorer or Links,
-**Next Track** and **Shuffle** can traverse the surrounding folder, category, or tag. If Chromium
-cannot decode a file, **Open in VLC** appears when VLC is configured in Settings.
+loading the entire source first. If Chromium cannot decode a file, **Open in VLC** appears when VLC
+is configured in Settings.
 
-Recordings opened in Video Player are temporary until saved. Use **Save as…** to choose a permanent
+Recordings opened in Video Player are temporary until saved. Use **Save as...** to choose a permanent
 location, or **Discard** to delete the recording and close its page. Closing an unsaved recording's
 player page also deletes it. Closing Persephone, closing its window, or moving the page to another
 window keeps it available when the page is restored; unsaved recordings are removed automatically
@@ -90,11 +64,10 @@ after seven days.
 
 ## Agent API
 
-After narrowing `page.editor.id` to `video-view`, the `VideoEditor` facade exposes playback state
-and actions such as `submitUrl`, `play`, `pause`, `seek`, `toggleMute`, `playNext`, visualizer, and
-VLC actions. Verified elements include `video-url-input`, `video-open-vlc`, `audio-play-pause`,
-`audio-next`, `audio-mute`, `audio-shuffle`, `audio-seek`, `visualizer-bars`, `visualizer-circular`,
-and `visualizer-none`.
+After narrowing `page.editor.id` to `video-view`, the `VideoEditor` facade exposes source and
+playback state, live media values, and `submitUrl`, `play`, `pause`, `seek`, `toggleMute`, and
+`openInVlc`. Its curated elements are `video-url-input` and `video-open-vlc`; native media controls
+are managed by the media element.
 
 ## Errors and limits
 

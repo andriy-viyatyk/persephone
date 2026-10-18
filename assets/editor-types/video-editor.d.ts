@@ -26,12 +26,6 @@ export interface IVideoEditor {
     readonly muted: boolean | undefined;
     /** Live media playback rate, or undefined before a media element is mounted. */
     readonly playbackRate: number | undefined;
-    /** Whether a discoverable sibling track exists for the current source. */
-    readonly canPlayNext: boolean;
-    /** Global audio-shuffle setting shared by every video editor page. */
-    readonly shuffle: boolean;
-    /** Global visualizer-effect setting shared by every video editor page. */
-    readonly visualizerEffect: "bars" | "circular" | "none";
     /** Submit a URL, local source, or cURL request and load it as the new source. */
     submitUrl(text: string): Promise<void>;
     /** Start playback on the mounted active media element. */
@@ -42,12 +36,6 @@ export interface IVideoEditor {
     seek(time: number): void;
     /** Toggle the page/session mute state. */
     toggleMute(): void;
-    /** Navigate to the next discovered sibling track. */
-    playNext(): Promise<void>;
-    /** Toggle the global audio-shuffle setting for all video editor pages. */
-    toggleShuffle(): void;
-    /** Set the global visualizer-effect setting. */
-    setVisualizerEffect(effect: "bars" | "circular" | "none"): void;
     /** Open the current source in VLC. */
     openInVlc(): Promise<void>;
     /** Curated persistent controls owned by this video surface, with live visibility. */

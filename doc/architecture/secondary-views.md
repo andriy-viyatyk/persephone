@@ -760,16 +760,11 @@ interface ITreeProvider {
 - `getTags()` — aggregates unique tags from all links, with item counts
 - `getTagItems(tag)` — returns all (non-directory) links with the specified tag. Empty string `""` returns all non-directory links (the "All" virtual tag).
 
-### Player Track Navigation
+### Shared source navigation
 
-When `VideoEditorModel` navigates to a link with `sourceId === "link-tag"`:
-
-1. **Lookup sibling provider:** Scans `page.secondaryViews[]` for a links editor exposing `treeProvider` + `selectByHref()` (duck-typed).
-2. **Get sibling tracks:** Calls `treeProvider.getTagItems(sourceLink.selectedTag)` to list all links in the same tag.
-3. **Track navigation:** `canPlayNext()`, `findSourceProvider()`, `getSiblingTracks()`, and `navigateToTrack()` all recognize `sourceId === "link-tag"` and use the tag-filtered sibling list instead of a directory listing.
-4. **Selection update:** After navigation, `selectByHref()` is called to highlight the new link in the tags panel.
-
-This pattern allows the player to treat tags as navigation containers (like folders), supporting next/previous track within a tag.
+The shared `source-context.ts` helper captures source context for boards. Board source navigation
+continues to use `navigateToSourceItem()`. The Video Player uses its native HTML media element
+for audio playback and does not use source siblings for track navigation.
 
 ### ILinkData Additions
 

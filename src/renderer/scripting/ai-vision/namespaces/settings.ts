@@ -39,8 +39,6 @@ const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
     "tab-recent-languages": "Setting \"tab-recent-languages\" is a real setting, but it has no row on the Settings page. Use settings.get(\"tab-recent-languages\") or settings.set(\"tab-recent-languages\", value); it is owned by each page tab's language menu.",
     "search-max-file-size": "Setting \"search-max-file-size\" is a real setting, but it has no row on the Settings page. Use settings.get(\"search-max-file-size\") or settings.set(\"search-max-file-size\", value); it is owned by File Search behavior.",
     "pinned-editors": "Setting \"pinned-editors\" is a real setting, but it has no row on the Settings page. Use settings.get(\"pinned-editors\") or settings.set(\"pinned-editors\", value); it is owned by the + new-page menu.",
-    "visualizer-effect": "Setting \"visualizer-effect\" is a real setting, but it has no row on the Settings page. Use settings.get(\"visualizer-effect\") or settings.set(\"visualizer-effect\", value); it is owned by the audio visualizer in the Video Player.",
-    "audio-shuffle": "Setting \"audio-shuffle\" is a real setting, but it has no row on the Settings page. Use settings.get(\"audio-shuffle\") or settings.set(\"audio-shuffle\", value); it is owned by the Shuffle control in the Video Player.",
 };
 
 /**

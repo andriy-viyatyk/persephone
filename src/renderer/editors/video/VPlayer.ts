@@ -9,7 +9,6 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import type { PlayerState, VideoFormat } from "./video-types";
 import { createNodeFetchLoaderClass } from "./NodeFetchHlsLoader";
-import { AudioPlayerView, type AudioPlayerProps } from "./AudioPlayer";
 import "video.js/dist/video-js.css";
 import "../../uikit/Panel/Panel.css";
 import "./video-editor.css";
@@ -19,23 +18,16 @@ export interface VPlayerProps {
     format?: VideoFormat;
     muted?: boolean;
     parsedRequest?: ParsedHttpRequest | null;
-    sourceUrl?: string;
     reloadKey: number;
     onStateChange?: (state: PlayerState, error?: unknown) => void;
     onMutedChange?: (muted: boolean) => void;
-    onEnded?: () => void;
-    hasNext?: boolean;
-    shuffle?: boolean;
-    onNext?: () => void;
-    onToggleShuffle?: () => void;
     onMediaElementChange?: (element: HTMLMediaElement | null) => void;
 }
 
-type ActiveMode = "none" | "hls" | "native" | "audio";
+type ActiveMode = "none" | "hls" | "native";
 
 export class VPlayerView extends VanillaView<VPlayerProps> {
     private video!: HTMLVideoElement;
-    private audioPlayer!: AudioPlayerView;
     private player: Player | null = null;
     private hls: Hls | null = null;
     private activeMode: ActiveMode = "none";
@@ -63,9 +55,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         this.video.preload = "auto";
         this.video.muted = this.props.muted ?? false;
 
-        this.audioPlayer = this.child(new AudioPlayerView(this.audioProps()));
-        this.root.append(this.video, this.audioPlayer.root);
-        this.audioPlayer.mount();
+        this.root.append(this.video);
 
         this.listen(this.video, "loadstart", () => {
             if (this.activeMode === "native") this.props.onStateChange?.("loading");
@@ -97,42 +87,17 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
     }
 
     protected onUpdate(props: VPlayerProps): void {
-        this.audioPlayer.update(this.audioProps());
         this.video.muted = props.muted ?? false;
         if (this.player) this.player.muted(props.muted ?? false);
         this.syncMode();
-    }
-
-    private audioProps(active = this.activeMode === "audio"): AudioPlayerProps {
-        return {
-            src: this.props.src ?? "",
-            active,
-            muted: this.props.muted,
-            sourceUrl: this.props.sourceUrl,
-            onStateChange: this.props.onStateChange,
-            onMutedChange: this.props.onMutedChange,
-            onEnded: this.props.onEnded,
-            hasNext: this.props.hasNext,
-            shuffle: this.props.shuffle,
-            onNext: this.props.onNext,
-            onToggleShuffle: this.props.onToggleShuffle,
-            onMediaElementChange: this.props.onMediaElementChange,
-        };
     }
 
     private syncMode(): void {
         const reloadChanged = this.props.reloadKey !== this.lastReloadKey;
         this.lastReloadKey = this.props.reloadKey;
         const source = this.props.src ?? "";
-        const wantsAudio = this.props.format === "audio";
         const wantsHls = this.props.format === "m3u8" && Hls.isSupported();
-        const nextMode: ActiveMode = !source
-            ? "none"
-            : wantsAudio
-                ? "audio"
-                : wantsHls
-                    ? "hls"
-                    : "native";
+        const nextMode: ActiveMode = !source ? "none" : wantsHls ? "hls" : "native";
 
         if (nextMode !== this.activeMode) {
             this.props.onMediaElementChange?.(null);
@@ -143,16 +108,17 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         }
 
         this.video.hidden = nextMode !== "hls" && nextMode !== "native";
-        this.audioPlayer.update(this.audioProps(nextMode === "audio"));
-        this.audioPlayer.root.hidden = nextMode !== "audio";
 
         if (nextMode === "hls") {
+            this.video.removeAttribute("data-audio-only");
             this.props.onMediaElementChange?.(this.video);
             this.ensureVideoJsPlayer();
             this.syncHlsSource(source, reloadChanged);
         } else if (nextMode === "native") {
             this.props.onMediaElementChange?.(this.video);
             this.video.className = "native";
+            // Chromium draws an audio-only element with its grey pill-shaped bar; the CSS restyles it like video.
+            this.video.toggleAttribute("data-audio-only", this.props.format === "audio");
             this.video.controls = true;
             this.video.autoplay = true;
             this.video.muted = this.props.muted ?? false;
@@ -166,7 +132,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
 
     private ensureVideoJsPlayer(): void {
         if (this.player) return;
-        if (this.video.parentNode !== this.root) this.root.insertBefore(this.video, this.audioPlayer.root);
+        if (this.video.parentNode !== this.root) this.root.append(this.video);
         this.video.className = "video-js";
         this.player = videojs(this.video, {
             controls: true,
@@ -222,8 +188,6 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         }
         this.video?.removeAttribute("src");
         this.video?.load();
-        if (this.video && this.audioPlayer && this.video.parentNode !== this.root) {
-            this.root.insertBefore(this.video, this.audioPlayer.root);
-        }
+        if (this.video && this.video.parentNode !== this.root) this.root.append(this.video);
     }
 }

@@ -84,9 +84,9 @@ The catalog has 14 built-in sections and 27 Settings-page rows:
 | Video Player | `vlc-path`, `video-stream.port` |
 | Terminal | `terminal.command` |
 
-Five real settings have no Settings-page row because their controls live elsewhere:
-`tab-recent-languages`, `search-max-file-size`, `pinned-editors`, `visualizer-effect`, and
-`audio-shuffle`. They remain available through `app.settings.get()` and `app.settings.set()`.
+Three real settings have no Settings-page row because their controls live elsewhere:
+`tab-recent-languages`, `search-max-file-size`, and `pinned-editors`. They remain available through
+`app.settings.get()` and `app.settings.set()`.
 
 Board settings are separate from `app.settings`. A board declares them in its manifest and reads
 its own effective values through `persephone.settings.get(id)` and

@@ -12,6 +12,7 @@ export const THEME_COLOR_VARS = [
     "--color-bg-overlay-hover",
     "--color-bg-webview",
     "--color-bg-backdrop",
+    "--color-bg-media-controls",
     "--color-text-default",
     "--color-text-dark",
     "--color-text-light",
