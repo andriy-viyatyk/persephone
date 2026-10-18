@@ -31,6 +31,7 @@ import {
     clipboard,
     dialog,
     nativeImage,
+    shell,
 } from "electron";
 import {
     BoardFileEncoding,
@@ -776,6 +777,22 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
             ? Buffer.from(toBytes(data))
             : Buffer.from((data as string) ?? "", encoding);
         try { await fs.promises.writeFile(checkedPath, body); }
+        catch (error: unknown) { throw fileAccessError(error); }
+    },
+    // Recycle Bin rather than unlink, so a mistaken delete can be restored; authorized like a write.
+    async trashFile(entry, args) {
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw boardPermissionError("fileSystem");
+        const requestedPath = args[0] as string;
+        let checkedPath: string;
+        try {
+            await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath, permissions: grant, intent: "write" });
+            checkedPath = await recheckWriteTarget(entry.root, requestedPath, grant);
+        } catch (error: unknown) { throw fileAccessError(error); }
+        const existing = await fs.promises.lstat(checkedPath).catch((): undefined => undefined);
+        if (!existing) throw rpcFailure("not-found", "The file does not exist.");
+        if (!existing.isFile()) throw rpcFailure("permission-denied", "Only a regular file can be moved to the Recycle Bin.");
+        try { await shell.trashItem(checkedPath); }
         catch (error: unknown) { throw fileAccessError(error); }
     },
     async watch(entry, args) { await startBoardWatch(entry, args); },

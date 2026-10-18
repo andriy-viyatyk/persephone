@@ -478,9 +478,9 @@ interface PersephoneSourceApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.40.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.40.0"; 1.40.0 adds singleton file-mask routing and
-     *  `source.navigate()` for items in the initial source context.
+    /** The current host bridge is 1.41.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.41.0"; 1.41.0 adds `trashFile()`; 1.40.0 adds singleton
+     *  file-mask routing and `source.navigate()` for items in the initial source context.
      * Compare it before using a newer member; do not narrow it to a
      * literal, it moves with the app. */
     readonly version: string;

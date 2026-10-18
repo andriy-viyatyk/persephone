@@ -11,8 +11,9 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.40.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.40.0` adds optional
+The board bridge is version **1.41.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.41.0` adds `persephone.trashFile(path)`,
+which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest masks to choose which claimed file names route to a singleton board page,
 `persephone.source.navigate(href)` to navigate the hosting page to an item in its initial source context,
 and `persephone.page.visible` / `persephone.page.onVisibilityChange(callback)` for page-level visibility
@@ -1001,6 +1002,10 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   `fileSystem: "board"` and can be revoked in Board Info. Under `fileSystem: "full"` every path is
   already covered, so both return `true` at once without a prompt or a stored grant — a board that
   needs arbitrary user folders (a music library, say) should request `"full"` and be trusted once.
+- `persephone.trashFile(path)` → `Promise<void>` (bridge 1.41.0) — move a file to the OS Recycle
+  Bin, so the user can restore it. Authorized exactly like `writeFile` (`fileSystem: "board"` or
+  `"full"`); rejects with `not-found` for a missing path and `permission-denied` for a folder. The
+  board owns the confirmation prompt — ask before calling it.
 - `persephone.getFileAccess(path)` returns `{ read, write }` for the current path authorization
   without prompting or changing grants. Call it at startup to check whether a remembered catalog is
   writable; `rememberFile()` may prompt and should not be used as an access check.

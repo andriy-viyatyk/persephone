@@ -210,6 +210,7 @@ export type BoardRpcMethod =
     | "getFileAccess"
     | "readFile"
     | "writeFile"
+    | "trashFile"
     | "watch"
     | "unwatch"
     | "getJobs"

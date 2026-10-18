@@ -197,7 +197,8 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.40.0**. Bridge `1.40.0` adds the optional
+The current board bridge is **1.41.0**. Bridge `1.41.0` adds `persephone.trashFile(path)`, which
+moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,
 and `persephone.source.navigate(href)`, which navigates the hosting page to an item in its initial
 Explorer or Link Editor source context, and `persephone.page.visible` / `onVisibilityChange()` for

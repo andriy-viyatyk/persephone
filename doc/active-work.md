@@ -13,8 +13,9 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1689: Source context for board opens (sibling tracks)](tasks/US-1689-board-source-context/README.md)
   - [ ] [US-1690: Board folder listing and persisted folder and file grants](tasks/US-1690-board-folder-listing/README.md)
   - [ ] [US-1700: Single-instance routing by mask — full player vs in-place light pages (A11)](tasks/US-1700-single-instance-masks/README.md)
+  - [ ] US-1701: Board bridge `trashFile(path)` — move a file to the Recycle Bin (bridge 1.41.0)
   - [ ] US-1692: Remove the audio features from the Video Player (after the board ships)
-  - *(board tasks BT-038 – BT-043 are tracked in persephone-boards)*
+  - *(board tasks BT-038 – BT-045 are tracked in persephone-boards)*
 
 ## Planned
 

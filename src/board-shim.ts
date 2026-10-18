@@ -2243,6 +2243,12 @@ function createHandle(
         return rpc("writeFile", [path, data, options?.encoding]) as Promise<void>;
     },
 
+    /** Move a file to the OS Recycle Bin (bridge 1.41.0). Authorized like `writeFile`; rejects
+     *  for a missing path or a folder. */
+    trashFile(path: string): Promise<void> {
+        return rpc("trashFile", [path]) as Promise<void>;
+    },
+
     // ── Busy / surviving jobs (US-799) ────────────────────────────────────────
 
     /** Declare that this board's spawned processes must outlive the board itself.
