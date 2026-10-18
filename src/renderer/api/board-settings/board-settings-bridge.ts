@@ -16,6 +16,11 @@ import type {
 
 export { normalizeBoardSettings } from "../../editors/board/board-manifest";
 
+/** Ensure the shared settings file and its external-edit watcher are ready. */
+export function initializeBoardSettings(): Promise<void> {
+    return boardSettings.initialize();
+}
+
 export interface BoardSettingsReply {
     result?: BoardSettingValue;
     error?: string;

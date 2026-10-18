@@ -13,7 +13,10 @@ if (!parentPort || !serviceEntry) {
 const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
 const storagePending = new Map();
 const mcpEndpointPending = new Map();
+const boardSettingsPending = new Map();
+const boardSettingsCallbacks = new Set();
 const activeMcpEndpoints = new Set();
+let boardSettingsSubscriptionId;
 let requestNumber = 0;
 let hostConfig;
 let resolveConfig;
@@ -33,6 +36,11 @@ function errorMessage(error, fallback) {
 
 function isRecord(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isBoardSettingValue(value) {
+    return typeof value === "string" || typeof value === "boolean"
+        || (typeof value === "number" && Number.isFinite(value));
 }
 
 function isUint8Array(value) {
@@ -120,6 +128,56 @@ async function mcpEndpointRequest(operation, token) {
             reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
         }
     });
+}
+
+async function boardSettingsRequest(kind, fields = {}) {
+    await configReady;
+    if (boardSettingsPending.size >= hostConfig.maxOutstandingRequestsPerService) {
+        throw Object.assign(new Error("Service is busy."), { code: "service-busy" });
+    }
+    const requestId = `board-settings-${process.pid}-${Date.now()}-${++requestNumber}`;
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            boardSettingsPending.delete(requestId);
+            reject(Object.assign(new Error("Service request timed out."), { code: "service-timeout" }));
+        }, hostConfig.serviceRequestDeadlineMs);
+        boardSettingsPending.set(requestId, { resolve, reject, timer });
+        try { parentPort.postMessage({ kind, requestId, ...fields }); }
+        catch {
+            clearTimeout(timer);
+            boardSettingsPending.delete(requestId);
+            reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
+        }
+    });
+}
+
+function assertHostSettingsApi() {
+    if (protocolMode === "raw") throw new Error("Board settings require the host-managed service API.");
+}
+
+function subscribeBoardSettings(callback) {
+    assertHostSettingsApi();
+    if (typeof callback !== "function") throw new TypeError("settings.onChange(callback) requires a function.");
+    boardSettingsCallbacks.add(callback);
+    if (boardSettingsCallbacks.size === 1) {
+        const subscriptionId = `board-settings-${process.pid}-${Date.now()}-${++requestNumber}`;
+        boardSettingsSubscriptionId = subscriptionId;
+        void boardSettingsRequest("board-settings-subscribe", { subscriptionId }).catch((error) => {
+            if (boardSettingsSubscriptionId !== subscriptionId) return;
+            boardSettingsSubscriptionId = undefined;
+            console.error("Board settings subscription failed:", errorMessage(error, "service-error"));
+        });
+    }
+    let disposed = false;
+    return () => {
+        if (disposed) return;
+        disposed = true;
+        boardSettingsCallbacks.delete(callback);
+        if (boardSettingsCallbacks.size !== 0 || !boardSettingsSubscriptionId) return;
+        const subscriptionId = boardSettingsSubscriptionId;
+        boardSettingsSubscriptionId = undefined;
+        void boardSettingsRequest("board-settings-unsubscribe", { subscriptionId }).catch(() => undefined);
+    };
 }
 
 async function issueSessionEndpoint() {
@@ -241,6 +299,21 @@ function registerProvider(type, implementation) {
 }
 
 const persephone = globalThis.persephone ?? {};
+persephone.settings = {
+    get(id) {
+        assertHostSettingsApi();
+        if (typeof id !== "string" || id.trim().length === 0) {
+            return Promise.reject(Object.assign(new Error("Board setting id must be a non-empty string."), { code: "service-error" }));
+        }
+        return boardSettingsRequest("board-settings-get", { id: id.trim() }).then((value) => {
+            if (!isBoardSettingValue(value)) {
+                throw Object.assign(new Error("Board setting result must be a finite scalar."), { code: "service-error" });
+            }
+            return value;
+        });
+    },
+    onChange: subscribeBoardSettings,
+};
 persephone.storage = {
     get: (key) => storageRequest("get", [key]),
     set: (key, value) => storageRequest("set", [key, value]),
@@ -648,6 +721,13 @@ async function runServiceRequest(message) {
 async function runShutdown(message) {
     if (shutdownStarted) return;
     shutdownStarted = true;
+    boardSettingsCallbacks.clear();
+    boardSettingsSubscriptionId = undefined;
+    for (const [requestId, pending] of boardSettingsPending) {
+        clearTimeout(pending.timer);
+        pending.reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
+        boardSettingsPending.delete(requestId);
+    }
     for (const channel of [...serviceChannels.values()]) channel.close({ code: "service-exited", message: "The board service is shutting down." });
     let failed = false;
     for (const endpoint of [...activeMcpEndpoints]) {
@@ -905,6 +985,48 @@ originalPortMethods.on("message", (event) => {
         forwardEntryEvent(event, message);
         return;
     }
+    if (message.kind === "board-settings-response" && typeof message.requestId === "string") {
+        const request = boardSettingsPending.get(message.requestId);
+        if (request) {
+            clearTimeout(request.timer);
+            boardSettingsPending.delete(message.requestId);
+            if (message.error) request.reject(Object.assign(
+                new Error(errorMessage(message.error, "Board settings request failed.")),
+                { code: message.error.code ?? "service-error" },
+            ));
+            else request.resolve(message.result);
+        }
+        forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "board-settings-subscribe-response" || message.kind === "board-settings-unsubscribe-response") {
+        const request = typeof message.requestId === "string" ? boardSettingsPending.get(message.requestId) : undefined;
+        if (request) {
+            clearTimeout(request.timer);
+            boardSettingsPending.delete(message.requestId);
+            if (message.error) request.reject(Object.assign(
+                new Error(errorMessage(message.error, "Board settings subscription failed.")),
+                { code: message.error.code ?? "service-error" },
+            ));
+            else request.resolve();
+        }
+        forwardEntryEvent(event, message);
+        return;
+    }
+    if (message.kind === "board-settings-changed") {
+        if (message.subscriptionId === boardSettingsSubscriptionId
+            && typeof message.id === "string"
+            && (typeof message.value === "string" || typeof message.value === "boolean"
+                || (typeof message.value === "number" && Number.isFinite(message.value)))) {
+            const change = { id: message.id, value: message.value };
+            for (const callback of [...boardSettingsCallbacks]) {
+                try { callback(change); }
+                catch (error) { console.error("Board settings callback failed:", errorMessage(error, "service-error")); }
+            }
+        }
+        forwardEntryEvent(event, message);
+        return;
+    }
     if (message.kind === "attach-renderer") {
         attachRenderer(message, event?.ports?.[0]);
         forwardEntryEvent(event, message);
@@ -960,6 +1082,10 @@ process.on("exit", () => {
     storagePending.clear();
     for (const request of mcpEndpointPending.values()) clearTimeout(request.timer);
     mcpEndpointPending.clear();
+    for (const request of boardSettingsPending.values()) clearTimeout(request.timer);
+    boardSettingsPending.clear();
+    boardSettingsCallbacks.clear();
+    boardSettingsSubscriptionId = undefined;
     for (const endpoint of activeMcpEndpoints) endpoint.token = "";
     activeMcpEndpoints.clear();
 });

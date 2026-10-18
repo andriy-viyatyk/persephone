@@ -1,5 +1,8 @@
 import { Endpoint, EventEndpoint } from "../../ipc/api-types";
 import type { BoardPipeChannel } from "../../ipc/board-pipe-channels";
+import type { BoardServiceSettingsChannel } from "../../ipc/board-service-settings-channels";
+
+type BoardServiceSettingsChannelName = typeof BoardServiceSettingsChannel[keyof typeof BoardServiceSettingsChannel];
 
 declare global {
     /** Active script context set by ScriptContext.customRequire() during require() calls.
@@ -10,11 +13,11 @@ declare global {
         electron: {
             ipcRenderer: {
                 sendMessage(
-                    channel: Endpoint | EventEndpoint | BoardPipeChannel | PreloadEvent,
+                    channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | PreloadEvent,
                     ...args: unknown[]
                 ): void;
                 on(
-                    channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel,
+                    channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName,
                     func: (...args: unknown[]) => void
                 ): () => void;
                 once(

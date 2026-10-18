@@ -2,12 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import {
+    app,
     MessageChannelMain,
     type UtilityProcess,
     type WebContents,
     utilityProcess,
 } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
+import { BoardServiceSettingsChannel, type BoardServiceSettingsReply, type BoardServiceSettingsRequest } from "../ipc/board-service-settings-channels";
+import { guardedIpcOn } from "./ipc-sender-guard";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
     MAX_SERVICE_CHANNELS_PER_BOARD,
@@ -67,6 +70,71 @@ class ModuleServiceSupervisor {
     private readonly providerKeys = new Map<string, string>();
     private providerIndex = new Map<string, TrustedBoardSnapshotEntry[]>();
     private disposing = false;
+    private readonly boardSettingsPending = new Map<string, {
+        record: ServiceRecord;
+        process: UtilityProcess;
+        generation: number;
+        webContents: WebContents;
+        timer: ReturnType<typeof setTimeout>;
+        resolve: (reply: BoardServiceSettingsReply) => void;
+        lifecycleListeners: Array<() => void>;
+    }>();
+    private readonly boardSettingsSubscriptions = new Map<string, {
+        record: ServiceRecord;
+        process: UtilityProcess;
+        generation: number;
+        subscriptionId: string;
+        webContents?: WebContents;
+        lifecycleListeners: Array<() => void>;
+    }>();
+
+    constructor() {
+        app.on("browser-window-created", (_event, window) => {
+            window.webContents.once("did-finish-load", (): void => {
+                for (const subscription of this.boardSettingsSubscriptions.values()) {
+                    if (!subscription.webContents) {
+                        void this.installBoardSettingsSubscription(subscription).catch((error: unknown): void => {
+                            console.error(`Board settings subscription reinstall failed: ${errMessage(error)}`);
+                        });
+                    }
+                }
+            });
+        });
+        for (const replyChannel of [
+            BoardServiceSettingsChannel.getReply,
+            BoardServiceSettingsChannel.subscribeReply,
+            BoardServiceSettingsChannel.unsubscribeReply,
+        ]) {
+            guardedIpcOn(replyChannel, (event, reply: BoardServiceSettingsReply) => {
+                if (!reply || typeof reply.requestId !== "string") return;
+                const pending = this.boardSettingsPending.get(reply.requestId);
+                if (!pending || pending.webContents !== event.sender) return;
+                this.boardSettingsPending.delete(reply.requestId);
+                clearTimeout(pending.timer);
+                this.detachBoardSettingsPending(pending);
+                pending.resolve(isCurrent(pending.record, pending.process, pending.generation)
+                    ? reply
+                    : { requestId: reply.requestId, ok: false, error: { code: "service-exited", message: "The service has exited." } });
+            });
+        }
+        guardedIpcOn(BoardServiceSettingsChannel.changed, (event, change: { subscriptionId: string; id: string; value: unknown }) => {
+            if (!change || typeof change.subscriptionId !== "string" || typeof change.id !== "string"
+                || !(typeof change.value === "string" || typeof change.value === "boolean"
+                    || (typeof change.value === "number" && Number.isFinite(change.value)))) return;
+            const subscription = [...this.boardSettingsSubscriptions.values()].find((candidate) => candidate.subscriptionId === change.subscriptionId);
+            if (!subscription || subscription.webContents !== event.sender
+                || !isCurrent(subscription.record, subscription.process, subscription.generation)
+                || subscription.record.state !== "running" || !this.isBoardSettingsAllowed(subscription.record)) return;
+            try {
+                subscription.process.postMessage({
+                    kind: "board-settings-changed",
+                    subscriptionId: subscription.subscriptionId,
+                    id: change.id,
+                    value: change.value,
+                });
+            } catch { /* The generation check prevents forwarding to a replacement service. */ }
+        });
+    }
 
     async applyBoardServiceTrustSnapshot(snapshot: BoardServiceTrustSnapshot): Promise<void> {
         if (this.disposing) return;
@@ -288,6 +356,275 @@ class ModuleServiceSupervisor {
                 reject(new ServiceError("service-exited", errMessage(error)));
             }
         });
+    }
+
+    private isBoardSettingsAllowed(record: ServiceRecord): boolean {
+        const grant = this.trustedSnapshot?.boards.find((board) => normalizeRoot(board.boardRoot) === record.key);
+        return !!grant && grant.canStartService && boardPermissionAllows(grant.permissions, "service")
+            && this.isEffectivelyTrusted(record.boardRoot);
+    }
+
+    private async handleBoardSettingsRequest(
+        record: ServiceRecord,
+        process: UtilityProcess,
+        generation: number,
+        message: Extract<import("../ipc/module-service-channels").ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" }>,
+    ): Promise<void> {
+        const post = (kind: "board-settings-response" | "board-settings-subscribe-response" | "board-settings-unsubscribe-response", payload: { result?: unknown; error?: { code: string; message: string } } = {}) => {
+            if (!isCurrent(record, process, generation)) return;
+            try { process.postMessage({ kind, requestId: message.requestId, ...payload }); } catch { /* service exited */ }
+        };
+        try {
+            if (typeof message.requestId !== "string" || !message.requestId) throw new ServiceError("service-error", "Malformed board settings request.");
+            if (!isCurrent(record, process, generation) || record.state !== "running" || record.stopRequested) throw new ServiceError("service-exited");
+            if (!this.isBoardSettingsAllowed(record)) throw new ServiceError("untrusted");
+            if (message.kind === "board-settings-get") {
+                if (typeof message.id !== "string" || !message.id.trim()) throw new ServiceError("service-error", "Board setting id must be a non-empty string.");
+                const reply = await this.requestBoardSettingsRenderer(record, process, generation, BoardServiceSettingsChannel.get, { id: message.id.trim() });
+                if (!reply.ok) throw new ServiceError(reply.error?.code ?? "service-error", reply.error?.message ?? "Board settings request failed.");
+                if (!(typeof reply.result === "string" || typeof reply.result === "boolean"
+                    || (typeof reply.result === "number" && Number.isFinite(reply.result)))) {
+                    throw new ServiceError("service-error", "Board setting result must be a finite scalar.");
+                }
+                post("board-settings-response", { result: reply.result });
+                return;
+            }
+            if (typeof message.subscriptionId !== "string" || !message.subscriptionId) throw new ServiceError("service-error", "Malformed board settings subscription.");
+            if (message.kind === "board-settings-subscribe") {
+                const existing = this.boardSettingsSubscriptions.get(record.key);
+                if (existing && existing.subscriptionId !== message.subscriptionId) throw new ServiceError("service-busy", "A board settings subscription is already active.");
+                const subscription = existing ?? { record, process, generation, subscriptionId: message.subscriptionId, lifecycleListeners: [] };
+                this.boardSettingsSubscriptions.set(record.key, subscription);
+                try {
+                    await this.installBoardSettingsSubscription(subscription);
+                } catch (error: unknown) {
+                    if (!existing) this.removeBoardSettingsSubscription(subscription);
+                    throw error;
+                }
+                post("board-settings-subscribe-response");
+                return;
+            }
+            const subscription = this.boardSettingsSubscriptions.get(record.key);
+            if (subscription?.subscriptionId === message.subscriptionId) {
+                try {
+                    await this.sendBoardSettingsToWebContents(record, process, generation, subscription.webContents, BoardServiceSettingsChannel.unsubscribe,
+                        { boardRoot: record.boardRoot, subscriptionId: message.subscriptionId });
+                } finally {
+                    this.removeBoardSettingsSubscription(subscription);
+                }
+            }
+            post("board-settings-unsubscribe-response");
+        } catch (error: unknown) {
+            const serviceError = this.asServiceError(error, "service-error");
+            const kind = message.kind === "board-settings-get" ? "board-settings-response"
+                : message.kind === "board-settings-subscribe" ? "board-settings-subscribe-response" : "board-settings-unsubscribe-response";
+            post(kind, { error: { code: serviceError.code, message: serviceError.message } });
+        }
+    }
+
+    private async requestBoardSettingsRenderer(
+        record: ServiceRecord,
+        process: UtilityProcess,
+        generation: number,
+        channel: string,
+        request: Pick<BoardServiceSettingsRequest, "id">,
+    ): Promise<BoardServiceSettingsReply> {
+        const requestId = `board-settings-${crypto.randomUUID()}`;
+        return new Promise<BoardServiceSettingsReply>((resolve) => {
+            let settled = false;
+            const timer = setTimeout(() => {
+                settled = true;
+                const pending = this.boardSettingsPending.get(requestId);
+                this.boardSettingsPending.delete(requestId);
+                if (pending) this.detachBoardSettingsPending(pending);
+                resolve({ requestId, ok: false, error: { code: "service-timeout", message: "Service request timed out." } });
+            }, SERVICE_REQUEST_DEADLINE_MS);
+            void (async () => {
+                const renderer = await this.selectBoardSettingsRenderer();
+                if (settled) return;
+                if (!renderer) {
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve({ requestId, ok: false, error: { code: "service-exited", message: "No renderer window is available." } });
+                    return;
+                }
+                if (!isCurrent(record, process, generation)) {
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve({ requestId, ok: false, error: { code: "service-exited", message: "The service has exited." } });
+                    return;
+                }
+                const pending = { record, process, generation, webContents: renderer, timer, resolve, lifecycleListeners: [] as Array<() => void> };
+                this.boardSettingsPending.set(requestId, pending);
+                this.watchBoardSettingsRendererRequest(requestId, pending);
+                try {
+                    renderer.send(channel, { ...request, requestId, boardRoot: record.boardRoot });
+                } catch (error: unknown) {
+                    settled = true;
+                    this.boardSettingsPending.delete(requestId);
+                    this.detachBoardSettingsPending(pending);
+                    clearTimeout(timer);
+                    resolve({ requestId, ok: false, error: { code: "service-exited", message: errMessage(error, "Renderer is unavailable.") } });
+                }
+            })().catch((error: unknown) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve({ requestId, ok: false, error: { code: "service-exited", message: errMessage(error, "Renderer is unavailable.") } });
+            });
+        });
+    }
+
+    private async selectBoardSettingsRenderer(excluded?: WebContents): Promise<WebContents | undefined> {
+        const data = openWindows.windows.find((entry) => entry.window && !entry.window.window.isDestroyed()
+            && !entry.window.window.webContents.isDestroyed() && entry.window.window.webContents !== excluded);
+        if (!data?.window) return undefined;
+        if (data.whenReady) await data.whenReady;
+        if (data.window.window.isDestroyed() || data.window.window.webContents.isDestroyed()) return undefined;
+        if (data.window.window.webContents.isLoadingMainFrame()) {
+            await new Promise<void>((resolve) => {
+                data.window?.window.webContents.once("did-finish-load", (): void => resolve());
+                data.window?.window.webContents.once("destroyed", (): void => resolve());
+            });
+            if (data.window.window.isDestroyed() || data.window.window.webContents.isDestroyed()) return undefined;
+        }
+        return data.window.window.webContents;
+    }
+
+    private async installBoardSettingsSubscription(subscription: {
+        record: ServiceRecord;
+        process: UtilityProcess;
+        generation: number;
+        subscriptionId: string;
+        webContents?: WebContents;
+        lifecycleListeners: Array<() => void>;
+    }, excluded?: WebContents): Promise<void> {
+        if (!isCurrent(subscription.record, subscription.process, subscription.generation)
+            || !this.isBoardSettingsAllowed(subscription.record)) throw new ServiceError("untrusted");
+        const renderer = await this.selectBoardSettingsRenderer(excluded);
+        if (!renderer) throw new ServiceError("service-exited", "No renderer window is available.");
+        const reply = await this.sendBoardSettingsToWebContents(subscription.record, subscription.process, subscription.generation, renderer, BoardServiceSettingsChannel.subscribe,
+            { boardRoot: subscription.record.boardRoot, subscriptionId: subscription.subscriptionId });
+        if (!reply.ok) throw new ServiceError(reply.error?.code ?? "service-error", reply.error?.message ?? "Board settings subscription failed.");
+        if (!isCurrent(subscription.record, subscription.process, subscription.generation)) throw new ServiceError("service-exited");
+        this.detachBoardSettingsRenderer(subscription);
+        subscription.webContents = renderer;
+        const lost = (): void => {
+            if (subscription.webContents !== renderer) return;
+            this.detachBoardSettingsRenderer(subscription);
+            void this.reinstallBoardSettingsSubscription(subscription, renderer);
+        };
+        renderer.on("did-start-navigation", lost);
+        renderer.on("render-process-gone", lost);
+        renderer.on("destroyed", lost);
+        subscription.lifecycleListeners.push(
+            () => { renderer.removeListener("did-start-navigation", lost); },
+            () => { renderer.removeListener("render-process-gone", lost); },
+            () => { renderer.removeListener("destroyed", lost); },
+        );
+    }
+
+    private async reinstallBoardSettingsSubscription(subscription: {
+        record: ServiceRecord;
+        process: UtilityProcess;
+        generation: number;
+        subscriptionId: string;
+        webContents?: WebContents;
+        lifecycleListeners: Array<() => void>;
+    }, previous: WebContents): Promise<void> {
+        if (!isCurrent(subscription.record, subscription.process, subscription.generation)
+            || this.boardSettingsSubscriptions.get(subscription.record.key) !== subscription) return;
+        const others = openWindows.windows.some((entry) => entry.window && !entry.window.window.isDestroyed()
+            && !entry.window.window.webContents.isDestroyed() && entry.window.window.webContents !== previous);
+        if (!others && !previous.isDestroyed()) {
+            previous.once("did-finish-load", (): void => {
+                void this.installBoardSettingsSubscription(subscription).catch((error: unknown): void => {
+                    console.error(`Board settings subscription reinstall failed: ${errMessage(error)}`);
+                });
+            });
+            return;
+        }
+        try {
+            await this.installBoardSettingsSubscription(subscription, previous);
+        } catch (error: unknown) {
+            console.error(`Board settings subscription reinstall failed: ${errMessage(error)}`);
+        }
+    }
+
+    private detachBoardSettingsRenderer(subscription: { webContents?: WebContents; lifecycleListeners: Array<() => void> }): void {
+        for (const dispose of subscription.lifecycleListeners) dispose();
+        subscription.lifecycleListeners = [];
+        subscription.webContents = undefined;
+    }
+
+    private removeBoardSettingsSubscription(subscription: {
+        record: ServiceRecord;
+        subscriptionId: string;
+        webContents?: WebContents;
+        lifecycleListeners: Array<() => void>;
+    }): void {
+        if (subscription.webContents && !subscription.webContents.isDestroyed()) {
+            try { subscription.webContents.send(BoardServiceSettingsChannel.unsubscribe, { requestId: crypto.randomUUID(), boardRoot: subscription.record.boardRoot, subscriptionId: subscription.subscriptionId }); } catch { /* renderer exited */ }
+        }
+        this.detachBoardSettingsRenderer(subscription);
+        if (this.boardSettingsSubscriptions.get(subscription.record.key) === subscription) this.boardSettingsSubscriptions.delete(subscription.record.key);
+    }
+
+    private sendBoardSettingsToWebContents(
+        record: ServiceRecord,
+        process: UtilityProcess,
+        generation: number,
+        webContents: WebContents | undefined,
+        channel: string,
+        request: Omit<BoardServiceSettingsRequest, "requestId">,
+    ): Promise<BoardServiceSettingsReply> {
+        if (!webContents || webContents.isDestroyed()) return Promise.resolve({ requestId: "", ok: false, error: { code: "service-exited", message: "The renderer is unavailable." } });
+        const requestId = crypto.randomUUID();
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                const pending = this.boardSettingsPending.get(requestId);
+                this.boardSettingsPending.delete(requestId);
+                if (pending) this.detachBoardSettingsPending(pending);
+                resolve({ requestId, ok: false, error: { code: "service-timeout", message: "Service request timed out." } });
+            }, SERVICE_REQUEST_DEADLINE_MS);
+            const pendingRequest = { ...request, requestId };
+            const pending = { record, process, generation, webContents, timer, resolve, lifecycleListeners: [] as Array<() => void> };
+            this.boardSettingsPending.set(requestId, pending);
+            this.watchBoardSettingsRendererRequest(requestId, pending);
+            try { webContents.send(channel, pendingRequest); }
+            catch (error: unknown) {
+                this.boardSettingsPending.delete(requestId);
+                this.detachBoardSettingsPending(pending);
+                clearTimeout(timer);
+                resolve({ requestId, ok: false, error: { code: "service-exited", message: errMessage(error, "Renderer is unavailable.") } });
+            }
+        });
+    }
+
+    private watchBoardSettingsRendererRequest(
+        requestId: string,
+        pending: { webContents: WebContents; lifecycleListeners: Array<() => void>; timer: ReturnType<typeof setTimeout>; resolve: (reply: BoardServiceSettingsReply) => void },
+    ): void {
+        const lost = (): void => {
+            if (this.boardSettingsPending.get(requestId) !== pending) return;
+            this.boardSettingsPending.delete(requestId);
+            clearTimeout(pending.timer);
+            this.detachBoardSettingsPending(pending);
+            pending.resolve({ requestId, ok: false, error: { code: "service-exited", message: "The renderer became unavailable." } });
+        };
+        pending.webContents.on("did-start-navigation", lost);
+        pending.webContents.on("render-process-gone", lost);
+        pending.webContents.on("destroyed", lost);
+        pending.lifecycleListeners.push(
+            () => { pending.webContents.removeListener("did-start-navigation", lost); },
+            () => { pending.webContents.removeListener("render-process-gone", lost); },
+            () => { pending.webContents.removeListener("destroyed", lost); },
+        );
+    }
+
+    private detachBoardSettingsPending(pending: { lifecycleListeners: Array<() => void> }): void {
+        for (const dispose of pending.lifecycleListeners) dispose();
+        pending.lifecycleListeners = [];
     }
 
     async transferRendererPort(boardRoot: string, target: WebContents): Promise<void> {
@@ -637,6 +974,9 @@ class ModuleServiceSupervisor {
                             }
                         })();
                     },
+                    onBoardSettingsRequest: (message) => {
+                        void this.handleBoardSettingsRequest(record, process, generation, message);
+                    },
                     onResponse: (request, message) => {
                         clearTimeout(request.timer);
                         record.requests.delete(message.requestId);
@@ -742,6 +1082,9 @@ class ModuleServiceSupervisor {
 
     private handleUnexpectedExit(record: ServiceRecord, process: UtilityProcess, generation: number, code: number): void {
         if (!isCurrent(record, process, generation)) return;
+        this.settleBoardSettings(record, "service-exited");
+        const subscription = this.boardSettingsSubscriptions.get(record.key);
+        if (subscription) this.removeBoardSettingsSubscription(subscription);
         void revokePrivateMcpEndpointsForBoard(record.boardRoot);
         record.process = undefined;
         this.closeRecordChannels(record, { code: "service-exited", message: "The board service exited." });
@@ -776,6 +1119,9 @@ class ModuleServiceSupervisor {
     private async stopRecord(record: ServiceRecord, reason: ServiceStopReason): Promise<void> {
         if (record.stopPromise) return record.stopPromise;
         record.stopRequested = true;
+        this.settleBoardSettings(record, STOP_REASON_CODE[reason]);
+        const settingsSubscription = this.boardSettingsSubscriptions.get(record.key);
+        if (settingsSubscription) this.removeBoardSettingsSubscription(settingsSubscription);
         void revokePrivateMcpEndpointsForBoard(record.boardRoot);
         const process = record.process;
         const generation = record.generation;
@@ -835,6 +1181,16 @@ class ModuleServiceSupervisor {
             clearTimeout(request.timer);
             request.reject(new ServiceError(code));
             record.requests.delete(requestId);
+        }
+    }
+
+    private settleBoardSettings(record: ServiceRecord, code: string): void {
+        for (const [requestId, pending] of this.boardSettingsPending) {
+            if (pending.record !== record) continue;
+            clearTimeout(pending.timer);
+            this.boardSettingsPending.delete(requestId);
+            this.detachBoardSettingsPending(pending);
+            pending.resolve({ requestId, ok: false, error: { code, message: code } });
         }
     }
 

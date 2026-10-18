@@ -200,6 +200,9 @@ class App {
         const { fs: appFs } = await import("./fs");
         await appFs.wait();
 
+        const { initBoardServiceSettings } = await import("./board-service-settings");
+        initBoardServiceSettings();
+
         // Listen for main-process requests before restoring pages: a restored board calls the bridge
         // at once. Requests queue until initEvents() marks the handler ready.
         const { initMcpHandler } = await import("./mcp-handler");

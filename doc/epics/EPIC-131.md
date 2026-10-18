@@ -238,8 +238,9 @@ Claude Code 2.1.302 / Agent SDK 0.3.302 / Codex 0.163.0, checked 2026-10-18):
 | US-1704 | Phase 0: cross-board service interfaces (`serviceInterfaces` / `uses` / `services.connect`) with trust disclosure | Implemented |
 | US-1709 | Phase 0: private token-gated Persephone MCP endpoint for in-app agent sessions | Implemented |
 | US-1710 | Phase 0: `format: "multiline"` board settings (Textarea in Settings → Editors) | Implemented |
-| US-1705 | Phase 1: `agent.session` v1 contract document | Planned |
-| US-1706 | Phase 1: `claude-agent` provider board | Planned |
+| [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Implemented |
+| US-1705 | Phase 1: `agent.session` v1 contract document | Implemented |
+| US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Implemented |
 | US-1707 | Phase 1: `codex-agent` provider board | Planned |
 | US-1708 | Phase 2: team chat board | Planned |
 

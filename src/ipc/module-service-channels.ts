@@ -129,7 +129,11 @@ export type ServiceParentMessage =
     | { kind: "channel-close"; channelId: string; reason: ServiceChannelCloseReason }
     | { kind: "shutdown"; nonce: number; reason: ServiceStopReason }
     | { kind: "storage-response"; requestId: string; result?: unknown; error?: unknown }
-    | { kind: "mcp-endpoint-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload };
+    | { kind: "mcp-endpoint-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
+    | { kind: "board-settings-response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }
+    | { kind: "board-settings-subscribe-response"; requestId: string; error?: ServiceErrorPayload }
+    | { kind: "board-settings-unsubscribe-response"; requestId: string; error?: ServiceErrorPayload }
+    | { kind: "board-settings-changed"; subscriptionId: string; id: string; value: unknown };
 
 export type ServiceMainMessage =
     | { kind: "ready"; nonce: number }
@@ -144,6 +148,9 @@ export type ServiceMainMessage =
         args: unknown[];
     }
     | { kind: "mcp-endpoint-request"; requestId: string; operation: "issue" | "revoke"; token?: string }
+    | { kind: "board-settings-get"; requestId: string; id: string }
+    | { kind: "board-settings-subscribe"; requestId: string; subscriptionId: string }
+    | { kind: "board-settings-unsubscribe"; requestId: string; subscriptionId: string }
     | { kind: "channel-ended"; channelId: string };
 
 export type ProviderOperation =

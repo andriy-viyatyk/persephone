@@ -891,7 +891,26 @@ const sameValue = await persephone.storage.get("last-result");
 `persephone.service.request(message)` uses structured-clone messages, starts the service on first
 use, and rejects with lifecycle errors such as `untrusted`, `permission-denied`, `service-busy`,
 `service-timeout`, `service-exited`, or `service-failed`. Service status is visible in
-`app.boards.list()` as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The
+`app.boards.list()` as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`.
+
+The host-managed service also exposes the settings declared by its own board. Reads use the same
+manifest defaults, stored-value validation, and board namespace as the page API:
+
+```js
+const instructions = await persephone.settings.get("instructions");
+const stop = persephone.settings.onChange(({ id, value }) => {
+    if (id === "instructions") reloadInstructions(value);
+});
+// Call stop() when this listener is no longer needed.
+```
+
+`onChange()` returns a disposer. One renderer subscription is shared by all local callbacks, and
+changes include the effective default after a reset. The service can read settings when no page for
+its board is open. Settings remain renderer-owned; main routes service requests to a ready renderer
+and scopes them to the service's trusted board with its existing `service` grant. This API is part
+of bridge **1.42.0**. It is available to the host-managed service API; legacy raw-protocol entries
+do not receive it.
+
 The `service` permission controls whether the declared background program can run. The Trust board
 dialog and Board Info show the permission set granted to that board.
 

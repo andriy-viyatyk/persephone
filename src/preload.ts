@@ -7,14 +7,17 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Endpoint, EventEndpoint } from "./ipc/api-types";
 import type { BoardPipeChannel } from "./ipc/board-pipe-channels";
+import type { BoardServiceSettingsChannel } from "./ipc/board-service-settings-channels";
+
+type BoardServiceSettingsChannelName = typeof BoardServiceSettingsChannel[keyof typeof BoardServiceSettingsChannel];
 
 const electronHandler = {
     ipcRenderer: {
-        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel, ...args: unknown[]) {
+        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName, ...args: unknown[]) {
             ipcRenderer.send(channel, ...args);
         },
         on(
-            channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel,
+            channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName,
             func: (...args: unknown[]) => void
         ) {
             const subscription = (

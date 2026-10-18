@@ -12,7 +12,11 @@ boards that rely on them must set `minBridgeVersion: "1.42.0"`. It also adds
 `headers`, `token`, and an idempotent `revoke()` method. Revoke it at the end of each agent session;
 the host revokes active handles during shutdown. Issuance requires the granted `appScripting`
 permission because MCP provides full app control. Service boards using this API must declare
-`minBridgeVersion: "1.42.0"`. Cross-board service interfaces use provider
+`minBridgeVersion: "1.42.0"`. Host-managed services also receive `persephone.settings.get(id)` and
+`persephone.settings.onChange(callback)` for their own board's declared settings; changes include
+effective defaults after reset, and the returned disposer removes the shared subscription when the
+last callback is removed. This settings access uses the existing trust and `service` permission.
+Cross-board service interfaces use provider
 `serviceInterfaces: [{ id: "agent.session", version: 1 }]` and consumer
 `uses: [{ id: "agent.session", version: 1 }]` manifest declarations. Every non-empty consumer
 grant is Full access and applies to currently or later trusted providers; it grants messaging only,
@@ -695,6 +699,19 @@ The frame reaches the service through structured-clone request/reply messages:
 const result = await persephone.service.request({ op: "refresh", value });
 await persephone.storage.set("last-result", result);
 ```
+
+The host-managed service facade also reads its own board's declared settings and observes changes:
+
+```js
+const stop = persephone.settings.onChange(({ id, value }) => updateConfiguration(id, value));
+const instructions = await persephone.settings.get("instructions");
+// Call stop() during application-level cleanup when no longer needed.
+```
+
+`settings.get(id)` returns the stored scalar or current manifest default. `onChange(callback)`
+returns an unsubscribe function and delivers effective values after edits and resets. The host shares
+one renderer subscription across callbacks. This is a bridge `1.42.0` host-service API; legacy raw
+protocol entries do not receive it.
 
 Requests start the service lazily and may reject with readable lifecycle errors such as
 `untrusted`, `service-not-declared`, `permission-denied`, `service-busy`, `service-timeout`,

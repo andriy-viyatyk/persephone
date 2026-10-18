@@ -140,6 +140,11 @@ class BoardSettingsStore {
         }
     }
 
+    /** Load the settings file and start its watcher before a long-lived subscriber is installed. */
+    initialize(): Promise<void> {
+        return this.enqueue(async () => { await this.ensureLoaded(); });
+    }
+
     private async reloadFromModel(): Promise<void> {
         const model = this.model;
         if (!model) return;
