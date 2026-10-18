@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.12 (Upcoming)
+## Version 5.0.13 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.12
 
 ### Bug Fixes
 
@@ -513,79 +519,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Breaking Changes
 
-- **The built-in Force Graph editor is now a board** — Install the **Force Graph** board from the
-  **persephone-boards** catalog for interactive force-graph editing. Without it, `.fg.json` files
-  still open as raw JSON in the Text Editor. Open **Tools & Editors → Search boards**, find
-  **Force Graph**, choose **Install**, and trust it when prompted.
+- **Force Graph is now a board:** install it from the board catalog; without it `.fg.json` opens as raw JSON.
 
 ### New Features
 
-- **Your open project folders are now called workspaces:** if you keep a few projects open at
-  once — each in its own tab with the File Explorer rooted at the project folder — that tab is
-  now named for what it already was: a workspace, Persephone's equivalent of a VS Code workspace.
-  Nothing changed about how you open one (**Open Folder**, or dropping a folder on the window).
-  What changed is that an AI agent can now see them: it can tell which tab holds which project,
-  and open a folder as a workspace when you ask it to. There is still no workspace file, no
-  workspace settings, and no multi-root workspace — a workspace is just a tab with a rooted
-  Explorer, which is what it has always been.
-
-- **Word Wrap in the Text Editor:** a toolbar button wraps long lines to the width of the page, so
-  you can read a minified file or a long paragraph without scrolling sideways. Wrapping only
-  changes how the text is displayed, never the file itself, and you can still tell the difference
-  at a glance: a real line break gets a line number, a wrapped continuation does not.
-
-  Each page remembers its own setting, and keeps it when you restart Persephone, switch editors, or
-  drag the tab into another window. Word wrap starts off; turn it on for every new page with
-  **Enable Word Wrap by default** in **Settings → Editor Behavior**, which changes the starting point for
-  pages you open from then on and leaves the pages you already have alone.
-
-- **Patch/diff syntax highlighting:** `.patch` and `.diff` files are recognized automatically and
-  receive structural coloring: added lines are green, removed lines are red, file and hunk headers
-  use distinct colors, and other diff metadata is muted while unchanged context keeps the normal
-  text color.
-
-- **AI Vision authoring guide:** Board and web-app builders can now read a built-in reference for
-  publishing an agent-drivable model at `pages[i].editor.app`, linked from the Boards and Browser guides.
-
-- **Review boards before trusting them:** A new [board-review checklist](./agents/board-review.md)
-  helps an agent inspect a board it did not write before asking you to trust it, including what
-  trust grants and why updates need another review.
-
-- **Installed boards bring their own guides:** a board can now ship its own user and agent
-  documentation, and Persephone folds it into the guide system alongside the built-in guides — the
-  About page's guide tree, `F1`, and guide search all find it. A board's documentation is therefore
-  always the version that matches the board you have installed, and it arrives and leaves with the
-  board itself. The Force Graph board's guide and `.fg.json` format reference are the first to
-  arrive this way.
-
-- **Agents learn when the active page changes:** When an agent is working with a page and another
-  page becomes active, it receives a `page-activated` event so it can re-activate the intended page
-  before relying on visibility or screen geometry. See [Agent events](./agents/events.md).
-
-### Bug Fixes
-
-- **External images load more reliably:** image URLs now send the content request's default
-  User-Agent, fixing hosts that reject requests with no User-Agent. If the URL still cannot be
-  loaded and no cached copy is available, Persephone reports the failure instead of leaving only
-  the image's alt text.
-
-- **Switching from a simple board works again:** The editor switcher's **+** entry now opens Board
-  Info even when the current editor is a simple board, such as the PDF Viewer. The file keeps its
-  name, and you can switch back to the board afterward; a failed switch now reports an error
-  instead of appearing to do nothing.
-
-- **Editor switches appear after changing the language:** On a new or extensionless page, choosing
-  Markdown, JSON, CSV, JSONL, HTML, or Mermaid from the language menu now immediately shows the
-  matching editor option in the page toolbar — **Preview**, **Grid**, or **Mermaid** as appropriate.
-  Choosing XML also shows **SVG Preview** on an untitled or extensionless page; named `.xml` files
-  remain in **Text Editor**.
-
-- **Deleting an open board no longer leaves an empty folder:** Persephone now releases an open board
-  before removing its folder, so **Delete Board** fully removes it, including on Windows. The board's
-  tab stays open as **Empty**, ready for another file.
-
-- **Menus close when you click inside a board:** Clicking board content now dismisses open menus,
-  popovers, and other Persephone overlays, just like clicking elsewhere in the app.
+- **Workspaces:** project folder tabs are workspaces that agents can see and open.
+- **Word Wrap:** a Text Editor toolbar toggle, remembered per page, with a default in Settings.
+- **Patch/diff highlighting** for `.patch` and `.diff` files.
+- **Board guides:** installed boards ship their own guides, plus new AI Vision authoring and board-review guides.
+- **`page-activated` event** tells agents when the active page changes.
 
 ---
 
