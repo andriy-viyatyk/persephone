@@ -10,26 +10,36 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.11 (Upcoming)
+## Version 5.0.12 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.11
 
 ### New Features
 
-- **Boards can control file routing and page audio state:** `singleInstanceMasks` sends selected
-  file types to one board page, while other matching files can open in place. Boards can navigate
-  within their initial Explorer or Link Editor source list, track page visibility, and move an
-  authorized file to the Recycle Bin. See the [Boards guide](./boards.md).
-- **Video Player audio uses native controls:** audio files still play in Video Player, with browser
-  controls for play/pause, seeking, and volume. The audio visualizer and track navigation are no
-  longer part of Video Player; see the [Video Player guide](./editors/video.md).
+- **Audio Player board:** a music player with a queue, visualizer, equalizer, crossfade, and its own
+  music catalog with ratings, tags, play counts and playlists. Install it from the board catalog, or
+  open an audio file and pick it from the editor switch's **+** button.
+- **Boards can route files and follow their sources:** `singleInstanceMasks` sends selected file
+  types to one board page while other matching files open in place. Boards can step through the
+  Explorer folder or Link Editor list a file was opened from, react to page visibility, show the tab's
+  mute button, and move an authorized file to the Recycle Bin. Board toolbar inputs get a clear (x)
+  button. See the [Boards guide](./boards.md).
 - **Boards can watch authorized files and folders:** `persephone.watch()` reports file changes in
   batches, respects the board's existing file access, and stops when access is revoked or the board
   closes.
-
-### Bug Fixes
-
-- **Open files follow moves:** Renaming or moving a file from Persephone's Explorer keeps its tab
+- **Open files follow moves:** renaming or moving a file from Persephone's Explorer keeps its tab
   open at the new location, including unsaved edits. Renames made outside Persephone are followed
   when the file watcher can see both paths; deleted files remain marked as deleted.
+
+### Breaking Changes
+
+- **Video Player audio uses native controls:** audio files still play in Video Player, with themed
+  controls for play/pause, seeking, and volume. The audio visualizer, Next and shuffle moved to the
+  Audio Player board; see the [Video Player guide](./editors/video.md).
 
 ---
 
@@ -581,29 +591,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Boards and web pages can expose their own model to agents:** a trusted board, or a web page that
-  uses the [`ai-vision`](https://github.com/andriy-viyatyk/ai-vision) library, publishes a
-  discoverable model at `pages[i].editor.app`. Through the single `call` surface an agent inspects its
-  state, updates writable properties, calls named actions, finds the page's controls and highlights
-  them in the right frame. The todo board (catalog version 1.1.0) is the first complete example; a
-  board that exposes no model remains usable through `snapshot()` and refs as before.
-- **Agents keep up with what changed:** every `call` result now carries the events an agent has not
-  seen since its last call, such as a board or web page refreshing its model, a dialog being answered,
-  or a page navigating. An agent can read the full list with `events.recent()` or wait for the next
-  event instead of polling.
-- **Guided walkthroughs:** ask your agent to walk you through Persephone, a Settings section, a board
-  or a browser page one control at a time. Each step highlights the target and shows a card with
-  **Skip** and **Next**, so you move through the tour at your own pace and the agent continues when
-  you are ready.
-
-### Bug Fixes
-
-- **Git Tree shows the commit you select again** — selecting a commit in the history grid left the
-  **Commit** and **Diff** tabs of the bottom panel empty. Both tabs now fill in as before: the
-  commit's author, date, refs and full message, and the list of files it changed with their diff.
-- **Board pages display non-ASCII text correctly** — board documents were served without a charset,
-  so characters outside ASCII, such as dashes and accented letters in board content, could render as
-  garbled text. Boards are now served as UTF-8.
+- **Board and web-page models for agents:** a trusted board or an `ai-vision` web page can publish a model that agents inspect and drive through `call`.
+- **Change events for agents:** every `call` result carries unseen events, with `events.recent()` and waiting instead of polling.
+- **Guided walkthroughs:** agents can tour Persephone, Settings, boards and web pages one highlighted control at a time.
 
 ---
 
