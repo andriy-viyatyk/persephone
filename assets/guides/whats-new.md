@@ -12,7 +12,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.12 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Quitting no longer shows a main-process error.** Closing the app after a file or folder had been watched raised "Object has been destroyed".
 
 ---
 

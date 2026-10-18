@@ -14,6 +14,8 @@ interface ClientSubscription {
 
 const clientsBySender = new Map<number, Map<string, ClientSubscription>>();
 const watchedSenders = new WeakSet<WebContents>();
+// Recorded while the sender is alive: a destroyed WebContents can no longer be mapped to its window.
+const ownersBySender = new Map<number, PathWatchOwner>();
 
 function getOwner(event: IpcMainEvent): PathWatchOwner {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -23,11 +25,8 @@ function getOwner(event: IpcMainEvent): PathWatchOwner {
 }
 
 function releaseSender(sender: WebContents): void {
-    const owner = (() => {
-        const window = BrowserWindow.fromWebContents(sender);
-        const windowIndex = window ? openWindows.findByWindow(window)?.index : undefined;
-        return windowIndex === undefined || windowIndex < 0 ? undefined : { kind: "window" as const, windowIndex };
-    })();
+    const owner = ownersBySender.get(sender.id);
+    ownersBySender.delete(sender.id);
     const clients = clientsBySender.get(sender.id);
     if (clients) {
         for (const client of clients.values()) {
@@ -53,6 +52,7 @@ export function initPathWatchHandlers(): void {
     bindEndpoint(Endpoint.subscribePathWatch, async (event, request: PathWatchSubscribeRequest) => {
         trackSender(event.sender);
         const owner = getOwner(event);
+        ownersBySender.set(event.sender.id, owner);
         const clients = clientsBySender.get(event.sender.id) ?? new Map<string, ClientSubscription>();
         clientsBySender.set(event.sender.id, clients);
         const previous = clients.get(request.clientId);
