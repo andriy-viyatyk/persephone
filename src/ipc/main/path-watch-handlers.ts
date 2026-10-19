@@ -43,9 +43,10 @@ function trackSender(sender: WebContents): void {
     if (watchedSenders.has(sender)) return;
     watchedSenders.add(sender);
     sender.once("destroyed", () => releaseSender(sender));
-    sender.on("did-start-navigation", (_event, _url, inPlace, isMainFrame) => {
-        if (isMainFrame && !inPlace) releaseSender(sender);
-    });
+    // `did-navigate` fires only once a main-frame, cross-document navigation commits.
+    // `did-start-navigation` also fires for navigations `will-navigate` then cancels (a dropped
+    // file, a clicked link), which would drop every subscription of a renderer that never reloaded.
+    sender.on("did-navigate", () => releaseSender(sender));
 }
 
 export function initPathWatchHandlers(): void {

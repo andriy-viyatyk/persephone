@@ -54,7 +54,7 @@ function applyTextColor(group: Element, textColor: string): void {
  * When classDef specifies light fill colors but the dark theme sets light text,
  * the result is unreadable. This detects low-contrast combinations and fixes them.
  */
-function fixTextContrast(doc: Document): void {
+function fixTextContrast(doc: ParentNode): void {
     // Fix node labels: each .node group has a shape with fill + label text
     for (const node of doc.querySelectorAll("g.node")) {
         const shape = node.querySelector("rect, polygon, circle, ellipse, path");
@@ -94,8 +94,12 @@ function fixTextContrast(doc: Document): void {
  *  Ensures explicit pixel width/height from viewBox so the <img> element
  *  reports correct naturalWidth/naturalHeight (needed for fit-to-viewport). */
 export function svgToDataUrl(svg: string, backgroundColor?: string, fixContrast?: boolean): string {
-    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
-    const root = doc.documentElement;
+    // Parse as HTML, not "image/svg+xml": Mermaid emits HTML-style void tags
+    // (`<br>`) inside foreignObject labels, which the strict XML parser rejects
+    // with a parsererror document. XMLSerializer below re-emits well-formed XML.
+    const doc = new DOMParser().parseFromString(svg, "text/html");
+    const root = doc.body.querySelector("svg");
+    if (!root) throw new Error("Mermaid produced no SVG element");
 
     // Extract dimensions from viewBox and set explicit pixel width/height.
     // Mermaid often uses width="100%" which makes the <img> element stretch
@@ -112,7 +116,7 @@ export function svgToDataUrl(svg: string, backgroundColor?: string, fixContrast?
 
     // Fix text contrast for nodes with custom fill colors (dark mode only)
     if (fixContrast) {
-        fixTextContrast(doc);
+        fixTextContrast(root);
     }
 
     if (backgroundColor) {
@@ -123,7 +127,7 @@ export function svgToDataUrl(svg: string, backgroundColor?: string, fixContrast?
         root.insertBefore(bg, root.firstChild);
     }
     return `data:image/svg+xml,${encodeURIComponent(
-        new XMLSerializer().serializeToString(doc)
+        new XMLSerializer().serializeToString(root)
     )}`;
 }
 

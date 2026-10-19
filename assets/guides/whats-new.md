@@ -30,6 +30,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Agent Session guide:** Board authors can follow the `agent.session` v1 contract for streaming,
   resumable CLI sessions with bounded permissions and approvals.
 
+### Bug Fixes
+
+- **Mermaid diagrams with line breaks render again.** A label containing `<br/>` left the
+  diagram blank, showing only a "Mermaid Diagram" placeholder, in Mermaid pages, Markdown
+  previews, and the Log View.
+- **Explorer and open files keep following disk changes.** Dropping a file onto the window or
+  clicking a file or external link could silently stop every file and folder watch in that window
+  until restart, so new files never appeared in Explorer.
+
 ---
 
 ## Version 5.0.12

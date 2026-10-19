@@ -514,11 +514,11 @@ class ModuleServiceSupervisor {
             this.detachBoardSettingsRenderer(subscription);
             void this.reinstallBoardSettingsSubscription(subscription, renderer);
         };
-        renderer.on("did-start-navigation", lost);
+        renderer.on("did-navigate", lost);
         renderer.on("render-process-gone", lost);
         renderer.on("destroyed", lost);
         subscription.lifecycleListeners.push(
-            () => { renderer.removeListener("did-start-navigation", lost); },
+            () => { renderer.removeListener("did-navigate", lost); },
             () => { renderer.removeListener("render-process-gone", lost); },
             () => { renderer.removeListener("destroyed", lost); },
         );
@@ -612,11 +612,11 @@ class ModuleServiceSupervisor {
             this.detachBoardSettingsPending(pending);
             pending.resolve({ requestId, ok: false, error: { code: "service-exited", message: "The renderer became unavailable." } });
         };
-        pending.webContents.on("did-start-navigation", lost);
+        pending.webContents.on("did-navigate", lost);
         pending.webContents.on("render-process-gone", lost);
         pending.webContents.on("destroyed", lost);
         pending.lifecycleListeners.push(
-            () => { pending.webContents.removeListener("did-start-navigation", lost); },
+            () => { pending.webContents.removeListener("did-navigate", lost); },
             () => { pending.webContents.removeListener("render-process-gone", lost); },
             () => { pending.webContents.removeListener("destroyed", lost); },
         );
