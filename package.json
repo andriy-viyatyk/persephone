@@ -70,7 +70,7 @@
     "@floating-ui/dom": "^1.8.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ai-vision": "^1.3.0",
-    "av-grid": "2.12.2",
+    "av-grid": "2.13.0",
     "cheerio": "^1.2.0",
     "csv-parse": "^7.0.1",
     "csv-stringify": "^6.8.1",
