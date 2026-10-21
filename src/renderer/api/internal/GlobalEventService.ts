@@ -12,6 +12,7 @@ import {
     getClipboardRichHtml,
     openPastedHtml,
     openPastedImage,
+    shouldStandDownFromImagePaste,
     shouldStandDownFromPaste,
 } from "./clipboard-image";
 import { windowClosing } from "../../core/state/events";
@@ -209,12 +210,15 @@ export class GlobalEventService {
      * textarea before a bubble-phase listener could ever see it.
      *
      * We `stopPropagation()` so the focused editor never receives the paste; a
-     * bitmap has no text representation for it to insert anyway. Everything else
-     * falls through to the bubble-phase fallback below.
+     * bitmap-only clipboard has no text for it to insert anyway. A bitmap that
+     * comes with text (an Excel range) is left to a focused editor or grid
+     * (`shouldStandDownFromImagePaste`). Everything else falls through to the
+     * bubble-phase fallback below.
      */
     private handlePastedImage = (e: ClipboardEvent) => {
         const file = getClipboardImageFile(e);
         if (!file) return;
+        if (shouldStandDownFromImagePaste(e)) return;
         e.preventDefault();
         e.stopPropagation();
         openPastedImage(file);

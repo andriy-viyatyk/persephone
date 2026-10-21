@@ -38,6 +38,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Explorer and open files keep following disk changes.** Dropping a file onto the window or
   clicking a file or external link could silently stop every file and folder watch in that window
   until restart, so new files never appeared in Explorer.
+- **Pasting cells copied from Excel into an editor or grid pastes the data.** Excel also puts a
+  picture of the range on the clipboard, and that picture opened as a "Pasted image" tab instead.
+  A screenshot pasted anywhere still opens in the Image viewer.
 
 ---
 

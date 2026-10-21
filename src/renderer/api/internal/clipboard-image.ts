@@ -10,9 +10,10 @@ import { englishMessage, t } from "../../../shared/i18n/t";
  * `document`:
  *
  *  1. **Capture phase** — a real image **file** / bitmap
- *     (`getClipboardImageFile`) → Image viewer. This always wins, even when an
- *     editor is focused: a bitmap has no meaningful text representation, so
- *     there is nothing for the focused editor to paste anyway.
+ *     (`getClipboardImageFile`) → Image viewer. A bitmap-only clipboard wins
+ *     even when an editor is focused (there is nothing for it to paste), but a
+ *     bitmap that comes with text (an Excel range) is left to a focused editor
+ *     or grid — see `shouldStandDownFromImagePaste`.
  *  2. **Bubble phase** — any rich HTML (`getClipboardRichHtml`) → HTML viewer,
  *     as a genuine fallback. Running last gives every component that handles
  *     paste itself first refusal; `shouldStandDownFromPaste` covers the ones
@@ -77,11 +78,35 @@ export function getClipboardRichHtml(e: ClipboardEvent): string | null {
  */
 export function shouldStandDownFromPaste(e: ClipboardEvent): boolean {
     if (e.defaultPrevented) return true;
+    return isPasteIntoEditableOrGrid(e);
+}
+
+/**
+ * True when the capture-phase "open pasted bitmap" handler must not fire.
+ *
+ * Excel (and other Office apps) put a rendered bitmap on the clipboard next to
+ * the text/HTML of the copied range. When the paste lands in an editable target
+ * or a grid and the clipboard also carries text, that text is what the user
+ * means to paste — the bitmap is only a by-product. A bitmap-only clipboard (a
+ * screenshot) still opens in the Image viewer wherever focus is.
+ */
+export function shouldStandDownFromImagePaste(e: ClipboardEvent): boolean {
+    if (!isPasteIntoEditableOrGrid(e)) return false;
+    return !!e.clipboardData?.getData("text/plain");
+}
+
+/**
+ * Paste target is an input, textarea, select, contentEditable host, EditContext
+ * host, or inside a grid. Monaco (0.55+) receives input through a plain `<div>`
+ * driven by the native EditContext API — neither a textarea nor contentEditable.
+ */
+function isPasteIntoEditableOrGrid(e: ClipboardEvent): boolean {
     const el = (e.target as Element | null) ?? document.activeElement;
     if (!(el instanceof HTMLElement)) return false;
     const tag = el.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
     if (el.isContentEditable) return true;
+    if ((el as HTMLElement & { editContext?: unknown }).editContext) return true;
     return !!el.closest(GRID_ROOT_SELECTOR);
 }
 
