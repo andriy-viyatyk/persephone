@@ -140,11 +140,11 @@ today (`PersephonePageApi` only has `visible`), so it is out of scope unless a t
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1717](../tasks/US-1717-pin-side-model/README.md) | Pin side model: zones, persistence, and right-pin restrictions (R2, R4, R5, R9) | Done |
-| [US-1718](../tasks/US-1718-right-tab-strip/README.md) | Right tab strip: header placement, context menu, reorder, toggle click | Done |
-| [US-1719](../tasks/US-1719-popover-host/README.md) | Popover host: slot geometry, grip resize, size persistence, click-away, Escape (R1, R6–R8) | Done |
-| [US-1720](../tasks/US-1720-focused-page/README.md) | Focused page: retarget keyboard, browser keys, board visibility, privacy block, ai-vision activation (R3) | Done |
-| [US-1721](../tasks/US-1721-scripting-mcp-surface/README.md) | Scripting / MCP surface and docs for right-pinned pages (R10) | Done |
+| US-1717 | Pin side model: zones, persistence, and right-pin restrictions (R2, R4, R5, R9) | Done |
+| US-1718 | Right tab strip: header placement, context menu, reorder, toggle click | Done |
+| US-1719 | Popover host: slot geometry, grip resize, size persistence, click-away, Escape (R1, R6–R8) | Done |
+| US-1720 | Focused page: retarget keyboard, browser keys, board visibility, privacy block, ai-vision activation (R3) | Done |
+| US-1721 | Scripting / MCP surface and docs for right-pinned pages (R10) | Done |
 | BT-046 (persephone-boards) | Claude Agent board instructions for the popover case (`scripts/service.mjs` DEFAULT_INSTRUCTIONS) | Done |
 
 Order: US-1717 → US-1718 and US-1719 (these two can run in parallel) → US-1720 → US-1721 → board
