@@ -16,6 +16,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1711: Board settings from a module service](tasks/US-1711-service-board-settings/README.md)
   - [ ] [US-1705: Phase 1 — `agent.session` v1 contract](tasks/US-1705-agent-session-contract/README.md)
   - [ ] US-1706: Phase 1 — `claude-agent` provider board (persephone-boards [BT-046](https://github.com/andriy-viyatyk/persephone-boards/blob/develop/doc/tasks/BT-046-claude-agent-board/README.md))
+  - [ ] US-1716: Board footer chip variant (`variant: "chip"` on status-bar text items, bridge 1.42.0) for the `claude-agent` footer
   - [ ] US-1707: Phase 1 — `codex-agent` provider board
   - [ ] US-1708: Phase 2 — team chat board
 

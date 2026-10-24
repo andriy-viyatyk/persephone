@@ -294,7 +294,10 @@ Boards with a footer can declare up to eight transient text items and buttons wi
 `update(id, patch)` changes one existing item and ignores unknown ids with a warning. Both types
 accept `hidden`, including in patches, so an item can be hidden and shown without leaving the
 catalog. Descriptors support `tone: "normal" | "muted" | "error" | "accent"`, optional `title`,
-and `align: "end"`; end items follow the legacy `persephone.setStatusText()` label. Start items
+and `align: "end"`; end items follow the legacy `persephone.setStatusText()` label. Text items also
+accept `variant: "plain" | "chip"` (bridge 1.42.0+): `chip` renders a compact bordered pill sized
+to its text, which keeps several values distinct; `plain` (the default) is bare text that stretches
+and truncates in the start group. Start items
 stay in declaration order at the left. Long start text truncates with an ellipsis so it cannot push
 the end group or native footer indicators away. Buttons also accept `disabled` and the toolbar icon
 format (`{ name }`, `{ svg, preserveColors? }`, or `{ file, preserveColors? }`).
@@ -302,6 +305,7 @@ format (`{ name }`, `{ svg, preserveColors? }`, or `{ file, preserveColors? }`).
 ```js
 persephone.statusBar.set([
   { id: "status", type: "text", text: "Resolving…", tone: "muted", title: "Current task" },
+  { id: "model", type: "text", text: "opus", variant: "chip" },
   { id: "retry", type: "button", text: "Retry", tone: "accent" },
   { id: "network", type: "button", text: "SOCKS5", align: "end" },
 ]);

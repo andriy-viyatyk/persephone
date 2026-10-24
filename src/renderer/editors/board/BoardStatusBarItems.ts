@@ -1,4 +1,4 @@
-import type { BoardStatusBarItem, BoardStatusBarPatch, BoardStatusBarTone, BoardToolbarIcon } from "../../../ipc/board-bridge-channels";
+import type { BoardStatusBarItem, BoardStatusBarPatch, BoardStatusBarTextVariant, BoardStatusBarTone, BoardToolbarIcon } from "../../../ipc/board-bridge-channels";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -11,6 +11,7 @@ import "./BoardStatusBarItems.css";
 export const BOARD_STATUS_BAR_ITEM_LIMIT = 8;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const TONES = new Set<BoardStatusBarTone>(["normal", "muted", "error", "accent"]);
+const TEXT_VARIANTS = new Set<BoardStatusBarTextVariant>(["plain", "chip"]);
 type Warning = (message: string) => void;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,7 +26,7 @@ function normalizeItem(value: unknown, warning: Warning): BoardStatusBarItem | u
     }
     const id = value.id;
     const allowed = value.type === "text"
-        ? ["id", "type", "text", "tone", "title", "align", "hidden"]
+        ? ["id", "type", "text", "tone", "title", "variant", "align", "hidden"]
         : ["id", "type", "text", "tone", "title", "align", "hidden", "disabled", "icon"];
     if (Object.keys(value).some((key) => !allowed.includes(key))) {
         warning(`Ignored unknown fields on board status-bar item "${id}".`);
@@ -33,6 +34,7 @@ function normalizeItem(value: unknown, warning: Warning): BoardStatusBarItem | u
     }
     if (value.tone !== undefined && (typeof value.tone !== "string" || !TONES.has(value.tone as BoardStatusBarTone))
         || value.title !== undefined && typeof value.title !== "string"
+        || value.variant !== undefined && !TEXT_VARIANTS.has(value.variant as BoardStatusBarTextVariant)
         || value.align !== undefined && value.align !== "end"
         || value.hidden !== undefined && typeof value.hidden !== "boolean"
         || value.type === "button" && value.disabled !== undefined && typeof value.disabled !== "boolean") {
@@ -48,7 +50,7 @@ function normalizeItem(value: unknown, warning: Warning): BoardStatusBarItem | u
             warning(`Ignored button-only fields on board status-bar text item "${id}".`);
             return undefined;
         }
-        return { ...common, type: "text" };
+        return { ...common, type: "text", ...(value.variant ? { variant: value.variant as BoardStatusBarTextVariant } : {}) };
     }
     let icon: BoardToolbarIcon | undefined;
     if (value.icon !== undefined) {
@@ -91,7 +93,7 @@ export function normalizeBoardStatusBarPatches(value: unknown, warning: Warning)
         if (!isRecord(entry) || typeof entry.id !== "string" || !SAFE_ID.test(entry.id)) {
             warning("Ignored invalid board status-bar patch."); continue;
         }
-        const fields = ["type", "text", "tone", "title", "disabled", "icon", "align", "hidden"];
+        const fields = ["type", "text", "tone", "title", "disabled", "icon", "variant", "align", "hidden"];
         if (Object.keys(entry).some((key) => key !== "id" && !fields.includes(key))) {
             warning(`Ignored unknown fields in board status-bar patch for "${entry.id}".`); continue;
         }
@@ -99,6 +101,7 @@ export function normalizeBoardStatusBarPatches(value: unknown, warning: Warning)
             || entry.text !== undefined && typeof entry.text !== "string"
             || entry.tone !== undefined && (typeof entry.tone !== "string" || !TONES.has(entry.tone as BoardStatusBarTone))
             || entry.title !== undefined && typeof entry.title !== "string"
+            || entry.variant !== undefined && !TEXT_VARIANTS.has(entry.variant as BoardStatusBarTextVariant)
             || entry.disabled !== undefined && typeof entry.disabled !== "boolean"
             || entry.align !== undefined && entry.align !== "end"
             || entry.hidden !== undefined && typeof entry.hidden !== "boolean") {
@@ -183,6 +186,7 @@ export class BoardStatusBarItems extends VanillaView<{ model: BoardEditorModel; 
             root = createTextElement(item.text, { size: "sm" });
             root.dataset.name = `board-status-bar-item-${item.id}`;
             root.dataset.type = "text";
+            root.dataset.variant = item.variant ?? "plain";
             root.title = item.title ?? "";
         } else {
             button = new ButtonView({ name: `board-status-bar-item-${item.id}`, size: "sm", variant: "ghost",

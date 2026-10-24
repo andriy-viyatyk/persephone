@@ -27,6 +27,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Cross-board service interfaces:** Trusted boards can declare exact-version service interfaces
   and connect through the existing bounded channel. Consumer `uses` grants are disclosed as Full
   access; provider trust and service permission are checked independently.
+- **Footer chips for boards:** Board footer text items accept `variant: "chip"`, which shows the
+  text as a compact bordered pill, so several values can sit side by side and stay distinct. Part of
+  bridge `1.42.0`.
 - **Agent Session guide:** Board authors can follow the `agent.session` v1 contract for streaming,
   resumable CLI sessions with bounded permissions and approvals.
 

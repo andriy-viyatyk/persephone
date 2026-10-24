@@ -27,6 +27,18 @@
         text-overflow: ellipsis;
     }
 
+    /* Chip text items are compact pills sized to their text — they never stretch to fill the start group. */
+    [data-status-bar] [data-name^="board-status-bar-item-"][data-type="text"][data-variant="chip"] {
+        padding: 0 7px;
+        line-height: 16px;
+        border: 1px solid var(--color-border-default, currentColor);
+        border-radius: var(--radius-sm, 3px);
+        background-color: var(--color-bg-light, transparent);
+    }
+    [data-status-bar] [data-part="board-status-start"] [data-name^="board-status-bar-item-"][data-type="text"][data-variant="chip"] {
+        flex: 0 1 auto;
+    }
+
     [data-status-bar] [data-name^="board-status-bar-item-"][data-tone="normal"] { color: var(--color-text-default); }
     [data-status-bar] [data-name^="board-status-bar-item-"][data-tone="muted"] { color: var(--color-text-light); }
     [data-status-bar] [data-name^="board-status-bar-item-"][data-tone="error"] { color: var(--color-error-text); }

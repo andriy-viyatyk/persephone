@@ -126,7 +126,8 @@ the document is still loading.
 `persephone.statusBar.set(items)` replaces up to eight footer items; `update(id, patch)` patches an
 existing item and logs unknown ids. Items are `{ id, type: "text" | "button", text, tone?, title?,
 align?, hidden? }`; buttons also accept `disabled?` and an optional toolbar-format `icon`. Tones are
-`normal`, `muted`, `error`, and `accent`; `align: "end"` places an item after the legacy footer
+`normal`, `muted`, `error`, and `accent`; text items may set `variant: "chip"` (bridge 1.42.0+) for a
+compact bordered pill instead of plain text; `align: "end"` places an item after the legacy footer
 status text. Start items follow declaration order and long text truncates with an ellipsis. `hidden`
 works on either type and in updates, keeping the item available for later updates without a DOM
 element or automation declaration.

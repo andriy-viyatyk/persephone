@@ -1512,7 +1512,8 @@ Three things a content-host board can do that a simple board cannot:
 **Footer status-bar items:** boards that require bridge version `1.27.0` can also use
 `persephone.statusBar.set()` to add transient text labels and buttons beside the footer indicators.
 Items can be updated by id, hidden for later reuse, and aligned to the end of the board contribution
-area. The legacy `setStatusText()` label remains in its existing position.
+area. With bridge `1.42.0`, a text item can set `variant: "chip"` to appear as a compact bordered
+pill instead of plain text. The legacy `setStatusText()` label remains in its existing position.
 
 **Page-toolbar text:** a trusted or bundled board's main view can call
 `persephone.toolbar.setText(text)` to replace the wide middle label in the page toolbar. This is

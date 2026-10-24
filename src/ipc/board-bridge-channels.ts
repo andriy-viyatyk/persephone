@@ -510,9 +510,11 @@ export interface BoardSettingsRequestMsg {
 }
 
 export type BoardStatusBarTone = "normal" | "muted" | "error" | "accent";
+/** Text item look: `plain` (default) is bare text; `chip` is a bordered, filled pill that does not stretch. */
+export type BoardStatusBarTextVariant = "plain" | "chip";
 export interface BoardStatusBarTextItem {
     id: string; type: "text"; text: string; tone?: BoardStatusBarTone; title?: string;
-    align?: "end"; hidden?: boolean;
+    variant?: BoardStatusBarTextVariant; align?: "end"; hidden?: boolean;
 }
 export interface BoardStatusBarButtonItem {
     id: string; type: "button"; text: string; tone?: BoardStatusBarTone; title?: string;
@@ -521,7 +523,7 @@ export interface BoardStatusBarButtonItem {
 export type BoardStatusBarItem = BoardStatusBarTextItem | BoardStatusBarButtonItem;
 export type BoardStatusBarPatch = { id: string; type?: "text" | "button"; text?: string;
     tone?: BoardStatusBarTone; title?: string; disabled?: boolean; icon?: BoardToolbarIcon;
-    align?: "end"; hidden?: boolean };
+    variant?: BoardStatusBarTextVariant; align?: "end"; hidden?: boolean };
 export interface BoardStatusBarSetMsg { __persephone: "board:setStatusBarItems"; items: readonly BoardStatusBarItem[] }
 export interface BoardStatusBarUpdateMsg { __persephone: "board:updateStatusBarItems"; items: readonly BoardStatusBarPatch[] }
 export interface BoardStatusBarActionMsg { __persephone: "statusBar:action"; id: string }
