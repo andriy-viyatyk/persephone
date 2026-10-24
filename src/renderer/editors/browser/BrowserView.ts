@@ -118,7 +118,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         // programmatic focus), so this is a second dismissal trigger alongside the
         // `guest-pointerdown` ping below — and it carried the same dead `mousedown`.
         const onFocus = (): void => {
-            dismissOverlays();
+            dismissOverlays(this.webview);
         };
         this.listenNative("focus", onFocus);
 
@@ -158,7 +158,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
                 const urls = args[0] as string[];
                 if (Array.isArray(urls) && urls.length) this.model.bookmarksUI.trackClickedImages(this.tabId, urls);
             } else if (channel === "guest-pointerdown") {
-                dismissOverlays();
+                dismissOverlays(this.webview);
             } else if (channel === "show-find-bar") {
                 this.model.webview.openFind();
             } else if (channel === "hide-find-bar" && this.model.state.get().findBarVisible) {

@@ -53,10 +53,13 @@ export function getOverlayLayer(): HTMLDivElement {
  * (see the note in `PopoverFloatingView.onMount`) — which left the ping firing an event
  * nothing listens for any more.
  *
- * `document.body` is the target because it is outside every popover root by construction, and
- * no other renderer code listens for `pointerdown` on the document, so this dismisses
- * overlays and does nothing else.
+ * The pressed frame's own element is the target. It is outside every menu popover, so those
+ * dismiss exactly as before; the right-pinned page popover (`PagesView`) also listens on the
+ * document and needs the real location, because a press in a frame *inside* that popover must
+ * keep it open while one in the work page behind it closes it. `document.body` — the old
+ * target — sits outside the app root, which that listener deliberately ignores, so presses in
+ * a browser, board, or HTML viewer frame never closed the page popover.
  */
-export function dismissOverlays(): void {
-    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+export function dismissOverlays(frame: Element): void {
+    frame.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 }

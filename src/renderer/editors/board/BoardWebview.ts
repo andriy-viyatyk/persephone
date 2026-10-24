@@ -231,7 +231,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }>();
 
     private readonly boardMessageHandlers: BoardMessageHandlers = {
-        "board:interact": { handle: () => dismissOverlays() },
+        "board:interact": { handle: (_message, context) => dismissOverlays(context.frame) },
         "board:error": { handle: (message) => { if (message.message) this.appendLog("error", message.message); } },
         "board:log": {
             handle: (message) => {

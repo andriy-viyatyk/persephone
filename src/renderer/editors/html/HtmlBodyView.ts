@@ -156,7 +156,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
             if (event.source !== this.iframe.contentWindow) return;
             const data = event.data as { __persephone?: string } | undefined;
             if (data?.__persephone === "html:interact") {
-                dismissOverlays();
+                dismissOverlays(this.iframe);
                 // Clicking inside a sandboxed iframe makes it the host document's `activeElement`
                 // but dispatches no focus event here, so nothing bubbles to an ancestor that tracks
                 // focus — a notebook note holding an HTML preview stayed inactive however much the
