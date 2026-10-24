@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.13 (Upcoming)
+## Version 5.0.14 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.13
 
 ### New Features
 
@@ -477,75 +483,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Structured descriptors for board and web-app models:** append `.$describe` to a live model path
-  to receive its members and children as data instead of parsing `$help` prose. This is useful for
-  model browsers and generated clients; it follows the existing trust and privacy boundaries and
-  does not invoke the described node.
-- **MCP discovery recovers after lost context:** a `call` with no path returns the
-  application overview and resets the session's remembered member-list hints. Use it again after a
-  context compaction or whenever the earlier hints are no longer available.
-- **Special folders open their editors directly:** clicking a recognized `.git` or `.mneme` row in
-  File Explorer now opens Git Tree or Mneme instead of the folder contents. Use the page toolbar's
-  Editor switch to move between that editor and **Folder View**; ordinary folders are unchanged.
-- **Boards can edit folders directly:** a trusted board can declare `folderEditorMasks` and become
-  the editor for matching folders. The Explorer row uses the board's icon, the page toolbar switches
-  between the board and **Folder View**, and the same **+** install flow in **Board Info** is available
-  when a published folder editor matches. If trust is removed, the open page keeps a recovery path
-  back to Folder View. See [Boards — Direct-folder boards](./boards.md#direct-folder-boards).
-- **Clipboard tool and history:** **Clipboard** is always available and pinnable in **Tools & Editors**;
-  it opens a dedicated page with the history panel. Enable history in Settings to capture copied text,
-  HTML, images, and file lists — including copies made inside Persephone, such as `Ctrl+C` or **Copy**
-  in the Text Editor and copies made inside a Persephone Browser tab. Capture depends on the copy
-  reaching the Windows clipboard, not on which editor or page supplied it. Each row shows a
-  content-type icon, preview text, and a compact local capture-time badge; hovering or focusing a row
-  swaps the badge for **Copy**, and while the list is focused **Arrow Up** and **Arrow Down** select and
-  open adjacent history items. Rows keep a persistent selection, and copied content arrives at the top
-  as a new row. File lists open as readable absolute paths rather than watcher metadata. When history
-  is disabled, stored rows remain available for opening, copying, removing, and clearing, and the panel
-  offers **Open Settings**. History is off by default because stored content may remain readable on
-  disk; while it is enabled, stored history is also readable by agents through the `clipboard` call
-  namespace.
-- **Quick settings in the header:** Open the **…** button in the header to reach **Snip Screen**,
-  **Snip Persephone**, and live switches for MCP, Mneme, and the clipboard listener. Service rows
-  toggle in place, so the popover stays open while you change more than one setting; the snip actions
-  still close it after activation.
-- **Drag-and-drop pinning:** In **Tools & Editors**, hover a built-in editor row to reveal **Pin to
-  menu**, or drag a built-in editor or registered board to the **Pinned** rail. Drop before a pinned
-  row to place it there, or on the rail background to append it. Drag a pinned item onto the
-  **Built-in Editors** or **Registered boards** tab body to unpin it.
-
-### Improvements
-
-- **The Explorer's root row shows where the folder is:** the File Explorer tree's root used to show
-  only the folder's name, which never said where that folder lives. It now shows the full path beside
-  the name, dimmed and slightly smaller. When the sidebar is narrow the path is shortened from the
-  **left**, so the deepest part stays visible and the folder name is never cut; the row's tooltip
-  still holds the full path.
-- **The Boards panel highlights the board you clicked:** board rows now carry the same selection
-  and hover highlight as files in the File Explorer, and they are the same height, so the two
-  panels line up when you switch between them. The board list in a board's own toolbar and the
-  one on the **Tools & Editors** tab match as well.
-
-### Bug Fixes
-
-- **Grid column names stay consistent:** pasting data wider than the current grid or inserting
-  several columns at once no longer creates duplicate columns. Header-free CSV columns now use
-  spreadsheet-style names (`a`, `b`, `c`, …), matching columns added later and preserving names
-  when you switch between Grid and the Text Editor. CSV files with a header row still use their
-  actual header names. See [Grid Editor](./editors/grid.md#data-and-editing).
-- **Edit Columns headers no longer drag out of place:** the Grid editor's **Edit Columns** popover
-  let its three headers be dragged around, which was never intended. They are fixed in place again;
-  the popover's own layout was never saved, so a drag only lasted until it closed.
-- **Grid headers stay clean when scrolling:** Grid, Git Tree, File Grid, Environment Variables,
-  and Log View grid output no longer show a previous column header's tooltip, accessibility label,
-  or text in a data cell after scrolling. Fixed in av-grid 2.11.1 and 2.11.2.
-- **Closing the Git Tree no longer means expanding its panel first:** the Git panel's **Close**
-  button now stays on the panel header even when the panel is collapsed to a strip, so you can
-  close the Git Tree without opening the panel to reach it. **Refresh** still appears only while
-  the panel is open, since it refreshes the list you are looking at.
-- **Closing the Mneme Wiki no longer means expanding its panel first:** the Wiki panel's
-  **Close** button now stays on the panel header even when the panel is collapsed to a strip, so
-  you can close the Mneme editor without opening the panel to reach it.
+- **Structured descriptors:** append `.$describe` to a live model path to get its members and children as data.
+- **MCP discovery recovers after lost context:** a `call` with no path returns the overview and resets remembered hints.
+- **Special folders open their editors:** `.git` and `.mneme` rows open Git Tree or Mneme directly.
+- **Boards can edit folders:** a trusted board can declare `folderEditorMasks` to become the editor for matching folders.
+- **Clipboard tool and history:** an opt-in clipboard history page, also readable by agents through `clipboard`.
+- **Quick settings in the header:** snip actions and live switches for MCP, Mneme, and the clipboard listener.
+- **Drag-and-drop pinning** of editors and boards in **Tools & Editors**.
 
 ---
 
