@@ -142,7 +142,7 @@ derived interaction target: it is the page currently shown in the right-page pop
 `activePage` when the popover is closed. Keyboard commands and other operations aimed at the page
 receiving user interaction use `focusedPage`; navigation and script/MCP active-page queries retain
 `activePage` semantics. The transient `popoverPageId` is window state, while each page's
-`popoverSize` is persisted as width and height fractions of the page area.
+`popoverSize` is persisted in CSS pixels: the size the user dragged to. It does not follow window resizes; the 80% width and full-height limits only clamp what is drawn, so the chosen size returns when the window grows again. Without a saved size the popover opens at half the page area. Ending a drag within 2% of the maximum height saves `fullHeight: true`: the popover then fills the page area's height and follows window resizes, until a drag makes it shorter again.
 
 The right strip is rendered in the header and clicking its tabs toggles the popover. The popover
 uses the existing stable page slot, with CSS geometry and a bottom-left resize grip; it does not

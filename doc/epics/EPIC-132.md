@@ -28,7 +28,7 @@ right-pinned.
   sidebar with Explorer and so on. It is the regular page view, not a reduced one.
 - The popover is anchored to the top-right of the page area. It opens at 50% of the page area's
   width and height, has a resize grip in its **bottom-left** corner, and can be resized up to a
-  maximum of 80% of the width and height. It has a sensible minimum size.
+  maximum of 80% of the width and the full height of the page area (less its 8px edge gap), so it can serve as a right-side panel. It has a sensible minimum size.
 - Opening the popover never changes the active page. While it is open, the active page is still
   the one the tab strip highlights, the one MCP's `page` / `pages.activePage` returns, and the one
   that is saved as active.
@@ -114,11 +114,14 @@ it; the user clicks away instead.
 
 **R8 — Geometry.**
 The anchor is the top-right corner of `.pages-container`, with a small inset. Default size is 50%
-× 50% of the container; maximum is 80% × 80%; minimum is about 360 × 240 px, clamped to the
+× 50% of the container; maximum is 80% wide × full height (less the 8px top/bottom inset); minimum is about 360 × 240 px, clamped to the
 maximum on small windows. The grip in the bottom-left corner resizes width leftwards and height
-downwards. The size is remembered **per page**, as fractions of the container so it scales with
-the window, and persisted in the page descriptor. When the window shrinks, the size is clamped to
-the maximum at render time.
+downwards. The size is remembered **per page** in CSS pixels and persisted in the page descriptor; it does
+not follow window resizes. When the window shrinks, the size is clamped to the maximum at render
+time, and the saved size returns once the window is large enough again. (Changed after release from
+fractions of the container, which made the popover scale with the window.) A drag that ends within 2% of the maximum
+height switches the popover to full-height mode: it fills the page area's height and follows window
+resizes, so it works as a right-side panel; dragging it shorter returns it to a fixed pixel height.
 
 **R9 — Per window.**
 Right-pinned pages belong to their window like any page. They cannot be dragged between windows.

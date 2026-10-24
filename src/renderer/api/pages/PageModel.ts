@@ -44,10 +44,23 @@ function unwrapToHost(editor: EditorModel | null): EditorOrHost | null {
 /** Reactive page-level state — UI subscribes to this for repaint on page changes. */
 export type PagePinSide = "left" | "right" | undefined;
 
+/** The right-pin popover size the user chose, in CSS pixels. It does not follow window resizes;
+ *  the limits below only clamp what is drawn, so the chosen size comes back when there is room. */
 export interface PagePopoverSize {
     width: number;
     height: number;
+    /** Set when the user dragged the popover (nearly) to full height: it then fills the page area's
+     *  height and follows window resizes, until a drag makes it shorter again. */
+    fullHeight?: boolean;
 }
+
+/** A drag that ends at or above this share of the maximum height switches to full-height mode. */
+export const POPOVER_FULL_HEIGHT_SNAP = 0.98;
+
+/** Largest right-pin popover size, as a fraction of the page area. At full height the popover
+ *  reads as a right-side panel; the view keeps its edge inset inside that limit. */
+export const POPOVER_MAX_WIDTH = 0.8;
+export const POPOVER_MAX_HEIGHT = 1;
 
 export interface IPageState {
     /** Which page-strip zone this page belongs to. */

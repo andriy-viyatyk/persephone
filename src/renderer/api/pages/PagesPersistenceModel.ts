@@ -188,13 +188,13 @@ export class PagesPersistenceModel {
         page.pinSide = desc.pinSide === "left" || desc.pinSide === "right"
             ? desc.pinSide
             : desc.pinned ? "left" : undefined;
+        // Pixel sizes only; a value of 1 or less is a fraction saved by an earlier build and is dropped.
         const popoverSize = desc.popoverSize;
         page.popoverSize = popoverSize
             && Number.isFinite(popoverSize.width)
             && Number.isFinite(popoverSize.height)
-            && popoverSize.width > 0 && popoverSize.width <= 0.8
-            && popoverSize.height > 0 && popoverSize.height <= 0.8
-            ? { width: popoverSize.width, height: popoverSize.height }
+            && popoverSize.width > 1 && popoverSize.height > 1
+            ? { width: popoverSize.width, height: popoverSize.height, ...(popoverSize.fullHeight === true ? { fullHeight: true } : {}) }
             : undefined;
         page.seedNavBack(desc.navBack);
         let invalidFolderBoard: { editorId: string; folderPath: string } | undefined;

@@ -59,7 +59,6 @@ export class PagesView extends VanillaView<object> {
         const groupedActiveId = activePage
             ? pagesModel.query.getGroupedPage(activePage.id)?.id
             : undefined;
-        const popoverPage = projection.pages.find((page) => page.id === projection.popoverPageId);
         return {
             pageIds: projection.pages.map((page) => page.id),
             activeId: activePage?.id ?? "",
@@ -70,15 +69,15 @@ export class PagesView extends VanillaView<object> {
                 .filter((page) => pagesModel.query.isRightPinned(page.id))
                 .map((page) => page.id)),
             popoverId: projection.popoverPageId,
-            popoverSize: popoverPage?.popoverSize,
-            onPopoverResize: (id, fractions) => PagesView.savePopoverSize(id, fractions),
+            getPopoverSize: (id) => pagesModel.state.get().pages.find((page) => page.id === id)?.popoverSize,
+            onPopoverResize: (id, size) => PagesView.savePopoverSize(id, size),
             pageView: PageContentView,
         };
     }
 
-    private static savePopoverSize(id: string, fractions: PagePopoverSize): void {
+    private static savePopoverSize(id: string, size: PagePopoverSize): void {
         const page = pagesModel.state.get().pages.find((candidate) => candidate.id === id);
-        if (page) page.popoverSize = fractions;
+        if (page) page.popoverSize = size;
     }
 
     private applyProjection(projection: PagesProjection): void {

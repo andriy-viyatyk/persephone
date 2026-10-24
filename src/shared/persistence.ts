@@ -42,8 +42,8 @@ export interface PageDescriptor {
     /** Legacy left-pin projection retained for older readers. */
     pinned: boolean;
     pinSide?: "left" | "right";
-    /** Popover width and height as fractions of the current pages container. */
-    popoverSize?: { width: number; height: number };
+    /** Popover width and height the user chose, in CSS pixels (earlier builds stored fractions of 1 or less, which restore drops). */
+    popoverSize?: { width: number; height: number; fullHeight?: boolean };
     modified: boolean;
     mainEditorId: string | null;
     editors: EditorDescriptor[];

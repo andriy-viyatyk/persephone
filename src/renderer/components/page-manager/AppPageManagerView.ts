@@ -2,8 +2,15 @@ import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { GroupContainer } from "./GroupContainer";
 import { PageSlot, type PageSlotViewProps } from "./PageSlot";
-import type { PagePopoverSize } from "../../api/pages/PageModel";
+import {
+    POPOVER_FULL_HEIGHT_SNAP, POPOVER_MAX_HEIGHT, POPOVER_MAX_WIDTH, type PagePopoverSize,
+} from "../../api/pages/PageModel";
 import "./AppPageManagerView.css";
+
+/** Gap between the popover and the page area's top/right edges; full height keeps it at the bottom too. */
+const POPOVER_INSET = 8;
+const popoverMaxHeight = (containerHeight: number) =>
+    Math.min(containerHeight * POPOVER_MAX_HEIGHT, containerHeight - 2 * POPOVER_INSET);
 
 export interface AppPageManagerProps {
     /** All page IDs in display order. */
@@ -20,10 +27,11 @@ export interface AppPageManagerProps {
     rightPinnedIds: Set<string>;
     /** Right-pinned page currently rendered as a popover. */
     popoverId?: string;
-    /** Persisted popover dimensions as fractions of the current container. */
-    popoverSize?: PagePopoverSize;
-    /** Called once when a resize drag ends. */
-    onPopoverResize: (id: string, fractions: PagePopoverSize) => void;
+    /** Reads a page's chosen popover size in pixels, or undefined for the default. Read on every
+     *  layout rather than passed as a value, so a container resize never redraws a stale size. */
+    getPopoverSize: (id: string) => PagePopoverSize | undefined;
+    /** Called once when a resize drag ends, with the size the user chose in pixels. */
+    onPopoverResize: (id: string, size: PagePopoverSize) => void;
     /** Native constructor for page content. */
     pageView: VanillaViewCtor<PageSlotViewProps>;
     /** Optional CSS class for the container. */
@@ -251,7 +259,7 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
     private stylePopoverSlot(slot: PageSlot, props: AppPageManagerProps): void {
         slot.element.dataset.popover = "";
         slot.ensurePopoverResizeHandle((event) => this.startResize(event, slot.id));
-        this.writePopoverGeometry(slot, props.popoverSize);
+        this.writePopoverGeometry(slot, props.getPopoverSize(slot.id));
     }
 
     private clearPopoverSlot(slot: PageSlot): void {
@@ -266,30 +274,32 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         const popoverId = props.popoverId;
         if (!popoverId) return;
         const slot = this.slots.get(popoverId);
-        if (slot) this.writePopoverGeometry(slot, props.popoverSize);
+        if (slot) this.writePopoverGeometry(slot, props.getPopoverSize(popoverId));
     }
 
     private writePopoverGeometry(slot: PageSlot, size: PagePopoverSize | undefined): void {
         const containerWidth = this.root.clientWidth;
         const containerHeight = this.root.clientHeight;
         if (containerWidth <= 0 || containerHeight <= 0) return;
-        const maxWidth = containerWidth * 0.8;
-        const maxHeight = containerHeight * 0.8;
+        const maxWidth = containerWidth * POPOVER_MAX_WIDTH;
+        const maxHeight = popoverMaxHeight(containerHeight);
+        // A chosen size is fixed in pixels; only the limits shrink it when the window is smaller.
+        // Full-height mode always fills the maximum height. Until the user resizes, the default is half the page area.
         const width = clamp(
-            containerWidth * (size?.width ?? 0.5),
+            size?.width ?? containerWidth * 0.5,
             Math.min(360, maxWidth),
             maxWidth,
         );
-        const height = clamp(
-            containerHeight * (size?.height ?? 0.5),
+        const height = size?.fullHeight ? maxHeight : clamp(
+            size?.height ?? containerHeight * 0.5,
             Math.min(240, maxHeight),
             maxHeight,
         );
         Object.assign(slot.element.style, {
             position: "absolute",
             inset: "auto",
-            top: "8px",
-            right: "8px",
+            top: `${POPOVER_INSET}px`,
+            right: `${POPOVER_INSET}px`,
             bottom: "auto",
             left: "auto",
             width: `${width}px`,
@@ -352,20 +362,24 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         const slot = this.slots.get(session.id);
         if (!slot) return;
         if (persist) {
-            const bounds = this.root.getBoundingClientRect();
-            if (bounds.width > 0 && bounds.height > 0) {
-                const rect = slot.element.getBoundingClientRect();
+            // The drawn size is already within the limits; keep it in pixels so it ignores later window resizes.
+            const rect = slot.element.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                const fullHeight = rect.height >= popoverMaxHeight(this.root.clientHeight) * POPOVER_FULL_HEIGHT_SNAP;
                 this.props.onPopoverResize(session.id, {
-                    width: Math.min(0.8, rect.width / bounds.width),
-                    height: Math.min(0.8, rect.height / bounds.height),
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                    ...(fullHeight ? { fullHeight: true } : {}),
                 });
+                // Snap to the exact full height now, not on the next layout.
+                if (fullHeight) this.writePopoverGeometry(slot, this.props.getPopoverSize(session.id));
             }
         }
     }
 
     private writePopoverDimensions(slot: PageSlot, requestedWidth: number, requestedHeight: number): void {
-        const maxWidth = this.root.clientWidth * 0.8;
-        const maxHeight = this.root.clientHeight * 0.8;
+        const maxWidth = this.root.clientWidth * POPOVER_MAX_WIDTH;
+        const maxHeight = popoverMaxHeight(this.root.clientHeight);
         const width = clamp(requestedWidth, Math.min(360, maxWidth), maxWidth);
         const height = clamp(requestedHeight, Math.min(240, maxHeight), maxHeight);
         slot.element.style.width = `${width}px`;

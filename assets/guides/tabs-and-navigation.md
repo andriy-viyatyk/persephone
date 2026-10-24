@@ -77,6 +77,10 @@ refer to it while keeping your active work page selected.
   the rest of that strip scrolls.
 - Right-pinned tabs are compact icon chips at the right of the header; click one to open its page
   in a resizable popover over the active work page. Clicking the same chip toggles it closed.
+- Drag the popover's bottom-left corner to resize it. Each page remembers its size, and resizing
+  the window does not change it (a smaller window only caps it). Drag it to the full height of the
+  window and it stays full height as the window resizes, like a side panel; drag it shorter to go
+  back to a fixed height.
 - Right-pinned pages do not become the active work page. Use the active page as usual while the
   popover is open, or access the popover page through `app.pages.popoverPage` in scripts.
 - Pinned tabs cannot be closed directly or dragged to another window. Right-pinned pages cannot
