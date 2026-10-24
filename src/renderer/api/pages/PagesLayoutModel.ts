@@ -36,7 +36,12 @@ export class PagesLayoutModel {
         ...pages.filter((page) => page.pinSide === "right"),
     ];
 
-    pinTab = (pageId: string, side: "left" | "right" | undefined = "left") => {
+    pinTab = (pageId: string, side: "left" | "right" = "left") => this.setPinSide(pageId, side);
+
+    unpinTab = (pageId: string) => this.setPinSide(pageId, undefined);
+
+    /** Not `pinTab` with `undefined`: its default parameter would turn that into "left". */
+    private setPinSide = (pageId: string, side: "left" | "right" | undefined) => {
         const { pages } = this.model.state.get();
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
@@ -72,15 +77,6 @@ export class PagesLayoutModel {
         }
         this.model.handleActivePageRemoved(wasActive);
         this.model.persistence.saveStateDebounced();
-    };
-
-    unpinTab = (pageId: string) => {
-        const { pages } = this.model.state.get();
-        const pageIndex = pages.findIndex((p) => p.id === pageId);
-        if (pageIndex === -1) return;
-        const page = pages[pageIndex];
-        if (page.pinSide === undefined) return;
-        this.pinTab(pageId, undefined);
     };
 
     group = (leftPageId: string, rightPageId: string) => {

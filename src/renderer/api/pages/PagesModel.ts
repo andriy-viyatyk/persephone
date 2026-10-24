@@ -345,7 +345,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.layout.moveTab(fromId, toId);
     moveTabByIndex = (fromIndex: number, toIndex: number) =>
         this.layout.moveTabByIndex(fromIndex, toIndex);
-    pinTab = (pageId: string, side: "left" | "right" | undefined = "left") =>
+    pinTab = (pageId: string, side: "left" | "right" = "left") =>
         this.layout.pinTab(pageId, side);
     unpinTab = (pageId: string) => this.layout.unpinTab(pageId);
     group = (leftPageId: string, rightPageId: string) =>
