@@ -58,7 +58,7 @@ class OpenWindows {
         let removeWindow = false;
         if (this.windows.length > 1) {
             const wState = windowStates.getState(window.index);
-            if (!wState?.pages.some((p) => p.modified || p.pinned)) {
+            if (!wState?.pages.some((p) => p.modified || p.pinSide === "left" || p.pinSide === "right" || p.pinned)) {
                 removeWindow = true;
             }
         }

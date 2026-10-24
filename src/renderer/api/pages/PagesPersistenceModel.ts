@@ -185,7 +185,17 @@ export class PagesPersistenceModel {
         const page = new PageModel(desc.id, {
             seedSecondaryViewsWidth: options.seedSecondaryViewsWidth ?? false,
         });
-        page.pinned = desc.pinned;
+        page.pinSide = desc.pinSide === "left" || desc.pinSide === "right"
+            ? desc.pinSide
+            : desc.pinned ? "left" : undefined;
+        const popoverSize = desc.popoverSize;
+        page.popoverSize = popoverSize
+            && Number.isFinite(popoverSize.width)
+            && Number.isFinite(popoverSize.height)
+            && popoverSize.width > 0 && popoverSize.width <= 0.8
+            && popoverSize.height > 0 && popoverSize.height <= 0.8
+            ? { width: popoverSize.width, height: popoverSize.height }
+            : undefined;
         page.seedNavBack(desc.navBack);
         let invalidFolderBoard: { editorId: string; folderPath: string } | undefined;
 
@@ -395,23 +405,31 @@ export class PagesPersistenceModel {
         );
         for (const p of models) this.model.attachPage(p);
 
-        const activeModel = models.find((m) => m.id === data.activePageId);
-        const orderedModels = activeModel
-            ? [...models.filter((m) => m !== activeModel), activeModel]
-            : models;
+        const pagesByZone = this.model.layout.sortByPinSide(models);
         this.model.state.update((s) => {
-            s.pages = models;
-            s.ordered = orderedModels;
+            s.pages = pagesByZone;
+            s.ordered = [];
         });
+
+        const nonRight = pagesByZone.filter((page) => !this.model.query.isRightPinned(page.id));
+        const normal = nonRight.filter((page) => page.pinSide === undefined);
+        const requested = nonRight.find((page) => page.id === data.activePageId);
+        const active = requested ?? normal.at(-1) ?? nonRight.at(-1);
+        const orderedModels = active
+            ? [...nonRight.filter((page) => page !== active), active]
+            : [];
+        this.model.state.update((s) => { s.ordered = orderedModels; });
 
         if (data.groupings && Array.isArray(data.groupings)) {
             data.groupings.forEach((el) => {
                 if (Array.isArray(el) && el.length === 2) {
+                    if (this.model.query.isRightPinned(el[0]) || this.model.query.isRightPinned(el[1])) return;
                     this.model.layout.group(el[0], el[1]);
                 }
             });
             this.model.layout.fixGrouping();
         }
+        if (!nonRight.length) this.model.lifecycle.addEmptyPage();
     };
 
     /**

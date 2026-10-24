@@ -1,4 +1,5 @@
 import type { VanillaView, VanillaViewCtor } from "../../uikit/shared/vanilla-view";
+import { t } from "../../../shared/i18n/t";
 
 export type PageSlotStyle = (element: HTMLDivElement) => void;
 export interface PageSlotViewProps { pageId: string; }
@@ -8,6 +9,7 @@ export class PageSlot {
     readonly element: HTMLDivElement;
 
     private nativeView: VanillaView<PageSlotViewProps> | undefined;
+    private resizeHandle: HTMLButtonElement | undefined;
     private disposed = false;
 
     public constructor(
@@ -60,6 +62,27 @@ export class PageSlot {
         }
     }
 
+    ensurePopoverResizeHandle(onPointerDown: (event: PointerEvent) => void): HTMLButtonElement {
+        if (!this.resizeHandle) {
+            const handle = document.createElement("button");
+            handle.type = "button";
+            handle.dataset.type = "popover-resize-handle";
+            handle.setAttribute("aria-label", t("shell.resizePopover"));
+            this.element.append(handle);
+            this.resizeHandle = handle;
+        }
+
+        this.resizeHandle.onpointerdown = onPointerDown;
+        return this.resizeHandle;
+    }
+
+    removePopoverResizeHandle(): void {
+        if (!this.resizeHandle) return;
+        this.resizeHandle.onpointerdown = null;
+        this.resizeHandle.remove();
+        this.resizeHandle = undefined;
+    }
+
     /** Detach immediately, then dispose the nested root after the outer commit. */
     dispose(): void {
         if (this.disposed) {
@@ -67,6 +90,7 @@ export class PageSlot {
         }
 
         this.disposed = true;
+        this.removePopoverResizeHandle();
         const nativeView = this.nativeView;
         this.nativeView = undefined;
         this.element.remove();

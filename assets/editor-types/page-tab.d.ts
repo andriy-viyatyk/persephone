@@ -5,7 +5,10 @@ export interface IPageTab {
     /** The real page title, even when a pinned tab hides its title text. */
     readonly title: string;
     readonly modified: boolean;
+    /** Whether this page's tab is pinned on the left; right pins are false. */
     readonly pinned: boolean;
+    /** The tab's pin side, or undefined when unpinned. */
+    readonly pinSide: "left" | "right" | undefined;
     /** True for the active page and its grouped partner. */
     readonly active: boolean;
     /** Whether the tab's conditional sound/mute control is present. */

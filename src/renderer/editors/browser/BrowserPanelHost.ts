@@ -9,7 +9,8 @@ import type { LinkEditor } from "../link-editor";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 
 const defaultPageState: IPageState = {
-    pinned: false,
+    pinSide: undefined,
+    popoverSize: undefined,
     mainEditorId: null,
     version: 0,
     hasSidebar: false,

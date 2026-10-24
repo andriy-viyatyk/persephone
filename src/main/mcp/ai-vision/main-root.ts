@@ -102,7 +102,8 @@ export class WindowNode implements IAiVisible {
                 language: state.language,
                 filePath: state.filePath,
                 modified: p.modified,
-                pinned: p.pinned,
+                pinSide: p.pinSide ?? (p.pinned ? "left" : undefined),
+                pinned: p.pinSide ? p.pinSide === "left" : p.pinned,
                 // Browser pages: identity only, never the url — the same rule as window descriptors.
                 ...(state.editor === "browser-view" ? { profileName: state.profileName ?? "", isIncognito: !!state.isIncognito, isTor: !!state.isTor } : {}),
             };

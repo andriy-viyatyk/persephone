@@ -20,7 +20,7 @@ every state.
 
 ```
 +---------------------------------------------------------------------+
-| [P] [tab] [tab] [tab] … [+ ▾]                          [–] [□] [×]  |  header strip: Persephone menu far left, then the tab strip
+| [P] [tab] [tab] … [+ ▾]        [right-pin] [right-pin] [–] [□] [×] |  header strip: work tabs left; right-pinned chips before window controls
 |                                                  [Snip][Mneme][MCP] |  status cluster bottom-right
 +---------------------------------------------------------------------+
 | Page area                                                           |  everything below the header strip
@@ -33,6 +33,7 @@ every state.
 - Persephone menu → `persephone-menu`
 - Page tabs → `page-tabs`
 - Page tabs wrapper → `page-tabs-wrapper`
+- Right-pinned page chips → `right-page-tabs`
 - Scroll left → `page-tabs-scroll-left`
 - Scroll right → `page-tabs-scroll-right`
 - Add page → `page-tabs-add`
@@ -122,17 +123,20 @@ Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabs
 |---|---|---|
 | Header strip | The top application chrome | `[data-name="app-header"]` |
 | Persephone glyph | Opens the Menu Bar, the app's only menu | `[data-name="persephone-menu"]` |
-| Tab strip | One tab per open page; tabs can be reordered, moved to another window, or opened in the tab menu | `[data-name="page-tabs"]` |
+| Tab strip | Work pages and left-pinned tabs; tabs can be reordered, moved to another window, or opened in the tab menu | `[data-name="page-tabs"]` |
 | Tab strip scroll area | The scrollable wrapper around tabs | `[data-name="page-tabs-wrapper"]` |
 | Scroll arrows | Appear only when tabs overflow | `[data-name="page-tabs-scroll-left"]`, `[data-name="page-tabs-scroll-right"]` |
 | Add-page split button | The main action adds an empty page; its arrow opens the editor menu | `[data-name="page-tabs-add"]` |
+| Right-pinned page chips | Compact icon chips that open a page in a popover without switching the work page | `[data-name="right-page-tabs"]` |
 | Autoload reload | Appears when changed autoload scripts need re-running | `[data-name="autoload-reload"]` |
 | Zoom indicator | Appears only when the window is zoomed and resets zoom on click | `[data-name="zoom-indicator"]` |
 | Window controls | Minimize, maximize/restore, and close | `[data-name="window-minimize"]`, `[data-name="window-toggle"]`, `[data-name="window-close"]` |
 
 The `+` button creates an empty page with `Ctrl+N`; its arrow offers the editors and browser
-profiles the user can start from. `Ctrl+Shift+N` opens a new window. The tab strip's language,
-close, sound, title, and state controls belong to [Page Tabs](./tabs.md).
+profiles the user can start from. `Ctrl+Shift+N` opens a new window. The tab strips' language,
+close, sound, title, and state controls belong to [Page Tabs](./tabs.md). Right-pinned chips sit
+after the flexible space and before window controls; selecting one opens or closes its page
+popover while the active work page stays selected.
 
 ## Status indicators
 

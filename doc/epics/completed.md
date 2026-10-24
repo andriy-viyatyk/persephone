@@ -43,6 +43,30 @@ deleted. Epic document: [EPIC-130](EPIC-130.md).
 - [x] **External renames by file identity (US-1699).** A renamed file seen by the same OS watcher is
   matched by NTFS `dev` + `ino`; delete-and-recreate stays a delete.
 
+## EPIC-132 — Right-pinned pages in a popover
+
+Completed 2026-10-24. A tab can be pinned to the right: it becomes a chip at the far right of the
+window header, and clicking it opens the page in a resizable popover over the page you work on,
+which stays the active page. Built for the Claude Agent board chat. Epic document:
+[EPIC-132](EPIC-132.md).
+
+- [x] **Pin side model (US-1717).** `PageModel.pinSide` (`"left" | "right"`; `pinned` stays a
+  left-only boolean), three page zones, persisted `pinSide`, transient `popoverPageId` with
+  `openPopover` / `closePopover` / `togglePopover`; `showPage` on a right pin opens its popover.
+  Right pins cannot be grouped, closed, duplicated or moved between windows.
+- [x] **Right tab strip (US-1718).** `RightPageTabsView` in the header; icon-only chips whose
+  border turns accent while their popover is open; localized Pin to the left / right and Unpin.
+- [x] **Popover host (US-1719).** The page's own slot is restyled in place (never reparented):
+  top-right, 50% default, bottom-left grip, 80% maximum, per-page size fractions persisted.
+  Closes on a click or focus move outside the popover and on unhandled Escape.
+- [x] **Focused page (US-1720).** `query.focusedPage` / `isPageVisible`: Ctrl+W in a popover
+  closes the popover, F1 and browser host keys follow it, boards report visible in it, and the
+  Tor/incognito snapshot block covers every visible page.
+- [x] **Scripting / MCP surface (US-1721).** `pinSide`, `pages.popoverPage`, `openPopover`,
+  `closePopover`, `pinTab(id, side)`; one sentence in the MCP server instructions.
+- Claude Agent board default instructions updated in persephone-boards (BT-046). Open item: click-away
+  over a browser `<webview>` page was not verified live.
+
 ## EPIC-129 — Shared path-watch service and board file watching
 
 Completed 2026-10-17. One main-process service owns every `fs.watch` in the app, shares OS

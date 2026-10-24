@@ -41,6 +41,9 @@ guide to read for which task. It is intentionally short — read it once per ses
   a native image block; this applies to any object-model member, not just browser screenshots.
   Paths use the same names as `app.*` in scripts, so what you learn there transfers to
   `script.execute`.
+- **The active page stays the work page.** `page` and `pages.activePage` identify the page the user
+  works on. A right-pinned page may open in a popover over it without becoming active; use
+  `pages.popoverPage` or `pages[pageId]` to address that page.
 - **`script.execute` is the power tool.** JavaScript/TypeScript with the `app` object (pages,
   fs, settings, ui, boards, …) and **full, unsandboxed Node.js** with the user's privileges.
 - **Agent Tools are executable memory.** Registered, parameterized scripts you discover with

@@ -80,7 +80,7 @@ main editor is absent.
 ```
 PageModel (one per tab — stable identity, never changes during navigation)
 ├── id: string                          // stable UUID — tab key, cache key
-├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, mainEditorId, restoreStatus }
+├── state: TOneState<IPageState>        // reactive: { pinSide, popoverSize, hasSidebar, mainEditorId, restoreStatus }
 ├── ready: Promise<void>                 // current deferred restore attempt
 ├── mainEditor: EditorModel | null      // the content (swapped during navigation)
 ├── secondaryViews: EditorModel[]     // sidebar panels (ExplorerEditorModel, ArchiveEditorModel, etc.)
@@ -127,6 +127,28 @@ attach content again.
 Consumers that operate on tabs must therefore use the `PageModel` identity rather than treating a
 missing main editor as a missing page.
 
+### Pin sides and the right-page popover
+
+`pinSide` is `"left"`, `"right"`, or `undefined`. The `pinned` boolean remains a compatibility
+property for a left-pinned tab only; it is derived from `pinSide === "left"`. `pages[]` is ordered
+as three contiguous zones: left-pinned, unpinned, then right-pinned. Reordering is allowed within a
+zone, and pinning moves a page to the edge of its destination zone. Right-pinned pages are not
+members of `ordered[]`, cannot be grouped, closed, or transferred to another window, and
+`showPage(id)` opens their popover instead of activating them. Unpinning returns the page to the
+normal tab zone and makes it active.
+
+`activePage` continues to mean the page being worked on beneath any popover. `focusedPage` is a
+derived interaction target: it is the page currently shown in the right-page popover, or
+`activePage` when the popover is closed. Keyboard commands and other operations aimed at the page
+receiving user interaction use `focusedPage`; navigation and script/MCP active-page queries retain
+`activePage` semantics. The transient `popoverPageId` is window state, while each page's
+`popoverSize` is persisted as width and height fractions of the page area.
+
+The right strip is rendered in the header and clicking its tabs toggles the popover. The popover
+uses the existing stable page slot, with CSS geometry and a bottom-left resize grip; it does not
+create a second page view or move the slot, so board iframes and browser webviews keep their live
+documents. `PagesView` handles click-away, focus transfer, and Escape dismissal around the host.
+
 Three page concerns live in their own modules rather than in `PageModel`:
 [`editor-switch.ts`](../../src/renderer/editors/base/editor-switch.ts) implements the
 switch-widget transition (`switchMainEditor` — the page keeps a dynamic-import delegate, so
@@ -159,7 +181,8 @@ descriptors rather than restored sidebar state.
   (`EditorStatusBarView`, the footer) shows its status and any known byte progress. Successful reads show a brief completion label; errors remain
   visible until dismissed. Opening the badge's popover shows the provider and transformer stages
   with their current status details.
-- **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
+- **Active/Inactive:** `showPage(pageId)` moves a normal page to the end of `ordered[]`; a
+  right-pinned page opens in the popover and remains outside `ordered[]`.
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
 - **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen(pipe?)` hook with the newly resolved pipe. The hook returns `true` to take ownership; otherwise the lifecycle disposes the pipe. Editors can use this to retry a failed source without replacing the page.
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
@@ -245,9 +268,10 @@ graph TD
     API --> P["Persistence<br/>(Storage)"]
 
     Q --> Q1["pages: IPage[]"]
-    Q --> Q2["active: IPage | null"]
-    Q --> Q3["find(id)"]
-    Q --> Q4["getGrouped(id)"]
+    Q --> Q2["activePage"]
+    Q --> Q3["popoverPage"]
+    Q --> Q4["find(id)"]
+    Q --> Q5["getGrouped(id)"]
 
     L --> L1["create(type)→IPage"]
     L --> L2["open(path)→Promise"]
@@ -259,7 +283,7 @@ graph TD
     N --> N3["showPrev()"]
 
     LAY --> LAY1["move(id, idx)"]
-    LAY --> LAY2["pin(id)"]
+    LAY --> LAY2["pin(id, side)"]
     LAY --> LAY3["unpin(id)"]
     LAY --> LAY4["group(l, r)"]
     LAY --> LAY5["ungroup(id)"]
@@ -325,9 +349,9 @@ graph TD
 | Base | [`PagesModel.ts`](../../src/renderer/api/pages/PagesModel.ts) | Shared state (`pages[]`, `ordered[]`, `groupings`), core helpers |
 | Lifecycle | [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) | create, open, close, navigate, movePageIn/Out |
 | Navigation | [`PagesNavigationModel.ts`](../../src/renderer/api/pages/PagesNavigationModel.ts) | show, showNext, showPrev |
-| Layout | [`PagesLayoutModel.ts`](../../src/renderer/api/pages/PagesLayoutModel.ts) | moveTab, pin/unpin, group/ungroup |
+| Layout | [`PagesLayoutModel.ts`](../../src/renderer/api/pages/PagesLayoutModel.ts) | moveTab, pin by side/unpin, group/ungroup |
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
-| Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, getGrouped, isLastPage |
+| Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, focusedPage, getGrouped, isLastPage |
 
 Folder boards are the persistence exception among no-host board pages. Their descriptor keeps the
 stable `board-view` editor id but stores the installed `boardRoot` and claimed `folderPath` as
@@ -366,10 +390,10 @@ import { pagesModel } from "../api/pages";
 
 ### Public (in IPageCollection, exposed to scripts)
 
-- `all`, `activePage`, `find()`, `getGrouped()` — queries
+- `all`, `activePage`, `popoverPage`, `find()`, `getGrouped()` — queries
 - `openFile()`, `addEmpty()`, `addEditor()` — lifecycle. `openFile(filePath)` accepts files and folders and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openFile()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
-- `show()`, `showNext()`, `showPrevious()` — navigation
-- `moveTab()`, `pin()`, `unpin()`, `group()`, `ungroup()` — layout
+- `show()`, `showNext()`, `showPrevious()`, `openPopover()`, `closePopover()` — navigation and popover visibility
+- `moveTab()`, `pinTab(side)`, `unpinTab()`, `group()`, `ungroup()` — layout
 
 ### Internal (not in .d.ts, private implementation)
 
@@ -419,7 +443,7 @@ When a tab is dragged to another window:
    - Creates an EditorModel from `desc.editor`, calls `applyRestoreData()` and `restore()`
    - If `desc.hasSidebar`, restores sidebar from cache (keyed by page ID) including secondary views
 
-**Why it works:** The `PageDragData` sent by `PageTab.getDragData()` includes a full `PageDescriptor` with `id`, `pinned`, `modified`, `hasSidebar`, and serialized editor state. Cache files are keyed by page ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. Sidebar state (tree expansion, search, secondary view descriptors) is fully reconstructed from cache. The page ID is preserved across the transfer.
+**Why it works:** The `PageDragData` sent by `PageTab.getDragData()` includes a full `PageDescriptor` with `id`, `pinSide`, `modified`, `hasSidebar`, and serialized editor state. Right-pinned pages are excluded from cross-window transfer. Cache files are keyed by page ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. Sidebar state (tree expansion, search, secondary view descriptors) is fully reconstructed from cache. The page ID is preserved across the transfer.
 
 **Critical dependency:** The target window must have called `api.windowReady()` before the main process sends `eMovePageIn`. The main process holds a `whenReady` promise per window and awaits it before forwarding events.
 

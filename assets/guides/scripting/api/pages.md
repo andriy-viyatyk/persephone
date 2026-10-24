@@ -24,7 +24,8 @@ app.pages.addEmptyPage();
 | Member | Type | Description |
 |--------|------|-------------|
 | `all` | `IPage[]` | All open pages (tabs) in the current window. |
-| `activePage` | `IPage \| undefined` | Currently active (visible) page. |
+| `activePage` | `IPage \| undefined` | Active work page. Showing a right-pinned page in a popover does not change it. |
+| `popoverPage` | `IPage \| undefined` | Right-pinned page currently shown in a popover, or `undefined`. |
 | `groupedPage` | `IPage \| undefined` | Grouped partner of the active page. |
 | `findPage(pageId)` | `IPage \| undefined` | Find a page by ID. |
 | `getGroupedPage(withPageId)` | `IPage \| undefined` | Get grouped partner of a specific page. |
@@ -261,7 +262,9 @@ await app.pages.openUrl("https://example.com/data.json", { editor: "monaco" });
 
 | Method | Description |
 |--------|-------------|
-| `showPage(pageId)` | Activate (show) a page by ID. |
+| `showPage(pageId)` | Activate a work page. For a right-pinned page, open its popover without changing `activePage`. |
+| `openPopover(pageId)` | Show a right-pinned page in its popover without changing `activePage`. |
+| `closePopover()` | Close the popover without changing `activePage`. |
 | `showNext()` | Activate the next tab (wraps around). |
 | `showPrevious()` | Activate the previous tab (wraps around). |
 
@@ -270,12 +273,18 @@ await app.pages.openUrl("https://example.com/data.json", { editor: "monaco" });
 | Method | Description |
 |--------|-------------|
 | `moveTab(fromId, toId)` | Move a tab to a new position. |
-| `pinTab(pageId)` | Pin a tab. |
+| `pinTab(pageId, side?)` | Pin a tab on the left (default) or right. Right-pinned pages open as popovers and cannot be grouped. |
 | `unpinTab(pageId)` | Unpin a tab. |
 | `group(leftPageId, rightPageId)` | Group two pages side by side. |
 | `ungroup(pageId)` | Remove a page from its group. |
 
 ```javascript
+// Show a right-pinned page without changing the active work page
+app.pages.pinTab(page.id, "right");
+app.pages.openPopover(page.id);
+console.log(app.pages.activePage?.title, app.pages.popoverPage?.title);
+app.pages.closePopover();
+
 // Group current page with its output
 const outputPage = app.pages.addEmptyPage();
 app.pages.group(page.id, outputPage.id);

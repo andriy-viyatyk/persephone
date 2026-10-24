@@ -20,7 +20,8 @@ import type { IAiCallContext } from "../ai-vision/root";
 // describes so a new method and its descriptor entry land in the same diff.
 const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "all", kind: "property", summary: "Every open page as an array (index by position)." },
-    { name: "activePage", kind: "property", summary: "The active page, or nothing when no page is open." },
+    { name: "activePage", kind: "property", summary: "The page the user works on, or nothing when no page is open. A right-pinned popover does not change it." },
+    { name: "popoverPage", kind: "property", summary: "The right-pinned page currently open in a popover, or undefined." },
     { name: "groupedPage", kind: "property", summary: "The page grouped beside the active one, if any." },
     { name: "findPage", kind: "method", signature: "findPage(pageId: string)", summary: "A page by id." },
     { name: "getGroupedPage", kind: "method", signature: "getGroupedPage(withPageId: string)", summary: "The page grouped with the given page, if any." },
@@ -45,11 +46,13 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "showBrowserPage", kind: "method", signature: "showBrowserPage(options?: { profileName?, incognito?, tor?, url? })", summary: "Show (or open) a browser page. Choose profileName from settings.browserProfiles; an empty profileName selects the built-in default. Incognito/Tor pages you open this way are yours to read and drive; the user's own private pages stay blocked." },
     { name: "openUrlInBrowserTab", kind: "method", signature: "openUrlInBrowserTab(url, options?: { incognito?, profileName?, external? })", summary: "Open a plain web page or search query in/reusing a browser tab; pages.openUrl(...) is for file-like URLs. Requires a non-empty string and does not reject search text. Returns the page id BEFORE the document loads; act too early and the action lands on a document about to be replaced and still reports success. Await pages[pageId].editor.waitFor({ selector }) (or { text }) for content you expect — waitForNavigation() can return at once because the old document is already complete. Read pages[pageId].title after the wait.", caution: "opens or navigates a browser page" },
     { name: "openUrl", kind: "method", signature: "openUrl(url, options?: { editor? })", summary: "Route a supported URL naming a file through the content pipeline; pages.openUrlInBrowserTab(...) is for a plain web page or search query. Empty, malformed, unsupported, and non-string hrefs are rejected. Cannot name the opened page; inspect pages afterward.", caution: "opens or navigates a page using the content pipeline" },
-    { name: "showPage", kind: "method", signature: "showPage(pageId: string)", summary: "Activate (focus) a page." },
+    { name: "showPage", kind: "method", signature: "showPage(pageId: string)", summary: "Show a page; a right-pinned page opens its popover without changing the active work page." },
+    { name: "openPopover", kind: "method", signature: "openPopover(pageId: string)", summary: "Show a right-pinned page in its popover without changing activePage." },
+    { name: "closePopover", kind: "method", signature: "closePopover()", summary: "Close the right-pinned page popover without changing activePage." },
     { name: "showNext", kind: "method", signature: "showNext()", summary: "Activate the next tab." },
     { name: "showPrevious", kind: "method", signature: "showPrevious()", summary: "Activate the previous tab." },
     { name: "moveTab", kind: "method", signature: "moveTab(fromId, toId)", summary: "Reorder tabs." },
-    { name: "pinTab", kind: "method", signature: "pinTab(pageId)", summary: "Pin a tab." },
+    { name: "pinTab", kind: "method", signature: 'pinTab(pageId, side?: "left" | "right")', summary: "Pin a tab on the left by default or on the requested side." },
     { name: "unpinTab", kind: "method", signature: "unpinTab(pageId)", summary: "Unpin a tab." },
     { name: "group", kind: "method", signature: "group(leftPageId, rightPageId)", summary: "Show two pages side by side." },
     { name: "ungroup", kind: "method", signature: "ungroup(pageId)", summary: "Dissolve a page's side-by-side group." },
@@ -57,6 +60,9 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
 
 const PAGES_HELP = `
 The open pages (tabs) of this window. Index by position — pages[0] — or by id — pages["<id>"].
+activePage is the page the user works on. A right-pinned page can display in a popover over it
+without becoming active; inspect popoverPage or use pages[pageId] to work with that page. Use
+openPopover(pageId) and closePopover() to control the popover without changing activePage.
 Ids are stable while the page is open; positions change when tabs move.
 Read a page's text with pages[i].content, replace it by assigning "value" to the same path, switch
 editors with pages[i].editor; narrow its id for editor-specific operations, then use
@@ -131,12 +137,18 @@ export class PageCollectionWrapper implements IAiVisible {
                 }
                 return this.findPage(key);
             },
-            summarize: () => ({ kind: "Pages", count: this.all.length, activePageId: this.pages.activePage?.id ?? null }),
+            summarize: () => ({
+                kind: "Pages",
+                count: this.all.length,
+                activePageId: this.pages.activePage?.id ?? null,
+                popoverPageId: this.pages.popoverPageId ?? null,
+            }),
         };
     }
 
     private aiChildren(): IAiChild[] {
         const activeId = this.pages.activePage?.id;
+        const popoverId = this.pages.popoverPageId;
         const children: IAiChild[] = [
             { segment: ".compare", kind: this.compare.aiVision.kind, summary: "active compare pairs and compare-mode controls" },
             { segment: ".logView", kind: "LogViewEditor", summary: "show the user output or ask them a question — the agent's output channel" },
@@ -144,12 +156,14 @@ export class PageCollectionWrapper implements IAiVisible {
         children.push(...this.all.map((page, i) => {
             const restricted = page.aiVision.restricted?.();
             const active = page.id === activeId ? " ← active" : "";
+            const popover = page.id === popoverId ? " ← popover" : "";
+            const pinSide = page.pinSide === "right" ? "right-pinned, " : "";
             const editorId = page.editor.id || "no editor";
             const workspace = page.workspaceFolder ? ` — workspace ${page.workspaceFolder}` : "";
             return {
                 segment: `[${i}]`,
                 kind: "Page",
-                summary: `"${page.title}" id=${page.id} (${editorId}${page.modified ? ", modified" : ""})${workspace}${active}`,
+                summary: `"${page.title}" id=${page.id} (${pinSide}${editorId}${page.modified ? ", modified" : ""})${workspace}${active}${popover}`,
                 ...(restricted ? { restricted } : {}),
             };
         }));
@@ -196,6 +210,11 @@ export class PageCollectionWrapper implements IAiVisible {
         const page = this.pages.activePage;
         markPageAttended(page?.id);
         return this.wrap(page);
+    }
+
+    get popoverPage(): PageWrapper | undefined {
+        const pageId = this.pages.popoverPageId;
+        return pageId ? this.findPage(pageId) : undefined;
     }
 
     get groupedPage(): PageWrapper | undefined {
@@ -379,14 +398,22 @@ export class PageCollectionWrapper implements IAiVisible {
         withAgentNavigation(() => this.pages.showPrevious());
     }
 
+    openPopover(pageId: string): void {
+        this.pages.openPopover(pageId);
+    }
+
+    closePopover(): void {
+        this.pages.closePopover();
+    }
+
     // ── Layout ────────────────────────────────────────────────────────
 
     moveTab(fromId: string, toId: string): void {
         this.pages.moveTab(fromId, toId);
     }
 
-    pinTab(pageId: string): void {
-        this.pages.pinTab(pageId);
+    pinTab(pageId: string, side?: "left" | "right"): void {
+        this.pages.pinTab(pageId, side);
     }
 
     unpinTab(pageId: string): void {

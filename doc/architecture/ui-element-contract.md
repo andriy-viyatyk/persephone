@@ -80,6 +80,7 @@ The always-visible chrome, top to bottom.
 | Header strip | `[data-name="app-header"]` |
 | Menu button (Persephone glyph) — opens the Menu Bar | `[data-name="persephone-menu"]` |
 | Tab strip | `[data-name="page-tabs"]` |
+| Right-pinned tab strip | `[data-name="right-page-tabs"]` |
 | Tab strip scroll area | `[data-name="page-tabs-wrapper"]` |
 | Tab strip scroll arrows (only when tabs overflow) | `[data-name="page-tabs-scroll-left"]`, `[data-name="page-tabs-scroll-right"]` |
 | Add-page button (split button — click adds, arrow opens the editor menu) | `[data-name="page-tabs-add"]` |
@@ -108,7 +109,7 @@ The always-visible chrome, top to bottom.
 | Tab title text | `[data-part="title-label"]` |
 
 State attributes available on a tab: `data-active`, `data-modified`, `data-pinned`, `data-temp`,
-`data-deleted`, `data-grouped`, `data-has-encryption`.
+`data-deleted`, `data-grouped`, `data-has-encryption`, `data-popover-open`.
 
 `page.tab` supplies page-scoped selectors for the tab root and its controls. Its `title` property
 is the real page title even when a pinned tab hides title text on screen; do not infer it from the
@@ -123,6 +124,9 @@ Two tab shapes do not match the common case, and both occur in ordinary use:
 - **A pinned tab renders no title text.** `[data-part="title-label"]` exists but is empty — the
   tab shows only icons, and the file path lives in a hover tooltip. Read a page's title from
   `pages`, never from the tab's DOM.
+- **Right-pinned tabs live in the header's right strip.** They retain the `page-tab` root and are
+  identified by `[data-mode="right"]`; `data-popover-open` marks the one currently displayed over
+  the active page. A right-pinned tab is not the active tab when its popover is open.
 
 ### Menu Bar (opens from the Persephone glyph)
 

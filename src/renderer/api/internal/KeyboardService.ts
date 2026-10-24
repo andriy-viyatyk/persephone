@@ -84,7 +84,7 @@ export class KeyboardService {
                 if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.isComposing || e.defaultPrevented) break;
                 if (e.target instanceof Element && e.target.closest(".monaco-editor")) break;
                 e.preventDefault();
-                void guard(t("api.failedToOpenUserGuide"), () => openActiveGuideOrContents());
+                void guard(t("api.failedToOpenUserGuide"), () => openFocusedGuideOrContents());
                 break;
 
             case "F12":
@@ -98,6 +98,7 @@ export class KeyboardService {
             case "Tab":
                 if (e.ctrlKey) {
                     e.preventDefault();
+                    pagesModel.closePopover();
                     if (e.shiftKey) pagesModel.showPrevious();
                     else pagesModel.showNext();
                 }
@@ -107,9 +108,11 @@ export class KeyboardService {
             case "KeyW":
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    const activePage = pagesModel.activePage;
-                    if (activePage) {
-                        activePage.close();
+                    const focusedPage = pagesModel.query.focusedPage;
+                    if (focusedPage && pagesModel.query.isRightPinned(focusedPage.id)) {
+                        pagesModel.closePopover();
+                    } else if (focusedPage) {
+                        focusedPage.close();
                     }
                 }
                 break;
@@ -143,8 +146,8 @@ export class KeyboardService {
     };
 }
 
-export async function openActiveGuideOrContents(): Promise<void> {
-    const editorInstance = pagesModel.activePage?.mainEditorInstance;
+export async function openFocusedGuideOrContents(): Promise<void> {
+    const editorInstance = pagesModel.query.focusedPage?.mainEditorInstance;
     const editorId = editorInstance?.editorId;
     // A board page (plain `board-view` or a custom-editor `board-editor:<root>`) exposes the board
     // folder it renders; that is what maps onto the board's own guide branch.

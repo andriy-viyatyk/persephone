@@ -2,6 +2,7 @@
     .app-root { background-color: var(--color-bg-default); flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
     .app-root .app-header { display: flex; flex-direction: row; column-gap: 4px; color: var(--color-text-light); align-items: center; padding: 4px 0 0 8px; border-bottom: 1px solid var(--color-border-light); position: relative; background-color: var(--color-bg-dark); -webkit-app-region: drag; }
     .app-root .app-header button { -webkit-app-region: no-drag; }
+    .app-root .app-header [data-name="right-page-tabs"] { -webkit-app-region: no-drag; }
     .app-root .app-header .app-button { flex-shrink: 0; align-self: flex-end; padding: 0; margin-bottom: 3px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .app-root .app-header .system-button { align-self: flex-start; padding: 0; padding-top: 0; margin-top: -4px; height: 28px; width: 40px; border: none; border-radius: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: default; background-color: var(--color-bg-dark); color: var(--color-text-light); }
     .app-root .app-header .system-button.darkBackground:hover { background-color: var(--color-bg-light); }

@@ -5,15 +5,16 @@ summary: "The active tab, its content pipe and restore status, and its editor an
 ---
 
 # Page API
-`page` is the active tab. `app.pages.activePage` and `app.pages.all` expose the same page
-objects. The page API is structural: the current editor is available as `page.editor`, and
-editor switching is available as `page.editorSwitches`.
+`page` is the active work tab. `app.pages.activePage` and `app.pages.all` expose the same page
+objects. Showing a right-pinned page in a popover does not change `page` or `activePage`; use
+`app.pages.popoverPage` to access that page. The page API is structural: the current editor is
+available as `page.editor`, and editor switching is available as `page.editorSwitches`.
 
 ## Page properties
 
 | Property | Description |
 |---|---|
-| `id`, `title`, `filePath`, `modified`, `pinned` | Page and tab metadata |
+| `id`, `title`, `filePath`, `modified`, `pinned`, `pinSide` | Page and tab metadata; `pinned` is true for left-pinned tabs, while `pinSide` is `"left"`, `"right"`, or `undefined` |
 | `workspaceFolder` | The project folder at the root of this page's Explorer, or `undefined` without a folder Explorer or while browsing an archive |
 | `content` | Read or assign text content for text-based editors |
 | `language` | Read or assign the language id |
@@ -82,7 +83,7 @@ if (pipe) {
 ## `page.tab`
 
 `page.tab` describes this page's tab-strip presentation. It exposes `title`, `modified`,
-`pinned`, `active`, and `soundIndicator`, plus the tab's curated `elements` and
+`pinned`, `pinSide`, `active`, and `soundIndicator`, plus the tab's curated `elements` and
 `highlight(name, message?)` helper. `active` also includes the grouped partner shown beside the
 active page. Reading or highlighting the tab does not activate the page.
 

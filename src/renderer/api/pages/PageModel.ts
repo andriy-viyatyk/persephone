@@ -42,9 +42,18 @@ function unwrapToHost(editor: EditorModel | null): EditorOrHost | null {
 }
 
 /** Reactive page-level state — UI subscribes to this for repaint on page changes. */
+export type PagePinSide = "left" | "right" | undefined;
+
+export interface PagePopoverSize {
+    width: number;
+    height: number;
+}
+
 export interface IPageState {
-    /** Page-level pinned flag. */
-    pinned: boolean;
+    /** Which page-strip zone this page belongs to. */
+    pinSide: PagePinSide;
+    /** Popover width and height as fractions of the current pages container. */
+    popoverSize: PagePopoverSize | undefined;
     /** Current main editor ID — changes on navigation, notifies subscribers for editor swap. */
     mainEditorId: string | null;
     /** Bumped whenever `editors[]` changes (attach/detach) or an editor's panel-list
@@ -62,7 +71,8 @@ export interface IPageState {
 }
 
 const defaultPageState: IPageState = {
-    pinned: false,
+    pinSide: undefined,
+    popoverSize: undefined,
     mainEditorId: null,
     version: 0,
     hasSidebar: false,
@@ -314,12 +324,29 @@ export class PageModel implements IPageHost {
 
     // ── Pinned (reactive) ────────────────────────────────────────────
 
+    get pinSide(): PagePinSide {
+        return this.state.get().pinSide;
+    }
+
+    set pinSide(value: PagePinSide) {
+        this.state.update((s) => { s.pinSide = value; });
+    }
+
+    get popoverSize(): PagePopoverSize | undefined {
+        return this.state.get().popoverSize;
+    }
+
+    set popoverSize(value: PagePopoverSize | undefined) {
+        this.state.update((s) => { s.popoverSize = value; });
+    }
+
     get pinned(): boolean {
-        return this.state.get().pinned;
+        return this.pinSide === "left";
     }
 
     set pinned(value: boolean) {
-        this.state.update((s) => { s.pinned = value; });
+        if (value) this.pinSide = "left";
+        else if (this.pinSide === "left") this.pinSide = undefined;
     }
 
     // ── Derived properties ───────────────────────────────────────────
@@ -818,6 +845,7 @@ export class PageModel implements IPageHost {
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
+        if (this.pinSide === "right") return false;
         if (this.isRestoring) {
             this.cancelRestore();
             this.onClose?.();
@@ -852,6 +880,8 @@ export class PageModel implements IPageHost {
         return {
             id: this.id,
             pinned: this.pinned,
+            pinSide: this.pinSide,
+            popoverSize: this.popoverSize,
             modified: this.modified,
             mainEditorId: this._mainEditorId,
             editors: this.editors.map((e) => e.getRestoreData()),

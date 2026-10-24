@@ -27,6 +27,8 @@ const defaultOpenFilesState = {
     rightLeft: new Map<string, string>(),
     /** Compare-mode flag set keyed by left page id (walkthrough 06 / CK1). */
     compareGroups: new Set<string>(),
+    /** Transient page currently shown by the right-pin popover. */
+    popoverPageId: undefined as string | undefined,
 };
 
 export type OpenFilesState = typeof defaultOpenFilesState;
@@ -136,6 +138,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.state.update((s) => {
             s.pages = s.pages.filter((p) => p !== page);
             s.ordered = s.ordered.filter((p) => p !== page);
+            if (s.popoverPageId === page.id) s.popoverPageId = undefined;
             // Read `compareGroups` off the pre-update snapshot, never off the draft.
             // `TOneState.update` runs immer `produce` and this repository deliberately
             // does not call `enableMapSet()` (US-970), so *reading* a Set/Map property
@@ -154,18 +157,43 @@ export class PagesModel extends TModel<OpenFilesState> {
         });
         this.layout.fixGrouping();
         this.persistence.saveState();
-        if (isActivePage) {
-            const ordered = this.state.get().ordered;
-            if (ordered.length) {
-                this.onShow.send(ordered[ordered.length - 1]);
-                this.onFocus.send(ordered[ordered.length - 1]);
-            }
+        this.handleActivePageRemoved(isActivePage);
+    };
+
+    handleActivePageRemoved = (wasActive: boolean) => {
+        if (!wasActive) return;
+        if (!this.query.activePage) this.lifecycle.addEmptyPage();
+        const activePage = this.query.activePage;
+        if (!activePage) return;
+        this.onShow.send(activePage);
+        if (!this.popoverPageId) this.onFocus.send(activePage);
+    };
+
+    get popoverPageId(): string | undefined {
+        return this.state.get().popoverPageId;
+    }
+
+    openPopover = (pageId: string) => {
+        const page = this.query.findPage(pageId);
+        if (!page || page.id !== pageId || !this.query.isRightPinned(pageId)) {
+            throw new Error(`Cannot open popover for non-attached right-pinned page: ${pageId}`);
         }
+        this.state.update((s) => { s.popoverPageId = pageId; });
+    };
+
+    closePopover = () => {
+        if (this.state.get().popoverPageId === undefined) return;
+        this.state.update((s) => { s.popoverPageId = undefined; });
+    };
+
+    togglePopover = (pageId: string) => {
+        if (this.state.get().popoverPageId === pageId) this.closePopover();
+        else this.openPopover(pageId);
     };
 
     checkEmptyPage = () => {
         afterDispatch(() => {
-            if (this.state.get().pages.length === 0) {
+            if (this.state.get().ordered.length === 0) {
                 this.lifecycle.addEmptyPage();
             }
         });
@@ -180,7 +208,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         const pages = this.state.get().pages;
         if (pages.length !== 2) return;
         const firstPage = pages[0];
-        if (firstPage.pinned) return;
+        if (firstPage.pinSide !== undefined) return;
         // Use the editor instance so isFreshEmpty() resolves correctly.
         if (firstPage.mainEditorInstance?.isFreshEmpty?.() === true) {
             firstPage.close();
@@ -206,6 +234,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.query.getLeftGroupedPage(withPageId);
     isLastPage = (pageId?: string) => this.query.isLastPage(pageId);
     isGrouped = (pageId: string) => this.query.isGrouped(pageId);
+    isRightPinned = (pageId: string) => this.query.isRightPinned(pageId);
     canCompare = (leftId: string, rightId: string) =>
         this.query.canCompare(leftId, rightId);
     isInCompareMode = (pageId: string) => this.query.isInCompareMode(pageId);
@@ -213,6 +242,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     get pages() {
         return this.query.pages;
     }
+    getFirstRightPinnedIndex = () => this.query.getFirstRightPinnedIndex();
 
     // Navigation delegates
     showPage = (pageId?: string) => this.navigation.showPage(pageId);
@@ -315,7 +345,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.layout.moveTab(fromId, toId);
     moveTabByIndex = (fromIndex: number, toIndex: number) =>
         this.layout.moveTabByIndex(fromIndex, toIndex);
-    pinTab = (pageId: string) => this.layout.pinTab(pageId);
+    pinTab = (pageId: string, side: "left" | "right" | undefined = "left") =>
+        this.layout.pinTab(pageId, side);
     unpinTab = (pageId: string) => this.layout.unpinTab(pageId);
     group = (leftPageId: string, rightPageId: string) =>
         this.layout.group(leftPageId, rightPageId);

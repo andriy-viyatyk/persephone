@@ -39,7 +39,11 @@ export interface NavEntry {
  *  `editor.id` in `editors[]`, or `null` for sidebar-only pages. */
 export interface PageDescriptor {
     id: string;
+    /** Legacy left-pin projection retained for older readers. */
     pinned: boolean;
+    pinSide?: "left" | "right";
+    /** Popover width and height as fractions of the current pages container. */
+    popoverSize?: { width: number; height: number };
     modified: boolean;
     mainEditorId: string | null;
     editors: EditorDescriptor[];

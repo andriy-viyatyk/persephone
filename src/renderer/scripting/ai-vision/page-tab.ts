@@ -15,7 +15,8 @@ const TAB_ELEMENTS: readonly IAiElementDeclaration[] = [
 const TAB_MEMBERS: readonly IAiMember[] = [
     { name: "title", kind: "property", summary: "The real page title, including when the pinned tab hides its title text." },
     { name: "modified", kind: "property", summary: "Whether this page has unsaved changes." },
-    { name: "pinned", kind: "property", summary: "Whether this page's tab is pinned." },
+    { name: "pinned", kind: "property", summary: "Whether this page's tab is pinned on the left; right pin is false." },
+    { name: "pinSide", kind: "property", summary: "Tab pin side: left, right, or undefined when unpinned." },
     { name: "active", kind: "property", summary: "Whether this tab is active, including the grouped partner shown beside the active page." },
     { name: "soundIndicator", kind: "property", summary: "Whether the tab's sound/mute indicator is currently present." },
 ];
@@ -43,6 +44,10 @@ export class PageTabNode implements IAiVisible {
 
     get pinned(): boolean {
         return this.page?.pinned ?? false;
+    }
+
+    get pinSide(): "left" | "right" | undefined {
+        return this.page?.pinSide;
     }
 
     get active(): boolean {
@@ -77,12 +82,13 @@ export class PageTabNode implements IAiVisible {
             members: [...TAB_MEMBERS, ...elements.members],
             provide: elements.provide,
             elements: TAB_ELEMENTS,
-            help: "title is the real page title even when a pinned tab hides its title text on screen. modified, pinned, active, and soundIndicator mirror the live tab presentation; active includes the grouped partner shown beside the active page. Use elements and highlight(name) for the tab root and its conditional controls. Reading or highlighting this node never activates the page. Tab actions are on the pages node: use pages.showPage, closePage, pinTab, unpinTab, and moveTab.",
+            help: "title is the real page title even when a pinned tab hides its title text on screen. pinned means left-pinned only; pinSide is left, right, or undefined. modified, pinned, pinSide, active, and soundIndicator mirror the live tab presentation; active includes the grouped partner shown beside the active page. A right-pinned page can appear in a popover without becoming active. Use elements and highlight(name) for the tab root and its conditional controls. Reading or highlighting this node never activates the page. Tab actions are on the pages node: use pages.showPage, closePage, pinTab, unpinTab, and moveTab.",
             summarize: () => ({
                 kind: "PageTab",
                 title: this.title,
                 modified: this.modified,
                 pinned: this.pinned,
+                pinSide: this.pinSide,
                 active: this.active,
                 soundIndicator: this.soundIndicator,
             }),

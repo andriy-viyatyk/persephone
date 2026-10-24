@@ -57,10 +57,11 @@ Read `folders` before opening a configured user folder so you use its current ID
 
 ## `window.screen`
 
-`window.screen` automates Persephone's own window and the currently active page. It can inspect the
-app chrome, tab strip, sidebar, toolbars, dialogs, and active editor using CSS selectors or refs from
-an accessibility snapshot. It does not open or switch pages; use `app.pages` and
-`app.pages.showPage()` for that.
+`window.screen` automates Persephone's own window and active work page. It can inspect the app
+chrome, both tab strips, sidebar, toolbars, dialogs, and active editor using CSS selectors or refs
+from an accessibility snapshot. A right-pinned page may appear in a popover over the active work
+page; opening it does not change `app.pages.activePage`. Use `app.pages.popoverPage` to address that
+page, and `app.pages` methods to open or switch pages.
 
 ```javascript
 const snapshot = await app.window.screen.snapshot();

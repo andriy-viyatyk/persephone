@@ -10,7 +10,11 @@ export class PagesNavigationModel {
     showPage = (pageId?: string) => {
         if (!pageId) return;
         const { ordered } = this.model.state.get();
-        const page = ordered.find((p) => p.id === pageId);
+        const page = this.model.query.findPage(pageId);
+        if (page && this.model.query.isRightPinned(page.id)) {
+            this.model.openPopover(page.id);
+            return;
+        }
         if (page && page !== ordered[ordered.length - 1]) {
             this.model.state.update((s) => {
                 s.ordered = [...s.ordered.filter((p) => p !== page), page];
@@ -22,7 +26,7 @@ export class PagesNavigationModel {
     };
 
     showNext = () => {
-        const pages = this.model.state.get().pages;
+        const pages = this.model.state.get().ordered;
         if (!pages.length) return;
         const activePage = this.model.query.activePage;
         let nextIndex = pages.findIndex((p) => p === activePage) + 1;
@@ -33,7 +37,7 @@ export class PagesNavigationModel {
     };
 
     showPrevious = () => {
-        const pages = this.model.state.get().pages;
+        const pages = this.model.state.get().ordered;
         if (!pages.length) return;
         const activePage = this.model.query.activePage;
         let prevIndex = pages.findIndex((p) => p === activePage) - 1;

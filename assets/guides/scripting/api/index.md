@@ -24,7 +24,8 @@ ui.log("Hello");
   - `.id` — Unique page identifier
   - `.title` — Display title
   - `.modified` — Has unsaved changes?
-  - `.pinned` — Is tab pinned?
+  - `.pinned` — Is tab pinned on the left? Use `.pinSide` for left/right/none.
+  - `.pinSide` — `"left"`, `"right"`, or `undefined`
   - `.filePath` — File path (if file-backed)
   - `.content` — Text content *(read/write)*
   - `.language` — Language ID *(read/write)*
@@ -110,7 +111,8 @@ ui.log("Hello");
   - [`.fetch(url, options?)`](./app.md#fetchurl-options) — Node.js HTTP client (no browser headers)
   - **[.pages](./pages.md)** — Open pages (tabs)
     - `.all` — All open pages in the current window → `IPage[]`
-    - `.activePage` — Currently active page → `IPage`
+    - `.activePage` — Active work page → `IPage`
+    - `.popoverPage` — Right-pinned page currently shown in a popover → `IPage`
     - `.groupedPage` — Grouped partner of active page → `IPage`
     - `.findPage(pageId)` / `.getGroupedPage(withPageId)` / `.isLastPage(pageId?)` / `.isGrouped(pageId)`
     - `.openFile(filePath)` — Open a file → `Promise<IPage | undefined>`
@@ -123,8 +125,8 @@ ui.log("Hello");
     - `.showAboutPage()` / `.showSettingsPage()` / `.showBrowserPage(options?)` / `.showMcpInspectorPage(options?)`
     - `.showMnemeConfigPage()` / `.showToolsHubPage(options?)`
     - `.openUrlInBrowserTab(url, options?)` / `.openUrl(url, options?)`
-    - `.showPage(pageId)` / `.showNext()` / `.showPrevious()`
-    - `.moveTab(fromId, toId)` / `.pinTab(pageId)` / `.unpinTab(pageId)`
+    - `.showPage(pageId)` / `.openPopover(pageId)` / `.closePopover()` / `.showNext()` / `.showPrevious()`
+    - `.moveTab(fromId, toId)` / `.pinTab(pageId, side?)` / `.unpinTab(pageId)`
     - `.group(leftId, rightId)` / `.ungroup(pageId)`
   - **[.fs](./fs.md)** — File system
     - `.read(filePath)` / `.readFile(filePath)` / `.readBinary(filePath)` — Read files

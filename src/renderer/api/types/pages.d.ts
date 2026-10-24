@@ -26,8 +26,11 @@ export interface IPageCollection {
     /** All open pages (tabs) in the current window. */
     readonly all: IPage[];
 
-    /** Currently active (visible) page, or undefined. */
+    /** Active work page; a right-pinned popover does not change it. */
     readonly activePage: IPage | undefined;
+
+    /** The right-pinned page currently displayed in a popover, or undefined. */
+    readonly popoverPage: IPage | undefined;
 
     /** The grouped (side-by-side) partner of the active page, if any. */
     readonly groupedPage: IPage | undefined;
@@ -156,8 +159,14 @@ export interface IPageCollection {
 
     // ── Navigation ───────────────────────────────────────────────────
 
-    /** Activate (show) a page by ID. */
+    /** Show a page by ID; right-pinned pages open their popover without changing the active page. */
     showPage(pageId: string): void;
+
+    /** Show a right-pinned page in its popover without changing activePage. */
+    openPopover(pageId: string): void;
+
+    /** Close the right-pinned page popover without changing activePage. */
+    closePopover(): void;
 
     /** Activate the next tab (wraps around). */
     showNext(): void;
@@ -170,8 +179,8 @@ export interface IPageCollection {
     /** Move a tab to a new position. */
     moveTab(fromId: string, toId: string): void;
 
-    /** Pin a tab. */
-    pinTab(pageId: string): void;
+    /** Pin a tab on the left by default or on the requested side. */
+    pinTab(pageId: string, side?: "left" | "right"): void;
 
     /** Unpin a tab. */
     unpinTab(pageId: string): void;

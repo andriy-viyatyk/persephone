@@ -21,6 +21,7 @@ export const SERVER_INSTRUCTIONS = [
     "Start with `call` and no path to see the overview; follow its hints and node `$help`.",
     "Use `pages.logView.push(...)` for output, rich results, and questions, e.g. `push([{ type: \"output.markdown\", text: \"# Done\" }])`; entry types are listed in `guides[\"formats/ui-push\"]`.",
     "Create pages with `pages.addEditorPage(...)`; assign `pages[i].content` to update text.",
+    "`page` and `pages.activePage` are the active work page even while a right-pinned page is open in a popover over it; `pages.popoverPage` identifies that popover page.",
     "Open a web URL with `pages.openUrlInBrowserTab(...)`, then use `pages[i].editor.*`.",
     "Use `window.screen.*` for Persephone's own window and `pages[i].editor.*` for browser or board pages.",
     "Run renderer code with `script.execute(code)`; use `main.script.execute(code)` only when enabled.",

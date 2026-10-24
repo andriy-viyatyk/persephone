@@ -8,5 +8,6 @@ export const pinnedTabEncryptedWidth = 3 * ICON_SLOT + TAB_PADDING;
 
 export interface PageTabProps {
     model: PageModel;
+    mode: "main" | "right";
     pinnedLeft?: number;
 }

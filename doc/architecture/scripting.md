@@ -76,7 +76,9 @@ interface IPage {
     readonly id: string;
     readonly title: string;
     readonly modified: boolean;
+    // Left pin only; use pinSide to distinguish left and right pins.
     readonly pinned: boolean;
+    readonly pinSide: "left" | "right" | undefined;
     readonly filePath: string | undefined;
     // Resolves when the current content restore attempt settles; rejects if it fails or is cancelled.
     readonly ready: Promise<void>;
@@ -814,6 +816,14 @@ child, while tab actions, panels, and page identity continue to work. `editorSwi
 from the collection, so numeric indices now include it and indices after it differ from the old
 editor-only projection. The editorless `data` value is
 a fresh non-persistent object because no editor owns a script data bag.
+
+`pinned` remains the legacy left-pin boolean; `pinSide` reports `"left"`, `"right"`, or
+`undefined`. `pages.activePage` remains the active work page when a right-pinned page is displayed
+over it. `pages.popoverPage` identifies that displayed page, and `pages.openPopover(id)` /
+`pages.closePopover()` control the overlay without changing `activePage`. `pages.showPage(id)` opens
+the popover when `id` is right-pinned. Right-pinned pages cannot be grouped or closed, and attempts
+to perform restricted operations through scripts or MCP fail through the same model checks as UI
+actions.
 
 `PageWrapper.panels` is a live `PagePanelsNode` for the page's secondary-view sidebar. Its
 `items` projection follows the current `panelEditors` order and reads each owner's current

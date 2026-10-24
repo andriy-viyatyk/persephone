@@ -68,7 +68,10 @@ export interface IPage {
     readonly ready: Promise<void>;
     readonly title: string;
     readonly modified: boolean;
+    /** Whether this page is pinned on the left; right-pinned pages are false. */
     readonly pinned: boolean;
+    /** The tab's pin side, or undefined when unpinned. */
+    readonly pinSide: "left" | "right" | undefined;
     readonly filePath?: string;
     /** The project folder this page's Explorer is rooted at, or undefined without a folder Explorer or while browsing an archive. */
     readonly workspaceFolder?: string;

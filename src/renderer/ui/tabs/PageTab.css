@@ -162,6 +162,57 @@
         min-width: 64px;
     }
 
+    /* Right-pinned tabs are chips: short, fully rounded, icon only. The open popover's chip
+     * keeps its background and only switches its border to the accent colour. */
+    [data-type="page-tab"][data-mode="right"] {
+        width: auto;
+        min-width: 0;
+        flex: 0 0 auto;
+        min-height: 0;
+        height: 24px;
+        box-sizing: border-box;
+        padding: 1px 7px;
+        gap: 2px;
+        left: auto;
+        border: 1px solid var(--color-border-default);
+        border-radius: 12px;
+        background-color: transparent;
+        cursor: pointer;
+    }
+
+    [data-type="page-tab"][data-mode="right"]:hover {
+        background-color: var(--color-bg-light);
+    }
+
+    [data-type="page-tab"][data-mode="right"][data-popover-open] {
+        border-color: var(--color-bg-selection);
+    }
+
+    [data-type="page-tab"][data-mode="right"] [data-part="title-label"],
+    [data-type="page-tab"][data-mode="right"] [data-part="sound-button"] {
+        display: none;
+    }
+
+    /* Right tabs never close; the close slot appears only to carry the modified dot. */
+    [data-type="page-tab"][data-mode="right"] [data-part="close-button"] {
+        display: none;
+        pointer-events: none;
+    }
+
+    [data-type="page-tab"][data-mode="right"][data-modified] [data-part="close-button"] {
+        display: flex;
+        visibility: visible;
+        width: auto;
+    }
+
+    [data-type="page-tab"][data-mode="right"] [data-part="close-icon"] {
+        display: none;
+    }
+
+    [data-type="page-tab"][data-mode="right"][data-modified] [data-part="modified-icon"] {
+        display: inline-block;
+    }
+
     [data-type="page-tab"] [data-part="pinned-tooltip-trigger"] {
         position: absolute;
         inset: 0;

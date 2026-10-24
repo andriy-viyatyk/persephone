@@ -47,7 +47,7 @@ window.screen.pressKey("Escape")                            // e.g. dismiss a me
 window.screen.screenshot()                                  // pixels of the app window
 ```
 
-- **What you see:** the snapshot contains the app chrome plus the **active** page only — inactive pages are hidden, regardless of how many tabs are open. To reach another page, click its tab in the snapshot to activate it.
+- **What you see:** the snapshot contains the app chrome plus the **active** page; a right-pinned page may appear in a popover over it. Other inactive pages are hidden, regardless of how many tabs are open. To reach another page, target it through `pages[pageId]` or click its tab.
 - **What's not supported:** browser navigation and browser inner-tab management — the app window is
   not a browser. To open or switch Persephone pages, use `pages.openUrl`, `pages.showPage`, or
   the page methods.
@@ -148,8 +148,9 @@ await pages.openUrlInBrowserTab("https://outlook.com", { profileName: "work" })
 await pages["abc"].editor.click({ ref: "e12" })
 ```
 
-Targeting through `pages[pageId].editor` focuses the resolved page — the page content must be
-visible for input. Keep the returned page id instead of relying on mutable active-page state.
+Targeting through `pages[pageId].editor` addresses the resolved page. Showing a right-pinned page
+opens its popover while leaving the active page identity alone; keep the returned page id instead of
+relying on mutable active-page state.
 
 The exact resolution algorithm (including how board pages participate and why an untargeted call can land on a board) is in `persephone://guides/browser` → "Page targeting resolution". Rule of thumb: **always pass `pageId` when you care which page you hit** — the active page can change between your calls (the user, or another agent on the same Persephone, can switch tabs).
 
@@ -164,7 +165,7 @@ pages.openUrlInBrowserTab("https://outlook.com", { profileName: "work" })
 → { "opened": "https://outlook.com", "pageId": "abc-123", "title": "Outlook" }
 ```
 
-`pages.openUrlInBrowserTab` focuses the target page and returns its `pageId` — capture it and use
+`pages.openUrlInBrowserTab` returns its `pageId` — capture it and use
 `pages[pageId].editor` instead of relying on mutable active-page state. The id can arrive before
 the document is ready, so wait before the first action.
 
@@ -176,7 +177,8 @@ That refusal happens before Persephone probes a page for a page-authored `.app` 
 
 ## The `page` Object
 
-The current page (tab). Available as a global in scripts.
+The active work page (tab). Available as a global in scripts. A right-pinned page can appear in a
+popover over it without becoming active; inspect `app.pages.popoverPage` to find that page.
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -187,8 +189,24 @@ The current page (tab). Available as a global in scripts.
 | `editor` | `string` | Editor type, e.g. `"monaco"`, `"grid-json"` (**read/write**) |
 | `filePath` | `string?` | File path if backed by a file (read-only) |
 | `modified` | `boolean` | Has unsaved changes (read-only) |
+| `pinned` | `boolean` | Whether the tab is pinned on the left; right-pinned pages are false |
+| `pinSide` | `"left"` \| `"right"` \| `undefined` | This page's tab pin side (read-only) |
 | `data` | `object` | In-memory storage, persists across script runs |
 | `grouped` | `IPage` | Grouped (side-by-side) partner page — auto-creates if none exists |
+
+### Right-pinned page popover
+
+`app.pages.activePage` remains the page the user works on while a right-pinned page is shown over it.
+`app.pages.popoverPage` returns that page wrapper, or `undefined`; `openPopover(id)` and
+`closePopover()` open and close the popover without changing active identity. The collection still
+includes every page, so use `app.pages[pageId]` (or `app.pages.findPage(pageId)`) to address a page.
+
+```javascript
+app.pages.pinTab(pageId, "right");
+app.pages.openPopover(pageId);
+const popover = app.pages.popoverPage;
+app.pages.closePopover();
+```
 
 ### Workspaces
 

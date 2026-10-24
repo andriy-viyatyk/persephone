@@ -6,6 +6,11 @@ summary: "Authoring reference for publishing an object model from a board or a w
 
 # AI Vision — give a board or web app its own object model
 
+For Persephone's own page tree, `page` and `pages.activePage` always identify the active work page.
+A right-pinned page may display in a popover over it without becoming active; inspect
+`pages.popoverPage` for that page. The `pages` node discovers `openPopover(id)`, `closePopover()`,
+and `pinTab(id, side?)`; page and page-tab nodes expose `pinSide`, while `pinned` means left-pinned.
+
 This page is for the agent **building** a board (or a web app the user opens in Persephone's
 browser). It tells you how to publish that app's own object model so another agent can drive it
 by path — reading properties, calling methods, and pointing at controls on screen — instead of

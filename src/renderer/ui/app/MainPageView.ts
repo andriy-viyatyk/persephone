@@ -14,6 +14,7 @@ import type { RecordingRegion } from "../../../ipc/api-param-types";
 import { showMcpRequestLog } from "../../api/mcp-handler";
 import { errMessage } from "../../../shared/utils";
 import { PageTabsView } from "../tabs/PageTabsView";
+import { RightPageTabsView } from "../tabs/RightPageTabsView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
 import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
@@ -43,6 +44,7 @@ export class MainPageView extends VanillaView<object> {
     private readonly header = document.createElement("div");
     private readonly pagesContainer = document.createElement("div");
     private readonly pageTabs: PageTabsView;
+    private readonly rightPageTabs: RightPageTabsView;
     private readonly pages: PagesView;
     private readonly menuBar: MenuBarView;
     private readonly autoloadButton: IconButtonView;
@@ -73,6 +75,7 @@ export class MainPageView extends VanillaView<object> {
         super(props);
         this.root.className = "app-root";
         this.pageTabs = this.child(new PageTabsView({}));
+        this.rightPageTabs = this.child(new RightPageTabsView({}));
         this.pages = this.child(new PagesView({}));
         this.menuBar = this.child(new MenuBarView({ open: false, onClose: this.closeMenuBar }));
         this.autoloadButton = this.child(new IconButtonView({ name: "autoload-reload", size: "sm", icon: "refresh", title: t("shell.applicationScriptsNeedToBeReloadedClickToReload"), onClick: () => autoloadService.loadScripts() }));
@@ -97,6 +100,7 @@ export class MainPageView extends VanillaView<object> {
         content.append(this.pagesContainer, this.menuBar.root);
         this.root.append(this.header, content);
         this.pageTabs.mount();
+        this.rightPageTabs.mount();
         this.pages.mount();
         this.menuBar.mount();
         this.autoloadWrap.className = "autoload-reload";
@@ -126,6 +130,7 @@ export class MainPageView extends VanillaView<object> {
         this.menuButton = this.createButton("persephone-menu", "app-button", t("shell.menu"), createIconElement("persephone"), () => app.window.toggleMenuBar());
         this.header.append(this.menuButton, this.pageTabs.root);
         this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
+        this.header.append(this.rightPageTabs.root);
         this.autoloadWrap.className = "autoload-reload";
         this.recordingControls.className = "recording-controls";
         this.recordingControls.dataset.name = "window-recording-controls";

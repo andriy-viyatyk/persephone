@@ -437,9 +437,10 @@ export class PagesLifecycleModel {
 
         this.model.attachPage(page);
 
+        const insertionIndex = this.model.query.getFirstRightPinnedIndex();
         this.model.state.update((s) => {
-            s.pages.push(page);
-            s.ordered.push(page);
+            s.pages.splice(insertionIndex, 0, page);
+            if (page.pinSide !== "right") s.ordered.push(page);
         });
         this.model.persistence.saveState();
 
@@ -968,7 +969,7 @@ export class PagesLifecycleModel {
             if (pages[i].id === pageId) {
                 break;
             }
-            if (!pages[i].pinned) {
+            if (pages[i].pinSide === undefined) {
                 pagesToClose.push(pages[i]);
             }
         }
@@ -984,7 +985,7 @@ export class PagesLifecycleModel {
         const { pages } = this.model.state.get();
         const pagesToClose = [];
         for (let i = pages.length - 1; i >= 0; i--) {
-            if (pages[i].id !== pageId && !pages[i].pinned) {
+            if (pages[i].id !== pageId && pages[i].pinSide === undefined) {
                 pagesToClose.push(pages[i]);
             }
         }
@@ -1008,6 +1009,9 @@ export class PagesLifecycleModel {
         targetPageId: string | undefined;
     }) => {
         if (!data?.page) return;
+        if (data.page.pinSide === "right") {
+            throw new Error("Right-pinned pages cannot be moved between windows.");
+        }
 
         const page = await this.model.persistence.restorePage(data.page);
         if (!page) return;
@@ -1021,8 +1025,12 @@ export class PagesLifecycleModel {
             this.model.closeFirstPageIfEmpty();
         } else {
             this.model.attachPage(page);
+            const insertionIndex = Math.min(
+                targetIndex,
+                this.model.query.getFirstRightPinnedIndex(),
+            );
             this.model.state.update((s) => {
-                s.pages.splice(targetIndex, 0, page);
+                s.pages.splice(insertionIndex, 0, page);
                 s.ordered.push(page);
             });
             this.model.layout.fixGrouping();
@@ -1033,6 +1041,10 @@ export class PagesLifecycleModel {
     movePageOut = async (pageId?: string) => {
         const page = this.model.query.findPage(pageId);
         if (!page) return;
+        if (this.model.popoverPageId === page.id) this.model.closePopover();
+        if (this.model.query.isRightPinned(page.id)) {
+            throw new Error("Right-pinned pages cannot be moved between windows.");
+        }
 
         await page.saveState();
         const closeWindow = this.model.state.get().pages.length === 1;
@@ -1070,6 +1082,9 @@ export class PagesLifecycleModel {
      */
     duplicatePage = async (pageId: string) => {
         const page = this.model.query.findPage(pageId);
+        if (page && this.model.query.isRightPinned(page.id)) {
+            throw new Error("Right-pinned pages cannot be duplicated.");
+        }
         if (!page?.mainEditor) return;
 
         const sourceDesc = page.getDescriptor();
@@ -1088,6 +1103,7 @@ export class PagesLifecycleModel {
         const desc: PageDescriptor = {
             id: crypto.randomUUID(),
             pinned: false,
+            pinSide: undefined,
             modified: sourceDesc.modified,
             mainEditorId: newMainEditorId,
             editors: editorsWithFreshIds,
@@ -1099,8 +1115,9 @@ export class PagesLifecycleModel {
         });
         if (newPage) {
             this.model.attachPage(newPage);
+            const insertionIndex = this.model.query.getFirstRightPinnedIndex();
             this.model.state.update((s) => {
-                s.pages.push(newPage);
+                s.pages.splice(insertionIndex, 0, newPage);
                 s.ordered.push(newPage);
             });
             this.model.layout.groupTabs(pageId, newPage.id, false);
@@ -1132,6 +1149,9 @@ export class PagesLifecycleModel {
         pageId: string,
         suggestedLanguage?: string,
     ): TextFileModel => {
+        if (this.model.query.isRightPinned(pageId)) {
+            throw new Error("Right-pinned pages cannot be grouped with text pages.");
+        }
         let groupedPage = this.model.query.getGroupedPage(pageId);
         if (groupedPage && !this.model.query.getTextFileHost(groupedPage.id)) {
             this.model.layout.ungroup(pageId);

@@ -120,6 +120,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private currentEditor: EditorOrHost | null = null;
     private projection: EditorProjection = emptyEditorProjection();
     private isActive = false;
+    private isPopoverOpen = false;
     private isGrouped = false;
     private dragEnterCount = 0;
 
@@ -191,7 +192,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         }));
         this.bind(
             this.props.model.state,
-            (state) => ({ pinned: state.pinned, mainEditorId: state.mainEditorId }),
+            (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId }),
             () => {
                 this.syncEditorSubscription();
                 this.updateView();
@@ -207,11 +208,13 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 return {
                     active: this.props.model.id === activeId || this.props.model.id === groupedId,
                     grouped: state.leftRight.has(this.props.model.id) || state.rightLeft.has(this.props.model.id),
+                    popoverOpen: state.popoverPageId === this.props.model.id,
                 };
             },
-            ({ active, grouped }) => {
+            ({ active, grouped, popoverOpen }) => {
                 this.isActive = active;
                 this.isGrouped = grouped;
+                this.isPopoverOpen = popoverOpen;
                 this.updateView();
             },
         );
@@ -276,6 +279,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private updateView(): void {
         const page = this.props.model;
         this.root.dataset.pageId = page.id;
+        this.root.dataset.mode = this.props.mode;
         const pinned = page.pinned;
         const textHost = pagesModel.getTextFileHost(page.id);
         const encrypted = Boolean(textHost?.encrypted);
@@ -290,20 +294,23 @@ export class PageTabView extends VanillaView<PageTabProps> {
         setPresence(this.root, "data-pinned", pinned);
         setPresence(this.root, "data-grouped", this.isGrouped);
         setPresence(this.root, "data-has-encryption", hasEncryption);
-        if (pinned && this.props.pinnedLeft !== undefined) this.root.style.left = `${this.props.pinnedLeft}px`;
+        setPresence(this.root, "data-popover-open", this.props.mode === "right" && this.isPopoverOpen);
+        if (this.props.mode === "main" && page.pinSide === "left" && this.props.pinnedLeft !== undefined) this.root.style.left = `${this.props.pinnedLeft}px`;
         else this.root.style.removeProperty("left");
 
         this.syncEditorKind(editor);
-        this.titleText.data = pinned ? "" : this.projection.title;
+        this.titleText.data = pinned || this.props.mode === "right" ? "" : this.projection.title;
         this.encryptionIcon.textContent = encrypted ? "🔒" : "🔓";
         this.encryptionIcon.title = encrypted ? t("shell.decryptFile") : t("shell.encryptFile");
         this.encryptionIcon.hidden = !hasEncryption;
         this.titleTooltip?.update({
-            content: !pinned && this.projection.filePath ? this.projection.filePath : null,
+            content: this.props.mode === "right"
+                ? this.projection.filePath || this.projection.title
+                : !pinned && this.projection.filePath ? this.projection.filePath : null,
             placement: "bottom",
             delayShow: 1500,
         });
-        this.syncPinnedTooltip(pinned, this.projection.filePath);
+        this.syncPinnedTooltip(pinned || this.props.mode === "right", this.projection.filePath || this.projection.title);
         this.syncSoundButton(editor);
         this.closeButton.update({
             name: "tab-close",
@@ -438,6 +445,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
     }
 
     private onLanguageClick(event: MouseEvent): void {
+        if (this.props.mode === "right") return;
         // Capture BEFORE `showPage`. `pagesModel.showPage` notifies synchronously, which runs this
         // view's own active-state binding and flips `this.isActive` to true mid-handler — so reading
         // it afterwards always says "active" and the menu opens on the very first click. A tab must
@@ -516,46 +524,69 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const page = this.props.model;
         const editorInstance = page.mainEditorInstance;
         const ctxEvent = ContextMenuEvent.fromNativeEvent(event, "page-tab");
-        const isPinned = page.pinned;
-        const pinUnpinItem: MenuItem = {
-            label: isPinned ? "Unpin Tab" : "Pin Tab",
-            onClick: () => isPinned ? pagesModel.unpinTab(page.id) : pagesModel.pinTab(page.id),
-        };
+        const isRight = this.props.mode === "right";
+        const isLeftPinned = page.pinSide === "left";
         const menuItems: MenuItem[] = [];
-        if (isPinned) menuItems.push(pinUnpinItem);
-        if (!isPinned) {
+        if (isRight || isLeftPinned) {
             menuItems.push({
-                label: t("shell.closeTab"),
-                onClick: () => page.close(),
-                startGroup: menuItems.length > 0,
+                label: t("shell.unpin"),
+                id: "page-tab-unpin",
+                onClick: () => pagesModel.unpinTab(page.id),
+            });
+            menuItems.push({
+                label: t(isRight ? "shell.pinTabToLeft" : "shell.pinTabToRight"),
+                id: isRight ? "page-tab-pin-to-left" : "page-tab-pin-to-right",
+                onClick: () => pagesModel.pinTab(page.id, isRight ? "left" : "right"),
+            });
+        } else {
+            menuItems.push({
+                label: t("shell.pinTabToLeft"),
+                id: "page-tab-pin-to-left",
+                onClick: () => pagesModel.pinTab(page.id, "left"),
+            }, {
+                label: t("shell.pinTabToRight"),
+                id: "page-tab-pin-to-right",
+                onClick: () => pagesModel.pinTab(page.id, "right"),
             });
         }
-        menuItems.push({
-            label: t("shell.closeOtherTabs"),
-            disabled: pagesModel.state.get().pages.length <= 1,
-            onClick: () => pagesModel.closeOtherPages(page.id),
-            startGroup: isPinned,
-        });
-        if (!isPinned) {
+        if (!isRight && !page.pinned) {
+            menuItems.push({
+                label: t("shell.closeTab"),
+                id: "page-tab-close",
+                onClick: () => page.close(),
+            });
+        }
+        if (!isRight) {
+            menuItems.push({
+                label: t("shell.closeOtherTabs"),
+                id: "page-tab-close-other",
+                disabled: pagesModel.state.get().pages.length <= 1,
+                onClick: () => pagesModel.closeOtherPages(page.id),
+                startGroup: page.pinned,
+            });
+        }
+        if (!isRight && !page.pinned) {
             menuItems.push(
                 {
                     label: t("shell.closeTabsToTheRight"),
+                    id: "page-tab-close-to-right",
                     disabled: pagesModel.isLastPage(page.id),
                     onClick: () => pagesModel.closeToTheRight(page.id),
                 },
                 {
                     label: t("shell.openInNewWindow"),
+                    id: "page-tab-open-in-new-window",
                     onClick: () => api.addDragEvent(this.getDragData()),
                 },
             );
         }
-        menuItems.push({
+        if (!isRight) menuItems.push({
             label: t("shell.duplicateTab"),
+            id: "page-tab-duplicate",
             icon: createIconElement("duplicate"),
             onClick: () => pagesModel.duplicatePage(page.id),
-            startGroup: isPinned,
+            startGroup: page.pinned,
         });
-        if (!isPinned) menuItems.push({ ...pinUnpinItem, startGroup: true });
         const editorItems = editorInstance?.onGetMenuItems() ?? [];
         if (editorItems.length) {
             editorItems[0] = { ...editorItems[0], startGroup: true };
@@ -575,11 +606,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private handleDragStart(event: DragEvent): void {
         const page = this.props.model;
         setTraitDragData(event.dataTransfer, TraitTypeId.PageTab, { key: page.id });
-        if (!page.pinned) event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
+        if (page.pinSide !== "right") event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
     }
 
     private handleDragEnd(event: DragEvent): void {
-        if (this.props.model.pinned) return;
+        if (this.props.model.pinSide === "right" || this.props.model.pinned) return;
         const droppedOutside = event.clientX < 0
             || event.clientX > window.innerWidth
             || event.clientY < 0
@@ -597,6 +628,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const targetId = this.props.model.id;
         const dataStr = event.dataTransfer?.getData("application/persephone-tab");
         const tabData = parseObject(dataStr) as { sourceWindowIndex?: number } | undefined;
+        if (this.props.mode === "right" && tabData?.sourceWindowIndex !== undefined) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
         if (tabData?.sourceWindowIndex !== undefined && tabData.sourceWindowIndex !== appWindow.windowIndex) {
             api.addDragEvent(this.getDragData(true));
             event.preventDefault();
@@ -606,7 +642,9 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
-        if (sourceId !== targetId) pagesModel.moveTab(sourceId, targetId);
+        if (sourceId !== targetId && (this.props.mode !== "right" || pagesModel.query.isRightPinned(sourceId))) {
+            pagesModel.moveTab(sourceId, targetId);
+        }
         event.preventDefault();
         event.stopPropagation();
     }
@@ -645,6 +683,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private handleClick(event: MouseEvent): void {
         const pageId = this.props.model.id;
+        if (this.props.mode === "right") {
+            if (event.ctrlKey) return;
+            pagesModel.togglePopover(pageId);
+            return;
+        }
         if (event.ctrlKey) {
             const activeId = pagesModel.activePage?.id;
             if (activeId !== pageId) pagesModel.groupTabs(activeId, pageId, true);

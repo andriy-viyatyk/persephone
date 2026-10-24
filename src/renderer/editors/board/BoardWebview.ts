@@ -1035,10 +1035,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private getPageVisibility(): boolean {
         const pageId = this.props.model.page?.id;
-        const activePage = pagesModel.query.activePage;
-        if (!pageId || !activePage) return false;
-        return activePage.id === pageId
-            || pagesModel.query.getGroupedPage(activePage.id)?.id === pageId;
+        return pageId ? pagesModel.query.isPageVisible(pageId) : false;
     }
 
     private updatePageVisibility(): void {

@@ -61,19 +61,29 @@ describes `page.pipe` and its status.
 
 ### Pinning Tabs
 
-Pin tabs to keep them compact and always visible at the left side of the tab bar.
+Pin tabs on either side of the header. Left-pinned tabs stay compact in the main tab strip. A
+right-pinned tab appears as a chip beside the window controls and opens in a popover, so you can
+refer to it while keeping your active work page selected.
 
-- **Pin a tab** — right-click a tab → **Pin Tab**
-- **Unpin a tab** — right-click a pinned tab → **Unpin Tab**
+- **Pin left** — right-click a tab → **Pin to the left**
+- **Pin right** — right-click a tab → **Pin to the right**
+- **Unpin** — right-click a pinned tab → **Unpin**
+- **Show or hide a right-pinned page** — click its chip in the header. Press `Escape` or click
+  another app-shell control outside the popover to close it.
 
 **Pinned tab behavior:**
 
-- Displayed as compact icon-only tabs (no title text) at the left of the tab bar
-- Stay fixed in place when scrolling through other tabs
-- Cannot be closed or dragged to another window
-- Can be grouped with other tabs for side-by-side view (including script output)
-- Can be reordered among other pinned tabs by dragging
-- Show language icon, encryption icon (if applicable), and modification indicator
+- Left-pinned tabs are compact icon-only tabs at the left of the main strip and stay fixed while
+  the rest of that strip scrolls.
+- Right-pinned tabs are compact icon chips at the right of the header; click one to open its page
+  in a resizable popover over the active work page. Clicking the same chip toggles it closed.
+- Right-pinned pages do not become the active work page. Use the active page as usual while the
+  popover is open, or access the popover page through `app.pages.popoverPage` in scripts.
+- Pinned tabs cannot be closed directly or dragged to another window. Right-pinned pages cannot
+  be grouped; move one to the left or unpin it before grouping.
+- Left-pinned tabs can be reordered among other left-pinned tabs; right-pinned chips can be
+  reordered among the right-pinned pages by dragging.
+- Show an editor icon, encryption icon (if applicable), and modification indicator
 - **File path tooltip** — hover over a pinned tab to see the full file path (1.5s delay)
 - Content can be replaced via the File Explorer panel (in-tab navigation)
 - Pinned state is preserved across app restarts
@@ -81,9 +91,11 @@ Pin tabs to keep them compact and always visible at the left side of the tab bar
 
 ### Tab Context Menu
 
-Right-click any tab to open its context menu. The menu is split into two groups: **tab-level items** that are always present, and **editor-specific items** that depend on what the tab contains.
+Right-click a tab to open its context menu. The available **tab-level items** depend on whether
+the tab is in the main strip or is a right-pinned chip; **editor-specific items** depend on what
+the tab contains.
 
-**Tab-level items (always shown):**
+**Tab-level items:**
 
 | Action | Description |
 |--------|-------------|
@@ -91,12 +103,14 @@ Right-click any tab to open its context menu. The menu is split into two groups:
 | Close Other Tabs | Close all tabs except this one (skips pinned tabs) |
 | Close Tabs to the Right | Close all tabs after this one (skips pinned tabs; not available for pinned tabs) |
 | Open in New Window | Move this tab to a new window (not available for pinned tabs) |
-| Duplicate Tab | Create a copy of this tab grouped side-by-side |
-| Pin Tab / Unpin Tab | Pin or unpin the tab |
+| Duplicate Tab | Create a copy of this tab grouped side-by-side (not available on right-pinned chips) |
+| Pin to the left / Pin to the right / Unpin | Choose a pin side or remove the pin |
 
 **Editor-specific items:**
 
-Each editor contributes only the actions that are relevant to it. Editors with no specific actions (e.g. MCP Inspector) show only the tab-level items — no greyed-out entries.
+Right-pinned chips offer pin-side and unpin actions, plus any actions contributed by their editor;
+they do not offer the other tab-level actions. Each editor contributes only relevant actions.
+Editors with no specific actions (e.g. MCP Inspector) show no greyed-out entries.
 
 *Text editor tabs:*
 

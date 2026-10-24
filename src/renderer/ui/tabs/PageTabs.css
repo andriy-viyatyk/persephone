@@ -9,6 +9,19 @@
         margin-left: 4px;
     }
 
+    [data-type="page-tabs"][data-mode="right"] {
+        flex: 0 0 auto;
+        align-items: center;
+        column-gap: 4px;
+        margin-right: 6px;
+        overflow: hidden;
+        -webkit-app-region: no-drag;
+    }
+
+    [data-type="page-tabs"][data-mode="right"] > [data-type="page-tab"] {
+        -webkit-app-region: no-drag;
+    }
+
     [data-type="page-tabs"] .tabs-wrapper {
         display: flex;
         align-items: center;

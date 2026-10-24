@@ -22,6 +22,14 @@ export class PagesQueryModel {
         );
     };
 
+    isRightPinned = (id: string): boolean => this.findPage(id)?.pinSide === "right";
+
+    getFirstRightPinnedIndex = (): number => {
+        const pages = this.model.state.get().pages;
+        const index = pages.findIndex((page) => this.isRightPinned(page.id));
+        return index < 0 ? pages.length : index;
+    };
+
     /** Find the page whose MAIN editor carries this filePath (the "is this
      *  file already open in a tab?" dedupe used by open/diff flows). */
     findPageByFilePath = (filePath?: string): PageModel | undefined => {
@@ -79,6 +87,18 @@ export class PagesQueryModel {
         const { ordered } = this.model.state.get();
         return ordered.length ? ordered[ordered.length - 1] : undefined;
     }
+
+    get focusedPage(): PageModel | undefined {
+        const popoverPageId = this.model.popoverPageId;
+        return (popoverPageId ? this.findPage(popoverPageId) : undefined) ?? this.activePage;
+    }
+
+    isPageVisible = (pageId: string): boolean => {
+        const activePage = this.activePage;
+        return pageId === activePage?.id
+            || pageId === this.getGroupedPage(activePage?.id ?? "")?.id
+            || pageId === this.model.popoverPageId;
+    };
 
     get groupedPage(): PageModel | undefined {
         const activePage = this.activePage;

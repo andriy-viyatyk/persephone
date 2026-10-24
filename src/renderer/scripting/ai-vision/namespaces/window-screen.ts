@@ -72,15 +72,22 @@ const WINDOW_COORDINATE_MEMBERS: readonly IAiMember[] = [
 const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer?, hideStatusChrome? }) begins immediately; hideStatusChrome: true omits recording controls and the MCP indicator, restoring their prior visibility on stop, cancel, and errors. pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;
 
 function restrictedWindowScreen(): string | undefined {
-    const activeEditor = pagesModel.activePage?.mainEditorInstance;
-    if (!activeEditor || activeEditor.editorId !== "browser-view") return undefined;
+    const visiblePages = pagesModel.state.get().pages.filter(
+        (page) => pagesModel.query.isPageVisible(page.id),
+    );
+    for (const page of visiblePages) {
+        const editor = page.mainEditorInstance;
+        if (!editor || editor.editorId !== "browser-view") continue;
 
-    const state = activeEditor.state.get() as IBrowserAccessFlags;
-    const mode = state.isTor ? "Tor" : state.isIncognito ? "incognito" : undefined;
-    if (!mode) return undefined;
-    return `Persephone's own window cannot be automated while its active page is in ${mode} mode. `
-        + "Whole-window snapshots and actions would expose that private page. Activate a non-private "
-        + "page with pages.showPage(pageId), then retry.";
+        const state = editor.state.get() as IBrowserAccessFlags;
+        const mode = state.isTor ? "Tor" : state.isIncognito ? "incognito" : undefined;
+        if (mode) {
+            return `Persephone's own window cannot be automated while a visible page is in ${mode} mode. `
+                + "Whole-window snapshots and actions would expose that private page. Hide the private "
+                + "page, including any open popover, then retry.";
+        }
+    }
+    return undefined;
 }
 
 export function describeWindowScreen(_instance: unknown): IAiVisionDescriptor {

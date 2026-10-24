@@ -2,6 +2,8 @@ import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { GroupContainer } from "./GroupContainer";
 import { PageSlot, type PageSlotViewProps } from "./PageSlot";
+import type { PagePopoverSize } from "../../api/pages/PageModel";
+import "./AppPageManagerView.css";
 
 export interface AppPageManagerProps {
     /** All page IDs in display order. */
@@ -14,6 +16,14 @@ export interface AppPageManagerProps {
     grouping: Map<string, string>;
     /** Set of left page IDs in compare mode. */
     compareModeIds?: Set<string>;
+    /** Right-pinned page IDs, which stay hidden except for the open popover. */
+    rightPinnedIds: Set<string>;
+    /** Right-pinned page currently rendered as a popover. */
+    popoverId?: string;
+    /** Persisted popover dimensions as fractions of the current container. */
+    popoverSize?: PagePopoverSize;
+    /** Called once when a resize drag ends. */
+    onPopoverResize: (id: string, fractions: PagePopoverSize) => void;
     /** Native constructor for page content. */
     pageView: VanillaViewCtor<PageSlotViewProps>;
     /** Optional CSS class for the container. */
@@ -25,12 +35,21 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
     private readonly slots = new Map<string, PageSlot>();
     private readonly groupContainers = new Map<string, GroupContainer>();
     private readonly hasBeenActive = new Set<string>();
+    private resizeObserver: ResizeObserver | undefined;
+    private styledPopoverId: string | undefined;
+    private resizeSession: PopoverResizeSession | undefined;
 
     public constructor(props: AppPageManagerProps) {
         super(props, document.createElement("div"));
+        // The root is the slots' containing block, so it must span the page area: popover
+        // geometry is measured from it (and observed for resizes). Slots stay `inset: 0`, so
+        // ordinary pages render exactly as they did against the pages container.
+        Object.assign(this.root.style, { position: "absolute", inset: "0" });
     }
 
     protected onMount(): void {
+        this.resizeObserver = new ResizeObserver(() => this.applyPopoverGeometry(this.props));
+        this.resizeObserver.observe(this.root);
         this.reconcile(this.props);
     }
 
@@ -39,6 +58,9 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
     }
 
     protected onDispose(): void {
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = undefined;
+        this.finishResize(false);
         const groups = Array.from(this.groupContainers.values());
         const slots = Array.from(this.slots.values());
         this.groupContainers.clear();
@@ -66,6 +88,10 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         }
     }
 
+    getSlotElement(id: string): HTMLDivElement | undefined {
+        return this.slots.get(id)?.element;
+    }
+
     private reconcile(props: AppPageManagerProps): void {
         const {
             pageIds,
@@ -73,6 +99,8 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             groupedActiveId,
             grouping,
             compareModeIds,
+            rightPinnedIds,
+            popoverId,
             pageView,
             className,
         } = props;
@@ -80,6 +108,7 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
 
         if (activeId) this.hasBeenActive.add(activeId);
         if (groupedActiveId) this.hasBeenActive.add(groupedActiveId);
+        if (popoverId) this.hasBeenActive.add(popoverId);
 
         const currentIds = new Set(pageIds);
 
@@ -157,8 +186,23 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             this.slots.get(id)?.renderNative(this.root, pageView);
         }
 
+        if (this.styledPopoverId && this.styledPopoverId !== popoverId) {
+            const previousSlot = this.slots.get(this.styledPopoverId);
+            if (previousSlot) this.clearPopoverSlot(previousSlot);
+            this.styledPopoverId = undefined;
+        }
+
         const activeGroupId = findGroupId(activeId, validGrouping);
         for (const [id, slot] of this.slots) {
+            if (id === popoverId) {
+                this.stylePopoverSlot(slot, props);
+                this.styledPopoverId = id;
+                continue;
+            }
+            if (rightPinnedIds.has(id)) {
+                slot.element.style.display = "none";
+                continue;
+            }
             const groupId = findGroupId(id, validGrouping);
             if (groupId === undefined) {
                 slot.element.style.display = id === activeId ? "flex" : "none";
@@ -203,6 +247,144 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             throw firstError;
         }
     }
+
+    private stylePopoverSlot(slot: PageSlot, props: AppPageManagerProps): void {
+        slot.element.dataset.popover = "";
+        slot.ensurePopoverResizeHandle((event) => this.startResize(event, slot.id));
+        this.writePopoverGeometry(slot, props.popoverSize);
+    }
+
+    private clearPopoverSlot(slot: PageSlot): void {
+        slot.removePopoverResizeHandle();
+        delete slot.element.dataset.popover;
+        slot.element.style.height = "";
+        slot.element.style.zIndex = "";
+        applyStandaloneStyle(slot.element);
+    }
+
+    private applyPopoverGeometry(props: AppPageManagerProps): void {
+        const popoverId = props.popoverId;
+        if (!popoverId) return;
+        const slot = this.slots.get(popoverId);
+        if (slot) this.writePopoverGeometry(slot, props.popoverSize);
+    }
+
+    private writePopoverGeometry(slot: PageSlot, size: PagePopoverSize | undefined): void {
+        const containerWidth = this.root.clientWidth;
+        const containerHeight = this.root.clientHeight;
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+        const maxWidth = containerWidth * 0.8;
+        const maxHeight = containerHeight * 0.8;
+        const width = clamp(
+            containerWidth * (size?.width ?? 0.5),
+            Math.min(360, maxWidth),
+            maxWidth,
+        );
+        const height = clamp(
+            containerHeight * (size?.height ?? 0.5),
+            Math.min(240, maxHeight),
+            maxHeight,
+        );
+        Object.assign(slot.element.style, {
+            position: "absolute",
+            inset: "auto",
+            top: "8px",
+            right: "8px",
+            bottom: "auto",
+            left: "auto",
+            width: `${width}px`,
+            height: `${height}px`,
+            display: "flex",
+            zIndex: "10",
+        });
+    }
+
+    private startResize(event: PointerEvent, id: string): void {
+        if (event.button !== 0) return;
+        const slot = this.slots.get(id);
+        if (!slot) return;
+        const rect = slot.element.getBoundingClientRect();
+        const handle = event.currentTarget;
+        if (!(handle instanceof HTMLButtonElement)) return;
+        event.preventDefault();
+        handle.setPointerCapture(event.pointerId);
+        this.resizeSession = {
+            id,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            startWidth: rect.width,
+            startHeight: rect.height,
+            handle,
+        };
+        window.addEventListener("pointermove", this.handleResizeMove);
+        window.addEventListener("pointerup", this.handleResizeEnd);
+        handle.addEventListener("lostpointercapture", this.handleResizeEnd);
+    }
+
+    private readonly handleResizeMove = (event: PointerEvent): void => {
+        const session = this.resizeSession;
+        if (!session || event.pointerId !== session.pointerId) return;
+        const slot = this.slots.get(session.id);
+        if (!slot) return;
+        const width = session.startWidth - (event.clientX - session.startX);
+        const height = session.startHeight + (event.clientY - session.startY);
+        this.writePopoverDimensions(slot, width, height);
+    };
+
+    private readonly handleResizeEnd = (event: PointerEvent): void => {
+        if (this.resizeSession && event.pointerId === this.resizeSession.pointerId) {
+            this.finishResize(true);
+        }
+    };
+
+    private finishResize(persist: boolean): void {
+        const session = this.resizeSession;
+        if (!session) return;
+        this.resizeSession = undefined;
+        window.removeEventListener("pointermove", this.handleResizeMove);
+        window.removeEventListener("pointerup", this.handleResizeEnd);
+        session.handle.removeEventListener("lostpointercapture", this.handleResizeEnd);
+        if (session.handle.hasPointerCapture(session.pointerId)) {
+            session.handle.releasePointerCapture(session.pointerId);
+        }
+
+        const slot = this.slots.get(session.id);
+        if (!slot) return;
+        if (persist) {
+            const bounds = this.root.getBoundingClientRect();
+            if (bounds.width > 0 && bounds.height > 0) {
+                const rect = slot.element.getBoundingClientRect();
+                this.props.onPopoverResize(session.id, {
+                    width: Math.min(0.8, rect.width / bounds.width),
+                    height: Math.min(0.8, rect.height / bounds.height),
+                });
+            }
+        }
+    }
+
+    private writePopoverDimensions(slot: PageSlot, requestedWidth: number, requestedHeight: number): void {
+        const maxWidth = this.root.clientWidth * 0.8;
+        const maxHeight = this.root.clientHeight * 0.8;
+        const width = clamp(requestedWidth, Math.min(360, maxWidth), maxWidth);
+        const height = clamp(requestedHeight, Math.min(240, maxHeight), maxHeight);
+        slot.element.style.width = `${width}px`;
+        slot.element.style.height = `${height}px`;
+    }
+}
+
+interface PopoverResizeSession {
+    id: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    handle: HTMLButtonElement;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+    return Math.min(maximum, Math.max(minimum, value));
 }
 
 function applyStandaloneStyle(element: HTMLDivElement): void {

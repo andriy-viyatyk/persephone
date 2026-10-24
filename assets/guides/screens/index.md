@@ -51,7 +51,7 @@ the top, and everything below it is the page area.
 
 ```
 +-------------------------------------------------------------------------+
-| [P] [tab] [tab] [tab] [+]                        [-] [box] [x]          |  header strip
+| [P] [tab] [tab] … [+]          [right-pin] [right-pin] [-] [box] [x] |  work tabs, right-pinned chips, and window controls
 |                                                    ... Mneme  * MCP     |  status indicators
 +-------------------------------------------------------------------------+
 |                      |                                                  |
@@ -205,7 +205,7 @@ unlike the app-window overlay, so keep it to one element and restore it when fin
    button, Mneme, MCP, the language button, and the sidebar are conditional. A `found: false`
    result from `highlight` is the check.
 3. **Look before describing** when the state is uncertain: `window.screen.snapshot()` shows the
-   chrome plus the active page only.
+   chrome plus the active page, with a right-pinned page popover potentially over it.
 4. **Highlight, then explain.** One highlight call and a sentence in chat beat a paragraph of
    layout description.
 

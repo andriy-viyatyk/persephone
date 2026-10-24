@@ -56,7 +56,7 @@ export const RESERVED_ROOT_NAMES: readonly string[] = ["windows", "main", "guide
 
 const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. To show the user a table, grid, or other output, or ask a question, use pages.logView.push; pages.addEditorPage can create a dedicated grid-json table page." },
-    { name: "page", kind: "property", summary: "The active page (same as the `page` global in scripts)." },
+    { name: "page", kind: "property", summary: "The active work page (same as the `page` global in scripts); a right-pinned popover does not replace it." },
     { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search the live descriptor graph for object-model paths; use guides.search for documentation text." },
     { name: "version", kind: "property", summary: "Persephone version string." },
     { name: "settings", kind: "property", node: true, summary: "Application settings (read/write)." },
@@ -109,8 +109,9 @@ const SCRIPT_MEMBERS: readonly IAiMember[] = [
 const SCRIPT_HELP = `
 script.execute(code, pageId?, language?) runs code in the renderer execution context. The available
 script globals are app, page, and io; app exposes application services, and page is the selected
-page's script global. If pageId is omitted, execution targets the active page; pass a page id to
-target that page explicitly. language is optional and may be "javascript" or "typescript"; TypeScript
+page's script global. If pageId is omitted, execution targets the active work page; a right-pinned
+popover does not change that identity. Pass a page id to target another page explicitly. language is
+optional and may be "javascript" or "typescript"; TypeScript
 is transpiled without type checking.
 
 For a completed run, the last expression is returned as text and the result contains text, language,
@@ -182,12 +183,15 @@ const ROOT_HELP = `
 This is Persephone's live object model. Every path here has the same name in scripts
 (script.execute(code)): "pages[0].content" is "app.pages.all[0].content" there.
 
+The root page is the page the user works on. A right-pinned page may display in a popover over it;
+pages.activePage and page remain the active page, while pages.popoverPage identifies the popover page.
+
 Common paths:
   pages.logView.push([...])   SHOW the user output (markdown, a grid, mermaid, code, progress) or
                               ASK them a question — the agent's output channel; see its $help
   pages["<id>"].content       text of a specific page
   pages[0].editorSwitches.switchTo("grid-json")  switch the page, then use pages[0].editor.addRows(5)
-  pages.showPage("<id>")      activate a page
+  pages.showPage("<id>")      show a page; a right-pinned page opens its popover without becoming active
   tools.execute               execute a registered tool (use args for tool id and JSON arguments)
   tools.toolsets              inspect current registered toolsets, including invalid and shadowed entries
   tools.toolsets.refresh()    refresh the whole registered-tool registry
@@ -280,7 +284,7 @@ export class AiRoot implements IAiVisible {
             : ROOT_MEMBERS;
         return {
             kind: "Persephone",
-            summary: "the root of the object model — a developer notepad with tabbed pages, specialized editors and scripting.",
+            summary: "the root of the object model — a developer notepad with tabbed pages, specialized editors and scripting. page is the active work page, even while a right-pinned page is open in a popover.",
             members,
             overview: ROOT_OVERVIEW,
             help: ROOT_HELP,
@@ -297,7 +301,7 @@ export class AiRoot implements IAiVisible {
         const active = this.page;
         if (active) {
             const restricted = active.aiVision.restricted?.();
-            children.push({ segment: ".page", kind: "Page", summary: `active: "${active.title}" (${active.editor.id})`, ...(restricted ? { restricted } : {}) });
+            children.push({ segment: ".page", kind: "Page", summary: `active work page: "${active.title}" (${active.editor.id})`, ...(restricted ? { restricted } : {}) });
         }
         if (this.clipboardEnabled()) {
             children.push({ segment: ".clipboard", kind: "ClipboardHistory", summary: "stored clipboard history" });

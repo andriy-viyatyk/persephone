@@ -1,4 +1,5 @@
 import type { PagesModel } from "./PagesModel";
+import type { PageModel } from "./PageModel";
 
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
@@ -13,9 +14,8 @@ export class PagesLayoutModel {
     moveTabByIndex = (fromIndex: number, toIndex: number) => {
         if (fromIndex === -1 || toIndex === -1) return;
         const { pages } = this.model.state.get();
-        const fromPinned = pages[fromIndex].pinned;
-        const toPinned = pages[toIndex].pinned;
-        if (fromPinned !== toPinned) return;
+        if (!pages[fromIndex] || !pages[toIndex]) return;
+        if (this.zone(pages[fromIndex].pinSide) !== this.zone(pages[toIndex].pinSide)) return;
         const newPages = [...pages];
         const [movedPage] = newPages.splice(fromIndex, 1);
         newPages.splice(toIndex, 0, movedPage);
@@ -24,29 +24,53 @@ export class PagesLayoutModel {
         });
         this.fixGrouping();
         this.model.persistence.saveStateDebounced();
-        this.model.onFocus.send(movedPage);
+        if (movedPage.pinSide !== "right") this.model.onFocus.send(movedPage);
     };
 
-    pinTab = (pageId: string) => {
+    private zone = (side: "left" | "right" | undefined): number =>
+        side === "left" ? 0 : side === "right" ? 2 : 1;
+
+    sortByPinSide = (pages: PageModel[]): PageModel[] => [
+        ...pages.filter((page) => page.pinSide === "left"),
+        ...pages.filter((page) => page.pinSide === undefined),
+        ...pages.filter((page) => page.pinSide === "right"),
+    ];
+
+    pinTab = (pageId: string, side: "left" | "right" | undefined = "left") => {
         const { pages } = this.model.state.get();
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (page.pinned) return;
+        if (page.pinSide === side) return;
+        const wasRightPinned = this.model.query.isRightPinned(pageId);
+        if (side === "right" && this.model.query.isGrouped(pageId)) this.ungroup(pageId);
 
-        const pinnedCount = pages.filter((p) => p.pinned).length;
-
-        page.pinned = true;
-
-        if (pageIndex !== pinnedCount) {
-            const newPages = [...pages];
-            const [movedPage] = newPages.splice(pageIndex, 1);
-            newPages.splice(pinnedCount, 0, movedPage);
-            this.model.state.update((s) => {
-                s.pages = newPages;
-            });
+        const wasActive = side === "right" && this.model.query.activePage === page;
+        const remainingPages = pages.filter((candidate) => candidate !== page);
+        if (wasRightPinned && side !== "right") this.model.closePopover();
+        page.pinSide = side;
+        let insertionIndex: number;
+        if (side === "left") {
+            insertionIndex = remainingPages.filter((candidate) => candidate.pinSide === "left").length;
+        } else if (side === "right") {
+            insertionIndex = remainingPages.length;
+        } else {
+            const firstRightIndex = remainingPages.findIndex((candidate) =>
+                this.model.query.isRightPinned(candidate.id),
+            );
+            insertionIndex = firstRightIndex < 0 ? remainingPages.length : firstRightIndex;
         }
-
+        remainingPages.splice(insertionIndex, 0, page);
+        this.model.state.update((s) => {
+            s.pages = remainingPages;
+            if (side === "right") s.ordered = s.ordered.filter((candidate) => candidate !== page);
+            else if (wasRightPinned) s.ordered.push(page);
+        });
+        if (wasRightPinned && side !== "right") {
+            this.model.onShow.send(page);
+            this.model.onFocus.send(page);
+        }
+        this.model.handleActivePageRemoved(wasActive);
         this.model.persistence.saveStateDebounced();
     };
 
@@ -55,27 +79,14 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (!page.pinned) return;
-
-        const remainingPinned = pages.filter(
-            (p) => p.pinned && p !== page
-        ).length;
-
-        page.pinned = false;
-
-        if (pageIndex !== remainingPinned) {
-            const newPages = [...pages];
-            const [movedPage] = newPages.splice(pageIndex, 1);
-            newPages.splice(remainingPinned, 0, movedPage);
-            this.model.state.update((s) => {
-                s.pages = newPages;
-            });
-        }
-
-        this.model.persistence.saveStateDebounced();
+        if (page.pinSide === undefined) return;
+        this.pinTab(pageId, undefined);
     };
 
     group = (leftPageId: string, rightPageId: string) => {
+        if (this.model.query.isRightPinned(leftPageId) || this.model.query.isRightPinned(rightPageId)) {
+            throw new Error("Right-pinned pages cannot be grouped.");
+        }
         this.ungroup(leftPageId);
         this.ungroup(rightPageId);
         const state = this.model.state.get();
@@ -134,12 +145,15 @@ export class PagesLayoutModel {
         const pageId2 = this.model.query.findPage(id2)?.id ?? id2;
         const idx1 = state.pages.findIndex((p) => p.id === pageId1);
         const idx2 = state.pages.findIndex((p) => p.id === pageId2);
+        if (this.model.query.isRightPinned(pageId1) || this.model.query.isRightPinned(pageId2)) {
+            throw new Error("Right-pinned pages cannot be grouped.");
+        }
         if (idx1 === -1 || idx2 === -1 || idx1 === idx2) {
             return;
         }
 
-        const isPinned1 = state.pages[idx1].pinned;
-        const isPinned2 = state.pages[idx2].pinned;
+        const isPinned1 = state.pages[idx1].pinSide === "left";
+        const isPinned2 = state.pages[idx2].pinSide === "left";
 
         if (enforceAdjacency && !isPinned1 && !isPinned2) {
             const doMove = Math.abs(idx1 - idx2) !== 1;
@@ -192,10 +206,22 @@ export class PagesLayoutModel {
             }
         }
 
+        for (const [leftId, rightId] of state.leftRight) {
+            if (this.model.query.isRightPinned(leftId) || this.model.query.isRightPinned(rightId)) {
+                toRemove.add(leftId);
+            }
+        }
+        for (const [rightId, leftId] of state.rightLeft) {
+            if (this.model.query.isRightPinned(rightId) || this.model.query.isRightPinned(leftId)) {
+                toRemove.add(rightId);
+            }
+        }
+
         [...toRemove].forEach((pageId) => {
             this.ungroup(pageId);
         });
         toSwap.forEach(([leftPageId, rightPageId]) => {
+            if (this.model.query.isRightPinned(leftPageId) || this.model.query.isRightPinned(rightPageId)) return;
             this.ungroup(leftPageId);
             this.ungroup(rightPageId);
             this.group(leftPageId, rightPageId);

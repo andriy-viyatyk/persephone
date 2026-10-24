@@ -7,9 +7,10 @@ screen: "tabs"
 
 # Page Tabs
 
-Each open page has a tab in the header's tab strip. Tabs can be reordered, dragged to another
-window, grouped side by side, pinned, or closed. The active tab identifies the page whose editor
-is visible below the header.
+Each open page has a tab in the header. Work pages and left-pinned pages appear in the scrolling
+strip; right-pinned pages appear as compact chips beside the window controls. Tabs can be reordered,
+dragged to another window, grouped side by side, pinned, or closed. The active tab identifies the
+work page, while opening a right-pinned page shows it in a popover over that page.
 
 ## Layout
 
@@ -22,6 +23,7 @@ is visible below the header.
 ### User-facing label → `elements` name
 
 - Page tab → `page-tab`
+- Right-pinned chip strip → `right-page-tabs`
 - Language/editor type → `tab-language`
 - Close or ungroup → `tab-close`
 - Sound indicator → `tab-sound`
@@ -35,13 +37,26 @@ is visible below the header.
 +---------------------------------------------------------------------+
 ```
 
-### When a tab is active, inactive, or pinned
+### When a tab is active, inactive, or left-pinned
 
 ```
 +---------------------------------------------------------------------+
-| [active tab] [inactive tab] [pinned icon-only tab]                  |  in the header tab strip
+| [active tab] [inactive tab] [left-pinned icon tab]                  |  work tabs in the scrolling header strip
 +---------------------------------------------------------------------+
 ```
+
+### When right-pinned tabs exist
+
+```
++---------------------------------------------------------------------+
+| [work tabs]                         [right-pin] [right-pin] [window] |  right-pinned chips sit before window controls
++---------------------------------------------------------------------+
+```
+
+Click a right-pinned chip to show its page in a resizable popover over the work page. Click the
+same chip again, press `Escape`, or click another app-shell control outside the popover to close it.
+The popover does not replace the active work page. Right-pinned pages cannot be grouped, closed
+from the tab, or moved to another window; right-click one to unpin it or move it to the left.
 
 ### When a language control exists
 
@@ -89,8 +104,9 @@ button and the `language` field on `pages.addEditorPage` and `pages`.
 Editors that declare no language—most grids, notebooks, browsers, boards, and app pages such as
 Tools & Editors—show no `tab-language` button. An editor icon appears in its place as
 `[data-part="empty-language"]`; a missing button is expected. Check `pages` before searching the
-DOM. A pinned tab shows only icons: its title label is empty and the file path is in a hover
-tooltip. Read the real title from `pages`.
+DOM. A left-pinned tab shows only icons: its title label is empty and the file path is in a hover
+tooltip. A right-pinned tab is an icon chip in the separate right strip and also shows its file
+path on hover. Read the real title from `pages`.
 
 ## Grouping
 
@@ -101,7 +117,10 @@ the page instead of closing it. Script output goes to the grouped page.
 
 Right-click a tab for **Close Tab**, **Close Other Tabs**, **Close Tabs to the Right**, **Open in
 New Window**, **Duplicate Tab**, and **Pin/Unpin Tab**, plus actions contributed by the current
-editor. Editors without specific actions, including MCP Inspector, show only universal tab items.
+editor. An unpinned tab can be pinned to the left or right. A left-pinned tab can be unpinned or
+moved right; a right-pinned chip can be unpinned or moved left. Right-pinned chips do not offer
+close, duplicate, grouping, or window-move actions. Editors without specific actions, including
+MCP Inspector, show only the available tab items.
 
 ## Session restore
 

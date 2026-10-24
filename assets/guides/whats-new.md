@@ -14,6 +14,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Right-pinned pages:** Keep reference pages in chips at the right of the header and open them in
+  a resizable popover while your active work page stays in place. Right-click a tab to pin it left
+  or right; scripts can inspect `app.pages.popoverPage` and open or close the popover.
 - **Board bridge 1.42.0:** Boards can declare multi-line settings. String settings with
   `format: "multiline"` use a multi-line editor in Persephone's Settings page and save when focus leaves the field. Boards that
   rely on this behavior require bridge `1.42.0` through `minBridgeVersion`.

@@ -130,7 +130,7 @@ export class PageTabsView extends VanillaView<object> {
     }
 
     private createTab(page: PageModel): HTMLElement {
-        const view = new PageTabView({ model: page, pinnedLeft: this.pinnedLeft(page, this.currentPages) });
+        const view = new PageTabView({ model: page, mode: "main", pinnedLeft: this.pinnedLeft(page, this.currentPages) });
         this.tabViews.set(view.root, view);
         this.child(view).mount();
         return view.root;
@@ -139,6 +139,7 @@ export class PageTabsView extends VanillaView<object> {
     private updateTab(element: HTMLElement, page: PageModel): void {
         this.tabViews.get(element)?.update({
             model: page,
+            mode: "main",
             pinnedLeft: this.pinnedLeft(page, this.currentPages),
         });
     }
@@ -151,18 +152,20 @@ export class PageTabsView extends VanillaView<object> {
     }
 
     private updateTabs(projection: TabProjection): void {
-        this.currentPages = projection.pages;
-        this.syncPageLayoutSubscriptions(projection.pages);
-        this.tabs.update(projection.pages);
+        const mainPages = projection.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
+        this.currentPages = mainPages;
+        this.syncPageLayoutSubscriptions(mainPages);
+        this.tabs.update(mainPages);
         this.checkScrollButtons();
         this.scrollToActive(projection.activeId);
     }
 
     private refreshTabLayout(): void {
         const state = pagesModel.state.get();
-        this.currentPages = state.pages;
-        this.syncPageLayoutSubscriptions(state.pages);
-        this.tabs.update(state.pages);
+        const mainPages = state.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
+        this.currentPages = mainPages;
+        this.syncPageLayoutSubscriptions(mainPages);
+        this.tabs.update(mainPages);
         this.checkScrollButtons();
     }
 
@@ -180,7 +183,7 @@ export class PageTabsView extends VanillaView<object> {
             previous?.release();
             const pageUnsubscribe = page.state.subscribe(
                 () => this.refreshTabLayout(),
-                (state) => ({ pinned: state.pinned, mainEditorId: state.mainEditorId, version: state.version }),
+                (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
             );
             const editorState = editor?.state as unknown as IState<{ encrypted?: boolean; password?: unknown }> | undefined;
             const editorUnsubscribe = editorState?.subscribe(

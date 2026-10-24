@@ -121,7 +121,8 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "filePath", kind: "property", summary: "Backing file path, or nothing for an unsaved page." },
     { name: "workspaceFolder", kind: "property", summary: "The project folder this page's Explorer is rooted at — this page's workspace (Persephone's equivalent of a VS Code workspace folder). Nothing when the page has no folder Explorer." },
     { name: "modified", kind: "property", summary: "Whether there are unsaved changes, including a board-reported draft." },
-    { name: "pinned", kind: "property", summary: "Whether the tab is pinned." },
+    { name: "pinned", kind: "property", summary: "Whether the tab is pinned on the left; right-pinned tabs are false." },
+    { name: "pinSide", kind: "property", summary: "Tab pin side: left, right, or undefined when unpinned." },
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
     { name: "pipe", kind: "property", node: true, summary: "The current primary content pipe and its live provider/transformer status." },
     { name: "language", kind: "property", writable: true, summary: "Language id. Assigning changes it and returns { ok: true }; use page.tab.highlight(\"tab-language\") when the user asks where it is changed." },
@@ -135,7 +136,9 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
 ];
 
 const PAGE_HELP = `
-One open page (tab). Plain properties describe it; content holds text for text-based editors and can
+One open page (tab). page and pages.activePage identify the active page the user works on; a
+right-pinned page may appear in a popover over it without becoming active. Plain properties describe
+the page; content holds text for text-based editors and can
 be assigned with value. editor is the current editor facade; inspect editor.id to narrow its operation
 union (for example, if page.editor.id is "grid-json", page.editor.addRows(5) is valid). editorSwitches
 exposes the toolbar's merged options and switchTo(id), which accepts any registered editor id.
@@ -205,6 +208,7 @@ export class PageWrapper implements IAiVisible {
     get title(): string { return this.model?.title ?? "Empty"; }
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }
+    get pinSide(): "left" | "right" | undefined { return pagesModel.findPage(this.id)?.pinSide; }
     get filePath(): string | undefined { return this.model?.filePath; }
 
     /** The folder this page's Explorer is rooted at — Persephone's equivalent of a VS Code
@@ -340,7 +344,7 @@ export class PageWrapper implements IAiVisible {
         const summary: Record<string, unknown> = {
             kind: "Page", id: this.id, title: this.title, editor: editorId || null,
             language: this.language, filePath: this.filePath, modified: this.modified,
-            pinned: this.pinned, active: pagesModel.activePage?.id === this.id,
+            pinSide: this.pinSide, pinned: this.pinned, active: pagesModel.activePage?.id === this.id,
         };
         if (workspaceFolder) summary.workspaceFolder = workspaceFolder;
         if (!editorId) {
