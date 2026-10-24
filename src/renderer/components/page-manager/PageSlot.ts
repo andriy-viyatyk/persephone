@@ -2,6 +2,8 @@ import type { VanillaView, VanillaViewCtor } from "../../uikit/shared/vanilla-vi
 import { t } from "../../../shared/i18n/t";
 
 export type PageSlotStyle = (element: HTMLDivElement) => void;
+export type PopoverResizeEdge = "corner" | "left" | "bottom";
+const POPOVER_RESIZE_EDGES: readonly PopoverResizeEdge[] = ["left", "bottom", "corner"];
 export interface PageSlotViewProps { pageId: string; }
 
 /** Owns one stable page placeholder and one retained native page. */
@@ -9,7 +11,7 @@ export class PageSlot {
     readonly element: HTMLDivElement;
 
     private nativeView: VanillaView<PageSlotViewProps> | undefined;
-    private resizeHandle: HTMLButtonElement | undefined;
+    private resizeHandles: HTMLButtonElement[] = [];
     private disposed = false;
 
     public constructor(
@@ -62,25 +64,31 @@ export class PageSlot {
         }
     }
 
-    ensurePopoverResizeHandle(onPointerDown: (event: PointerEvent) => void): HTMLButtonElement {
-        if (!this.resizeHandle) {
-            const handle = document.createElement("button");
-            handle.type = "button";
-            handle.dataset.type = "popover-resize-handle";
-            handle.setAttribute("aria-label", t("shell.resizePopover"));
-            this.element.append(handle);
-            this.resizeHandle = handle;
+    /** Invisible resize strips on the popover's free edges: the bottom-left corner resizes both
+     *  dimensions, the left edge only the width, the bottom edge only the height. */
+    ensurePopoverResizeHandles(onPointerDown: (event: PointerEvent) => void): void {
+        if (!this.resizeHandles.length) {
+            for (const edge of POPOVER_RESIZE_EDGES) {
+                const handle = document.createElement("button");
+                handle.type = "button";
+                handle.tabIndex = -1;
+                handle.dataset.type = "popover-resize-handle";
+                handle.dataset.edge = edge;
+                handle.setAttribute("aria-label", t("shell.resizePopover"));
+                this.element.append(handle);
+                this.resizeHandles.push(handle);
+            }
         }
 
-        this.resizeHandle.onpointerdown = onPointerDown;
-        return this.resizeHandle;
+        for (const handle of this.resizeHandles) handle.onpointerdown = onPointerDown;
     }
 
-    removePopoverResizeHandle(): void {
-        if (!this.resizeHandle) return;
-        this.resizeHandle.onpointerdown = null;
-        this.resizeHandle.remove();
-        this.resizeHandle = undefined;
+    removePopoverResizeHandles(): void {
+        for (const handle of this.resizeHandles) {
+            handle.onpointerdown = null;
+            handle.remove();
+        }
+        this.resizeHandles = [];
     }
 
     /** Detach immediately, then dispose the nested root after the outer commit. */
@@ -90,7 +98,7 @@ export class PageSlot {
         }
 
         this.disposed = true;
-        this.removePopoverResizeHandle();
+        this.removePopoverResizeHandles();
         const nativeView = this.nativeView;
         this.nativeView = undefined;
         this.element.remove();

@@ -115,8 +115,8 @@ it; the user clicks away instead.
 **R8 — Geometry.**
 The anchor is the top-right corner of `.pages-container`, with a small inset. Default size is 50%
 × 50% of the container; maximum is 80% wide × full height (less the 8px top/bottom inset); minimum is about 360 × 240 px, clamped to the
-maximum on small windows. The grip in the bottom-left corner resizes width leftwards and height
-downwards. The size is remembered **per page** in CSS pixels and persisted in the page descriptor; it does
+maximum on small windows. Invisible resize strips (only the cursor shows them) sit on the left edge
+(width), the bottom edge (height) and the bottom-left corner (both). The size is remembered **per page** in CSS pixels and persisted in the page descriptor; it does
 not follow window resizes. When the window shrinks, the size is clamped to the maximum at render
 time, and the saved size returns once the window is large enough again. (Changed after release from
 fractions of the container, which made the popover scale with the window.) A drag that ends within 2% of the maximum

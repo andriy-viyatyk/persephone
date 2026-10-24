@@ -1,7 +1,7 @@
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { GroupContainer } from "./GroupContainer";
-import { PageSlot, type PageSlotViewProps } from "./PageSlot";
+import { PageSlot, type PageSlotViewProps, type PopoverResizeEdge } from "./PageSlot";
 import {
     POPOVER_FULL_HEIGHT_SNAP, POPOVER_MAX_HEIGHT, POPOVER_MAX_WIDTH, type PagePopoverSize,
 } from "../../api/pages/PageModel";
@@ -9,6 +9,9 @@ import "./AppPageManagerView.css";
 
 /** Gap between the popover and the page area's top/right edges; full height keeps it at the bottom too. */
 const POPOVER_INSET = 8;
+/** How far past its padding box the popover paints: covers the 1px border and the 4px halo, where the
+ *  invisible resize strips extend so they are easy to grab. */
+const POPOVER_CLIP_MARGIN = 5;
 const popoverMaxHeight = (containerHeight: number) =>
     Math.min(containerHeight * POPOVER_MAX_HEIGHT, containerHeight - 2 * POPOVER_INSET);
 
@@ -258,15 +261,16 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
 
     private stylePopoverSlot(slot: PageSlot, props: AppPageManagerProps): void {
         slot.element.dataset.popover = "";
-        slot.ensurePopoverResizeHandle((event) => this.startResize(event, slot.id));
+        slot.ensurePopoverResizeHandles((event) => this.startResize(event, slot.id));
         this.writePopoverGeometry(slot, props.getPopoverSize(slot.id));
     }
 
     private clearPopoverSlot(slot: PageSlot): void {
-        slot.removePopoverResizeHandle();
+        slot.removePopoverResizeHandles();
         delete slot.element.dataset.popover;
         slot.element.style.height = "";
         slot.element.style.zIndex = "";
+        slot.element.style.removeProperty("overflow-clip-margin");
         applyStandaloneStyle(slot.element);
     }
 
@@ -306,7 +310,10 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             height: `${height}px`,
             display: "flex",
             zIndex: "10",
+            // Clip, not hide, with a margin past the 1px border: the resize grip sits on the border corner.
+            overflow: "clip",
         });
+        slot.element.style.setProperty("overflow-clip-margin", `${POPOVER_CLIP_MARGIN}px`);
     }
 
     private startResize(event: PointerEvent, id: string): void {
@@ -325,11 +332,23 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             startY: event.clientY,
             startWidth: rect.width,
             startHeight: rect.height,
+            edge: (handle.dataset.edge ?? "corner") as PopoverResizeEdge,
             handle,
+            shield: this.createResizeShield(handle),
         };
         window.addEventListener("pointermove", this.handleResizeMove);
         window.addEventListener("pointerup", this.handleResizeEnd);
         handle.addEventListener("lostpointercapture", this.handleResizeEnd);
+    }
+
+    /** Shrinking the popover drags over its own page, and a webview there (a board, a browser page) would
+     *  take the pointer events from the drag; a transparent layer over the page area keeps them here. */
+    private createResizeShield(handle: HTMLButtonElement): HTMLDivElement {
+        const shield = document.createElement("div");
+        shield.dataset.type = "popover-resize-shield";
+        shield.style.cursor = getComputedStyle(handle).cursor;
+        this.root.append(shield);
+        return shield;
     }
 
     private readonly handleResizeMove = (event: PointerEvent): void => {
@@ -337,8 +356,9 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         if (!session || event.pointerId !== session.pointerId) return;
         const slot = this.slots.get(session.id);
         if (!slot) return;
-        const width = session.startWidth - (event.clientX - session.startX);
-        const height = session.startHeight + (event.clientY - session.startY);
+        // The left edge changes only the width, the bottom edge only the height, the corner both.
+        const width = session.edge === "bottom" ? session.startWidth : session.startWidth - (event.clientX - session.startX);
+        const height = session.edge === "left" ? session.startHeight : session.startHeight + (event.clientY - session.startY);
         this.writePopoverDimensions(slot, width, height);
     };
 
@@ -352,6 +372,7 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         const session = this.resizeSession;
         if (!session) return;
         this.resizeSession = undefined;
+        session.shield.remove();
         window.removeEventListener("pointermove", this.handleResizeMove);
         window.removeEventListener("pointerup", this.handleResizeEnd);
         session.handle.removeEventListener("lostpointercapture", this.handleResizeEnd);
@@ -394,7 +415,9 @@ interface PopoverResizeSession {
     startY: number;
     startWidth: number;
     startHeight: number;
+    edge: PopoverResizeEdge;
     handle: HTMLButtonElement;
+    shield: HTMLDivElement;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

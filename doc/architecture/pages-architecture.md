@@ -145,7 +145,10 @@ receiving user interaction use `focusedPage`; navigation and script/MCP active-p
 `popoverSize` is persisted in CSS pixels: the size the user dragged to. It does not follow window resizes; the 80% width and full-height limits only clamp what is drawn, so the chosen size returns when the window grows again. Without a saved size the popover opens at half the page area. Ending a drag within 2% of the maximum height saves `fullHeight: true`: the popover then fills the page area's height and follows window resizes, until a drag makes it shorter again.
 
 The right strip is rendered in the header and clicking its tabs toggles the popover. The popover
-uses the existing stable page slot, with CSS geometry and a bottom-left resize grip; it does not
+uses the existing stable page slot, with CSS geometry and invisible resize strips on its left edge,
+bottom edge and bottom-left corner (`PageSlot.ensurePopoverResizeHandles`; the slot clips with
+`overflow: clip` plus a clip margin so the strips can straddle the border, and a drag covers the page
+area with a transparent shield so a webview under the pointer cannot take the drag); it does not
 create a second page view or move the slot, so board iframes and browser webviews keep their live
 documents. `PagesView` handles click-away, focus transfer, and Escape dismissal around the host.
 

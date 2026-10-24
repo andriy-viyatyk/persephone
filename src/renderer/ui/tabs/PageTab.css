@@ -162,7 +162,7 @@
         min-width: 64px;
     }
 
-    /* Right-pinned tabs are chips: short, fully rounded, icon only. The open popover's chip
+    /* Right-pinned tabs are chips: short, rounded, icon only. The open popover's chip
      * keeps its background and only switches its border to the accent colour. */
     [data-type="page-tab"][data-mode="right"] {
         width: auto;
@@ -171,13 +171,25 @@
         min-height: 0;
         height: 24px;
         box-sizing: border-box;
-        padding: 1px 7px;
+        /* A little wider than tall: the icon sits 6px from the sides, 4-5px from the top and bottom. */
+        padding: 1px 5px;
         gap: 2px;
         left: auto;
         border: 1px solid var(--color-border-default);
-        border-radius: 12px;
+        border-radius: 6px;
         background-color: transparent;
         cursor: pointer;
+    }
+
+    /* The page icon is sized to the glyph alone, so the chip's padding is its only side spacing. */
+    [data-type="page-tab"][data-mode="right"] [data-part="empty-language"] {
+        margin: 0;
+    }
+
+    [data-type="page-tab"][data-mode="right"] > [data-type="icon-button"] {
+        width: 16px;
+        min-width: 16px;
+        padding: 0;
     }
 
     [data-type="page-tab"][data-mode="right"]:hover {
