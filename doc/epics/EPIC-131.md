@@ -238,22 +238,31 @@ No separate team-chat board. With Claude and Codex already behind one service, g
 feature of the Agent Chat board (`claude-agent`): it reuses the chat UI, the session lifecycle,
 approvals and the provider adapters, and needs no cross-board `uses` connection.
 
-**Roles.** A role is a name, two instruction texts and a permission preset:
+**Agent profiles** *(revised 2026-10-25, BT-052)*. Role and agent are one saved, fully
+preconfigured **agent profile**:
+- **Name** (e.g. Nova) and **role title** (e.g. Reviewer);
 - **Agent instructions** — full text given to the joined agent as layer 3: how to behave in that
-  role.
-- **Summary for the chat** — a short description of what this role does and what it can be asked
+  role;
+- **Summary for the chat** — a short description of what this agent does and what it can be asked
   for, so Master (and the other agents) know what each participant is for and Master can delegate
-  work by asking that agent by name in the chat.
+  work by asking that agent by name in the chat;
+- **Engine and model** — stored as an alias (`opus`), not a pinned version, so defaults follow the
+  latest model;
+- **Effort** and **permission preset** (read-only by default; write presets carry a warning that
+  Master works in the same folder).
 
-The board ships a few
-defaults (for example Reviewer, Critic, Researcher); the user adds, edits and deletes roles in the
-board. Roles are board-level, not per chat, and are owned by the service (stored next to its other
-data), so every chat and every engine sees the same list.
+The board ships four profiles, all Claude · Opus · medium · read-only: **Nova (Reviewer)**, **Rex
+(Critic)**, **Atlas (Researcher)**, **Iris (Planner)**. The user adds, edits, duplicates and
+deletes profiles in an in-board editor, with **Reset to defaults**. Profiles are board-level, owned
+by the service, so every chat sees the same list. BT-051's unreleased roles file is replaced, not
+migrated.
 
 **Inviting an agent.** Every chat gets a **+ Invite agent** chip after the effort chip. It opens a
-panel above the input with: role, name, engine/model, effort, and **Add**. The name is prefilled
-from a built-in pool of names, skipping any already used in this chat, and the user can change it.
-Only the user invites agents in v1 (no agent-initiated invites). On add, the chat shows a notice
+menu of profiles, `Nova (Reviewer)`, `Atlas (Researcher)`, …, with **Edit agents…** at the bottom;
+one click invites. Names are unique in a chat, so a profile already in the chat is greyed out (to
+have two reviewers, duplicate the profile). A profile that cannot run (engine not installed, model
+no longer offered) is greyed out with the reason on hover. Inviting into an idle or new chat starts
+Master first. Only the user invites agents in v1 (no agent-initiated invites). On add, the chat shows a notice
 visible to everyone: *Agent Nova (Reviewer) joined*, followed by the role's summary for the chat.
 The board collapses the summary under the notice (expandable), but the delivered message carries
 it in full, so Master and every other participant read it. Removing an agent works the same way,
@@ -315,10 +324,11 @@ Because instructions are fixed per session (see Phase 1), the preamble carries o
 not the participant list. The current participants (names and roles) come with the join/leave
 notices delivered to every session, and a joining agent's first turn lists everyone already there.
 
-**Ping-pong.** Prevented by instructions first (general rule above plus each role's text), tuned
-during testing. A hop limit (pause delivery after N consecutive agent messages with no user
-message) is a fallback to add only if testing shows it is needed. **Stop all** interrupts every
-participant.
+**Ping-pong.** Master moderates; there is no hop limit (owner decision, 2026-10-25). The core
+rules make Master watch for agents going back and forth without progress, repeating points or
+prompting each other unasked; it then tells them by name to stop and summarizes for the user.
+Joined agents follow Master's instructions, ranked right after the user's, and stay quiet on that
+topic until the user or Master addresses them again. **Stop all** interrupts every participant.
 
 **Approvals.** Each role has a permission preset; the default is read-only. If a role is allowed to
 ask, its approval cards appear in the main chat under that agent's badge.
@@ -361,7 +371,7 @@ has been reviewed.
   research file, section 3.
 - **Approval fatigue** with several agents: per-role permission presets, read-only by default.
 - **Agent ping-pong and cost:** every delivered message starts a turn in each recipient. Handled by
-  instructions first; hop limit as a fallback if testing shows loops. Prompt caching keeps the
+  instructions, with Master as moderator; no board-enforced hop limit. Prompt caching keeps the
   re-read of each session cheap.
 - **Codex MCP for `post_message`:** how app-server reaches a board-hosted tool is unverified.
 - **Windows process trees:** kill the whole tree on interrupt/close/shutdown within 2 seconds.
@@ -434,3 +444,17 @@ has been reviewed.
 - Each role has two texts: full agent instructions (layer 3 for the joined agent) and a short
   summary for the chat, delivered with the join notice (collapsed in the UI, full in the message)
   so Master knows each agent's role and can delegate to it by name.
+
+### 2026-10-25 — BT-051 done; agent profiles for BT-052
+- BT-051 (group chat core) implemented by Codex, user-tested, fixes by Claude: history bubbles take
+  their kind from the author header; Master replies `[[pass]]` (dropped by the service) when it has
+  nothing to add; acknowledgements forbidden. Committed on persephone-boards `develop` (board 1.2.0,
+  unreleased).
+- User decision: inviting must be one click. Roles become fully preconfigured agent profiles
+  (name, role title, instructions, summary, engine/model alias, effort, permissions); the invite
+  form and name pool are replaced by a menu. Four shipped profiles on Claude · Opus · medium ·
+  read-only. Duplicates in one chat are greyed out. BT-052 also starts Master when inviting into an
+  idle chat.
+- Owner decision after a live three-agent discussion that recommended a hop limit: no hop limit.
+  Master moderates loops and repetition and tells agents by name to stop; joined agents follow
+  Master's instructions right after the user's (`GROUP_CORE` in service.mjs).
