@@ -12,7 +12,9 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
-*(none)*
+- **EPIC-133** — [Speech to text — a `speech.transcribe` contract and a Whisper provider board](epics/EPIC-133.md)
+  - [ ] US-1723: Reserve `speech.transcribe` and publish its v1 contract guide
+  - [ ] BT-055 – BT-057 (persephone-boards): Whisper runtime, Speech to Text board, Agent Chat voice input
 
 ## Scheduled
 
