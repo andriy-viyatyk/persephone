@@ -9,8 +9,8 @@
 
 Let boards drive the user's installed coding agents — Claude Code (Opus, Sonnet) and Codex
 (gpt-6-luna) — as long-lived, streaming, interruptible sessions. Phase 0 adds the two platform
-primitives this needs and nothing agent-specific. Phase 1 ships two provider boards, one per CLI,
-each with its own single-agent chat, behind one shared `agent.session` contract. Phase 2 is a
+primitives this needs and nothing agent-specific. Phase 1 ships one provider board with
+two engines (Claude, Codex) and one single-agent chat, behind one shared `agent.session` contract. Phase 2 is a
 "team chat" board that consumes those providers and runs several agents in one conversation with
 configurable roles (for example chief / worker / critic).
 
@@ -20,7 +20,7 @@ configurable roles (for example chief / worker / critic).
   with its service (Phase 0).
 - A board can open the same kind of channel to *another* board's service through a declared,
   versioned interface, with trust and permissions that stay honest (Phase 0).
-- `claude-agent` and `codex-agent` boards drive the installed CLIs using the user's existing
+- The agent provider board (today `claude-agent`, with a Claude and a Codex engine) drives the installed CLIs using the user's existing
   logins, with streaming output, interrupt, resume, and tool approvals shown in the UI (Phase 1).
 - Both implement one vendor-neutral `agent.session` contract, so consumers do not care which CLI
   is behind a session (Phase 1).
@@ -149,8 +149,22 @@ Live in the `persephone-boards` repo (one folder each; boards never nest).
     `tool-call`, `tool-result`, `file-change`, `approval-request`, `turn-end` (with usage),
     `error`, `closed`
   - `list-sessions` / resume across restarts using the CLIs' own on-disk session stores.
-- **`claude-agent`** and **`codex-agent`**: a service that owns sessions and maps the native CLI
-  protocol onto the contract, plus a single-agent chat page. Integration choice per CLI is
+- **One board, two engines** *(decided 2026-10-25, replaces the earlier `codex-agent` board)*.
+  Boards cannot nest or import from each other, so a second board would copy the ~1,500-line chat
+  UI and the service plumbing and every fix would land twice. Instead the `claude-agent` service
+  gets a provider adapter interface (`providers/claude.mjs`, `providers/codex.mjs`; start, send,
+  interrupt, approve, close, list sessions, history, models), and the shared service keeps
+  channels, approvals, limits, instructions, the MCP endpoint and process-tree kill. The `describe`
+  reply carries capability flags (for example subagents, transcript follow, MCP panel, cost
+  reporting, SDK install); the UI shows or hides features by flag and never checks the vendor. The
+  UI reads contract events only: native-message matching (model change, compacting) moves into
+  the Claude adapter, which emits typed events. `open` gains a `provider` field. Order:
+  BT-048 refactor with no behavior change → BT-049 Codex adapter → BT-050 rename the board (it is
+  published as "Claude Agent" 1.0.0; migrate its `claude-agent:` localStorage keys and installs).
+  In Phase 2 `services.list("agent.session")` then returns one provider and the consumer picks the
+  engine with `open.provider`.
+- **Each engine** maps its native CLI protocol onto the contract inside the shared service and
+  chat page. Integration choice per CLI is
   decided from the research file, not from training data.
 
 **Integration decisions from the research** ([EPIC-131-cli-research.md](EPIC-131-cli-research.md),
@@ -241,7 +255,7 @@ Claude Code 2.1.302 / Agent SDK 0.3.302 / Codex 0.163.0, checked 2026-10-18):
 | [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Implemented |
 | US-1705 | Phase 1: `agent.session` v1 contract document | Implemented |
 | US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Implemented |
-| US-1707 | Phase 1: `codex-agent` provider board | Planned |
+| US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Planned |
 | US-1708 | Phase 2: team chat board | Planned |
 
 Phase 1 and 2 task documents are written after Phase 0 lands and after the CLI research below
@@ -300,3 +314,11 @@ has been reviewed.
   interfaces and the consumer's Full-access `uses` grant.
 - Not verified live: channel close on service crash/restart, untrust while channels are open,
   `appScripting` loss revoking tokens, MCP status indicator counts with an in-app session.
+
+### 2026-10-25 — Codex as a second engine, not a second board
+- User raised the double-maintenance cost of a separate `codex-agent` board. Decided: refactor
+  `claude-agent` behind a provider adapter interface plus capability flags (BT-048, no behavior
+  change, worth doing even if Codex slips because it removes the UI ↔ native-message leaks), add
+  the Codex adapter over `codex app-server` (BT-049), then rename the board (BT-050).
+- Open: the new board name (must not contain "Claude Code"), and whether the rename keeps the
+  `claude-agent` id or ships a new id and retires the old one.

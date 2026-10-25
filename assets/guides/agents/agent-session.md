@@ -54,16 +54,22 @@ Do not send file contents in `file-change` events.
 These opening requests do not launch a CLI session. The provider replies once and closes the
 channel afterward. Discovery replies use the request's optional `id` as described above.
 
-- `{type:"describe"}` returns `type:"description"` with `contractVersion:1`, models
-  (`id`, user-facing `label`, supported `efforts`), supported `permissionModes`, the effective
-  cross-board permission ceiling for this caller, and `features` booleans for `resume`,
-  `thinkingStream`, `usage`, `cost`, `maxAgentSteps`, and `maxBudgetUsd`. A provider may include
-  additional documented capabilities. Models and efforts reflect what this installed CLI and
-  account can currently use.
+- `{type:"describe"}` returns `type:"description"` with `contractVersion:1`, optionally a bounded
+  provider id, models (`id`, user-facing `label`, supported `efforts`), supported
+  `permissionModes`, the effective cross-board permission ceiling for this caller, and the
+  permanent v1 `features` booleans: `resume`, `thinkingStream`, `usage`, `cost`,
+  `maxAgentSteps`, and `maxBudgetUsd`. These fields remain part of v1. A description includes
+  `capabilities`, a provider feature-flag object a chat UI may use to gate provider-specific
+  controls: `providerSetup`, `sessionStore`, `transcriptFollow`, `permissionModes`,
+  `modelSelection`, `effortSelection`, `slashCommands`, `mcpPanel`, `subagents`, `tokenUsage`,
+  `costUsage`, `contextUsage`, and `rateLimits`. It also includes `setup: { required: boolean,
+  ready: boolean }` to describe provider setup requirements, and may include `provider`, the bounded
+  provider id. Models and efforts reflect what this installed CLI and account can currently use.
 - `{type:"list-sessions", cwd?}` returns `type:"sessions"` with resumable entries containing
-  `id`, `title` (or first prompt when no title is available), `updatedAt` (ISO 8601), and `cwd`.
-  If `cwd` is supplied, it filters the list to that working directory when supported. Do not
-  start a session as a side effect of listing.
+  `id`, `title` (or first prompt when no title is available), `updatedAt` (ISO 8601), and `cwd`;
+  rows may include `provider`, the bounded provider id that owns that session. If `cwd` is supplied,
+  it filters the list to that working directory when supported. Do not start a session as a side
+  effect of listing.
 
 ## Open request and session start
 
@@ -73,24 +79,31 @@ The consumer opens a live session with:
 {
   type: "open",
   contractVersion: 1,
+  provider?: string,               // bounded provider id; defaults to "claude"
   model: string,
   effort?: string,
   cwd: string,
   instructions?: string,          // caller instruction layer
   permissionMode: "read-only" | "ask" | "auto-edit" | "full-auto",
-  resume?: string,                // provider's resumable session id
+  resume?: string,                // opaque, bounded provider session id
   limits?: { maxUserTurns?: number; maxAgentSteps?: number; maxBudgetUsd?: number },
   mcp?: { persephone?: boolean }, // defaults to true
   title?: string
 }
 ```
 
+Provider ids are bounded identifiers matching `[a-z][a-z0-9-]{0,63}`. If `provider` is omitted,
+the provider selection defaults to `claude` for compatibility with existing v1 callers. An unknown
+or unavailable provider fails with error code `provider-unavailable`. A `resume` value is an opaque
+provider session id: the shared contract bounds it to 512 characters and rejects empty values and
+control characters, while each provider validates its own id format and whether the session exists.
+
 The provider validates model, effort, cwd, resume id, limits, and permissions against its own
 capabilities. It emits `session-started` before any turn events. The event includes a resumable
 `sessionId`, selected `model`, effective `permissionMode`, a `limits` object describing each
-requested limit and whether/how it was applied, `instructions: { composed }`, and
-`contractVersion: 1`. A requested but unsupported budget must be reported as unapplied; it must
-not be silently presented as enforced. The limits mean:
+requested limit and whether/how it was applied, `instructions: { composed }`, optional `provider`
+identifying the provider, and `contractVersion: 1`. A requested but unsupported budget must be
+reported as unapplied; it must not be silently presented as enforced. The limits mean:
 
 - `maxUserTurns`: completed `send` turns in this live session. Providers always enforce it
   themselves; a `send` past the limit is rejected with `limit-reached`.
@@ -156,13 +169,14 @@ Every provider event uses `{type, ...}` and includes the echoed `id` when replyi
 | `tool-result` | `callId`, `ok`, `summary`; bounded and marked if truncated. |
 | `file-change` | `path`, `kind` (provider-normalized change kind); no file contents. |
 | `approval-request` | `requestId`, `kind` (`command` \| `file-write` \| `mcp` \| `other`), `summary`, `detail`. |
+| `session-status` | `model`, user-facing `modelLabel`, `effort`, and boolean `compacting`; optional provider-specific `mode`, `contextTokens`, `contextWindow`, `contextPercent`, and `limits`. `limits` may contain `fiveHour` and/or `sevenDay`, each `{ percent: number, resetsAt?: string }`; `percent` is utilization from 0 to 100 and `resetsAt` is an ISO 8601 timestamp. |
 | `turn-ended` | `reason` (`completed` \| `interrupted` \| `limit` \| `error`), `usage` with `inputTokens`, `outputTokens`, optional `cachedTokens` and `costUsd`. Unavailable values are omitted, not fabricated. |
 | `error` | `code`, `message`, `fatal`; fatal errors end the live session. |
 | `notice` | `message`; provider information such as model rerouting or a non-fatal limitation. |
 
 For v1 use these error codes where applicable: `cli-not-found`, `cli-version-unsupported`,
-`not-logged-in`, `model-unavailable`, `resume-not-found`, `limit-reached`, `busy`, and
-`protocol-error`. The platform can also close the channel with service-channel codes such as
+`not-logged-in`, `model-unavailable`, `resume-not-found`, `provider-unavailable`, `limit-reached`,
+`busy`, and `protocol-error`. The platform can also close the channel with service-channel codes such as
 `channel-backpressure`, `channel-closed`, `channel-message-too-large`, `service-busy`,
 `service-exited`, `renderer-reloaded`, `untrusted`, `connection-refused`, `quit`, and
 `service-error`. A provider should send a useful non-fatal `error` before closing when possible.

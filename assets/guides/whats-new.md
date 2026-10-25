@@ -12,7 +12,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.14 (Upcoming)
 
-*No changes yet.*
+- **Agent sessions:** Expanded the v1 `agent.session` contract with provider routing, opaque resume
+  ids, capability flags, and session status fields.
 
 ---
 
