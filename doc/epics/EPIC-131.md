@@ -360,7 +360,7 @@ has been reviewed.
 - **Privilege laundering through providers** (P0-B): settled in US-1704's plan, before code.
 - **CLI interfaces move fast.** Both CLIs change monthly (Codex removed `mcp-server` in 0.154.0).
   Phase 1 designs from [EPIC-131-cli-research.md](EPIC-131-cli-research.md), refreshed if stale.
-- **Terms of use (open, owner decision).** Anthropic's legal page forbids third-party developers
+- **Terms of use (owner decision, 2026-10-25: accepted; Agent Chat 1.2.0 published).** Anthropic's legal page forbids third-party developers
   from offering Claude.ai login, routing requests through Free/Pro/Max credentials on behalf of
   their users, or handling credentials and session tokens; the Agent SDK page adds "unless
   previously approved". The same page allows an end user signing in to the unmodified Claude Code
