@@ -251,8 +251,9 @@ preconfigured **agent profile**:
 - **Effort** and **permission preset** (read-only by default; write presets carry a warning that
   Master works in the same folder).
 
-The board ships four profiles, all Claude · Opus · medium · read-only: **Nova (Reviewer)**, **Rex
-(Critic)**, **Atlas (Researcher)**, **Iris (Planner)**. The user adds, edits, duplicates and
+The board ships four profiles, all Claude · Opus · medium: **Nova (Reviewer)**, **Rex (Critic)**
+and **Atlas (Researcher)** read-only, and **Kai (Developer)** on auto-edit (edits files, asks
+before commands). Planning stays with Master, so there is no Planner profile. The user adds, edits, duplicates and
 deletes profiles in an in-board editor, with **Reset to defaults**. Profiles are board-level, owned
 by the service, so every chat sees the same list. BT-051's unreleased roles file is replaced, not
 migrated.
