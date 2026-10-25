@@ -19,6 +19,8 @@ Overview of all active and planned epics and tasks.
   - [ ] US-1716: Board footer chip variant (`variant: "chip"` on status-bar text items, bridge 1.42.0) for the `claude-agent` footer
   - [ ] US-1707: Phase 1 — Codex engine in the agent board (persephone-boards BT-048 adapter refactor → BT-049 Codex adapter → BT-050 rename)
   - [ ] US-1708: Phase 2 — team chat board
+- *(no epic)*
+  - [ ] US-1722: Board page tab keeps an old manifest name after the board is renamed (fixed in `BoardEditorModel.applyManifestTitle`, `manifestTitle` state)
 
 ## Planned
 

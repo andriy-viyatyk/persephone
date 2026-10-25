@@ -322,3 +322,9 @@ has been reviewed.
   the Codex adapter over `codex app-server` (BT-049), then rename the board (BT-050).
 - Open: the new board name (must not contain "Claude Code"), and whether the rename keeps the
   `claude-agent` id or ships a new id and retires the old one.
+
+### 2026-10-25 — BT-048 / BT-049 done; rename decided
+- BT-048 (adapter refactor) and BT-049 (Codex engine over `codex app-server` 0.163.0, board 1.1.0)
+  implemented and tested by the user; committed on persephone-boards `develop`, not yet released.
+- BT-050: the board is renamed **Agent Chat** and keeps the `claude-agent` id (user decision), so
+  existing installs update in place and nothing needs migrating.

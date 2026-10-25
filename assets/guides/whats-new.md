@@ -14,6 +14,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Agent sessions:** Expanded the v1 `agent.session` contract with provider routing, opaque resume
   ids, capability flags, and session status fields.
+- **Boards:** A board page tab follows a renamed board: after a board changes its name, the tab
+  shows the new name when the board is reloaded or the app restarts.
 
 ---
 

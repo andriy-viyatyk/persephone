@@ -102,6 +102,10 @@ export interface BoardEditorState extends EditorStateBase {
     boardRoot?: string;
     /** Display title — the board folder name. */
     title: string;
+    /** The title last taken from the manifest's `name` (plain boards only). Lets restore and
+     *  reload retitle the page after the manifest is renamed, without overwriting a title some
+     *  other caller set. Persisted with the page. */
+    manifestTitle?: string;
     /** The board's name (folder basename) when it resolves on disk, or undefined
      *  when the board folder/manifest is missing (drives `BoardNotFoundView`).
      *  Re-validated on open/restore by `refreshBoards`. */
@@ -1206,9 +1210,22 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.boardDisplayNameEnglish = manifestName || fallbackTitle;
         if (!manifestName || this.aiVisionDisposed) return;
         const s = this.state.get();
-        // Only replace the fallback this method set: a caller may already have retitled the page.
-        if (s.boardRoot !== boardRoot || s.title !== fallbackTitle) return;
-        this.state.update((st) => { st.title = manifestName; });
+        // Only replace a title this method owns — the fallback, or the manifest name it applied
+        // earlier (the manifest may have been renamed since): a caller may have retitled the page.
+        // A page saved before `manifestTitle` existed carries the then-current manifest name, so
+        // it counts as owned too (plain board pages get no title from anywhere else).
+        const owned = s.title === fallbackTitle || s.manifestTitle === undefined || s.title === s.manifestTitle;
+        if (s.boardRoot !== boardRoot || !owned) return;
+        if (s.title === manifestName && s.manifestTitle === manifestName) return;
+        this.state.update((st) => { st.title = manifestName; st.manifestTitle = manifestName; });
+    }
+
+    /** A plain board page (no file, no claimed folder) is titled by its manifest; re-read it so a
+     *  renamed manifest shows after Reload board, as it does after a restart. */
+    private refreshManifestTitle(): void {
+        const s = this.state.get();
+        if (!s.boardRoot || this.currentFilePath() || s.folderPath) return;
+        void this.applyManifestTitle(s.boardRoot, fpBasename(s.boardRoot));
     }
 
     /** Persistence restore (app restart + cross-window). `boardRoot` rides the
@@ -1399,6 +1416,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
         this.state.update((s) => { s.reloadToken++; });
+        this.refreshManifestTitle();
     }
 
     /** Wait for the next attachable main board frame after a model-owned reload. */
@@ -1422,6 +1440,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
         this.state.update((s) => { s.reloadToken++; });
+        this.refreshManifestTitle();
         return { frameReady: await frameReady };
     }
 
