@@ -352,8 +352,7 @@ interface PersephoneServiceChannel {
     whenWritable(): Promise<void>;
 }
 
-/** Service callback identity shape. Same-board channels contain `page` and omit the two
- * cross-board extension points until that API is available. */
+/** Service callback identity shape. Cross-board channels also contain `interface` and `caller`. */
 interface PersephoneServiceChannelInfo {
     page: { boardId: string };
     interface?: { id: string; version: number };

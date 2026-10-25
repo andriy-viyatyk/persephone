@@ -32,6 +32,9 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
         const state = model.state.get();
         const change = state.change;
         const boardPathElement = createTextElement(state.boardPath, { color: "light" });
+        const serviceUsesPermissionList = change
+            ? createBoardServiceUsesPermissionList(change.proposedUses.length ? change.proposedUses : change.grantedUses)
+            : createBoardServiceUsesPermissionList(state.uses);
 
         const body = change
             ? [
@@ -39,7 +42,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createBoardPermissionChangeList(change.granted, change.proposed),
-                ...(createBoardServiceUsesPermissionList(change.proposedUses.length ? change.proposedUses : change.grantedUses) ? [createBoardServiceUsesPermissionList(change.proposedUses.length ? change.proposedUses : change.grantedUses)!] : []),
+                ...(serviceUsesPermissionList ? [serviceUsesPermissionList] : []),
                 ...(change.useChanges.length ? [createTextElement(t("board.serviceUseChanges", { changes: change.useChanges.map(({ kind, use }) => `${kind}: ${use.id}@${use.version}`).join(", ") }))] : []),
             ]
             : [
@@ -61,7 +64,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                     ...(state.serviceInterfaces.length > 0
                         ? [createTextElement(t("dialogs.trustServiceInterfaces", { interfaces: state.serviceInterfaces.map(({ id, version, title }) => `${id}@${version}${title ? ` (${title})` : ""}`).join(", ") }), { color: "light" })]
                         : []),
-                    ...(createBoardServiceUsesPermissionList(state.uses) ? [createBoardServiceUsesPermissionList(state.uses)!] : []),
+                    ...(serviceUsesPermissionList ? [serviceUsesPermissionList] : []),
                 ]),
             ];
         const bodyPanel = createPanelElement({ direction: "column", gap: "md", paddingX: "xxl", paddingY: "xl" }, body);

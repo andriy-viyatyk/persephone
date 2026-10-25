@@ -407,8 +407,8 @@ For page-to-service streaming, the board frame opens a channel and the service r
 remain FIFO; each direction allows 256 unacknowledged messages, and service-to-page messages are
 limited to 1 MiB after V8 serialization. Board frames cannot measure that serialized size, so
 page-to-service traffic uses only the count bound. Channel limits are 16 per board frame and 128
-per service. Same-board `info` contains `page: { boardId }`; US-1704 adds optional `interface` and
-`caller` properties for cross-board callers without changing the callback. Close reasons use
+per service. Same-board `info` contains `page: { boardId }`; cross-board calls add optional
+`interface` and `caller` properties without changing the callback. Close reasons use
 `renderer-reloaded`, `service-exited`, `untrusted`, and `quit`; full windows throw
 `channel-backpressure`, oversized service messages throw `channel-message-too-large`.
 

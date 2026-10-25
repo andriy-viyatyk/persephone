@@ -143,8 +143,8 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     try {
         if (req.method === "POST") {
             const body = await parseBody(req);
-            if (sessionId && sessions.get(sessionId)?.owner === token) {
-                const session = sessions.get(sessionId)!;
+            const session = sessionId ? sessions.get(sessionId) : undefined;
+            if (session?.owner === token) {
                 session.lastActivity = Date.now();
                 await session.transport.handleRequest(req, res, body);
             } else if (!sessionId && requireSdk().isInitializeRequest(body)) {

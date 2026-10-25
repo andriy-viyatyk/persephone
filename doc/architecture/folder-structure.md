@@ -42,7 +42,7 @@ persephone/
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
-│   ├── module-service-host.mjs # Utility-process host that injects persephone.storage, imports the service entry, and owns lifecycle/request protocol for host-API services
+│   ├── module-service-host.mjs # Utility-process host that injects storage/settings, imports the service entry, and owns lifecycle, request/channel, and private MCP session APIs
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
 │   ├── boards/             # Boards shipped inside the installer resources
@@ -172,7 +172,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── board-trust.ts      # Reactive mirror of main-owned trusted roots and permission grants (trustedBoards.json); bundled boards bypass it. This list IS the known-boards registry
 │   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
-│   ├── module-service.ts   # Renderer client for main-routed service requests and the optional per-window host-renderer lease
+│   ├── module-service.ts   # Renderer client for main-routed service requests, direct board channels, and the optional per-window host-renderer lease
+│   ├── board-service-settings.ts # Trust- and service-gated settings reads/subscriptions for host-managed board services
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
 │   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
@@ -943,6 +944,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
 ├── mcp-http-server.ts      # MCP Streamable HTTP transport — sessions (idle reaper, cap), HTTP handling, start/stop lifecycle
+├── mcp/private-session-endpoints.ts # Lazy loopback MCP listener and revocable per-service bearer endpoints for private agent sessions
 ├── mcp/                    # What the MCP server offers, separate from how it is served
 │   ├── server-factory.ts   # createMcpServer() — assembles manifest + tool groups + guide resources
 │   ├── manifest.ts         # Server identity, client instructions, guide resource list, mtime-cached guide reader
@@ -977,8 +979,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-file-access.ts     # Canonical path validation and manifest-permission-scoped board file access
 ├── board-bridge.ts         # Per-board MessagePort bridge (manifest permissions enforced) — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── board-trust-service.ts # Main owner of persisted trust grants, manifest permission snapshots, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
-├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, status, and teardown
-├── module-service-record.ts # Per-service state and request/lease records, generation checks, and utility-process cleanup
+├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, direct board channels, status, and teardown
+├── module-service-record.ts # Per-service state and request/lease/channel records, generation checks, and utility-process cleanup
 ├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing
 ├── module-service-leases.ts # Per-WebContents renderer MessagePort lease transfer, acknowledgement, and lifecycle cleanup
 ├── module-service-restart-budget.ts # Sliding-window service failure count and bounded restart policy
@@ -1025,7 +1027,7 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
-├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, main-derived trust snapshot, per-renderer lease and storage wire types
+├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshot, renderer leases, direct board channels, and storage wire types
 ├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers

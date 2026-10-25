@@ -30,7 +30,7 @@ only the count bound. Limits are 16 channels per frame and 128 per service. Use
 `channel-backpressure` and `channel-message-too-large`. Channels close with `renderer-reloaded`,
 `service-exited`, `untrusted`, or `quit` on the matching lifecycle event. Boards using channels
 must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use provider
-`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Claude Agent" }]` and consumer
+`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Agent Chat" }]` and consumer
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted

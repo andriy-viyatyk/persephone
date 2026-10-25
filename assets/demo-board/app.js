@@ -274,6 +274,37 @@
                 await refreshServiceStatus().catch((statusError) => printServiceError("status error", statusError));
             }
         },
+        async serviceChannelRoundTrip() {
+            header("persephone.service.openChannel → service.onChannel");
+            let stopMessages;
+            let stopClose;
+            let channel;
+            try {
+                channel = await P.service.openChannel({ op: "demo-stream" });
+                const firstMessage = new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => reject(new Error("Timed out waiting for service channel reply.")), 5_000);
+                    stopMessages = channel.onMessage((message) => {
+                        print(JSON.stringify(message));
+                        if (message?.type === "reply") {
+                            clearTimeout(timer);
+                            resolve(message);
+                        }
+                    });
+                    stopClose = channel.onClose(({ code, message }) => {
+                        clearTimeout(timer);
+                        reject(Object.assign(new Error(message), { code }));
+                    });
+                });
+                channel.send({ op: "ping", value: "hello service" });
+                await firstMessage;
+            } catch (error) {
+                printServiceError("service channel failed", error);
+            } finally {
+                stopMessages?.();
+                stopClose?.();
+                channel?.close();
+            }
+        },
         async serviceStorageRoundTrip() {
             header("service/storage round-trip");
             try {

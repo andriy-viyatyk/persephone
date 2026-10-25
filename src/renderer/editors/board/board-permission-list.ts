@@ -62,10 +62,8 @@ export function createBoardServiceUsesPermissionList(uses: readonly { id: string
         createTextElement(t(line.textKey, line.textParams as never), { size }),
         createTextElement(t("board.fullAccess"), { size: detailSize, bold: true, color: "warning" }),
     ]);
-    const content = createPanelElement({ direction: "column", gap: "xs", flex: 1 }, [
-        heading,
-        createTextElement(t(line.detailKey!), { size: detailSize, color: "light" }),
-    ]);
+    const content = createPanelElement({ direction: "column", gap: "xs", flex: 1 }, [heading]);
+    if (line.detailKey) content.append(createTextElement(t(line.detailKey), { size: detailSize, color: "light" }));
     const row = createPanelElement({ direction: "row", gap: "sm", align: "start" }, [
         rowIcon("warning", color.warning.text), content,
     ]);

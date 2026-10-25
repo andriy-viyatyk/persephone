@@ -1,3 +1,21 @@
+## EPIC-131 — Agent sessions in boards
+
+Completed 2026-10-25. Boards can now host agent sessions: the persephone-boards **Agent Chat** board
+(id `claude-agent`, v1.2.0) runs Claude and Codex sessions, and group chats where invited agents
+share one conversation with the main agent (Master). Epic document: [EPIC-131](EPIC-131.md).
+
+- [x] **Service channels (US-1703).** Long-lived, ordered, two-way page ↔ own-service streaming (`openChannel` / `onChannel`), bridge 1.42.0.
+- [x] **Cross-board service interfaces (US-1704).** `serviceInterfaces` / `uses` / `services.connect`, disclosed as full access in the trust dialog.
+- [x] **Private agent MCP endpoint (US-1709).** A token-gated Persephone MCP endpoint for in-app agent sessions.
+- [x] **Multi-line board settings (US-1710).** `format: "multiline"` renders a Textarea in Settings → Editors.
+- [x] **Board settings from a module service (US-1711).**
+- [x] **`agent.session` v1 contract (US-1705).** A guide, extended for the Codex engine.
+- [x] **Agent board (US-1706, BT-046).** The `claude-agent` provider board.
+- [x] **Footer chip variant (US-1716).** `variant: "chip"` on board status-bar text items.
+- [x] **Codex engine (US-1707, BT-048 – BT-050).** A provider adapter layer, the Codex adapter over `codex app-server`, and the rename to Agent Chat.
+- [x] **Group chat (US-1708, BT-051 – BT-052).** Invited agents, `post_message`, shared delivery, agent profiles, and Master moderation instead of a hop limit.
+- Board tasks are logged in persephone-boards. The close review left no findings open.
+
 ## EPIC-128 — Audio Player board
 
 Completed 2026-10-18. A catalog board, `audio-player` v1.0.0 in persephone-boards, is now the

@@ -701,6 +701,36 @@ const result = await persephone.service.request({ op: "refresh", value });
 await persephone.storage.set("last-result", result);
 ```
 
+For long-lived or streaming exchanges, open a direct service channel. The channel is page-scoped;
+messages bypass main after setup, stay FIFO, and each direction allows 256 unacknowledged messages.
+Service-to-page messages are limited to 1 MiB after serialization; page-to-service payload size is
+not measured. A frame can hold at most 16 channels and a service at most 128. Reload, service exit,
+trust loss, and app quit close affected channels. Cross-board connections use the same channel type
+through `persephone.services.connect()` after the consumer declares and receives a `uses` grant.
+
+```js
+const channel = await persephone.service.openChannel({ op: "subscribe" });
+const stopMessages = channel.onMessage((message) => renderUpdate(message));
+const stopClose = channel.onClose(({ code, message }) => showDisconnected(code, message));
+channel.send({ op: "refresh" });
+// Keep the channel for the page session; when finished:
+stopMessages();
+stopClose();
+channel.close();
+```
+
+The service registers one `persephone.service.onChannel((channel, openMessage, info) => ...)`
+handler at module evaluation. It can send updates, receive page messages, and close with a reason;
+`channel.writable` and `channel.whenWritable()` expose the 256-message backpressure window. Keep
+the returned unsubscribe functions when a listener should stop before the channel closes.
+
+```js
+persephone.service.onChannel((channel, openMessage, info) => {
+    channel.onMessage((message) => channel.send({ received: message }));
+    channel.send({ ready: true, request: openMessage });
+});
+```
+
 The host-managed service facade also reads its own board's declared settings and observes changes:
 
 ```js

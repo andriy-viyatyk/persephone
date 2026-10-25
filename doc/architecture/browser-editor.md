@@ -445,7 +445,7 @@ are required:
 
 With only the session UA cleaned, a page claims Chrome while its cross-origin iframes report
 Electron. Cloudflare's challenge frame (`challenges.cloudflare.com`) sees the mismatch and
-re-challenges forever (US-1584). Persephone's own window reports the same string. Client Hints
+re-challenges forever. Persephone's own window reports the same string. Client Hints
 brands (`navigator.userAgentData`) stay Electron's `Chromium` brands; no Electron API changes them,
 and the challenge passes without it.
 

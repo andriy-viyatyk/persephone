@@ -220,7 +220,7 @@ There are at most 16 channels per frame and 128 per service. Use
 app quit (`renderer-reloaded`, `service-exited`, `untrusted`, and `quit`). Boards using this API
 must declare `minBridgeVersion: "1.42.0"`.
 The same release also supports cross-board service interfaces. A provider declares
-`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Claude Agent" }]`; a consumer
+`serviceInterfaces: [{ id: "agent.session", version: 1, title: "Agent Chat" }]`; a consumer
 declares `uses: [{ id: "agent.session", version: 1 }]`. The trust dialog treats every non-empty
 `uses` list as Full access because it grants messaging access to providers trusted now or later.
 The consumer receives no provider permissions; each provider independently needs trust and its
@@ -236,7 +236,8 @@ local caller ids use a hash instead of exposing the board path. Refuse with
 same bounds and lifecycle as `service.openChannel()` and close when either board loses the needed
 trust or grant. Boards using this API declare `minBridgeVersion: "1.42.0"`.
 For a streaming coding-agent provider and consumer protocol over this channel, see the normative
-[`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`).
+[`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`). The
+Agent Chat board uses this platform contract for its coding-agent sessions.
 Bridge `1.41.0` adds `persephone.trashFile(path)`, which
 moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,

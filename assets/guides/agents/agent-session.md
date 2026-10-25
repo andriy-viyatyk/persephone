@@ -8,7 +8,9 @@ summary: "Normative provider and consumer contract for streaming, resumable codi
 
 This is the normative contract for boards that provide or consume `agent.session` version 1.
 It is written for board authors and agents building boards. The provider launches the user's
-installed CLI; the consumer does not receive the provider's permissions or credentials.
+installed CLI; the consumer does not receive the provider's permissions or credentials. The
+Agent Chat board uses this Persephone platform contract to connect its chat UI to coding-agent
+sessions.
 
 ## Transport and lifecycle
 
@@ -16,7 +18,7 @@ Declare the exact interface version in `board-manifest.json`:
 
 ```json
 // Provider
-{"serviceInterfaces":[{"id":"agent.session","version":1,"title":"Claude Agent"}]}
+{"serviceInterfaces":[{"id":"agent.session","version":1,"title":"Agent Chat"}]}
 // Consumer
 {"uses":[{"id":"agent.session","version":1}]}
 ```
@@ -257,7 +259,9 @@ provider kills the process tree, revokes session MCP, preserves CLI session stor
 
 ```js
 const providers = await persephone.services.list("agent.session");
-const channel = await persephone.services.connect("agent.session", providers[0], {
+const channel = await persephone.services.connect("agent.session", {
+  provider: providers[0].provider, version: 1,
+}, {
   type: "open", contractVersion: 1, model: "gpt-6-luna", cwd,
   permissionMode: "ask", mcp: { persephone: true },
 });
@@ -310,5 +314,6 @@ subscription. This matters especially for Claude: Anthropic's terms describe res
 third-party products offering Claude.ai login or routing subscription credentials, while also
 allowing a user to sign in to an unmodified Claude Code binary. The exact status of every host-app
 scenario is not stated by either vendor, so a provider follows the cautious design above, and its
-author should check the current Anthropic and OpenAI terms before publishing it. Name the product
-**Claude Agent**, not “Claude Code” or “Claude Code Agent”.
+author should check the current Anthropic and OpenAI terms before publishing it. Persephone's
+board that implements this contract is named **Agent Chat**; other integrations should follow
+each vendor's current naming requirements.

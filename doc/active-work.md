@@ -8,19 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-131** — [Agent sessions in boards — provider boards and a multi-agent team chat](epics/EPIC-131.md)
-  - [ ] [US-1703: Phase 0 — service channels (page ↔ own service, long-lived, streaming)](tasks/US-1703-service-channels/README.md)
-  - [ ] [US-1704: Phase 0 — cross-board service interfaces with trust disclosure](tasks/US-1704-cross-board-service-interfaces/README.md)
-  - [ ] [US-1709: Phase 0 — private Persephone MCP endpoint for in-app agents](tasks/US-1709-private-agent-mcp-endpoint/README.md)
-  - [ ] [US-1710: Phase 0 — multi-line board settings](tasks/US-1710-multiline-board-settings/README.md)
-  - [ ] [US-1711: Board settings from a module service](tasks/US-1711-service-board-settings/README.md)
-  - [ ] [US-1705: Phase 1 — `agent.session` v1 contract](tasks/US-1705-agent-session-contract/README.md)
-  - [ ] US-1706: Phase 1 — `claude-agent` provider board (persephone-boards [BT-046](https://github.com/andriy-viyatyk/persephone-boards/blob/develop/doc/tasks/BT-046-claude-agent-board/README.md))
-  - [ ] US-1716: Board footer chip variant (`variant: "chip"` on status-bar text items, bridge 1.42.0) for the `claude-agent` footer
-  - [ ] US-1707: Phase 1 — Codex engine in the agent board (persephone-boards BT-048 adapter refactor → BT-049 Codex adapter → BT-050 rename)
-  - [ ] US-1708: Phase 2 — group chat in Agent Chat (roles, invited agents, `post_message`, shared delivery)
-- *(no epic)*
-  - [ ] US-1722: Board page tab keeps an old manifest name after the board is renamed (fixed in `BoardEditorModel.applyManifestTitle`, `manifestTitle` state)
+*(none)*
 
 ## Planned
 

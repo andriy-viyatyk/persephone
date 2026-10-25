@@ -89,6 +89,12 @@ async function handleRequest(message) {
 }
 
 persephone.service.onRequest(handleRequest);
+persephone.service.onChannel((channel, openMessage) => {
+    channel.onMessage((message) => {
+        channel.send({ type: "reply", received: message, openedWith: openMessage });
+    });
+    channel.send({ type: "ready", openedWith: openMessage });
+});
 persephone.service.onShutdown(async ({ reason }) => {
     console.info(`Demo service shutting down: ${reason}`);
 });

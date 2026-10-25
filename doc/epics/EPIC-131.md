@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed 2026-10-25
 **Created:** 2026-10-18
 
 ## Overview
@@ -342,15 +342,15 @@ token-gated HTTP like P0-C). The Codex path is unverified and is the first thing
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1703 | Phase 0: service channels — page ↔ own service, long-lived and streaming | Implemented |
-| US-1704 | Phase 0: cross-board service interfaces (`serviceInterfaces` / `uses` / `services.connect`) with trust disclosure | Implemented |
-| US-1709 | Phase 0: private token-gated Persephone MCP endpoint for in-app agent sessions | Implemented |
-| US-1710 | Phase 0: `format: "multiline"` board settings (Textarea in Settings → Editors) | Implemented |
-| [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Implemented |
-| US-1705 | Phase 1: `agent.session` v1 contract document | Implemented |
-| US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Implemented |
-| US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Implemented |
-| US-1708 | Phase 2: group chat in Agent Chat — roles, invited agents, `post_message`, shared delivery | Planned |
+| US-1703 | Phase 0: service channels — page ↔ own service, long-lived and streaming | Done |
+| US-1704 | Phase 0: cross-board service interfaces (`serviceInterfaces` / `uses` / `services.connect`) with trust disclosure | Done |
+| US-1709 | Phase 0: private token-gated Persephone MCP endpoint for in-app agent sessions | Done |
+| US-1710 | Phase 0: `format: "multiline"` board settings (Textarea in Settings → Editors) | Done |
+| [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Done |
+| US-1705 | Phase 1: `agent.session` v1 contract document | Done |
+| US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Done |
+| US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Done |
+| US-1708 | Phase 2: group chat in Agent Chat — roles, invited agents, `post_message`, shared delivery | Done |
 
 Phase 1 and 2 task documents are written after Phase 0 lands and after the CLI research below
 has been reviewed.
@@ -459,3 +459,9 @@ has been reviewed.
 - Owner decision after a live three-agent discussion that recommended a hop limit: no hop limit.
   Master moderates loops and repetition and tells agents by name to stop; joined agents follow
   Master's instructions right after the user's (`GROUP_CORE` in service.mjs).
+
+### 2026-10-25 — Epic closed
+- Close review (Codex `/review`, `/document`, `/userdoc`) over the persephone-side commits: four small
+  code fixes (explicit narrowing instead of non-null assertions, one permission-list call instead of
+  two), developer docs, board template and demo board (service channel probe; the demo now requires
+  bridge 1.42.0), and the boards and `agent.session` guides now name Agent Chat. No findings left open.

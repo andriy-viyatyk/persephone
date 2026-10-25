@@ -173,12 +173,12 @@ Choose the page chrome before writing the view:
   toolbar example. The page toolbar's native view is the canonical implementation for converted
   non-text editors. The toolbar clips its content; pass `overflowVisible: true` only when a toolbar
   control deliberately draws over the editor body, as the Video Player's URL input does while
-  focused (US-1564).
+  focused.
 - **`EditorStatusBarView`** — the shared footer. It shows the page's pipe status (loading, done,
   error) and provider icon; with a `host` it adds the script toggle and encoding, and
   `contributions` fills its slot. `TextChromeView` mounts it for you; a non-text editor whose page
   has a content pipe (Image, Video, Archive, boards) mounts it below its body. The pipe status
-  lives only here — not in the top toolbar (US-1565).
+  lives only here, not in the top toolbar.
 - **`TextChromeView`** — use for a text-host editor. It supplies the native host-aware toolbar,
   script panel, status bar footer, focus/key handling, and overlay slot. The editor's `View`
   composes it directly; the body is a native slot in its `children` slot.
