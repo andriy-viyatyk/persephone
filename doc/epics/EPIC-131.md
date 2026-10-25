@@ -346,7 +346,7 @@ token-gated HTTP like P0-C). The Codex path is unverified and is the first thing
 | US-1704 | Phase 0: cross-board service interfaces (`serviceInterfaces` / `uses` / `services.connect`) with trust disclosure | Done |
 | US-1709 | Phase 0: private token-gated Persephone MCP endpoint for in-app agent sessions | Done |
 | US-1710 | Phase 0: `format: "multiline"` board settings (Textarea in Settings → Editors) | Done |
-| [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Done |
+| US-1711 | Phase 0 follow-up: read board settings from a module service | Done |
 | US-1705 | Phase 1: `agent.session` v1 contract document | Done |
 | US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Done |
 | US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Done |
