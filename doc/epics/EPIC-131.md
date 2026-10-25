@@ -10,9 +10,9 @@
 Let boards drive the user's installed coding agents — Claude Code (Opus, Sonnet) and Codex
 (gpt-6-luna) — as long-lived, streaming, interruptible sessions. Phase 0 adds the two platform
 primitives this needs and nothing agent-specific. Phase 1 ships one provider board with
-two engines (Claude, Codex) and one single-agent chat, behind one shared `agent.session` contract. Phase 2 is a
-"team chat" board that consumes those providers and runs several agents in one conversation with
-configurable roles (for example chief / worker / critic).
+two engines (Claude, Codex) and one single-agent chat, behind one shared `agent.session` contract. Phase 2 turns
+any chat in that same board into a group chat: the user invites more agents, each with an editable
+role, and they talk in one conversation alongside the chat's main agent.
 
 ## Goals
 
@@ -24,8 +24,9 @@ configurable roles (for example chief / worker / critic).
   logins, with streaming output, interrupt, resume, and tool approvals shown in the UI (Phase 1).
 - Both implement one vendor-neutral `agent.session` contract, so consumers do not care which CLI
   is behind a session (Phase 1).
-- A team-chat board runs several agents with configurable roles in one chat, orchestrated by a
-  chief agent, with the user able to step in at any point (Phase 2).
+- Any Agent Chat conversation can invite more agents (Claude or Codex) with user-editable roles;
+  every participant sees every visible message, and each one posts results to the shared chat
+  through a board tool (Phase 2).
 
 ## Background (verified 2026-10-18)
 
@@ -202,8 +203,8 @@ Claude Code 2.1.302 / Agent SDK 0.3.302 / Codex 0.163.0, checked 2026-10-18):
   - Models from `model/list` at runtime (`gpt-6-luna` is in the local catalog, efforts low to max).
   - Codex reports tokens only (no cost) and has no max-turns or budget parameter, so the host
     enforces turn limits itself.
-- **Built-in subagents.** Both CLIs have them. In the Phase 2 team chat, disable Claude's `Agent`
-  tool and Codex `agents.enabled=false` (unverified through `-c`) so orchestration is not doubled.
+- **Built-in subagents.** Both CLIs have them. Phase 2 leaves them alone: invited agents are peers
+  the user adds, not an orchestration layer, so nothing is doubled.
 - **Windows.** Both can leave orphaned children. The provider owns a Job Object or uses
   `taskkill /T /F` on interrupt, close and shutdown. Claude's own sandbox is unsupported on native
   Windows; Codex has a native sandbox that needs setup, so default to approvals rather than
@@ -222,27 +223,109 @@ Claude Code 2.1.302 / Agent SDK 0.3.302 / Codex 0.163.0, checked 2026-10-18):
      manifest (`"type": "string", "format": "multiline"`, see P0-D), edited in Settings under the
      board's node in **Editors**. The default value ships in the manifest; the chat page links
      to the setting.
-  3. **Caller instructions** from the `open` message (`instructions` field), used for team-chat
+  3. **Caller instructions** from the `open` message (`instructions` field), used for group-chat
      roles in Phase 2.
   - Delivered as an *addition* to the CLI's own system prompt, not a replacement, so built-in tool
     guidance and the repo's `CLAUDE.md` / `AGENTS.md` keep loading. Claude uses the append option;
     the Codex mechanism (developer instructions or equivalent) comes from the research file.
   - The chat page can show the composed instructions of a session, so the user can see exactly
     what the agent was told.
-  - Layer 2 is per provider (each board has its own settings). A team-chat role's instructions
-    are layer 3, configured in the team-chat board's own settings or role config.
+  - Layer 2 is per provider. A group-chat role's instructions are layer 3 (see Phase 2).
 
-### Phase 2 — team chat board
+### Phase 2 — group chat inside Agent Chat *(redesigned 2026-10-25)*
 
-- Roles are configuration: provider, model, role prompt, permission level per role.
-- One native session per agent; before each turn the board sends that agent only what was said
-  since its last turn.
-- The chief returns a structured routing decision (`{ next, task }` or `done`); the board executes
-  it. The user can @mention, pause, or override at any time.
-- Shared artifacts (plan, review) live on disk in the shared `cwd`, not only in chat.
-- One writer at a time on the repo; other roles run read-only.
-- Turn limits and token budgets per request; visible usage per agent.
-- Possible addition: expose the chat to agents as MCP tools (`post_message`, `ask(role, …)`).
+No separate team-chat board. With Claude and Codex already behind one service, group chat is a
+feature of the Agent Chat board (`claude-agent`): it reuses the chat UI, the session lifecycle,
+approvals and the provider adapters, and needs no cross-board `uses` connection.
+
+**Roles.** A role is a name, two instruction texts and a permission preset:
+- **Agent instructions** — full text given to the joined agent as layer 3: how to behave in that
+  role.
+- **Summary for the chat** — a short description of what this role does and what it can be asked
+  for, so Master (and the other agents) know what each participant is for and Master can delegate
+  work by asking that agent by name in the chat.
+
+The board ships a few
+defaults (for example Reviewer, Critic, Researcher); the user adds, edits and deletes roles in the
+board. Roles are board-level, not per chat, and are owned by the service (stored next to its other
+data), so every chat and every engine sees the same list.
+
+**Inviting an agent.** Every chat gets a **+ Invite agent** chip after the effort chip. It opens a
+panel above the input with: role, name, engine/model, effort, and **Add**. The name is prefilled
+from a built-in pool of names, skipping any already used in this chat, and the user can change it.
+Only the user invites agents in v1 (no agent-initiated invites). On add, the chat shows a notice
+visible to everyone: *Agent Nova (Reviewer) joined*, followed by the role's summary for the chat.
+The board collapses the summary under the notice (expandable), but the delivered message carries
+it in full, so Master and every other participant read it. Removing an agent works the same way,
+with a *left* notice.
+
+**One session per participant.** Each invited agent gets its own native session (same `cwd` as the
+chat), opened with the role instructions as layer 3. Its full working view — tool calls, file
+reads, reasoning — stays in its own session. The sidebar does not list these sessions as separate
+chats; they nest under their parent chat, and the user can open one read-only to watch it work.
+Once a chat has at least one invited agent, its sidebar row shows a **group icon** instead of the
+Claude or Codex icon. The icon keeps the main agent's engine color and the same idle/active
+states, so the main engine is still readable at a glance.
+
+**What is shared.** Only *visible* messages travel between sessions, never tool calls or tool
+results:
+- the user's messages;
+- the main agent's final reply text of each turn;
+- an invited agent's posts, made through a board MCP tool (`post_message(text)`). An invited
+  agent's own reply text is not copied to the chat; only what it posts is.
+
+Every visible message is delivered, in full, to every other participant. The volume is small (the
+token weight of a chat is in tool traffic, which is never copied).
+
+**Headers are stamped by the board, never written by agents.** Each delivered message starts with
+one parsable header line, added by the board's tool or delivery code, for example
+`[[from: Nova | role: Reviewer]]`, `[[from: user]]`, `[[from: Master | role: main]]`. The chat UI parses the
+header and renders an author badge (name, role, engine icon in its color) instead of the raw line.
+The exact format is fixed in the task document.
+
+**Delivery.** A message reaches an agent as a new user turn. If the agent is mid-turn, messages
+queue and arrive together as one turn when it goes idle. The main agent receives every post too,
+so its transcript already holds the whole shared timeline with headers: reopening a chat rebuilds
+it from the main transcript. A small per-chat participants file (name, role, engine, model,
+effort, session id) is the only extra state, so invited agents resume with the chat.
+
+**Joining mid-conversation.** A new participant's first turn carries the visible history so far
+(headers included), not the main agent's tool traffic.
+
+**Names and positions.** Every participant has a name and knows it. The main agent is named
+**Master** by default; invited agents get their names at invite time. Anyone — the user or another
+agent — can address a participant by name, Master included. Each agent also knows its position:
+*main* or *joined*.
+
+**Group-chat instructions are core, always injected.** The group rules live in the environment
+preamble (layer 1), which the provider generates and the user cannot edit, so they are present in
+every session whatever the user writes in their own instructions (layer 2). Every session gets
+them from the start, solo chats included: the agent's own name and position, that other agents
+may join, how to read the header, and that messages with the `user` header come from the user.
+Kept short, so a chat that never becomes a group pays little for it. The behavior rules depend
+on the position:
+- **Main (Master):** answers the user's questions unless the user explicitly names another agent.
+  Answers its own name when another agent addresses it. May delegate work to a joined agent by
+  asking it by name in the chat, based on the role summaries it has received.
+- **Joined:** helps according to its role (for example critique, review the plan, review the
+  implementation) and publishes through `post_message`. Answers a question only when it is called
+  by name. Otherwise it speaks only when the role calls for it; silence is an acceptable answer.
+
+Because instructions are fixed per session (see Phase 1), the preamble carries only the rules,
+not the participant list. The current participants (names and roles) come with the join/leave
+notices delivered to every session, and a joining agent's first turn lists everyone already there.
+
+**Ping-pong.** Prevented by instructions first (general rule above plus each role's text), tuned
+during testing. A hop limit (pause delivery after N consecutive agent messages with no user
+message) is a fallback to add only if testing shows it is needed. **Stop all** interrupts every
+participant.
+
+**Approvals.** Each role has a permission preset; the default is read-only. If a role is allowed to
+ask, its approval cards appear in the main chat under that agent's badge.
+
+**MCP for `post_message`.** Claude: an in-process SDK MCP server per session. Codex: app-server
+needs a server it can reach, so the board service hosts a small local endpoint (stdio shim or
+token-gated HTTP like P0-C). The Codex path is unverified and is the first thing the task checks.
 
 ## Linked Tasks
 
@@ -255,8 +338,8 @@ Claude Code 2.1.302 / Agent SDK 0.3.302 / Codex 0.163.0, checked 2026-10-18):
 | [US-1711](../tasks/US-1711-service-board-settings/README.md) | Phase 0 follow-up: read board settings from a module service | Implemented |
 | US-1705 | Phase 1: `agent.session` v1 contract document | Implemented |
 | US-1706 | Phase 1: `claude-agent` provider board (persephone-boards BT-046) | Implemented |
-| US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Planned |
-| US-1708 | Phase 2: team chat board | Planned |
+| US-1707 | Phase 1: Codex engine in the agent board (persephone-boards BT-048 refactor, BT-049 Codex adapter, BT-050 rename) | Implemented |
+| US-1708 | Phase 2: group chat in Agent Chat — roles, invited agents, `post_message`, shared delivery | Planned |
 
 Phase 1 and 2 task documents are written after Phase 0 lands and after the CLI research below
 has been reviewed.
@@ -276,8 +359,11 @@ has been reviewed.
   OpenAI has no statement either way on host apps reusing a local Codex login. Personal use first;
   decide before publishing the provider boards to the boards site. Quotes and links are in the
   research file, section 3.
-- **Approval fatigue** with several agents: per-role default policies.
-- **Cost and runaway loops:** turn limits, budgets, and an explicit `done` from the chief.
+- **Approval fatigue** with several agents: per-role permission presets, read-only by default.
+- **Agent ping-pong and cost:** every delivered message starts a turn in each recipient. Handled by
+  instructions first; hop limit as a fallback if testing shows loops. Prompt caching keeps the
+  re-read of each session cheap.
+- **Codex MCP for `post_message`:** how app-server reaches a board-hosted tool is unverified.
 - **Windows process trees:** kill the whole tree on interrupt/close/shutdown within 2 seconds.
 
 ## Notes
@@ -328,3 +414,23 @@ has been reviewed.
   implemented and tested by the user; committed on persephone-boards `develop`, not yet released.
 - BT-050: the board is renamed **Agent Chat** and keeps the `claude-agent` id (user decision), so
   existing installs update in place and nothing needs migrating.
+
+### 2026-10-25 — Phase 2 redesigned as group chat inside Agent Chat
+- User proposal, refined in discussion: no separate team-chat board (it would duplicate the chat UI
+  and session handling). Replaces the earlier chief-routing design (structured `{ next, task }`
+  decisions, one writer, per-turn diffs).
+- Decided with the user: editable board-level roles; **+ Invite agent** with a prefilled unique
+  name; invited agents post through a board MCP tool; the board stamps a parsable author header on
+  every delivered message; all visible messages go in full to all participants (tool traffic
+  never); the main transcript is the shared timeline; ping-pong handled by instructions, tested
+  before adding a hop limit; read-only role preset by default; user-only invites; a group chat's
+  sidebar row shows a group icon in place of the engine icon.
+- Every agent knows its name and position. The main agent is **Master** by default and answers
+  the user unless the user names another agent; joined agents help per their role and answer only
+  when called by name. Anyone can address Master by name.
+- The naming and group rules are core instructions: always injected through the non-editable
+  layer-1 preamble of every session, solo chats included, separate from the user's editable
+  instructions.
+- Each role has two texts: full agent instructions (layer 3 for the joined agent) and a short
+  summary for the chat, delivered with the join notice (collapsed in the UI, full in the message)
+  so Master knows each agent's role and can delegate to it by name.
