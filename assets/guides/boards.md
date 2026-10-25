@@ -238,6 +238,10 @@ trust or grant. Boards using this API declare `minBridgeVersion: "1.42.0"`.
 For a streaming coding-agent provider and consumer protocol over this channel, see the normative
 [`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`). The
 Agent Chat board uses this platform contract for its coding-agent sessions.
+
+`agent.session` and `speech.transcribe` are reserved platform ids; other ids use exactly `author/name`.
+For recording audio and getting text back from an installed speech-to-text board, see the normative
+[`speech.transcribe` v1 contract](./agents/speech-transcribe.md) (`guides.agents["speech-transcribe"]`).
 Bridge `1.41.0` adds `persephone.trashFile(path)`, which
 moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,

@@ -34,7 +34,7 @@ must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use pr
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted
-messages. `agent.session` is the reserved platform id; third-party ids use exactly `author/name`.
+messages. `agent.session` and `speech.transcribe` are reserved platform ids; other ids use exactly `author/name`.
 Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
 Only board pages can make these cross-board calls in this release; use

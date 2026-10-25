@@ -92,6 +92,12 @@ export const resourceFiles: IGuideResource[] = [
         description: "Normative provider and consumer contract for streaming, resumable agent sessions over board service channels.",
     },
     {
+        name: "speech-transcribe-guide",
+        uri: "persephone://guides/speech-transcribe",
+        file: "guides/agents/speech-transcribe.md",
+        description: "Normative provider and consumer contract for speech transcription over board service channels.",
+    },
+    {
         name: "languages-guide",
         uri: "persephone://guides/languages",
         file: "guides/agents/languages.md",

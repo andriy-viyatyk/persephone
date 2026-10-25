@@ -12,7 +12,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.15 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Speech transcription service contract:** Board authors can provide or consume the reserved `speech.transcribe` v1 interface using a documented record-then-transcribe channel contract.
 
 ---
 

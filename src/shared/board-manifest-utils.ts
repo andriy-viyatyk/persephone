@@ -2,7 +2,7 @@ import { normalizeBoardRelativePath } from "./guides/mounted-source";
 
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
 
-export const PLATFORM_SERVICE_INTERFACE_IDS = new Set(["agent.session"]);
+export const PLATFORM_SERVICE_INTERFACE_IDS = new Set(["agent.session", "speech.transcribe"]);
 export const MAX_SERVICE_INTERFACE_DECLARATIONS = 32;
 export const MAX_SERVICE_INTERFACE_ID_LENGTH = 160;
 export const MAX_SERVICE_INTERFACE_TITLE_LENGTH = 120;

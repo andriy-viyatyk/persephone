@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** In Progress
 **Created:** 2026-10-25
 
 ## Overview
@@ -110,7 +110,8 @@ or `{ type: "describe" }`, which asks for the provider's description and closes 
 **Provider → consumer:**
 
 - `{ type: "status", state: "preparing" | "listening" | "transcribing", detail? }` —
-  `preparing` covers first-run download and engine/model load and may carry `{ progress }`.
+  `preparing` means loading an already-installed engine/model and may carry `{ progress }`; downloads
+  are user-triggered separately, while a request made before installation returns `not-ready`.
 - `{ type: "result", text, language, audioMs, elapsedMs }` — then the provider closes.
 - `{ type: "error", code, message }` — then the provider closes. Codes: `not-ready` (engine or
   model not installed; the message says how to fix it), `unsupported-format`, `too-long`,
@@ -171,7 +172,7 @@ The final wording is US-1723's job; the guide is normative and the board tasks i
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| US-1723 | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | Planned |
+| [US-1723](../tasks/US-1723-speech-transcribe-contract/README.md) | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | In Progress |
 | BT-055 | persephone-boards | Whisper runtime build workflow and release | Planned |
 | BT-056 | persephone-boards | Speech to Text board — `speech.transcribe` provider | Planned |
 | BT-057 | persephone-boards | Agent Chat voice input | Planned |
@@ -182,10 +183,14 @@ BT-056 and BT-057 need a Persephone build that accepts the reserved id; both boa
 
 ## Concerns and open questions
 
-1. **No bridge-version bump expected.** US-1723 adds no board-facing API: the reservation is
-   manifest validation, and both boards gate on `minAppVersion`. US-1723 must confirm that an older
-   Persephone rejects the id cleanly (registration issue, not a crash) — if it does not, the
-   gate needs another approach.
+1. **Pre-reservation compatibility (resolved).** An older build rejects the bare id because it is
+   neither reserved nor in `author/name` form. `normalizeServiceDeclarations` reports the invalid
+   declaration and skips it; `parseBoardManifest` retains the rest of the manifest and records a
+   `service-interface` issue. Board Info exposes that issue as a warning, and the main trust
+   snapshot also omits the declaration through the shared normalizer. This is not whole-board
+   rejection, a custom-editor registration issue, or a crash. Boards should set `minAppVersion`
+   to the Persephone release that adds the reservation. No bridge-version bump is needed because
+   the service APIs already exist; only manifest validation changes.
 2. **Runtime hosting.** A release in persephone-boards keeps the download under the project's
    control, but the Publish Boards workflow treats `*-vX.Y.Z` tags as board releases. BT-055 must
    choose a tag shape the board publisher ignores.

@@ -413,7 +413,7 @@ per service. Same-board `info` contains `page: { boardId }`; cross-board calls a
 `channel-backpressure`, oversized service messages throw `channel-message-too-large`.
 
 Cross-board services use normalized manifest fields `serviceInterfaces: [{ id, version, title? }]`
-and `uses: [{ id, version }]`. `agent.session` is the reserved platform id; other ids use exactly
+and `uses: [{ id, version }]`. `agent.session` and `speech.transcribe` are reserved platform ids; other ids use exactly
 `author/name`. Versions are positive safe integers and require exact matches. The consumer's
 trusted `uses` set is the specific messaging grant; it does not require its own `service` or
 `execute` permission. Each provider must separately be trusted and have its `service` permission.
