@@ -43,7 +43,7 @@ Use `persephone.services.list("speech.transcribe")` to discover providers and `p
 }
 ```
 
-V1 accepts mono, signed 16-bit little-endian PCM at 16,000 samples per second. `languages` is optional; an absent or empty list asks the provider to detect the language. `prompt` is an optional vocabulary hint. Providers may reject a different format with `unsupported-format`.
+V1 accepts mono, signed 16-bit little-endian PCM at 16,000 samples per second. `languages` is optional; an absent or empty list asks the provider to detect the language, or to apply its own configured languages. One code asks the provider to transcribe in that language; several codes ask it to keep the transcript in one of them. `prompt` is an optional vocabulary hint. Providers may reject a different format with `unsupported-format`.
 
 `{ type: "describe" }` asks for provider metadata. The provider answers with one `description` message and closes the channel; it does not start recording or transcription.
 

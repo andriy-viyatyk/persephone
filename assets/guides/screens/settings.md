@@ -122,7 +122,7 @@ toolbar toggle to change one of those pages.
 ## Voice Typing
 
 In **General > Voice Typing**, press a shortcut with at least one modifier while the shortcut field
-is focused to assign it. Choose **Reset to default** to restore `Alt+V`. See [Keyboard
+is focused to assign it, or tap the right `Ctrl` key on its own to use **Right Ctrl**. Choose **Reset to default** to restore `Alt+V`. See [Keyboard
 Shortcuts](../shortcuts.md#voice-typing) for how to use dictation and the Speech to Text board
 requirement.
 

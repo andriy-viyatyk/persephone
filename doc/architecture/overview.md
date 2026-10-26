@@ -435,9 +435,12 @@ Voice Typing is a private app-shell controller, not a renderer service-registry 
 It listens on the shared board-channel event and accepts only its reserved `voice-typing:<windowId>`
 channel IDs; ports for ordinary board channels are left untouched for their owning board views.
 Main keeps each window's shortcut and activity state so it can consume matching keydowns before
-the focused editor or embedded browser handles them, and captures the exact app or browser guest
-`WebContents` at start. The renderer captures audio only after finding a provider; a short-lived,
-one-shot app-main-frame audio grant authorizes that capture. On result, main checks the captured
+the focused editor or embedded browser handles them; a configured right Ctrl tap is recognized on
+key release only when no other key was pressed during the tap. It captures the exact app or browser
+guest `WebContents` at start. The renderer opens microphone capture in parallel with provider
+channel setup and buffers audio until the provider accepts the channel; the overlay reports startup
+until audio begins flowing. A short-lived, one-shot app-main-frame audio grant authorizes capture.
+On result, main checks the captured
 target's focused frame and active editable element, then inserts into that same target. Main-frame
 targets use `WebContents.insertText()`; focused child frames use their own document's
 `execCommand("insertText")`, since `insertText()` can crash Chromium for cross-origin child-frame

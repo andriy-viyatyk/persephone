@@ -62,6 +62,8 @@ interface VoiceSession {
     stopRequested: boolean;
     channel?: VoiceServiceChannel;
     capture?: AudioCapture;
+    /** Set once the provider accepted the channel; audio captured before then waits in capture.pending. */
+    channelReady?: boolean;
     accepted?: { resolve: () => void; reject: (error: Error) => void };
     finished: boolean;
     resultReceived?: boolean;
@@ -230,65 +232,84 @@ export class VoiceTypingController {
         const session: VoiceSession = { id: sessionId, cancelled: false, stopRequested: false, finished: false };
         this.session = session;
         this.level = 0;
-        this.changeState("recording", 0);
+        this.changeState("starting", 0);
         this.timer = setInterval(() => {
             const capture = session.capture;
-            this.onState({ status: session.finished ? "idle" : session.stopRequested ? "transcribing" : "recording", binding: this.shortcut, level: this.level, durationMs: capture ? Date.now() - capture.startedAt : 0 });
+            const status = session.finished ? "idle" : session.stopRequested ? "transcribing" : capture ? "recording" : "starting";
+            this.onState({ status, binding: this.shortcut, level: this.level, durationMs: capture ? Date.now() - capture.startedAt : 0 });
         }, 150);
         void this.openProviderAndCapture(session);
     }
 
     private async openProviderAndCapture(session: VoiceSession): Promise<void> {
-        let stream: MediaStream | undefined;
+        // The microphone opens in parallel with the provider channel and buffers until the channel is accepted,
+        // so speech that starts right after the shortcut is not lost while the board service connects.
+        const microphone = this.openMicrophone(session);
         try {
-            const providers = await api.getBoardServiceProviders("speech.transcribe");
+            const [, capture] = await Promise.all([this.openChannel(session), microphone]);
             if (session.cancelled || this.session !== session) return;
-            const provider = providers.find((item) => item.version === 1);
-            if (!provider) throw Object.assign(new Error(t("voiceTyping.missingProvider")), { code: "missing-provider" });
-
-            const opened = this.waitForChannel(session);
-            const channelId = await api.connectHostServiceChannel({
-                provider: provider.provider,
-                version: 1,
-                openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 } },
-            });
-            const port = await this.waitForPort(channelId);
-            this.pendingPorts.delete(channelId);
-            session.channel = createVoiceServiceChannel(port);
-            this.observeChannel(session);
-            await opened;
-            if (session.cancelled || this.session !== session) return;
-            if (session.stopRequested) {
-                await this.endChannel(session);
-                return;
-            }
-            await api.armVoiceTypingMicrophone();
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
-            } finally {
-                await api.clearVoiceTypingMicrophone().catch(() => {});
-            }
-            if (session.cancelled || this.session !== session || session.stopRequested) {
-                stream?.getTracks().forEach((track) => track.stop());
-                if (session.stopRequested && !session.cancelled) await this.endChannel(session);
-                return;
-            }
-            if (!stream) throw new Error("The microphone stream was not available.");
-            session.capture = await this.startCapture(stream, session);
-            if (session.cancelled || this.session !== session) {
-                await this.stopCapture(session.capture);
-                return;
-            }
-            this.changeState("recording", 0);
+            session.channelReady = true;
+            if (capture) this.drainPending(capture);
+            if (session.stopRequested) await this.endChannel(session);
         } catch (error: unknown) {
-            await api.clearVoiceTypingMicrophone().catch(() => {});
-            stream?.getTracks().forEach((track) => track.stop());
+            void microphone.then((capture) => capture && this.stopCapture(capture)).catch(() => {});
             session.capture?.stream.getTracks().forEach((track) => track.stop());
             if (session.cancelled || this.session !== session) return;
             const code = this.errorCode(error);
             this.showError(code, error);
             await this.finishSession(session);
         }
+    }
+
+    private async openChannel(session: VoiceSession): Promise<void> {
+        const providers = await api.getBoardServiceProviders("speech.transcribe");
+        if (session.cancelled || this.session !== session) return;
+        const provider = providers.find((item) => item.version === 1);
+        if (!provider) throw Object.assign(new Error(t("voiceTyping.missingProvider")), { code: "missing-provider" });
+
+        const opened = this.waitForChannel(session);
+        const channelId = await api.connectHostServiceChannel({
+            provider: provider.provider,
+            version: 1,
+            openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 } },
+        });
+        const port = await this.waitForPort(channelId);
+        this.pendingPorts.delete(channelId);
+        session.channel = createVoiceServiceChannel(port);
+        this.observeChannel(session);
+        await opened;
+    }
+
+    /** Resolves with the live capture, or undefined when the session ended before the microphone opened. */
+    private async openMicrophone(session: VoiceSession): Promise<AudioCapture | undefined> {
+        let stream: MediaStream | undefined;
+        try {
+            await api.armVoiceTypingMicrophone();
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+            } finally {
+                await api.clearVoiceTypingMicrophone().catch(() => {});
+            }
+            if (session.cancelled || session.finished || this.session !== session || session.stopRequested) {
+                stream.getTracks().forEach((track) => track.stop());
+                return undefined;
+            }
+            session.capture = await this.startCapture(stream, session);
+            if (session.cancelled || session.finished || this.session !== session) {
+                await this.stopCapture(session.capture);
+                return undefined;
+            }
+            if (!session.stopRequested) this.changeState("recording", 0);
+            return session.capture;
+        } catch (error: unknown) {
+            await api.clearVoiceTypingMicrophone().catch(() => {});
+            stream?.getTracks().forEach((track) => track.stop());
+            throw error;
+        }
+    }
+
+    private drainPending(capture: AudioCapture): void {
+        while (capture.pending.length >= AUDIO_CHUNK_SAMPLES) this.queuePcm(capture, capture.pending.splice(0, AUDIO_CHUNK_SAMPLES));
     }
 
     private waitForChannel(session: VoiceSession): Promise<void> {
@@ -386,6 +407,7 @@ export class VoiceTypingController {
             }
             if (data.type === "level" && typeof data.value === "number") {
                 this.level = data.value;
+                if (session.stopRequested) return;
                 this.onState({ status: "recording", binding: this.shortcut, level: this.level, durationMs: Date.now() - capture.startedAt });
             } else if (data.type === "samples" && data.data && !capture.stopped) {
                 this.consumeSamples(capture, data.data, session);
@@ -420,7 +442,7 @@ export class VoiceTypingController {
             return;
         }
         capture.pending.push(...output);
-        while (capture.pending.length >= AUDIO_CHUNK_SAMPLES) this.queuePcm(capture, capture.pending.splice(0, AUDIO_CHUNK_SAMPLES));
+        if (session.channelReady) this.drainPending(capture);
     }
 
     private queuePcm(capture: AudioCapture, samples: number[]): void {
@@ -444,7 +466,7 @@ export class VoiceTypingController {
         session.stopRequested = true;
         const duration = this.captureDuration(session);
         this.changeState("transcribing", duration);
-        if (session.capture) void this.endChannel(session);
+        if (session.capture && session.channelReady) void this.endChannel(session);
     }
 
     private async endChannel(session: VoiceSession): Promise<void> {
@@ -538,9 +560,10 @@ export class VoiceTypingController {
         this.changeState("idle", 0);
     }
 
-    private changeState(state: "idle" | "recording" | "transcribing", durationMs: number): void {
+    private changeState(state: VoiceTypingOverlayState["status"], durationMs: number): void {
         this.onState({ status: state, binding: this.shortcut, level: this.level, durationMs });
-        void api.setVoiceTypingState({ state }).catch((error: unknown) => {
+        // The main process only distinguishes idle, recording, and transcribing; starting is part of recording.
+        void api.setVoiceTypingState({ state: state === "starting" ? "recording" : state }).catch((error: unknown) => {
             ui.notify(errMessage(error, t("voiceTyping.failed")), "error");
         });
     }

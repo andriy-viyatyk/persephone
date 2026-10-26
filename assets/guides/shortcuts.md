@@ -38,8 +38,11 @@ it opens the About page at the guide contents.
 ### Voice Typing
 
 Install and trust the Speech to Text board from Tools & Editors, then use `Alt+V` to start dictation
-in the focused input. Press the same shortcut again to stop and transcribe; press `Esc` to cancel
-recording or a pending transcription. Configure the shortcut in **Settings > General > Voice Typing**.
+in the focused input. Wait for **Recording** if the overlay first shows **Starting microphone…**.
+Press the same shortcut again to stop and transcribe; press `Esc` to cancel recording or a pending
+transcription. Configure the shortcut in **Settings > General > Voice Typing**;
+it can also be a tap of the right `Ctrl` key alone (**Right Ctrl**), which leaves right `Ctrl`
+combinations such as `Ctrl+C` working.
 If the original input is no longer editable when the transcript returns, Persephone copies the text
 to the clipboard instead.
 

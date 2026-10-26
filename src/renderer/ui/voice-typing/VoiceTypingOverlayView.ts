@@ -3,8 +3,11 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { getOverlayLayer } from "../../uikit/shared/overlayLayer";
 import "./VoiceTypingOverlayView.css";
 
+/** Speech RMS rarely exceeds 0.4; this matches the Speech to Text board's recorder meter. */
+const LEVEL_SCALE = 2.6;
+
 export interface VoiceTypingOverlayState {
-    status: "idle" | "recording" | "transcribing";
+    status: "idle" | "starting" | "recording" | "transcribing";
     binding: string;
     level: number;
     durationMs: number;
@@ -33,11 +36,15 @@ export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
 
     public updateState(state: VoiceTypingOverlayState): void {
         this.root.hidden = state.status === "idle";
-        if (state.status === "recording") {
+        if (state.status === "starting") {
+            this.label.textContent = t("voiceTyping.starting");
+            this.details.textContent = "";
+            this.meter.hidden = true;
+        } else if (state.status === "recording") {
             this.label.textContent = t("voiceTyping.recording", { binding: state.binding });
             this.details.textContent = t("voiceTyping.recordingDuration", { seconds: (state.durationMs / 1000).toFixed(0) });
             this.meter.hidden = false;
-            this.meter.style.setProperty("--voice-typing-level", `${Math.max(0, Math.min(1, state.level)) * 100}%`);
+            this.meter.style.setProperty("--voice-typing-level", `${Math.max(0, Math.min(1, state.level * LEVEL_SCALE)) * 100}%`);
         } else if (state.status === "transcribing") {
             this.label.textContent = t("voiceTyping.transcribing");
             this.details.textContent = "";

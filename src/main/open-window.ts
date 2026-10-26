@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { EventEndpoint } from "../ipc/api-types";
-import { normalizeVoiceTypingShortcut, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
+import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
 import { debounce, errMessage } from "../shared/utils";
 import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
@@ -54,6 +54,7 @@ export class OpenWindow {
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
     private voiceTypingShortcut = "Alt+V";
+    private rightCtrlTapTarget: WebContents | undefined;
     private voiceTypingState: VoiceTypingState = "idle";
     private voiceTypingSession: { id: string; target: WebContents } | undefined;
 
@@ -414,19 +415,14 @@ export class OpenWindow {
     }
 
     private handleVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents, source: VoiceTypingSource): void {
+        if (this.voiceTypingShortcut === RIGHT_CTRL_SHORTCUT && this.isRightCtrlTap(input, target)) {
+            this.toggleVoiceTyping(target, source);
+            return;
+        }
         if (input.type !== "keyDown" || input.isAutoRepeat) return;
         if (inputMatchesShortcut(input, this.voiceTypingShortcut)) {
             event.preventDefault();
-            if (this.voiceTypingState === "transcribing") return;
-            if (this.voiceTypingState === "idle") {
-                const sessionId = crypto.randomUUID();
-                this.voiceTypingSession = { id: sessionId, target };
-                this.voiceTypingState = "recording";
-                this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", source });
-            } else if (this.voiceTypingSession) {
-                this.voiceTypingState = "transcribing";
-                this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingSession.id, action: "stop", source });
-            }
+            this.toggleVoiceTyping(target, source);
             return;
         }
         if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingSession) {
@@ -435,6 +431,36 @@ export class OpenWindow {
             this.voiceTypingState = "idle";
             this.clearVoiceTypingSession();
             this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "cancel", source });
+        }
+    }
+
+    /** True on the release of a right Ctrl press that had no other key pressed while it was held. */
+    private isRightCtrlTap(input: Electron.Input, target: WebContents): boolean {
+        const isRightCtrl = input.code === "ControlRight";
+        if (input.type === "keyDown") {
+            if (isRightCtrl) {
+                if (!input.isAutoRepeat) this.rightCtrlTapTarget = input.alt || input.shift || input.meta ? undefined : target;
+            } else {
+                this.rightCtrlTapTarget = undefined;
+            }
+            return false;
+        }
+        if (input.type !== "keyUp" || !isRightCtrl) return false;
+        const isTap = this.rightCtrlTapTarget === target;
+        this.rightCtrlTapTarget = undefined;
+        return isTap;
+    }
+
+    private toggleVoiceTyping(target: WebContents, source: VoiceTypingSource): void {
+        if (this.voiceTypingState === "transcribing") return;
+        if (this.voiceTypingState === "idle") {
+            const sessionId = crypto.randomUUID();
+            this.voiceTypingSession = { id: sessionId, target };
+            this.voiceTypingState = "recording";
+            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", source });
+        } else if (this.voiceTypingSession) {
+            this.voiceTypingState = "transcribing";
+            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingSession.id, action: "stop", source });
         }
     }
 

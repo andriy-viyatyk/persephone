@@ -5,6 +5,8 @@ const RESERVED_CHORDS = new Set([
     "F5", "F12", "Alt+ArrowLeft", "Alt+ArrowRight",
 ]);
 const RESERVED_KEYS = new Set(["Escape", "Enter", "Tab"]);
+/** A lone tap of the right Ctrl key, pressed and released with no other key in between. */
+export const RIGHT_CTRL_SHORTCUT = "Right Ctrl";
 
 function canonicalKey(key: string, code?: string): string {
     const keyboardCode = code ?? "";
@@ -17,6 +19,7 @@ function canonicalKey(key: string, code?: string): string {
 
 export function normalizeVoiceTypingShortcut(value: unknown): string | undefined {
     if (typeof value !== "string") return undefined;
+    if (["rightctrl", "rightcontrol", "controlright"].includes(value.replace(/\s+/g, "").toLowerCase())) return RIGHT_CTRL_SHORTCUT;
     const parts = value.split("+").map((part) => part.trim()).filter(Boolean);
     if (parts.length < 2) return undefined;
     const rawKey = parts.pop();

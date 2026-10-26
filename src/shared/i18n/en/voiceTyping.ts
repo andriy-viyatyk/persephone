@@ -1,6 +1,7 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const voiceTypingCatalog = {
+    starting: { message: "Starting microphone…", note: "Shown briefly after the shortcut until the microphone delivers audio; the user should wait for the Recording status before speaking." },
     recording: { message: "Recording — {binding} to stop, Esc to cancel", note: "Status shown while Persephone captures microphone audio. Keep `{binding}` unchanged; pressing that shortcut stops capture and starts transcription." },
     recordingDuration: { message: "{seconds}s", note: "Elapsed recording time displayed beside the audio level meter. Keep `{seconds}` unchanged." },
     transcribing: { message: "Transcribing — Esc to cancel", note: "Status shown after capture ends while the speech provider returns a transcript." },
