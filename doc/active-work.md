@@ -8,7 +8,8 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-134** — [Live transcription and meeting transcripts](epics/EPIC-134.md)
+  - [x] [US-1726: Research pause detection for live transcription](tasks/US-1726-pause-detection-research/README.md)
 
 ## Planned
 
