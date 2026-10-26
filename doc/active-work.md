@@ -10,6 +10,7 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-134** — [Live transcription and meeting transcripts](epics/EPIC-134.md)
   - [x] [US-1726: Research pause detection for live transcription](tasks/US-1726-pause-detection-research/README.md)
+  - [ ] US-1727: speech.transcribe live feature — guide and contract
 
 ## Planned
 

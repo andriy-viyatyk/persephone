@@ -1,7 +1,7 @@
 ---
 title: "Speech Transcription — the speech.transcribe v1 contract"
 audience: both
-summary: "Normative provider and consumer contract for record-then-transcribe audio over Persephone board service channels."
+summary: "Normative provider and consumer contract for record-then-transcribe audio, with an optional advertised live feature, over Persephone board service channels."
 ---
 
 # Speech Transcription — the `speech.transcribe` v1 contract
@@ -39,13 +39,14 @@ Use `persephone.services.list("speech.transcribe")` to discover providers and `p
   type: "transcribe",
   format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 },
   languages: ["uk", "en"], // optional ISO 639-1 hints; absent or [] means auto-detect
-  prompt: "Persephone, Codex, board" // optional vocabulary hint
+  prompt: "Persephone, Codex, board", // optional vocabulary hint
+  live: true // optional; use only when describe advertises "live"
 }
 ```
 
 V1 accepts mono, signed 16-bit little-endian PCM at 16,000 samples per second. `languages` is optional; an absent or empty list asks the provider to detect the language, or to apply its own configured languages. One code asks the provider to transcribe in that language; several codes ask it to keep the transcript in one of them. `prompt` is an optional vocabulary hint. Providers may reject a different format with `unsupported-format`.
 
-`{ type: "describe" }` asks for provider metadata. The provider answers with one `description` message and closes the channel; it does not start recording or transcription.
+`{ type: "describe" }` asks for provider metadata. The provider answers with one `description` message and closes the channel; it does not start recording or transcription. Send `live: true` only when that provider's `features` includes `"live"`. A provider that does not advertise it ignores the field and handles the request as ordinary v1, so consumers must still support the final result by itself.
 
 ## Consumer to provider
 
@@ -66,11 +67,13 @@ All provider messages are structured-cloneable objects with a string `type` disc
 | Message | Fields | Meaning |
 |---|---|---|
 | `status` | `state: "preparing" \| "listening" \| "transcribing"`, optional `detail` | `listening` is sent once immediately after accepting a `transcribe` open. `preparing` means loading an already-installed engine/model and may include numeric `detail.progress`; downloads are not part of a transcription request. `transcribing` means the provider is processing the completed audio. |
+| `draft` | `utterance`, `text`, `startMs`, `endMs` | Optional live preview for one utterance. Text is trimmed. A newer draft replaces the previous draft for that utterance; no draft is sent after its segment, and an utterance may have no draft. |
+| `segment` | `utterance`, `text`, `language`, `startMs`, `endMs` | Optional live final text for one utterance. Text is trimmed. Segments arrive in ascending utterance order; utterance ids may skip. |
 | `result` | `text`, `language`, `audioMs`, `elapsedMs` | The single successful transcription result. `language` is the ISO 639-1 code the provider detected or was instructed to use, or `""` when unknown. Send this once, then close. |
 | `error` | `code`, `message` | A terminal failure. Send a useful explanation, then close. |
 | `description` | `engine`, `model`, `languages`, `local`, `maxAudioMs`, `features` | Provider metadata returned only for `describe`. |
 
-`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum recording duration in milliseconds. V1 `features` is an array and is empty when the provider implements only this contract; do not infer extra behavior from the engine name.
+`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum recording duration in milliseconds. V1 `features` is an array of optional behaviors the provider supports (for example, `"live"`); Speech to Text advertises `features: ["live"]`, while providers with no optional features return `[]`. Consumers must not infer behavior that the provider did not advertise.
 
 Use these v1 error codes:
 
@@ -86,13 +89,13 @@ The provider may also refuse the connection before accepting the open request wi
 
 ## Lifecycle and limits
 
-One channel handles one request. The provider checks its approval policy before describing or accepting any request. For `transcribe`, it checks readiness at open: if the required engine or model is not installed, it immediately sends `not-ready` and closes without accepting the request or starting a download. Otherwise it accepts the request and sends `listening` exactly once, immediately. Consumers may start streaming as soon as `connect` resolves; they must not wait for `listening`. A service channel delivers each message only to the handlers registered when it arrives, so the provider registers `channel.onMessage` at the start of `onChannel`, before any `await`, and keeps what arrives until it accepts the request; otherwise early audio and even `end` are lost. The provider buffers audio received while it loads the already-installed engine/model. The normal status order is `listening` → after `end`, optional `preparing` → `transcribing` → exactly one `result` or `error`. Terminal pre-accept errors such as `not-ready` or `unsupported-format` may close without a status; `too-long` is sent immediately during streaming if the limit is exceeded, without waiting for `end`. `preparing` only reports loading an installed engine/model; first-run downloads are user-triggered separately. If the consumer sends `cancel`, stop work, send `error` with code `cancelled` when the channel is still writable, and close. On any `error`, the consumer stops microphone capture. If the channel closes first, stop recording/transcription work and release request-scoped resources. Do not keep sending after close.
+One channel handles one request. The provider checks its approval policy before describing or accepting any request. For `transcribe`, it checks readiness at open: if the required engine or model is not installed, it immediately sends `not-ready` and closes without accepting the request or starting a download. Otherwise it accepts the request and sends `listening` exactly once, immediately. Consumers may start streaming as soon as `connect` resolves; they must not wait for `listening`. A service channel delivers each message only to the handlers registered when it arrives, so the provider registers `channel.onMessage` at the start of `onChannel`, before any `await`, and keeps what arrives until it accepts the request; otherwise early audio and even `end` are lost. The provider buffers audio received while it loads the already-installed engine/model. In live mode, `draft` and `segment` messages may arrive while `listening`; `preparing` may also appear during `listening` if the engine is still loading when the first live job starts. After `end`, the provider sends `transcribing`, the remaining `draft` and `segment` messages, then exactly one `result` or `error`; the result keeps the v1 fields. For the Speech to Text provider, `result.text` is the nonempty segment texts joined with one space, and each segment's `startMs`/`endMs` is an offset from the first audio sample. After the first committed utterance containing at least two seconds of speech, that provider may fix the detected language for the rest of the live stream; each segment includes its own `language`. Without `live`, the normal status order is `listening` → after `end`, optional `preparing` → `transcribing` → exactly one `result` or `error`. Terminal pre-accept errors such as `not-ready` or `unsupported-format` may close without a status; `too-long` is sent immediately during streaming if the limit is exceeded, without waiting for `end`. `preparing` only reports loading an installed engine/model; first-run downloads are user-triggered separately. If the consumer sends `cancel`, stop work, send `error` with code `cancelled` when the channel is still writable, and close. On any `error`, the consumer stops microphone capture. If the channel closes first, stop recording/transcription work and release request-scoped resources. Do not keep sending after close.
 
 Each provider advertises its own `maxAudioMs` and enforces that limit for one recording. Speech to Text advertises five minutes; other providers may choose a different finite limit. Keep provider-to-consumer messages within the platform's 1 MiB serialized-message limit and obey channel backpressure. A single result contains text and timing, not audio.
 
 ## Forward compatibility
 
-Consumers must ignore unknown provider message types and unknown fields on known messages. Providers may add fields to v1 messages, but must preserve the meaning of existing fields and behavior. New optional behavior is advertised through `features`; v1 providers report `features: []`. An incompatible protocol change requires a new interface version and a separate contract. Live partial transcription is not part of v1.
+Consumers must ignore unknown provider message types and unknown fields on known messages. Providers may add fields to v1 messages, but must preserve the meaning of existing fields and behavior. New optional behavior is advertised through `features`; do not infer behavior without its feature being advertised. The additive `"live"` feature keeps v1 and is opt-in through `live: true`; providers that do not support it handle the request as ordinary v1, so consumers must continue to handle a final result without live messages. An incompatible protocol change requires a new interface version and a separate contract.
 
 ## Minimal consumer
 
@@ -134,7 +137,7 @@ stream.getTracks().forEach(track => track.stop());
 channel.send({ type: "end" });
 ```
 
-The consumer needs the manifest's `uses` declaration and microphone permission because it owns capture. It should insert returned text into its UI and must not send or submit that text automatically unless its own UX explicitly asks the user.
+The consumer needs the manifest's `uses` declaration and microphone permission because it owns capture. For live requests, insert each `segment` as final text, adding a separator before it when needed; show `draft.text` only as a replaceable preview, never as committed text. On `result`, do not insert `result.text` again if segments were inserted: it contains the same text joined by single spaces. A consumer that ignored live messages uses `result.text` as before. Consumers must not send or submit transcribed text automatically unless their own UX explicitly asks the user.
 
 ## Minimal provider
 
