@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** In Progress
+**Status:** Completed 2026-10-26
 **Created:** 2026-10-25
 
 ## Overview
@@ -172,7 +172,7 @@ The final wording is US-1723's job; the guide is normative and the board tasks i
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| [US-1723](../tasks/US-1723-speech-transcribe-contract/README.md) | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | Done |
+| US-1723 | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | Done |
 | BT-055 | persephone-boards | Whisper runtime build workflow and release | Done (`whisper-runtime-1.9.5-r1`) |
 | BT-056 | persephone-boards | Speech to Text board — `speech.transcribe` provider | Done (user-tested 2026-10-26; unpublished until 5.0.15) |
 | BT-057 | persephone-boards | Agent Chat voice input | Planned |

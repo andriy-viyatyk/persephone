@@ -43,7 +43,11 @@ The provider's existing `onChannel` callback receives `info.interface = { id, ve
 `info.caller = { id, name }`. Refuse with the normal close reason `connection-refused`. Main
 rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle
 changes. Local caller ids are hashed so the board path is not disclosed. Boards using this API
-must declare `minBridgeVersion: "1.42.0"`. Bridge `1.41.0` adds
+must declare `minBridgeVersion: "1.42.0"`. The reserved `speech.transcribe` interface has a
+[normative v1 contract](./speech-transcribe.md): consumers stream record-then-transcribe PCM audio
+and providers return one result or error per channel. The **Speech to Text** catalog board in
+`persephone-boards` provides it; **Agent Chat** gains a voice button when a provider is installed.
+Both boards require Persephone 5.0.15. Bridge `1.41.0` adds
 `persephone.trashFile(path)`, which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest masks to choose which claimed file names route to a singleton board page,
 `persephone.source.navigate(href)` to navigate the hosting page to an item in its initial source context,

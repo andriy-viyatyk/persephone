@@ -426,6 +426,15 @@ connect. The existing `onChannel` callback receives `info.interface = { id, vers
 `connection-refused`. Interface registration is many-to-many and does not use the one-owner content
 provider registry.
 
+The `speech.transcribe` v1 interface carries record-then-transcribe audio over one service channel:
+the consumer streams mono 16 kHz PCM s16le chunks, ends or cancels the request, and receives one
+result or error before the provider closes the channel. The provider owns its engine and caller
+approval policy; audio privacy and recording limits are described through provider metadata. The
+[Speech Transcription guide](../../assets/guides/agents/speech-transcribe.md) is the normative
+message and lifecycle contract. **Speech to Text** is a catalog board in `persephone-boards` that
+provides this interface. **Agent Chat** in that board catalog gains a voice button when a provider is
+installed, and inserts the transcription into its composer. Both boards require Persephone 5.0.15.
+
 ### `io` — Content Delivery API
 
 Provides access to content pipe providers, transformers, pipe assembly, and link events.

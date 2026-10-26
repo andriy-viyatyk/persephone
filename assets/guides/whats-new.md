@@ -14,7 +14,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
-- **Speech transcription service contract:** Board authors can provide or consume the reserved `speech.transcribe` v1 interface using a documented record-then-transcribe channel contract.
+- **Speech to text:** Install the Speech to Text catalog board from `persephone-boards` to provide speech transcription. Agent Chat shows a voice button when a provider is installed. Both boards require Persephone 5.0.15 or later; board authors can also use the reserved `speech.transcribe` v1 service contract.
 
 ---
 

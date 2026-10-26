@@ -1,3 +1,17 @@
+## EPIC-133 — Speech to text
+
+Completed 2026-10-26. You can dictate instead of typing. Persephone reserves a `speech.transcribe`
+v1 service contract. The persephone-boards **Speech to Text** board (`speech-to-text` v1.0.0)
+provides it with a local whisper.cpp engine, and **Agent Chat** (v1.3.0) consumes it through a voice
+button. Both boards require Persephone 5.0.15 and stay unpublished until it ships. Epic document:
+[EPIC-133](EPIC-133.md).
+
+- [x] **`speech.transcribe` contract (US-1723).** A reserved platform id, the normative v1 guide `guides.agents["speech-transcribe"]` and its MCP resource. The guide gained a rule: providers register `channel.onMessage` before any await, because the platform drops messages that arrive with no handler.
+- [x] **Whisper runtime (BT-055).** A manual workflow publishes `whisper-runtime-1.9.5-r1`, which has Vulkan and dynamically loaded CPU backends and bundled license notices.
+- [x] **Speech to Text board (BT-056).** It downloads the runtime and models with checksum checks and resume, transcribes on the GPU, and includes a test recorder.
+- [x] **Agent Chat voice input (BT-057).** It records, streams 16 kHz PCM and inserts the text at the caret without sending it. The user tested it with real speech in Ukrainian and English.
+- Board tasks are logged in persephone-boards. The close review left no findings open. A possible follow-up is for the platform to buffer channel messages until the first handler is registered.
+
 ## EPIC-131 — Agent sessions in boards
 
 Completed 2026-10-25. Boards can now host agent sessions: the persephone-boards **Agent Chat** board
