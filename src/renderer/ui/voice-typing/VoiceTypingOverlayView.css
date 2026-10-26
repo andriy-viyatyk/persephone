@@ -23,7 +23,15 @@
 
     .voice-typing-overlay > span:nth-child(2) { color: var(--color-text-light, currentColor); }
 
-    .voice-typing-overlay > span:nth-child(3) {
+    .voice-typing-overlay > .voice-typing-draft {
+        max-width: min(360px, 40vw);
+        overflow: hidden;
+        color: var(--color-text-light, currentColor);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .voice-typing-overlay > span:last-child {
         width: 48px;
         height: 4px;
         overflow: hidden;
@@ -31,7 +39,7 @@
         background: var(--color-border-light, currentColor);
     }
 
-    .voice-typing-overlay > span:nth-child(3)::before {
+    .voice-typing-overlay > span:last-child::before {
         content: "";
         display: block;
         width: var(--voice-typing-level, 0%);

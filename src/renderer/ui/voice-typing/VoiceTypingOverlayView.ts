@@ -11,11 +11,13 @@ export interface VoiceTypingOverlayState {
     binding: string;
     level: number;
     durationMs: number;
+    draft?: string;
 }
 
 export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
     private readonly label = document.createElement("span");
     private readonly details = document.createElement("span");
+    private readonly draft = document.createElement("span");
     private readonly meter = document.createElement("span");
 
     public constructor(props: Record<string, never>) {
@@ -23,7 +25,8 @@ export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
         this.root.className = "voice-typing-overlay";
         this.root.dataset.name = "voice-typing-overlay";
         this.root.setAttribute("aria-live", "polite");
-        this.root.append(this.label, this.details, this.meter);
+        this.draft.className = "voice-typing-draft";
+        this.root.append(this.label, this.details, this.draft, this.meter);
     }
 
     protected onMount(): void {
@@ -36,6 +39,9 @@ export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
 
     public updateState(state: VoiceTypingOverlayState): void {
         this.root.hidden = state.status === "idle";
+        const draft = state.draft ?? "";
+        this.draft.textContent = draft.length > 80 ? `…${draft.slice(-79)}` : draft;
+        this.draft.hidden = !this.draft.textContent;
         if (state.status === "starting") {
             this.label.textContent = t("voiceTyping.starting");
             this.details.textContent = "";

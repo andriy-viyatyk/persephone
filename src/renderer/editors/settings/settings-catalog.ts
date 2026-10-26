@@ -70,6 +70,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         where: "Settings > General > Voice Typing",
         rows: [
             { key: "voice-typing.shortcut", label: "Voice typing shortcut", purpose: "Shortcut used to start and stop speech transcription." },
+            { key: "voice-typing.auto-stop-silence-ms", label: "Stop after silence", purpose: "Milliseconds of microphone silence before voice typing stops." },
         ],
     },
     {

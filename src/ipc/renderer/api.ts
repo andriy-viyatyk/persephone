@@ -633,7 +633,7 @@ class ApiCalls implements Api {
     connectHostServiceChannel = async (request: { provider: string; version: number; openMessage: unknown }) =>
         executeOnce<string>(Endpoint.connectHostServiceChannel, request);
 
-    insertVoiceTypingText = async (request: { sessionId: string; text: string }) =>
+    insertVoiceTypingText = async (request: { sessionId: string; text: string; deferClipboard?: boolean }) =>
         executeOnce<{ copied: boolean }>(Endpoint.insertVoiceTypingText, request);
 
     armVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.armVoiceTypingMicrophone);

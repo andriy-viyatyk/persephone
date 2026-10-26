@@ -64,6 +64,7 @@ export type AppSettingsKey =
     | "board-vars.file"
     | "boards.default-author"
     | "voice-typing.shortcut"
+    | "voice-typing.auto-stop-silence-ms"
     | "boards.excalidraw-library-migrated";
 
 // =============================================================================
@@ -145,6 +146,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "board-vars.file": "Absolute path to the board environment-variables file (.env.json).\nHolds per-board variables and secrets, deliberately OUTSIDE board folders so a board\nfolder can be shared without its secrets. May be password-encrypted via the file's\nencryption menu, in which case its values cannot be read until the user unlocks it.",
     "boards.default-author": "Default author written into manifests for boards created by Persephone.\nEmpty means newly created boards have no stable author until you set one.",
     "voice-typing.shortcut": "Shortcut used to start and stop voice typing. Modifiers are written Ctrl, Alt, Shift, or Meta followed by one key; at least one modifier is required. Default: Alt+V.",
+    "voice-typing.auto-stop-silence-ms": "Stop voice typing after this many milliseconds of microphone silence once a committed speech segment exists and no utterance is pending. Allowed: 0 (off), 2000, 3000, 5000, 10000. Default: 0.",
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
@@ -194,6 +196,7 @@ const defaultAppSettingsState = {
         "board-vars.file": "",
         "boards.default-author": "",
         "voice-typing.shortcut": "Alt+V",
+        "voice-typing.auto-stop-silence-ms": 0,
         "boards.excalidraw-library-migrated": false,
     },
 };
@@ -204,6 +207,10 @@ export function normalizeClipboardMaxItems(value: unknown): number {
     return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 1000
         ? value
         : 100;
+}
+
+export function normalizeVoiceTypingAutoStopSilence(value: unknown): number {
+    return typeof value === "number" && [0, 2000, 3000, 5000, 10000].includes(value) ? value : 0;
 }
 
 /**
@@ -286,6 +293,7 @@ class Settings implements ISettings {
     set<T = unknown>(key: string, value: T): void;
     set(key: string, value: unknown): void {
         if (key === "voice-typing.shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+V";
+        if (key === "voice-typing.auto-stop-silence-ms") value = normalizeVoiceTypingAutoStopSilence(value);
         this.state.update((s) => {
             (s.settings as Record<string, unknown>)[key] = value;
         });
@@ -345,6 +353,7 @@ class Settings implements ISettings {
                 ...content,
             };
             newSettings["voice-typing.shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.shortcut"]) ?? "Alt+V";
+            newSettings["voice-typing.auto-stop-silence-ms"] = normalizeVoiceTypingAutoStopSilence(newSettings["voice-typing.auto-stop-silence-ms"]);
             const migratedPinnedEditors = migrateLegacyPinnedEditors(
                 newSettings["pinned-editors"],
             );

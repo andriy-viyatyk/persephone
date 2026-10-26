@@ -574,6 +574,7 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
 
 export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, never>> {
     private input: InputView | undefined;
+    private silenceSelect: SelectView<IListBoxItem> | undefined;
     private rightCtrlTapPending = false;
 
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
@@ -594,15 +595,32 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         }));
         row.append(reset.root);
         reset.mount();
-        const help = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingShortcutHelp"), { color: "light", size: "xs" }));
-        this.root.append(row, help);
+        const help = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingShortcutHelp"), { color: "light", size: "xs" }));
+        const silenceRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
+        silenceRow.append(settingsFieldLabel(t("settings.voiceTypingAutoStopLabel")));
+        this.silenceSelect = this.child(new SelectView(this.silenceSelectProps()));
+        silenceRow.append(this.silenceSelect.root);
+        this.silenceSelect.mount();
+        const silenceHelp = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingAutoStopHelp"), { color: "light", size: "xs" }));
+        this.root.append(row, help, silenceRow, silenceHelp);
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
+            if (key === "voice-typing.auto-stop-silence-ms") this.silenceSelect?.update(this.silenceSelectProps());
         });
         this.own(subscription);
     }
 
-    protected onDispose(): void { this.input = undefined; }
+    protected onDispose(): void { this.input = undefined; this.silenceSelect = undefined; }
+
+    private silenceSelectProps(): SelectViewProps<IListBoxItem> {
+        const values = [0, 2000, 3000, 5000, 10000];
+        const items: IListBoxItem[] = values.map((value) => ({
+            value,
+            label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
+        }));
+        const current = settings.get("voice-typing.auto-stop-silence-ms");
+        return { items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-silence-ms", Number(item?.value ?? 0)) };
+    }
 
     private inputProps(): InputProps {
         return {

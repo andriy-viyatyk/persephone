@@ -12,6 +12,7 @@ import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
 import { normalizeVoiceTypingShortcut } from "../../../shared/voice-typing-shortcut";
+import { toClipboard } from "../../core/utils/utils";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import type { VoiceTypingOverlayState } from "./VoiceTypingOverlayView";
 
@@ -39,7 +40,7 @@ const WORKLET_SOURCE = `class VoiceTypingProcessor extends AudioWorkletProcessor
             mono[i] = sum / channels.length;
             energy += mono[i] * mono[i];
         }
-        this.port.postMessage({ type: "level", value: Math.sqrt(energy / Math.max(1, mono.length)) });
+        this.port.postMessage({ type: "level", value: Math.sqrt(energy / Math.max(1, mono.length)), durationMs: mono.length / sampleRate * 1000 });
         this.port.postMessage({ type: "samples", data: mono }, [mono.buffer]);
         if (this.flushRequested) { this.port.postMessage({ type: "flushed" }); return false; }
         return true;
@@ -67,6 +68,20 @@ interface VoiceSession {
     accepted?: { resolve: () => void; reject: (error: Error) => void };
     finished: boolean;
     resultReceived?: boolean;
+    live?: boolean;
+    insertionQueue: Promise<void>;
+    insertedSegments: string[];
+    bufferedSegments: string[];
+    clipboardFallback: boolean;
+    draftUtterances: Set<string>;
+    draft?: string;
+    draftUtterance?: string;
+    acousticLevels: Array<{ startMs: number; endMs: number; value: number }>;
+    speechLevels: number[];
+    quietThreshold?: number;
+    segmentCount: number;
+    levelDurationMs: number;
+    quietSince?: number;
 }
 
 interface AudioCapture {
@@ -84,7 +99,10 @@ interface AudioCapture {
     startedAt: number;
     stopped: boolean;
     flushResolve?: () => void;
+    levelDurationMs: number;
 }
+
+const DESCRIBE_TIMEOUT_MS = 4_000;
 
 function createVoiceServiceChannel(port: MessagePort): VoiceServiceChannel {
     const messageHandlers = new Set<(message: unknown) => void>();
@@ -174,6 +192,7 @@ export class VoiceTypingController {
     private shortcutSubscription: (() => void) | undefined;
     private settingsSubscription: (() => void) | undefined;
     private readonly pendingPorts = new Map<string, MessagePort>();
+    private readonly describeCache = new Map<string, boolean>();
     private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
     private readonly onState: (state: VoiceTypingOverlayState) => void;
 
@@ -229,14 +248,19 @@ export class VoiceTypingController {
 
     private startSession(sessionId: string): void {
         if (this.session) void this.cancelSession(this.session.id);
-        const session: VoiceSession = { id: sessionId, cancelled: false, stopRequested: false, finished: false };
+        const session: VoiceSession = {
+            id: sessionId, cancelled: false, stopRequested: false, finished: false,
+            insertionQueue: Promise.resolve(), insertedSegments: [], bufferedSegments: [], clipboardFallback: false,
+            draftUtterances: new Set(), acousticLevels: [], speechLevels: [], segmentCount: 0, levelDurationMs: 0,
+        };
         this.session = session;
         this.level = 0;
         this.changeState("starting", 0);
         this.timer = setInterval(() => {
             const capture = session.capture;
             const status = session.finished ? "idle" : session.stopRequested ? "transcribing" : capture ? "recording" : "starting";
-            this.onState({ status, binding: this.shortcut, level: this.level, durationMs: capture ? Date.now() - capture.startedAt : 0 });
+            this.publishState(session, status, capture ? Date.now() - capture.startedAt : 0);
+            this.checkAutoStop(session);
         }, 150);
         void this.openProviderAndCapture(session);
     }
@@ -267,17 +291,60 @@ export class VoiceTypingController {
         const provider = providers.find((item) => item.version === 1);
         if (!provider) throw Object.assign(new Error(t("voiceTyping.missingProvider")), { code: "missing-provider" });
 
+        const cacheKey = `${provider.provider}@${provider.version}`;
+        let live = this.describeCache.get(cacheKey);
+        if (live === undefined) {
+            const described = await this.describeLiveFeature(session, provider.provider);
+            // Only a real description is remembered; a failed request is retried next time.
+            if (described !== undefined) this.describeCache.set(cacheKey, described);
+            live = described ?? false;
+        }
+        if (session.cancelled || this.session !== session) return;
+
         const opened = this.waitForChannel(session);
         const channelId = await api.connectHostServiceChannel({
             provider: provider.provider,
             version: 1,
-            openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 } },
+            openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(live ? { live: true } : {}) },
         });
         const port = await this.waitForPort(channelId);
         this.pendingPorts.delete(channelId);
         session.channel = createVoiceServiceChannel(port);
+        session.live = live;
         this.observeChannel(session);
         await opened;
+    }
+
+    private async describeLiveFeature(session: VoiceSession, provider: string): Promise<boolean | undefined> {
+        let channel: VoiceServiceChannel | undefined;
+        try {
+            const channelId = await api.connectHostServiceChannel({ provider, version: 1, openMessage: { type: "describe" } });
+            if (session.cancelled || this.session !== session) return undefined;
+            const port = await this.waitForPort(channelId);
+            this.pendingPorts.delete(channelId);
+            channel = createVoiceServiceChannel(port);
+            return await new Promise<boolean | undefined>((resolve) => {
+                let settled = false;
+                const finish = (value: boolean | undefined): void => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(timer);
+                    channel?.close();
+                    resolve(value);
+                };
+                const timer = setTimeout(() => finish(undefined), DESCRIBE_TIMEOUT_MS);
+                channel?.onMessage((message) => {
+                    if (!message || typeof message !== "object") return;
+                    const description = message as { type?: unknown; features?: unknown };
+                    if (description.type !== "description") return;
+                    finish(Array.isArray(description.features) && description.features.includes("live"));
+                });
+                channel?.onClose(() => finish(undefined));
+            });
+        } catch {
+            channel?.close();
+            return undefined;
+        }
     }
 
     /** Resolves with the live capture, or undefined when the session ended before the microphone opened. */
@@ -338,19 +405,45 @@ export class VoiceTypingController {
         if (!channel) return;
         channel.onMessage((message) => {
             if (!message || typeof message !== "object") return;
-            const value = message as { type?: unknown; state?: unknown; code?: unknown; message?: unknown; text?: unknown };
+            const value = message as { type?: unknown; state?: unknown; code?: unknown; message?: unknown; text?: unknown; utterance?: unknown; startMs?: unknown; endMs?: unknown };
             if (value.type === "status") {
                 if (value.state === "listening") session.accepted?.resolve();
                 if (value.state === "transcribing") this.changeState("transcribing", this.captureDuration(session));
+            } else if (value.type === "draft" && typeof value.text === "string") {
+                if (!session.live) return;
+                const utterance = this.utteranceId(value.utterance);
+                if (utterance !== undefined && !session.finished && !session.cancelled) {
+                    session.draftUtterances.add(utterance);
+                    session.draftUtterance = utterance;
+                    session.draft = value.text.length > 80 ? `…${value.text.slice(-79)}` : value.text;
+                    this.publishState(session, session.stopRequested ? "transcribing" : "recording", this.captureDuration(session));
+                }
+            } else if (value.type === "segment" && typeof value.text === "string") {
+                if (!session.live) return;
+                const utterance = this.utteranceId(value.utterance);
+                if (utterance !== undefined) {
+                    session.draftUtterances.delete(utterance);
+                    if (session.draftUtterance === utterance) {
+                        session.draftUtterance = undefined;
+                        session.draft = undefined;
+                    }
+                }
+                if (typeof value.startMs === "number" && typeof value.endMs === "number") {
+                    this.recordSpeechBaseline(session, value.startMs, value.endMs);
+                }
+                this.publishState(session, session.stopRequested ? "transcribing" : "recording", this.captureDuration(session));
+                this.queueSegment(session, value.text);
             } else if (value.type === "result" && typeof value.text === "string") {
                 session.resultReceived = true;
-                void this.insertResult(session, value.text);
+                this.clearDraft(session);
+                void this.finishLiveResult(session, value.text);
             } else if (value.type === "error") {
                 const error = Object.assign(new Error(typeof value.message === "string" ? value.message : ""), { code: value.code });
                 session.accepted?.reject(error);
                 if (value.code === "cancelled" && session.cancelled) return;
                 this.showError(typeof value.code === "string" ? value.code : "failed", error);
-                void this.finishSession(session);
+                this.clearDraft(session);
+                void session.insertionQueue.then(() => this.finishSession(session));
             }
         });
         channel.onClose((reason) => {
@@ -359,7 +452,8 @@ export class VoiceTypingController {
             session.accepted.reject(error);
             if (!session.finished && !session.cancelled && !session.resultReceived) {
                 this.showError(reason.code, error);
-                void this.finishSession(session);
+                this.clearDraft(session);
+                void session.insertionQueue.then(() => this.finishSession(session));
             }
         });
     }
@@ -398,8 +492,9 @@ export class VoiceTypingController {
             sendQueue: Promise.resolve(),
             startedAt: Date.now(),
             stopped: false,
+            levelDurationMs: 0,
         };
-        node.port.onmessage = ({ data }: MessageEvent<{ type: string; value?: number; data?: Float32Array }>): void => {
+        node.port.onmessage = ({ data }: MessageEvent<{ type: string; value?: number; data?: Float32Array; durationMs?: number }>): void => {
             if (data.type === "flushed") {
                 capture.flushResolve?.();
                 capture.flushResolve = undefined;
@@ -407,8 +502,13 @@ export class VoiceTypingController {
             }
             if (data.type === "level" && typeof data.value === "number") {
                 this.level = data.value;
+                const startMs = capture.levelDurationMs;
+                capture.levelDurationMs += data.durationMs ?? 0;
+                session.levelDurationMs = capture.levelDurationMs;
+                session.acousticLevels.push({ startMs, endMs: capture.levelDurationMs, value: data.value });
+                if (session.acousticLevels.length > 30_000) session.acousticLevels.splice(0, 10_000);
                 if (session.stopRequested) return;
-                this.onState({ status: "recording", binding: this.shortcut, level: this.level, durationMs: Date.now() - capture.startedAt });
+                this.publishState(session, "recording", Date.now() - capture.startedAt);
             } else if (data.type === "samples" && data.data && !capture.stopped) {
                 this.consumeSamples(capture, data.data, session);
             }
@@ -526,16 +626,82 @@ export class VoiceTypingController {
         const session = this.session;
         if (!session || session.id !== sessionId || session.finished) return;
         session.cancelled = true;
+        this.clearDraft(session);
         if (reason === "too-long") this.showError(reason);
         try { session.channel?.send({ type: "cancel" }); } catch { /* channel may already be closed */ }
         session.channel?.close({ code: reason, message: t(reason === "too-long" ? "voiceTyping.tooLong" : "voiceTyping.cancelled") });
         await this.finishSession(session);
     }
 
-    private async insertResult(session: VoiceSession, text: string): Promise<void> {
+    private queueSegment(session: VoiceSession, rawText: string): void {
+        const text = rawText.trim();
+        if (!text || session.finished || session.cancelled) return;
+        session.segmentCount++;
+        session.insertionQueue = session.insertionQueue.then(async () => {
+            if (session.finished || session.cancelled) return;
+            if (session.clipboardFallback) {
+                session.bufferedSegments.push(text);
+                return;
+            }
+            try {
+                const result = await api.insertVoiceTypingText({ sessionId: session.id, text, deferClipboard: true });
+                if (result.copied) {
+                    session.clipboardFallback = true;
+                    session.bufferedSegments.push(text);
+                } else {
+                    session.insertedSegments.push(text);
+                }
+            } catch (error: unknown) {
+                this.showError(this.errorCode(error), error);
+                session.clipboardFallback = true;
+                session.bufferedSegments.push(text);
+            }
+        });
+    }
+
+    private async finishLiveResult(session: VoiceSession, text: string): Promise<void> {
         if (session.finished || session.cancelled || this.session !== session) return;
-        // Whisper pads its output with a leading space and a trailing line break.
         text = text.trim();
+        await session.insertionQueue;
+        if (session.finished || session.cancelled || this.session !== session) return;
+        if (!session.live || session.segmentCount === 0) {
+            await this.insertFinalResult(session, text);
+            return;
+        }
+        const inserted = session.insertedSegments.join(" ");
+        const buffered = session.bufferedSegments.join(" ");
+        if (session.clipboardFallback) {
+            const expected = [inserted, buffered].filter(Boolean).join(" ");
+            if (text.startsWith(`${expected} `)) {
+                const suffix = text.slice(expected.length + 1);
+                if (suffix) session.bufferedSegments.push(suffix);
+            } else if (text !== expected) {
+                console.warn("Voice typing provider result did not match its committed segment contract.");
+            }
+            this.copyBuffered(session);
+            await this.finishSession(session);
+            return;
+        }
+        if (text === inserted) {
+            await this.finishSession(session);
+            return;
+        }
+        if (inserted && text.startsWith(`${inserted} `)) {
+            const suffix = text.slice(inserted.length + 1);
+            if (suffix) await this.insertFinalResult(session, suffix);
+            else await this.finishSession(session);
+            return;
+        }
+        if (!inserted) {
+            await this.insertFinalResult(session, text);
+            return;
+        }
+        console.warn("Voice typing provider result did not match its committed segment contract.");
+        await this.finishSession(session);
+    }
+
+    private async insertFinalResult(session: VoiceSession, text: string): Promise<void> {
+        if (session.finished || session.cancelled || this.session !== session) return;
         if (!text) { await this.finishSession(session); return; }
         try {
             const result = await api.insertVoiceTypingText({ sessionId: session.id, text });
@@ -547,9 +713,62 @@ export class VoiceTypingController {
         }
     }
 
+    private copyBuffered(session: VoiceSession): void {
+        const buffered = session.bufferedSegments.join(" ").trim();
+        if (!buffered || session.cancelled) return;
+        toClipboard(buffered);
+        ui.notify(t("voiceTyping.copied"), "info");
+        session.bufferedSegments = [];
+    }
+
+    private utteranceId(value: unknown): string | undefined {
+        return typeof value === "string" || typeof value === "number" ? String(value) : undefined;
+    }
+
+    private clearDraft(session: VoiceSession): void {
+        session.draft = undefined;
+        session.draftUtterance = undefined;
+        session.draftUtterances.clear();
+        this.publishState(session, session.stopRequested ? "transcribing" : "recording", this.captureDuration(session));
+    }
+
+    private publishState(session: VoiceSession, status: VoiceTypingOverlayState["status"], durationMs: number): void {
+        this.onState({ status, binding: this.shortcut, level: this.level, durationMs, draft: session.draft });
+    }
+
+    private recordSpeechBaseline(session: VoiceSession, startMs: number, endMs: number): void {
+        for (const sample of session.acousticLevels) {
+            if (sample.endMs > startMs && sample.startMs < endMs) session.speechLevels.push(sample.value);
+        }
+        if (!session.speechLevels.length) return;
+        // Quiet means below a fifth of the median level heard during committed speech.
+        const ordered = [...session.speechLevels].sort((left, right) => left - right);
+        const middle = Math.floor(ordered.length / 2);
+        const median = ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+        session.quietThreshold = Math.max(0.005, median * 0.2);
+    }
+
+    private checkAutoStop(session: VoiceSession): void {
+        if (session.finished || session.cancelled || session.stopRequested || !session.capture) return;
+        const duration = settings.get("voice-typing.auto-stop-silence-ms");
+        const threshold = session.quietThreshold;
+        if (!duration || session.segmentCount === 0 || session.draftUtterances.size > 0 || threshold === undefined) {
+            session.quietSince = undefined;
+            return;
+        }
+        if (this.level < threshold) {
+            session.quietSince ??= Date.now();
+            if (Date.now() - session.quietSince >= duration) this.stopSession(session.id);
+        } else {
+            session.quietSince = undefined;
+        }
+    }
+
     private async finishSession(session: VoiceSession): Promise<void> {
         if (session.finished) return;
         session.finished = true;
+        session.draft = undefined;
+        session.draftUtterances.clear();
         session.capture && await this.stopCapture(session.capture);
         session.channel?.close();
         await api.clearVoiceTypingMicrophone().catch(() => {});
@@ -561,7 +780,7 @@ export class VoiceTypingController {
     }
 
     private changeState(state: VoiceTypingOverlayState["status"], durationMs: number): void {
-        this.onState({ status: state, binding: this.shortcut, level: this.level, durationMs });
+        this.onState({ status: state, binding: this.shortcut, level: this.level, durationMs, draft: this.session?.draft });
         // The main process only distinguishes idle, recording, and transcribing; starting is part of recording.
         void api.setVoiceTypingState({ state: state === "starting" ? "recording" : state }).catch((error: unknown) => {
             ui.notify(errMessage(error, t("voiceTyping.failed")), "error");

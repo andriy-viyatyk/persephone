@@ -57,6 +57,7 @@ export class OpenWindow {
     private rightCtrlTapTarget: WebContents | undefined;
     private voiceTypingState: VoiceTypingState = "idle";
     private voiceTypingSession: { id: string; target: WebContents } | undefined;
+    private voiceTypingControlSession: { id: string; target: WebContents } | undefined;
 
     constructor(position?: { x: number; y: number }) {
         let windowState: WindowState = electronStore.get("windowState", {
@@ -136,6 +137,7 @@ export class OpenWindow {
             }
             this.window = null;
             this.clearVoiceTypingSession();
+            this.clearVoiceTypingControlSession();
             this.onClose?.(this);
         });
 
@@ -356,16 +358,19 @@ export class OpenWindow {
 
     setVoiceTypingState(state: VoiceTypingState): void {
         this.voiceTypingState = state;
-        if (state === "idle") this.clearVoiceTypingSession();
+        if (state === "idle") {
+            this.clearVoiceTypingSession();
+            this.clearVoiceTypingControlSession();
+        }
     }
 
     handleGuestVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents): void {
         this.handleVoiceTypingInput(event, input, target, { kind: "guest", webContentsId: target.id });
     }
 
-    async insertVoiceTypingText(sessionId: string, text: string): Promise<{ copied: boolean }> {
+    async insertVoiceTypingText(sessionId: string, text: string, deferClipboard = false): Promise<{ copied: boolean }> {
         const session = this.voiceTypingSession;
-        if (!session || session.id !== sessionId || this.voiceTypingState !== "transcribing") throw new Error("The voice typing session is no longer active.");
+        if (!session || session.id !== sessionId || !["recording", "transcribing"].includes(this.voiceTypingState)) throw new Error("The voice typing session is no longer active.");
         const target = session.target;
         if (!target.isDestroyed()) {
             const frame = target.focusedFrame;
@@ -393,6 +398,9 @@ export class OpenWindow {
                     const editable = typeof before === "string";
                     // Dictation continues the text: separate it from a preceding word.
                     if (before && !/\s/.test(before)) text = ` ${text}`;
+                    if (this.voiceTypingSession?.id !== sessionId || !["recording", "transcribing"].includes(this.voiceTypingState)) {
+                        throw new Error("The voice typing session is no longer active.");
+                    }
                     if (editable && !target.isDestroyed()) {
                         // webContents.insertText() crashes the renderer when focus is in a cross-origin
                         // child frame (a board iframe), so a child frame inserts through its own document.
@@ -400,7 +408,7 @@ export class OpenWindow {
                             ? await withDeadline(target.insertText(text).then(() => true), 1500, false)
                             : await withDeadline(frame.executeJavaScript(`document.execCommand("insertText", false, ${JSON.stringify(text)})`) as Promise<boolean>, 1500, false);
                         if (inserted) {
-                            this.clearVoiceTypingSession();
+                            if (!deferClipboard) this.clearVoiceTypingSession();
                             return { copied: false };
                         }
                     }
@@ -409,7 +417,7 @@ export class OpenWindow {
                 }
             }
         }
-        clipboard.writeText(text);
+        if (!deferClipboard) clipboard.writeText(text);
         this.clearVoiceTypingSession();
         return { copied: true };
     }
@@ -425,11 +433,12 @@ export class OpenWindow {
             this.toggleVoiceTyping(target, source);
             return;
         }
-        if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingSession) {
+        if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingControlSession) {
             event.preventDefault();
-            const sessionId = this.voiceTypingSession.id;
+            const sessionId = this.voiceTypingControlSession.id;
             this.voiceTypingState = "idle";
             this.clearVoiceTypingSession();
+            this.clearVoiceTypingControlSession();
             this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "cancel", source });
         }
     }
@@ -456,16 +465,21 @@ export class OpenWindow {
         if (this.voiceTypingState === "idle") {
             const sessionId = crypto.randomUUID();
             this.voiceTypingSession = { id: sessionId, target };
+            this.voiceTypingControlSession = { id: sessionId, target };
             this.voiceTypingState = "recording";
             this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", source });
-        } else if (this.voiceTypingSession) {
+        } else if (this.voiceTypingControlSession) {
             this.voiceTypingState = "transcribing";
-            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingSession.id, action: "stop", source });
+            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingControlSession.id, action: "stop", source });
         }
     }
 
     private clearVoiceTypingSession(): void {
         this.voiceTypingSession = undefined;
+    }
+
+    private clearVoiceTypingControlSession(): void {
+        this.voiceTypingControlSession = undefined;
     }
 
     ensureVisiblePosition = (bounds: WindowState): WindowState => {

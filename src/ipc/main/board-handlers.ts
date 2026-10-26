@@ -160,13 +160,13 @@ export function initBoardHandlers(): void {
         if (!request || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.connectHostServiceChannel(event.sender, request, request.openMessage);
     });
-    bindEndpoint(Endpoint.insertVoiceTypingText, async (event: IpcMainEvent, request: { sessionId: string; text: string }): Promise<{ copied: boolean }> => {
+    bindEndpoint(Endpoint.insertVoiceTypingText, async (event: IpcMainEvent, request: { sessionId: string; text: string; deferClipboard?: boolean }): Promise<{ copied: boolean }> => {
         if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
         const window = BrowserWindow.fromWebContents(event.sender);
         const openWindow = window && (await import("../../main/open-windows")).openWindows.findByWindow(window);
         if (!openWindow) throw new Error("permission-denied");
         if (!request || typeof request.sessionId !== "string" || typeof request.text !== "string") throw new TypeError("Invalid voice typing result.");
-        return openWindow.insertVoiceTypingText(request.sessionId, request.text);
+        return openWindow.insertVoiceTypingText(request.sessionId, request.text, request.deferClipboard);
     });
     bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
         return (await import("../../main/board-trust-service")).boardTrustService.getFileAccessGrants(boardRoot);

@@ -75,12 +75,12 @@ Phases 3–4 depend on phase 2's segmentation; phase 3 can be built in parallel 
 | BT-060 (persephone-boards) | Streaming VAD helper in the whisper runtime (`whisper-runtime-1.9.5-r2`) | Implemented |
 | BT-061 (persephone-boards) | Live segmentation in the Speech to Text service | Implemented |
 | US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Implemented |
+| [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Planned |
 
 Remaining phase-2 tasks proposed by US-1726:
 
 | Task | Repo | Size |
 |---|---|---|
-| Voice typing: insert committed segments as they arrive, draft in the overlay, optional auto-stop | persephone | M |
 | Agent Chat: live insertion with a grey draft | persephone-boards | S |
 | Audio left-context for short utterances (measure first) | persephone-boards | M |
 

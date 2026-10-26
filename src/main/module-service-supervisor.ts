@@ -728,8 +728,10 @@ class ModuleServiceSupervisor {
     async connectHostServiceChannel(target: WebContents, selector: { provider: string; version: number }, openMessage: unknown): Promise<string> {
         const interfaceId = "speech.transcribe";
         if (!selector || typeof selector.provider !== "string" || selector.version !== 1) throw new ServiceError("invalid-argument");
-        if (!openMessage || typeof openMessage !== "object" || (openMessage as { type?: unknown }).type !== "transcribe") {
-            throw new ServiceError("invalid-argument", "The host service channel accepts transcription requests only.");
+        const openType = openMessage && typeof openMessage === "object" ? (openMessage as { type?: unknown }).type : undefined;
+        // Voice typing asks the provider whether it supports live text before it transcribes.
+        if (openType !== "transcribe" && openType !== "describe") {
+            throw new ServiceError("invalid-argument", "The host service channel accepts describe and transcription requests only.");
         }
         await this.awaitTrustReady();
         const findProvider = (): TrustedBoardSnapshotEntry | undefined => this.trustedSnapshot?.boards.find((entry) =>
