@@ -172,9 +172,9 @@ The final wording is US-1723's job; the guide is normative and the board tasks i
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| [US-1723](../tasks/US-1723-speech-transcribe-contract/README.md) | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | In Progress |
-| BT-055 | persephone-boards | Whisper runtime build workflow and release | Planned |
-| BT-056 | persephone-boards | Speech to Text board — `speech.transcribe` provider | Planned |
+| [US-1723](../tasks/US-1723-speech-transcribe-contract/README.md) | persephone | Reserve `speech.transcribe` and publish its v1 contract guide | Done |
+| BT-055 | persephone-boards | Whisper runtime build workflow and release | Done (`whisper-runtime-1.9.5-r1`) |
+| BT-056 | persephone-boards | Speech to Text board — `speech.transcribe` provider | Done (user-tested 2026-10-26; unpublished until 5.0.15) |
 | BT-057 | persephone-boards | Agent Chat voice input | Planned |
 
 Order: US-1723 first (the contract the board tasks implement), then BT-055, BT-056, BT-057.
@@ -205,6 +205,26 @@ BT-056 and BT-057 need a Persephone build that accepts the reserved id; both boa
 6. **whisper-server API details** (language auto-detect output, prompt parameter, accepting raw
    PCM versus WAV) must be verified against the pinned tag in BT-056, not assumed.
 
+## Licensing
+
+Everything the epic uses is under permissive licenses (verified 2026-10-25 from the sources and
+license pages):
+
+| Component | License | How it reaches the user |
+|---|---|---|
+| whisper.cpp and ggml (ggml authors) | MIT | Built by BT-055, shipped in the runtime zip |
+| cpp-httplib 0.20.0, nlohmann/json 3.11.2, miniaudio 0.11.24, stb_vorbis 1.22 | MIT; miniaudio public domain or MIT-0; stb_vorbis MIT or public domain | Compiled into `whisper-server` |
+| Whisper model weights (OpenAI) | MIT | Downloaded by the user from `huggingface.co/ggerganov/whisper.cpp` |
+| Vulkan SDK and headers | Apache-2.0 | Build time only; never shipped |
+
+- The runtime zip carries a `licenses/` folder with every notice above. The build checks each
+  notice against the upstream source and fails if it changed.
+- The Speech to Text board shows a Third-party licenses section crediting OpenAI for the model
+  and the ggml authors for the engine, and links the bundled notices.
+- Model weights are never hosted by Persephone or persephone-boards; the user's own click
+  downloads them from Hugging Face.
+- The MSVC runtime is linked statically, so no Microsoft redistributable is shipped.
+
 ## Future work
 
 - **Live typing:** a grey draft of the phrase being spoken, replaced by committed text at each
@@ -227,3 +247,11 @@ BT-056 and BT-057 need a Persephone build that accepts the reserved id; both boa
   `whisper-server` residency recommended by Claude from the measurements above.
 - User decision: models and the engine runtime are never part of the board zip. The board page has
   a Mneme-style download UI, so board releases stay small and updates keep the downloaded files.
+
+### 2026-10-26
+- BT-055 published `whisper-runtime-1.9.5-r1` (zip SHA-256 `f3db3e57…e1d046`). With the published
+  engine on the Intel Arc machine, the 15 s Ukrainian clip took 5.8 s cold and 2.6 s warm; the CI
+  runner without a GPU fell back to CPU automatically.
+- whisper-server's `language_probabilities` costs a second language-detection pass per request, so
+  the provider sends `no_language_probabilities=true` and maps the reported language name to its
+  ISO code (BT-056).

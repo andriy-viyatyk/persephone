@@ -79,7 +79,7 @@ The provider may also refuse the connection before accepting the open request wi
 
 ## Lifecycle and limits
 
-One channel handles one request. The provider checks its approval policy before describing or accepting any request. For `transcribe`, it checks readiness at open: if the required engine or model is not installed, it immediately sends `not-ready` and closes without accepting the request or starting a download. Otherwise it accepts the request and sends `listening` exactly once, immediately. Consumers may start streaming as soon as `connect` resolves; they must not wait for `listening`. The provider buffers audio received while it loads the already-installed engine/model. The normal status order is `listening` → after `end`, optional `preparing` → `transcribing` → exactly one `result` or `error`. Terminal pre-accept errors such as `not-ready` or `unsupported-format` may close without a status; `too-long` is sent immediately during streaming if the limit is exceeded, without waiting for `end`. `preparing` only reports loading an installed engine/model; first-run downloads are user-triggered separately. If the consumer sends `cancel`, stop work, send `error` with code `cancelled` when the channel is still writable, and close. On any `error`, the consumer stops microphone capture. If the channel closes first, stop recording/transcription work and release request-scoped resources. Do not keep sending after close.
+One channel handles one request. The provider checks its approval policy before describing or accepting any request. For `transcribe`, it checks readiness at open: if the required engine or model is not installed, it immediately sends `not-ready` and closes without accepting the request or starting a download. Otherwise it accepts the request and sends `listening` exactly once, immediately. Consumers may start streaming as soon as `connect` resolves; they must not wait for `listening`. A service channel delivers each message only to the handlers registered when it arrives, so the provider registers `channel.onMessage` at the start of `onChannel`, before any `await`, and keeps what arrives until it accepts the request; otherwise early audio and even `end` are lost. The provider buffers audio received while it loads the already-installed engine/model. The normal status order is `listening` → after `end`, optional `preparing` → `transcribing` → exactly one `result` or `error`. Terminal pre-accept errors such as `not-ready` or `unsupported-format` may close without a status; `too-long` is sent immediately during streaming if the limit is exceeded, without waiting for `end`. `preparing` only reports loading an installed engine/model; first-run downloads are user-triggered separately. If the consumer sends `cancel`, stop work, send `error` with code `cancelled` when the channel is still writable, and close. On any `error`, the consumer stops microphone capture. If the channel closes first, stop recording/transcription work and release request-scoped resources. Do not keep sending after close.
 
 Each provider advertises its own `maxAudioMs` and enforces that limit for one recording. Speech to Text advertises five minutes; other providers may choose a different finite limit. Keep provider-to-consumer messages within the platform's 1 MiB serialized-message limit and obey channel backpressure. A single result contains text and timing, not audio.
 
@@ -133,6 +133,9 @@ The consumer needs the manifest's `uses` declaration and microphone permission b
 
 ```js
 persephone.service.onChannel(async (channel, open, info) => {
+  // Collect before any await: messages that arrive with no handler registered are dropped.
+  const early = [];
+  const stopEarly = channel.onMessage(message => early.push(message));
   // Check first: even describe and malformed requests disclose nothing to refused callers.
   if (!approvalPolicyAllows(info)) {
     channel.close({ code: "connection-refused", message: "This provider does not accept this caller." });
@@ -165,7 +168,7 @@ persephone.service.onChannel(async (channel, open, info) => {
   const engineReady = loadInstalledEngineAndModel();
   const chunks = [];
   let receivedAudioMs = 0;
-  channel.onMessage(async message => {
+  const handle = async message => {
     if (message.type === "audio") {
       receivedAudioMs += durationMs(message.data);
       if (receivedAudioMs > 300000) {
@@ -193,7 +196,11 @@ persephone.service.onChannel(async (channel, open, info) => {
         channel.close();
       }
     }
-  });
+  };
+  // Swap the collector for the real handler, then replay what arrived during the checks above.
+  stopEarly();
+  channel.onMessage(handle);
+  for (const message of early) void handle(message);
 });
 ```
 
