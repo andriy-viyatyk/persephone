@@ -28,6 +28,7 @@ not through `app.settings`.
 |     Theme                   | [Editor Behavior panel]               |
 |     Language                | [Language panel]                      |
 |     Window Behavior         | [Browser Profiles panel]               |
+|     Voice Typing            | [Voice Typing panel]                  |
 |     Clipboard               | [Links panel]                          |
 |     Terminal                | [MCP Server / Mneme panel]             |
 |   Editors                   | ...                                     |
@@ -58,6 +59,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Language → `language`
 - Window Behavior → `window.close-to-tray`
+- Voice Typing → `voice-typing.shortcut`
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
@@ -117,6 +119,13 @@ It controls the initial wrapping state only when a newly shown Text Editor page 
 state. Existing Text Editor pages keep their own persisted Word Wrap choice; use the Text Editor's
 toolbar toggle to change one of those pages.
 
+## Voice Typing
+
+In **General > Voice Typing**, press a shortcut with at least one modifier while the shortcut field
+is focused to assign it. Choose **Reset to default** to restore `Alt+V`. See [Keyboard
+Shortcuts](../shortcuts.md#voice-typing) for how to use dictation and the Speech to Text board
+requirement.
+
 ## Clipboard history
 
 The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
@@ -168,6 +177,7 @@ file. Section names are containers for highlighting rather than individual setti
 | Language | `[data-name="settings-section-language"]` |
 | Theme | `[data-name="settings-section-theme"]` |
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
+| Voice Typing | `[data-name="settings-section-voice-typing"]` |
 | Editor Behavior | `[data-name="settings-section-editor"]` |
 | Browser Profiles | `[data-name="settings-section-browser-profiles"]` |
 | Site Extensions section | `[data-name="settings-section-site-extensions"]` |
@@ -212,6 +222,7 @@ example.
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
+| `voice-typing.shortcut` | Defaults to `Alt+V`; starts and stops voice typing, and can be changed under General |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |

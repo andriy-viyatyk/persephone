@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import {
     app,
+    BrowserWindow,
     MessageChannelMain,
     type UtilityProcess,
     type WebContents,
@@ -716,6 +717,54 @@ class ModuleServiceSupervisor {
             record.process.postMessage({ kind: "channel-open", channelId, boardId, generation, openMessage, info }, [port2]);
             target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId, channelId }, [port1]);
         } catch (error) {
+            record.channels.delete(channelId);
+            try { port1.close(); } catch { /* already transferred */ }
+            try { port2.close(); } catch { /* already transferred */ }
+            throw new ServiceError("service-exited", errMessage(error));
+        }
+        return channelId;
+    }
+
+    async connectHostServiceChannel(target: WebContents, selector: { provider: string; version: number }, openMessage: unknown): Promise<string> {
+        const interfaceId = "speech.transcribe";
+        if (!selector || typeof selector.provider !== "string" || selector.version !== 1) throw new ServiceError("invalid-argument");
+        if (!openMessage || typeof openMessage !== "object" || (openMessage as { type?: unknown }).type !== "transcribe") {
+            throw new ServiceError("invalid-argument", "The host service channel accepts transcription requests only.");
+        }
+        await this.awaitTrustReady();
+        const findProvider = (): TrustedBoardSnapshotEntry | undefined => this.trustedSnapshot?.boards.find((entry) =>
+            this.providerKeys.get(normalizeRoot(entry.boardRoot)) === selector.provider,
+        );
+        const provider = findProvider();
+        if (!provider || !provider.service) throw new ServiceError("service-not-declared");
+        if (!provider.canStartService || !boardPermissionAllows(provider.permissions, "service")) throw new ServiceError("permission-denied");
+        if (!(provider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === 1)) throw new ServiceError("service-not-declared");
+        const providerRoot = normalizeRoot(provider.boardRoot);
+        const record = this.requireRecord(providerRoot);
+        await this.start(provider.boardRoot, "request");
+        const latestProvider = findProvider();
+        if (!latestProvider) throw new ServiceError("untrusted");
+        if (!latestProvider.service || !latestProvider.canStartService || !boardPermissionAllows(latestProvider.permissions, "service")) throw new ServiceError("permission-denied");
+        if (!(latestProvider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === 1)) throw new ServiceError("service-not-declared");
+        if (!record.process || record.state !== "running") throw new ServiceError("service-exited");
+        if (target.isDestroyed()) throw new ServiceError("service-exited");
+
+        const boardId = `voice-typing:${BrowserWindow.fromWebContents(target)?.id ?? target.id}`;
+        const boardChannels = [...record.channels.values()].filter((owner) => owner.boardId === boardId).length;
+        if (boardChannels >= MAX_SERVICE_CHANNELS_PER_BOARD || record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) throw new ServiceError("service-busy");
+        const channelId = crypto.randomUUID();
+        const generation = record.generation;
+        const { port1, port2 } = new MessageChannelMain();
+        record.channels.set(channelId, { boardId, generation, host: target, interfaceId, version: 1 });
+        const info = {
+            page: { boardId },
+            interface: { id: interfaceId, version: 1 },
+            caller: { id: "persephone", name: "Persephone" },
+        };
+        try {
+            record.process.postMessage({ kind: "channel-open", channelId, boardId, generation, openMessage, info }, [port2]);
+            target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId, channelId }, [port1]);
+        } catch (error: unknown) {
             record.channels.delete(channelId);
             try { port1.close(); } catch { /* already transferred */ }
             try { port2.close(); } catch { /* already transferred */ }

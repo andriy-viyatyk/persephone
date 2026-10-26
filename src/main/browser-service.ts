@@ -11,6 +11,7 @@
  * internal browser tabs per persephone page tab.
  */
 import { app, BrowserWindow, dialog, IpcMainEvent, IpcMainInvokeEvent, session, webContents, WebContents, WebFrameMain } from "electron";
+import { openWindows } from "./open-windows";
 import * as cheerio from "cheerio";
 import {
     BrowserChannel,
@@ -536,6 +537,9 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // it lives in `preload-webview.ts` instead.
     on("before-input-event", (_e: Electron.Event, input: Electron.Input) => {
         if (input.type !== "keyDown") return;
+        const parentWindow = BrowserWindow.fromWebContents(sender);
+        if (parentWindow) openWindows.findByWindow(parentWindow)?.handleGuestVoiceTypingInput(_e, input, wc);
+        if (_e.defaultPrevented) return;
         const reg = registrations.get(key);
         if (reg) reg.lastUserActivation = Date.now();
         // Escape leaves a page's HTML fullscreen, as in Chrome. Electron does not do it for a

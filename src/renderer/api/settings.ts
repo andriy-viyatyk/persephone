@@ -10,6 +10,7 @@ import { defaultSearchableExtensions, defaultMaxFileSize, defaultExcludePatterns
 import { wrapSubscription } from "./internal";
 import type { BrowserNetwork } from "../../ipc/browser-network-ipc";
 import type { ISettings } from "./types/settings";
+import { normalizeVoiceTypingShortcut } from "../../shared/voice-typing-shortcut";
 
 // =============================================================================
 // Types
@@ -62,6 +63,7 @@ export type AppSettingsKey =
     | "editor.word-wrap"
     | "board-vars.file"
     | "boards.default-author"
+    | "voice-typing.shortcut"
     | "boards.excalidraw-library-migrated";
 
 // =============================================================================
@@ -142,6 +144,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "editor.word-wrap": "Default word wrapping for newly shown Text Editor pages.\nBoolean. Default: false. This is read when a Text Editor page is first shown\nwithout saved page state; existing pages keep their own persisted choice.",
     "board-vars.file": "Absolute path to the board environment-variables file (.env.json).\nHolds per-board variables and secrets, deliberately OUTSIDE board folders so a board\nfolder can be shared without its secrets. May be password-encrypted via the file's\nencryption menu, in which case its values cannot be read until the user unlocks it.",
     "boards.default-author": "Default author written into manifests for boards created by Persephone.\nEmpty means newly created boards have no stable author until you set one.",
+    "voice-typing.shortcut": "Shortcut used to start and stop voice typing. Modifiers are written Ctrl, Alt, Shift, or Meta followed by one key; at least one modifier is required. Default: Alt+V.",
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
@@ -190,6 +193,7 @@ const defaultAppSettingsState = {
         "editor.word-wrap": false,
         "board-vars.file": "",
         "boards.default-author": "",
+        "voice-typing.shortcut": "Alt+V",
         "boards.excalidraw-library-migrated": false,
     },
 };
@@ -281,6 +285,7 @@ class Settings implements ISettings {
     set<K extends AppSettingsKey>(key: K, value: AppSettingsState["settings"][K]): void;
     set<T = unknown>(key: string, value: T): void;
     set(key: string, value: unknown): void {
+        if (key === "voice-typing.shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+V";
         this.state.update((s) => {
             (s.settings as Record<string, unknown>)[key] = value;
         });
@@ -339,6 +344,7 @@ class Settings implements ISettings {
                 ...defaultAppSettingsState.settings,
                 ...content,
             };
+            newSettings["voice-typing.shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.shortcut"]) ?? "Alt+V";
             const migratedPinnedEditors = migrateLegacyPinnedEditors(
                 newSettings["pinned-editors"],
             );

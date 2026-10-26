@@ -630,6 +630,20 @@ class ApiCalls implements Api {
     getBoardServiceProviders = async (interfaceId: string) =>
         executeOnce<import("../board-bridge-channels").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
 
+    connectHostServiceChannel = async (request: { provider: string; version: number; openMessage: unknown }) =>
+        executeOnce<string>(Endpoint.connectHostServiceChannel, request);
+
+    insertVoiceTypingText = async (request: { sessionId: string; text: string }) =>
+        executeOnce<{ copied: boolean }>(Endpoint.insertVoiceTypingText, request);
+
+    armVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.armVoiceTypingMicrophone);
+    clearVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.clearVoiceTypingMicrophone);
+    setVoiceTypingConfig = async (request: { shortcut: string }) => executeOnce<void>(Endpoint.setVoiceTypingConfig, request);
+    setVoiceTypingState = async (request: { state: "idle" | "recording" | "transcribing" }) => executeOnce<void>(Endpoint.setVoiceTypingState, request);
+
+    onVoiceTypingShortcut = (callback: (event: import("../api-types").EventApi[EventEndpoint.eVoiceTypingShortcut] extends import("../api-types").EventObject<infer T> ? T : never) => void) =>
+        window.electron.ipcRenderer.on(EventEndpoint.eVoiceTypingShortcut, callback as (...args: unknown[]) => void);
+
     getBoardFileAccessGrants = async (boardRoot: string) =>
         executeOnce<{ folderGrants: string[]; fileGrants: string[] }>(Endpoint.getBoardFileAccessGrants, boardRoot);
     revokeBoardFileAccessGrant = async (boardRoot: string, kind: "folder" | "file", canonicalPath: string) =>

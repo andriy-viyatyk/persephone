@@ -494,6 +494,12 @@ Only the matching main-frame video permission request is allowed, including Elec
 `mediaTypes` shape for desktop capture; audio remains disallowed. The corresponding permission
 check accepts video only while the grant is armed, and display-capture requests remain denied.
 
+Voice Typing has a separate short-lived, one-shot grant for audio capture. It is armed for the app
+renderer `webContents` only after a trusted transcription provider is found, and the permission
+request must be main-frame audio-only. The grant is consumed by that request and cleared on expiry,
+failure, cancellation, or window teardown; it does not authorize audio from app subframes, boards,
+or browser sessions. The video-recording grant remains video-only.
+
 For browser sessions, permission checks require a valid top-level HTTP(S) origin. They deny file
 system, storage-access, HID, serial, USB, and deprecated synchronous clipboard-read checks;
 media-key-system, fullscreen, pointer-lock, and sanitized clipboard-write checks are allowed.

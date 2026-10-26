@@ -19,6 +19,7 @@ import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
+import { voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -568,6 +569,56 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
         const items: IListBoxItem[] = TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
         if (command && !items.some((item) => item.value === command)) items.push({ value: command, label: command });
         return { items, value: items.find((item) => item.value === command) ?? items[0], onChange: (item) => settings.set("terminal.command", (item?.value as string) ?? "") };
+    }
+}
+
+export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, never>> {
+    private input: InputView | undefined;
+
+    public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
+
+    protected onMount(): void {
+        sectionHeader(this.root, t("settings.voiceTypingSettingTitle"), t("settings.voiceTypingSettingDescription"));
+        const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
+        row.append(settingsFieldLabel(t("settings.voiceTypingShortcutLabel")));
+        this.input = this.child(new InputView({
+            size: "sm",
+            width: 180,
+            value: settings.get("voice-typing.shortcut"),
+            readOnly: true,
+            "aria-label": t("settings.voiceTypingShortcutLabel"),
+            placeholder: t("settings.voiceTypingShortcutHelp"),
+            onKeyDown: (event) => this.captureShortcut(event),
+        }));
+        row.append(this.input.root);
+        this.input.mount();
+        const reset = this.child(new ButtonView({
+            size: "sm",
+            variant: "default",
+            onClick: () => settings.set("voice-typing.shortcut", "Alt+V"),
+            children: t("settings.voiceTypingResetShortcut"),
+        }));
+        row.append(reset.root);
+        reset.mount();
+        const help = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingShortcutHelp"), { color: "light", size: "xs" }));
+        this.root.append(row, help);
+        const subscription = settings.onChanged.subscribe(({ key }) => {
+            if (key === "voice-typing.shortcut") this.input?.update({ value: settings.get("voice-typing.shortcut") });
+        });
+        this.own(subscription);
+    }
+
+    protected onDispose(): void { this.input = undefined; }
+
+    private captureShortcut(event: KeyboardEvent): void {
+        event.preventDefault();
+        if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return;
+        const shortcut = voiceTypingShortcutFromKeyboardEvent(event);
+        if (!shortcut) {
+            ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning");
+            return;
+        }
+        settings.set("voice-typing.shortcut", shortcut);
     }
 }
 

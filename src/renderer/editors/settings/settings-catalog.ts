@@ -62,6 +62,19 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     {
         groupId: "general",
         groupTitleKey: "settings.groupGeneral",
+        id: "voice-typing",
+        titleKey: "settings.voiceTypingSettingTitle",
+        description: "Configure the shortcut used for speech transcription into the focused input.",
+        elementName: "settings-section-voice-typing",
+        panelName: "settings-panel-voice-typing",
+        where: "Settings > General > Voice Typing",
+        rows: [
+            { key: "voice-typing.shortcut", label: "Voice typing shortcut", purpose: "Shortcut used to start and stop speech transcription." },
+        ],
+    },
+    {
+        groupId: "general",
+        groupTitleKey: "settings.groupGeneral",
         id: "clipboard",
         titleKey: "settings.groupTitleClipboard",
         description: "Configure the opt-in clipboard history tracker and its item limit.",

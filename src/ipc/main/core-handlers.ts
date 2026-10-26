@@ -167,6 +167,36 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const window = BrowserWindow.fromWebContents(event.sender);
         return windowReady(window);
     }
+
+    setVoiceTypingConfig = async (event: IpcMainEvent, request: { shortcut: string }): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        if (!request || typeof request.shortcut !== "string" || !request.shortcut) throw new TypeError("A normalized voice typing shortcut is required.");
+        const window = BrowserWindow.fromWebContents(event.sender);
+        const openWindow = window && openWindows.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        openWindow.setVoiceTypingShortcut(request.shortcut);
+    }
+
+    setVoiceTypingState = async (event: IpcMainEvent, request: { state: "idle" | "recording" | "transcribing" }): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        if (!request || !["idle", "recording", "transcribing"].includes(request.state)) throw new TypeError("Invalid voice typing state.");
+        const window = BrowserWindow.fromWebContents(event.sender);
+        const openWindow = window && openWindows.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        openWindow.setVoiceTypingState(request.state);
+    }
+
+    armVoiceTypingMicrophone = async (event: IpcMainEvent): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        const { armVoiceTypingMediaGrant } = await import("../../main/permission-policy-service");
+        armVoiceTypingMediaGrant(event.sender.id);
+    }
+
+    clearVoiceTypingMicrophone = async (event: IpcMainEvent): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        const { clearVoiceTypingMediaGrant } = await import("../../main/permission-policy-service");
+        clearVoiceTypingMediaGrant(event.sender.id);
+    }
     getStartupInputs = async (_event: IpcMainEvent) => {
         return getStartupInputs();
     }
@@ -442,6 +472,10 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);
     bindEndpoint(Endpoint.closeWindow, controllerInstance.closeWindow);
     bindEndpoint(Endpoint.setCanQuit, controllerInstance.setCanQuit);
+    bindEndpoint(Endpoint.setVoiceTypingConfig, controllerInstance.setVoiceTypingConfig);
+    bindEndpoint(Endpoint.setVoiceTypingState, controllerInstance.setVoiceTypingState);
+    bindEndpoint(Endpoint.armVoiceTypingMicrophone, controllerInstance.armVoiceTypingMicrophone);
+    bindEndpoint(Endpoint.clearVoiceTypingMicrophone, controllerInstance.clearVoiceTypingMicrophone);
     bindEndpoint(Endpoint.showOpenFileDialog, controllerInstance.showOpenFileDialog);
     bindEndpoint(Endpoint.showSaveFileDialog, controllerInstance.showSaveFileDialog);
     bindEndpoint(Endpoint.showOpenFolderDialog, controllerInstance.showOpenFolderDialog);

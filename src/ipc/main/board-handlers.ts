@@ -1,4 +1,4 @@
-import type { IpcMainEvent } from "electron";
+import { BrowserWindow, type IpcMainEvent } from "electron";
 import { BOARD_CDP_TAB, Endpoint, type BoardLogLevel } from "../api-types";
 import type {
     BoardArchiveDownloadRequest,
@@ -12,6 +12,8 @@ import { errMessage } from "../../shared/utils";
 import { boardPermissionError } from "../../shared/board-manifest-utils";
 
 export type BoardEndpoint =
+    | Endpoint.connectHostServiceChannel
+    | Endpoint.insertVoiceTypingText
     | Endpoint.registerBoard
     | Endpoint.appendBoardLog
     | Endpoint.getBoardLogPath
@@ -150,6 +152,21 @@ export function initBoardHandlers(): void {
         const trust = (await import("../../main/board-trust-service")).boardTrustService;
         await trust.getPermissionGrants();
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.listServiceProviders(interfaceId);
+    });
+    bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: { provider: string; version: number; openMessage: unknown }): Promise<string> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (!window || !(await import("../../main/open-windows")).openWindows.findByWindow(window)) throw new Error("permission-denied");
+        if (!request || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
+        return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.connectHostServiceChannel(event.sender, request, request.openMessage);
+    });
+    bindEndpoint(Endpoint.insertVoiceTypingText, async (event: IpcMainEvent, request: { sessionId: string; text: string }): Promise<{ copied: boolean }> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        const window = BrowserWindow.fromWebContents(event.sender);
+        const openWindow = window && (await import("../../main/open-windows")).openWindows.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        if (!request || typeof request.sessionId !== "string" || typeof request.text !== "string") throw new TypeError("Invalid voice typing result.");
+        return openWindow.insertVoiceTypingText(request.sessionId, request.text);
     });
     bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
         return (await import("../../main/board-trust-service")).boardTrustService.getFileAccessGrants(boardRoot);

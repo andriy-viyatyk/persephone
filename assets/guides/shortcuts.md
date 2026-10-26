@@ -35,6 +35,14 @@ These shortcuts work regardless of which editor is active.
 `F1` is handled when focus is outside a Monaco editor. When no guide is mapped to the active editor,
 it opens the About page at the guide contents.
 
+### Voice Typing
+
+Install and trust the Speech to Text board from Tools & Editors, then use `Alt+V` to start dictation
+in the focused input. Press the same shortcut again to stop and transcribe; press `Esc` to cancel
+recording or a pending transcription. Configure the shortcut in **Settings > General > Voice Typing**.
+If the original input is no longer editable when the transcript returns, Persephone copies the text
+to the clipboard instead.
+
 ## Text Editor (Monaco)
 
 ### Editing
@@ -227,4 +235,5 @@ These file-operation shortcuts are disabled while typing in the panel's search b
 
 ## Custom Shortcuts
 
-Currently, keyboard shortcuts cannot be customized. This feature is planned for a future release.
+Voice typing's shortcut can be changed in **Settings > General > Voice Typing**. Other keyboard
+shortcuts cannot currently be customized.

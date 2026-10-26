@@ -157,6 +157,12 @@ export enum Endpoint {
     getBoardTrustPaths = "getBoardTrustPaths",
     getBoardPermissionGrants = "getBoardPermissionGrants",
     getBoardServiceProviders = "getBoardServiceProviders",
+    connectHostServiceChannel = "connectHostServiceChannel",
+    insertVoiceTypingText = "insertVoiceTypingText",
+    armVoiceTypingMicrophone = "armVoiceTypingMicrophone",
+    clearVoiceTypingMicrophone = "clearVoiceTypingMicrophone",
+    setVoiceTypingConfig = "setVoiceTypingConfig",
+    setVoiceTypingState = "setVoiceTypingState",
     getBoardFileAccessGrants = "getBoardFileAccessGrants",
     revokeBoardFileAccessGrant = "revokeBoardFileAccessGrant",
     grantBoardSourceReads = "grantBoardSourceReads",
@@ -397,6 +403,12 @@ export type Api = {
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
     [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge-channels").BoardServiceProvider[]>;
+    [Endpoint.connectHostServiceChannel]: (request: { provider: string; version: number; openMessage: unknown }) => Promise<string>;
+    [Endpoint.insertVoiceTypingText]: (request: { sessionId: string; text: string }) => Promise<{ copied: boolean }>;
+    [Endpoint.armVoiceTypingMicrophone]: () => Promise<void>;
+    [Endpoint.clearVoiceTypingMicrophone]: () => Promise<void>;
+    [Endpoint.setVoiceTypingConfig]: (request: { shortcut: string }) => Promise<void>;
+    [Endpoint.setVoiceTypingState]: (request: { state: "idle" | "recording" | "transcribing" }) => Promise<void>;
     [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
     [Endpoint.revokeBoardFileAccessGrant]: (boardRoot: string, kind: "folder" | "file", canonicalPath: string) => Promise<void>;
     [Endpoint.grantBoardSourceReads]: (boardRoot: string, sourcePaths: string[], contextPaths?: string[]) => Promise<void>;
@@ -485,6 +497,7 @@ export enum EventEndpoint {
     eBoardTrustChanged = "eBoardTrustChanged",
     eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
     ePathWatchBatch = "ePathWatchBatch",
+    eVoiceTypingShortcut = "eVoiceTypingShortcut",
 }
 
 export interface EventObject<T> {
@@ -493,6 +506,11 @@ export interface EventObject<T> {
 }
 
 export type EventApi = {
+    [EventEndpoint.eVoiceTypingShortcut]: EventObject<{
+        sessionId: string;
+        action: "start" | "stop" | "cancel";
+        source: "app" | { kind: "guest"; webContentsId: number };
+    }>;
     [EventEndpoint.eWindowMaximized]: EventObject<boolean>;
     [EventEndpoint.eBeforeQuit]: EventObject<void>;
     [EventEndpoint.eReloadForLanguage]: EventObject<void>;

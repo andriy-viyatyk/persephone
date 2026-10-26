@@ -21,6 +21,13 @@ Declare the exact interface version in `board-manifest.json`:
 
 `uses` grants messaging access only. It does not grant the provider's permissions or authorize the consumer to approve provider actions. Providers must be trusted and have their own `service` permission. A provider must apply its own approval policy to every caller. If it refuses a caller, close with the platform's normal `connection-refused` code.
 
+Persephone itself can consume `speech.transcribe@1` for Voice Typing. It identifies as caller
+`{ id: "persephone", name: "Persephone" }` and supplies the exact `speech.transcribe@1` interface
+metadata through a host-owned channel. A provider with `caller-approval-policy = accept-granted`
+accepts this reserved interface; `same-board-only` refuses the host caller with
+`connection-refused`. The app consumer does not need a board `uses` declaration or microphone
+permission because capture is granted separately to the Persephone window.
+
 Use `persephone.services.list("speech.transcribe")` to discover providers and `persephone.services.connect("speech.transcribe", selector, openMessage)` to open a cross-board channel. The provider handles cross-board and same-board opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants, channel limits, and lifecycle behavior.
 
 ## Opening requests

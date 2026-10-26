@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants, cross-process helpers, and i18n runtime/catalogs (errMessage, execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy)
+│   ├── shared/             # Shared types, constants, cross-process helpers, and i18n runtime/catalogs (errMessage, execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy, voice-typing shortcut normalization)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -334,6 +334,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
 │   │   └── PageContentView.ts        # Native page content and editor lifecycle
+│   ├── voice-typing/       # Private host controller for speech capture/transcription and its non-interactive overlay
+│   │   ├── VoiceTypingController.ts # Provider discovery, one channel, audio capture, cancellation, and result handoff
+│   │   ├── VoiceTypingOverlayView.ts # App-shell recording/transcribing status overlay
+│   │   └── VoiceTypingOverlayView.css
 │   ├── tabs/               # Tab bar
 │   │   ├── PageTabsView.ts         # Native tab strip and scroll projection
 │   │   ├── PageTab.ts              # Tab props/constants and shared helpers
@@ -939,7 +943,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
-├── open-window.ts          # Window creation logic
+├── open-window.ts          # Window creation, per-window voice-typing shortcut/state routing, and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)

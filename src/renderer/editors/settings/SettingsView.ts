@@ -30,6 +30,7 @@ import {
     TerminalSectionView,
     VideoPlayerSectionView,
     WindowBehaviorSectionView,
+    VoiceTypingSettingsSectionView,
 } from "./sections/SettingsSections";
 import { panel, text } from "./sections/settings-native";
 import "./settings.css";
@@ -80,6 +81,7 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     mcp: () => new McpSectionView({}),
     "git-integration": () => new GitIntegrationSectionView({}),
     "board-vars": () => new BoardVarsSectionView({}),
+    "voice-typing": () => new VoiceTypingSettingsSectionView({}),
 };
 
 const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {

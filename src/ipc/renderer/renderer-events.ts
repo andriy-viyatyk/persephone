@@ -48,6 +48,12 @@ class RendererEventObject<T> implements EventObject<T> {
 }
 
 class RendererEvents implements EventApi {
+    [EventEndpoint.eVoiceTypingShortcut] = new RendererEventObject<{
+        sessionId: string;
+        action: "start" | "stop" | "cancel";
+        source: "app" | { kind: "guest"; webContentsId: number };
+    }>(EventEndpoint.eVoiceTypingShortcut);
+
     [EventEndpoint.eWindowMaximized] = new RendererEventObject<boolean>(
         EventEndpoint.eWindowMaximized
     );

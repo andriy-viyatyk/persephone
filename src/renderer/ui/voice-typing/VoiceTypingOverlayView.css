@@ -1,0 +1,41 @@
+@layer app {
+    .voice-typing-overlay {
+        position: fixed;
+        z-index: 10000;
+        left: 50%;
+        bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: calc(100vw - 32px);
+        padding: 9px 14px;
+        border: 1px solid var(--color-border-active, currentColor);
+        border-radius: 18px;
+        background: var(--color-bg-overlay, var(--color-bg-dark, currentColor));
+        color: var(--color-text-default, currentColor);
+        transform: translateX(-50%);
+        pointer-events: none;
+        font: inherit;
+        font-size: 13px;
+    }
+
+    .voice-typing-overlay[hidden] { display: none; }
+
+    .voice-typing-overlay > span:nth-child(2) { color: var(--color-text-light, currentColor); }
+
+    .voice-typing-overlay > span:nth-child(3) {
+        width: 48px;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 3px;
+        background: var(--color-border-light, currentColor);
+    }
+
+    .voice-typing-overlay > span:nth-child(3)::before {
+        content: "";
+        display: block;
+        width: var(--voice-typing-level, 0%);
+        height: 100%;
+        background: var(--color-misc-blue, currentColor);
+    }
+}

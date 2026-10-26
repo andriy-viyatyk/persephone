@@ -424,6 +424,27 @@ Provider revocation closes its channels with `untrusted`; service-permission los
 `permission-denied`; consumer page teardown closes its owned channels with `renderer-reloaded`.
 Ordinary local caller identity uses a SHA-256 root hash so the provider never receives a local path.
 
+Persephone also has a narrowly scoped host-service channel for Voice Typing. It connects only to a
+trusted provider declaring `speech.transcribe@1`, after checking the provider's current trust,
+service permission, and interface declaration. Since the app is not a board consumer, this path
+does not require a board `uses` grant; it sends caller `{ id: "persephone", name: "Persephone" }`
+and the exact interface metadata. The channel is owned and closed by the module-service supervisor
+with the provider's normal lifecycle.
+
+Voice Typing is a private app-shell controller, not a renderer service-registry entry or board API.
+It listens on the shared board-channel event and accepts only its reserved `voice-typing:<windowId>`
+channel IDs; ports for ordinary board channels are left untouched for their owning board views.
+Main keeps each window's shortcut and activity state so it can consume matching keydowns before
+the focused editor or embedded browser handles them, and captures the exact app or browser guest
+`WebContents` at start. The renderer captures audio only after finding a provider; a short-lived,
+one-shot app-main-frame audio grant authorizes that capture. On result, main checks the captured
+target's focused frame and active editable element, then inserts into that same target. Main-frame
+targets use `WebContents.insertText()`; focused child frames use their own document's
+`execCommand("insertText")`, since `insertText()` can crash Chromium for cross-origin child-frame
+focus. Monaco's EditContext element is considered editable. If the captured target or insertion
+check is unavailable, main copies the transcript to the clipboard instead of redirecting it to a
+different target.
+
 The static service host imports the entry before sending `ready` and owns lifecycle messages for
 entries using `persephone.service.onRequest()` and `onShutdown()`. Request handlers are registered
 during top-level evaluation; their return values become responses, and rejections preserve a

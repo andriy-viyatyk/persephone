@@ -1,4 +1,4 @@
-import { app, session, type Session, type WebContents } from "electron";
+import { app, session, webContents, type Session, type WebContents } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { appPartition, fileAccessPersistPartition } from "./constants";
@@ -45,6 +45,8 @@ let fileAccessSession: Session;
 let promptHandler: PermissionPromptHandler | undefined;
 let initialized = false;
 const recordingMediaGrants = new Map<number, number>();
+const voiceTypingMediaGrants = new Map<number, number>();
+const voiceTypingGrantTargets = new Map<number, { target: WebContents; onDestroyed: () => void }>();
 
 /** Arm one app-main-frame, video-only permission request for a window source capture. */
 export function armRecordingMediaGrant(webContentsId: number): void {
@@ -58,10 +60,43 @@ export function clearRecordingMediaGrant(webContentsId: number): void {
     recordingMediaGrants.delete(webContentsId);
 }
 
+/** Arm one short-lived app-main-frame, audio-only permission request for voice typing. */
+export function armVoiceTypingMediaGrant(webContentsId: number): void {
+    clearVoiceTypingMediaGrant(webContentsId);
+    voiceTypingMediaGrants.set(webContentsId, Date.now() + 5000);
+    const target = webContents.fromId(webContentsId);
+    if (target) {
+        const onDestroyed = (): void => clearVoiceTypingMediaGrant(webContentsId);
+        voiceTypingGrantTargets.set(webContentsId, { target, onDestroyed });
+        target.once("destroyed", onDestroyed);
+    }
+    setTimeout(() => {
+        if ((voiceTypingMediaGrants.get(webContentsId) ?? 0) <= Date.now()) clearVoiceTypingMediaGrant(webContentsId);
+    }, 5100);
+}
+
+export function clearVoiceTypingMediaGrant(webContentsId: number): void {
+    voiceTypingMediaGrants.delete(webContentsId);
+    const target = voiceTypingGrantTargets.get(webContentsId);
+    if (target) {
+        target.target.removeListener("destroyed", target.onDestroyed);
+        voiceTypingGrantTargets.delete(webContentsId);
+    }
+}
+
 function hasRecordingMediaGrant(webContentsId: number): boolean {
     const expiresAt = recordingMediaGrants.get(webContentsId);
     if (!expiresAt || expiresAt <= Date.now()) {
         recordingMediaGrants.delete(webContentsId);
+        return false;
+    }
+    return true;
+}
+
+function hasVoiceTypingMediaGrant(webContentsId: number): boolean {
+    const expiresAt = voiceTypingMediaGrants.get(webContentsId);
+    if (!expiresAt || expiresAt <= Date.now()) {
+        voiceTypingMediaGrants.delete(webContentsId);
         return false;
     }
     return true;
@@ -238,9 +273,10 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
     if (ses === appSession) {
         if (details.isMainFrame === true) {
             if (APP_ALLOW.has(permission as string)) return true;
-            return permission === "media" && request.webContents !== null
-                && hasRecordingMediaGrant(request.webContents.id)
-                && details.mediaType === "video";
+            if (permission !== "media" || request.webContents === null) return false;
+            return details.mediaType === "audio"
+                ? hasVoiceTypingMediaGrant(request.webContents.id)
+                : details.mediaType === "video" && hasRecordingMediaGrant(request.webContents.id);
         }
         const requestingOrigin = requesterOrigin(origin);
         if (permission === "media" && details.securityOrigin) {
@@ -279,9 +315,13 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
             // A chromeMediaSource "desktop" request arrives with an empty `mediaTypes` (verified on
             // Electron 43), so accept empty or video-only — never audio — while the one-shot grant is armed.
             const types = media.mediaTypes ?? [];
-            const allowed = permission === "media" && types.every((type) => type === "video")
+            const isVoiceTypingAudio = permission === "media" && details.isMainFrame === true
+                && types.length === 1 && types[0] === "audio" && hasVoiceTypingMediaGrant(webContents.id);
+            const isScreenRecordingVideo = permission === "media" && types.every((type) => type === "video")
                 && hasRecordingMediaGrant(webContents.id);
-            if (allowed) clearRecordingMediaGrant(webContents.id);
+            const allowed = isVoiceTypingAudio || isScreenRecordingVideo;
+            if (isVoiceTypingAudio) clearVoiceTypingMediaGrant(webContents.id);
+            if (isScreenRecordingVideo && allowed) clearRecordingMediaGrant(webContents.id);
             callback(allowed);
             return;
         }

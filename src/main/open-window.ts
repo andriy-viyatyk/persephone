@@ -1,12 +1,13 @@
-import { app, BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, clipboard, screen, type WebContents } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { EventEndpoint } from "../ipc/api-types";
+import { normalizeVoiceTypingShortcut, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
+import { debounce, errMessage } from "../shared/utils";
 import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
 import { appPartition } from "./constants";
-import { debounce } from "../shared/utils";
 import { getBoardRootForHost } from "./board-protocol-service";
 
 interface WindowState {
@@ -16,6 +17,35 @@ interface WindowState {
     y?: number;
 }
 
+type VoiceTypingState = "idle" | "recording" | "transcribing";
+type VoiceTypingSource = "app" | { kind: "guest"; webContentsId: number };
+
+function inputMatchesShortcut(input: Electron.Input, shortcut: string): boolean {
+    return voiceTypingShortcutForInput(input) === shortcut;
+}
+
+function withDeadline<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
+    return new Promise<T>((resolve) => {
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            resolve(fallback);
+        }, milliseconds);
+        promise.then((value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+        }, () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(fallback);
+        });
+    });
+}
+
 export class OpenWindow {
     index = 0;
     window: BrowserWindow;
@@ -23,6 +53,9 @@ export class OpenWindow {
     canQuit = false;
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
+    private voiceTypingShortcut = "Alt+V";
+    private voiceTypingState: VoiceTypingState = "idle";
+    private voiceTypingSession: { id: string; target: WebContents } | undefined;
 
     constructor(position?: { x: number; y: number }) {
         let windowState: WindowState = electronStore.get("windowState", {
@@ -101,6 +134,7 @@ export class OpenWindow {
                 this.quitTimeout = null;
             }
             this.window = null;
+            this.clearVoiceTypingSession();
             this.onClose?.(this);
         });
 
@@ -122,6 +156,8 @@ export class OpenWindow {
 
         this.window.webContents.on("before-input-event", (event, input) => {
             if (!this.window) return;
+
+            this.handleVoiceTypingInput(event, input, this.window.webContents, "app");
 
             if (input.control || input.meta) {
                 if (input.key === "+" || input.key === "=") {
@@ -290,6 +326,7 @@ export class OpenWindow {
     close = () => {
         const win = this.window;
         this.window = null;
+        this.clearVoiceTypingSession();
         this.onClose?.(this);
         if (win) {
             win.destroy();
@@ -311,6 +348,99 @@ export class OpenWindow {
             }
         }
     }, 500);
+
+    setVoiceTypingShortcut(shortcut: string): void {
+        this.voiceTypingShortcut = normalizeVoiceTypingShortcut(shortcut) ?? "Alt+V";
+    }
+
+    setVoiceTypingState(state: VoiceTypingState): void {
+        this.voiceTypingState = state;
+        if (state === "idle") this.clearVoiceTypingSession();
+    }
+
+    handleGuestVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents): void {
+        this.handleVoiceTypingInput(event, input, target, { kind: "guest", webContentsId: target.id });
+    }
+
+    async insertVoiceTypingText(sessionId: string, text: string): Promise<{ copied: boolean }> {
+        const session = this.voiceTypingSession;
+        if (!session || session.id !== sessionId || this.voiceTypingState !== "transcribing") throw new Error("The voice typing session is no longer active.");
+        const target = session.target;
+        if (!target.isDestroyed()) {
+            const frame = target.focusedFrame;
+            if (frame) {
+                try {
+                    // Returns the character before the caret ("" at the start), or null when nothing editable has focus.
+                    const before = await withDeadline(frame.executeJavaScript(`(() => {
+                        const element = document.activeElement;
+                        const textInput = element instanceof HTMLTextAreaElement
+                            || element instanceof HTMLInputElement && ["text", "search", "url", "tel", "email", "password", "number"].includes(element.type);
+                        if (textInput) {
+                            try { return element.value.slice(0, element.selectionStart ?? element.value.length).slice(-1); } catch { return ""; }
+                        }
+                        if (!(element instanceof HTMLElement)) return null;
+                        // Monaco keeps focus on an EditContext element, which is neither an input nor contenteditable.
+                        if (element.editContext) return element.editContext.text.slice(0, element.editContext.selectionStart).slice(-1);
+                        if (!element.isContentEditable) return null;
+                        const selection = getSelection();
+                        if (!selection || !selection.rangeCount || !element.contains(selection.anchorNode)) return "";
+                        const range = document.createRange();
+                        range.selectNodeContents(element);
+                        range.setEnd(selection.anchorNode, selection.anchorOffset);
+                        return range.toString().slice(-1);
+                    })()`) as Promise<string | null>, 1200, null);
+                    const editable = typeof before === "string";
+                    // Dictation continues the text: separate it from a preceding word.
+                    if (before && !/\s/.test(before)) text = ` ${text}`;
+                    if (editable && !target.isDestroyed()) {
+                        // webContents.insertText() crashes the renderer when focus is in a cross-origin
+                        // child frame (a board iframe), so a child frame inserts through its own document.
+                        const inserted = frame === target.mainFrame
+                            ? await withDeadline(target.insertText(text).then(() => true), 1500, false)
+                            : await withDeadline(frame.executeJavaScript(`document.execCommand("insertText", false, ${JSON.stringify(text)})`) as Promise<boolean>, 1500, false);
+                        if (inserted) {
+                            this.clearVoiceTypingSession();
+                            return { copied: false };
+                        }
+                    }
+                } catch (error: unknown) {
+                    console.warn(`Voice typing insertion check failed: ${errMessage(error)}`);
+                }
+            }
+        }
+        clipboard.writeText(text);
+        this.clearVoiceTypingSession();
+        return { copied: true };
+    }
+
+    private handleVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents, source: VoiceTypingSource): void {
+        if (input.type !== "keyDown" || input.isAutoRepeat) return;
+        if (inputMatchesShortcut(input, this.voiceTypingShortcut)) {
+            event.preventDefault();
+            if (this.voiceTypingState === "transcribing") return;
+            if (this.voiceTypingState === "idle") {
+                const sessionId = crypto.randomUUID();
+                this.voiceTypingSession = { id: sessionId, target };
+                this.voiceTypingState = "recording";
+                this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", source });
+            } else if (this.voiceTypingSession) {
+                this.voiceTypingState = "transcribing";
+                this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingSession.id, action: "stop", source });
+            }
+            return;
+        }
+        if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingSession) {
+            event.preventDefault();
+            const sessionId = this.voiceTypingSession.id;
+            this.voiceTypingState = "idle";
+            this.clearVoiceTypingSession();
+            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "cancel", source });
+        }
+    }
+
+    private clearVoiceTypingSession(): void {
+        this.voiceTypingSession = undefined;
+    }
 
     ensureVisiblePosition = (bounds: WindowState): WindowState => {
         if (bounds.x === undefined || bounds.y === undefined) {
