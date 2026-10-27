@@ -28,7 +28,7 @@ export class SpeechTranscriptionProvider {
         const key = `${provider.provider}@${provider.version}`;
         const cached = this.describeCache.get(key);
         if (cached !== undefined) return cached;
-        const channelId = await api.connectHostServiceChannel({ provider: provider.provider, version: 1, openMessage: { type: "describe" } });
+        const channelId = await api.connectHostServiceChannel({ interfaceId: "speech.transcribe", provider: provider.provider, version: 1, openMessage: { type: "describe" } });
         const port = await this.waitForPort(channelId);
         const channel = createSpeechServiceChannel(port);
         try {

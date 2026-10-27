@@ -98,6 +98,12 @@ export const resourceFiles: IGuideResource[] = [
         description: "Normative provider and consumer contract for speech transcription over board service channels.",
     },
     {
+        name: "text-translate-guide",
+        uri: "persephone://guides/text-translate",
+        file: "guides/agents/text-translate.md",
+        description: "Normative provider and consumer contract for language detection, text/HTML translation, and explicit model downloads over board service channels.",
+    },
+    {
         name: "languages-guide",
         uri: "persephone://guides/languages",
         file: "guides/agents/languages.md",

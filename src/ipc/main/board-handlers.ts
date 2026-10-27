@@ -153,11 +153,11 @@ export function initBoardHandlers(): void {
         await trust.getPermissionGrants();
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.listServiceProviders(interfaceId);
     });
-    bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: { provider: string; version: number; openMessage: unknown }): Promise<string> => {
+    bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: { interfaceId: string; provider: string; version: number; openMessage: unknown }): Promise<string> => {
         if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
         const window = BrowserWindow.fromWebContents(event.sender);
         if (!window || !(await import("../../main/open-windows")).openWindows.findByWindow(window)) throw new Error("permission-denied");
-        if (!request || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
+        if (!request || typeof request.interfaceId !== "string" || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.connectHostServiceChannel(event.sender, request, request.openMessage);
     });
     bindEndpoint(Endpoint.insertVoiceTypingText, async (event: IpcMainEvent, request: { sessionId: string; text: string; deferClipboard?: boolean }): Promise<{ copied: boolean }> => {

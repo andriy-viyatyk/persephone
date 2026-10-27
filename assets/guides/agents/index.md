@@ -73,6 +73,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Build a custom dashboard/tool/editor | `boards.createBoard`, `boards.openBoard`, `pages[i].editor` | `boards.$help` and `persephone://guides/boards` |
 | Build or consume a board-backed coding-agent session | `persephone.services.connect("agent.session", ...)` | [Agent Session contract](./agent-session.md) / `guides.agents["agent-session"]` / `persephone://guides/agent-session` |
 | Build or consume speech transcription (final result or advertised live drafts and segments) | `persephone.services.connect("speech.transcribe", ...)` | [Speech Transcription contract](./speech-transcribe.md) / `guides.agents["speech-transcribe"]` / `persephone://guides/speech-transcribe` |
+| Build or consume keyed text and HTML translation with detection and explicit model downloads | `persephone.services.connect("text.translate", ...)` | [Text Translation contract](./text-translate.md) / `guides.agents["text-translate"]` / `persephone://guides/text-translate` |
 | Give the board or web app you are building its own agent-drivable object model | `persephone.aiVision.expose(root)` in the board | [AI Vision](./ai-vision.md) / `guides.agents["ai-vision"]` |
 | Decide whether a board the user did not write is safe to trust | read the board folder, then `boards.registerBoard` | [Reviewing a board](./board-review.md) / `guides.agents["board-review"]` |
 | Recurring external-system task (ADO, SQL, email, CLI) | `tools.search` → `tools.execute` | `tools.$help` and `persephone://guides/tools` |

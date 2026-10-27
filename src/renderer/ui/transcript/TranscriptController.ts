@@ -128,6 +128,7 @@ export class TranscriptController {
 
     private async openChannel(source: SourceSession, provider: string): Promise<void> {
         const channelId = await api.connectHostServiceChannel({
+            interfaceId: "speech.transcribe",
             provider,
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: 16_000, channels: 1 }, live: true },

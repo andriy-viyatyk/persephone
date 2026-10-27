@@ -31,7 +31,11 @@ must treat messages as untrusted. Use `persephone.services.list(id)` to choose a
 matching is exact. The existing service `onChannel` callback receives `info.interface` and
 descriptive `info.caller`; refuse using close code `connection-refused`. Main rechecks current
 trust and declarations at connect time. Boards using this API must declare
-`minBridgeVersion: "1.42.0"`. Bridge `1.41.0` adds
+`minBridgeVersion: "1.42.0"`. `agent.session`, `speech.transcribe`, and `text.translate` are reserved
+platform service ids; custom ids use `author/name`. See the normative
+[`speech.transcribe` contract](../guides/agents/speech-transcribe.md) and
+[`text.translate` contract](../guides/agents/text-translate.md) before implementing those services.
+Bridge `1.41.0` adds
 `persephone.trashFile(path)` to move an authorized file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest routing, `persephone.source.navigate(href)` for navigating within the
 initial source context, and `persephone.page.visible` / `onVisibilityChange()` for page-level

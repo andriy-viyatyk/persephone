@@ -8,11 +8,15 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-135** — [Translation service](epics/EPIC-135.md) — a Translate board providing `text.translate` for Monaco pages, browser pages and other boards
+  - [ ] [US-1734: `text.translate` v1 contract and host consumer](tasks/US-1734-text-translate-contract/README.md)
+  - [ ] [US-1735: “Translate to…” in the text editor](tasks/US-1735-translate-text-page/README.md)
+  - [ ] US-1736: In-page translation engine for browser pages
+  - [ ] US-1737: Translate button in the browser
+  - Board work: BT-069 (Bergamot runtime) and BT-070 (Translate board) in persephone-boards
 
 ## Planned
 
-- **EPIC-135** — [Translation service](epics/EPIC-135.md) — a Translate board providing `text.translate` for Monaco pages, browser pages and other boards
 - *(no epic)*
   - [ ] [US-1732: Native memory leak in a board service during live transcription](tasks/US-1732-board-service-native-memory-leak/README.md) — about +9 MB/min in the Speech to Text service with two live channels; found during EPIC-134 verification
 

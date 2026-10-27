@@ -630,7 +630,7 @@ class ApiCalls implements Api {
     getBoardServiceProviders = async (interfaceId: string) =>
         executeOnce<import("../board-bridge-channels").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
 
-    connectHostServiceChannel = async (request: { provider: string; version: number; openMessage: unknown }) =>
+    connectHostServiceChannel = async (request: { interfaceId: string; provider: string; version: number; openMessage: unknown }) =>
         executeOnce<string>(Endpoint.connectHostServiceChannel, request);
 
     insertVoiceTypingText = async (request: { sessionId: string; text: string; deferClipboard?: boolean }) =>

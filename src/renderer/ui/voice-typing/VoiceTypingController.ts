@@ -178,6 +178,7 @@ export class VoiceTypingController {
 
         const opened = this.waitForChannel(session);
         const channelId = await api.connectHostServiceChannel({
+            interfaceId: "speech.transcribe",
             provider: provider.provider,
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(live ? { live: true } : {}) },

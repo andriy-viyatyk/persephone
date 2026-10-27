@@ -62,6 +62,11 @@ function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; version: number; openTypes: ReadonlySet<string>; boardIdPrefix: string }>([
+    ["speech.transcribe@1", { interfaceId: "speech.transcribe", version: 1, openTypes: new Set(["describe", "transcribe"]), boardIdPrefix: "voice-typing:" }],
+    ["text.translate@1", { interfaceId: "text.translate", version: 1, openTypes: new Set(["describe", "detect", "translate", "download"]), boardIdPrefix: "text-translation:" }],
+]);
+
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
     private readonly leaseCallbacks: LeaseCallbacks = {
@@ -728,14 +733,13 @@ class ModuleServiceSupervisor {
         return channelId;
     }
 
-    async connectHostServiceChannel(target: WebContents, selector: { provider: string; version: number }, openMessage: unknown): Promise<string> {
-        const interfaceId = "speech.transcribe";
-        if (!selector || typeof selector.provider !== "string" || selector.version !== 1) throw new ServiceError("invalid-argument");
+    async connectHostServiceChannel(target: WebContents, selector: { interfaceId: string; provider: string; version: number }, openMessage: unknown): Promise<string> {
+        if (!selector || typeof selector.interfaceId !== "string" || typeof selector.provider !== "string" || typeof selector.version !== "number") throw new ServiceError("invalid-argument");
+        const policy = HOST_SERVICE_CHANNEL_POLICIES.get(`${selector.interfaceId}@${selector.version}`);
+        if (!policy) throw new ServiceError("invalid-argument");
+        const { interfaceId, version, openTypes, boardIdPrefix } = policy;
         const openType = openMessage && typeof openMessage === "object" ? (openMessage as { type?: unknown }).type : undefined;
-        // Voice typing asks the provider whether it supports live text before it transcribes.
-        if (openType !== "transcribe" && openType !== "describe") {
-            throw new ServiceError("invalid-argument", "The host service channel accepts describe and transcription requests only.");
-        }
+        if (typeof openType !== "string" || !openTypes.has(openType)) throw new ServiceError("invalid-argument");
         await this.awaitTrustReady();
         const findProvider = (): TrustedBoardSnapshotEntry | undefined => this.trustedSnapshot?.boards.find((entry) =>
             this.providerKeys.get(normalizeRoot(entry.boardRoot)) === selector.provider,
@@ -743,27 +747,27 @@ class ModuleServiceSupervisor {
         const provider = findProvider();
         if (!provider || !provider.service) throw new ServiceError("service-not-declared");
         if (!provider.canStartService || !boardPermissionAllows(provider.permissions, "service")) throw new ServiceError("permission-denied");
-        if (!(provider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === 1)) throw new ServiceError("service-not-declared");
+        if (!(provider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === version)) throw new ServiceError("service-not-declared");
         const providerRoot = normalizeRoot(provider.boardRoot);
         const record = this.requireRecord(providerRoot);
         await this.start(provider.boardRoot, "request");
         const latestProvider = findProvider();
         if (!latestProvider) throw new ServiceError("untrusted");
         if (!latestProvider.service || !latestProvider.canStartService || !boardPermissionAllows(latestProvider.permissions, "service")) throw new ServiceError("permission-denied");
-        if (!(latestProvider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === 1)) throw new ServiceError("service-not-declared");
+        if (!(latestProvider.serviceInterfaces ?? []).some((item) => item.id === interfaceId && item.version === version)) throw new ServiceError("service-not-declared");
         if (!record.process || record.state !== "running") throw new ServiceError("service-exited");
         if (target.isDestroyed()) throw new ServiceError("service-exited");
 
-        const boardId = `voice-typing:${BrowserWindow.fromWebContents(target)?.id ?? target.id}`;
+        const boardId = `${boardIdPrefix}${BrowserWindow.fromWebContents(target)?.id ?? target.id}`;
         const boardChannels = [...record.channels.values()].filter((owner) => owner.boardId === boardId).length;
         if (boardChannels >= MAX_SERVICE_CHANNELS_PER_BOARD || record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) throw new ServiceError("service-busy");
         const channelId = crypto.randomUUID();
         const generation = record.generation;
         const { port1, port2 } = new MessageChannelMain();
-        record.channels.set(channelId, { boardId, generation, host: target, interfaceId, version: 1 });
+        record.channels.set(channelId, { boardId, generation, host: target, interfaceId, version });
         const info = {
             page: { boardId },
-            interface: { id: interfaceId, version: 1 },
+            interface: { id: interfaceId, version },
             caller: { id: "persephone", name: "Persephone" },
         };
         try {
