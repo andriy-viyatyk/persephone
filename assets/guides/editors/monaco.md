@@ -22,7 +22,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]      [Resources] [Transcript] [Wrap] [Switch] |  toolbar: script actions at left; resources, Transcript (when a provider is available), Word Wrap, and switch at right
+| [Nav] [Compare] [Run] [Run all]      [Resources] [Mic] [Translate] [Wrap] [Switch] |  toolbar: script actions at left; resources, microphone, Translate (when a provider is available), Word Wrap, and switch at right
 +---------------------------------------------------------------------+
 | [Monaco editor]                                                     |  Monaco editing surface below the toolbar
 +---------------------------------------------------------------------+
@@ -36,7 +36,8 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 - Run → `text-run-script`
 - Run all → `text-run-all-script`
 - Show Resources → `text-show-resources`
-- Transcript (when a provider is available) → `transcript-button`
+- Microphone / Transcript (when a provider is available) → `transcript-button`
+- Translate (when a provider is available) → `translate-text-button`
 - Word Wrap → `text-word-wrap-toggle`
 - Script panel toggle → `text-toggle-script`
 - Script panel splitter → `script-panel-splitter`
@@ -74,7 +75,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]      [Resources] [Stop] [Audio level] [Wrap] [Switch] |  toolbar: active Transcript places Stop and audio level between Resources and Word Wrap
+| [Nav] [Compare] [Run] [Run all]      [Resources] [Stop] [Audio level] [Translate] [Wrap] [Switch] |  toolbar: active Transcript places Stop and audio level between Resources and Translate
 +---------------------------------------------------------------------+
 ```
 
@@ -95,9 +96,20 @@ Word Wrap by default**. It is off by default. Changing this setting does not cha
 each page keeps its own saved choice. The same action is available as **Toggle Word Wrap** in
 Monaco's Command Palette (`Ctrl+Shift+P`) while a Text Editor is focused.
 
+## Translate
+
+Choose the Translate toolbar button, then **Translate selection** or **Translate page**. The
+translation dialog detects the source language and lets you choose the source and target languages.
+If the selected language models are missing, Persephone asks before downloading them and shows
+download and translation progress. You can cancel the operation. The result opens in a new tab using
+the same editor type; the original page is unchanged. Selection translation requires selected text.
+
+Install and trust the **Translate** board from the board catalog to provide translation. The board
+downloads language models as needed and can translate offline after the models are available.
+
 ## Transcript
 
-Choose **Transcript** in the right side of the toolbar, then select **Microphone (me)**,
+Choose the microphone button in the right side of the toolbar, then select **Microphone (me)**,
 **Computer audio**, or **Both**. Computer audio and Both are available on Windows. Install and
 trust the Speech to Text board from Tools & Editors first; it must support live transcription.
 The Speech to Text board processes audio locally. Computer audio captures sound played by the
@@ -110,6 +122,8 @@ for the provider's final response. Committed utterances are appended to the end 
 moving your current selection. Draft text is not shown or inserted. Closing the page or switching
 its editor away from Text Editor stops the session. Only one Transcript or Voice Typing session can
 run in an app window. See [Keyboard Shortcuts](../shortcuts.md#transcript) for more detail.
+
+The microphone button opens the source menu while idle and becomes **Stop** while capturing audio.
 
 ## Compare Mode
 

@@ -347,6 +347,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── TranscriptController.ts
 │   │   ├── TranscriptToolbarContributionView.ts
 │   │   └── TranscriptToolbarContributionView.css
+│   ├── translation/        # Trusted text-translation provider channel, shared workflow, and text-page translation UI
+│   │   ├── TextTranslationProvider.ts
+│   │   ├── TranslationServiceChannel.ts
+│   │   ├── TranslationWorkflow.ts
+│   │   ├── TranslateTextPageController.ts
+│   │   └── TranslateTextToolbarContributionView.ts
 │   ├── tabs/               # Tab bar
 │   │   ├── PageTabsView.ts         # Native tab strip and scroll projection
 │   │   ├── PageTab.ts              # Tab props/constants and shared helpers
@@ -457,6 +463,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserProfileNetworkModel.ts # Profile/Incognito proxy: apply before mount, follow settings edits, image route for app-drawn resources
 │   │   ├── BrowserView.ts             # Native browser UI and per-tab webview host
 │   │   ├── BrowserWebviewModel.ts    # Webview management
+│   │   ├── BrowserTranslationController.ts # Provider/language workflow and toolbar state
+│   │   ├── BrowserPageTranslationController.ts # Frame-scoped page translation scheduling and results
 │   │   ├── webview-context-menu.ts    # Webview context-menu construction
 │   │   ├── BrowserUrlBarModel.ts     # URL bar state
 │   │   ├── BrowserTargetModel.ts     # Automation adapter (implements IBrowserTarget)
@@ -969,6 +977,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── tools/              # Advertised tool definitions — call, the whole manifest
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
 ├── browser-service.ts      # Browser page support (webview management and tracked native message boxes)
+├── preload-webview.ts      # Browser guest preload; installs page translation agent alongside other guest hooks
+├── preload-webview/
+│   └── page-translation-agent.ts # Guest-frame text discovery, mutation tracking, and reversible translated DOM updates
 ├── browser-registration.ts # Default browser registration
 ├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
 ├── html-preview-protocol.ts # Isolated html-preview:// origin and per-preview response registry
@@ -1033,6 +1044,7 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 ├── api-types.ts            # IPC channel definitions
 ├── api-param-types.ts      # IPC parameter types
 ├── browser-ipc.ts          # Browser-specific IPC channels
+├── browser-translation-messages.ts # Typed host/guest translation messages and frame-scoped unit DTOs
 ├── browser-network-ipc.ts  # BrowserNetwork type, proxy endpoint validation, browser-network:* channels
 ├── tor-ipc.ts              # Tor service IPC channels (start, stop, log, check-ip, restart, status) + TorStatus/TorIpInfo types
 ├── git-ipc.ts              # Git service IPC channel names + request/response types

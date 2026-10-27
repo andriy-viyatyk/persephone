@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-10-27
+**Completed:** 2026-10-27
 
 ## Overview
 
@@ -360,14 +361,21 @@ Optional follow-ups after the epic:
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1734](../tasks/US-1734-text-translate-contract/README.md) | `text.translate` v1 contract and host consumer | Planned |
-| BT-069 | Bergamot runtime (persephone-boards) | Planned |
-| BT-070 | Translate board v1.0.0 (persephone-boards) | Planned |
-| [US-1735](../tasks/US-1735-translate-text-page/README.md) | "Translate to…" in the text editor | Planned |
-| [US-1736](../tasks/US-1736-browser-page-translation/README.md) | In-page translation engine for browser pages | Planned |
-| [US-1737](../tasks/US-1737-browser-translate-button/README.md) | Translate toggle button in the browser | Planned |
+| US-1734 | `text.translate` v1 contract and host consumer | Done |
+| BT-069 | Bergamot runtime (persephone-boards) | Done |
+| BT-070 | Translate board v1.0.0 (persephone-boards) | Done |
+| US-1735 | "Translate to…" in the text editor | Done |
+| US-1736 | In-page translation engine for browser pages | Done |
+| US-1737 | Translate toggle button in the browser | Done |
 
 ## Notes
+
+### 2026-10-27 — close
+
+- `/review`, `/document` and `/userdoc` ran over US-1734 – US-1737. Review left one finding unacted: `shift()!` non-null assertions inside length-checked loops, kept on purpose. Developer docs (browser-editor, folder-structure, key-files, scripting) and user guides (monaco, browser, whats-new) were updated.
+- Live tests on German, Italian, Spanish, Japanese and Simplified Chinese sites fixed: detection never running on the first click, region-tagged `lang` (`it-IT`) not matching models, HTML units over the board's 8,192 limit, hidden menus jumping the queue, and an overflow queue that dropped units.
+- Known limits: bare text directly inside a block that also holds blocks is not translated; the model may swap currency symbols (¥ → $ on Ctrip).
+- The Translate board (BT-069, BT-070) stays unpublished until Persephone 5.0.15 ships.
 
 ### 2026-10-27
 - Epic recorded at the user's request and placed under Planned. No work has started.

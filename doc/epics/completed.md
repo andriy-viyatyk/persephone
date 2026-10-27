@@ -1,3 +1,16 @@
+## EPIC-135 — Translation service
+
+Completed 2026-10-27. Translate pages you cannot read, locally and offline. Persephone reserves a
+`text.translate` v1 service contract, and the persephone-boards **Translate** board (`translate`
+v1.0.0) provides it with Firefox's Bergamot engine and CLD2 language detection. The board stays
+unpublished until Persephone 5.0.15 ships. Epic document: [EPIC-135](EPIC-135.md).
+
+- [x] **`text.translate` contract (US-1734).** A reserved platform id, the v1 guide and a host service channel shared with `speech.transcribe`; one renderer client per window caps translate channels at four.
+- [x] **Translate in the text editor (US-1735).** A toolbar icon button and context-menu action for the selection or the page (plaintext and Markdown), detected source with correction, consent before model downloads, output in a new tab.
+- [x] **In-page browser translation (US-1736).** A per-frame preload agent translates visible text first, writes into the page's own nodes and restores the original exactly; existing preload features stay main-frame-only.
+- [x] **Browser Translate button (US-1737).** Explicit toolbar toggle, page-language detection that overrides a wrong `lang`, consent and progress for downloads, a source-correction popup, and the **Translate pages into** setting. The Transcript button became a microphone icon button.
+- Board tasks BT-069 (Bergamot runtime) and BT-070 (Translate board) are logged in persephone-boards. Close review left one finding unacted (length-guarded `shift()!`). Known limits: bare text beside nested blocks is skipped; the model can swap currency symbols.
+
 ## EPIC-134 — Live transcription and meeting transcripts
 
 Completed 2026-10-27. Speech becomes text while you talk. The Speech to Text board (`speech-to-text`

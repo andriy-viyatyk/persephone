@@ -22,6 +22,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Transcript in the Text Editor:** Capture microphone audio, computer audio, or both into a text
   page. Computer audio capture is available on Windows; committed speech is added to the page as you
   speak.
+- **Translation:** Translate a text selection or page into a new tab, or translate a browser page
+  in place and restore its original text. Install and trust the **Translate** board to provide the
+  local translation service; missing language models are downloaded with your consent.
 
 ---
 

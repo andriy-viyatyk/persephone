@@ -197,6 +197,22 @@ did-start-loading       →   browser:event  →   model.updateFromWebview({ loa
 did-stop-loading        →   browser:event  →   model.updateFromWebview({ loading: false })
 ```
 
+### In-page translation
+
+The Browser toolbar's Translate action is backed by the trusted `text.translate@1` service. The
+renderer reads a bounded sample from the original document to choose a source language and the
+configured target, then the guest preload's page translation agent reports text units from the
+top frame and child frames. The host scheduler prioritizes visible and nearby units, batches
+requests within fixed item and character limits, and sends results back to the originating frame.
+Frame/document scopes and per-unit revisions prevent stale results from being applied after a
+navigation or page mutation.
+
+The guest agent retains original text while rendering translations, observes subsequent DOM
+changes, and restores originals when translation stops. Translation work is performed by the
+trusted provider through the module-service channel; page text is not sent to a remote browser
+translation endpoint by the Browser editor. Cross-document navigation clears the translated state
+for that tab.
+
 ### 5. Protocol blocking
 
 ```

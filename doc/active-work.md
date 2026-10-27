@@ -8,12 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-135** — [Translation service](epics/EPIC-135.md) — a Translate board providing `text.translate` for Monaco pages, browser pages and other boards
-  - [ ] [US-1734: `text.translate` v1 contract and host consumer](tasks/US-1734-text-translate-contract/README.md)
-  - [ ] [US-1735: “Translate to…” in the text editor](tasks/US-1735-translate-text-page/README.md)
-  - [ ] [US-1736: In-page translation engine for browser pages](tasks/US-1736-browser-page-translation/README.md)
-  - [ ] [US-1737: Translate toggle button in the browser](tasks/US-1737-browser-translate-button/README.md)
-  - Board work: BT-069 (Bergamot runtime) and BT-070 (Translate board) in persephone-boards
+*(none)*
 
 ## Planned
 

@@ -413,7 +413,7 @@ per service. Same-board `info` contains `page: { boardId }`; cross-board calls a
 `channel-backpressure`, oversized service messages throw `channel-message-too-large`.
 
 Cross-board services use normalized manifest fields `serviceInterfaces: [{ id, version, title? }]`
-and `uses: [{ id, version }]`. `agent.session` and `speech.transcribe` are reserved platform ids; other ids use exactly
+and `uses: [{ id, version }]`. `agent.session`, `speech.transcribe`, and `text.translate` are reserved platform ids; other ids use exactly
 `author/name`. Versions are positive safe integers and require exact matches. The consumer's
 trusted `uses` set is the specific messaging grant; it does not require its own `service` or
 `execute` permission. Each provider must separately be trusted and have its `service` permission.
@@ -434,6 +434,12 @@ approval policy; audio privacy and recording limits are described through provid
 message and lifecycle contract. **Speech to Text** is a catalog board in `persephone-boards` that
 provides this interface. **Agent Chat** in that board catalog gains a voice button when a provider is
 installed, and inserts the transcription into its composer. Both boards require Persephone 5.0.15.
+
+The `text.translate` v1 interface describes supported language pairs, detects a source language,
+translates bounded batches of text units, and downloads missing language models over the same
+service-channel lifecycle. The [Text Translation guide](../../assets/guides/agents/text-translate.md)
+defines the request and response contract. Persephone's text editor and Browser editor are
+consumers; the provider engine is supplied by a separately installed and trusted Translate board.
 
 ### `io` — Content Delivery API
 

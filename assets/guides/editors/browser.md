@@ -19,7 +19,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→] [★][⋮][</>][×] | toolbar: navigation at left, address box across middle
+| [⌂][←][→][⟳][Translate]  [Proxy][Site permissions / Search engine][ address box ] [→] [★][⋮][</>][×] | toolbar: navigation and Translate at left, address box across middle
 |                                                                     |  (proxy chip inside it when routed), Go at its right edge,
 |                                                                     |  bookmarks/more/devtools/close at the right
 +---------------------------------------------------------------------+
@@ -36,6 +36,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Back → `toolbar-back`
 - Forward → `toolbar-forward`
 - Reload → `toolbar-reload`
+- Translate (when a provider is available) → `toolbar-translate`
 - Address box → `url-input`
 - Site permissions (HTTP(S) page, while no address text has been typed) → `url-site-permissions`
 - Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
@@ -209,6 +210,18 @@ When a page link uses a scheme registered by a trusted board, clicking it leaves
 opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
 blocked rather than being sent to Chromium.
 
+## Translate a page
+
+Choose **Translate** in the browser toolbar to translate the current page in place. The page keeps
+its layout, and choosing Translate again restores the original. If the source language is not
+detected, choose it in the Translate popup. To change the destination, open **Settings → Browser
+Profiles → Translate pages into**; **App language** follows Persephone's language setting. Persephone
+asks before downloading missing language models and shows progress. Translation applies only to the
+current page load.
+
+Install and trust the **Translate** board from the board catalog to provide translation. It
+downloads language models as needed and can translate offline after the models are available.
+
 ## Profile network (proxy)
 
 Every browser profile — a named profile, the built-in Default profile, and Incognito — can be set to
@@ -260,7 +273,7 @@ After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` faca
 tabs and the automation surface: snapshots, clicks, typing, key presses, evaluation, waiting,
 screenshots, network requests, and tab selection. The verified chrome elements include `url-input`,
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
-`toolbar-home`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
+`toolbar-home`, `toolbar-translate`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
 `toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, `popup-blocked-bar`, and, on a proxied page,
 `url-proxy-indicator`.
 Participating web pages may additionally publish a page-authored model at `page.editor.app`; it
