@@ -2,7 +2,6 @@ import type { EnglishCatalogEntry } from "./common";
 
 export const transcriptCatalog = {
     button: { message: "Transcript", note: "Tooltip for the Transcript toolbar button on Monaco text pages." },
-    stopLabel: { message: "Stop", note: "Visible text of the Transcript toolbar button while a transcript is running." },
     stop: { message: "Stop transcript", note: "Tooltip and accessible name for ending a running Transcript capture." },
     audioLevel: { message: "Transcript audio level", note: "Accessible name for the live audio level meter in the Monaco toolbar." },
     both: { message: "Both", note: "Source mode that captures the user's microphone and Windows computer audio as separate sources." },

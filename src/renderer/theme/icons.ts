@@ -528,6 +528,11 @@ export const TranslateIcon = createIcon(20)(
     "<path d=\"m17.835 19-1.248-3h-4.174l-1.248 3.001H9l4.577-11.005h1.846L20 19zm-4.59-5h2.51L14.5 10.982zM7.618 3H12v2H9.991a8.5 8.5 0 0 1-1.423 4.02q-.24.358-.528.707.634.367 1.379.711l.908.42-.839 1.816-.907-.42a18 18 0 0 1-2.026-1.09c-1.255.979-2.912 1.8-5.076 2.31l-.973.228-.458-1.946.973-.23c1.631-.383 2.885-.954 3.85-1.608C3.29 8.527 2.317 6.884 2.065 5H0V3h5.382l-.724-1.447 1.79-.895L7.617 3ZM4.094 5c.243 1.282.974 2.489 2.29 3.586A6.54 6.54 0 0 0 7.98 5z\" fill=\"currentColor\" />",
 );
 
+// Microphone (Transcript), drawn to fill the box so it stays legible at 16px.
+export const TranscriptIcon = createIcon(24)(
+    "<rect x=\"8.75\" y=\"2\" width=\"6.5\" height=\"12\" rx=\"3.25\" stroke=\"currentColor\" stroke-width=\"1.75\" fill=\"none\" /><path d=\"M5.25 11a6.75 6.75 0 0 0 13.5 0M12 17.75v3.5M8.5 21.25h7\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" fill=\"none\" />",
+);
+
 export const OpenLinkIcon = createIcon(24)(
     "<path d=\"M14 4l6 5-6 5V10c-5 0-9 2-11 7 1-7 5-11 11-12V4z\" fill=\"currentColor\" />",
 );

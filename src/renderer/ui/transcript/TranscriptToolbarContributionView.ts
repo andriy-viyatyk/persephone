@@ -1,6 +1,6 @@
 import { MenuView } from "../../uikit/Menu/MenuView";
 import type { MenuItem } from "../../core/events/context-menu";
-import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
+import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { api } from "../../../ipc/renderer/api";
 import { EventEndpoint } from "../../../ipc/api-types";
@@ -12,7 +12,7 @@ import "./TranscriptToolbarContributionView.css";
 interface TranscriptToolbarProps { controller: TranscriptController }
 
 export class TranscriptToolbarContributionView extends VanillaView<TranscriptToolbarProps> {
-    private readonly button: ButtonView;
+    private readonly button: IconButtonView;
     private readonly menu: MenuView;
     private readonly meter = document.createElement("span");
     private readonly items: MenuItem[];
@@ -37,7 +37,7 @@ export class TranscriptToolbarContributionView extends VanillaView<TranscriptToo
             { id: "transcript-mode-computer-audio", label: t("transcript.computerAudio"), onClick: () => this.start("computer"), disabled: process.platform !== "win32" },
             { id: "transcript-mode-microphone-me", label: t("transcript.microphoneMe"), onClick: () => this.start("microphone") },
         ];
-        this.button = this.child(new ButtonView(this.buttonProps()));
+        this.button = this.child(new IconButtonView(this.buttonProps()));
         this.menu = this.child(new MenuView({
             name: "transcript-source-menu",
             elementRef: this.button.root,
@@ -106,14 +106,13 @@ export class TranscriptToolbarContributionView extends VanillaView<TranscriptToo
         this.root.hidden = !this.available && this.state.status === "idle";
     }
 
-    private buttonProps(): ButtonViewProps {
+    private buttonProps(): IconButtonViewProps {
         const active = this.state.status !== "idle";
         return {
             name: active ? "transcript-stop" : "transcript-button",
-            variant: "ghost",
             size: "sm",
-            icon: active ? "stop" : "volume",
-            children: active ? t("transcript.stopLabel") : t("transcript.button"),
+            icon: active ? "stop" : "transcript",
+            active,
             title: active ? t("transcript.stop") : t("transcript.button"),
             disabled: !active && !this.available,
             onClick: this.toggle,
