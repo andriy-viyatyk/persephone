@@ -364,8 +364,8 @@ Optional follow-ups after the epic:
 | BT-069 | Bergamot runtime (persephone-boards) | Planned |
 | BT-070 | Translate board v1.0.0 (persephone-boards) | Planned |
 | [US-1735](../tasks/US-1735-translate-text-page/README.md) | "Translate to…" in the text editor | Planned |
-| US-1736 | In-page translation engine for browser pages | Planned |
-| US-1737 | Translate button in the browser | Planned |
+| [US-1736](../tasks/US-1736-browser-page-translation/README.md) | In-page translation engine for browser pages | Planned |
+| [US-1737](../tasks/US-1737-browser-translate-button/README.md) | Translate toggle button in the browser | Planned |
 
 ## Notes
 

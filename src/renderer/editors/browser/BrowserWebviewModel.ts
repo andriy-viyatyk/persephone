@@ -31,6 +31,7 @@ import {
     logBrowserShapeChanged,
     logRemoteNotify,
 } from "../../scripting/ai-vision/event-log";
+import { BrowserPageTranslationController } from "./BrowserPageTranslationController";
 
 const AI_VISION_PROBE = `(() => {
     const site = window.__aiVision;
@@ -102,6 +103,37 @@ export class BrowserWebviewModel {
      *  finds no model (always, on a page whose extension is still untrusted). */
     private readonly siteDocuments = new Map<string, number>();
     private readonly injectedSiteExtensions = new Map<string, { documentId: number; name: string }>();
+    private readonly pageTranslations = new Map<string, BrowserPageTranslationController>();
+    private translationLifecycle: ((internalTabId: string) => void) | undefined;
+
+    setTranslationLifecycle(callback: (internalTabId: string) => void): void {
+        this.translationLifecycle = callback;
+    }
+
+    /** Script and toolbar entry points for the current page's translation lifecycle. */
+    startPageTranslation = async (from: string, to: string, internalTabId = this.model.state.get().activeTabId): Promise<void> => {
+        await this.translationController(internalTabId).start(from, to);
+    };
+    stopPageTranslation = (internalTabId = this.model.state.get().activeTabId): Promise<void> =>
+        this.pageTranslations.get(internalTabId)?.stop() ?? Promise.resolve();
+    endPageTranslation = (internalTabId: string): void => {
+        const controller = this.pageTranslations.get(internalTabId);
+        if (controller) void controller.stop(true);
+    };
+    getPageTranslationState = (internalTabId = this.model.state.get().activeTabId) =>
+        this.pageTranslations.get(internalTabId)?.state ?? { active: false, from: "", to: "", pendingCount: 0, doneCount: 0, failedCount: 0 };
+    getLatestTranslationDetectionSample = (internalTabId = this.model.state.get().activeTabId) =>
+        this.pageTranslations.get(internalTabId)?.latestDetectionSample;
+    subscribePageTranslationState = (internalTabId: string, listener: () => void): (() => void) =>
+        this.translationController(internalTabId).subscribe(listener);
+    handleTranslationFrame = (tabId: string, frameId: [number, number], kind: "translation-ready" | "translation-units" | "translation-detection-sample", payload: unknown): void => {
+        this.translationController(tabId).handleFrame(frameId, kind, payload);
+    };
+    private translationController(tabId: string): BrowserPageTranslationController {
+        let controller = this.pageTranslations.get(tabId);
+        if (!controller) { controller = new BrowserPageTranslationController(tabId, () => this.webviewRefs.get(tabId)); this.pageTranslations.set(tabId, controller); }
+        return controller;
+    }
 
     siteDocumentId(internalTabId: string): number {
         return this.siteDocuments.get(internalTabId) ?? 0;
@@ -117,6 +149,8 @@ export class BrowserWebviewModel {
     }
 
     dispose(): void {
+        for (const controller of this.pageTranslations.values()) controller.dispose();
+        this.pageTranslations.clear();
         for (const internalTabId of this.injectedSiteExtensions.keys()) this.clearAiVisionSiteExtension(internalTabId);
     }
 
@@ -149,8 +183,10 @@ export class BrowserWebviewModel {
         const wv = this.getActiveWebview();
         if (!wv) return;
         if (this.model.state.get().loading) {
+            this.resetTranslationForReload();
             wv.stop();
         } else {
+            this.resetTranslationForReload();
             wv.reload();
         }
     };
@@ -161,6 +197,7 @@ export class BrowserWebviewModel {
     hardReload = () => {
         const { activeTabId } = this.model.state.get();
         if (!this.webviewRefs.has(activeTabId)) return;
+        this.resetTranslationForReload(activeTabId);
         ipcRenderer.send(
             BrowserChannel.hardReload,
             `${this.model.id}/${activeTabId}`,
@@ -284,8 +321,14 @@ export class BrowserWebviewModel {
 
     /** Reload the active page even while it is loading. */
     reload = () => {
+        this.resetTranslationForReload();
         this.getActiveWebview()?.reload();
     };
+
+    private resetTranslationForReload(internalTabId = this.model.state.get().activeTabId): void {
+        void this.stopPageTranslation(internalTabId);
+        this.translationLifecycle?.(internalTabId);
+    }
 
     resolvePermissionRequest = (requestId: string, decision: "allow" | "block") => {
         void ipcRenderer.invoke(BrowserChannel.resolvePermissionRequest, { requestId, decision });
@@ -361,6 +404,8 @@ export class BrowserWebviewModel {
 
         switch (type) {
             case "did-navigate": {
+                this.endPageTranslation(internalTabId);
+                this.translationLifecycle?.(internalTabId);
                 const touched = this.model.hasAiVisionRegisteredTab(internalTabId);
                 this.model.clearAiVisionRegistration(internalTabId);
                 this.pendingShapeComparisons.delete(internalTabId);

@@ -10,7 +10,10 @@
  * Local variables captured in closures remain valid.
  */
 
+import { installPageTranslationAgent } from "./preload-webview/page-translation-agent";
 const { ipcRenderer, contextBridge } = require("electron");
+installPageTranslationAgent();
+if (process.isMainFrame) {
 
 const WEBMCP_ENABLE_FLAG = "--persephone-webmcp-enabled";
 const webMcpEnabled = process.argv.includes(WEBMCP_ENABLE_FLAG);
@@ -747,3 +750,4 @@ window.addEventListener("load", () => {
     setTimeout(reportAll, 200);
     setTimeout(reportAll, 1000);
 });
+}

@@ -11,6 +11,9 @@ import { DotView } from "../../../uikit/Dot/DotView";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
+import { SelectView } from "../../../uikit/Select/SelectView";
+import type { SelectViewProps } from "../../../uikit/Select/SelectView";
+import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { KeyedList } from "../../../uikit/shared/keyed-list";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { openMenu, type MenuHandle } from "../../../uikit/Menu/attach-menu";
@@ -19,6 +22,8 @@ import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
+import { getTextTranslationProvider } from "../../../ui/translation/TextTranslationProvider";
+import { languageDisplayName } from "../../../ui/translation/TranslationWorkflow";
 
 const PROFILE_COLOR_MESSAGE_KEYS: Record<string, Parameters<typeof t>[0]> = {
     "Dodger Blue": "browser.profileColorDodgerBlue",
@@ -48,6 +53,7 @@ import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
 import "../../../uikit/IconButton/IconButton.css";
 import "../../../uikit/Input/Input.css";
+import "../../../uikit/Select/Select.css";
 
 interface BookmarksFileLineProps {
     filePath: string;
@@ -436,6 +442,8 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
     private addButton: ButtonView | undefined;
     private colorDots: DotView[] = [];
     private windowsSso: CheckboxView | undefined;
+    private translateTarget: SelectView<IListBoxItem> | undefined;
+    private translationTargets: IListBoxItem[] = [{ value: "app", label: t("translation.appLanguage") }];
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
@@ -465,6 +473,13 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
             panel({ paddingBottom: "md" }, text(t("settings.browserProfilesDescription"), { color: "light", size: "xs" })),
         );
         const profilePanel = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
+        this.translateTarget = this.child(new SelectView(this.translateTargetProps()));
+        const translateTargetRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "sm", paddingBottom: "sm" },
+            panel({ flex: true }, settingsFieldLabel(t("translation.targetSetting"))),
+            panel({ width: 220 }, this.translateTarget.root),
+        );
+        profilePanel.append(translateTargetRow);
+        this.translateTarget.mount();
         const defaultPanel = panel({ direction: "column", rounded: "sm", background: "dark" });
         this.defaultHeader = this.child(new ProfileHeaderView({ name: "", color: DEFAULT_BROWSER_COLOR, isDefault: model.props.defaultProfile === "", cleared: false, model }));
         this.defaultBookmarks = this.child(new BookmarksFileLineView({
@@ -523,6 +538,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         profilePanel.append(this.torRow.root);
         this.torRow.mount();
         this.root.append(profilePanel);
+        void this.refreshTranslationTargets();
 
         const addPanel = panel({ direction: "column", gap: "md" });
         const addRow = panel({ direction: "row", align: "center", gap: "md" });
@@ -558,6 +574,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
 
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "browser-windows-sso") this.windowsSso?.update(this.windowsSsoProps());
+            if (key === "browser-translate-target") this.translateTarget?.update(this.translateTargetProps());
             if (this.isRelevantSetting(key)) {
                 driver.update(this.currentProps());
                 this.sync(model.state.get());
@@ -580,6 +597,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.incognitoNetwork = undefined;
         this.torRow = undefined;
         this.windowsSso = undefined;
+        this.translateTarget = undefined;
         this.newNameInput = undefined;
         this.addButton = undefined;
         this.colorDots = [];
@@ -598,7 +616,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
     private isRelevantSetting(key: string): boolean {
         return [
             "browser-profiles", "browser-default-profile", "browser-default-bookmarks-file", "browser-default-network", "browser-incognito-network",
-            "browser-incognito-bookmarks-file", "tor.exe-path", "tor.socks-port", "tor.bookmarks-file",
+            "browser-incognito-bookmarks-file", "browser-translate-target", "tor.exe-path", "tor.socks-port", "tor.bookmarks-file",
         ].includes(key);
     }
 
@@ -615,6 +633,36 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.newNameInput?.update({ size: "sm", placeholder: t("settings.profileNamePlaceholder"), value: state.newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown });
         this.addButton?.update({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: t("settings.profileAdd") });
         this.colorDots.forEach((dot, index) => dot.update({ size: "lg", color: TAG_COLORS[index].hex, selected: state.newColor === TAG_COLORS[index].hex, title: profileColorLabel(TAG_COLORS[index].name), onClick: () => model.setNewColor(TAG_COLORS[index].hex) }));
+        this.translateTarget?.update(this.translateTargetProps());
+    }
+
+    private translateTargetProps(): SelectViewProps<IListBoxItem> {
+        const value = settings.get<string>("browser-translate-target");
+        const items = this.translationTargets;
+        return {
+            name: "browser-translate-target",
+            size: "sm",
+            items,
+            value: items.find((item) => item.value === value) ?? items[0],
+            onChange: (item) => settings.set("browser-translate-target", String(item.value)),
+        };
+    }
+
+    private async refreshTranslationTargets(): Promise<void> {
+        const provider = getTextTranslationProvider();
+        try {
+            const providers = await provider.list();
+            const descriptions = await Promise.all(providers.map(async ({ provider: id }) => (await provider.describe(id).promise).pairs));
+            const targets = [...new Set(descriptions.flatMap((pairs) => pairs.map((pair) => pair.to)))].sort();
+            this.translationTargets = [
+                { value: "app", label: t("translation.appLanguage") },
+                ...targets.map((code) => ({ value: code, label: `${languageDisplayName(code)} (${code})` })),
+            ];
+            this.translateTarget?.update(this.translateTargetProps());
+        } catch {
+            this.translationTargets = [{ value: "app", label: t("translation.appLanguage") }];
+            this.translateTarget?.update(this.translateTargetProps());
+        }
     }
 }
 

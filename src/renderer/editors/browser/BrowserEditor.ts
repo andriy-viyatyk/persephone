@@ -19,6 +19,7 @@ import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { errMessage } from "../../../shared/utils";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
+import { BrowserTranslationController } from "./BrowserTranslationController";
 import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
 import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
 import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
@@ -67,6 +68,8 @@ export class BrowserEditor extends EditorModel<
 
     /** Sub-model: webview refs, IPC events, context menu, keyboard shortcuts. */
     readonly webview: BrowserWebviewModel;
+    /** User-facing Translate workflow for the active browser page. */
+    readonly translation: BrowserTranslationController;
     /** Sub-model: URL input, suggestions, search engine selector. */
     readonly urlBar: BrowserUrlBarModel;
     /** Sub-model: bookmarks drawer, star button, image discovery. */
@@ -100,6 +103,8 @@ export class BrowserEditor extends EditorModel<
         this.tor = new BrowserTorModel(this);
         this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
+        this.translation = new BrowserTranslationController(this);
+        this.webview.setTranslationLifecycle(this.translation.onPageNavigation);
         this.own(siteExtensionTrust.subscribe((snapshot) => {
             this.state.update((state) => {
                 state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {
@@ -240,6 +245,7 @@ export class BrowserEditor extends EditorModel<
 
     async dispose(): Promise<void> {
         this.aiVisionDisposed = true;
+        this.translation.dispose();
         this.webview.dispose();
         this.clearAllAiVisionRegistrations();
         this.aiVisionGenerationByTab.clear();

@@ -8,6 +8,12 @@ const DESCRIBE_TIMEOUT_MS = 4000;
 const MAX_TRANSLATE_CHANNELS = 4;
 const MAX_CHANNELS_PER_HOST_BOARD = 15;
 const PRIORITIES = ["visible", "near", "background"] as const;
+let sharedProvider: TextTranslationProvider | undefined;
+
+/** One provider transport and four-channel translation window per renderer. */
+export function getTextTranslationProvider(): TextTranslationProvider {
+    return sharedProvider ??= new TextTranslationProvider();
+}
 
 export type TranslationPriority = typeof PRIORITIES[number];
 export type TranslationFormat = "text" | "html";

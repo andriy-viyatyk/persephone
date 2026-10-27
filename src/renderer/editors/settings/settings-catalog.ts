@@ -180,6 +180,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         rows: [
             { key: "browser-profiles", label: "Browser profiles", purpose: "Isolated browser profiles with their own cookies, storage, and cache." },
             { key: "browser-default-profile", label: "Default browser profile", purpose: "The profile used when opening a new browser tab; empty selects the built-in default." },
+            { key: "browser-translate-target", label: "Translate pages into", purpose: "Target language for browser page translation; app language follows the active application language." },
             { key: "browser-default-bookmarks-file", label: "Default profile bookmarks", purpose: "The .link.json file holding bookmarks for the default browser profile." },
             { key: "browser-incognito-bookmarks-file", label: "Incognito bookmarks", purpose: "The separate .link.json bookmarks file used in incognito mode." },
             { key: "browser-windows-sso", label: "Windows single sign-on", purpose: "Send this device's Windows sign-in to Microsoft sign-in pages from browser profiles (not Incognito or Tor); off by default." },

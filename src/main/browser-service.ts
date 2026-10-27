@@ -839,6 +839,12 @@ export function initBrowserHandlers(): void {
     app.on("web-contents-created", (_event, contents) => {
         contents.on("will-attach-webview", (_event, webPreferences, params) => {
             const argumentsList = webPreferences.additionalArguments || [];
+            const browserPreload = typeof params.preload === "string" && params.preload.toLowerCase().includes("preload-webview");
+            if (browserPreload) {
+                webPreferences.nodeIntegrationInSubFrames = true;
+                webPreferences.contextIsolation = true;
+                webPreferences.nodeIntegration = false;
+            }
             if (!isPersistentBrowserProfilePartition(params.partition)) {
                 if (argumentsList.includes("--persephone-webmcp-enabled")) {
                     webPreferences.additionalArguments = argumentsList.filter(

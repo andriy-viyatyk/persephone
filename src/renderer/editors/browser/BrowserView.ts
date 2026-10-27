@@ -21,6 +21,10 @@ import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { SwitchView } from "../../uikit/Switch/SwitchView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
+import { SelectView } from "../../uikit/Select/SelectView";
+import type { SelectViewProps } from "../../uikit/Select/SelectView";
+import type { IListBoxItem } from "../../uikit/ListBox/types";
+import { languageDisplayName } from "../../ui/translation/TranslationWorkflow";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { DotView } from "../../uikit/Dot/DotView";
 import { TagView } from "../../uikit/Tag/TagView";
@@ -49,6 +53,7 @@ import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Switch/Switch.css";
 import "../../uikit/Popover/Popover.css";
+import "../../uikit/Select/Select.css";
 import "../../uikit/Spinner/Spinner.css";
 import "../../uikit/Dot/Dot.css";
 import "../../uikit/Splitter/Splitter.css";
@@ -111,6 +116,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             this.wasCurrentWebview = this.model.webview.webviewRefs.get(this.tabId) === this.webview;
             if (this.wasCurrentWebview) {
                 this.model.webview.webviewRefs.delete(this.tabId);
+                this.model.webview.endPageTranslation(this.tabId);
             }
         });
 
@@ -149,7 +155,9 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
 
         const onIpcMessage = (event: Electron.IpcMessageEvent): void => {
             const { channel, args } = event;
-            if (channel === "page-title") {
+            if (channel === "translation-ready" || channel === "translation-units" || channel === "translation-detection-sample") {
+                this.model.webview.handleTranslationFrame(this.tabId, event.frameId, channel, args[0]);
+            } else if (channel === "page-title") {
                 const title = args[0] as string;
                 if (title) this.model.updateTab(this.tabId, { pageTitle: title });
             } else if (channel === "page-favicon") {
@@ -499,6 +507,12 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private readonly searchEngineButton = document.createElement("button");
     private readonly sitePermissionsButton: IconButtonView;
     private readonly sitePermissionsPopover: PopoverView;
+    private readonly translateButton: IconButtonView;
+    private readonly translatePopover: PopoverView;
+    private translateContent: BrowserTranslationPopoverContentView | undefined;
+    private translatePopoverOpen = false;
+    private translationStateTabId = "";
+    private translationStateUnsubscribe: (() => void) | undefined;
     /** Proxied-profile marker (US-1557); opens the network info dialog. */
     private readonly proxyChip = document.createElement("button");
     private pageMenu: MenuHandle | undefined;
@@ -532,6 +546,9 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         const forward = make("toolbar-forward", "arrow-right", t("browser.toolbarForward", { shortcut: "Alt+Right" }), this.model.webview.goForward);
         const reload = make("toolbar-reload", "refresh", t("browser.toolbarReload"), this.model.webview.reloadOrStop);
         this.controls = [home, back, forward, reload];
+        this.translateButton = make("toolbar-translate", "translate", t("translation.button"), this.handleTranslateClick);
+        this.translateButton.update({ name: "toolbar-translate", size: "sm", icon: "translate", title: t("translation.button"), "aria-label": t("translation.button"), onClick: this.handleTranslateClick });
+        this.translatePopover = this.child(new PopoverView(this.translatePopoverProps()));
         this.navigate = this.child(new IconButtonView({ name: "url-navigate", size: "sm", icon: "arrow-right", title: t("browser.navigate"), onClick: this.model.urlBar.handleNavigate }));
         this.sitePermissionsButton = this.child(new IconButtonView({ name: "url-site-permissions", size: "sm", icon: "info", title: t("browser.sitePermissions"), onClick: this.toggleSitePermissions }));
         this.sitePermissionsPopover = this.child(new PopoverView(this.sitePermissionsPopoverProps()));
@@ -550,11 +567,12 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         // in construction order and patching it with insertBefore. `this.controls` keeps its
         // own order because sync() indexes into it positionally.
         this.root.append(
-            home.root, back.root, forward.root, reload.root,
+            home.root, back.root, forward.root, reload.root, this.translateButton.root,
             this.inputPanel,
             bookmarks.root, torInfo.root, downloads.root,
             more.root, devtools.root, close.root,
             this.sitePermissionsPopover.root,
+            this.translatePopover.root,
         );
         this.downloads = downloads;
     }
@@ -563,11 +581,16 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.translation.state.subscribe(() => this.sync(this.props.state))); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
-    protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; }
+    protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; this.translationStateUnsubscribe?.(); }
 
     private sync(state: BrowserEditorState): void {
+        if (this.translationStateTabId !== state.activeTabId) {
+            this.translationStateUnsubscribe?.();
+            this.translationStateTabId = state.activeTabId;
+            this.translationStateUnsubscribe = this.model.webview.subscribePageTranslationState(state.activeTabId, () => this.sync(this.props.state));
+        }
         const aiVisionIndicator = this.getAiVisionIndicator(state);
         const sitePermissionsTitle = aiVisionIndicator.source === "page"
             ? t("browser.sitePermissionsTitleBuiltin")
@@ -593,6 +616,10 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.renderStart(state);
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
         this.permissionsContent?.update(this.sitePermissionsContentProps());
+        const translation = this.model.translation.getTabState(state.activeTabId);
+        this.translateButton.update({ name: "toolbar-translate", size: "sm", icon: "translate", title: t("translation.button"), "aria-label": t("translation.button"), active: translation.active, hidden: !translation.available, onClick: this.handleTranslateClick });
+        this.translatePopover.update(this.translatePopoverProps());
+        this.translateContent?.update({ tabId: state.activeTabId, state: translation, pageError: this.model.webview.getPageTranslationState(state.activeTabId).lastError, onChange: this.model.translation.correctSource });
         this.pageMenu?.update({ name: "page-menu", items: this.model.webview.getPageMenuItems(), placement: "bottom-end" });
         this.searchMenu?.update({ name: "search-engine-menu", items: this.model.urlBar.searchEngineMenuItems, placement: "bottom-start" });
     }
@@ -771,8 +798,93 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         };
     }
 
+    private readonly handleTranslateClick = (): void => {
+        const tabId = this.model.state.get().activeTabId;
+        if (this.model.translation.getTabState(tabId).active) {
+            this.translatePopoverOpen = false;
+            this.translatePopover.update(this.translatePopoverProps());
+            void this.model.translation.toggle(tabId);
+            return;
+        }
+        this.translatePopoverOpen = true;
+        this.translatePopover.update(this.translatePopoverProps());
+        void this.model.translation.toggle(tabId);
+    };
+
+    private translatePopoverProps() {
+        return {
+            name: "translation-source-popover",
+            open: this.translatePopoverOpen,
+            elementRef: this.translateButton?.root,
+            placement: "bottom-start" as const,
+            offset: [0, 4] as [number, number],
+            outsideClickIgnoreSelector: '[data-name="toolbar-translate"]',
+            onClose: () => { this.translatePopoverOpen = false; this.translatePopover.update(this.translatePopoverProps()); },
+            contentView: (host: HTMLElement) => {
+                const content = new BrowserTranslationPopoverContentView({
+                    tabId: this.model.state.get().activeTabId,
+                    state: this.model.translation.getTabState(this.model.state.get().activeTabId),
+                    pageError: this.model.webview.getPageTranslationState(this.model.state.get().activeTabId).lastError,
+                    onChange: this.model.translation.correctSource,
+                }, host);
+                this.translateContent = content;
+                return content;
+            },
+        };
+    }
+
     private openSearchMenu(): void { this.searchMenu?.dispose(); this.searchMenu = openMenu(this.searchEngineButton, { name: "search-engine-menu", items: this.model.urlBar.searchEngineMenuItems, placement: "bottom-start", onClose: () => { this.searchMenu = undefined; } }); }
     private openPageMenu(): void { this.pageMenu?.dispose(); this.pageMenu = openMenu(this.controls[6].root, { name: "page-menu", items: this.model.webview.getPageMenuItems(), placement: "bottom-end", onClose: () => { this.pageMenu = undefined; } }); }
+}
+
+interface BrowserTranslationPopoverProps {
+    tabId: string;
+    state: import("./BrowserTranslationController").BrowserTranslationTabState;
+    pageError?: string;
+    onChange: (tabId: string, from: string) => Promise<void>;
+}
+
+class BrowserTranslationPopoverContentView extends VanillaView<BrowserTranslationPopoverProps> {
+    private readonly label = document.createElement("div");
+    private readonly error = document.createElement("div");
+    private readonly select: SelectView<IListBoxItem>;
+
+    public constructor(props: BrowserTranslationPopoverProps, host: HTMLElement) {
+        super(props, host);
+        this.label.dataset.translationLabel = "";
+        this.error.dataset.translationError = "";
+        this.select = this.child(new SelectView(this.selectProps()));
+        this.root.append(this.label, this.select.root, this.error);
+        this.root.dataset.translationPopoverContent = "";
+    }
+
+    protected onMount(): void { this.select.mount(); this.sync(); }
+    protected onUpdate(props: BrowserTranslationPopoverProps): void { this.props = props; this.sync(); }
+
+    private selectProps(): SelectViewProps<IListBoxItem> {
+        const options = this.props.state.candidates.map((code) => ({ value: code, label: `${languageDisplayName(code)} (${code})` }));
+        const selected = options.find((option) => option.value === this.props.state.from) ?? null;
+        return {
+            name: "translation-source-language",
+            size: "sm",
+            items: options,
+            value: selected,
+            placeholder: t("translation.chooseSource"),
+            emptyMessage: t("translation.chooseSource"),
+            onChange: (item) => { void this.props.onChange(this.props.tabId, String(item.value)); },
+        };
+    }
+
+    private sync(): void {
+        const language = this.props.state.from;
+        const languageLabel = `${languageDisplayName(language)} (${language})`;
+        this.label.textContent = !language ? t("translation.chooseSource")
+            : this.props.state.active ? t("translation.translatedFrom", { language: languageLabel })
+            : t("translation.pageLanguage", { language: languageLabel });
+        this.select.update(this.selectProps());
+        this.error.textContent = this.props.pageError || this.props.state.error || this.props.state.progress || "";
+        this.error.hidden = !this.error.textContent;
+    }
 }
 
 class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count: number }> {

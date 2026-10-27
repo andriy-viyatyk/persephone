@@ -1,4 +1,4 @@
-import { ButtonView } from "../../uikit/Button/ButtonView";
+import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { MenuView } from "../../uikit/Menu/MenuView";
 import type { MenuItem } from "../../core/events/context-menu";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -7,13 +7,12 @@ import type { TranslateTextPageController } from "./TranslateTextPageController"
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import { EventEndpoint } from "../../../ipc/api-types";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import "../../uikit/Button/Button.css";
 import "../../uikit/Menu/Menu.css";
 
 interface Props { controller: TranslateTextPageController; model: MonacoEditor; language: string }
 
 export class TranslateTextToolbarContributionView extends VanillaView<Props> {
-    private readonly button: ButtonView;
+    private readonly button: IconButtonView;
     private readonly menu: MenuView;
     private providerAvailable = false;
     private menuOpen = false;
@@ -30,7 +29,7 @@ export class TranslateTextToolbarContributionView extends VanillaView<Props> {
             { id: "translate-selection", label: t("translation.selection"), onClick: () => { void this.props.controller.start("selection"); } },
             { id: "translate-page", label: t("translation.page"), onClick: () => { void this.props.controller.start("page"); } },
         ];
-        this.button = this.child(new ButtonView({ name: "translate-text-button", variant: "ghost", size: "sm", children: t("translation.button"), title: t("translation.button"), disabled: true, onClick: this.toggle }));
+        this.button = this.child(new IconButtonView({ name: "translate-text-button", size: "sm", icon: "translate", title: t("translation.button"), "aria-label": t("translation.button"), disabled: true, onClick: this.toggle }));
         this.menu = this.child(new MenuView({ name: "translate-text-menu", elementRef: this.button.root, placement: "bottom-end", open: false, items: this.items, onClose: this.onMenuClose }));
     }
 
@@ -69,7 +68,7 @@ export class TranslateTextToolbarContributionView extends VanillaView<Props> {
         const supported = this.language === "plaintext" || this.language === "markdown";
         const visible = supported && this.providerAvailable;
         this.root.hidden = !visible;
-        this.button.update({ name: "translate-text-button", variant: "ghost", size: "sm", children: t("translation.button"), title: t("translation.button"), disabled: !visible, onClick: this.toggle });
+        this.button.update({ name: "translate-text-button", size: "sm", icon: "translate", title: t("translation.button"), "aria-label": t("translation.button"), disabled: !visible, onClick: this.toggle });
         this.menu.update({ name: "translate-text-menu", elementRef: this.button.root, placement: "bottom-end", open: this.menuOpen && visible, items: this.items, onClose: this.onMenuClose });
     }
 }

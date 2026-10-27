@@ -1,7 +1,15 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const translationCatalog = {
-    button: { message: "Translate", note: "Monaco toolbar action for text translation." },
+    button: { message: "Translate", note: "Toolbar action for translating browser pages or text." },
+    chooseSource: { message: "Choose a source language", note: "Prompt in the browser translation popup when page language cannot be detected." },
+    translatedFrom: { message: "Translated from {language}", note: "Browser translation popup source-language label." },
+    pageLanguage: { message: "Page language: {language}", note: "Browser translation popup label when the page is not translated." },
+    pageDialogTitle: { message: "Translate page", note: "Title of the model download prompt for browser page translation." },
+    targetSetting: { message: "Translate pages into", note: "Browser settings label for the page translation target language." },
+    appLanguage: { message: "App language", note: "Browser page translation target setting that follows the application language." },
+    alreadyInLanguage: { message: "This page is already in {language}.", note: "Shown when source and target languages match." },
+    operationFailed: { message: "Page translation failed: {message}", note: "Browser translation operation failure." },
     selection: { message: "Translate selection", note: "Toolbar menu item to translate the current selection." },
     page: { message: "Translate page", note: "Toolbar menu item to translate the complete text page." },
     selectionAction: { message: "Translate selection…", note: "Monaco editor context menu action for translating selected text." },

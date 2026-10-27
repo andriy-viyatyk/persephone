@@ -8,7 +8,8 @@ import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { errMessage } from "../../../shared/utils";
 import { formatBytes } from "../../core/utils/format";
 import { t } from "../../../shared/i18n/t";
-import { TextTranslationProvider, type TranslationDescription, type TranslationPair, type TranslationProgress, type TranslationDownloadProgress, type TranslationOperation } from "./TextTranslationProvider";
+import { getTextTranslationProvider, type TranslationDescription, type TranslationPair, type TranslationProgress, type TranslationOperation } from "./TextTranslationProvider";
+import { downloadTranslationRoute, findTranslationRoute, languageDisplayName, type TranslationRoute } from "./TranslationWorkflow";
 import { buildTranslationBatches, createDetectionSample, createTranslationSpans, reconstructTranslation, selectTranslationSpans } from "./translate-text-segmentation";
 import { registerDialogView } from "../dialogs/dialog-view-registry";
 import { showDialog } from "../dialogs/Dialogs";
@@ -20,7 +21,7 @@ const TARGET_PREFERENCE = "translation.text.lastTarget.v1";
 type Mode = "selection" | "page";
 type StartResult = { source: string; target: string };
 
-interface Route { legs: TranslationPair[]; installed: boolean; missingBytes: number }
+type Route = TranslationRoute;
 interface SourceSnapshot {
     pageId: string;
     title: string;
@@ -33,21 +34,11 @@ interface SourceSnapshot {
 
 
 function displayName(code: string): string {
-    try { return new Intl.DisplayNames([getActiveLocale()], { type: "language" }).of(code) || code; }
-    catch { return code; }
+    return languageDisplayName(code);
 }
 
 function routeFor(pairs: TranslationPair[], from: string, to: string): Route | undefined {
-    if (from === to) return undefined;
-    const direct = pairs.find((pair) => pair.from === from && pair.to === to);
-    const legs = direct ? [direct] : (() => {
-        const first = pairs.find((pair) => pair.from === from && pair.to === "en");
-        const second = pairs.find((pair) => pair.from === "en" && pair.to === to);
-        return first && second ? [first, second] : undefined;
-    })();
-    if (!legs) return undefined;
-    const missingBytes = legs.filter((leg) => !leg.installed).reduce((total, leg) => total + Math.max(0, leg.sizeBytes), 0);
-    return { legs, installed: missingBytes === 0, missingBytes };
+    return findTranslationRoute(pairs, from, to);
 }
 
 function sourceChoices(description: TranslationDescription, candidates: string[], detected: string): TranslationChoice[] {
@@ -106,7 +97,7 @@ class TranslateDialogModel extends TDialogModel<TranslateTextDialogState, "done"
 registerDialogView(translateDialogId, TranslateTextDialogView);
 
 export class TranslateTextPageController {
-    private readonly provider = new TextTranslationProvider();
+    private readonly provider = getTextTranslationProvider();
     private readonly getEditor: () => monaco.editor.IStandaloneCodeEditor | undefined;
     private readonly sourceModel: () => MonacoEditor;
     private readonly onAvailability: (available: boolean) => void;
@@ -200,8 +191,11 @@ export class TranslateTextPageController {
             let route = routeFor(description.pairs, chosen.value.source, chosen.value.target);
             if (!route) { model.cancelTranslation(); void ui.notify(t("translation.noRoute"), "warning"); return; }
             if (!route.installed) {
-                const downloaded = await this.downloadRoute(model, provider, scope, chosen.value.source, chosen.value.target, route, (operation) => { currentOperation = operation; }, () => cancelled);
+                const downloaded = await downloadTranslationRoute(this.provider, provider, scope, chosen.value.source, chosen.value.target, route, t("translation.dialogTitle"), (progress) => {
+                    model.setProgress({ progressVisible: true, progress: progress.loaded, progressMax: progress.total, progressText: progress.text });
+                }, (operation) => { currentOperation = operation; }, () => cancelled);
                 if (!downloaded || cancelled) { if (!cancelled) model.cancelTranslation(); return; }
+                model.setProgress({ progressVisible: false, progress: 0, progressMax: 0, progressText: "" });
                 route = routeFor(description.pairs, chosen.value.source, chosen.value.target) ?? route;
             }
             const translated = new Map<string, string>();
@@ -236,7 +230,10 @@ export class TranslateTextPageController {
                     if (code === "not-ready" && !retryNotReady) {
                         retryNotReady = true;
                         const freshRoute = routeFor(description.pairs, chosen.value.source, chosen.value.target);
-                        if (freshRoute && await this.downloadRoute(model, provider, scope, chosen.value.source, chosen.value.target, freshRoute, (op) => { currentOperation = op; }, () => cancelled)) {
+                        if (freshRoute && await downloadTranslationRoute(this.provider, provider, scope, chosen.value.source, chosen.value.target, freshRoute, t("translation.dialogTitle"), (progress) => {
+                            model.setProgress({ progressVisible: true, progress: progress.loaded, progressMax: progress.total, progressText: progress.text });
+                        }, (op) => { currentOperation = op; }, () => cancelled)) {
+                            model.setProgress({ progressVisible: false, progress: 0, progressMax: 0, progressText: "" });
                             batchIndex--;
                             continue;
                         }
@@ -266,7 +263,6 @@ export class TranslateTextPageController {
 
     public dispose(): void {
         this.disposed = true;
-        this.provider.dispose();
         this.activeDialog?.cancelTranslation();
     }
 
@@ -288,36 +284,4 @@ export class TranslateTextPageController {
         return { pageId: owner.id, title, language, content, selectionStart: start, selectionEnd: end, selection: selectedText };
     }
 
-    private async downloadRoute(
-        model: TranslateDialogModel,
-        provider: string,
-        scope: string,
-        from: string,
-        to: string,
-        route: Route,
-        setOperation: (operation: TranslationOperation<unknown>) => void,
-        isCancelled: () => boolean,
-    ): Promise<boolean> {
-        const answer = await ui.confirm(t("translation.downloadConsent", { size: formatBytes(route.missingBytes) }), {
-            title: t("translation.dialogTitle"), buttons: [t("translation.download"), t("translation.cancel")],
-        });
-        if (answer !== t("translation.download") || isCancelled()) return false;
-        let loaded = 0;
-        let total = route.missingBytes;
-        const operation = this.provider.download(provider, from, to, scope, (progress: TranslationDownloadProgress) => {
-            loaded = progress.loadedBytes;
-            total = progress.totalBytes;
-            model.setProgress({ progressVisible: true, progress: loaded, progressMax: total, progressText: t("translation.downloading", { from: `${displayName(progress.leg.from)} (${progress.leg.from})`, to: `${displayName(progress.leg.to)} (${progress.leg.to})`, loaded: formatBytes(loaded), total: formatBytes(total) }) });
-        });
-        setOperation(operation);
-        try {
-            await operation.promise;
-            model.setProgress({ progressVisible: false, progress: 0, progressMax: 0, progressText: "" });
-            return true;
-        } catch (error: unknown) {
-            const code = (error as { code?: unknown }).code;
-            if (code !== "cancelled") void ui.notify(t("translation.downloadFailed", { message: errMessage(error, "") }), "warning");
-            return false;
-        }
-    }
 }
