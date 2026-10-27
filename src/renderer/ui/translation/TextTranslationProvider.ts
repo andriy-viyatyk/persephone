@@ -66,7 +66,9 @@ export class TextTranslationProvider {
 
     public constructor() {
         this.unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
-            if (this.disposed || !boardId.startsWith("text-translation:")) { port.close(); return; }
+            // Every board's channel arrives on this event with the same port; only close our own.
+            if (!boardId.startsWith("text-translation:")) return;
+            if (this.disposed) { port.close(); return; }
             const waiter = this.portWaiters.get(channelId);
             if (waiter) { this.portWaiters.delete(channelId); waiter.resolve(port); }
             else this.pendingPorts.set(channelId, port);
