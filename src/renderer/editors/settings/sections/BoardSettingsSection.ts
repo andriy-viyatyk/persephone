@@ -9,6 +9,7 @@ import type { InputProps } from "../../../uikit/Input/InputView";
 import { TextareaView } from "../../../uikit/Textarea/TextareaView";
 import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
+import { MultiSelectView, type MultiSelectViewProps } from "../../../uikit/MultiSelect/MultiSelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { errMessage } from "../../../../shared/utils";
@@ -30,6 +31,7 @@ interface BoardSettingControl {
     textarea?: TextareaView;
     checkbox?: CheckboxView;
     select?: SelectView<IListBoxItem>;
+    multiSelect?: MultiSelectView<IListBoxItem>;
     draft?: string;
     persistedValue?: string;
     readGeneration: number;
@@ -150,6 +152,11 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             control.select = select;
             row.append(select.root);
             select.mount();
+        } else if (declaration.type === "string" && declaration.format === "multiselect") {
+            const multiSelect = this.child(new MultiSelectView(this.multiSelectProps(control)));
+            control.multiSelect = multiSelect;
+            row.append(multiSelect.root);
+            multiSelect.mount();
         } else if (declaration.type === "string" && declaration.format === "multiline") {
             const textarea = this.child(new TextareaView(this.textareaProps(control)));
             control.textarea = textarea;
@@ -169,8 +176,11 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             onClick: () => void this.resetValue(control),
             children: t("settings.reset"),
         }));
-        row.append(reset.root);
+        // A row keeps the button at its natural width; the column would stretch it.
+        const resetRow = panel({ direction: "row" });
+        resetRow.append(reset.root);
         reset.mount();
+        row.append(resetRow);
         this.root.append(row);
     }
 
@@ -202,13 +212,47 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
 
     private selectProps(control: BoardSettingControl): SelectViewProps<IListBoxItem> {
         const declaration = control.declaration;
-        const items = (declaration.options ?? []).map((value) => ({ value, label: value }));
+        const items = (declaration.options ?? [])
+            .filter((option): option is string => typeof option === "string")
+            .map((value) => ({ value, label: value }));
         const selectedValue = typeof control.draft === "string" ? control.draft : settingText(declaration.default);
         return {
             name: `board-setting-${declaration.id}`,
             items,
             value: items.find((item) => item.value === selectedValue) ?? null,
             onChange: (item: IListBoxItem): void => { void this.writeValue(control, item.value); },
+        };
+    }
+
+    private multiSelectProps(control: BoardSettingControl): MultiSelectViewProps<IListBoxItem> {
+        const declaration = control.declaration;
+        const options = (declaration.options ?? []).map((option) => typeof option === "string"
+            ? { value: option, label: option }
+            : { value: option.value, label: option.label ?? option.value });
+        const knownValues = new Set(options.map((option) => option.value));
+        const storedTokens = splitSettingTokens(control.draft ?? settingText(declaration.default));
+        const unknownTokens = storedTokens.filter((token, index) =>
+            !knownValues.has(token) && storedTokens.indexOf(token) === index);
+        const items = [
+            ...options,
+            ...unknownTokens.map((value) => ({ value, label: value })),
+        ];
+        const selected = new Set(storedTokens);
+        const value = items.filter((item) => selected.has(item.value));
+
+        return {
+            name: `board-setting-${declaration.id}`,
+            items,
+            value,
+            formatSelection: (selection) => selection.map((item) => item.value).join(", "),
+            onChange: (selection) => {
+                const selectedValues = new Set(selection.map((item) => item.value));
+                const nextValues = [
+                    ...options.filter((option) => selectedValues.has(option.value)).map((option) => option.value),
+                    ...unknownTokens.filter((token) => selectedValues.has(token)),
+                ];
+                void this.writeValue(control, nextValues.join(","));
+            },
         };
     }
 
@@ -228,6 +272,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             children: this.settingLabel(control.declaration),
         });
         control.select?.update(this.selectProps(control));
+        control.multiSelect?.update(this.multiSelectProps(control));
     }
 
     private async loadValue(control: BoardSettingControl): Promise<void> {
@@ -278,4 +323,8 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         }
         await this.writeValue(control, value);
     }
+}
+
+function splitSettingTokens(value: string): string[] {
+    return value.split(",").map((token) => token.trim()).filter(Boolean);
 }

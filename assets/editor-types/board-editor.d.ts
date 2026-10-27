@@ -48,11 +48,16 @@ export interface IBoardCapabilityDeclaration {
     readonly alwaysOpensNewPage?: boolean;
 }
 
+export interface IBoardSettingOption {
+    readonly value: string;
+    readonly label?: string;
+}
+
 export interface IBoardSettingDeclaration {
     readonly id: string;
     readonly type: "string" | "boolean" | "number" | "enum";
     readonly default: string | boolean | number;
-    readonly options?: readonly string[];
+    readonly options?: readonly (string | IBoardSettingOption)[];
     readonly format?: string;
     readonly label?: string;
     readonly description?: string;

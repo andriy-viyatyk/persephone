@@ -4,6 +4,7 @@ import type {
     IBoardManifest,
     IBoardSecondaryViewDeclaration,
     IBoardSettingDeclaration,
+    IBoardSettingOption,
 } from "../../api/types/board-editor";
 import type { NormalizedBoardManifest } from "../../editors/board/board-manifest";
 
@@ -94,7 +95,7 @@ export function projectBoardSetting(setting: {
     id: string;
     type: "string" | "boolean" | "number" | "enum";
     default: string | boolean | number;
-    options?: string[];
+    options?: (string | IBoardSettingOption)[];
     format?: string;
     label?: string;
     description?: string;

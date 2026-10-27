@@ -23,6 +23,7 @@ import {
 } from "../../../shared/board-manifest-utils";
 import type {
     BoardSettingDeclaration,
+    BoardSettingOption,
     BoardSettingType,
     BoardSettingValue,
 } from "../../api/board-settings/types";
@@ -367,8 +368,56 @@ function normalizeBoardSettingDeclaration(
         return undefined;
     }
 
-    const options: string[] = [];
-    if (Array.isArray(candidate.options)) {
+    const format = typeof candidate.format === "string" && candidate.format.trim()
+        ? candidate.format.trim()
+        : undefined;
+    const isMultiSelect = format === "multiselect";
+    if (isMultiSelect && candidate.type !== "string") {
+        report?.(id, "The multiselect format is only valid for string settings.");
+        return undefined;
+    }
+
+    const options: (string | BoardSettingOption)[] = [];
+    if (isMultiSelect) {
+        if (!Array.isArray(candidate.options) || candidate.options.length === 0) {
+            report?.(id, "Multiselect settings require at least one valid option.");
+            return undefined;
+        }
+        const seenValues = new Set<string>();
+        for (const option of candidate.options) {
+            let value: string;
+            let label: string | undefined;
+            if (typeof option === "string") {
+                value = option.trim();
+            } else if (option && typeof option === "object" && !Array.isArray(option)) {
+                const rawOption = option as { value?: unknown; label?: unknown };
+                if (typeof rawOption.value !== "string"
+                    || (rawOption.label !== undefined && typeof rawOption.label !== "string")) {
+                    report?.(id, "Multiselect options must be strings or objects with string values and labels.");
+                    return undefined;
+                }
+                value = rawOption.value.trim();
+                label = typeof rawOption.label === "string" ? rawOption.label.trim() : undefined;
+                if (rawOption.label !== undefined && !label) {
+                    report?.(id, "Multiselect option labels must not be empty.");
+                    return undefined;
+                }
+            } else {
+                report?.(id, "Multiselect options must be strings or objects with string values and labels.");
+                return undefined;
+            }
+            if (!value) {
+                report?.(id, "Multiselect option values must not be empty.");
+                return undefined;
+            }
+            if (seenValues.has(value)) {
+                report?.(id, "Multiselect option values must be unique after trimming.");
+                return undefined;
+            }
+            seenValues.add(value);
+            options.push(typeof option === "string" ? value : { value, ...(label ? { label } : {}) });
+        }
+    } else if (Array.isArray(candidate.options)) {
         for (const option of candidate.options) {
             if (typeof option !== "string") continue;
             const normalizedOption = option.trim();
@@ -381,9 +430,7 @@ function normalizeBoardSettingDeclaration(
         type: candidate.type,
         default: candidate.default,
         ...(options.length > 0 ? { options } : {}),
-        ...(typeof candidate.format === "string" && candidate.format.trim()
-            ? { format: candidate.format.trim() }
-            : {}),
+        ...(format ? { format } : {}),
         ...(typeof candidate.label === "string" && candidate.label.trim()
             ? { label: candidate.label.trim() }
             : {}),
@@ -398,8 +445,26 @@ function normalizeBoardSettingDeclaration(
             return undefined;
         }
         if (typeof declaration.default !== "string"
-            || !declaration.options.includes(declaration.default)) {
+            || !declaration.options.some((option) => typeof option === "string" && option === declaration.default)) {
             report?.(id, "The enum default must be one of its options.");
+            return undefined;
+        }
+        return declaration;
+    }
+
+    if (isMultiSelect) {
+        if (typeof declaration.default !== "string") {
+            report?.(id, "The default does not match the declared string type.");
+            return undefined;
+        }
+        const optionValues = new Set(options.map((option) => typeof option === "string" ? option : option.value));
+        if (options.length === 0) {
+            report?.(id, "Multiselect settings require at least one valid option.");
+            return undefined;
+        }
+        const defaultTokens = declaration.default.split(",").map((token) => token.trim());
+        if (defaultTokens.some((token) => token && !optionValues.has(token))) {
+            report?.(id, "Every non-empty multiselect default token must match one of its options.");
             return undefined;
         }
         return declaration;

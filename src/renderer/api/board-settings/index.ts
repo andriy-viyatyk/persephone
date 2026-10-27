@@ -9,6 +9,7 @@ export {
 } from "./board-settings-bridge";
 export type {
     BoardSettingDeclaration,
+    BoardSettingOption,
     BoardSettingType,
     BoardSettingValue,
     BoardSettingsChange,

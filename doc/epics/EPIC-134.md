@@ -77,6 +77,7 @@ Phases 3–4 depend on phase 2's segmentation; phase 3 can be built in parallel 
 | US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Implemented |
 | [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Implemented |
 | [US-1729](../tasks/US-1729-board-service-locale/README.md) | Give board services the app locale | Implemented |
+| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Planned |
 | BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Planned |
 
 Remaining phase-2 tasks proposed by US-1726:
