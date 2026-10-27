@@ -71,19 +71,19 @@ the text editor rather than as a board meeting workflow.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1726](../tasks/US-1726-pause-detection-research/README.md) | Research pause detection for live transcription | Done |
+| US-1726 | Research pause detection for live transcription | Done |
 | BT-060 (persephone-boards) | Streaming VAD helper in the whisper runtime (`whisper-runtime-1.9.5-r2`) | Done |
 | BT-061 (persephone-boards) | Live segmentation in the Speech to Text service | Done |
 | US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Done |
-| [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Done |
-| [US-1729](../tasks/US-1729-board-service-locale/README.md) | Give board services the app locale | Done |
-| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Done |
+| US-1728 | Voice typing — live text as you speak | Done |
+| US-1729 | Give board services the app locale | Done |
+| US-1730 | Multi-select board setting | Done |
 | BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Done |
 | BT-063, BT-064, BT-065 (persephone-boards) | Speech to Text main screen, app-language default, language picker | Done |
 | BT-066 (persephone-boards) | Agent Chat: live insertion of committed phrases (phase 2) | Done |
-| [US-1731](../tasks/US-1731-editor-transcript/README.md) | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Done |
+| US-1731 | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Done |
 | BT-067 (persephone-boards) | Speech to Text: hour-long live sessions (no duration cap for live, bounded memory and queue) | Done |
-| [US-1733](../tasks/US-1733-board-speech-auto-stop-api/README.md) | Board API for the speech auto-stop setting | Done |
+| US-1733 | Board API for the speech auto-stop setting | Done |
 | BT-068 (persephone-boards) | Agent Chat: microphone auto-stop after silence using the shared speech auto-stop setting | Done |
 
 The proposed audio left-context task is covered by BT-062: committed text is the prompt and the
