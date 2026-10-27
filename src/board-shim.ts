@@ -333,6 +333,8 @@ let initialSourcePrivateSession = false;
 let initialSourceContext: BoardSourceContext | undefined;
 let pageVisible = false;
 const pageVisibilityCbs = new Set<(visible: boolean) => void>();
+let voiceTypingAutoStopSilenceMs = 0;
+const voiceTypingAutoStopCbs = new Set<(milliseconds: number) => void>();
 const sourceUrlResolvers: Array<(url: string | undefined) => void> = [];
 interface PersephoneSourceOpenEvent {
     readonly url: string;
@@ -1488,6 +1490,7 @@ onHostMessage((event) => {
             sourceContext?: BoardSourceContext;
             initialSourcePrivateSession?: boolean;
             pageVisible?: boolean;
+            voiceTypingAutoStopSilenceMs?: unknown;
             folderPath?: string; contentHost?: boolean; materialize?: boolean;
             pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
         }
@@ -1513,6 +1516,7 @@ onHostMessage((event) => {
         settleSourceUrl(data.sourceUrl);
     }
     if (typeof data.pageVisible === "boolean") setPageVisibility(data.pageVisible);
+    setVoiceTypingAutoStopSilence(data.voiceTypingAutoStopSilenceMs);
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
@@ -1585,6 +1589,22 @@ onHostMessage((event) => {
     }
     if (data.__persephone === "fetch:chunk") pending.pullResolve?.(data);
 });
+
+onHostMessage((event) => {
+    const data = event.data as { __persephone?: unknown; milliseconds?: unknown } | undefined;
+    if (data?.__persephone !== "voice-typing:auto-stop-silence-changed") return;
+    setVoiceTypingAutoStopSilence(data.milliseconds);
+});
+
+function setVoiceTypingAutoStopSilence(value: unknown): void {
+    if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value) || value < 0
+        || value === voiceTypingAutoStopSilenceMs) return;
+    voiceTypingAutoStopSilenceMs = value;
+    for (const callback of voiceTypingAutoStopCbs) {
+        try { callback(value); }
+        catch (error: unknown) { console.error("persephone.voiceTyping.onAutoStopSilenceChange callback error:", errMessage(error)); }
+    }
+}
 
 // Runtime source identities arrive independently of the initial source handshake. This listener
 // is installed before board application code runs, so events posted while the board is loading are
@@ -1985,6 +2005,18 @@ function createHandle(
             try { callback(pageVisible); }
             catch (error: unknown) { console.error("persephone.page.onVisibilityChange callback error:", error); }
             return () => { pageVisibilityCbs.delete(callback); };
+        },
+    },
+
+    /** Shared app preference for voice typing and boards that take dictation. */
+    voiceTyping: {
+        get autoStopSilenceMs(): number { return voiceTypingAutoStopSilenceMs; },
+        onAutoStopSilenceChange(callback: (milliseconds: number) => void): () => void {
+            if (typeof callback !== "function") throw new TypeError("persephone.voiceTyping.onAutoStopSilenceChange expects a function.");
+            voiceTypingAutoStopCbs.add(callback);
+            try { callback(voiceTypingAutoStopSilenceMs); }
+            catch (error: unknown) { console.error("persephone.voiceTyping.onAutoStopSilenceChange callback error:", errMessage(error)); }
+            return () => { voiceTypingAutoStopCbs.delete(callback); };
         },
     },
 

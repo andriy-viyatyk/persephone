@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.43.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.44.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox
 multi-select controls for string settings; boards that rely on them must set
@@ -27,7 +27,12 @@ the service entry; same-board opens include `info.page.boardId`, while cross-boa
 `info.interface` and descriptive `info.caller` metadata. Both channel endpoints support `send`,
 `onMessage`, `onClose`, `close`, `writable`, and `whenWritable()`. Each direction allows 256
 unacknowledged messages; service-to-page payloads are capped at 1 MiB, while page-to-service has
-only the count bound. Limits are 16 channels per frame and 128 per service. Use
+only the count bound. Limits are 16 channels per frame and 128 per service. Bridge `1.44.0` adds
+`persephone.voiceTyping.autoStopSilenceMs` and
+`persephone.voiceTyping.onAutoStopSilenceChange(callback)`: `0` means auto-stop is off and any
+other value is a duration in milliseconds. The callback immediately receives the current value,
+then receives changes; call its returned function to unsubscribe. Feature-detect
+`persephone.voiceTyping` before use because older apps do not expose this API. Use
 `if (!channel.writable) await channel.whenWritable(); channel.send(x)`; errors include
 `channel-backpressure` and `channel-message-too-large`. Channels close with `renderer-reloaded`,
 `service-exited`, `untrusted`, or `quit` on the matching lifecycle event. Boards using channels

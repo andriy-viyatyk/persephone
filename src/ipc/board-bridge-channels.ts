@@ -316,6 +316,8 @@ export interface BoardPortInitMsg {
     pageId?: string;
     /** Whether the page hosting this board is currently displayed. */
     pageVisible: boolean;
+    /** Shared app auto-stop duration for voice typing and dictation boards; 0 disables it. */
+    voiceTypingAutoStopSilenceMs: number;
     /** One-shot capability request delivered to a newly opened handler board. */
     intent?: IntentEnvelope;
     /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
@@ -346,6 +348,12 @@ export interface BoardPortInitMsg {
      *  returning `filePath` verbatim, so the board always receives a readable LOCAL path. Absent
      *  (the common case) keeps the zero-round-trip handshake path. */
     materialize?: boolean;
+}
+
+/** Host renderer -> board frame: effective app auto-stop duration changed. */
+export interface BoardVoiceTypingAutoStopChangedMsg {
+    __persephone: "voice-typing:auto-stop-silence-changed";
+    milliseconds: number;
 }
 
 export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "segmented" | "input";

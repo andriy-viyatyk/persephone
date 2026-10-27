@@ -535,9 +535,17 @@ interface PersephoneSourceApi {
     readonly initialSourcePrivateSession: boolean;
 }
 
+interface PersephoneVoiceTypingApi {
+    /** Current shared auto-stop duration in milliseconds; 0 means auto-stop is off. */
+    readonly autoStopSilenceMs: number;
+    /** Subscribe to changes. Calls back immediately with the current value and returns an unsubscribe function. */
+    onAutoStopSilenceChange(callback: (milliseconds: number) => void): () => void;
+}
+
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.42.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.42.0"; 1.42.0 adds multiline board settings and private MCP session
+    /** The current host bridge is 1.44.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.44.0"; 1.44.0 adds the live voice-typing auto-stop setting API;
+     *  1.42.0 adds multiline board settings and private MCP session
      *  endpoints for authorized host-API services (requires `appScripting`);
      *  1.41.0 adds `trashFile()`; 1.40.0 adds singleton
      *  file-mask routing and `source.navigate()` for items in the initial source context.
@@ -546,6 +554,8 @@ interface PersephoneBoardApi {
     readonly version: string;
     /** State and lifecycle events for the page hosting this board. */
     readonly page: PersephonePageApi;
+    /** Shared app auto-stop preference for voice typing and dictation boards. */
+    readonly voiceTyping: PersephoneVoiceTypingApi;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
     readonly aiVision: PersephoneAiVisionApi;
     /** Spawn a command line on the host machine; returns a process handle. */

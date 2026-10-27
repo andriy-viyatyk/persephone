@@ -15,10 +15,13 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1729: Give board services the app locale](tasks/US-1729-board-service-locale/README.md)
   - [ ] [US-1730: Multi-select board setting](tasks/US-1730-board-multiselect-setting/README.md)
   - [ ] [US-1731: Transcript button in the text editor](tasks/US-1731-editor-transcript/README.md)
+  - [ ] [US-1733: Board API for the speech auto-stop setting](tasks/US-1733-board-speech-auto-stop-api/README.md)
 
 ## Planned
 
-*(none)*
+- **EPIC-135** — [Translation service](epics/EPIC-135.md) — a Translate board providing `text.translate` for Monaco pages, browser pages and other boards
+- *(no epic)*
+  - [ ] [US-1732: Native memory leak in a board service during live transcription](tasks/US-1732-board-service-native-memory-leak/README.md) — about +9 MB/min in the Speech to Text service with two live channels; found during EPIC-134 verification
 
 ## Scheduled
 

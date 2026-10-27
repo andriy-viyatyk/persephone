@@ -139,6 +139,8 @@ channel.send({ type: "end" });
 
 The consumer needs the manifest's `uses` declaration and microphone permission because it owns capture. For live requests, insert each `segment` as final text when it arrives, adding a separator before it when needed; several segments of one utterance are consecutive pieces of it; show `draft.text` only as a replaceable preview, never as committed text. On `result`, do not insert `result.text` again if segments were inserted: it contains the same text joined by single spaces. A consumer that ignored live messages uses `result.text` as before. Consumers must not send or submit transcribed text automatically unless their own UX explicitly asks the user.
 
+Dictation consumers may opt into the app-wide auto-stop duration through `persephone.voiceTyping` (board bridge 1.44.0). Feature-detect the API before using it because older Persephone apps do not expose it. Its configured duration is shared with Persephone voice typing; consumer-specific recording and stop behavior remains the board's responsibility.
+
 ## Minimal provider
 
 ```js

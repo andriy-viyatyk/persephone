@@ -40,6 +40,7 @@ import type {
     BoardStatusBarActionMsg,
     BoardMuteToggleMsg,
     BoardPageVisibilityMsg,
+    BoardVoiceTypingAutoStopChangedMsg,
     BoardStatusBarPatch,
     BoardToHostMsg,
     BoardHostFrameMsg,
@@ -91,6 +92,7 @@ import {
     type BoardCapabilityFrame,
 } from "../../api/board-capability-transport";
 import { app } from "../../api/app";
+import { settings } from "../../api/settings";
 import { boardNavigationReturnService } from "../../api/board-navigation-return";
 import {
     normalizeToolbarControlPatches,
@@ -202,6 +204,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private contentHostUnsubscribe: (() => void) | undefined;
     private sharedStateUnsubscribe: (() => void) | undefined;
     private settingsUnsubscribe: (() => void) | undefined;
+    private voiceTypingSettingsUnsubscribe: (() => void) | undefined;
     private focusUnsubscribe: (() => void) | undefined;
     private focusTimer: ReturnType<typeof setTimeout> | undefined;
     private readonly pendingAiVision = new Map<number, {
@@ -527,6 +530,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.props.onToolbarClear?.(retiredGeneration);
         this.props.onStatusBarClear?.(retiredGeneration);
         this.generation++;
+        this.voiceTypingSettingsUnsubscribe?.();
+        this.voiceTypingSettingsUnsubscribe = undefined;
         this.fetchBridge.dispose();
         this.abortPendingContentOpen();
         this.props.model.releaseContentResources(this.tabId, retiredGeneration);
@@ -635,6 +640,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, this.generation);
         this.saveHandlerId = undefined;
         this.rejectSaveRequests(this.generation, "The board permissions changed while it was saving.");
+        this.voiceTypingSettingsUnsubscribe?.();
+        this.voiceTypingSettingsUnsubscribe = undefined;
         this.generation++;
         this.fetchBridge.dispose();
         this.fetchBridge = new BoardFetchBridge();
@@ -751,6 +758,30 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         });
     }
 
+    private installVoiceTypingSettingsSubscription(): void {
+        this.voiceTypingSettingsUnsubscribe?.();
+        const frame = this.iframe;
+        const host = this.host;
+        const generation = this.generation;
+        const model = this.props.model;
+        if (!frame || !host) return;
+        this.voiceTypingSettingsUnsubscribe = settings.onChanged.subscribe((change) => {
+            if (change.key !== "voice-typing.auto-stop-silence-ms") return;
+            if (!this.live || this.host !== host || this.generation !== generation
+                || this.iframe !== frame || model.frames.get(this.tabId) !== frame
+                || !frame.contentWindow || typeof change.value !== "number") return;
+            const message: BoardVoiceTypingAutoStopChangedMsg = {
+                __persephone: "voice-typing:auto-stop-silence-changed",
+                milliseconds: change.value,
+            };
+            try {
+                frame.contentWindow.postMessage(message, `board://${host}`);
+            } catch {
+                // The frame may be replaced while the change is posted.
+            }
+        });
+    }
+
     private async transferPort(): Promise<void> {
         const host = this.host;
         const frame = this.iframe;
@@ -771,6 +802,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             sourceUrl,
             sourceContext: this.props.model.initialSourceContext(),
             pageVisible: this.getPageVisibility(),
+            voiceTypingAutoStopSilenceMs: settings.get("voice-typing.auto-stop-silence-ms") as number,
             ...(this.props.model.isInitialSourcePrivateSession() ? { initialSourcePrivateSession: true } : {}),
             folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
@@ -785,8 +817,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (sourcePaths.length || contextPaths.length) await api.grantBoardSourceReads(this.props.boardRoot, sourcePaths, contextPaths);
             if (!this.live || this.pendingPort !== port || !frame.contentWindow) return;
             init.pageVisible = this.getPageVisibility();
+            init.voiceTypingAutoStopSilenceMs = settings.get("voice-typing.auto-stop-silence-ms") as number;
             contentWindow.postMessage(init, `board://${host}`, [port]);
             this.pendingPort = null;
+            this.installVoiceTypingSettingsSubscription();
             if (this.capabilityFrame && this.capabilityFrame.generation === this.generation) {
                 this.capabilityFrame.ready = true;
                 markBoardCapabilityFrameReady(this.capabilityFrame.pageId, this.generation);
@@ -818,6 +852,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (this.isMain) this.props.model.clearMuteButtonForFrame(retiredGeneration);
         this.props.onToolbarClear?.(retiredGeneration);
         this.props.onStatusBarClear?.(retiredGeneration);
+        this.voiceTypingSettingsUnsubscribe?.();
+        this.voiceTypingSettingsUnsubscribe = undefined;
         // The reloaded frame restarts its request ids, so its old fetches must not survive.
         this.fetchBridge.dispose();
         this.abortPendingContentOpen();

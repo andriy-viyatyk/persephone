@@ -83,6 +83,8 @@ Phases 3–4 depend on phase 2's segmentation; phase 3 can be built in parallel 
 | BT-066 (persephone-boards) | Agent Chat: live insertion of committed phrases (phase 2) | Planned |
 | [US-1731](../tasks/US-1731-editor-transcript/README.md) | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Planned |
 | BT-067 (persephone-boards) | Speech to Text: hour-long live sessions (no duration cap for live, bounded memory and queue) | Planned |
+| [US-1733](../tasks/US-1733-board-speech-auto-stop-api/README.md) | Board API for the speech auto-stop setting | Implemented |
+| BT-068 (persephone-boards) | Agent Chat: stop live recording using the shared speech auto-stop setting | Planned; separate board-side task |
 
 The proposed audio left-context task is covered by BT-062: committed text is the prompt and the
 uncommitted audio window carries the left context.
