@@ -63,6 +63,11 @@ export function isCurrent(record: ServiceRecord, process: UtilityProcess, genera
     return record.process === process && record.generation === generation;
 }
 
+/** A service that has been forked: still loading its module (`starting`) or past the handshake (`running`). */
+export function isStartedOrRunning(record: ServiceRecord): boolean {
+    return record.state === "starting" || record.state === "running";
+}
+
 export function killUtilityProcessSync(child: UtilityProcess | undefined): void {
     if (!child) return;
     const pid = child.pid;

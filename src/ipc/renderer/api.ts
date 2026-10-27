@@ -638,6 +638,8 @@ class ApiCalls implements Api {
 
     armVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.armVoiceTypingMicrophone);
     clearVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.clearVoiceTypingMicrophone);
+    armTranscriptLoopback = async () => executeOnce<void>(Endpoint.armTranscriptLoopback);
+    clearTranscriptLoopback = async () => executeOnce<void>(Endpoint.clearTranscriptLoopback);
     setVoiceTypingConfig = async (request: { shortcut: string }) => executeOnce<void>(Endpoint.setVoiceTypingConfig, request);
     setVoiceTypingState = async (request: { state: "idle" | "recording" | "transcribing" }) => executeOnce<void>(Endpoint.setVoiceTypingState, request);
 

@@ -14,6 +14,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1728: Voice typing — live text as you speak](tasks/US-1728-voice-typing-live/README.md)
   - [ ] [US-1729: Give board services the app locale](tasks/US-1729-board-service-locale/README.md)
   - [ ] [US-1730: Multi-select board setting](tasks/US-1730-board-multiselect-setting/README.md)
+  - [ ] [US-1731: Transcript button in the text editor](tasks/US-1731-editor-transcript/README.md)
 
 ## Planned
 

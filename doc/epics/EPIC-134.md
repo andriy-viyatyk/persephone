@@ -77,17 +77,55 @@ Phases 3–4 depend on phase 2's segmentation; phase 3 can be built in parallel 
 | US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Implemented |
 | [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Implemented |
 | [US-1729](../tasks/US-1729-board-service-locale/README.md) | Give board services the app locale | Implemented |
-| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Planned |
-| BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Planned |
-
-Remaining phase-2 tasks proposed by US-1726:
-
-| Task | Repo | Size |
-|---|---|---|
-| Agent Chat: live insertion with a grey draft | persephone-boards | S |
+| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Implemented |
+| BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Implemented |
+| BT-063, BT-064, BT-065 (persephone-boards) | Speech to Text main screen, app-language default, language picker | Implemented |
+| BT-066 (persephone-boards) | Agent Chat: live insertion of committed phrases (phase 2) | Planned |
+| [US-1731](../tasks/US-1731-editor-transcript/README.md) | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Planned |
+| BT-067 (persephone-boards) | Speech to Text: hour-long live sessions (no duration cap for live, bounded memory and queue) | Planned |
 
 The proposed audio left-context task is covered by BT-062: committed text is the prompt and the
 uncommitted audio window carries the left context.
+
+## Design decisions for phases 3–4 (2026-10-27, revised the same day)
+
+The user chose to build the remaining phases before closing the epic, then moved meeting
+transcription out of the Speech to Text board and into the text editor. A first plan (a board
+`systemAudio` permission plus a Meeting section in the board) was replaced before implementation.
+
+**No draft text in Persephone (user decision).** Uncommitted draft text is not shown anywhere in
+Persephone: voice typing, the editor transcript and Agent Chat insert committed phrases only. Live
+drafts stay visible only in the Speech to Text board's own test panel. US-1731 removes the grey
+draft that US-1728 added to voice typing.
+
+**Transcript in the text editor (US-1731).**
+- A **Transcript** button on the Monaco text page toolbar, shown only when a `speech.transcribe`
+  provider advertising `live` is available (the same discovery voice typing uses).
+- Clicking it offers **Both**, **Computer audio**, **Microphone (me)**. While running, the button
+  shows an audio level indicator and reads **Stop**; clicking it again stops.
+- Text is typed live and always **appended to the end of the page**, never at the cursor: the user
+  may click, select or copy text while it runs. In **Both** mode each committed utterance starts a new line labelled
+  `Me:` or `Others:`; with one source, each utterance is a new line without a label.
+- Persephone captures the computer's audio itself. No board permission is needed: the app session's
+  display-media handler answers a one-shot request armed by the transcript controller with
+  `audio: "loopback"` and the requesting app frame as the video source (verified on Electron 43 in
+  a standalone probe: a "System audio" track that stays live after the video track stops). Windows
+  only.
+- Two live `speech.transcribe` channels run side by side. Transcription continues while the tab is
+  inactive and stops when the page closes or leaves the text editor. The text lives in the page
+  content, so the unsaved-content cache keeps it; the user saves the page as usual.
+- No consent notice (user decision): the Transcript is a general tool (a call, a video playing on
+  the computer, dictating notes), not a meeting recorder, and a dialog on start is only friction.
+  Everything stays local.
+- Not handled: echo when speakers are used without headphones, and naming individual speakers.
+
+**Hour-long live sessions (BT-067, persephone-boards).**
+- The `speech.transcribe` contract states that `maxAudioMs` limits non-live requests; a live
+  request is not capped by total length (US-1731 updates the guide). The Speech to Text service
+  drops its byte cap for live requests and keeps per-request memory flat: a bounded audio window,
+  a rolling prompt tail, no per-segment arrays.
+- Both channels share one whisper-server. Under load the service skips draft and partial jobs
+  first and never drops a committed segment.
 
 ## Risks and concerns
 

@@ -47,6 +47,51 @@ let initialized = false;
 const recordingMediaGrants = new Map<number, number>();
 const voiceTypingMediaGrants = new Map<number, number>();
 const voiceTypingGrantTargets = new Map<number, { target: WebContents; onDestroyed: () => void }>();
+const transcriptLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
+
+/** Arm one short-lived app-main-frame display request for Windows loopback audio. */
+export function armTranscriptLoopbackGrant(webContentsId: number): void {
+    clearTranscriptLoopbackGrant(webContentsId);
+    if (process.platform !== "win32") return;
+    const target = webContents.fromId(webContentsId);
+    if (!target || target.isDestroyed()) return;
+    const frame = target.mainFrame;
+    const expiresAt = Date.now() + 5000;
+    const onDestroyed = (): void => clearTranscriptLoopbackGrant(webContentsId);
+    transcriptLoopbackGrants.set(webContentsId, { expiresAt, frame, target, onDestroyed });
+    target.once("destroyed", onDestroyed);
+    setTimeout(() => {
+        if ((transcriptLoopbackGrants.get(webContentsId)?.expiresAt ?? 0) <= Date.now()) clearTranscriptLoopbackGrant(webContentsId);
+    }, 5100);
+}
+
+export function clearTranscriptLoopbackGrant(webContentsId: number): void {
+    const grant = transcriptLoopbackGrants.get(webContentsId);
+    if (!grant) return;
+    transcriptLoopbackGrants.delete(webContentsId);
+    grant.target.removeListener("destroyed", grant.onDestroyed);
+}
+
+function hasTranscriptLoopbackGrant(webContentsId: number, frame?: Electron.WebFrameMain): boolean {
+    const grant = transcriptLoopbackGrants.get(webContentsId);
+    if (!grant || grant.expiresAt <= Date.now() || grant.target.isDestroyed()
+        || (frame && frame !== grant.frame) || grant.target.mainFrame !== grant.frame) {
+        clearTranscriptLoopbackGrant(webContentsId);
+        return false;
+    }
+    return true;
+}
+
+function consumeTranscriptLoopbackGrant(frame: Electron.WebFrameMain | null): boolean {
+    if (!frame) return false;
+    for (const [webContentsId, grant] of transcriptLoopbackGrants) {
+        if (grant.frame === frame && hasTranscriptLoopbackGrant(webContentsId, frame)) {
+            clearTranscriptLoopbackGrant(webContentsId);
+            return true;
+        }
+    }
+    return false;
+}
 
 /** Arm one app-main-frame, video-only permission request for a window source capture. */
 export function armRecordingMediaGrant(webContentsId: number): void {
@@ -319,7 +364,11 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
                 && types.length === 1 && types[0] === "audio" && hasVoiceTypingMediaGrant(webContents.id);
             const isScreenRecordingVideo = permission === "media" && types.every((type) => type === "video")
                 && hasRecordingMediaGrant(webContents.id);
-            const allowed = isVoiceTypingAudio || isScreenRecordingVideo;
+            // getDisplayMedia arrives as "media" with empty mediaTypes, not "display-capture" (verified on
+            // Electron 43). The display-media handler consumes the Transcript grant, so it is only checked here.
+            const isTranscriptDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
+                && hasTranscriptLoopbackGrant(webContents.id, webContents.mainFrame);
+            const allowed = isVoiceTypingAudio || isScreenRecordingVideo || isTranscriptDisplay;
             if (isVoiceTypingAudio) clearVoiceTypingMediaGrant(webContents.id);
             if (isScreenRecordingVideo && allowed) clearRecordingMediaGrant(webContents.id);
             callback(allowed);
@@ -357,6 +406,19 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
     }
 }
 
+/** The app session is often created (and installed) before `appSession` is assigned, so the display-media
+ *  handler is registered here, once the app session is known, rather than in installSession(). */
+function installAppDisplayMedia(ses: Session): void {
+    ses.setDisplayMediaRequestHandler((request, callback) => {
+        if (process.platform !== "win32" || !request.videoRequested || !request.audioRequested
+            || !consumeTranscriptLoopbackGrant(request.frame)) {
+            callback({});
+            return;
+        }
+        callback({ video: request.frame, audio: "loopback" });
+    });
+}
+
 function installSession(ses: Session): void {
     if (installedSessions.has(ses)) return;
     installedSessions.add(ses);
@@ -383,7 +445,6 @@ function installSession(ses: Session): void {
         }
     });
     ses.setDevicePermissionHandler(() => false);
-    if (ses === appSession) ses.setDisplayMediaRequestHandler((_request, callback) => callback({}));
     denySelection(ses);
 }
 
@@ -509,6 +570,7 @@ export function initPermissionPolicy(): void {
         appSession = session.fromPartition(appPartition);
         fileAccessSession = session.fromPartition(fileAccessPersistPartition);
         installSession(appSession);
+        installAppDisplayMedia(appSession);
         installSession(fileAccessSession);
     });
 }

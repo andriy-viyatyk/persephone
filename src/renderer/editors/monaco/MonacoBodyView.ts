@@ -104,6 +104,10 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         this.host = null;
     }
 
+    public getEditor(): monaco.editor.IStandaloneCodeEditor | undefined {
+        return this.editor;
+    }
+
     private mountHostIfPresent(): void {
         const host = this.model.contentHost as TextFileModel | null;
         this.host = host;

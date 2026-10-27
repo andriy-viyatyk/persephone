@@ -197,6 +197,20 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const { clearVoiceTypingMediaGrant } = await import("../../main/permission-policy-service");
         clearVoiceTypingMediaGrant(event.sender.id);
     }
+
+    armTranscriptLoopback = async (event: IpcMainEvent): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame || process.platform !== "win32") throw new Error("permission-denied");
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        const { armTranscriptLoopbackGrant } = await import("../../main/permission-policy-service");
+        armTranscriptLoopbackGrant(event.sender.id);
+    }
+
+    clearTranscriptLoopback = async (event: IpcMainEvent): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
+        const { clearTranscriptLoopbackGrant } = await import("../../main/permission-policy-service");
+        clearTranscriptLoopbackGrant(event.sender.id);
+    }
     getStartupInputs = async (_event: IpcMainEvent) => {
         return getStartupInputs();
     }
@@ -476,6 +490,8 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setVoiceTypingState, controllerInstance.setVoiceTypingState);
     bindEndpoint(Endpoint.armVoiceTypingMicrophone, controllerInstance.armVoiceTypingMicrophone);
     bindEndpoint(Endpoint.clearVoiceTypingMicrophone, controllerInstance.clearVoiceTypingMicrophone);
+    bindEndpoint(Endpoint.armTranscriptLoopback, controllerInstance.armTranscriptLoopback);
+    bindEndpoint(Endpoint.clearTranscriptLoopback, controllerInstance.clearTranscriptLoopback);
     bindEndpoint(Endpoint.showOpenFileDialog, controllerInstance.showOpenFileDialog);
     bindEndpoint(Endpoint.showSaveFileDialog, controllerInstance.showSaveFileDialog);
     bindEndpoint(Endpoint.showOpenFolderDialog, controllerInstance.showOpenFolderDialog);

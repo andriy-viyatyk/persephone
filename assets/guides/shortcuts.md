@@ -46,6 +46,19 @@ combinations such as `Ctrl+C` working.
 If the original input is no longer editable when the transcript returns, Persephone copies the text
 to the clipboard instead.
 
+### Transcript
+
+In a Monaco text page, choose **Transcript** in the right side of the editor toolbar and select
+**Microphone (me)**, **Computer audio**, or **Both**. Computer audio and Both are available only on
+Windows. Audio is processed locally by the selected provider. Use it for a call, a video playing on
+the computer, or to dictate notes. In Both mode use headphones: without them the microphone also
+hears the speakers and their words appear a second time as **Me**. While capturing, the toolbar
+shows the live audio level and a **Stop** button. Stop ends capture and waits for
+the provider's final response; closing the page or switching its editor away from Monaco also stops
+capture. Committed utterances are appended at the end of the document without moving your current
+selection. Both mode labels microphone text **Me** and computer audio text **Others**. Provider draft
+text is not shown or inserted. Only one Transcript or Voice Typing session can run in an app window.
+
 ## Text Editor (Monaco)
 
 ### Editing

@@ -7,6 +7,9 @@ import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
+import { TranscriptController } from "../../ui/transcript/TranscriptController";
+import type { TranscriptState } from "../../ui/transcript/TranscriptController";
+import { TranscriptToolbarContributionView } from "../../ui/transcript/TranscriptToolbarContributionView";
 
 function requireMonacoModel(model: EditorModel): MonacoEditor {
     if (!(model instanceof MonacoEditor)) throw new Error("Monaco view received an invalid model.");
@@ -19,20 +22,26 @@ function createContentsRoot(): HTMLSpanElement {
     return root;
 }
 
-class MonacoToolbarBitsView extends VanillaView<{ model: MonacoEditor }> {
+interface MonacoToolbarBitsProps { model: MonacoEditor; transcriptController: TranscriptController }
+
+class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
     private model: MonacoEditor;
     private button: IconButtonView | undefined;
     private stateSubscription: (() => void) | undefined;
+    private readonly transcript: TranscriptToolbarContributionView;
 
-    public constructor(props: { model: MonacoEditor }) {
+    public constructor(props: MonacoToolbarBitsProps) {
         super(props, createContentsRoot());
         this.model = props.model;
+        this.transcript = this.child(new TranscriptToolbarContributionView({ controller: props.transcriptController }));
     }
 
     protected onMount(): void {
         this.button = this.child(new IconButtonView(this.buttonProps()));
         this.root.append(this.button.root);
         this.button.mount();
+        this.transcript.mount();
+        this.root.append(this.transcript.root);
         this.bindState();
         this.own(() => {
             this.stateSubscription?.();
@@ -40,7 +49,7 @@ class MonacoToolbarBitsView extends VanillaView<{ model: MonacoEditor }> {
         });
     }
 
-    protected onUpdate(props: { model: MonacoEditor }): void {
+    protected onUpdate(props: MonacoToolbarBitsProps): void {
         if (props.model !== this.model) {
             this.model = props.model;
             this.bindState();
@@ -50,6 +59,10 @@ class MonacoToolbarBitsView extends VanillaView<{ model: MonacoEditor }> {
 
     protected onDispose(): void {
         this.button = undefined;
+    }
+
+    public updateTranscriptState(state: TranscriptState): void {
+        this.transcript.updateState(state);
     }
 
     private bindState(): void {
@@ -83,19 +96,24 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
     private readonly body: MonacoBodyView;
     private readonly toolbar: MonacoToolbarBitsView;
     private readonly chrome: TextChromeView;
+    private readonly transcriptController: TranscriptController;
 
     public constructor(props: { model: EditorModel }) {
         const model = requireMonacoModel(props.model);
         const body = new MonacoBodyView({ model });
-        const toolbar = new MonacoToolbarBitsView({ model });
+        const toolbarRef: { current?: MonacoToolbarBitsView } = {};
+        const transcriptController = new TranscriptController(() => body.getEditor(), (state) => toolbarRef.current?.updateTranscriptState(state));
+        const toolbarView = new MonacoToolbarBitsView({ model, transcriptController });
+        toolbarRef.current = toolbarView;
         const chrome = new TextChromeView({
             model: props.model,
             children: body.root,
-            rightToolbarContributions: toolbar.root,
+            rightToolbarContributions: toolbarView.root,
         });
         super(props, chrome.root);
+        this.transcriptController = transcriptController;
         this.body = this.child(body);
-        this.toolbar = this.child(toolbar);
+        this.toolbar = this.child(toolbarView);
         this.chrome = this.child(chrome);
     }
 
@@ -108,7 +126,7 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
     protected onUpdate(props: { model: EditorModel }): void {
         const model = requireMonacoModel(props.model);
         this.body.update({ model });
-        this.toolbar.update({ model });
+        this.toolbar.update({ model, transcriptController: this.transcriptController });
         this.chrome.update({
             model: props.model,
             children: this.body.root,

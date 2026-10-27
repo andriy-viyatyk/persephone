@@ -1,0 +1,23 @@
+@layer editor {
+    [data-type="transcript-toolbar-contribution"] {
+        align-items: center;
+        display: inline-flex;
+        gap: var(--gap-sm, 4px);
+    }
+
+    [data-type="transcript-toolbar-contribution"][hidden] {
+        display: none;
+    }
+
+    [data-type="transcript-toolbar-contribution"] [data-part="level"] {
+        background: linear-gradient(to right, var(--color-border-active, currentColor) var(--transcript-level, 0%), transparent var(--transcript-level, 0%));
+        border: 1px solid var(--color-border-default, currentColor);
+        border-radius: var(--radius-sm, 2px);
+        height: var(--size-control-xs, 4px);
+        width: var(--size-control-md, 32px);
+    }
+
+    [data-type="transcript-toolbar-contribution"] [data-part="level"][hidden] {
+        display: none;
+    }
+}

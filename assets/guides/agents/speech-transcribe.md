@@ -58,7 +58,7 @@ After a `transcribe` open, the consumer sends any number of ordered audio messag
 | `end` | — | No more audio; finish the recording and transcribe it. |
 | `cancel` | — | Cancel this transcription. |
 
-Respect channel backpressure with `writable` and `whenWritable()` before sending. Chunks should be small enough for timely delivery. A provider may reject audio whose accumulated duration exceeds its advertised `maxAudioMs`; it must not silently truncate and report that as a complete transcription.
+Respect channel backpressure with `writable` and `whenWritable()` before sending. Chunks should be small enough for timely delivery. A provider may reject a non-live request whose accumulated duration exceeds its advertised `maxAudioMs`; it must not silently truncate and report that as a complete transcription. `maxAudioMs` is not a total-duration cap for requests opened with `live: true`.
 
 ## Provider to consumer
 
@@ -73,7 +73,7 @@ All provider messages are structured-cloneable objects with a string `type` disc
 | `error` | `code`, `message` | A terminal failure. Send a useful explanation, then close. |
 | `description` | `engine`, `model`, `languages`, `local`, `maxAudioMs`, `features` | Provider metadata returned only for `describe`. |
 
-`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum recording duration in milliseconds. V1 `features` is an array of optional behaviors the provider supports (for example, `"live"`); Speech to Text advertises `features: ["live"]`, while providers with no optional features return `[]`. Consumers must not infer behavior that the provider did not advertise.
+`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum duration for a non-live request, in milliseconds. A live request has no total-duration cap; providers must instead keep audio context, prompt history, and queued work bounded. V1 `features` is an array of optional behaviors the provider supports (for example, `"live"`); Speech to Text advertises `features: ["live"]`, while providers with no optional features return `[]`. Consumers must not infer behavior that the provider did not advertise.
 
 Use these v1 error codes:
 
@@ -81,7 +81,7 @@ Use these v1 error codes:
 |---|---|
 | `not-ready` | Required engine or model is not installed. The provider sends this immediately when it receives a `transcribe` open, before accepting it, and closes. `message` explains how the user can make it ready. |
 | `unsupported-format` | The opening format is unsupported. |
-| `too-long` | Audio exceeds `maxAudioMs`. The provider sends this as soon as accumulated audio exceeds the limit, then closes; it does not wait for `end`. |
+| `too-long` | A non-live request exceeds `maxAudioMs`. The provider sends this as soon as accumulated audio exceeds the limit, then closes; it does not wait for `end`. Live requests are not rejected for total duration. |
 | `engine-failed` | The transcription engine failed. |
 | `cancelled` | The consumer cancelled the operation. |
 
@@ -91,7 +91,7 @@ The provider may also refuse the connection before accepting the open request wi
 
 One channel handles one request. The provider checks its approval policy before describing or accepting any request. For `transcribe`, it checks readiness at open: if the required engine or model is not installed, it immediately sends `not-ready` and closes without accepting the request or starting a download. Otherwise it accepts the request and sends `listening` exactly once, immediately. Consumers may start streaming as soon as `connect` resolves; they must not wait for `listening`. A service channel delivers each message only to the handlers registered when it arrives, so the provider registers `channel.onMessage` at the start of `onChannel`, before any `await`, and keeps what arrives until it accepts the request; otherwise early audio and even `end` are lost. The provider buffers audio received while it loads the already-installed engine/model. In live mode, `draft` and `segment` messages may arrive while `listening`; `preparing` may also appear during `listening` if the engine is still loading when the first live job starts. After `end`, the provider sends `transcribing`, the remaining `draft` and `segment` messages, then exactly one `result` or `error`; the result keeps the v1 fields. For the Speech to Text provider, `result.text` is the nonempty segment texts joined with one space, and each segment's `startMs`/`endMs` is an offset from the first audio sample. Once it has committed text backed by at least two seconds of speech, that provider may fix the detected language for the rest of the live stream; each segment includes its own `language`. Without `live`, the normal status order is `listening` → after `end`, optional `preparing` → `transcribing` → exactly one `result` or `error`. Terminal pre-accept errors such as `not-ready` or `unsupported-format` may close without a status; `too-long` is sent immediately during streaming if the limit is exceeded, without waiting for `end`. `preparing` only reports loading an installed engine/model; first-run downloads are user-triggered separately. If the consumer sends `cancel`, stop work, send `error` with code `cancelled` when the channel is still writable, and close. On any `error`, the consumer stops microphone capture. If the channel closes first, stop recording/transcription work and release request-scoped resources. Do not keep sending after close.
 
-Each provider advertises its own `maxAudioMs` and enforces that limit for one recording. Speech to Text advertises five minutes; other providers may choose a different finite limit. Keep provider-to-consumer messages within the platform's 1 MiB serialized-message limit and obey channel backpressure. A single result contains text and timing, not audio.
+Each provider advertises its own `maxAudioMs` and enforces that limit for non-live requests. Speech to Text advertises five minutes for non-live requests; other providers may choose a different finite limit. Live requests may continue without a total-duration cap, but providers must bound retained audio context, prompt/history state, and queued work. Keep provider-to-consumer messages within the platform's 1 MiB serialized-message limit and obey channel backpressure. A single result contains text and timing, not audio.
 
 ## Forward compatibility
 

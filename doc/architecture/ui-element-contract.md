@@ -271,6 +271,18 @@ targets. Each visible item publishes the stable selector
 is live. The id is validated against the board status-bar id format. Hidden catalog entries have
 no DOM node and no declaration; declarations are retired with the frame generation.
 
+### Monaco Transcript controls
+
+The Transcript contribution is part of the Monaco editor toolbar. Its source menu is a transient
+UIKit menu; the named item selectors remain stable across locales:
+
+| Element | Selector |
+|---|---|
+| Transcript start / stop button | `[data-name="transcript-button"]`, `[data-name="transcript-stop"]` |
+| Transcript audio level | `[data-name="transcript-level"]` |
+| Source menu | `[data-name="transcript-source-menu"]` |
+| Both / Computer audio / Microphone (me) | `[data-name="transcript-mode-both"]`, `[data-name="transcript-mode-computer-audio"]`, `[data-name="transcript-mode-microphone-me"]` |
+
 ### Inspectable panel roots
 
 Panel roots that are useful inspection targets expose the stable selector

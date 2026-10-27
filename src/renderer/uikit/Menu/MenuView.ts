@@ -171,6 +171,8 @@ class MenuContentView extends VanillaView<MenuModel> {
         parts.item = record.item;
         row.dataset.type = "menu-row";
         row.dataset.id = record.id;
+        if (record.item.id) row.dataset.name = record.item.id;
+        else delete row.dataset.name;
         setBooleanAttribute(row, "data-hovered", this.model.state.get().hoveredId === record.id || this.model.state.get().subMenuItem === record.item);
         setBooleanAttribute(row, "data-disabled", Boolean(record.item.disabled));
         setBooleanAttribute(row, "data-start-group", record.startGroup);

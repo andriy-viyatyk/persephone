@@ -13,4 +13,5 @@ export const voiceTypingCatalog = {
     permissionDenied: { message: "Microphone access was denied. Allow microphone access for Persephone and try again.", note: "Voice typing requests one short-lived microphone grant for the Persephone window only." },
     tooLong: { message: "Recording stopped because it reached the five-minute limit.", note: "The speech provider's advertised maximum recording duration is five minutes." },
     failed: { message: "Voice typing could not complete.", note: "General voice typing failure. A more specific provider or microphone message may follow." },
+    sessionConflict: { message: "Stop the other speech capture before starting Transcript or Voice Typing.", note: "Shown when Transcript and Voice Typing try to capture at the same time in one app window." },
 } satisfies Record<string, EnglishCatalogEntry>;

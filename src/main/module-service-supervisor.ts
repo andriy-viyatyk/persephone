@@ -43,7 +43,7 @@ import { ModuleServiceStorageAdapter } from "./module-service-storage";
 import { openWindows } from "./open-windows";
 import { getAssetPath } from "./utils";
 import * as boardLog from "./board-log";
-import { ServiceError, type ServiceRecord, isCurrent, killUtilityProcessSync } from "./module-service-record";
+import { ServiceError, type ServiceRecord, isCurrent, isStartedOrRunning, killUtilityProcessSync } from "./module-service-record";
 import { RestartBudget, RESTART_BUDGET } from "./module-service-restart-budget";
 import { Handshake, routeProcessMessage } from "./module-service-handshake";
 import { failLease, transferRendererLease, type LeaseCallbacks } from "./module-service-leases";
@@ -126,7 +126,7 @@ class ModuleServiceSupervisor {
             const subscription = [...this.boardSettingsSubscriptions.values()].find((candidate) => candidate.subscriptionId === change.subscriptionId);
             if (!subscription || subscription.webContents !== event.sender
                 || !isCurrent(subscription.record, subscription.process, subscription.generation)
-                || subscription.record.state !== "running" || !this.isBoardSettingsAllowed(subscription.record)) return;
+                || !isStartedOrRunning(subscription.record) || !this.isBoardSettingsAllowed(subscription.record)) return;
             try {
                 subscription.process.postMessage({
                     kind: "board-settings-changed",
@@ -378,7 +378,9 @@ class ModuleServiceSupervisor {
         };
         try {
             if (typeof message.requestId !== "string" || !message.requestId) throw new ServiceError("service-error", "Malformed board settings request.");
-            if (!isCurrent(record, process, generation) || record.state !== "running" || record.stopRequested) throw new ServiceError("service-exited");
+            // A service reads its settings while its module loads, before the handshake marks it running
+            // (as with storage, see isStorageAvailable); refusing then left every service on its defaults.
+            if (!isCurrent(record, process, generation) || !isStartedOrRunning(record) || record.stopRequested) throw new ServiceError("service-exited");
             if (!this.isBoardSettingsAllowed(record)) throw new ServiceError("untrusted");
             if (message.kind === "board-settings-get") {
                 if (typeof message.id !== "string" || !message.id.trim()) throw new ServiceError("service-error", "Board setting id must be a non-empty string.");

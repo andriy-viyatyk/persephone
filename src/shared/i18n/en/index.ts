@@ -18,6 +18,7 @@ import { uikitCatalog } from "./uikit";
 import { notebookCatalog } from "./notebook";
 import { logViewCatalog } from "./logView";
 import { voiceTypingCatalog } from "./voiceTyping";
+import { transcriptCatalog } from "./transcript";
 
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
 export const englishCatalog = {
@@ -41,6 +42,7 @@ export const englishCatalog = {
     notebook: Object.fromEntries(Object.entries(notebookCatalog).map(([key, entry]) => [key, entry.message])),
     logView: Object.fromEntries(Object.entries(logViewCatalog).map(([key, entry]) => [key, entry.message])),
     voiceTyping: Object.fromEntries(Object.entries(voiceTypingCatalog).map(([key, entry]) => [key, entry.message])),
+    transcript: Object.fromEntries(Object.entries(transcriptCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
     common: MessagesOf<typeof commonCatalog>;
     main: MessagesOf<typeof mainCatalog>;
@@ -62,6 +64,7 @@ export const englishCatalog = {
     notebook: MessagesOf<typeof notebookCatalog>;
     logView: MessagesOf<typeof logViewCatalog>;
     voiceTyping: MessagesOf<typeof voiceTypingCatalog>;
+    transcript: MessagesOf<typeof transcriptCatalog>;
 };
 
 export type EnglishCatalog = typeof englishCatalog;

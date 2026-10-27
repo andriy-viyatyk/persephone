@@ -161,6 +161,8 @@ export enum Endpoint {
     insertVoiceTypingText = "insertVoiceTypingText",
     armVoiceTypingMicrophone = "armVoiceTypingMicrophone",
     clearVoiceTypingMicrophone = "clearVoiceTypingMicrophone",
+    armTranscriptLoopback = "armTranscriptLoopback",
+    clearTranscriptLoopback = "clearTranscriptLoopback",
     setVoiceTypingConfig = "setVoiceTypingConfig",
     setVoiceTypingState = "setVoiceTypingState",
     getBoardFileAccessGrants = "getBoardFileAccessGrants",
@@ -407,6 +409,8 @@ export type Api = {
     [Endpoint.insertVoiceTypingText]: (request: { sessionId: string; text: string; deferClipboard?: boolean }) => Promise<{ copied: boolean }>;
     [Endpoint.armVoiceTypingMicrophone]: () => Promise<void>;
     [Endpoint.clearVoiceTypingMicrophone]: () => Promise<void>;
+    [Endpoint.armTranscriptLoopback]: () => Promise<void>;
+    [Endpoint.clearTranscriptLoopback]: () => Promise<void>;
     [Endpoint.setVoiceTypingConfig]: (request: { shortcut: string }) => Promise<void>;
     [Endpoint.setVoiceTypingState]: (request: { state: "idle" | "recording" | "transcribing" }) => Promise<void>;
     [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
