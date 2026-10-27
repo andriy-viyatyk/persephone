@@ -43,6 +43,9 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     private decorations: monaco.editor.IEditorDecorationsCollection | undefined;
     private hostCleanups: Array<() => void> = [];
     private revealCleanup: (() => void) | undefined;
+    private translationAvailable = false;
+    private translationAvailabilityKey: monaco.editor.IContextKey<boolean> | undefined;
+    private onTranslateSelection: (() => void) | undefined;
 
     private hostSubscription: (() => void) | undefined;
     private modelSubscription: (() => void) | undefined;
@@ -106,6 +109,15 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
 
     public getEditor(): monaco.editor.IStandaloneCodeEditor | undefined {
         return this.editor;
+    }
+
+    public setTranslationHandler(onTranslateSelection: () => void): void {
+        this.onTranslateSelection = onTranslateSelection;
+    }
+
+    public setTranslationAvailability(available: boolean): void {
+        this.translationAvailable = available;
+        this.translationAvailabilityKey?.set(available);
     }
 
     private mountHostIfPresent(): void {
@@ -242,6 +254,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
             this.registerHostCleanup(setupSelectionListener(ed, this.model)),
             this.registerHostCleanup(setupRichPaste(ed, this.host)),
             this.registerHostCleanup(setupWordWrapAction(ed, this.model)),
+            this.registerHostCleanup(setupTranslateSelectionAction(ed, this.translationAvailable, () => this.onTranslateSelection?.(), (key) => { this.translationAvailabilityKey = key; })),
         ];
         // Mount-autofocus lets the user type right after opening/switching to
         // this page — but sidebar-driven navigation (Explorer click) must not
@@ -474,4 +487,23 @@ function setupWordWrapAction(
         },
     });
     return () => action.dispose();
+}
+
+function setupTranslateSelectionAction(
+    ed: monaco.editor.IStandaloneCodeEditor,
+    available: boolean,
+    run: () => void,
+    onKey: (key: monaco.editor.IContextKey<boolean> | undefined) => void,
+): () => void {
+    const availability = ed.createContextKey("textTranslationProviderAvailable", available);
+    onKey(availability);
+    const action = ed.addAction({
+        id: "text.translateSelection",
+        label: t("translation.selectionAction"),
+        precondition: "editorHasSelection && (editorLangId == plaintext || editorLangId == markdown) && textTranslationProviderAvailable",
+        contextMenuGroupId: "2_translation",
+        contextMenuOrder: 1,
+        run,
+    });
+    return () => { action.dispose(); availability.reset(); onKey(undefined); };
 }

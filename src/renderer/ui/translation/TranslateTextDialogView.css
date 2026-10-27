@@ -1,0 +1,9 @@
+@layer app {
+    [data-type="translate-text-dialog-body"] {
+        min-width: 420px;
+    }
+
+    [data-type="translate-text-dialog-body"] [data-part="progress"] {
+        min-height: 0;
+    }
+}

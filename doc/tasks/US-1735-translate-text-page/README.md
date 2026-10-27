@@ -22,6 +22,14 @@ Dialogs and user-visible messages belong to the app UI, not a new UIKit primitiv
 
 ## Implementation Plan
 
+### Progress
+
+- [x] Add the provider-gated Monaco toolbar action and selection context action.
+- [x] Add language detection, source/target selection, explicit model download, progress, cancellation, and result page creation.
+- [x] Add bounded plain-text and Markdown segmentation with source-preserving reconstruction.
+- [x] Add the English translation catalog and register it.
+- [x] Run the requested typecheck, lint, and production build after the final edits.
+
 1. **Add the Monaco toolbar entry, editor context action, and provider availability gate.** In `src/renderer/editors/monaco/index.ts`, compose a translation controller and `TranslateTextToolbarContributionView` alongside `TranscriptController` and `TranscriptToolbarContributionView`, using the same `MonacoBodyView.getEditor()` callback and `TextChromeView.rightToolbarContributions` slot. Add `src/renderer/ui/translation/TranslateTextToolbarContributionView.ts` and a co-located stylesheet if needed. Reuse `TextTranslationProvider.list()` and filter version 1; refresh on the same board trust-change event as Transcript, hide while unavailable, and dispose the controller with the view. Pass the current language support and provider-availability state into `MonacoBodyView`; keep a Monaco editor context key synchronized with provider/trust availability so its action can be hidden as state changes. In `MonacoBodyView.onHostMount`, register a `setupTranslateSelectionAction()` alongside `setupRichPaste()` and `setupWordWrapAction()`, and add its disposer to `hostCleanups`. Its `ed.addAction()` precondition combines `editorHasSelection`, `editorLangId == plaintext || editorLangId == markdown`, and the custom availability key; use `contextMenuGroupId: "2_translation"` and `contextMenuOrder: 1`. The action label is **Translate selection…**, it has no keybinding, and its run invokes the same controller flow in selection mode. The toolbar menu offers separate selection/page actions; no keyboard shortcut or command-palette-only action is part of this task.
 
    Before → after shape:

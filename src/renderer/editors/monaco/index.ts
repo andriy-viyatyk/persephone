@@ -10,6 +10,8 @@ import type { EditorModel } from "../base/EditorModel";
 import { TranscriptController } from "../../ui/transcript/TranscriptController";
 import type { TranscriptState } from "../../ui/transcript/TranscriptController";
 import { TranscriptToolbarContributionView } from "../../ui/transcript/TranscriptToolbarContributionView";
+import { TranslateTextPageController } from "../../ui/translation/TranslateTextPageController";
+import { TranslateTextToolbarContributionView } from "../../ui/translation/TranslateTextToolbarContributionView";
 
 function requireMonacoModel(model: EditorModel): MonacoEditor {
     if (!(model instanceof MonacoEditor)) throw new Error("Monaco view received an invalid model.");
@@ -22,18 +24,20 @@ function createContentsRoot(): HTMLSpanElement {
     return root;
 }
 
-interface MonacoToolbarBitsProps { model: MonacoEditor; transcriptController: TranscriptController }
+interface MonacoToolbarBitsProps { model: MonacoEditor; transcriptController: TranscriptController; translationController: TranslateTextPageController }
 
 class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
     private model: MonacoEditor;
     private button: IconButtonView | undefined;
     private stateSubscription: (() => void) | undefined;
     private readonly transcript: TranscriptToolbarContributionView;
+    private readonly translate: TranslateTextToolbarContributionView;
 
     public constructor(props: MonacoToolbarBitsProps) {
         super(props, createContentsRoot());
         this.model = props.model;
         this.transcript = this.child(new TranscriptToolbarContributionView({ controller: props.transcriptController }));
+        this.translate = this.child(new TranslateTextToolbarContributionView({ controller: props.translationController, model: props.model, language: props.model.contentHost?.state.get().language ?? "plaintext" }));
     }
 
     protected onMount(): void {
@@ -42,6 +46,8 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
         this.button.mount();
         this.transcript.mount();
         this.root.append(this.transcript.root);
+        this.translate.mount();
+        this.root.append(this.translate.root);
         this.bindState();
         this.own(() => {
             this.stateSubscription?.();
@@ -63,6 +69,10 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
 
     public updateTranscriptState(state: TranscriptState): void {
         this.transcript.updateState(state);
+    }
+
+    public updateTranslationAvailability(available: boolean): void {
+        this.translate.setProviderAvailable(available);
     }
 
     private bindState(): void {
@@ -97,13 +107,23 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
     private readonly toolbar: MonacoToolbarBitsView;
     private readonly chrome: TextChromeView;
     private readonly transcriptController: TranscriptController;
+    private readonly translationController: TranslateTextPageController;
 
     public constructor(props: { model: EditorModel }) {
         const model = requireMonacoModel(props.model);
         const body = new MonacoBodyView({ model });
         const toolbarRef: { current?: MonacoToolbarBitsView } = {};
         const transcriptController = new TranscriptController(() => body.getEditor(), (state) => toolbarRef.current?.updateTranscriptState(state));
-        const toolbarView = new MonacoToolbarBitsView({ model, transcriptController });
+        const translationController = new TranslateTextPageController(
+            () => body.getEditor(),
+            () => model,
+            (available) => {
+                toolbarRef.current?.updateTranslationAvailability(available);
+                body.setTranslationAvailability(available);
+            },
+        );
+        body.setTranslationHandler(() => { void translationController.start("selection"); });
+        const toolbarView = new MonacoToolbarBitsView({ model, transcriptController, translationController });
         toolbarRef.current = toolbarView;
         const chrome = new TextChromeView({
             model: props.model,
@@ -112,6 +132,7 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
         });
         super(props, chrome.root);
         this.transcriptController = transcriptController;
+        this.translationController = translationController;
         this.body = this.child(body);
         this.toolbar = this.child(toolbarView);
         this.chrome = this.child(chrome);
@@ -126,7 +147,7 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
     protected onUpdate(props: { model: EditorModel }): void {
         const model = requireMonacoModel(props.model);
         this.body.update({ model });
-        this.toolbar.update({ model, transcriptController: this.transcriptController });
+        this.toolbar.update({ model, transcriptController: this.transcriptController, translationController: this.translationController });
         this.chrome.update({
             model: props.model,
             children: this.body.root,
