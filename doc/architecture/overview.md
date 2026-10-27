@@ -539,9 +539,11 @@ user-selected legacy value once, skips the legacy path that is already the board
 `<userData>/data/excalidraw-lib` fallback, and records completion explicitly so resetting the board
 setting does not trigger the import again.
 
-Bridge version **1.43.0** adds `format: "multiselect"` for string board settings. Its options may
-carry display labels, while defaults and persisted values remain comma-separated strings; boards
-that use the control should declare `minBridgeVersion: "1.43.0"`.
+Bridge version **1.44.0** adds `persephone.voiceTyping.autoStopSilenceMs` and
+`onAutoStopSilenceChange(callback)` for boards that follow the shared Voice Typing silence timeout;
+`0` disables auto-stop. Bridge **1.43.0** adds `format: "multiselect"` for string board settings.
+Its options may carry display labels, while defaults and persisted values remain comma-separated
+strings; boards that use the control should declare `minBridgeVersion: "1.43.0"`.
 
 ### Capability bus
 

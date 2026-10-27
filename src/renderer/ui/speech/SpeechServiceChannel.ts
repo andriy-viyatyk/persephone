@@ -38,7 +38,7 @@ export function createSpeechServiceChannel(port: MessagePort): SpeechServiceChan
     };
     port.onmessage = ({ data }: MessageEvent<{ kind?: string; sequence?: number; value?: unknown; reason?: { code: string; message: string } }>): void => {
         if (data?.kind === "ack" && Number.isSafeInteger(data.sequence)) {
-            acknowledged = Math.max(acknowledged, Math.min(data.sequence!, sent));
+            acknowledged = Math.max(acknowledged, Math.min(data.sequence, sent));
             waiters.forEach((waiter) => waiter.resolve());
             waiters.clear();
         } else if (data?.kind === "data" && data.sequence === received + 1) {

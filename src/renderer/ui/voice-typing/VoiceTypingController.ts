@@ -219,7 +219,7 @@ export class VoiceTypingController {
     }
 
     private drainPending(capture: AudioCapture): void {
-        while (capture.pending.length) this.queuePcm(capture, capture.pending.shift()!);
+        while (capture.pending.length) this.queuePcm(capture, capture.pending.shift());
     }
 
     private waitForChannel(session: VoiceSession): Promise<void> {

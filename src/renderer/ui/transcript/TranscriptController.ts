@@ -153,9 +153,9 @@ export class TranscriptController {
                 if (this.sources.every((item) => item.terminalReceived)) void this.finish();
             }
             if (value.type === "error") {
+                if (!this.cancelled) ui.notify(typeof value.message === "string" ? value.message : t("transcript.failed"), "warning");
                 this.cancelled = true;
                 source.resolveTerminal?.();
-                if (!this.cancelled) ui.notify(typeof value.message === "string" ? value.message : t("transcript.failed"), "warning");
                 void this.finish();
             }
         });
@@ -187,7 +187,8 @@ export class TranscriptController {
                 await api.clearVoiceTypingMicrophone().catch(() => {});
             }
         }
-        if (this.cancelled) { stream.getTracks().forEach((track) => track.stop()); return; }
+        // Stop may have finished the session while the permission prompt was open; nothing would own this stream.
+        if (this.cancelled || this.finishing || !this.sources.includes(source)) { stream.getTracks().forEach((track) => track.stop()); return; }
         source.capture = new PcmAudioCapture();
         await source.capture.start(stream, (data) => {
             source.queuedChunks++;

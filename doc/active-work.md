@@ -8,14 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-134** — [Live transcription and meeting transcripts](epics/EPIC-134.md)
-  - [x] [US-1726: Research pause detection for live transcription](tasks/US-1726-pause-detection-research/README.md)
-  - [ ] US-1727: speech.transcribe live feature — guide and contract
-  - [ ] [US-1728: Voice typing — live text as you speak](tasks/US-1728-voice-typing-live/README.md)
-  - [ ] [US-1729: Give board services the app locale](tasks/US-1729-board-service-locale/README.md)
-  - [ ] [US-1730: Multi-select board setting](tasks/US-1730-board-multiselect-setting/README.md)
-  - [ ] [US-1731: Transcript button in the text editor](tasks/US-1731-editor-transcript/README.md)
-  - [ ] [US-1733: Board API for the speech auto-stop setting](tasks/US-1733-board-speech-auto-stop-api/README.md)
+*(none)*
 
 ## Planned
 

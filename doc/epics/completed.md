@@ -1,3 +1,19 @@
+## EPIC-134 — Live transcription and meeting transcripts
+
+Completed 2026-10-27. Speech becomes text while you talk. The Speech to Text board (`speech-to-text`
+v1.3.0) cuts speech at pauses with Silero VAD and commits stable words as you speak; voice typing,
+Agent Chat (v1.3.1) and the new text-editor **Transcript** button type committed phrases only, never
+drafts. Both boards stay unpublished until Persephone 5.0.15 ships. Epic document:
+[EPIC-134](EPIC-134.md).
+
+- [x] **Pause detection research (US-1726).** Silero VAD in the provider, drafts at a 500 ms pause, commits at 1200 ms, an additive `live` feature in `speech.transcribe` v1.
+- [x] **Live contract (US-1727).** `draft`, `segment` and `result` messages; several segments per utterance; `maxAudioMs` limits non-live requests only.
+- [x] **Voice typing live (US-1728).** Committed phrases typed as you speak, with an optional **Stop after silence** setting.
+- [x] **Board settings and locale (US-1729, US-1730).** Board services get the app locale and their settings while still starting (every service had run on defaults); a checkbox multi-select setting type (bridge 1.43.0) drives the Speech to Text language picker.
+- [x] **Transcript button (US-1731).** In the text editor: Both / Computer audio / Microphone, appended to the end of the page with `Me:` / `Others:` labels, a level meter, no consent dialog (user decision). Computer audio is captured by the app session's display-media handler as loopback (Windows only); no board permission.
+- [x] **Shared auto-stop for boards (US-1733).** `persephone.voiceTyping` (bridge 1.44.0) gives boards the **Stop after silence** value; Agent Chat's microphone stops after it (BT-068), verified by the user.
+- Board tasks BT-060 – BT-068 are logged in persephone-boards. Close review: five findings fixed (Right Ctrl tap in browser pages, Transcript error notices, a stream opened after Stop, two non-null assertions). Open follow-ups: US-1732 native memory growth in the speech service (planned); Me/Others echo without headphones; Whisper inventing short phrases such as "Thank you." on silence, which can also start Agent Chat's auto-stop countdown.
+
 ## EPIC-133 — Speech to text
 
 Completed 2026-10-26. You can dictate instead of typing. Persephone reserves a `speech.transcribe`

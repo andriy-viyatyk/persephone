@@ -5,8 +5,13 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.42.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
+The board bridge is version **1.44.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.44.0` adds
+`persephone.voiceTyping.autoStopSilenceMs` and `onAutoStopSilenceChange(callback)` for reading and
+subscribing to the shared Voice Typing auto-stop duration; `0` disables auto-stop. Feature-detect
+`persephone.voiceTyping` because older apps do not expose it. Bridge `1.43.0` adds searchable
+checkbox multi-select controls for string settings (`format: "multiselect"`), requiring
+`minBridgeVersion: "1.43.0"`. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. It also adds
 `persephone.mcp.issueSessionEndpoint()` to host-API services. The returned handle contains `url`,
 `headers`, `token`, and an idempotent `revoke()` method. Revoke it at the end of each agent session;
@@ -68,6 +73,14 @@ are stored under, which is what lets them survive the board folder moving. Witho
 is dropped with a registration issue and `persephone.settings.get()` rejects with an error naming
 the missing field. Changing `author` or `name` later moves the key and orphans anything already
 stored under the old one, including board variables.
+
+String settings may use `format: "multiselect"` to show a searchable checkbox list. Provide
+`options` as strings or `{ value, label? }` objects with unique, non-empty trimmed values; labels
+are literal strings. The default and stored value remain a comma-separated string of selected
+ids, with `""` for none. Every non-empty default token must match an option. Values chosen in
+Settings are saved in manifest option order, followed by any still-selected unknown stored tokens.
+Search matches labels case-insensitively; include each option id in its label so users can find it by
+id or display name. Set `minBridgeVersion: "1.43.0"` when using this format.
 
 ## Host-rendered board toolbar
 
@@ -689,7 +702,11 @@ Persephone's bundled utility-process Node runtime.
 The service can use standard Node built-ins, including filesystem, networking, streams, crypto,
 workers, and timers. It does not receive `electron`, `app`, `BrowserWindow`, `webContents`, or
 `ipcMain`. Its environment is sanitized to Persephone's runtime allowlist plus
-`PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`; do not assume arbitrary shell/user variables.
+`PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, and `PERSEPHONE_LOCALE`; do not assume arbitrary
+shell/user variables. `PERSEPHONE_LOCALE` is the resolved app UI locale at process start and updates
+in place when the app locale changes, without restarting the service. Read it when handling each
+request rather than caching it at startup. Page-only `persephone.locale.code` and `persephone.i18n`
+require bridge 1.36.0; the process environment value does not require a newer bridge version.
 The static service host injects `persephone.storage`, so use that adapter for the shared per-board
 JSON store instead of opening `store.json` or inventing a persistence path. The frame uses the same
 store through `persephone.storage`.

@@ -338,6 +338,15 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── VoiceTypingController.ts # Provider discovery, one channel, audio capture, cancellation, and result handoff
 │   │   ├── VoiceTypingOverlayView.ts # App-shell recording/transcribing status overlay
 │   │   └── VoiceTypingOverlayView.css
+│   ├── speech/             # Shared live speech provider discovery, service channel, PCM capture, and session lease
+│   │   ├── SpeechTranscriptionProvider.ts
+│   │   ├── SpeechServiceChannel.ts
+│   │   ├── PcmAudioCapture.ts
+│   │   └── LiveSpeechSessionCoordinator.ts
+│   ├── transcript/         # Page-scoped computer/microphone capture and Monaco Transcript toolbar contribution
+│   │   ├── TranscriptController.ts
+│   │   ├── TranscriptToolbarContributionView.ts
+│   │   └── TranscriptToolbarContributionView.css
 │   ├── tabs/               # Tab bar
 │   │   ├── PageTabsView.ts         # Native tab strip and scroll projection
 │   │   ├── PageTab.ts              # Tab props/constants and shared helpers

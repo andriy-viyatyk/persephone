@@ -59,7 +59,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Language → `language`
 - Window Behavior → `window.close-to-tray`
-- Voice Typing → `voice-typing.shortcut`
+- Voice Typing → `voice-typing.shortcut`, `voice-typing.auto-stop-silence-ms`
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
@@ -122,9 +122,14 @@ toolbar toggle to change one of those pages.
 ## Voice Typing
 
 In **General > Voice Typing**, press a shortcut with at least one modifier while the shortcut field
-is focused to assign it, or tap the right `Ctrl` key on its own to use **Right Ctrl**. Choose **Reset to default** to restore `Alt+V`. See [Keyboard
-Shortcuts](../shortcuts.md#voice-typing) for how to use dictation and the Speech to Text board
-requirement.
+is focused to assign it, or tap the right `Ctrl` key on its own to use **Right Ctrl**. Choose **Reset
+to default** to restore `Alt+V`.
+
+**Stop voice typing and dictation boards after silence** defaults to **Off (0)**. Choose 2, 3, 5,
+or 10 seconds to stop after that much microphone silence, once speech has been committed and no
+utterance is pending. The setting applies to Voice Typing and dictation boards that use the shared
+setting, including Agent Chat. See [Keyboard Shortcuts](../shortcuts.md#voice-typing) for how to use
+dictation and the Speech to Text board requirement.
 
 ## Clipboard history
 
@@ -223,6 +228,7 @@ example.
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
 | `voice-typing.shortcut` | Defaults to `Alt+V`; starts and stops voice typing, and can be changed under General |
+| `voice-typing.auto-stop-silence-ms` | Defaults to `0` (off); `2000`, `3000`, `5000`, or `10000` stops voice typing and compatible dictation boards after microphone silence |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |

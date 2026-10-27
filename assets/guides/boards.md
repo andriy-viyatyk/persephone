@@ -244,7 +244,8 @@ For recording audio and getting text back from an installed speech-to-text board
 [`speech.transcribe` v1 contract](./agents/speech-transcribe.md) (`guides.agents["speech-transcribe"]`).
 The **Speech to Text** catalog board in `persephone-boards` provides this service. When a provider is
 installed, **Agent Chat** shows a voice button for dictating a message. Both boards require
-Persephone 5.0.15 or later.
+Persephone 5.0.15 or later. Agent Chat dictation can stop after silence using the shared setting in
+[Settings > General > Voice Typing](./screens/settings.md#voice-typing).
 Bridge `1.41.0` adds `persephone.trashFile(path)`, which
 moves a file the board may write to the Recycle Bin. Bridge `1.40.0` adds the optional
 `singleInstanceMasks` manifest field, which selects claimed file names routed to a singleton board page,

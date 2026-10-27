@@ -2,15 +2,16 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-10-26
+**Completed:** 2026-10-27
 
 ## Overview
 
 EPIC-133 shipped speech to text as **record, then transcribe**: nothing appears until you stop.
-This epic makes the text appear while you speak, committed phrase by phrase at each pause, and then
-reuses the same machinery to transcribe long recordings — a Teams meeting, for example — from the
-microphone and the audio the computer plays, into a timestamped transcript saved on disk.
+This epic makes text appear while you speak, committed phrase by phrase at each pause. It also adds
+a Transcript button to the text editor, where microphone and computer audio are transcribed into the
+page as they arrive.
 
 Everything rests on one capability the platform does not have yet: **reliable pause detection**
 in a live audio stream. An earlier proof of concept of live transcription failed, so the epic
@@ -21,12 +22,9 @@ speech, before any design is fixed.
 
 - While dictating (Alt+V / Right Ctrl voice typing, the Agent Chat mic button), text appears at
   each natural pause instead of only after stop.
-- Optional auto-stop after a configurable silence.
-- Boards can capture the computer's audio output (loopback) as well as the microphone, behind an
-  explicit board permission the user approves.
-- The Speech to Text board can transcribe an hour-long meeting live: chunks cut at pauses, each
-  line timestamped and labelled **Me** (microphone) or **Others** (computer audio), appended to a
-  transcript file as it goes.
+- Optional auto-stop after a configurable silence, including Agent Chat's microphone.
+- A **Transcript** button in the text editor captures microphone and computer audio through
+  app-level loopback capture and appends committed text to the page as it arrives.
 - All processing stays local: no cloud service, no API key.
 
 ## Background (verified 2026-10-26)
@@ -61,30 +59,32 @@ speech, before any design is fixed.
 2. **Live dictation** — segmenting in the provider, partial/committed text in the
    `speech.transcribe` contract, voice typing and Agent Chat showing text as it is committed;
    optional auto-stop after silence. Tasks planned after phase 1.
-3. **System audio capture for boards** — a Persephone permission and API for loopback audio.
-4. **Meeting transcripts** — a Meeting mode in the Speech to Text board: microphone + loopback as
-   two labelled sources, long-running chunked transcription, a live transcript view saved to a file.
+3–4. **Delivered in the text editor.** The Monaco text page has a **Transcript** button for
+   microphone, computer audio, or both. Persephone captures computer audio at the app level and
+   appends committed text to the page. There is no board `systemAudio` permission, no Meeting mode
+   in the Speech to Text board, and no transcript file; the text goes into the page.
 
-Phases 3–4 depend on phase 2's segmentation; phase 3 can be built in parallel with phase 2.
+The Speech to Text board remains a recording and transcription tool; phases 3–4 were delivered in
+the text editor rather than as a board meeting workflow.
 
 ## Linked Tasks
 
 | Task | Title | Status |
 |------|-------|--------|
 | [US-1726](../tasks/US-1726-pause-detection-research/README.md) | Research pause detection for live transcription | Done |
-| BT-060 (persephone-boards) | Streaming VAD helper in the whisper runtime (`whisper-runtime-1.9.5-r2`) | Implemented |
-| BT-061 (persephone-boards) | Live segmentation in the Speech to Text service | Implemented |
-| US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Implemented |
-| [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Implemented |
-| [US-1729](../tasks/US-1729-board-service-locale/README.md) | Give board services the app locale | Implemented |
-| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Implemented |
-| BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Implemented |
-| BT-063, BT-064, BT-065 (persephone-boards) | Speech to Text main screen, app-language default, language picker | Implemented |
-| BT-066 (persephone-boards) | Agent Chat: live insertion of committed phrases (phase 2) | Planned |
-| [US-1731](../tasks/US-1731-editor-transcript/README.md) | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Planned |
-| BT-067 (persephone-boards) | Speech to Text: hour-long live sessions (no duration cap for live, bounded memory and queue) | Planned |
-| [US-1733](../tasks/US-1733-board-speech-auto-stop-api/README.md) | Board API for the speech auto-stop setting | Implemented |
-| BT-068 (persephone-boards) | Agent Chat: stop live recording using the shared speech auto-stop setting | Planned; separate board-side task |
+| BT-060 (persephone-boards) | Streaming VAD helper in the whisper runtime (`whisper-runtime-1.9.5-r2`) | Done |
+| BT-061 (persephone-boards) | Live segmentation in the Speech to Text service | Done |
+| US-1727 | `speech.transcribe` live feature: guide and contract (`draft`, `segment`) | Done |
+| [US-1728](../tasks/US-1728-voice-typing-live/README.md) | Voice typing — live text as you speak | Done |
+| [US-1729](../tasks/US-1729-board-service-locale/README.md) | Give board services the app locale | Done |
+| [US-1730](../tasks/US-1730-board-multiselect-setting/README.md) | Multi-select board setting | Done |
+| BT-062 (persephone-boards) | Streaming partial commits (local agreement): words typed 2–4 at a time while speaking | Done |
+| BT-063, BT-064, BT-065 (persephone-boards) | Speech to Text main screen, app-language default, language picker | Done |
+| BT-066 (persephone-boards) | Agent Chat: live insertion of committed phrases (phase 2) | Done |
+| [US-1731](../tasks/US-1731-editor-transcript/README.md) | Transcript button in the text editor: microphone and computer audio typed live (phases 3–4) | Done |
+| BT-067 (persephone-boards) | Speech to Text: hour-long live sessions (no duration cap for live, bounded memory and queue) | Done |
+| [US-1733](../tasks/US-1733-board-speech-auto-stop-api/README.md) | Board API for the speech auto-stop setting | Done |
+| BT-068 (persephone-boards) | Agent Chat: microphone auto-stop after silence using the shared speech auto-stop setting | Done |
 
 The proposed audio left-context task is covered by BT-062: committed text is the prompt and the
 uncommitted audio window carries the left context.
@@ -131,18 +131,20 @@ draft that US-1728 added to voice typing.
 
 ## Risks and concerns
 
-- **Hallucinations on short or silent segments.** Whisper invents text ("Thank you.",
-  "Дякую за перегляд!") on silence and very short clips; segmentation must not feed it silence.
+- **Hallucinations on short or silent segments.** Whisper can invent short phrases such as
+  "Thank you." on silence. This can also start Agent Chat's auto-stop countdown.
+- **Native memory leak (US-1732).** The board service's native memory leak remains a planned
+  follow-up.
+- **Echo without headphones.** Capturing both microphone and computer audio can duplicate speech
+  when speakers are used without headphones; this is not handled.
 - **Words cut at segment boundaries**, and lost context between segments (the previous text as a
   prompt is the usual remedy).
 - **Language detection on short segments** — BT-058 already showed short phrases drift into other
   languages; per-segment auto-detection may be worse than per-recording.
 - **GPU cost** of transcribing every segment, and of re-transcribing drafts, during an hour-long
   meeting while the user's other work runs.
-- **Consent and data.** Recording a meeting without telling the participants can be unlawful where
-  every party's consent is required, and may break company policy. Meeting audio can contain
-  sensitive or regulated data. The feature should remind the user to announce the recording, and
-  transcripts stay local.
+- **Consent decision (resolved).** The user decided not to show a consent notice. Transcript is a
+  general-purpose tool, processing stays local, and starting it does not show a recording warning.
 - **Licenses.** Ideas can come from any project; code or models we ship must be MIT/Apache/BSD
   compatible (Silero VAD is MIT).
 

@@ -14,8 +14,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
-- **Speech to text:** Install the Speech to Text catalog board from `persephone-boards` to provide speech transcription. Agent Chat shows a voice button when a provider is installed. Both boards require Persephone 5.0.15 or later; board authors can also use the reserved `speech.transcribe` v1 service contract.
+- **Speech to text:** Install the Speech to Text catalog board from `persephone-boards` to provide
+  transcription. Agent Chat shows a voice button when a provider is installed and can stop dictation
+  after silence using the shared Voice Typing setting. Both boards require Persephone 5.0.15 or later;
+  board authors can also use the reserved `speech.transcribe` v1 service contract.
 - **Voice typing:** Dictate into a focused input with `Alt+V`; configure the shortcut in Settings, including a tap of the right `Ctrl` key alone. Install and trust the Speech to Text board to use it.
+- **Transcript in the Text Editor:** Capture microphone audio, computer audio, or both into a text
+  page. Computer audio capture is available on Windows; committed speech is added to the page as you
+  speak.
 
 ---
 

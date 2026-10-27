@@ -178,6 +178,23 @@
                 small set of short, always-visible choices and require bridge version <code>1.28.0</code>.
             </p>
 
+            <h2><code>persephone.voiceTyping</code> — shared auto-stop setting</h2>
+            <p class="muted">
+                Boards such as Speech to Text can follow the app's Voice Typing silence timeout. This
+                value is shared and read-only; the subscription immediately reports the current value
+                and then reports changes. A value of <code>0</code> means auto-stop is off. This API
+                requires bridge <code>1.44.0</code>.
+            </p>
+            <p id="voice-typing-setting" class="note">Checking Voice Typing setting…</p>
+
+            <h2>Searchable board settings</h2>
+            <p class="muted">
+                The board manifest declares a string setting with <code>format: "multiselect"</code>.
+                Change it in the Demo board's Settings page; the value stays a comma-separated
+                string and updates here through <code>persephone.settings.onChange()</code>. This
+                control requires bridge <code>1.43.0</code>.
+            </p>
+            <p id="demo-language-hints" class="note">Loading selected language hints…</p>
             <h2><code>persephone.statusBar</code> — host-rendered footer items</h2>
             <p class="muted">
                 This board declares a live text item, a Retry button, and an end-aligned network label

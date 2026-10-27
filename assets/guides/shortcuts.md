@@ -45,6 +45,9 @@ it can also be a tap of the right `Ctrl` key alone (**Right Ctrl**), which leave
 combinations such as `Ctrl+C` working.
 If the original input is no longer editable when the transcript returns, Persephone copies the text
 to the clipboard instead.
+Silence auto-stop is off by default. You can choose 2, 3, 5, or 10 seconds in **Settings > General >
+Voice Typing**; it stops after committed speech when no utterance is pending. Compatible dictation
+boards such as Agent Chat can use the same setting.
 
 ### Transcript
 

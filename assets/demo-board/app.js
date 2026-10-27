@@ -97,6 +97,32 @@
     tabs.forEach((t) => t.addEventListener("click", () => activate(t.dataset.tab)));
     activate("overview");
 
+    const voiceTypingSetting = document.getElementById("voice-typing-setting");
+    if (voiceTypingSetting) {
+        if (P.voiceTyping && typeof P.voiceTyping.onAutoStopSilenceChange === "function") {
+            P.voiceTyping.onAutoStopSilenceChange((milliseconds) => {
+                voiceTypingSetting.textContent = milliseconds === 0
+                    ? "Voice Typing auto-stop is off (0 ms)."
+                    : `Voice Typing auto-stop after ${milliseconds} ms of silence.`;
+            });
+        } else {
+            voiceTypingSetting.textContent = "This app version does not expose persephone.voiceTyping (bridge 1.44.0+).";
+        }
+    }
+
+    const languageHints = document.getElementById("demo-language-hints");
+    if (languageHints) {
+        const renderLanguageHints = (value) => {
+            languageHints.textContent = `Selected language hints: ${value || "none"}`;
+        };
+        P.settings.get("demo-language-hints").then(renderLanguageHints).catch((error) => {
+            languageHints.textContent = `Could not read setting: ${error?.message ?? error}`;
+        });
+        P.settings.onChange(({ id, value }) => {
+            if (id === "demo-language-hints") renderLanguageHints(value);
+        });
+    }
+
     // ── Shared console ──────────────────────────────────────────────────
     function clear() { out.textContent = ""; }
     function print(line) { out.textContent += (out.textContent ? "\n" : "") + line; }

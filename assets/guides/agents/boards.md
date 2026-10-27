@@ -713,8 +713,8 @@ reports its locale receives the initialized `en` default. The host updates
 restarting the service. Read the variable when needed, such as inside each request handler, rather
 than caching it at startup. This process environment value does not require a new
 `minBridgeVersion`; the page-only `persephone.locale.code` and `persephone.i18n` APIs still require
-Bridge 1.36.0. A Speech to Text board change tracked in BT-064 that depends on this service locale
-contract must set `minAppVersion: "5.0.15"`. The host injects
+Bridge 1.36.0. A board that depends on this service locale contract must set
+`minAppVersion: "5.0.15"`. The host injects
 `persephone.storage`, shared with the frame and routed through main; a service must not open
 `store.json` itself. Service stdout/stderr is written to the board's `ui.log`. Ordinary boards
 store it at `<boardRoot>/ui.log`; bundled boards store it at `%APPDATA%\persephone\board-logs\<id>\ui.log`
@@ -788,8 +788,8 @@ during the transition.
 
 For page-to-service streaming, a board opens a channel with `await
 persephone.service.openChannel(openMessage)`. The service's single `onChannel` handler receives
-`(channel, openMessage, info)`; same-board `info` contains `page: { boardId }`. US-1704 extends that
-object with `interface: { id, version }` and `caller: { id, name }` for cross-board opens. A channel
+`(channel, openMessage, info)`; same-board `info` contains `page: { boardId }`, while cross-board
+opens also include `interface: { id, version }` and descriptive `caller: { id, name }`. A channel
 supports `send`, `onMessage`, `onClose`, `close`, `writable`, and `whenWritable()` on both sides.
 The channel preserves FIFO order and caps each direction at 256 unacknowledged messages; only
 service-to-page payloads also have a 1 MiB serialized-size cap. At most 16 channels can belong to

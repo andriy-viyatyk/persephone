@@ -22,7 +22,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]          [Resources] [Wrap] [Switch] |  toolbar: script actions at left; resources, Word Wrap, and switch at right
+| [Nav] [Compare] [Run] [Run all]      [Resources] [Transcript] [Wrap] [Switch] |  toolbar: script actions at left; resources, Transcript (when a provider is available), Word Wrap, and switch at right
 +---------------------------------------------------------------------+
 | [Monaco editor]                                                     |  Monaco editing surface below the toolbar
 +---------------------------------------------------------------------+
@@ -36,6 +36,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 - Run → `text-run-script`
 - Run all → `text-run-all-script`
 - Show Resources → `text-show-resources`
+- Transcript (when a provider is available) → `transcript-button`
 - Word Wrap → `text-word-wrap-toggle`
 - Script panel toggle → `text-toggle-script`
 - Script panel splitter → `script-panel-splitter`
@@ -69,6 +70,19 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 - Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
 - Monaco find/replace widget and minimap — no entry: generated editor-internal controls.
 
+### While a transcript is active
+
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare] [Run] [Run all]      [Resources] [Stop] [Audio level] [Wrap] [Switch] |  toolbar: active Transcript places Stop and audio level between Resources and Word Wrap
++---------------------------------------------------------------------+
+```
+
+- Stop → `transcript-stop`
+- Audio level → `transcript-level`
+
+Transcript appears when a v1 Speech to Text provider is installed and trusted.
+
 ## Word Wrap
 
 Click **Word Wrap** in the Text Editor toolbar to wrap long lines on the current page. The choice
@@ -80,6 +94,22 @@ To choose the default for newly shown Text Editor pages, use **Settings -> Edito
 Word Wrap by default**. It is off by default. Changing this setting does not change existing pages;
 each page keeps its own saved choice. The same action is available as **Toggle Word Wrap** in
 Monaco's Command Palette (`Ctrl+Shift+P`) while a Text Editor is focused.
+
+## Transcript
+
+Choose **Transcript** in the right side of the toolbar, then select **Microphone (me)**,
+**Computer audio**, or **Both**. Computer audio and Both are available on Windows. Install and
+trust the Speech to Text board from Tools & Editors first; it must support live transcription.
+The Speech to Text board processes audio locally. Computer audio captures sound played by the
+computer, so use it for calls or videos. In Both mode, microphone text is labeled **Me** and
+computer audio is labeled **Others**; use headphones to avoid hearing the computer audio again
+through the microphone.
+
+The toolbar shows the live audio level while recording. Choose **Stop** to finish capture and wait
+for the provider's final response. Committed utterances are appended to the end of the text without
+moving your current selection. Draft text is not shown or inserted. Closing the page or switching
+its editor away from Text Editor stops the session. Only one Transcript or Voice Typing session can
+run in an app window. See [Keyboard Shortcuts](../shortcuts.md#transcript) for more detail.
 
 ## Compare Mode
 
