@@ -665,7 +665,16 @@ The service runs in Persephone's bundled utility-process Node runtime with the b
 cwd. Standard Node built-ins (filesystem, networking, streams, crypto, workers, and timers) are
 available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are not. Imports resolve
 from the board root, including its `node_modules`. The environment is sanitized to the supervisor
-allowlist plus `PERSEPHONE_SERVICE=1` and `PERSEPHONE_BOARD_ROOT`. The host injects
+allowlist plus `PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, and `PERSEPHONE_LOCALE`.
+`PERSEPHONE_LOCALE` is the resolved Persephone UI locale at service spawn, including regional codes
+such as `pt-BR` and the verification locale `en-XA`; a service that starts before the first renderer
+reports its locale receives the initialized `en` default. The host updates
+`process.env.PERSEPHONE_LOCALE` in place whenever the effective app locale changes, without
+restarting the service. Read the variable when needed, such as inside each request handler, rather
+than caching it at startup. This process environment value does not require a new
+`minBridgeVersion`; the page-only `persephone.locale.code` and `persephone.i18n` APIs still require
+Bridge 1.36.0. A Speech to Text board change tracked in BT-064 that depends on this service locale
+contract must set `minAppVersion: "5.0.15"`. The host injects
 `persephone.storage`, shared with the frame and routed through main; a service must not open
 `store.json` itself. Service stdout/stderr is written to the board's `ui.log`. Ordinary boards
 store it at `<boardRoot>/ui.log`; bundled boards store it at `%APPDATA%\persephone\board-logs\<id>\ui.log`

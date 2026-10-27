@@ -5,11 +5,12 @@ import { errMessage } from "../shared/utils";
 import { loadLanguagePacks } from "../shared/i18n/load-packs";
 import { resolveLocale } from "../shared/i18n/resolve-locale";
 import { createPseudoLocalePack } from "../shared/i18n/pseudo-locale";
-import { setActiveLocale } from "../shared/i18n/active-locale";
+import { getActiveLocale, setActiveLocale } from "../shared/i18n/active-locale";
 import { setLocalePacks } from "../shared/i18n/t";
 import type { LanguagePack } from "../shared/i18n/pack";
 import { getAssetPath, getDataFolder } from "./utils";
 import { rebuildTray } from "./tray-setup";
+import { moduleServiceSupervisor } from "./module-service-supervisor";
 
 function readPacks(directory: string): LanguagePack[] {
     try {
@@ -38,9 +39,11 @@ export function setMainLocale(reportedCode: string): void {
     const userPacks = readPacks(path.join(getDataFolder(), "languages"));
     const available = [...builtInPacks, ...userPacks];
     const locale = resolveLocale(reportedCode, [reportedCode], available);
+    const localeChanged = locale !== getActiveLocale();
     const builtInPack = builtInPacks.find((pack) => pack.code.toLowerCase() === locale.toLowerCase());
     const userPack = userPacks.find((pack) => pack.code.toLowerCase() === locale.toLowerCase());
     setActiveLocale(locale);
     setLocalePacks(locale === "en-XA" ? createPseudoLocalePack() : userPack, builtInPack);
     rebuildTray();
+    if (localeChanged) moduleServiceSupervisor.updateLocale(locale);
 }

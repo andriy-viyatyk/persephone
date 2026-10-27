@@ -116,6 +116,7 @@ export interface BoardServiceTrustSnapshot {
 export type ServiceParentMessage =
     | { kind: "init"; nonce: number; config: ServiceHostConfig }
     | { kind: "probe"; nonce: number }
+    | { kind: "locale-changed"; locale: string }
     | { kind: "request"; requestId: string; message: unknown }
     | {
         /** The transferred MessagePortMain arrives in `event.ports[0]`, NOT in this body —

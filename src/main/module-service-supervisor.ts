@@ -36,6 +36,7 @@ import {
     type TrustedBoardSnapshotEntry,
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
+import { getActiveLocale } from "../shared/i18n/active-locale";
 import { boardPermissionAllows } from "../shared/board-manifest-utils";
 import { MAX_BUFFERED_PIPE_BYTES, MAX_BOARD_PIPE_CHUNK_BYTES } from "../shared/board-pipe-constants";
 import { ModuleServiceStorageAdapter } from "./module-service-storage";
@@ -797,6 +798,20 @@ class ModuleServiceSupervisor {
         }
     }
 
+    updateLocale(locale: string): void {
+        const message = { kind: "locale-changed", locale } satisfies ServiceParentMessage;
+        // Include services still starting: their spawn environment may already hold the old locale.
+        for (const record of this.records.values()) {
+            const process = record.process;
+            if (!process) continue;
+            try {
+                process.postMessage(message);
+            } catch {
+                // The service may be exiting; its next spawn reads the current locale.
+            }
+        }
+    }
+
     async disposeAll(): Promise<void> {
         if (this.disposing) {
             await Promise.all([...this.records.values()].map((record) => record.stopPromise).filter(Boolean));
@@ -1128,6 +1143,7 @@ class ModuleServiceSupervisor {
         }
         environment.PERSEPHONE_SERVICE = "1";
         environment.PERSEPHONE_BOARD_ROOT = boardRoot;
+        environment.PERSEPHONE_LOCALE = getActiveLocale();
         return environment;
     }
 

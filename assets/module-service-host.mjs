@@ -957,6 +957,10 @@ function forwardEntryEvent(event, message) {
 originalPortMethods.on("message", (event) => {
     const message = eventData(event);
     if (!isRecord(message)) return;
+    if (message.kind === "locale-changed") {
+        if (typeof message.locale === "string") process.env.PERSEPHONE_LOCALE = message.locale;
+        return;
+    }
     if (message.kind === "storage-response" && typeof message.requestId === "string") {
         const request = storagePending.get(message.requestId);
         if (request) {

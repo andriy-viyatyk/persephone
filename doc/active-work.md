@@ -12,6 +12,7 @@ Overview of all active and planned epics and tasks.
   - [x] [US-1726: Research pause detection for live transcription](tasks/US-1726-pause-detection-research/README.md)
   - [ ] US-1727: speech.transcribe live feature — guide and contract
   - [ ] [US-1728: Voice typing — live text as you speak](tasks/US-1728-voice-typing-live/README.md)
+  - [ ] [US-1729: Give board services the app locale](tasks/US-1729-board-service-locale/README.md)
 
 ## Planned
 
