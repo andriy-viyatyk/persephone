@@ -19,7 +19,7 @@ import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { createSectionRoot, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
-import { RIGHT_CTRL_SHORTCUT, voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
+import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -574,8 +574,9 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
 
 export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, never>> {
     private input: InputView | undefined;
+    private translateInput: InputView | undefined;
     private silenceSelect: SelectView<IListBoxItem> | undefined;
-    private rightCtrlTapPending = false;
+    private rightCtrlTapPending: { settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut"; shift: boolean } | undefined;
 
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
@@ -596,21 +597,37 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         row.append(reset.root);
         reset.mount();
         const help = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingShortcutHelp"), { color: "light", size: "xs" }));
+        const translateRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
+        translateRow.append(settingsFieldLabel(t("settings.voiceTypingTranslateShortcutLabel")));
+        this.translateInput = this.child(new InputView(this.translateInputProps()));
+        this.translateInput.root.addEventListener("keyup", (event) => this.captureRightCtrlTap(event));
+        translateRow.append(this.translateInput.root);
+        this.translateInput.mount();
+        const translateReset = this.child(new ButtonView({
+            size: "sm",
+            variant: "default",
+            onClick: () => settings.set("voice-typing.translate-shortcut", "Alt+Shift+V"),
+            children: t("settings.voiceTypingResetShortcut"),
+        }));
+        translateRow.append(translateReset.root);
+        translateReset.mount();
+        const translateHint = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingTranslateHint"), { color: "light", size: "xs" }));
         const silenceRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         silenceRow.append(settingsFieldLabel(t("settings.voiceTypingAutoStopLabel")));
         this.silenceSelect = this.child(new SelectView(this.silenceSelectProps()));
         silenceRow.append(this.silenceSelect.root);
         this.silenceSelect.mount();
         const silenceHelp = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingAutoStopHelp"), { color: "light", size: "xs" }));
-        this.root.append(row, help, silenceRow, silenceHelp);
+        this.root.append(row, help, translateRow, translateHint, silenceRow, silenceHelp);
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
+            if (key === "voice-typing.translate-shortcut") this.translateInput?.update(this.translateInputProps());
             if (key === "voice-typing.auto-stop-silence-ms") this.silenceSelect?.update(this.silenceSelectProps());
         });
         this.own(subscription);
     }
 
-    protected onDispose(): void { this.input = undefined; this.silenceSelect = undefined; }
+    protected onDispose(): void { this.input = undefined; this.translateInput = undefined; this.silenceSelect = undefined; }
 
     private silenceSelectProps(): SelectViewProps<IListBoxItem> {
         const values = [0, 2000, 3000, 5000, 10000];
@@ -630,27 +647,57 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
             readOnly: true,
             "aria-label": t("settings.voiceTypingShortcutLabel"),
             placeholder: t("settings.voiceTypingShortcutHelp"),
-            onKeyDown: (event) => this.captureShortcut(event),
+            onKeyDown: (event) => this.captureShortcut(event, "voice-typing.shortcut"),
         };
     }
 
-    private captureShortcut(event: KeyboardEvent): void {
+    private translateInputProps(): InputProps {
+        return {
+            size: "sm",
+            width: 180,
+            value: settings.get("voice-typing.translate-shortcut"),
+            readOnly: true,
+            "aria-label": t("settings.voiceTypingTranslateShortcutLabel"),
+            placeholder: t("settings.voiceTypingShortcutHelp"),
+            onKeyDown: (event) => this.captureShortcut(event, "voice-typing.translate-shortcut"),
+        };
+    }
+
+    private captureShortcut(event: KeyboardEvent, settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut"): void {
         event.preventDefault();
         if (event.repeat) return;
-        this.rightCtrlTapPending = event.code === "ControlRight" && !event.altKey && !event.shiftKey && !event.metaKey;
+        if (event.code === "ControlRight") {
+            this.rightCtrlTapPending = event.altKey || event.metaKey ? undefined : { settingKey, shift: event.shiftKey };
+            return;
+        }
+        if (event.key === "Shift" && this.rightCtrlTapPending?.settingKey === settingKey) {
+            this.rightCtrlTapPending.shift = true;
+            return;
+        }
+        if (this.rightCtrlTapPending?.settingKey === settingKey) this.rightCtrlTapPending = undefined;
         if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return;
         const shortcut = voiceTypingShortcutFromKeyboardEvent(event);
         if (!shortcut) {
             ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning");
             return;
         }
-        settings.set("voice-typing.shortcut", shortcut);
+        this.saveShortcut(settingKey, shortcut);
     }
 
     private captureRightCtrlTap(event: KeyboardEvent): void {
         if (event.code !== "ControlRight" || !this.rightCtrlTapPending) return;
-        this.rightCtrlTapPending = false;
-        settings.set("voice-typing.shortcut", RIGHT_CTRL_SHORTCUT);
+        const { settingKey, shift } = this.rightCtrlTapPending;
+        this.rightCtrlTapPending = undefined;
+        this.saveShortcut(settingKey, shift ? SHIFT_RIGHT_CTRL_SHORTCUT : RIGHT_CTRL_SHORTCUT);
+    }
+
+    private saveShortcut(settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut", shortcut: string): void {
+        const otherKey = settingKey === "voice-typing.shortcut" ? "voice-typing.translate-shortcut" : "voice-typing.shortcut";
+        if (normalizeVoiceTypingShortcut(settings.get(otherKey)) === shortcut) {
+            ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning");
+            return;
+        }
+        settings.set(settingKey, shortcut);
     }
 }
 

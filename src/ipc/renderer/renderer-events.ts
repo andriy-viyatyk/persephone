@@ -51,6 +51,7 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eVoiceTypingShortcut] = new RendererEventObject<{
         sessionId: string;
         action: "start" | "stop" | "cancel";
+        mode?: "transcribe" | "translate";
         source: "app" | { kind: "guest"; webContentsId: number };
     }>(EventEndpoint.eVoiceTypingShortcut);
 

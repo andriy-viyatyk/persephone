@@ -3,8 +3,10 @@ import type { EnglishCatalogEntry } from "./common";
 export const voiceTypingCatalog = {
     starting: { message: "Starting microphone…", note: "Shown briefly after the shortcut until the microphone delivers audio; the user should wait for the Recording status before speaking." },
     recording: { message: "Recording — {binding} to stop, Esc to cancel", note: "Status shown while Persephone captures microphone audio. Keep `{binding}` unchanged; pressing that shortcut stops capture and starts transcription." },
+    translatingRecording: { message: "Recording — translating to English — {binding} to stop, Esc to cancel", note: "Status shown during a translation session only when the speech provider advertises the translate feature. Keep `{binding}` unchanged." },
     recordingDuration: { message: "{seconds}s", note: "Elapsed recording time displayed beside the audio level meter. Keep `{seconds}` unchanged." },
     transcribing: { message: "Transcribing — Esc to cancel", note: "Status shown after capture ends while the speech provider returns a transcript." },
+    translatingTranscribing: { message: "Transcribing in English — Esc to cancel", note: "Status shown after capture ends during a translation session whose speech provider advertises the translate feature." },
     copied: { message: "Transcribed text copied to the clipboard", note: "Shown when the originally focused input is no longer editable, so the transcript was preserved in the system clipboard." },
     cancelled: { message: "Voice typing cancelled.", note: "Voice capture or transcription was cancelled with Escape." },
     notReady: { message: "Open the Speech to Text board and finish its setup, then try again.", note: "The trusted transcription provider is installed but its speech runtime or model is not ready. Do not open the board automatically." },

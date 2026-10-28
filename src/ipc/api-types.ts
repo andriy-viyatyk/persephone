@@ -411,7 +411,7 @@ export type Api = {
     [Endpoint.clearVoiceTypingMicrophone]: () => Promise<void>;
     [Endpoint.armTranscriptLoopback]: () => Promise<void>;
     [Endpoint.clearTranscriptLoopback]: () => Promise<void>;
-    [Endpoint.setVoiceTypingConfig]: (request: { shortcut: string }) => Promise<void>;
+    [Endpoint.setVoiceTypingConfig]: (request: { shortcut: string; translateShortcut: string }) => Promise<void>;
     [Endpoint.setVoiceTypingState]: (request: { state: "idle" | "recording" | "transcribing" }) => Promise<void>;
     [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
     [Endpoint.revokeBoardFileAccessGrant]: (boardRoot: string, kind: "folder" | "file", canonicalPath: string) => Promise<void>;
@@ -513,6 +513,7 @@ export type EventApi = {
     [EventEndpoint.eVoiceTypingShortcut]: EventObject<{
         sessionId: string;
         action: "start" | "stop" | "cancel";
+        mode?: "transcribe" | "translate";
         source: "app" | { kind: "guest"; webContentsId: number };
     }>;
     [EventEndpoint.eWindowMaximized]: EventObject<boolean>;

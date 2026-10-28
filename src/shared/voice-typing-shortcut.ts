@@ -7,6 +7,7 @@ const RESERVED_CHORDS = new Set([
 const RESERVED_KEYS = new Set(["Escape", "Enter", "Tab"]);
 /** A lone tap of the right Ctrl key, pressed and released with no other key in between. */
 export const RIGHT_CTRL_SHORTCUT = "Right Ctrl";
+export const SHIFT_RIGHT_CTRL_SHORTCUT = "Shift+Right Ctrl";
 
 function canonicalKey(key: string, code?: string): string {
     const keyboardCode = code ?? "";
@@ -19,7 +20,9 @@ function canonicalKey(key: string, code?: string): string {
 
 export function normalizeVoiceTypingShortcut(value: unknown): string | undefined {
     if (typeof value !== "string") return undefined;
-    if (["rightctrl", "rightcontrol", "controlright"].includes(value.replace(/\s+/g, "").toLowerCase())) return RIGHT_CTRL_SHORTCUT;
+    const compact = value.replace(/\s+/g, "").toLowerCase();
+    if (["rightctrl", "rightcontrol", "controlright"].includes(compact)) return RIGHT_CTRL_SHORTCUT;
+    if (["shift+rightctrl", "shift+rightcontrol", "shift+controlright"].includes(compact)) return SHIFT_RIGHT_CTRL_SHORTCUT;
     const parts = value.split("+").map((part) => part.trim()).filter(Boolean);
     if (parts.length < 2) return undefined;
     const rawKey = parts.pop();

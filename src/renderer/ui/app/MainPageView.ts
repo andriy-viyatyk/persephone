@@ -96,7 +96,7 @@ export class MainPageView extends VanillaView<object> {
     protected onMount(): void {
         this.voiceTypingOverlay = this.child(new VoiceTypingOverlayView({}));
         this.voiceTypingOverlay.mount();
-        this.voiceTypingOverlay.updateState({ status: "idle", binding: "Alt+V", level: 0, durationMs: 0 });
+        this.voiceTypingOverlay.updateState({ status: "idle", binding: "Alt+V", translating: false, level: 0, durationMs: 0 });
         this.voiceTypingController = new VoiceTypingController((state) => this.voiceTypingOverlay?.updateState(state));
         this.voiceTypingController.start();
         this.own(() => {

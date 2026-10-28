@@ -59,7 +59,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Language → `language`
 - Window Behavior → `window.close-to-tray`
-- Voice Typing → `voice-typing.shortcut`, `voice-typing.auto-stop-silence-ms`
+- Voice Typing → `voice-typing.shortcut`, `voice-typing.translate-shortcut`, `voice-typing.auto-stop-silence-ms`
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
@@ -121,9 +121,13 @@ toolbar toggle to change one of those pages.
 
 ## Voice Typing
 
-In **General > Voice Typing**, press a shortcut with at least one modifier while the shortcut field
-is focused to assign it, or tap the right `Ctrl` key on its own to use **Right Ctrl**. Choose **Reset
-to default** to restore `Alt+V`.
+In **General > Voice Typing**, configure separate shortcuts for language-preserving dictation and
+translation to English. Press a shortcut with at least one modifier while its field is focused, or
+tap right `Ctrl` for normal dictation and `Shift` + right `Ctrl` for translation. Shift can be held
+before or after right `Ctrl`; another key during the tap cancels capture. The two settings cannot
+use the same shortcut. Each field's **Reset to default** restores `Alt+V` or `Alt+Shift+V`,
+respectively. The translation field includes a quality hint: the Speech to Text model may leave
+parts of long or mixed-language phrases untranslated.
 
 **Stop voice typing and dictation boards after silence** defaults to **Off (0)**. Choose 2, 3, 5,
 or 10 seconds to stop after that much microphone silence, once speech has been committed and no
@@ -228,6 +232,7 @@ example.
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
 | `voice-typing.shortcut` | Defaults to `Alt+V`; starts and stops voice typing, and can be changed under General |
+| `voice-typing.translate-shortcut` | Defaults to `Alt+Shift+V`; starts and stops voice typing with translation to English |
 | `voice-typing.auto-stop-silence-ms` | Defaults to `0` (off); `2000`, `3000`, `5000`, or `10000` stops voice typing and compatible dictation boards after microphone silence |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |

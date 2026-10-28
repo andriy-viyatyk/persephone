@@ -640,7 +640,7 @@ class ApiCalls implements Api {
     clearVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.clearVoiceTypingMicrophone);
     armTranscriptLoopback = async () => executeOnce<void>(Endpoint.armTranscriptLoopback);
     clearTranscriptLoopback = async () => executeOnce<void>(Endpoint.clearTranscriptLoopback);
-    setVoiceTypingConfig = async (request: { shortcut: string }) => executeOnce<void>(Endpoint.setVoiceTypingConfig, request);
+    setVoiceTypingConfig = async (request: { shortcut: string; translateShortcut: string }) => executeOnce<void>(Endpoint.setVoiceTypingConfig, request);
     setVoiceTypingState = async (request: { state: "idle" | "recording" | "transcribing" }) => executeOnce<void>(Endpoint.setVoiceTypingState, request);
 
     onVoiceTypingShortcut = (callback: (event: import("../api-types").EventApi[EventEndpoint.eVoiceTypingShortcut] extends import("../api-types").EventObject<infer T> ? T : never) => void) =>

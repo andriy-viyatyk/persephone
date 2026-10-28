@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { EventEndpoint } from "../ipc/api-types";
-import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
+import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
 import { debounce, errMessage } from "../shared/utils";
 import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
@@ -18,6 +18,7 @@ interface WindowState {
 }
 
 type VoiceTypingState = "idle" | "recording" | "transcribing";
+type VoiceTypingMode = "transcribe" | "translate";
 type VoiceTypingSource = "app" | { kind: "guest"; webContentsId: number };
 
 function inputMatchesShortcut(input: Electron.Input, shortcut: string): boolean {
@@ -54,10 +55,11 @@ export class OpenWindow {
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
     private voiceTypingShortcut = "Alt+V";
-    private rightCtrlTapTarget: WebContents | undefined;
+    private voiceTypingTranslateShortcut = "Alt+Shift+V";
+    private rightCtrlTap: { target: WebContents; shift: boolean } | undefined;
     private voiceTypingState: VoiceTypingState = "idle";
     private voiceTypingSession: { id: string; target: WebContents } | undefined;
-    private voiceTypingControlSession: { id: string; target: WebContents } | undefined;
+    private voiceTypingControlSession: { id: string; target: WebContents; mode: VoiceTypingMode } | undefined;
 
     constructor(position?: { x: number; y: number }) {
         let windowState: WindowState = electronStore.get("windowState", {
@@ -352,8 +354,9 @@ export class OpenWindow {
         }
     }, 500);
 
-    setVoiceTypingShortcut(shortcut: string): void {
+    setVoiceTypingShortcuts(shortcut: string, translateShortcut: string): void {
         this.voiceTypingShortcut = normalizeVoiceTypingShortcut(shortcut) ?? "Alt+V";
+        this.voiceTypingTranslateShortcut = normalizeVoiceTypingShortcut(translateShortcut) ?? "Alt+Shift+V";
     }
 
     setVoiceTypingState(state: VoiceTypingState): void {
@@ -423,14 +426,16 @@ export class OpenWindow {
     }
 
     private handleVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents, source: VoiceTypingSource): void {
-        if (this.voiceTypingShortcut === RIGHT_CTRL_SHORTCUT && this.isRightCtrlTap(input, target)) {
-            this.toggleVoiceTyping(target, source);
+        const rightCtrlShortcut = this.trackRightCtrlTap(input, target);
+        if (rightCtrlShortcut && [this.voiceTypingShortcut, this.voiceTypingTranslateShortcut].includes(rightCtrlShortcut)) {
+            this.toggleVoiceTyping(target, source, rightCtrlShortcut === this.voiceTypingTranslateShortcut ? "translate" : "transcribe");
             return;
         }
         if (input.type !== "keyDown" || input.isAutoRepeat) return;
-        if (inputMatchesShortcut(input, this.voiceTypingShortcut)) {
+        if (inputMatchesShortcut(input, this.voiceTypingShortcut) || inputMatchesShortcut(input, this.voiceTypingTranslateShortcut)) {
             event.preventDefault();
-            this.toggleVoiceTyping(target, source);
+            const mode = inputMatchesShortcut(input, this.voiceTypingTranslateShortcut) ? "translate" : "transcribe";
+            this.toggleVoiceTyping(target, source, mode);
             return;
         }
         if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingControlSession) {
@@ -443,31 +448,37 @@ export class OpenWindow {
         }
     }
 
-    /** True on the release of a right Ctrl press that had no other key pressed while it was held. */
-    private isRightCtrlTap(input: Electron.Input, target: WebContents): boolean {
+    /** Returns the plain or Shift-modified right Ctrl tap chord on release. */
+    private trackRightCtrlTap(input: Electron.Input, target: WebContents): string | undefined {
         const isRightCtrl = input.code === "ControlRight";
         if (input.type === "keyDown") {
             if (isRightCtrl) {
-                if (!input.isAutoRepeat) this.rightCtrlTapTarget = input.alt || input.shift || input.meta ? undefined : target;
+                if (!input.isAutoRepeat) this.rightCtrlTap = input.alt || input.meta ? undefined : { target, shift: input.shift };
+            } else if (input.key === "Shift" && this.rightCtrlTap?.target === target) {
+                this.rightCtrlTap.shift = true;
             } else {
-                this.rightCtrlTapTarget = undefined;
+                this.rightCtrlTap = undefined;
             }
-            return false;
+            return undefined;
         }
-        if (input.type !== "keyUp" || !isRightCtrl) return false;
-        const isTap = this.rightCtrlTapTarget === target;
-        this.rightCtrlTapTarget = undefined;
-        return isTap;
+        if (input.type !== "keyUp" || !isRightCtrl) {
+            if (input.type === "keyUp" && input.key === "Shift" && this.rightCtrlTap?.target === target) this.rightCtrlTap.shift = true;
+            return undefined;
+        }
+        const tap = this.rightCtrlTap;
+        this.rightCtrlTap = undefined;
+        if (tap?.target !== target) return undefined;
+        return tap.shift ? SHIFT_RIGHT_CTRL_SHORTCUT : RIGHT_CTRL_SHORTCUT;
     }
 
-    private toggleVoiceTyping(target: WebContents, source: VoiceTypingSource): void {
+    private toggleVoiceTyping(target: WebContents, source: VoiceTypingSource, mode: VoiceTypingMode): void {
         if (this.voiceTypingState === "transcribing") return;
         if (this.voiceTypingState === "idle") {
             const sessionId = crypto.randomUUID();
             this.voiceTypingSession = { id: sessionId, target };
-            this.voiceTypingControlSession = { id: sessionId, target };
+            this.voiceTypingControlSession = { id: sessionId, target, mode };
             this.voiceTypingState = "recording";
-            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", source });
+            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", mode, source });
         } else if (this.voiceTypingControlSession) {
             this.voiceTypingState = "transcribing";
             this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingControlSession.id, action: "stop", source });

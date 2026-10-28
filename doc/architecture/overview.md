@@ -438,12 +438,16 @@ with the provider's normal lifecycle.
 Voice Typing is a private app-shell controller, not a renderer service-registry entry or board API.
 It listens on the shared board-channel event and accepts only its reserved `voice-typing:<windowId>`
 channel IDs; ports for ordinary board channels are left untouched for their owning board views.
-Main keeps each window's shortcut and activity state so it can consume matching keydowns before
-the focused editor or embedded browser handles them; a configured right Ctrl tap is recognized on
-key release only when no other key was pressed during the tap. It captures the exact app or browser
-guest `WebContents` at start. The renderer opens microphone capture in parallel with provider
-channel setup and buffers audio until the provider accepts the channel; the overlay reports startup
-until audio begins flowing. A short-lived, one-shot app-main-frame audio grant authorizes capture.
+Main keeps each window's transcription and translation shortcuts and activity state so it can
+consume matching keydowns before the focused editor or embedded browser handles them. The default
+shortcuts are `Alt+V` and `Alt+Shift+V`; a configured right Ctrl tap or Shift+right Ctrl tap is
+recognized on key release only when no other key was pressed during the tap. The selected shortcut
+sets the speech mode for that session. Translation is requested through the optional
+`speech.transcribe@1` opening field, and the overlay identifies translation when the provider
+advertises support. Voice Typing captures the exact app or browser guest `WebContents` at start. The
+renderer opens microphone capture in parallel with provider channel setup and buffers audio until
+the provider accepts the channel; the overlay reports startup until audio begins flowing. A
+short-lived, one-shot app-main-frame audio grant authorizes capture.
 On result, main checks the captured
 target's focused frame and active editable element, then inserts into that same target. Main-frame
 targets use `WebContents.insertText()`; focused child frames use their own document's

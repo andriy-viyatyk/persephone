@@ -168,13 +168,13 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return windowReady(window);
     }
 
-    setVoiceTypingConfig = async (event: IpcMainEvent, request: { shortcut: string }): Promise<void> => {
+    setVoiceTypingConfig = async (event: IpcMainEvent, request: { shortcut: string; translateShortcut: string }): Promise<void> => {
         if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
-        if (!request || typeof request.shortcut !== "string" || !request.shortcut) throw new TypeError("A normalized voice typing shortcut is required.");
+        if (!request || typeof request.shortcut !== "string" || !request.shortcut || typeof request.translateShortcut !== "string" || !request.translateShortcut) throw new TypeError("Normalized voice typing shortcuts are required.");
         const window = BrowserWindow.fromWebContents(event.sender);
         const openWindow = window && openWindows.findByWindow(window);
         if (!openWindow) throw new Error("permission-denied");
-        openWindow.setVoiceTypingShortcut(request.shortcut);
+        openWindow.setVoiceTypingShortcuts(request.shortcut, request.translateShortcut);
     }
 
     setVoiceTypingState = async (event: IpcMainEvent, request: { state: "idle" | "recording" | "transcribing" }): Promise<void> => {

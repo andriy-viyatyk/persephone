@@ -434,6 +434,9 @@ approval policy; audio privacy and recording limits are described through provid
 message and lifecycle contract. **Speech to Text** is a catalog board in `persephone-boards` that
 provides this interface. **Agent Chat** in that board catalog gains a voice button when a provider is
 installed, and inserts the transcription into its composer. Both boards require Persephone 5.0.15.
+The optional v1 `translate: true` opening field asks for English text from spoken speech; providers
+that implement it settle the spoken language before English decoding, while older providers may
+ignore it. The provider's advertised `translate` feature is the signal that it handles this mode.
 
 The `text.translate` v1 interface describes supported language pairs, detects a source language,
 translates bounded batches of text units, and downloads missing language models over the same

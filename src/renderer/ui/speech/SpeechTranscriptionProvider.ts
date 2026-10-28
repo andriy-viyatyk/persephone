@@ -6,7 +6,7 @@ import { createSpeechServiceChannel, type SpeechServiceChannel } from "./SpeechS
 const DESCRIBE_TIMEOUT_MS = 4000;
 
 export class SpeechTranscriptionProvider {
-    private readonly describeCache = new Map<string, boolean>();
+    private readonly describeCache = new Map<string, string[]>();
     private readonly pendingPorts = new Map<string, MessagePort>();
     private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
     private readonly unsubscribe: () => void;
@@ -25,16 +25,21 @@ export class SpeechTranscriptionProvider {
     }
 
     public async supportsLive(provider: BoardServiceProvider): Promise<boolean | undefined> {
+        const features = await this.describeFeatures(provider);
+        return features?.includes("live");
+    }
+
+    public async describeFeatures(provider: BoardServiceProvider, refresh = false): Promise<string[] | undefined> {
         const key = `${provider.provider}@${provider.version}`;
         const cached = this.describeCache.get(key);
-        if (cached !== undefined) return cached;
+        if (!refresh && cached !== undefined) return cached;
         const channelId = await api.connectHostServiceChannel({ interfaceId: "speech.transcribe", provider: provider.provider, version: 1, openMessage: { type: "describe" } });
         const port = await this.waitForPort(channelId);
         const channel = createSpeechServiceChannel(port);
         try {
-            const live = await new Promise<boolean | undefined>((resolve) => {
+            const features = await new Promise<string[] | undefined>((resolve) => {
                 let settled = false;
-                const finish = (value: boolean | undefined): void => {
+                const finish = (value: string[] | undefined): void => {
                     if (settled) return;
                     settled = true;
                     clearTimeout(timer);
@@ -44,12 +49,14 @@ export class SpeechTranscriptionProvider {
                 channel.onMessage((message) => {
                     if (!message || typeof message !== "object") return;
                     const description = message as { type?: unknown; features?: unknown };
-                    if (description.type === "description") finish(Array.isArray(description.features) && description.features.includes("live"));
+                    if (description.type === "description") finish(Array.isArray(description.features)
+                        ? description.features.filter((feature): feature is string => typeof feature === "string")
+                        : []);
                 });
                 channel.onClose(() => finish(undefined));
             });
-            if (live !== undefined) this.describeCache.set(key, live);
-            return live;
+            if (features !== undefined) this.describeCache.set(key, features);
+            return features;
         } finally {
             channel.close();
         }

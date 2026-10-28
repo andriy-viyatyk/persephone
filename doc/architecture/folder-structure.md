@@ -334,7 +334,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
 │   │   └── PageContentView.ts        # Native page content and editor lifecycle
-│   ├── voice-typing/       # Private host controller for speech capture/transcription and its non-interactive overlay
+│   ├── voice-typing/       # Private host controller for speech capture/transcription or translation and its non-interactive overlay
 │   │   ├── VoiceTypingController.ts # Provider discovery, one channel, audio capture, cancellation, and result handoff
 │   │   ├── VoiceTypingOverlayView.ts # App-shell recording/transcribing status overlay
 │   │   └── VoiceTypingOverlayView.css
@@ -960,7 +960,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
-├── open-window.ts          # Window creation, per-window voice-typing shortcut/state routing, and captured-target text insertion
+├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)

@@ -37,12 +37,14 @@ it opens the About page at the guide contents.
 
 ### Voice Typing
 
-Install and trust the Speech to Text board from Tools & Editors, then use `Alt+V` to start dictation
-in the focused input. Wait for **Recording** if the overlay first shows **Starting microphone…**.
-Press the same shortcut again to stop and transcribe; press `Esc` to cancel recording or a pending
-transcription. Configure the shortcut in **Settings > General > Voice Typing**;
-it can also be a tap of the right `Ctrl` key alone (**Right Ctrl**), which leaves right `Ctrl`
-combinations such as `Ctrl+C` working.
+Install and trust the Speech to Text board from Tools & Editors. Use `Alt+V` to start language-
+preserving dictation in the focused input, or `Alt+Shift+V` to ask the provider to translate speech
+to English. Wait for **Recording** if the overlay first shows **Starting microphone…**. Press either
+configured shortcut again to stop and transcribe; the session keeps the action selected when it
+started. Press `Esc` to cancel recording or a pending transcription. Configure both shortcuts in
+**Settings > General > Voice Typing**. A shortcut can also be a tap of right `Ctrl` for normal
+dictation or `Shift` + right `Ctrl` for translation; these taps remain distinct, and ordinary
+right `Ctrl` combinations such as `Ctrl+C` still work.
 If the original input is no longer editable when the transcript returns, Persephone copies the text
 to the clipboard instead.
 Silence auto-stop is off by default. You can choose 2, 3, 5, or 10 seconds in **Settings > General >
@@ -254,5 +256,5 @@ These file-operation shortcuts are disabled while typing in the panel's search b
 
 ## Custom Shortcuts
 
-Voice typing's shortcut can be changed in **Settings > General > Voice Typing**. Other keyboard
-shortcuts cannot currently be customized.
+Voice typing's dictation and translation shortcuts can be changed independently in **Settings >
+General > Voice Typing**. Other keyboard shortcuts cannot currently be customized.

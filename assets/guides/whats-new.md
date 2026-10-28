@@ -14,6 +14,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Cinema mode:** Expand videos across the browser page, including videos embedded in nested frames;
   press `Esc` or use the on-screen button to restore the page.
+- **Voice typing translation:** Use `Alt+Shift+V` to ask the Speech to Text provider for English
+  output. The translation shortcut can be changed independently in Settings.
 
 ---
 

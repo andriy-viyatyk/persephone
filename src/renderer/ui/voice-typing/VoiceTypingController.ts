@@ -20,6 +20,8 @@ const AUDIO_SAMPLE_RATE = 16_000;
 
 interface VoiceSession {
     id: string;
+    mode: "transcribe" | "translate";
+    providerFeatures?: string[];
     cancelled: boolean;
     stopRequested: boolean;
     channel?: SpeechServiceChannel;
@@ -59,6 +61,7 @@ interface AudioCapture {
 export class VoiceTypingController {
     private session: VoiceSession | undefined;
     private shortcut = "Alt+V";
+    private translateShortcut = "Alt+Shift+V";
     private level = 0;
     private timer: ReturnType<typeof setInterval> | undefined;
     private boardChannelSubscription: (() => void) | undefined;
@@ -83,12 +86,12 @@ export class VoiceTypingController {
             else this.pendingPorts.set(channelId, port);
         });
         this.shortcutSubscription = rendererEvents[EventEndpoint.eVoiceTypingShortcut].subscribe((event) => {
-            if (event.action === "start") this.startSession(event.sessionId);
+            if (event.action === "start") this.startSession(event.sessionId, event.mode ?? "transcribe");
             else if (event.action === "stop") this.stopSession(event.sessionId);
             else this.cancelSession(event.sessionId);
         });
         this.settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "voice-typing.shortcut") this.sendShortcutConfig();
+            if (key === "voice-typing.shortcut" || key === "voice-typing.translate-shortcut") this.sendShortcutConfig();
         });
         void api.setVoiceTypingState({ state: "idle" }).catch((error: unknown) => {
             ui.notify(errMessage(error, t("voiceTyping.failed")), "error");
@@ -118,11 +121,12 @@ export class VoiceTypingController {
 
     private async sendShortcutConfig(): Promise<void> {
         this.shortcut = normalizeVoiceTypingShortcut(settings.get("voice-typing.shortcut")) ?? "Alt+V";
-        try { await api.setVoiceTypingConfig({ shortcut: this.shortcut }); }
+        this.translateShortcut = normalizeVoiceTypingShortcut(settings.get("voice-typing.translate-shortcut")) ?? "Alt+Shift+V";
+        try { await api.setVoiceTypingConfig({ shortcut: this.shortcut, translateShortcut: this.translateShortcut }); }
         catch (error: unknown) { ui.notify(errMessage(error, t("voiceTyping.failed")), "error"); }
     }
 
-    private startSession(sessionId: string): void {
+    private startSession(sessionId: string, mode: "transcribe" | "translate"): void {
         if (this.session) return;
         const releaseLease = liveSpeechSessionCoordinator.acquire("voice-typing");
         if (!releaseLease) {
@@ -130,7 +134,7 @@ export class VoiceTypingController {
             return;
         }
         const session: VoiceSession = {
-            id: sessionId, cancelled: false, stopRequested: false, finished: false,
+            id: sessionId, mode, cancelled: false, stopRequested: false, finished: false,
             insertionQueue: Promise.resolve(), insertedSegments: [], bufferedSegments: [], clipboardFallback: false,
             draftUtterances: new Set(), acousticLevels: [], speechLevels: [], segmentCount: 0, levelDurationMs: 0,
         };
@@ -172,8 +176,9 @@ export class VoiceTypingController {
         if (session.cancelled || this.session !== session) return;
         const provider = providers.find((item) => item.version === 1);
         if (!provider) throw Object.assign(new Error(t("voiceTyping.missingProvider")), { code: "missing-provider" });
-        const liveSupport = await this.providerDiscovery?.supportsLive(provider).catch((): undefined => undefined);
-        const live = liveSupport ?? false;
+        const features = await this.providerDiscovery?.describeFeatures(provider, session.mode === "translate").catch((): undefined => undefined);
+        session.providerFeatures = features;
+        const live = features?.includes("live") ?? false;
         if (session.cancelled || this.session !== session) return;
 
         const opened = this.waitForChannel(session);
@@ -181,7 +186,7 @@ export class VoiceTypingController {
             interfaceId: "speech.transcribe",
             provider: provider.provider,
             version: 1,
-            openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(live ? { live: true } : {}) },
+            openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(session.mode === "translate" ? { translate: true } : {}), ...(live ? { live: true } : {}) },
         });
         const port = await this.waitForPort(channelId);
         this.pendingPorts.delete(channelId);
@@ -495,7 +500,7 @@ export class VoiceTypingController {
     }
 
     private publishState(session: VoiceSession, status: VoiceTypingOverlayState["status"], durationMs: number): void {
-        this.onState({ status, binding: this.shortcut, level: this.level, durationMs });
+        this.onState({ status, binding: session.mode === "translate" ? this.translateShortcut : this.shortcut, translating: session.mode === "translate" && session.providerFeatures?.includes("translate") === true, level: this.level, durationMs });
     }
 
     private recordSpeechBaseline(session: VoiceSession, startMs: number, endMs: number): void {
@@ -544,9 +549,11 @@ export class VoiceTypingController {
     }
 
     private changeState(state: VoiceTypingOverlayState["status"], durationMs: number): void {
-        this.onState({ status: state, binding: this.shortcut, level: this.level, durationMs });
+        const session = this.session;
+        this.onState({ status: state, binding: session?.mode === "translate" ? this.translateShortcut : this.shortcut, translating: session?.mode === "translate" && session.providerFeatures?.includes("translate") === true, level: this.level, durationMs });
         // The main process only distinguishes idle, recording, and transcribing; starting is part of recording.
-        void api.setVoiceTypingState({ state: state === "starting" ? "recording" : state }).catch((error: unknown) => {
+        const processState: "idle" | "recording" | "transcribing" = state === "starting" ? "recording" : state;
+        void api.setVoiceTypingState({ state: processState }).catch((error: unknown) => {
             ui.notify(errMessage(error, t("voiceTyping.failed")), "error");
         });
     }

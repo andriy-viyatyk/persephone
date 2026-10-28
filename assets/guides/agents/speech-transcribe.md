@@ -40,11 +40,12 @@ Use `persephone.services.list("speech.transcribe")` to discover providers and `p
   format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 },
   languages: ["uk", "en"], // optional ISO 639-1 hints; absent or [] means auto-detect
   prompt: "Persephone, Codex, board", // optional vocabulary hint
+  translate: true, // optional; request English text from spoken speech
   live: true // optional; use only when describe advertises "live"
 }
 ```
 
-V1 accepts mono, signed 16-bit little-endian PCM at 16,000 samples per second. `languages` is optional; an absent or empty list asks the provider to detect the language, or to apply its own configured languages. One code asks the provider to transcribe in that language; several codes ask it to keep the transcript in one of them. `prompt` is an optional vocabulary hint. Providers may reject a different format with `unsupported-format`.
+V1 accepts mono, signed 16-bit little-endian PCM at 16,000 samples per second. `languages` is optional; an absent or empty list asks the provider to detect the language, or to apply its own configured languages. One code asks the provider to transcribe in that language; several codes ask it to keep the transcript in one of them. `prompt` is an optional vocabulary hint. The optional `translate: true` field asks the provider to produce English text from spoken speech. It is an additive open field in v1: omitted or false keeps ordinary transcription behavior, and providers predating this option may ignore it and return their normal transcript. Consumers must still record and handle the result. Providers implementing translation must detect and settle the spoken source language, then produce text using English decoding. A provider may also use its engine's dedicated translation task when the selected model supports it; that task is separate from the meaning of this request field. Providers may reject a different format with `unsupported-format`.
 
 `{ type: "describe" }` asks for provider metadata. The provider answers with one `description` message and closes the channel; it does not start recording or transcription. Send `live: true` only when that provider's `features` includes `"live"`. A provider that does not advertise it ignores the field and handles the request as ordinary v1, so consumers must still support the final result by itself.
 
@@ -73,7 +74,7 @@ All provider messages are structured-cloneable objects with a string `type` disc
 | `error` | `code`, `message` | A terminal failure. Send a useful explanation, then close. |
 | `description` | `engine`, `model`, `languages`, `local`, `maxAudioMs`, `features` | Provider metadata returned only for `describe`. |
 
-`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum duration for a non-live request, in milliseconds. A live request has no total-duration cap; providers must instead keep audio context, prompt history, and queued work bounded. V1 `features` is an array of optional behaviors the provider supports (for example, `"live"`); Speech to Text advertises `features: ["live"]`, while providers with no optional features return `[]`. Consumers must not infer behavior that the provider did not advertise.
+`languages` in a description is `"auto"` or an array of supported language codes. `local: true` means the audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. `maxAudioMs` is the provider's maximum duration for a non-live request, in milliseconds. A live request has no total-duration cap; providers must instead keep audio context, prompt history, and queued work bounded. V1 `features` is an array of optional behaviors the provider supports (for example, `"live"` and `"translate"`); providers with no optional features return `[]`. `"translate"` means the provider handles `translate: true` as English-output dictation. It does not promise a particular underlying engine task. Speech to Text advertises `"translate"` for every model because its English decoding path is available for all its models, including Large v3 Turbo; its use of Whisper's dedicated translate task remains model-dependent. Consumers must not infer behavior that the provider did not advertise.
 
 Use these v1 error codes:
 
@@ -95,7 +96,7 @@ Each provider advertises its own `maxAudioMs` and enforces that limit for non-li
 
 ## Forward compatibility
 
-Consumers must ignore unknown provider message types and unknown fields on known messages. Providers may add fields to v1 messages, but must preserve the meaning of existing fields and behavior. New optional behavior is advertised through `features`; do not infer behavior without its feature being advertised. The additive `"live"` feature keeps v1 and is opt-in through `live: true`; providers that do not support it handle the request as ordinary v1, so consumers must continue to handle a final result without live messages. An incompatible protocol change requires a new interface version and a separate contract.
+Consumers must ignore unknown provider message types and unknown fields on known messages. Providers may add fields to v1 messages, but must preserve the meaning of existing fields and behavior. New optional behavior is advertised through `features`; do not infer behavior without its feature being advertised. The additive `"live"` feature keeps v1 and is opt-in through `live: true`; providers that do not support it handle the request as ordinary v1, so consumers must continue to handle a final result without live messages. The optional `translate: true` field also keeps v1: legacy providers may ignore it, while consumers retain their normal result insertion behavior. An incompatible protocol change requires a new interface version and a separate contract.
 
 ## Minimal consumer
 
