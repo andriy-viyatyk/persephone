@@ -122,7 +122,12 @@ export default defineConfig({
       // is mid-replace. Nothing under it is an import source either — the main process
       // serves those files from disk over `board://`, so the renderer never imports
       // them and watching them cannot trigger anything useful.
+      //
+      // `doc/` is the same: developer docs are never imported, but agents (Codex) create and
+      // rewrite task documents there while the dev server runs, and a file that is still locked
+      // by the writer fails the watch with the same EBUSY.
       ignored: [
+        '**/doc/**',
         '**/snip-tool/target/**',
         '**/mneme/target/**',
         '**/launcher/target/**',
