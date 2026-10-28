@@ -476,6 +476,7 @@ export interface BoardInteractMsg { __persephone: "board:interact" }
 export interface BoardErrorMsg { __persephone: "board:error"; message: string }
 export interface BoardLogMsg { __persephone: "board:log"; message: string; level: "warn" | "error" }
 export interface BoardBusyMsg { __persephone: "board:busy"; busy: boolean }
+export interface BoardWorkingMsg { __persephone: "board:working"; working: boolean }
 export interface BoardSetContentMsg { __persephone: "board:setContent"; content: string }
 export interface BoardSaveMsg { __persephone: "board:save" }
 export interface BoardSetModifiedMsg { __persephone: "board:setModified"; modified: boolean }
@@ -573,6 +574,7 @@ export type BoardToHostMsg =
     | BoardErrorMsg
     | BoardLogMsg
     | BoardBusyMsg
+    | BoardWorkingMsg
     | BoardSetContentMsg
     | BoardSaveMsg
     | BoardSetModifiedMsg

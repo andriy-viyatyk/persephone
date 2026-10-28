@@ -242,6 +242,10 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             },
         },
         "board:busy": { handle: (message, current) => current.model.setBusy(!!message.busy) },
+        "board:working": {
+            gate: { kind: "mainTrusted", rejectionLog: "Ignored working state from a secondary or unavailable board frame." },
+            handle: (message, current) => current.model.setWorking(message.working === true),
+        },
         "board:setModified": {
             gate: { kind: "mainTrusted", rejectionLog: "Ignored dirty-state update from a secondary or unavailable board frame." },
             handle: (message, current) => current.model.setBoardModified(message.modified === true),
@@ -499,6 +503,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         }));
         this.ownSubscription(subscribeBoardPermission(() => {
             if (!isBoardPermitted(this.props.boardRoot)) {
+                if (this.isMain) this.props.model.setWorking(false);
                 this.props.model.clearStatusBarItemsForFrame(this.generation);
                 this.props.onStatusBarClear?.(this.generation);
                 if (this.isMain) this.props.model.clearMuteButtonForFrame(this.generation);
@@ -518,6 +523,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onDispose(): void {
         this.live = false;
+        if (this.isMain) this.props.model.setWorking(false);
         void this.endOwnedThemePreview();
         const retiredGeneration = this.generation;
         if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, retiredGeneration);
@@ -635,6 +641,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
         if (!this.live || JSON.stringify(grant) === JSON.stringify(this.iframeGrant)) return;
         const iframe = this.iframe;
+        if (this.isMain) this.props.model.setWorking(false);
         this.iframe = undefined;
         this.iframeGrant = grant;
         if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, this.generation);
@@ -843,6 +850,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (this.hasLoaded) void this.endOwnedThemePreview();
         this.hasLoaded = true;
         const retiredGeneration = this.generation;
+        if (this.isMain) this.props.model.setWorking(false);
         if (this.isMain) this.props.model.clearSaveRequestHandler(this.boardId, retiredGeneration);
         this.saveHandlerId = undefined;
         this.rejectSaveRequests(retiredGeneration, "The board frame was reloaded.");
@@ -1319,6 +1327,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private readonly handleFrameError = (): void => {
+        if (this.isMain) this.props.model.setWorking(false);
         if (this.isMain) {
             this.props.model.clearSaveRequestHandler(this.boardId, this.generation);
             this.saveHandlerId = undefined;

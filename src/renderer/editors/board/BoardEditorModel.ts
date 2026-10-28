@@ -617,6 +617,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         void api.setBoardBusy(this.id, busy);
     }
 
+    /** Board-declared transient visual activity; independent of process retention. */
+    setWorking(working: boolean): void {
+        this.workingState.set(working);
+    }
+
     // ── Shared state (EPIC-044) ──────────────────────────────────────────
 
     /** Monotonic shared-state version (EPIC-044) — stamped on every `state:sync` push so a
@@ -1481,6 +1486,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             s.toolbarText = undefined;
         });
         this.aiVisionDisposed = true;
+        this.setWorking(false);
         this.reloadAwaitingRegistration = false;
         this.releaseContentResources();
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the

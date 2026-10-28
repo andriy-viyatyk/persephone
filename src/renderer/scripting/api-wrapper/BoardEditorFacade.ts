@@ -90,6 +90,7 @@ const BOARD_MEMBERS: readonly IAiMember[] = [
     { name: "secondaryViews", kind: "property", summary: "Copied declared board-secondary panel records, or undefined when the board is unresolved." },
     { name: "statusText", kind: "property", summary: "The model-backed board status text, or undefined when cleared or unresolved." },
     { name: "busy", kind: "property", summary: "The model-backed busy flag, or undefined when the board is unresolved." },
+    { name: "working", kind: "property", summary: "The transient visual activity flag, or undefined when the board is unresolved." },
     { name: "frameReady", kind: "property", summary: "Whether the mounted main board frame is registered and ready." },
     { name: "contentHostError", kind: "property", summary: "The trusted content-host restore error, when present." },
     { name: "reload", kind: "method", signature: "reload(): Promise<IBoardReloadResult>", summary: "Reload the board and report whether its main frame became ready.", caution: "unsaved changes prompt the user" },
@@ -213,6 +214,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 renderState: this.renderState,
                 ...(this.frameReady !== undefined ? { frameReady: this.frameReady } : {}),
                 ...(this.busy !== undefined ? { busy: this.busy } : {}),
+                ...(this.working !== undefined ? { working: this.working } : {}),
                 ...(this.statusText !== undefined ? { statusText: this.statusText } : {}),
             }),
         };
@@ -434,6 +436,11 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     get busy(): boolean | undefined {
         if (!this.isResolvedBoard()) return undefined;
         return this.editor.state.get().busy ?? false;
+    }
+
+    get working(): boolean | undefined {
+        if (!this.isResolvedBoard()) return undefined;
+        return this.editor.workingState.get() === true;
     }
 
     get frameReady(): boolean | undefined {

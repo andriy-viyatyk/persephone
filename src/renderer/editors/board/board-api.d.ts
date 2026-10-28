@@ -627,6 +627,14 @@ interface PersephoneBoardApi {
      *  running; they are still killed on page/tab close, app quit, or after
      *  `setBoardBusy(false)` + unload. Call with `false` when the processes stopped. */
     setBoardBusy(busy: boolean): void;
+    /**
+     * Declare whether the selected session's agent is currently working. When true, Persephone
+     * shows a transient ring and orbit on this page's tab icon. Call false when that agent stops.
+     * Feature-detect this method for compatibility with older Persephone versions. The value
+     * resets on frame reload and has no page, frame, or process-retention effect; use
+     * `setBoardBusy` separately when spawned processes must survive a board unload.
+     */
+    setWorking(working: boolean): void;
     /** The board's busy flag — survives the board's own reload. Read on startup: when
      *  `true`, re-enter "running" mode via `getJobs()` (and call `setBoardBusy(false)`
      *  if nothing actually lives anymore). */

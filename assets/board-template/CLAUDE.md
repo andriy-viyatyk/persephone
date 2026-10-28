@@ -1407,6 +1407,24 @@ it, while another board on the same page stays isolated. Values survive restart,
 editor switches, and cross-window moves. Replacing a simple file-association board deletes its
 state, duplicated pages start independently, and page close removes its cache files.
 
+## Transient tab activity: `setWorking()`
+
+Boards with multiple sessions should report the activity of the **selected session's** agent:
+
+```js
+if (typeof persephone.setWorking === "function") {
+  persephone.setWorking(true);  // selected session's agent starts
+  // ...call false when that selected session's agent stops
+  persephone.setWorking(false);
+}
+```
+
+Feature-detect the method for compatibility with older Persephone versions. This animates the
+board page's tab icon, including while its page is inactive. It is transient visual status only and
+does not retain the page, iframe, or spawned processes. It resets on frame reload/replacement, so
+announce the selected session's current state again after startup or reload. This API is separate
+from `setBoardBusy()`, which preserves spawned processes when a board unloads.
+
 ## Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 
 By default, everything a board spawned is **killed when the board unloads** — the user

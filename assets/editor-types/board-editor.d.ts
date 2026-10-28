@@ -129,6 +129,7 @@ export interface IBoardEditor {
     readonly secondaryViews: readonly IBoardSecondaryView[] | undefined;
     readonly statusText: string | undefined;
     readonly busy: boolean | undefined;
+    readonly working: boolean | undefined;
     readonly frameReady: boolean | undefined;
     readonly contentHostError: string | undefined;
     reload(): Promise<IBoardReloadResult>;

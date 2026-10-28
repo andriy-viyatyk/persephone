@@ -89,6 +89,13 @@ export abstract class EditorModel<
      *  base for no-host editors that own their pipe directly (e.g. Browser). */
     readonly pipeState = new TOneState<IContentPipe | null>(null);
 
+    /** Runtime-only activity signal for tab chrome; intentionally excluded from persisted editor state. */
+    readonly workingState = new TOneState(false);
+
+    setWorking(working: boolean): void {
+        this.workingState.set(working);
+    }
+
     get pipe(): IContentPipe | null {
         return this.pipeState.get();
     }

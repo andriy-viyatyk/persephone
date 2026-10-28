@@ -9,6 +9,7 @@ import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import type { EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base/EditorModel";
 import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import { onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
@@ -112,6 +113,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private titleTooltip: TooltipAttachment | undefined;
     private pinnedTooltip: TooltipAttachment | undefined;
     private editorUnsubscribe: () => void = () => undefined;
+    private workingUnsubscribe: () => void = () => undefined;
+    private workingEditor: EditorModel | null = null;
     private iconUnsubscribe: (() => void) | undefined;
     private languageSettingsSubscription: (() => void) | undefined;
     private languageIconCleanup: (() => void) | undefined;
@@ -195,6 +198,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId }),
             () => {
                 this.syncEditorSubscription();
+                this.syncWorkingSubscription();
                 this.updateView();
             },
         );
@@ -219,11 +223,15 @@ export class PageTabView extends VanillaView<PageTabProps> {
             },
         );
         this.syncEditorSubscription();
+        this.syncWorkingSubscription();
         this.updateView();
     }
 
     protected onUpdate(props: PageTabProps): void {
-        if (props.model !== this.props.model) this.syncEditorSubscription();
+        if (props.model !== this.props.model) {
+            this.syncEditorSubscription();
+            this.syncWorkingSubscription();
+        }
         this.updateView();
     }
 
@@ -233,6 +241,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.pinnedTooltip?.dispose();
         this.titleTooltip?.dispose();
         this.editorUnsubscribe();
+        this.workingUnsubscribe();
         this.soundButton?.dispose();
         this.soundButton = undefined;
         this.languageIconCleanup?.();
@@ -253,6 +262,28 @@ export class PageTabView extends VanillaView<PageTabProps> {
             ));
         }
         this.updateView();
+    }
+
+    private syncWorkingSubscription(): void {
+        const editor = this.props.model.mainEditorInstance;
+        if (editor === this.workingEditor) return;
+        this.workingUnsubscribe();
+        this.workingEditor = editor;
+        setPresence(this.emptyLanguage, "data-working", false);
+        if (this.languageIconHost) setPresence(this.languageIconHost, "data-working", false);
+        if (!editor) return;
+        this.applyWorkingIndicator(editor.workingState.get());
+        this.workingUnsubscribe = editor.workingState.subscribe(
+            () => this.applyWorkingIndicator(editor.workingState.get()),
+        );
+    }
+
+    private applyWorkingIndicator(working: boolean): void {
+        setPresence(this.emptyLanguage, "data-working", false);
+        if (this.languageIconHost) setPresence(this.languageIconHost, "data-working", false);
+        if (!working) return;
+        const host = this.currentEditor?.noLanguage ? this.emptyLanguage : this.languageIconHost;
+        if (host) setPresence(host, "data-working", true);
     }
 
     private projectEditorState(editor: EditorOrHost): EditorProjection {
@@ -429,6 +460,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 })?.element ?? null,
             );
         }
+        this.applyWorkingIndicator(this.workingEditor?.workingState.get() ?? false);
     }
 
     private updateCloseIcon(): void {

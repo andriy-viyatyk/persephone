@@ -101,6 +101,73 @@
         width: 6px;
         height: 14px;
         flex-shrink: 0;
+        position: relative;
+    }
+
+    [data-type="page-tab"] [data-part="icon"] {
+        position: relative;
+    }
+
+    [data-type="page-tab"] [data-part="empty-language"][data-working]::before,
+    [data-type="page-tab"] [data-part="icon"][data-working]::before {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        width: 19px;
+        height: 19px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        border: 1px solid color-mix(in srgb, var(--color-bg-selection) 60%, transparent);
+        border-radius: 50%;
+        box-sizing: border-box;
+        pointer-events: none;
+    }
+
+    [data-type="page-tab"] [data-part="empty-language"][data-working]::after,
+    [data-type="page-tab"] [data-part="icon"][data-working]::after {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        width: 19px;
+        height: 19px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: conic-gradient(
+            from 0deg,
+            transparent 0deg 286deg,
+            color-mix(in srgb, var(--color-bg-selection) 55%, transparent) 311deg,
+            var(--color-bg-selection) 336deg,
+            color-mix(in srgb, var(--color-bg-selection) 50%, var(--color-text-selection)) 352deg,
+            var(--color-text-selection) 360deg
+        );
+        /* A ~3px band on the ring line: the arc sits on the ring, not inside the icon. */
+        mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), var(--color-bg-selection) calc(100% - 2.5px));
+        filter: drop-shadow(0 0 2px var(--color-bg-selection));
+        animation: persephone-page-tab-working-orbit 1.6s linear infinite;
+        pointer-events: none;
+    }
+
+    [data-type="page-tab"] [data-part="empty-language"][data-working] > *,
+    [data-type="page-tab"] [data-part="icon"][data-working] > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* The rotation must share the centering transform: a separate `rotate` would spin the arc
+     * around the box's un-translated position, swinging it off the ring. */
+    @keyframes persephone-page-tab-working-orbit {
+        from { transform: translate(-50%, -50%) rotate(0deg); }
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-type="page-tab"] [data-part="empty-language"][data-working]::after,
+        [data-type="page-tab"] [data-part="icon"][data-working]::after {
+            animation: none;
+        }
     }
 
     [data-type="page-tab"] [data-part="empty-language"][data-with-icon] {

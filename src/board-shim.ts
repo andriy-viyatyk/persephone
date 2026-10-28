@@ -2426,6 +2426,19 @@ function createHandle(
         }
     },
 
+    /** Declare transient visual activity on this page's tab; this does not retain the board or its processes. */
+    setWorking(working: boolean): void {
+        try {
+            const message: Extract<BoardToHostMsg, { __persephone: "board:working" }> = {
+                __persephone: "board:working",
+                working: !!working,
+            };
+            window.parent.postMessage(message, hostPostTarget);
+        } catch {
+            // parent gone — nothing to inform
+        }
+    },
+
     /** The board's current busy flag — carried across reloads. A re-created board
      *  reads `true` when it went busy before unloading: re-enter "running" mode
      *  (see `getJobs()`), or call `setBoardBusy(false)` if nothing lives anymore. */

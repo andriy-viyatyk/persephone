@@ -963,6 +963,28 @@ persephone.service.onShutdown(async ({ reason }) => {
 });
 ```
 
+### Transient tab activity: `setWorking()`
+
+Boards can report whether the agent for the **selected session** is currently working. This shows a
+ring and orbit on the board page's tab icon, including while the page is inactive. It is visual
+status only: it does not keep the page, iframe, or spawned processes alive. The signal starts false
+and resets when the board frame reloads or is replaced, so announce the selected session's current
+state again after startup or reload.
+
+Feature-detect the additive API when supporting older Persephone versions:
+
+```js
+if (typeof persephone.setWorking === "function") {
+  persephone.setWorking(true);  // selected session's agent starts working
+  // ...when that selected session stops working:
+  persephone.setWorking(false);
+}
+```
+
+Call it for the selected session's agent transitions only. `setWorking()` is separate from
+[`setBoardBusy()`](#long-running-processes-setboardbusy--getboardbusy--getjobs), which controls
+whether spawned processes survive a board unload.
+
 ### Long-running processes: `setBoardBusy()` / `getBoardBusy()` / `getJobs()`
 
 By default, a board's spawned processes are **killed whenever the board unloads** — the user navigates the page to something else, or chooses **… → Reload board**. A board that starts a dev server, watcher, or any process meant to keep running opts out with the busy flag:
