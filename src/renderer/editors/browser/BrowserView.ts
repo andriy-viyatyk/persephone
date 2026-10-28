@@ -561,13 +561,13 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         const devtools = make("toolbar-devtools", "settings", "Open DevTools", this.model.webview.openDevTools);
         const close = make("toolbar-close", "close", "Close Tab", () => this.model.closeTab(this.model.state.get().activeTabId));
         this.controls.push(bookmarks, torInfo, more, devtools, close);
-        this.endSlot.append(this.navigate.root, this.star.root);
+        this.endSlot.append(this.navigate.root, this.translateButton.root, this.star.root);
         this.inputPanel.append(this.input.root);
         // Spell the DOM order out once, left to right, rather than appending `this.controls`
         // in construction order and patching it with insertBefore. `this.controls` keeps its
         // own order because sync() indexes into it positionally.
         this.root.append(
-            home.root, back.root, forward.root, reload.root, this.translateButton.root,
+            home.root, back.root, forward.root, reload.root,
             this.inputPanel,
             bookmarks.root, torInfo.root, downloads.root,
             more.root, devtools.root, close.root,

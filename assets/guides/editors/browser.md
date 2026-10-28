@@ -19,8 +19,8 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳][Translate]  [Proxy][Site permissions / Search engine][ address box ] [→] [★][⋮][</>][×] | toolbar: navigation and Translate at left, address box across middle
-|                                                                     |  (proxy chip inside it when routed), Go at its right edge,
+| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Translate][★] [⋮][</>][×] | toolbar: navigation at left, address box across middle
+|                                                                     |  (proxy chip inside it when routed), Go, Translate and Add Bookmark at its right edge,
 |                                                                     |  bookmarks/more/devtools/close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
