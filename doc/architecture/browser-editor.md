@@ -350,7 +350,8 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserProfileNetworkModel.ts` | Renderer | Per-page profile network: apply before mount, follow settings edits, image route for app-drawn resources |
 | `src/renderer/editors/link-editor/routed-src.ts` | Renderer | `ImageRoute` + `resolveRoutedSrc` — rewrites remote `src` values to `tor-src://` or `profile-src://` for a routed page |
 | `src/renderer/ui/dialogs/TorInfoDialog.ts` | Renderer | Connection info for a routed page: Tor (exit IP, location, Reconnect) or proxy (egress IP, location) |
-| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks, cinema mode (expand `<video>` to full page), `window.chrome` compatibility shim |
+| `src/preload-webview.ts` | Guest | Main-frame browser behavior, page-first keyboard handling, title/favicon reporting, image tracking, and the `window.chrome` compatibility shim; installs cinema mode in every preloaded frame |
+| `src/preload-webview/cinema-mode.ts` | Guest | Per-frame cinema runtime, video discovery and controls, iframe-chain messaging, expansion/restoration, and same-origin assisted video support |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 | `src/ipc/tor-ipc.ts` | Shared | Tor IPC channels + `TorStatus`/`TorIpInfo` types: arm, start, stop, log, check-ip, restart, status |
 | `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
@@ -397,26 +398,49 @@ The preload therefore uses `contextBridge.executeInMainWorld({ func })`, which r
 
 ## Cinema Mode (Preload)
 
-The preload script injects a cinema mode feature — an expand/collapse button that appears on `<video>` elements when hovered, allowing the user to expand a video to fill the entire webview page.
+Cinema mode is implemented by `src/preload-webview/cinema-mode.ts` and installed outside the
+`process.isMainFrame` guard in `src/preload-webview.ts`. It therefore runs in each frame where
+Electron executes the webview preload (`nodeIntegrationInSubFrames` is enabled by
+`browser-service.ts`). The rest of the browser preload, including find-bar keyboard handling,
+remains main-frame-only.
 
-**How it works:**
+Each runtime discovers videos in its document and uses capture-phase pointer-position hit-testing
+to find the largest eligible video under the pointer. This works when a player overlays the video
+with its own controls. The button uses DOM-created SVG (not `innerHTML`) and stays in the frame
+containing the video. Video attachment retries on playback and resize for players that initially
+report a zero-sized video. A scoped document mutation observer attaches to dynamically inserted
+videos; broad shadow-root video discovery is not performed.
 
-1. `initCinemaMode()` scans the page for `<video>` elements and sets up a `MutationObserver` to catch dynamically added elements.
-2. `attachCinemaListeners()` registers `mouseenter`/`mouseleave` on each element's **parent container** (not the element itself — overlay divs often intercept events on the element).
-3. On hover, `showCinemaBtn()` creates a `position: fixed` button (using DOM API, not `innerHTML` — pages with Trusted Types CSP block `innerHTML`) and appends it to `document.body`. The button repositions on `scroll` events.
-4. On click, `enterCinema()`:
-   - Saves each ancestor's `style.cssText`, then sets all ancestors to `position: fixed; 100vw × 100vh` — expanding the container chain without touching the target element itself (sites like YouTube continuously overwrite the video's inline styles)
-   - Hides siblings of every ancestor via `visibility: hidden` (keeps the ancestor chain visible so the GPU compositor continues rendering video frames)
-   - Appends a black backdrop div to `document.body`
-   - Dispatches `window.resize` to trigger the site's resize handlers (e.g. YouTube recalculates video size from the new container dimensions)
-   - For `<video>` elements: enables `video.controls = true` and watches with `MutationObserver` to restore it if the site removes the attribute
-5. On collapse (button click or Escape), `exitCinema()` restores all saved styles and dispatches `window.resize` again.
+Entering cinema mode saves that frame's original inline styles, sibling visibility, document
+overflow, and active marker. It expands the video’s composed ancestor chain, hides siblings with
+`visibility: hidden`, adds the black backdrop under `<html>`, and dispatches `resize`. An iframe
+target and its composed ancestors receive full-viewport declarations, including a borderless frame.
+An iframe-scoped style observer reapplies those declarations when the site rewrites styles, and a
+child-list observer plus the iframe's `load` event releases the expansion if the frame is removed
+or navigates. Cleanup disconnects observers and restores saved state in reverse order before
+dispatching another resize.
 
-**Key implementation constraints:**
-- Button uses `document.createElementNS()` for SVG icons (not `innerHTML`) — required for pages with Trusted Types CSP (e.g. YouTube)
-- Button is created on `mouseenter` and destroyed on `mouseleave` — sites like YouTube clean up unexpected persistent DOM children
-- Never touches `<video>` inline styles directly — YouTube's JS overwrites them continuously; containers are resized instead
-- `visibility: hidden` on siblings (not `display: none`) — keeps layout intact, preventing reflow that would confuse the site's JS
+Frames coordinate with a versioned `persephone:cinema` `postMessage` payload. A child enter is
+accepted only when its source matches a direct child iframe; lookup also searches open shadow roots
+for direct iframe children. Each frame expands only its own local target and forwards the session
+upward. Exit messages are constrained to the active session and the corresponding child or direct
+parent, so a stale message cannot close a newer session. Escape in a frame with cinema state exits
+the chain through the same protocol. In the main frame, the existing keyboard handler first asks
+cinema mode to exit, then preserves the page-first unclaimed-Escape behavior. With no cinema state,
+subframe key handling does not add a browser shortcut handler.
+
+For a same-origin child iframe where Electron does not run the preload on the webview's initial
+page, the parent detects the missing runtime marker and assists that child. It listens for pointer
+movement in the child document, displays the button in the parent, expands the iframe, and applies
+the video fill fallback in the child's document. It retains native controls while active and adds
+a child-document Escape listener; exit, removal, and navigation restore the video's prior style
+and controls and remove the listener. Cross-origin children without a running preload cannot be
+assisted because their DOM is inaccessible.
+
+Plain videos are left to the site's own resize behavior first. If a video still occupies less than
+90% of the viewport width and height 300 ms after entry (and after subsequent resizes), cinema mode
+sets it to a viewport-sized `object-fit: contain` fallback and restores its original inline style
+on exit. Video controls are enabled and observed while active, then restored to their prior state.
 
 ## Favicon Handling
 
@@ -983,15 +1007,16 @@ test passes where a real keypress fails.
 
 Two consequences worth knowing. The verdict is per keystroke, not per page, so a page that claims
 the key normally but stands down while a modal is open yields the browser bar for exactly those
-presses. And the preload only runs in the main frame (the webview does not enable
-`nodeIntegrationInSubFrames`), so `Ctrl+F` with focus inside a cross-origin iframe reaches that
-frame and stops there rather than opening the find bar.
+presses. Find-bar handling is inside the main-frame-only preload guard, so `Ctrl+F` with focus
+inside an iframe reaches that frame and stops there rather than opening the find bar.
 
-`Escape` follows the same shape when the webview is not in HTML fullscreen: cinema mode takes it
-outright (Persephone's own overlay), otherwise the deferred check runs `window.stop()` and sends
-`hide-find-bar` only when the page left it unclaimed. In HTML fullscreen, the main process takes
-Escape before guest dispatch and asks the page to exit fullscreen; the page's own fullscreen event
-also clears the view state when the user uses its fullscreen controls.
+When cinema state is active, Escape exits it before the ordinary page-first Escape path. The
+focused subframe handles its own Escape and routes the session exit through the cinema message
+protocol; the main frame uses its existing key handler. With no cinema state, ordinary Escape
+keeps the deferred page-first behavior: the preload runs `window.stop()` and sends `hide-find-bar`
+only when the page left it unclaimed. In HTML fullscreen, the main process takes Escape before
+guest dispatch and asks the page to exit fullscreen; the page's own fullscreen event also clears
+the view state when the user uses its fullscreen controls.
 
 ### HTML Fullscreen
 

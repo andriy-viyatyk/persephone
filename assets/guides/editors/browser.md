@@ -202,9 +202,17 @@ when no browser page claims it, `F12` opens Persephone's DevTools.
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.
 
-Videos can use their own fullscreen control to fill the app window. Press `Esc` to leave fullscreen,
-even when keyboard focus is in Persephone rather than the page. Fullscreen also ends when you close
-the browser tab or leave it hidden.
+### Cinema mode
+
+Move the pointer over a video to show the **Cinema Mode** button, then select it to expand the video
+across the browser page and hide the surrounding page content. This also works for videos embedded
+in nested frames. Select the button again or press `Esc` to leave cinema mode and restore the page.
+If an embedded video cannot show its own button, the button appears over the video from its
+containing page. Videos that do not resize with their player are fitted to the expanded view.
+
+Videos can also use their own fullscreen control to fill the app window. Press `Esc` to leave
+fullscreen, even when keyboard focus is in Persephone rather than the page. Fullscreen also ends when
+you close the browser tab or leave it hidden.
 
 When a page link uses a scheme registered by a trusted board, clicking it leaves the browser tab and
 opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain

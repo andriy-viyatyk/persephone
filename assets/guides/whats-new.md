@@ -12,7 +12,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.16 (Upcoming)
 
-*No changes yet.*
+- **Cinema mode:** Expand videos across the browser page, including videos embedded in nested frames;
+  press `Esc` or use the on-screen button to restore the page.
 
 ---
 
