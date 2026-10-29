@@ -356,6 +356,9 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
     const { permission, callback, details, webContents } = request;
     if (ses === appSession) {
         if (details.isMainFrame === true) {
+            // navigator.clipboard.readText() arrives here as "clipboard-read"; without this the
+            // grid's context-menu Paste failed silently while Ctrl+V (a paste event) still worked.
+            if (APP_ALLOW.has(permission as string)) { callback(true); return; }
             const media = details as Electron.MediaAccessPermissionRequest;
             // A chromeMediaSource "desktop" request arrives with an empty `mediaTypes` (verified on
             // Electron 43), so accept empty or video-only — never audio — while the one-shot grant is armed.
