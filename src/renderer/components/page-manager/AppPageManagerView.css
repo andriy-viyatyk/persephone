@@ -1,4 +1,10 @@
 @layer app {
+    /* Each page is its own stacking context, so a z-index inside a page (the minimap indicator, for one)
+       cannot rise above the pinned-page popover. */
+    .pages-container [data-name="page-slot"] {
+        isolation: isolate;
+    }
+
     .pages-container [data-name="page-slot"][data-popover] {
         box-sizing: border-box;
         background: var(--color-bg-default, transparent);
