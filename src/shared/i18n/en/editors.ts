@@ -98,6 +98,8 @@ export const editorsCatalog = {
     mute: { message: "Mute" },
     turnWordWrapOff: { message: "Turn Word Wrap off" },
     turnWordWrapOn: { message: "Turn Word Wrap on" },
+    turnTsDiagnosticsOn: { message: "Show TypeScript errors" },
+    turnTsDiagnosticsOff: { message: "Hide TypeScript errors" },
     switchToDarkTheme: { message: "Switch to Dark Theme" },
     switchToLightTheme: { message: "Switch to Light Theme" },
     imageFallback: { message: "Image", note: "Fallback label naming image content when no more specific title exists." },

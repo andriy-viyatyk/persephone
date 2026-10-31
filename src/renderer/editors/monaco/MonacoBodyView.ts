@@ -17,6 +17,8 @@ import {
 import { api } from "../../../ipc/renderer/api";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { convertHtmlToMarkdown, readClipboardHtml } from "../text/paste-rich-text";
+import { bindProjectPage, projectModelUri, type ProjectPageBinding } from "../shared/monaco-project-intellisense";
+import { attachDiagnostics } from "../shared/monaco-project-diagnostics";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
@@ -25,6 +27,7 @@ interface HostSlice {
     content: string;
     language: string | undefined;
     encrypted: boolean | undefined;
+    filePath: string | undefined;
 }
 
 function selectHostSlice(state: TextFileEditorModelState): HostSlice {
@@ -32,7 +35,12 @@ function selectHostSlice(state: TextFileEditorModelState): HostSlice {
         content: state.content,
         language: state.language,
         encrypted: state.encrypted,
+        filePath: state.filePath,
     };
+}
+
+function projectSliceKey(slice: HostSlice): string {
+    return `${slice.language ?? ""}|${slice.filePath ?? ""}`;
 }
 
 export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
@@ -46,6 +54,13 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     private translationAvailable = false;
     private translationAvailabilityKey: monaco.editor.IContextKey<boolean> | undefined;
     private onTranslateSelection: (() => void) | undefined;
+
+    private projectBinding: ProjectPageBinding | undefined;
+    private projectBindingUnsub: (() => void) | undefined;
+    private projectKey = "";
+    private projectActive = false;
+    private readonly projectActiveListeners = new Set<(active: boolean) => void>();
+    private diagnostics: { dispose(): void } | undefined;
 
     private hostSubscription: (() => void) | undefined;
     private modelSubscription: (() => void) | undefined;
@@ -111,6 +126,15 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         return this.editor;
     }
 
+    public getProjectActive(): boolean {
+        return this.projectActive;
+    }
+
+    public onProjectActiveChange(listener: (active: boolean) => void): () => void {
+        this.projectActiveListeners.add(listener);
+        return () => { this.projectActiveListeners.delete(listener); };
+    }
+
     public setTranslationHandler(onTranslateSelection: () => void): void {
         this.onTranslateSelection = onTranslateSelection;
     }
@@ -132,6 +156,40 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         this.hostView = view;
         this.root.append(view.root);
         view.mount();
+
+        this.projectKey = projectSliceKey(slice);
+        const binding = bindProjectPage(
+            view,
+            { filePath: slice.filePath, language: slice.language },
+            this.handleModelReplaced,
+        );
+        this.projectBinding = binding;
+        this.projectBindingUnsub = binding.subscribe((active) => this.setProjectActive(active));
+        this.setProjectActive(binding.active);
+        this.refreshDiagnostics();
+    }
+
+    private setProjectActive(active: boolean): void {
+        if (this.projectActive !== active) {
+            this.projectActive = active;
+            this.projectActiveListeners.forEach((listener) => listener(active));
+        }
+        this.refreshDiagnostics();
+    }
+
+    private readonly handleModelReplaced = (): void => {
+        this.decorations?.clear();
+        this.decorations = undefined;
+        this.refreshDiagnostics();
+    };
+
+    /** Owns the per-page TypeScript error highlighter: on only while enabled and the page is project-active. */
+    private refreshDiagnostics(): void {
+        this.diagnostics?.dispose();
+        this.diagnostics = undefined;
+        if (this.isDisposed || !this.projectActive || !this.model.state.get().diagnostics) return;
+        const editorModel = this.hostView?.isReady ? this.hostView.getEditor().getModel() : null;
+        if (editorModel) this.diagnostics = attachDiagnostics(editorModel);
     }
 
     private subscribeToCurrentHost(): void {
@@ -167,8 +225,16 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
             },
             (state) => state.wordWrap,
         );
+        const unsubscribeDiagnostics = model.state.subscribe<boolean>(
+            () => {
+                if (this.isDisposed || this.model !== model) return;
+                this.refreshDiagnostics();
+            },
+            (state) => state.diagnostics,
+        );
         const release = this.ownSubscription(() => {
             unsubscribe();
+            unsubscribeDiagnostics();
             if (this.modelSubscription === release) this.modelSubscription = undefined;
         });
         this.modelSubscription = release;
@@ -179,12 +245,18 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         if (!view?.isReady) return;
         view.update(this.hostViewProps(slice));
         view.setValue(slice.content);
+        const projectKey = projectSliceKey(slice);
+        if (projectKey !== this.projectKey) {
+            this.projectKey = projectKey;
+            this.projectBinding?.update({ filePath: slice.filePath, language: slice.language });
+        }
     }
 
     private hostViewProps(slice: HostSlice): MonacoEditorHostProps {
         return {
             initialValue: slice.content,
             language: slice.language,
+            modelUri: projectModelUri(slice.filePath, slice.language),
             onMount: this.onHostMount,
             onChange: this.handleChange,
             options: {
@@ -226,6 +298,17 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     }
 
     private releaseCurrentHost(): void {
+        this.diagnostics?.dispose();
+        this.diagnostics = undefined;
+        this.projectBindingUnsub?.();
+        this.projectBindingUnsub = undefined;
+        this.projectBinding?.dispose();
+        this.projectBinding = undefined;
+        this.projectKey = "";
+        if (this.projectActive) {
+            this.projectActive = false;
+            this.projectActiveListeners.forEach((listener) => listener(false));
+        }
         this.hostSubscription?.();
         this.hostSubscription = undefined;
         this.releaseHostCleanups();

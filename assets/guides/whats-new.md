@@ -16,6 +16,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   press `Esc` or use the on-screen button to restore the page.
 - **Voice typing translation:** Use `Alt+Shift+V` to ask the Speech to Text provider for English
   output. The translation shortcut can be changed independently in Settings.
+- **Project TypeScript IntelliSense for boards:** Register a project folder to give Monaco pages
+  completions for project files, declarations, and supported JSON imports. Project pages can also
+  show TypeScript errors from the toolbar.
 
 ---
 

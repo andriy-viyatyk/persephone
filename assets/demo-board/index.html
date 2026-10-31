@@ -409,6 +409,22 @@
                 <li><code>service.mjs</code> — an ESM service entry with a board-root cwd, sanitized environment, standard Node built-ins, and board-root <code>node_modules</code> resolution. Its stdout/stderr diagnostics are captured in <code>ui.log</code>; use <code>persephone.service.request</code> for request/reply, <code>onChannel</code> for streaming, and <code>persephone.storage</code> rather than inventing a persistence file.</li>
             </ul>
 
+            <h2>TypeScript project IntelliSense in Monaco</h2>
+            <p>
+                On bridge <code>1.47.0+</code>, register a granted project folder before opening its
+                TypeScript files in Monaco. The folder must contain <code>tsconfig.json</code>; registration
+                is lazy and should run on every board load. Use the same root spelling for registration
+                and file paths so the open page matches the project. The page then gets relative-import
+                IntelliSense and a <strong>Show TypeScript errors</strong> toolbar toggle. Compiler options
+                are not applied, so the highlighted errors are a subset of <code>tsc --noEmit</code>.
+            </p>
+            <pre><code>const projectRoot = "C:/work/my-project";
+const sourceFile = `${projectRoot}/src/main.ts`;
+await persephone.registerTypeScriptProject(projectRoot);
+await persephone.openRawLink(sourceFile);
+// To stop tracking it before this board closes:
+await persephone.unregisterTypeScriptProject(projectRoot);</code></pre>
+
             <h2>Source identity and session context</h2>
             <p>
                 Bridge 1.24.0 exposes the initial source identity through

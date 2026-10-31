@@ -90,6 +90,14 @@ import { pathWatchService } from "./path-watch-service";
 interface FolderCursor { root: string; boardRoot: string; boardId: string; entries: BoardFolderEntry[]; offset: number; expires: number; truncated: boolean }
 const folderCursors = new Map<string, FolderCursor>();
 const MAX_FOLDER_PAGE_SIZE = 1000;
+/** Most TypeScript projects one board frame may keep registered at once. */
+const MAX_TS_PROJECTS_PER_FRAME = 8;
+
+/** Same normalization as the renderer's `fpNormalizeForCompare`: absolute, `/`, no trailing slash, lowercase on Windows. */
+function normalizeTsProjectKey(root: string): string {
+    const resolved = path.resolve(root).replace(/\\/g, "/").replace(/\/+$/, "");
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
 const MAX_FOLDER_RESULTS = 100000;
 const FOLDER_CURSOR_TTL_MS = 5 * 60 * 1000;
 
@@ -253,6 +261,8 @@ interface BoardPortEntry {
     connected?: boolean;
     /** Mode-D handshake watchdog; cleared on connect / dispose. */
     watchdog?: ReturnType<typeof setTimeout>;
+    /** Normalized roots of the TypeScript projects this frame registered (US-1744). */
+    tsProjectRoots: Set<string>;
 }
 
 /** Live board ports keyed by the per-mount boardId minted at the handshake. */
@@ -835,6 +845,37 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         try { await shell.trashItem(checkedPath); }
         catch (error: unknown) { throw fileAccessError(error); }
     },
+    async registerTypeScriptProject(entry, args) {
+        const requested = args[0];
+        if (typeof requested !== "string" || !requested.trim()) throw rpcFailure("invalid-argument", "A project folder path is required.");
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" });
+        let authorized: string; // realpath: used ONLY for the permission gate and the directory check
+        try { authorized = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: requested, permissions: grant, intent: "list" }); }
+        catch (error: unknown) { throw fileAccessError(error); }
+        // The renderer root keeps the board's own spelling so it matches the paths pages are opened with.
+        const root = path.resolve(entry.root, requested);
+        const stats = await fs.promises.stat(authorized).catch((): undefined => undefined);
+        if (!stats?.isDirectory()) throw rpcFailure("not-directory", "The project path is not a folder.");
+        const key = normalizeTsProjectKey(root);
+        if (entry.tsProjectRoots.size >= MAX_TS_PROJECTS_PER_FRAME && !entry.tsProjectRoots.has(key)) {
+            throw rpcFailure("limit", "Too many TypeScript projects registered by this board.");
+        }
+        const response = await sendToRendererForWebContents("board_registerTsProject", { root, owner: entry.boardId }, entry.hostWebContents);
+        if (response.error) throw new Error(response.error.message);
+        entry.tsProjectRoots.add(key);
+        return undefined;
+    },
+    async unregisterTypeScriptProject(entry, args) {
+        const requested = args[0];
+        if (typeof requested !== "string" || !requested.trim()) throw rpcFailure("invalid-argument", "A project folder path is required.");
+        // Only removes this frame's own registration; the folder may already be gone, so no realpath or permission check.
+        const root = path.resolve(entry.root, requested);
+        const response = await sendToRendererForWebContents("board_unregisterTsProject", { root, owner: entry.boardId }, entry.hostWebContents);
+        if (response.error) throw new Error(response.error.message);
+        entry.tsProjectRoots.delete(normalizeTsProjectKey(root));
+        return undefined;
+    },
     async watch(entry, args) { await startBoardWatch(entry, args); },
     unwatch(entry, args) {
         const watchId = args[0];
@@ -1127,7 +1168,7 @@ export function createBoardPort(
 
     const root = getBoardRootForHost(host) ?? "";
     const { port1, port2 } = new MessageChannelMain();
-    const entry: BoardPortEntry = { boardId, port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token };
+    const entry: BoardPortEntry = { boardId, port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token, tsProjectRoots: new Set() };
     boardPorts.set(boardId, entry);
     indexOwnerSink(ownerId, boardId, hostWebContents.id);
 
@@ -1185,6 +1226,11 @@ export function disposeBoardPort(boardId: string): void {
     }
     cleanupBoardWatches(boardId);
     try { entry.port.close(); } catch { /* already closed */ }
+    if (entry.tsProjectRoots.size && !entry.hostWebContents.isDestroyed()) {
+        // Release this frame's TypeScript projects (US-1744); covers reload, close, grant refresh and quit.
+        void sendToRendererForWebContents("board_releaseTsProjects", { owner: entry.boardId }, entry.hostWebContents)
+            .catch((error: unknown) => { console.warn(`Releasing TypeScript projects failed: ${errMessage(error)}`); });
+    }
     boardPorts.delete(boardId);
     if (!busyOwners.has(entry.ownerId)) {
         // Per-sink reaping (EPIC-044 / D10, B1): a board's main + secondary frames share

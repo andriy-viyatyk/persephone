@@ -2418,6 +2418,17 @@ function createHandle(
         return rpc("trashFile", [path]) as Promise<void>;
     },
 
+    /** Register a TypeScript project folder (bridge 1.47.0) so Monaco pages editing its `.ts` files get
+     *  project-aware IntelliSense. Authorized like `listFolder`; needs a `tsconfig.json` in `root`. */
+    registerTypeScriptProject(root: string): Promise<void> {
+        return rpc("registerTypeScriptProject", [root]) as Promise<void>;
+    },
+
+    /** Drop this frame's registration of a TypeScript project folder (bridge 1.47.0). */
+    unregisterTypeScriptProject(root: string): Promise<void> {
+        return rpc("unregisterTypeScriptProject", [root]) as Promise<void>;
+    },
+
     // ── Busy / surviving jobs (US-799) ────────────────────────────────────────
 
     /** Declare that this board's spawned processes must outlive the board itself.

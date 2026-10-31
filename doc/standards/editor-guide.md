@@ -224,6 +224,13 @@ responsibility and are never disposed by the host. The host detaches the widget 
 owned models and defers disposal to a macrotask. For a diff editor, apply the same rule to the
 original and modified model pair.
 
+The single-editor host also accepts an optional `modelUri` at mount and exposes
+`replaceModelUri(uri)` for an owner-controlled transition between an in-memory model and a
+file-backed model. Monaco's board-project IntelliSense uses this path so relative imports resolve
+from the registered project file; keep URI selection and replacement in the owning editor body,
+not in a generic host consumer. A URI already owned by another model degrades to an in-memory model
+rather than creating a duplicate Monaco model.
+
 ### Native view example
 
 ```typescript

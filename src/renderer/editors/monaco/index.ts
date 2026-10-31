@@ -29,6 +29,8 @@ interface MonacoToolbarBitsProps { model: MonacoEditor; transcriptController: Tr
 class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
     private model: MonacoEditor;
     private button: IconButtonView | undefined;
+    private diagnosticsButton: IconButtonView | undefined;
+    private projectActive = false;
     private stateSubscription: (() => void) | undefined;
     private readonly transcript: TranscriptToolbarContributionView;
     private readonly translate: TranslateTextToolbarContributionView;
@@ -44,6 +46,10 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
         this.button = this.child(new IconButtonView(this.buttonProps()));
         this.root.append(this.button.root);
         this.button.mount();
+        this.diagnosticsButton = this.child(new IconButtonView(this.diagnosticsButtonProps()));
+        this.root.append(this.diagnosticsButton.root);
+        this.diagnosticsButton.mount();
+        this.diagnosticsButton.root.hidden = !this.projectActive;
         this.transcript.mount();
         this.root.append(this.transcript.root);
         this.translate.mount();
@@ -60,11 +66,17 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
             this.model = props.model;
             this.bindState();
         }
-        this.sync(this.model.wordWrap);
+        this.sync();
     }
 
     protected onDispose(): void {
         this.button = undefined;
+        this.diagnosticsButton = undefined;
+    }
+
+    public updateProjectActive(active: boolean): void {
+        this.projectActive = active;
+        if (this.diagnosticsButton) this.diagnosticsButton.root.hidden = !active;
     }
 
     public updateTranscriptState(state: TranscriptState): void {
@@ -77,17 +89,29 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
 
     private bindState(): void {
         this.stateSubscription?.();
-        this.stateSubscription = this.model.state.subscribe<boolean>(
-            (wordWrap) => {
+        this.stateSubscription = this.model.state.subscribe<{ wordWrap: boolean; diagnostics: boolean }>(
+            (values) => {
                 if (this.isDisposed) return;
-                this.sync(wordWrap);
+                this.sync(values.wordWrap, values.diagnostics);
             },
-            (state) => state.wordWrap,
+            (state) => ({ wordWrap: state.wordWrap, diagnostics: state.diagnostics }),
         );
     }
 
-    private sync(wordWrap: boolean): void {
+    private sync(wordWrap = this.model.wordWrap, diagnostics = this.model.diagnostics): void {
         this.button?.update(this.buttonProps(wordWrap));
+        this.diagnosticsButton?.update(this.diagnosticsButtonProps(diagnostics));
+    }
+
+    private diagnosticsButtonProps(diagnostics = this.model.diagnostics): IconButtonViewProps {
+        return {
+            name: "text-ts-diagnostics-toggle",
+            size: "sm",
+            active: diagnostics,
+            title: diagnostics ? t("editors.turnTsDiagnosticsOff") : t("editors.turnTsDiagnosticsOn"),
+            icon: "warning",
+            onClick: this.model.toggleDiagnostics,
+        };
     }
 
     private buttonProps(wordWrap = this.model.wordWrap): IconButtonViewProps {
@@ -122,6 +146,7 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
                 body.setTranslationAvailability(available);
             },
         );
+        const unsubscribeProject = body.onProjectActiveChange((active) => toolbarRef.current?.updateProjectActive(active));
         body.setTranslationHandler(() => { void translationController.start("selection"); });
         const toolbarView = new MonacoToolbarBitsView({ model, transcriptController, translationController });
         toolbarRef.current = toolbarView;
@@ -136,11 +161,13 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
         this.body = this.child(body);
         this.toolbar = this.child(toolbarView);
         this.chrome = this.child(chrome);
+        this.own(unsubscribeProject);
     }
 
     protected onMount(): void {
         this.body.mount();
         this.toolbar.mount();
+        this.toolbar.updateProjectActive(this.body.getProjectActive());
         this.chrome.mount();
     }
 

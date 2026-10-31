@@ -543,8 +543,9 @@ interface PersephoneVoiceTypingApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.46.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.46.0"; 1.46.0 adds awaitable openRawLink navigation and Run-page reuse;
+    /** The current host bridge is 1.47.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.47.0"; 1.47.0 adds TypeScript project registration;
+     *  1.46.0 adds awaitable openRawLink navigation and Run-page reuse;
      *  1.44.0 adds the live voice-typing auto-stop setting API;
      *  1.42.0 adds multiline board settings and private MCP session
      *  endpoints for authorized host-API services (requires `appScripting`);
@@ -581,6 +582,15 @@ interface PersephoneBoardApi {
         highlightText?: string;
         reuseKey?: string;
     }): Promise<void>;
+    /** Register a TypeScript project folder (bridge 1.47.0). Monaco pages that edit `.ts`/`.tsx` files under
+     *  `root` then get project IntelliSense (relative imports, sibling files, project `.d.ts`, imported JSON).
+     *  `root` must contain a `tsconfig.json`. Authorized like `listFolder` (needs a `fileSystem` grant that
+     *  covers `root`). Lazy: only `tsconfig.json` is read now; files load when a page opens one. Released when
+     *  the board closes or reloads, so call it on every board load; it is idempotent. Use the same path
+     *  spelling for `openRawLink`. */
+    registerTypeScriptProject(root: string): Promise<void>;
+    /** Drop this frame's registration of a TypeScript project folder (bridge 1.47.0). */
+    unregisterTypeScriptProject(root: string): Promise<void>;
     /** Create a NEW in-memory, untitled Persephone page in another editor and resolve to its page
      *  id — the board equivalent of the script API's `pages.addEditorPage(...)`, for content the
      *  board holds in memory rather than a file `openRawLink` could point at.

@@ -5,9 +5,14 @@ import "./MonacoEditorHostView.css";
 
 export type MonacoModelOwnership = "owned" | "borrowed";
 
+/** Models whose disposal is deferred by `setTimeout(0)`; a new model may reuse their URI in that window. */
+const modelsPendingDisposal = new Set<monaco.editor.ITextModel>();
+
 export interface MonacoEditorHostProps {
     initialValue?: string;
     language?: string;
+    /** File URI for the initial model (project IntelliSense, US-1744). Used only at mount. */
+    modelUri?: monaco.Uri;
     options?: monaco.editor.IStandaloneEditorConstructionOptions;
     onMount?: (host: MonacoEditorHostView) => void;
     onChange?: (value: string) => void;
@@ -36,11 +41,11 @@ export class MonacoEditorHostView extends VanillaView<MonacoEditorHostProps> {
 
     protected onMount(): void {
         const language = this.props.language ?? "plaintext";
-        const model = monaco.editor.createModel(
+        const model = this.createOwnedModel(
             this.props.initialValue ?? "",
             language,
+            this.props.modelUri,
         );
-        this.ownedModels.add(model);
         this.currentLanguage = language;
         this.editor = monaco.editor.create(this.root, {
             model,
@@ -135,6 +140,26 @@ export class MonacoEditorHostView extends VanillaView<MonacoEditorHostProps> {
         return this.assertReady();
     }
 
+    /** The current model's URI when it is file-backed (`file:` scheme). */
+    public getFileModelUri(): monaco.Uri | undefined {
+        const uri = this.editor?.getModel()?.uri;
+        return uri?.scheme === "file" ? uri : undefined;
+    }
+
+    /**
+     * Replace the current model with a copy at `uri` (or an in-memory one when undefined), keeping
+     * text, selection, scroll and folding. Undo history cannot move between models and is reset.
+     */
+    public replaceModelUri(uri: monaco.Uri | undefined): void {
+        const editor = this.assertReady();
+        const old = editor.getModel();
+        if (!old) return;
+        const viewState = editor.saveViewState();
+        const next = this.createOwnedModel(old.getValue(), old.getLanguageId(), uri);
+        this.setModel(next, "owned");
+        if (viewState) editor.restoreViewState(viewState);
+    }
+
     /**
      * Whether `getEditor()` would succeed. For callers on a teardown path, where the host may
      * already be gone and a throw would abort the rest of someone's disposal.
@@ -167,7 +192,13 @@ export class MonacoEditorHostView extends VanillaView<MonacoEditorHostProps> {
         language?: string,
         uri?: monaco.Uri,
     ): monaco.editor.ITextModel {
-        const model = monaco.editor.createModel(value, language, uri);
+        let modelUri = uri;
+        if (modelUri) {
+            const existing = monaco.editor.getModel(modelUri);
+            if (existing && modelsPendingDisposal.has(existing)) existing.dispose(); // same page remounting its host
+            else if (existing) modelUri = undefined; // a live model owns this URI: degrade to in-memory
+        }
+        const model = monaco.editor.createModel(value, language, modelUri);
         this.ownedModels.add(model);
         return model;
     }
@@ -199,8 +230,12 @@ export class MonacoEditorHostView extends VanillaView<MonacoEditorHostProps> {
     private scheduleModelDisposal(models: readonly monaco.editor.ITextModel[]): void {
         // Wait until the editor's setModel(null)/editor teardown boundary has finished before
         // disposing detached text models; this callback no longer touches the view.
+        models.forEach((model) => modelsPendingDisposal.add(model));
         setTimeout(() => {
-            models.forEach((model) => model.dispose());
+            models.forEach((model) => {
+                modelsPendingDisposal.delete(model);
+                model.dispose();
+            });
         }, 0);
     }
 

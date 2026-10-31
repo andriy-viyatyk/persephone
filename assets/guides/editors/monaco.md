@@ -39,6 +39,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 - Microphone / Transcript (when a provider is available) → `transcript-button`
 - Translate (when a provider is available) → `translate-text-button`
 - Word Wrap → `text-word-wrap-toggle`
+- Show/Hide TypeScript errors (on a registered project `.ts`/`.tsx` page) → `text-ts-diagnostics-toggle`
 - Script panel toggle → `text-toggle-script`
 - Script panel splitter → `script-panel-splitter`
 - Run script → `script-run`
@@ -83,6 +84,19 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 - Audio level → `transcript-level`
 
 Transcript appears when a v1 Speech to Text provider is installed and trusted.
+
+### On a registered TypeScript project page
+
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare] [Run] [Run all]      [Resources] [Mic] [Translate] [Wrap] [TS errors] [Switch] |  toolbar: project TypeScript errors toggle appears beside Word Wrap
++---------------------------------------------------------------------+
+```
+
+When a board has registered a TypeScript project and the page edits a `.ts` or `.tsx` file under
+that project, the toolbar adds **Show TypeScript errors** (or **Hide TypeScript errors** while
+enabled), beside Word Wrap. The toggle shows project diagnostics for that page; see the
+[Boards guide](../boards.md) for registration details.
 
 ## Word Wrap
 
@@ -141,7 +155,8 @@ for the `page`, `app`, and `io` objects.
 After narrowing `page.editor.id` to `monaco`, the Text Editor facade exposes the text-editor state
 and script surface. `wordWrap` reports the page-local persisted state and `toggleWordWrap()` changes
 it. Verified page elements include `text-compare-left`, `text-run-script`, `text-run-all-script`,
-`text-show-resources`, `text-word-wrap-toggle`, `text-toggle-script`, `script-panel-splitter`,
+`text-show-resources`, `text-word-wrap-toggle`, `text-ts-diagnostics-toggle` (only on registered
+project TypeScript pages), `text-toggle-script`, `script-panel-splitter`,
 `script-run`, `script-run-all`, `script-select`, `script-save`, `script-open-tab`, and
 `script-close`. Use [the page API](../scripting/api/page.md) for the facade members.
 

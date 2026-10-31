@@ -13,7 +13,6 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1744: Monaco project TypeScript support](tasks/US-1744-monaco-project-typescript/README.md) — project-aware IntelliSense for TypeScript files under a folder with tsconfig.json
   - [ ] [US-1732: Native memory leak in a board service during live transcription](tasks/US-1732-board-service-native-memory-leak/README.md) — about +9 MB/min in the Speech to Text service with two live channels; found during EPIC-134 verification
 
 ## Scheduled

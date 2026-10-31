@@ -3,6 +3,7 @@ import type { EnglishCatalogEntry } from "./common";
 /** Host-authored notifications, prompts, and presentation around the public API. */
 export const apiCatalog = {
     actionFailed: { message: "{action}: {error}" },
+    tsProjectTruncated: { message: { one: "TypeScript project IntelliSense loaded {count} file; larger files and extra files were skipped.", other: "TypeScript project IntelliSense loaded {count} files; larger files and extra files were skipped." }, note: "Toast when a project exceeded the file/size caps." },
     failedToOpenImage: { message: "Failed to open image" },
     failedToOpenLink: { message: "Failed to open link" },
     failedToOpenFile: { message: "Failed to open file" },

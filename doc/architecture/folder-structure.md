@@ -163,6 +163,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── command-registry.ts # Built-in call, board_call, and private board openRawLink registry
 │   │   ├── call-command.ts  # Renderer-side MCP call command; creates a ScriptContext and resolves AiVision
 │   │   ├── board-call-command.ts # Page-scoped Board bridge calls; owner-page and trust checks
+│   │   ├── board-ts-project.ts # Board TypeScript project registration MCP handlers
 │   │   ├── board-open-raw-link.ts # Awaitable board navigation through the normal link pipeline
 │   │   ├── tool-commands.ts # Shared Agent Tools search/execute/create handlers used by the tools node
 │   │   ├── request-log.ts   # Bounded MCP request history and server-log page integration
@@ -175,6 +176,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
 │   ├── module-service.ts   # Renderer client for main-routed service requests, direct board channels, and the optional per-window host-renderer lease
 │   ├── board-service-settings.ts # Trust- and service-gated settings reads/subscriptions for host-managed board services
+│   ├── ts-project-files.ts # Bounded tsconfig-based TypeScript project file selection
+│   ├── ts-project-registry.ts # Board-owned TypeScript project roots and file lookup
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
 │   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
@@ -432,7 +435,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── monaco/             # Monaco text editor (text-bearing, IContentHost + TRAIT)
 │   │   ├── MonacoEditor.ts           # EditorModel subclass — composes IContentHost, hosts Monaco
-│   │   ├── MonacoBodyView.ts         # Native Monaco body
+│   │   ├── MonacoBodyView.ts         # Native Monaco body, project binding and per-page diagnostics
 │   │   └── index.ts
 │   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, IContentHost + TRAIT)
 │   │   ├── GridEditor.ts             # EditorModel — parsing, sort/filter/edit state
@@ -712,11 +715,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── tools-tree-build.ts       # Pure builder: toolset path list → compacted folder/toolset node tree (leaf label = manifest name)
 │   ├── shared/             # Shared editor utilities and Monaco widget hosts
 │   │   ├── link-open-menu.ts
-│   │   ├── MonacoEditorHostView.ts   # VanillaView host for the single-editor host
+│   │   ├── MonacoEditorHostView.ts   # VanillaView host for the single editor; owns file-backed project models
 │   │   ├── MonacoEditorHostView.css  # Single-editor host flex geometry
 │   │   ├── MonacoDiffEditorHostView.ts # VanillaView host for the diff host
 │   │   ├── MonacoDiffEditorHostView.css # Diff-host flex geometry
 │   │   ├── ColorizedCodeView.ts      # Native syntax-highlighted code via Monaco colorize()
+│   │   ├── monaco-project-intellisense.ts # Project file URIs, extra libraries and file watching
+│   │   ├── monaco-project-diagnostics.ts # Page-scoped TypeScript diagnostic markers
 │   │   └── FindBarView.ts            # Native browser find bar
 │   │
 │   ├── register-editors.ts # Editor registration — table-driven (EDITORS rows + loop) + content-host module preload

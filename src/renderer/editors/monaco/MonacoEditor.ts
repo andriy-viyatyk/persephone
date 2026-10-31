@@ -24,10 +24,13 @@ export interface MonacoEditorState extends EditorStateBase {
      *  persisted (defaults to false on restore). */
     hasSelection: boolean;
     wordWrap: boolean;
+    /** Per-page TypeScript error highlighting for project files (US-1744). */
+    diagnostics: boolean;
 }
 
 interface MonacoViewSettings {
     wordWrap?: boolean;
+    diagnostics?: boolean;
 }
 
 export const defaultMonacoEditorState: MonacoEditorState = {
@@ -37,6 +40,7 @@ export const defaultMonacoEditorState: MonacoEditorState = {
     secondaryView: undefined,
     hasSelection: false,
     wordWrap: false,
+    diagnostics: false,
 };
 
 export class MonacoEditor extends TextHostEditorModel<
@@ -81,6 +85,10 @@ export class MonacoEditor extends TextHostEditorModel<
         return this.state.get().wordWrap;
     }
 
+    get diagnostics(): boolean {
+        return this.state.get().diagnostics;
+    }
+
     adoptHost(host: TextFileModel): void {
         super.adoptHost(host);
 
@@ -89,7 +97,7 @@ export class MonacoEditor extends TextHostEditorModel<
             this.state.update((state) => {
                 state.wordWrap = wordWrap;
             });
-            host.setEditorState<MonacoViewSettings>(this.editorId, { wordWrap });
+            host.setEditorState<MonacoViewSettings>(this.editorId, { wordWrap, diagnostics: false });
         }
 
         this.mirrorHostSettings<MonacoViewSettings>(
@@ -99,15 +107,26 @@ export class MonacoEditor extends TextHostEditorModel<
                         state.wordWrap = saved.wordWrap;
                     });
                 }
+                if (saved.diagnostics !== undefined) {
+                    this.state.update((state) => {
+                        state.diagnostics = saved.diagnostics;
+                    });
+                }
             },
-            (state) => ({ wordWrap: state.wordWrap }),
-            (state) => state.wordWrap,
+            (state) => ({ wordWrap: state.wordWrap, diagnostics: state.diagnostics }),
+            (state) => ({ wordWrap: state.wordWrap, diagnostics: state.diagnostics }),
         );
     }
 
     toggleWordWrap = (): void => {
         this.state.update((state) => {
             state.wordWrap = !state.wordWrap;
+        });
+    };
+
+    toggleDiagnostics = (): void => {
+        this.state.update((state) => {
+            state.diagnostics = !state.diagnostics;
         });
     };
 

@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.46.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.47.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox
 multi-select controls for string settings; boards that rely on them must set
@@ -1128,6 +1128,24 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   Bin, so the user can restore it. Authorized exactly like `writeFile` (`fileSystem: "board"` or
   `"full"`); rejects with `not-found` for a missing path and `permission-denied` for a folder. The
   board owns the confirmation prompt — ask before calling it.
+- `persephone.registerTypeScriptProject(root)` → `Promise<void>` (bridge 1.47.0) — register a TypeScript
+  project folder (it must contain a `tsconfig.json`) so Monaco pages that edit `.ts`/`.tsx` files under
+  it get project IntelliSense: relative imports, sibling units, project `.d.ts` (including
+  `declare module "x"`) and, when the tsconfig sets `resolveJsonModule: true`, typed default imports of
+  the project's `*.json` files. Authorized exactly like `listFolder` (`fileSystem: "board"` with `root`
+  inside the board folder or a granted folder, or `"full"`); `fileSystem: false` rejects with
+  `permission-denied`, a missing `tsconfig.json` rejects with a readable message. Registration is lazy:
+  only `tsconfig.json` is read; the project's files load when the first Monaco page opens one, and are
+  released when the last such page closes. Registrations are released when the board closes or reloads,
+  so call it on **every board load** (it is idempotent). Use the same path spelling for
+  `openRawLink` that you register, because a page's file is matched to the project by path.
+  Limits: `.ts`/`.tsx` only (no `.mts`/`.cts`, no JS), `extends` is not followed, compiler options are
+  not applied (highlighted errors are a subset of `tsc --noEmit`), at most 8 projects per board, 2000
+  source files / 1 MiB per source / 512 KiB per JSON / 16 MiB total (a toast reports truncation).
+  A page that was already open when the project registered keeps its text, cursor and scroll but loses
+  its undo history. Pages can show errors through the toolbar "Show TypeScript errors" toggle.
+- `persephone.unregisterTypeScriptProject(root)` → `Promise<void>` (bridge 1.47.0) — drop this frame's
+  registration of the folder; ungated.
 - `persephone.getFileAccess(path)` returns `{ read, write }` for the current path authorization
   without prompting or changing grants. Call it at startup to check whether a remembered catalog is
   writable; `rememberFile()` may prompt and should not be used as an access check.

@@ -212,6 +212,8 @@ export type BoardRpcMethod =
     | "readFile"
     | "writeFile"
     | "trashFile"
+    | "registerTypeScriptProject"
+    | "unregisterTypeScriptProject"
     | "watch"
     | "unwatch"
     | "getJobs"
