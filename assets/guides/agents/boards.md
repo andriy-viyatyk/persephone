@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.44.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.46.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox
 multi-select controls for string settings; boards that rely on them must set
@@ -27,7 +27,7 @@ the service entry; same-board opens include `info.page.boardId`, while cross-boa
 `info.interface` and descriptive `info.caller` metadata. Both channel endpoints support `send`,
 `onMessage`, `onClose`, `close`, `writable`, and `whenWritable()`. Each direction allows 256
 unacknowledged messages; service-to-page payloads are capped at 1 MiB, while page-to-service has
-only the count bound. Limits are 16 channels per frame and 128 per service. Bridge `1.44.0` adds
+only the count bound. Limits are 16 channels per frame and 128 per service. Bridge `1.44.0` added
 `persephone.voiceTyping.autoStopSilenceMs` and
 `persephone.voiceTyping.onAutoStopSilenceChange(callback)`: `0` means auto-stop is off and any
 other value is a duration in milliseconds. The callback immediately receives the current value,
@@ -1028,9 +1028,21 @@ reserved `.invalid` suffix and can never resolve, so a site that navigates to it
 DNS before Persephone sees anything: the return is lost and that tab is left on a browser error
 page. Persephone closes the tab the return created and leaves the tab the user was reading alone.
 
-- `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
-  `{ editor }` to request a specific editor (e.g. `openRawLink(path, { editor: "md-view" })` to render
-  a Markdown doc instead of its source); falls back to the default editor when omitted/unmatched.
+- `persephone.openRawLink(href, options?)` — open a file/URL through Persephone's page pipeline.
+  Bridge **1.46.0+** returns a `Promise<void>`; feature-detect with
+  `if (persephone.version >= "1.46.0")` before using the new options in older supported apps.
+  Pass `{ editor }` to request an editor (e.g. `"md-view"`), `{ revealLine, highlightText }` to
+  open a source file at a line, or `{ editor: "browser-view", reuseKey }` for a board-owned Run
+  page. The reuse key must be non-empty and at most 256 characters; ownership is scoped to this
+  board's trusted root and key, and the board cannot choose a page id. Repeating a Run hard-reloads
+  only when the active tab still shows that URL; if the user switched tabs or navigated away, it
+  navigates the owned page back to the requested URL. Web URL path and query case is significant
+  when matching the active tab.
+  This is user-visible page navigation and intentionally does not require a `fileSystem` grant,
+  including for local paths and `file://` URLs. It returns no file contents. A navigation failure
+  shows an error notification and rejects the promise; await and catch it when the board needs to
+  handle failure. The bridge internally handles
+  ignored promise rejections for compatibility with older fire-and-forget callers.
   An **image `data:` URL** with `{ editor: "image.edit" }` opens the image as a **new editable
   Excalidraw drawing** (rasterize your view to a PNG data URL first) — see the how-to recipe
   linked below.

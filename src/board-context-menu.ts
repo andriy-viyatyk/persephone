@@ -1,4 +1,4 @@
-import type { BoardFireMethod, BoardHostTextId, BoardRpcMethod } from "./ipc/board-bridge-channels";
+import type { BoardFireMethod, BoardHostTextId, BoardOpenRawLinkOptions, BoardRpcMethod } from "./ipc/board-bridge-channels";
 import { errMessage } from "./shared/utils";
 
 export interface BoardContextMenuBridge {
@@ -10,6 +10,11 @@ export interface BoardContextMenuBridge {
 
 /** Install Persephone's built-in board context menu. */
 export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMenuBridge): void {
+    function requestOpenRawLink(href: string, options?: BoardOpenRawLinkOptions): Promise<void> {
+        const request = rpc("openRawLink", [href, options]) as Promise<void>;
+        void request.catch(() => {});
+        return request;
+    }
     // Default context menu — a board lives on a locked-down `board://` origin with no access to
     // Persephone's native context menu, so right-click gets nothing by default. Provide a minimal
     // built-in menu so boards behave like other apps without any board code:
@@ -58,7 +63,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
                 const resp = await fetch(src);
                 href = await blobToDataUrl(await resp.blob());
             }
-            fire("openRawLink", [href, "image-view"]);
+            void requestOpenRawLink(href, { editor: "image-view" });
         } catch (e) {
             fire("notify", [hostText("failedToOpenImage", { error: errMessage(e) }), "error"]);
         }
@@ -374,7 +379,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
         const href = anchor instanceof HTMLAnchorElement ? anchor.href : "";
         if (href && !href.startsWith("board://") && !href.startsWith("javascript:")) {
             groups.push([
-                { id: "openLink", textId: "openLink", action: () => fire("openRawLink", [href]) },
+                { id: "openLink", textId: "openLink", action: () => { void requestOpenRawLink(href); } },
                 { id: "copyLink", textId: "copyLink", action: () => copyText(href) },
             ]);
         }

@@ -160,9 +160,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── mcp-handler.ts      # Thin MCP IPC shell (receives commands from main, logs and returns results)
 │   ├── mcp/                # Renderer MCP command dispatch and focused command handlers
-│   │   ├── command-registry.ts # Built-in call and board_call registry
+│   │   ├── command-registry.ts # Built-in call, board_call, and private board openRawLink registry
 │   │   ├── call-command.ts  # Renderer-side MCP call command; creates a ScriptContext and resolves AiVision
 │   │   ├── board-call-command.ts # Page-scoped Board bridge calls; owner-page and trust checks
+│   │   ├── board-open-raw-link.ts # Awaitable board navigation through the normal link pipeline
 │   │   ├── tool-commands.ts # Shared Agent Tools search/execute/create handlers used by the tools node
 │   │   ├── request-log.ts   # Bounded MCP request history and server-log page integration
 │   │   └── types.ts         # Shared renderer MCP request/response types
@@ -203,10 +204,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── PageModel.ts            # Tab container — sidebar, secondary views, mainEditor lifecycle
 │   │   ├── IPageHost.ts            # IPageHost interface — editor↔owner contract (PageModel + BrowserPanelHost)
 │   │   ├── PagesModel.ts           # Base: state, subscriptions, composes submodels
-│   │   ├── PagesQueryModel.ts      # Queries: getAll, byId, byType, activePage
+│   │   ├── PagesQueryModel.ts      # Queries: page lookup, normalized file identity, board Run ownership
 │   │   ├── PagesNavigationModel.ts # Navigation: show, focus, next/prev
-│   │   ├── PagesLifecycleModel.ts  # Lifecycle: create, close, empty page
-│   │   ├── PageNavigator.ts        # navigatePageTo — named-steps navigation of an existing page
+│   │   ├── PagesLifecycleModel.ts  # Lifecycle: create, close, empty page, board-owned Run page reuse
+│   │   ├── PageNavigator.ts        # navigatePageTo — named steps, same-file reveal, existing page navigation
 │   │   ├── NavBackStack.ts         # Markdown back-nav stack owned by the page (persisted)
 │   │   ├── PagesLayoutModel.ts     # Layout: grouping (side-by-side)
 │   │   ├── PagesPersistenceModel.ts # Persistence: save/restore, debounced

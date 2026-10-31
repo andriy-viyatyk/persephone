@@ -10,7 +10,7 @@
  * into this frame by the host renderer (the one-time handshake). Until the port
  * arrives, port-dependent calls QUEUE; on connect they FLUSH. Thereafter the board
  * talks DIRECTLY to a main-process handler over the duplex port — request/reply
- * (dialogs, readFile/writeFile), fire-and-forget (openRawLink/notify), streaming
+ * (dialogs, readFile/writeFile, openRawLink), fire-and-forget (notify), streaming
  * `execute()` (stdout/stderr/exit/error + stdin/kill), and a main→board theme push.
  *
  * The `window.persephone` surface is byte-for-byte the same as the old preload so
@@ -49,6 +49,7 @@ import type {
     BoardBootContext,
     BoardJsonValue,
     BoardFireMethod,
+    BoardOpenRawLinkOptions,
     BoardHostContentMsg,
     BoardHostTextId,
     BoardSourceOpenedMsg,
@@ -1330,6 +1331,12 @@ function fire(method: BoardFireMethod, args: unknown[]): void {
     post({ kind: "fire", method, args });
 }
 
+function requestOpenRawLink(href: string, options?: BoardOpenRawLinkOptions): Promise<void> {
+    const result = rpc("openRawLink", [href, options]) as Promise<void>;
+    void result.catch(() => {});
+    return result;
+}
+
 function applyVars(vars: Record<string, string>): void {
     const root = document?.documentElement;
     if (!root) return;
@@ -1882,7 +1889,7 @@ function routeExternalLinkClick(e: MouseEvent): void {
     const href = anchor.href;
     if (!href || href.startsWith("board://") || href.startsWith("javascript:")) return;
     e.preventDefault();
-    fire("openRawLink", [href]);
+    void requestOpenRawLink(href);
 }
 window.addEventListener("click", routeExternalLinkClick);
 window.addEventListener("auxclick", (e: MouseEvent) => {
@@ -2153,8 +2160,8 @@ function createHandle(
         return createHandle(script, opts, { node: true, args });
     },
 
-    openRawLink(href: string, options?: { editor?: string }): void {
-        fire("openRawLink", [href, options?.editor]);
+    openRawLink(href: string, options?: BoardOpenRawLinkOptions): Promise<void> {
+        return requestOpenRawLink(href, options);
     },
 
     openContent(options: {

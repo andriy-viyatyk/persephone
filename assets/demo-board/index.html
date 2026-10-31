@@ -262,7 +262,7 @@
             </div>
 
             <h2>Integration tier — in-app effects</h2>
-            <p class="muted">Effects <code>execute()</code> can't express: toasts, opening links/pages, native dialogs.</p>
+            <p class="muted">Effects <code>execute()</code> can't express: toasts, opening links/pages, native dialogs. On bridge 1.46.0+, <code>openRawLink()</code> is awaitable and rejects if navigation fails.</p>
             <div class="row">
                 <button class="p-btn primary" data-test="notify">notify (toast)</button>
                 <button class="p-btn primary" data-test="openRawLink">openRawLink (GitHub)</button>

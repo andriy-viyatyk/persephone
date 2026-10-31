@@ -482,7 +482,6 @@ export enum EventEndpoint {
     eClipboardHistoryChanged = "eClipboardHistoryChanged",
     eClipboardStatusChanged = "eClipboardStatusChanged",
     eBoardNotify = "eBoardNotify",
-    eBoardOpenRawLink = "eBoardOpenRawLink",
     // Main → host renderer: delivers a per-board MessagePort (EPIC-037 / US-771).
     // Carried via webContents.postMessage with the port on `event.ports[0]`, so it
     // is consumed through the preload's ports-aware `onPort` (NOT the typed event
@@ -553,10 +552,6 @@ export type EventApi = {
         /** Keep the toast until the user closes it (bridge 1.33.0). */
         persistent?: boolean;
     }>;
-    // Board `persephone.openRawLink(href, { editor })` → host renderer (US-756 C6).
-    // `editor` is an optional registered editor id; the open pipeline falls back to
-    // the default editor when omitted/unmatched.
-    [EventEndpoint.eBoardOpenRawLink]: EventObject<{ href: string; editor?: string; boardRoot: string }>;
     // Published-boards catalog refresh (US-862): main broadcasts the new catalog when
     // it changes; the renderer catalog model updates reactively.
     [EventEndpoint.ePublishedBoardsUpdated]: EventObject<PublishedBoardsCatalog>;

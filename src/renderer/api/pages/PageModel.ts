@@ -54,6 +54,13 @@ export interface PagePopoverSize {
     fullHeight?: boolean;
 }
 
+/** Runtime-only ownership data for a board's reusable Browser Run page. */
+export interface BoardRunPageOwner {
+    boardRoot: string;
+    reuseKey: string;
+    url: string;
+}
+
 /** A drag that ends at or above this share of the maximum height switches to full-height mode. */
 export const POPOVER_FULL_HEIGHT_SNAP = 0.98;
 
@@ -244,6 +251,14 @@ export class PageModel implements IPageHost {
         } else {
             this._transient.set(key, value);
         }
+    }
+
+    setBoardRunOwner(owner: BoardRunPageOwner): void {
+        this.setTransient("boardRunOwner", owner);
+    }
+
+    getBoardRunOwner(): BoardRunPageOwner | undefined {
+        return this.getTransient<BoardRunPageOwner>("boardRunOwner");
     }
 
     // ── Markdown back-navigation history ────────────────────────────────

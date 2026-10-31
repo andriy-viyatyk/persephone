@@ -457,8 +457,12 @@
         },
         async openRawLink() {
             header("openRawLink");
-            P.openRawLink("https://github.com/andriy-viyatyk/persephone");
-            print("asked Persephone to open the GitHub repo in a new page.");
+            try {
+                await P.openRawLink("https://github.com/andriy-viyatyk/persephone");
+                print("Persephone opened the GitHub repo.");
+            } catch (error) {
+                print("openRawLink failed: " + error.message);
+            }
         },
         async openFileDialog() {
             header("openFileDialog");

@@ -591,6 +591,22 @@ A third optional hook, `revealFragment?(fragment)`, follows the same shape for i
 
 **Step 4 — already-open-file reuse.** Independent of the singleton hooks, the page may already hold an editor whose backing file *is* the navigation target — most commonly a modified editor that survived an earlier navigation and now lingers as a sidebar panel (e.g. a dirty `LinkEditor`). Re-selecting that file (an Explorer click on the same path) should restore that very instance, with its unsaved edits and panels, not spawn a second one beside it. `PageModel.findEditorByFilePath(filePath)` finds such an editor — unwrapping text-bearing editors to their content host, where `filePath` lives, so it matches the same property `mainEditor` exposes. `navigatePageTo()` promotes the match back to main with `setMainEditor` and returns; an explicit content-host `target` must still match the existing editor's `editorId`, so "open this file in a different view" is never hijacked. The unused incoming pipe is disposed.
 
+Page lookup compares local-file identities after path normalization, so file URLs and native paths,
+slash differences, and drive-letter case do not create duplicate pages. If a navigation request also
+contains `revealLine` or `highlightText` and the target is already the main editor's file, the
+navigator reuses that editor and applies the requested reveal. It promotes the page to Monaco first
+when necessary; it does not rebuild an already-open text model just to reveal a location. The same
+behavior is used by `openFile()` and link opens, including board `openRawLink` requests.
+
+Board Run pages use a separate transient ownership path. A board opens a Browser page with
+`openRawLink(url, { editor: "browser-view", reuseKey })`; ownership is keyed by the normalized
+board root and the board's reuse key, so requests cannot select a user's Browser page or another
+board's Run page. Ownership is runtime-only and disappears when the page closes or the app restarts.
+The lifecycle creates a fresh Browser page on first use, then navigates that page when the URL
+changes or hard-reloads it when the active Browser tab already shows the requested URL. URL
+comparison normalizes scheme and host case, and local file URL path case; web URL path and query
+case remain significant. Ordinary `openUrlInBrowserTab()` searches skip board-owned Run pages.
+
 **Step 6** — `page.setMainEditor(newEditor)` is the high-level editor swap method on PageModel. It consolidates the lifecycle:
 - Calls `oldEditor.beforeNavigateAway(newEditor)` — old editor decides to keep/clear its `secondaryView`
 - Checks survival: a panel contributor (`contributesPanels()`) demotes to the sidebar; a `keepAliveOnNavigation()` editor stays attached with **no view at all** — an invisible ownership handle. The one current keep-alive editor is a **busy Board**: its spawned processes must outlive its iframe, so the model stays on the page to tie their lifetime to the page (page close disposes it, which reaps the jobs). Re-navigating to the same board promotes the surviving handle back to main via the `matchesNavigationTarget` singleton reuse (Step 3). A `movePageOut` (cross-window transfer) disposes keep-alive editors — their processes never transfer. Session restore drops a persisted non-main board descriptor entirely (busy is transient; its processes died with the app), so no zombie handle survives a restart.

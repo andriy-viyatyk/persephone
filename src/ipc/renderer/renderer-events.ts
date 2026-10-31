@@ -160,10 +160,6 @@ class RendererEvents implements EventApi {
         type?: "info" | "success" | "warning" | "error";
     }>(EventEndpoint.eBoardNotify);
 
-    [EventEndpoint.eBoardOpenRawLink] = new RendererEventObject<{ href: string; editor?: string; boardRoot: string }>(
-        EventEndpoint.eBoardOpenRawLink
-    );
-
     [EventEndpoint.ePublishedBoardsUpdated] = new RendererEventObject<PublishedBoardsCatalog>(
         EventEndpoint.ePublishedBoardsUpdated
     );

@@ -9,7 +9,7 @@ import { newTextFileModel, TextFileModel } from "../../editors/text";
 import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
-import { fpBasename, fpExtname } from "../../core/utils/file-path";
+import { fpBasename, fpExtname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { ui } from "../ui";
 import { errMessage } from "../../../shared/utils";
@@ -50,6 +50,13 @@ function finishNavigation(model: PagesModel, page: PageModel): void {
     model.onShow.send(page);
     if (!isFocusInSidebar()) model.onFocus.send(page);
     model.persistence.saveState();
+}
+
+function sameFileIdentity(first: string, second: string): boolean {
+    const identity = (value: string) => value.includes("://") || value.startsWith("data:")
+        ? value
+        : fpNormalizeForCompare(value);
+    return identity(first) === identity(second);
 }
 
 /** Skip the "save changes?" prompt when the current main editor will survive
@@ -220,6 +227,21 @@ export async function navigatePageTo(
     const page = model.query.findPage(pageId);
     if (!page) return false;
     await page.ready;
+
+    const currentFilePath = (page.mainEditor as { filePath?: string } | null)?.filePath;
+    const needsReveal = !!(options?.revealLine || options?.highlightText);
+    if (needsReveal && currentFilePath
+        && sameFileIdentity(currentFilePath, newFilePath)) {
+        if (page.mainEditorInstance?.editorId !== "monaco") {
+            await page.switchMainEditor("monaco");
+        }
+        const textHost = page.mainEditor as TextFileModel | null;
+        if (!textHost || textHost.type !== "textFile") return false;
+        if (options?.revealLine) textHost.revealLine(options.revealLine);
+        if (options?.highlightText) textHost.setHighlightText(options.highlightText);
+        finishNavigation(model, page);
+        return true;
+    }
 
     if (!(await confirmLeaveCurrentEditor(page, options))) return false;
 

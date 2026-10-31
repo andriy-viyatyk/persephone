@@ -9,6 +9,14 @@ editorId: "browser-view"
 
 A built-in Chromium browser keeps documentation, APIs, and web resources in a Persephone tab.
 
+Boards can create a private Run page with bridge **1.46.0+** by calling
+`persephone.openRawLink(url, { editor: "browser-view", reuseKey })`. The page is owned by that
+board root and reuse key; it does not select or navigate a user's Browser page or another board's
+Run page. When the active tab still shows the requested URL, repeating the call hard-reloads it to
+pick up regenerated local HTML. If the user switched tabs or navigated away, the call navigates
+back to the requested URL; web URL path and query case is significant when matching. If the page was
+closed, the next call creates a fresh Browser page with one tab.
+
 ## How to Open
 
 Choose **Browser** from the arrow beside **+** when it is pinned, use the **Tools & Editors** hub,

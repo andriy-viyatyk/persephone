@@ -865,6 +865,14 @@ For existing browser tabs: if the tab has only one empty (`about:blank`) interna
 
 **Matching criteria:** A browser page matches only if it is **not** incognito and **not** Tor. Incognito and Tor pages are always skipped — a normal URL is never opened in a private session automatically. When `options.incognito` is explicitly `true`, only incognito pages match (Tor pages are still excluded).
 
+Pages transiently owned by a board's Run action are excluded from both internal- and external-link
+searches. They are opened through the board page lifecycle using
+`persephone.openRawLink(url, { editor: "browser-view", reuseKey })`, which scopes reuse to the
+board root and key. Reopening the same URL hard-reloads the active Browser tab so regenerated local
+HTML is picked up; changing the URL navigates the owned page instead. URL identity is case
+sensitive for web paths and queries, while scheme and host are normalized for comparison (and file
+URL paths are case folded).
+
 ### Markdown Link Context Menu
 
 Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https) via the shared `appendLinkOpenMenuItems()` helper:

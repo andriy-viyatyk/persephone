@@ -5,8 +5,9 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.44.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.44.0` adds
+The board bridge is version **1.46.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.46.0` adds awaitable `openRawLink()`
+navigation, line/highlight hints, and board-owned Browser Run-page reuse. Bridge `1.44.0` adds
 `persephone.voiceTyping.autoStopSilenceMs` and `onAutoStopSilenceChange(callback)` for reading and
 subscribing to the shared Voice Typing auto-stop duration; `0` disables auto-stop. Feature-detect
 `persephone.voiceTyping` because older apps do not expose it. Bridge `1.43.0` adds searchable
@@ -947,9 +948,18 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   rejection, don't fire and forget. It is **create-only**: the id it returns belongs to a page the
   board just made, and there is no counterpart call to read, list, navigate, close, or modify any
   other page, so `persephone.call` keeps its scoping to the page hosting this board.
-- `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
-  `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — useful to open a
+- `persephone.openRawLink(href, options?)` — open a file/URL through Persephone's page pipeline;
+  bridge 1.46.0+ returns `Promise<void>` and reports navigation failures to callers that await it.
+  Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — useful to open a
   Markdown doc rendered rather than as source; falls back to the default editor when omitted/unmatched.
+  `{ revealLine, highlightText }` opens a source file at a requested location, including when that
+  file is already open. `{ editor: "browser-view", reuseKey }` opens or reuses a transient Browser
+  Run page scoped to this board's trusted root and key (1–256 non-whitespace characters). The same
+  URL is hard-reloaded; a changed URL navigates the owned page. Ordinary Browser link reuse skips
+  Run pages. This is user-visible navigation and does not require a `fileSystem` grant; no file
+  contents are returned to the board. If compatibility with older bridge versions is needed, check
+  `persephone.version` before passing the new options. Await and catch the promise when the caller
+  needs to handle a failed open; ignored rejections are internally handled for older callers.
   An **image `data:` URL** with `{ editor: "image.edit" }` requests the image-edit capability and
   opens the image as a **new editable drawing** (rasterize your view to a PNG data URL first).
   - **External links are auto-routed for you.** A plain `<a href="https://…">` click inside a

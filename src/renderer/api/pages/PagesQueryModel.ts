@@ -34,9 +34,28 @@ export class PagesQueryModel {
      *  file already open in a tab?" dedupe used by open/diff flows). */
     findPageByFilePath = (filePath?: string): PageModel | undefined => {
         if (!filePath) return undefined;
+        const identity = filePath.includes("://") || filePath.startsWith("data:")
+            ? filePath
+            : fpNormalizeForCompare(filePath);
         return this.model.state.get().pages.find((p) => {
             const main = p.mainEditor as { filePath?: string } | null;
-            return main?.filePath === filePath;
+            if (!main?.filePath) return false;
+            const mainIdentity = main.filePath.includes("://") || main.filePath.startsWith("data:")
+                ? main.filePath
+                : fpNormalizeForCompare(main.filePath);
+            return mainIdentity === identity;
+        });
+    };
+
+    /** Find the Browser page transiently owned by one board Run key. */
+    findBoardRunPage = (boardRoot: string, reuseKey: string): PageModel | undefined => {
+        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        return this.model.state.get().pages.find((page) => {
+            if (page.mainEditorInstance?.editorId !== "browser-view") return false;
+            const owner = page.getBoardRunOwner();
+            return !!owner
+                && fpNormalizeForCompare(owner.boardRoot) === normalizedRoot
+                && owner.reuseKey === reuseKey;
         });
     };
 

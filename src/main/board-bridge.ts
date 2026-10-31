@@ -12,8 +12,8 @@
  * The bridge serves the in-app effects `execute()` cannot express:
  *  • `execute()` (streaming) rides `{ kind:"runner", … }` envelopes → the shared
  *    command runner (`command-runner.ts`), defaulting the cwd to the board folder;
- *  • request/reply: the native dialogs + `readFile`/`writeFile`;
- *  • fire-and-forget: `openRawLink`, `notify`;
+ *  • request/reply: the native dialogs, `readFile`/`writeFile`, and `openRawLink`;
+ *  • fire-and-forget: `notify`;
  *  • main → board: live theme retint (`pushThemeToBoards`).
  *
  * The board root + owner window are resolved from the per-board registry (keyed by
@@ -22,6 +22,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import {
     BrowserWindow,
@@ -655,6 +656,45 @@ boardTrustService.onBoardAccessChanged(recheckBoardWatches);
 
 /** Board RPC handlers are exhaustive over the public bridge contract. */
 const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
+    async openRawLink(entry, args) {
+        const href = args[0];
+        const rawOptions = args[1];
+        if (typeof href !== "string" || !href.trim()) {
+            throw rpcFailure("invalid-argument", "A non-empty link is required.");
+        }
+        if (rawOptions !== undefined && (!rawOptions || typeof rawOptions !== "object" || Array.isArray(rawOptions))) {
+            throw rpcFailure("invalid-argument", "openRawLink options must be an object.");
+        }
+        const options = (rawOptions ?? {}) as {
+            editor?: unknown; revealLine?: unknown; highlightText?: unknown; reuseKey?: unknown;
+        };
+        if (options.editor !== undefined && typeof options.editor !== "string") {
+            throw rpcFailure("invalid-argument", "openRawLink editor must be a string.");
+        }
+        if (options.revealLine !== undefined
+            && (!Number.isSafeInteger(options.revealLine) || (options.revealLine as number) < 1)) {
+            throw rpcFailure("invalid-argument", "openRawLink revealLine must be a positive integer.");
+        }
+        if (options.highlightText !== undefined && typeof options.highlightText !== "string") {
+            throw rpcFailure("invalid-argument", "openRawLink highlightText must be a string.");
+        }
+        if (options.reuseKey !== undefined && typeof options.reuseKey !== "string") {
+            throw rpcFailure("invalid-argument", "openRawLink reuseKey must be a string.");
+        }
+        let target = href;
+        if (/^file:/i.test(href)) {
+            try { target = fileURLToPath(href); }
+            catch (error: unknown) { throw rpcFailure("invalid-argument", errMessage(error, "Invalid file URL.")); }
+        }
+        ownerWindow(entry.hostWebContents)?.focus();
+        const response = await sendToRendererForWebContents(
+            "board_openRawLink",
+            { target, ...options, boardRoot: entry.root },
+            entry.hostWebContents,
+        );
+        if (response.error) throw new Error(response.error.message);
+        return undefined;
+    },
     async openFileDialog(entry, args) {
         const grant = await boardTrustService.getGrantedPermissions(entry.root);
         if (!grant) throw boardPermissionError("fileSystem");
@@ -907,13 +947,6 @@ async function runBoardCall(boardId: string, entry: BoardPortEntry, id: number, 
 /** Fire-and-forget effects (no reply). */
 function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]): void {
     const win = ownerWindow(entry.hostWebContents);
-    if (method === "openRawLink") {
-        const href = args[0] as string;
-        if (!href) return;
-        win?.webContents.send(EventEndpoint.eBoardOpenRawLink, { href, editor: args[1] as string | undefined, boardRoot: entry.root });
-        win?.focus();
-        return;
-    }
     if (method === "notify") {
         const message = args[0] as string;
         if (!message) return;

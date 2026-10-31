@@ -543,8 +543,9 @@ interface PersephoneVoiceTypingApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.44.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.44.0"; 1.44.0 adds the live voice-typing auto-stop setting API;
+    /** The current host bridge is 1.46.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.46.0"; 1.46.0 adds awaitable openRawLink navigation and Run-page reuse;
+     *  1.44.0 adds the live voice-typing auto-stop setting API;
      *  1.42.0 adds multiline board settings and private MCP session
      *  endpoints for authorized host-API services (requires `appScripting`);
      *  1.41.0 adds `trashFile()`; 1.40.0 adds singleton
@@ -569,10 +570,17 @@ interface PersephoneBoardApi {
         args?: string[],
         options?: PersephoneExecuteOptions,
     ): PersephoneExecuteHandle;
-    /** Open a link (file path or URL) in a new Persephone page. Pass `{ editor }` to request a
-     *  specific editor id (e.g. `"md-view"`); falls back to the default editor when omitted or
-     *  when that editor does not accept the file. */
-    openRawLink(href: string, options?: { editor?: string }): void;
+    /** Open a file path or URL through Persephone's page pipeline. `editor` requests a specific
+     *  editor id and falls back to the default if omitted or unmatched. Bridge 1.46.0+ supports
+     *  awaiting completion, opening at `revealLine` with optional `highlightText`, and a
+     *  board-owned Browser Run page with `editor: "browser-view"` and `reuseKey`. Local file
+     *  navigation is user-visible and does not require a `fileSystem` grant. */
+    openRawLink(href: string, options?: {
+        editor?: string;
+        revealLine?: number;
+        highlightText?: string;
+        reuseKey?: string;
+    }): Promise<void>;
     /** Create a NEW in-memory, untitled Persephone page in another editor and resolve to its page
      *  id — the board equivalent of the script API's `pages.addEditorPage(...)`, for content the
      *  board holds in memory rather than a file `openRawLink` could point at.

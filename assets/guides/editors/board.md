@@ -73,6 +73,13 @@ reload the board, show its log, and switch declared secondary views. Custom edit
 local file I/O or use a content host for Persephone-managed encoding, encryption, autosave, and
 unsaved changes.
 
+Bridge **1.46.0+** lets boards await `persephone.openRawLink(path, { revealLine, highlightText })`
+to open a source file at a requested line, reusing and activating an already open matching page.
+This user-visible navigation does not require the board's `fileSystem` grant and returns no file
+contents. A board can run a built local app with
+`persephone.openRawLink(runUrl, { editor: "browser-view", reuseKey: "my-board:run" })`; the stable
+key gives that board its own reusable Browser page. See the [agent bridge reference](../agents/boards.md).
+
 ## Trust and safety
 
 Installed or otherwise untrusted boards show the **Trust this board?** gate before rendering because

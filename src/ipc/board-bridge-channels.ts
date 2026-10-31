@@ -201,6 +201,7 @@ export interface BoardWriteFileMsg {
 
 /** Request/reply methods (board → main, awaited by the shim). */
 export type BoardRpcMethod =
+    | "openRawLink"
     | "openFileDialog"
     | "saveFileDialog"
     | "openFolderDialog"
@@ -250,7 +251,15 @@ export interface BoardJobInfo {
 }
 
 /** Fire-and-forget methods (board → main, no reply). */
-export type BoardFireMethod = "openRawLink" | "notify";
+export type BoardFireMethod = "notify";
+
+/** Options for the user-visible page navigation request. */
+export interface BoardOpenRawLinkOptions {
+    editor?: string;
+    revealLine?: number;
+    highlightText?: string;
+    reuseKey?: string;
+}
 
 /** JSON-compatible request for the page-scoped AiVision call surface. */
 export interface BoardCallRequest {

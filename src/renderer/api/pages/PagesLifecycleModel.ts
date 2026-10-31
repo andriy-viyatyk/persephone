@@ -108,6 +108,24 @@ export function attachEditorToPage(legacy: EditorOrHost): EditorModel {
 /** Module-private alias preserved for the existing call sites below. */
 const wrap = attachEditorToPage;
 
+/** Compare a board Run target (a Windows path or a URL) with a Browser tab URL. */
+function runUrlKey(value: string): string {
+    let href = value.trim();
+    if (/^[a-zA-Z]:[\\/]/.test(href) || href.startsWith("\\\\")) {
+        const { pathToFileURL } = require("url") as typeof import("url");
+        href = pathToFileURL(href).href;
+    }
+    try {
+        const url = new URL(href);
+        url.protocol = url.protocol.toLowerCase();
+        url.hostname = url.hostname.toLowerCase();
+        if (url.protocol === "file:") url.pathname = url.pathname.toLowerCase();
+        return url.href;
+    } catch {
+        return href;
+    }
+}
+
 export class PagesLifecycleModel {
     constructor(private model: PagesModel) {}
 
@@ -682,6 +700,13 @@ export class PagesLifecycleModel {
                 if (existingPage.isRestoring) void existingPage.ready.then(reveal, (): void => {});
                 else reveal();
             }
+            if (options?.revealLine || options?.highlightText) {
+                await navigatePageTo(this.model, existingPage.id, filePath as string, {
+                    revealLine: options.revealLine,
+                    highlightText: options.highlightText,
+                    forceTextEditor: true,
+                });
+            }
             return existingPage;
         }
 
@@ -1235,6 +1260,39 @@ export class PagesLifecycleModel {
             "../../editors/browser/browser-pages"
         );
         return showBrowserPage(this.model, options);
+    };
+
+    /** Open and reuse a transient Browser page owned by a board and its reuse key. */
+    openBoardRunPage = async (boardRoot: string, reuseKey: string, url: string): Promise<void> => {
+        const normalizedKey = reuseKey.trim();
+        if (!normalizedKey || normalizedKey.length > 256) {
+            throw new Error("openRawLink reuseKey must be 1–256 non-whitespace characters.");
+        }
+        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        let page = this.model.query.findBoardRunPage(boardRoot, normalizedKey);
+        if (!page) {
+            page = await this.showBrowserPage({ url });
+            if (!page) throw new Error("Could not create the board Run page.");
+            page.setBoardRunOwner({
+                boardRoot: normalizedRoot,
+                reuseKey: normalizedKey,
+                url,
+            });
+            await page.ready;
+        } else {
+            await page.ready;
+            const { BrowserEditor } = await import("../../editors/browser/BrowserEditor");
+            const browser = page.mainEditorInstance;
+            if (!(browser instanceof BrowserEditor)) throw new Error("The owned Run page is no longer a Browser page.");
+            // Reload only when the tab on screen already shows this app; the user may have switched
+            // tabs or navigated away, and then the Run must bring the app back instead.
+            const browserState = browser.state.get();
+            const activeTab = browserState.tabs.find((tab) => tab.id === browserState.activeTabId);
+            if (activeTab && runUrlKey(activeTab.url) === runUrlKey(url)) browser.webview.hardReload();
+            else browser.navigate(url);
+            page.setBoardRunOwner({ boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
+        }
+        this.model.navigation.showPage(page.id);
     };
 
     showMcpInspectorPage = async (

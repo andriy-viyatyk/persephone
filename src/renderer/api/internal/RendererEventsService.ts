@@ -53,27 +53,7 @@ export class RendererEventsService {
         // Board `persephone.notify()` toast (US-724)
         rendererEvents[EventEndpoint.eBoardNotify].subscribe(this.handleBoardNotify);
 
-        // Board `persephone.openRawLink(href, { editor })` (US-756 C6)
-        rendererEvents[EventEndpoint.eBoardOpenRawLink].subscribe(this.handleBoardOpenRawLink);
     }
-
-    private handleBoardOpenRawLink = async (msg: { href: string; editor?: string; boardRoot: string }) => {
-        if (!msg?.href) return;
-        if (msg.editor === "image-view" && msg.href.startsWith("data:image/")) {
-            // Open from a cached blob URL, as the built-in viewers do. Routed as a link, the whole
-            // data URL would become the page's file path and title and be persisted with the session.
-        await guard(t("api.failedToOpenImage"), async () => {
-                const blob = await (await fetch(msg.href)).blob();
-                await pagesModel.openImageInNewTab(URL.createObjectURL(blob), "Image");
-            });
-            return;
-        }
-        await guard(t("api.failedToOpenLink"), () =>
-            app.events.openRawLink.sendAsync(
-                createLinkData(msg.href, { sourceId: "board", target: msg.editor, boardRoot: msg.boardRoot }),
-            ),
-        );
-    };
 
     openLaunchInput = async (input: LaunchInput): Promise<void> => {
         switch (input.kind) {
