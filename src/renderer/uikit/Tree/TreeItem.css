@@ -158,10 +158,14 @@
      * whatever colour the content chose. (US-1451 review proposed dropping it and leaning on the
      * caller's token. That was tried and rejected in review-with-the-user: the token alone reads
      * too strong for a path sitting beside the folder name.)
+     *
+     * `flex: 1 1 0` gives it only the space the label leaves: a zero basis takes no part in
+     * shrinking, so the label truncates only once the secondary content has nothing left. The
+     * full path stays reachable from the row tooltip.
      */
     [data-type="tree-item"] > [data-part="secondary-label"] {
         display: flex;
-        flex: 0 100 auto;
+        flex: 1 1 0;
         min-width: 0;
         margin-left: var(--space-md, 8px);
         opacity: 0.7;
