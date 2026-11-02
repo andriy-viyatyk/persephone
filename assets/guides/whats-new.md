@@ -10,7 +10,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.16 (Upcoming)
+## Version 5.0.17 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.16
+
+### New Features
 
 - **Cinema mode:** Expand videos across the browser page, including videos embedded in nested frames;
   press `Esc` or use the on-screen button to restore the page.
@@ -280,35 +288,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Windows single sign-on for Microsoft work and school accounts:** opt in under **Settings → Browser Profiles** on Windows to use the device's sign-in proof on supported Microsoft sign-in pages. It is off by default and does not apply to Incognito or Tor. See the [Browser editor guide](./editors/browser.md#windows-single-sign-on).
-
-- **Browser site permissions:** pages can ask before using sensitive capabilities. Answer with
-  **Allow** or **Block**, review or reset choices from the **Site permissions** button in the URL
-  bar, and manage saved decisions under **Settings → Browser → Browser Profiles**. Incognito and
-  Tor choices remain in memory for the private session. See the [Browser editor guide](./editors/browser.md#site-permissions-and-prompts).
-
-- **F12 opens Persephone's DevTools** — Press `F12` when no browser page claims the shortcut to
-  open DevTools for Persephone. An active browser page keeps `F12` for its own page DevTools.
-  See [Keyboard Shortcuts](./shortcuts.md).
-
-### Improvements
-
-- **The browser remembers your search engine:** the engine picked in the URL bar is preselected
-  in new browser pages, with one choice for profile pages and another for Incognito and Tor pages.
-  See the [Browser editor guide](./editors/browser.md#url-bar).
-
-### Bug Fixes
-
-- **Cloudflare "Verify you are human" checks pass in browser pages:** the checkbox no longer
-  reloads the page with the same check again. Every frame of a page, including the challenge
-  frame, now reports the same Chrome identity.
-
-- **Browser video fullscreen works as expected:** fullscreen video now fills the app window, and
-  fullscreen ends when you press `Esc` (including when Persephone has keyboard focus), close the
-  browser tab, or leave it hidden.
-
-- **Browser pages recover from lost mouse releases:** opening a new tab or popup, or moving focus
-  away, no longer leaves a page behaving as if a mouse button is still held.
+- **Windows single sign-on for Microsoft work and school accounts:** opt in under **Settings → Browser Profiles** to use the device's sign-in on supported Microsoft pages.
+- **Browser site permissions:** pages ask before using sensitive capabilities; review choices from the URL bar or Settings.
+- **F12 opens Persephone's DevTools** when no browser page claims the shortcut.
 
 ---
 
