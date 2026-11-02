@@ -21,7 +21,7 @@ remains available in Text Editor; agents can create an HTML content page with
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare]             [Resources] [Copy] [More] [Switch]      |  toolbar: compare at left; resources, preview actions, and switch at right
+| [Nav] [Compare]             [Resources] [Copy] [Globe] [More] [Switch] | toolbar: compare at left; resources and preview actions at right
 +---------------------------------------------------------------------+
 | [HTML preview]                                                      |  sandboxed HTML preview below the toolbar
 +---------------------------------------------------------------------+
@@ -32,6 +32,7 @@ remains available in Text Editor; agents can create an HTML content page with
 - Compare → `text-compare-left`
 - Show Resources → `text-show-resources`
 - Copy → `html-copy`
+- Open in browser → no HTML facade element entry
 - More → `html-more`
 - Page navigation and Editor switch → no entry: shell-owned controls
 - HTML preview content and its embedded controls → no entry: sandboxed preview content
@@ -56,8 +57,14 @@ extracts images, scripts, stylesheets, media, fonts, iframes, favicons, and link
 link collection. Capture the rendered page at its current window size to **Copy**, **Save**, open in
 Image Viewer, or open in Excalidraw for annotation. If no board provides the `image.edit`
 capability, Persephone shows **No image editor is registered. Enable the board in Tools & Editors or
-install a replacement.** Right-click can open the local file in the
-Browser for interactive testing and DevTools.
+install a replacement.** For a plain local HTML file, the preview can load relative CSS, JavaScript,
+and image files from the same folder; it cannot load sibling files outside that folder. Preview pages
+cannot access `file:///` URLs, and each preview uses temporary storage that is cleared when the
+preview closes.
+
+Choose **Open in browser** (globe) to open the source in a Browser page. This button appears for
+plain local files and HTTP(S) pages. For a local file, the Browser opens the saved file, so it does
+not include unsaved changes from the preview.
 
 ## Agent API
 

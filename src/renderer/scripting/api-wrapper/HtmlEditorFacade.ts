@@ -10,7 +10,8 @@ import { errMessage } from "../../../shared/utils";
 const HTML_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the HTML text toolbar, when comparison is available" },
     { name: "text-show-resources", purpose: "Show extracted HTML resources associated with the text host.", where: "right side of the HTML text toolbar, before preview actions" },
-    { name: "html-copy", purpose: "Copy the captured HTML preview image to the clipboard.", where: "right side of the HTML toolbar, after Show Resources" },
+    { name: "html-open-in-browser", purpose: "Open the saved local file or the HTTP(S) source in a Persephone browser page.", where: "right side of the HTML toolbar, after Show Resources; only for a plain local file or an HTTP(S) source" },
+    { name: "html-copy", purpose: "Copy the captured HTML preview image to the clipboard.", where: "right side of the HTML toolbar, after Open in Browser (or Show Resources)" },
     { name: "html-more", purpose: "Open the HTML preview's additional image actions.", where: "right edge of the HTML toolbar" },
 ] as const;
 
@@ -27,8 +28,8 @@ const HTML_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const HTML_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "html-view".
-HTML preview facade with host-chrome controls text-compare-left, text-show-resources, html-copy,
-and html-more. The html-image-menu is transient and is opened by html-more; it contains Save as
+HTML preview facade with host-chrome controls text-compare-left, text-show-resources,
+html-open-in-browser (only for a plain local file or an HTTP(S) source), html-copy, and html-more. The html-image-menu is transient and is opened by html-more; it contains Save as
 PNG, Open in Image View, and Edit Image. Save as PNG opens the native Save Image file dialog.
 The page-tab popup menu exposes Save, Save As..., Rename, Show in File Explorer, Copy File Path,
 Open in Browser, Decrypt, Encrypt or Change Password, and Make Unencrypted. Rename File, Unsaved

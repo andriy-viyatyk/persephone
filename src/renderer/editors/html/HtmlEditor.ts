@@ -3,7 +3,10 @@ import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
-import { fpBasename } from "../../core/utils/file-path";
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { FileProvider } from "../../content/providers/FileProvider";
+import { HttpProvider } from "../../content/providers/HttpProvider";
+import { toFileUrl } from "../../content/link-utils";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
@@ -52,9 +55,30 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
         this.typedQueue.send({ type: "focus" });
     }
 
-    // No host-content subscription needed — the body reads
-    // `host.state.use((s) => s.content)` directly; the iframe
-    // re-renders on every srcDoc prop change.
+    /** The sibling-resource folder for a plain local HTML file, from its live source pipe. */
+    resourceRoot(): string | undefined {
+        const pipe = this.host?.pipe;
+        if (!(pipe?.provider instanceof FileProvider) || pipe.transformers.length !== 0) return undefined;
+        return fpDirname(pipe.provider.sourceUrl);
+    }
+
+    /** Addressable saved source for the toolbar's browser action. */
+    browserUrl(): string | undefined {
+        const pipe = this.host?.pipe;
+        if (!pipe || pipe.transformers.length !== 0) return undefined;
+        if (pipe.provider instanceof FileProvider) return toFileUrl(pipe.provider.sourceUrl);
+        if (pipe.provider instanceof HttpProvider) {
+            try {
+                const url = new URL(pipe.provider.sourceUrl);
+                if (url.protocol === "http:" || url.protocol === "https:") return pipe.provider.sourceUrl;
+            } catch {
+                return undefined;
+            }
+        }
+        return undefined;
+    }
+
+    // The body view owns subscriptions to the host's live content and pipe state.
 
     // ── Image export (IImageExport) ─────────────────────────────────────
 

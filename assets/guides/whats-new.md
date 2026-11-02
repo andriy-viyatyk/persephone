@@ -19,6 +19,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Project TypeScript IntelliSense for boards:** Register a project folder to give Monaco pages
   completions for project files, declarations, and supported JSON imports. Project pages can also
   show TypeScript errors from the toolbar.
+- **HTML Preview loads local page resources:** Preview plain HTML files with sibling stylesheets,
+  scripts, and images, safely confined to the file's folder. Use the globe button to open a local or
+  HTTP(S) source in Browser.
 
 ---
 

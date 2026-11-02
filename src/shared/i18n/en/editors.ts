@@ -103,5 +103,6 @@ export const editorsCatalog = {
     switchToDarkTheme: { message: "Switch to Dark Theme" },
     switchToLightTheme: { message: "Switch to Light Theme" },
     imageFallback: { message: "Image", note: "Fallback label naming image content when no more specific title exists." },
+    openInBrowserTitle: { message: "Open in browser" },
     textOutputFallback: { message: "Text" },
 } satisfies Record<string, EnglishCatalogEntry>;

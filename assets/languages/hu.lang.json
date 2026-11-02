@@ -613,6 +613,8 @@
     "editors.openInDrawingEditor": "Megnyitás a rajzszerkesztőben",
     "editors.openInEditor": "Megnyitás a szerkesztőben",
     "editors.openInImageView": "Megnyitás képnézetben",
+
+    "editors.openInBrowserTitle": "Megnyitás böngészőben",
     "editors.openInNewTab": "Megnyitás új lapfülön",
     "editors.openInNewTabLower": "Megnyitás új lapfülön",
     "editors.openInNewTabTitle": "Megnyitás új lapfülön",
@@ -2269,6 +2271,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

@@ -631,6 +631,8 @@
     "editors.openInDrawingEditor": "Відкрити в редакторі малюнків",
     "editors.openInEditor": "Відкрити в редакторі",
     "editors.openInImageView": "Відкрити в режимі перегляду зображення",
+
+    "editors.openInBrowserTitle": "Відкрити у браузері",
     "editors.openInNewTab": "Відкрити в новій вкладці",
     "editors.openInNewTabLower": "Відкрити в новій вкладці",
     "editors.openInNewTabTitle": "Відкрити в новій вкладці",
@@ -2363,6 +2365,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

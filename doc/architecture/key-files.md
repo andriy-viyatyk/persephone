@@ -245,7 +245,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Monaco editor view, word-wrap and project-diagnostics toolbar contributions | `/src/renderer/editors/monaco/index.ts` |
 | Grid editor model and column-key utilities | `/src/renderer/editors/grid/GridEditor.ts`, `/src/renderer/editors/grid/utils/grid-utils.ts` |
 | Native grid body (embedded or inside the native `TextChromeView` shell; mounts UIKit `DataGridView` directly) | `/src/renderer/editors/grid/GridBodyView.ts` |
-| Native HTML preview body (sandboxed iframe loaded from the isolated `html-preview://` origin, host-content binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
+| HTML editor model (live-pipe-derived local resource root and browser source URL; iframe capture/export) | `/src/renderer/editors/html/HtmlEditor.ts` |
+| Native HTML preview body (sandboxed iframe loaded from the isolated `html-preview://` origin, host-content and pipe-state binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
+| HTML editor toolbar contributions (copy, source browser action, capture menu) | `/src/renderer/editors/html/index.ts` |
 | Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |
 | Native Markdown body (find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
 | Video/audio editor (pipe-backed media playback, transient range sessions, archive/board sources, VLC handoff, and temporary recording save/discard lifecycle) | `/src/renderer/editors/video/VideoEditor.ts` |
@@ -359,7 +361,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Windows browser registration | `/src/main/browser-registration.ts`           |
 | MCP HTTP transport (sessions, HTTP, lifecycle) | `/src/main/mcp-http-server.ts`  |
 | Shared main-process IPC sender authorization (`guardedIpcOn` / `guardedIpcHandle`; validates app partition, live main frame, and owning BrowserWindow) | `/src/main/ipc-sender-guard.ts` |
-| Isolated HTML preview origin (per-preview content registry, `html-preview://` protocol response and preview CSP) | `/src/main/html-preview-protocol.ts` |
+| Isolated HTML preview origin (per-preview content and storage lifecycle; live root HTML plus folder-confined sibling resources under a preview CSP) | `/src/main/html-preview-protocol.ts` |
 | MCP server definition — instructions, guides, tools | `/src/main/mcp/`             |
 | Main-process AiVision roots and service descriptors, including read-only path-watch diagnostics and the settings-gated main script node | `/src/main/mcp/ai-vision/` |
 | MCP tool definitions (the `call` tool — the whole manifest — as data) | `/src/main/mcp/tools/` |

@@ -604,6 +604,8 @@
     "editors.openInDrawingEditor": "描画エディターで開く",
     "editors.openInEditor": "エディターで開く",
     "editors.openInImageView": "画像ビューで開く",
+
+    "editors.openInBrowserTitle": "ブラウザーで開く",
     "editors.openInNewTab": "新しいタブで開く",
     "editors.openInNewTabLower": "新しいタブで開く",
     "editors.openInNewTabTitle": "新しいタブで開く",
@@ -2222,6 +2224,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

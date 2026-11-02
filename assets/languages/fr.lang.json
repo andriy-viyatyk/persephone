@@ -622,6 +622,8 @@
     "editors.openInDrawingEditor": "Ouvrir dans l’éditeur de dessin",
     "editors.openInEditor": "Ouvrir dans l’éditeur",
     "editors.openInImageView": "Ouvrir dans la visionneuse d’images",
+
+    "editors.openInBrowserTitle": "Ouvrir dans le navigateur",
     "editors.openInNewTab": "Ouvrir dans un nouvel onglet",
     "editors.openInNewTabLower": "Ouvrir dans un nouvel onglet",
     "editors.openInNewTabTitle": "Ouvrir dans un nouvel onglet",
@@ -2316,6 +2318,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

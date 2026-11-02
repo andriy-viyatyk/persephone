@@ -631,6 +631,8 @@
     "editors.openInDrawingEditor": "Otwórz w edytorze rysunków",
     "editors.openInEditor": "Otwórz w edytorze",
     "editors.openInImageView": "Otwórz w widoku obrazu",
+
+    "editors.openInBrowserTitle": "Otwórz w przeglądarce",
     "editors.openInNewTab": "Otwórz na nowej karcie",
     "editors.openInNewTabLower": "Otwórz na nowej karcie",
     "editors.openInNewTabTitle": "Otwórz na nowej karcie",
@@ -2363,6 +2365,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

@@ -11,26 +11,23 @@ import { errMessage } from "../../../shared/utils";
 // Two capture-phase listeners:
 //  1. Block <a> navigation inside the preview.
 //  2. On any pointerdown, ping the host (`html:interact`) so it can dismiss open
-//     menus / popovers. The iframe is sandboxed (opaque origin) so its clicks
-//     don't bubble to the host document.
+//     menus / popovers. Its click events don't bubble to the host document.
 const injectedScript = `<script>document.addEventListener("click",function(e){var a=e.target.closest("a");if(a&&a.href){e.preventDefault();}},true);document.addEventListener("pointerdown",function(){try{window.parent.postMessage({__persephone:"html:interact"},"*");}catch(e){}},true);</script>`;
 
 // Injected ahead of the previewed document's own scripts, so it must go at the very top.
 //
-// The preview iframe is sandboxed without `allow-same-origin`, so its document has an opaque
-// origin. When the preview was a `srcdoc` document (before US-1590) rewriting its `about:srcdoc`
-// history URL was refused, and how Chromium refused depended on the host document's scheme:
-// served over http (the dev server)
+// The preview iframe has a real `html-preview://` origin, isolated from the host document. When
+// the preview was a `srcdoc` document (before US-1590), rewriting its `about:srcdoc` history URL
+// was refused, and how Chromium refused depended on the host document's scheme: served over http
+// (the dev server)
 // it throws a catchable `SecurityError` and the page carries on, but under `file://` (a packaged
 // build) it tears the frame down instead, leaving the preview a blank grey rectangle. Mockups
 // that keep their tab in the URL (`history.replaceState(null, "", "#tab")`) therefore rendered in
 // dev and showed nothing in the installed app.
 //
-// A no-op is the whole fix: the preview has no address bar and no session history of its own, so
-// there is nothing for a history rewrite to mean here. Kept for the `html-preview://` document too:
-// the no-op is the behavior proven in the packaged build. Guarded on the document's opaque origin
-// (`self.origin` — `location.origin` reports the URL's origin) so it stays inert if the preview
-// ever gains a real origin.
+// A no-op is the whole fix for opaque-origin documents: the preview has no address bar and no
+// session history of its own, so there is nothing for a history rewrite to mean here. The guard
+// keeps it inert for the real `html-preview://` origin and applies only when `self.origin` is null.
 const injectedPrologue = `<script>(function(){if(self.origin!=="null")return;var noop=function(){};try{history.replaceState=noop;history.pushState=noop;}catch(e){}})();</script>`;
 
 // A leading `<!doctype html>` has to stay first — anything ahead of it drops the preview into
@@ -51,17 +48,19 @@ export interface HtmlBodyViewProps {
 export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     private readonly iframe: HTMLIFrameElement;
     private model: HtmlEditor;
-    private hostSubscription: (() => void) | undefined;
+    private hostContentSubscription: (() => void) | undefined;
+    private hostPipeSubscription: (() => void) | undefined;
     private boundModel: HtmlEditor | undefined;
     private boundHost: HtmlEditor["host"] = null;
     private queueSubscription: (() => void) | undefined;
     private readonly previewId = crypto.randomUUID();
     private revision = 0;
     private appliedContent: string | undefined;
+    private appliedResourceRoot: string | undefined;
 
     public constructor(props: HtmlBodyViewProps) {
         const iframe = document.createElement("iframe");
-        iframe.setAttribute("sandbox", "allow-scripts");
+        iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
         iframe.title = t("editors.htmlPreview");
         super(props, iframe);
         this.iframe = iframe;
@@ -69,7 +68,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     }
 
     protected onMount(): void {
-        this.applyContent(this.model.host?.state.get().content ?? "");
+        this.applyContent(this.model.host?.state.get().content ?? "", this.model.resourceRoot());
         this.applyFrameStyle(this.props.editorConfig);
         this.model.setCaptureElement(this.iframe);
         this.bindToHostIfNeeded();
@@ -95,7 +94,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
         }
 
         this.bindToHostIfNeeded();
-        this.applyContent(this.model.host?.state.get().content ?? "");
+        this.applyContent(this.model.host?.state.get().content ?? "", this.model.resourceRoot());
     }
 
     protected onDispose(): void {
@@ -103,17 +102,18 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
         void api.clearHtmlPreview(this.previewId);
     }
 
-    private applyContent(content: string): void {
+    private applyContent(content: string, resourceRoot = this.model.resourceRoot()): void {
         // Assigning the preview URL navigates the nested document — it reloads the
         // preview and re-runs its scripts. The previous view wrote the attribute only when
         // the value actually changed, and `onUpdate` fires on every shell re-render, so an
         // unguarded write would reload the preview (losing
         // scroll position) on updates that did not touch the content.
         const next = withInjectedScripts(content);
-        if (next === this.appliedContent) return;
+        if (next === this.appliedContent && resourceRoot === this.appliedResourceRoot) return;
         this.appliedContent = next;
+        this.appliedResourceRoot = resourceRoot;
         const revision = ++this.revision;
-        void api.setHtmlPreview(this.previewId, next).then(() => {
+        void api.setHtmlPreview(this.previewId, next, resourceRoot).then(() => {
             // A newer edit may have been sent while this one was in flight; only the latest loads.
             if (revision === this.revision && !this.isDisposed) {
                 this.iframe.src = `html-preview://${this.previewId}/?r=${revision}`;
@@ -137,18 +137,24 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
 
     private bindToHostIfNeeded(): void {
         const host = this.model.host;
-        if (this.model === this.boundModel && host === this.boundHost && this.hostSubscription) return;
+        if (this.model === this.boundModel && host === this.boundHost
+            && this.hostContentSubscription && this.hostPipeSubscription) return;
 
-        this.hostSubscription?.();
-        this.hostSubscription = undefined;
+        this.hostContentSubscription?.();
+        this.hostContentSubscription = undefined;
+        this.hostPipeSubscription?.();
+        this.hostPipeSubscription = undefined;
         this.boundModel = this.model;
         this.boundHost = host;
         if (!host) return;
 
-        this.hostSubscription = this.ownSubscription(host.state.subscribe(
-            (content: string) => this.applyContent(content),
+        this.hostContentSubscription = this.ownSubscription(host.state.subscribe(
+            (content: string) => this.applyContent(content, this.model.resourceRoot()),
             (state) => state.content,
         ));
+        this.hostPipeSubscription = this.ownSubscription(host.pipeState.subscribe(() => {
+            this.applyContent(host.state.get().content, this.model.resourceRoot());
+        }));
     }
 
     private installMessageListener(): void {

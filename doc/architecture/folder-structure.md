@@ -988,7 +988,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   └── page-translation-agent.ts # Guest-frame text discovery, mutation tracking, and reversible translated DOM updates
 ├── browser-registration.ts # Default browser registration
 ├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
-├── html-preview-protocol.ts # Isolated html-preview:// origin and per-preview response registry
+├── html-preview-protocol.ts # Isolated html-preview:// origin, folder-confined sibling resources, and per-preview storage cleanup
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── session-proxy.ts        # Shared session proxy primitives (one proxy, no direct fallback; set direct; geo lookup) for Tor and profile networks

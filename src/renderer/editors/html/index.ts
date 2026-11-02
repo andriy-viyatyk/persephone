@@ -1,5 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
+import { pagesModel } from "../../api/pages";
 import { HtmlEditor, defaultHtmlEditorState } from "./HtmlEditor";
 import { HtmlBodyView } from "./HtmlBodyView";
 import { TextChromeView } from "../base/TextChromeView";
@@ -30,12 +31,14 @@ function requireHtmlModel(model: EditorModel): HtmlEditor {
 class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     private model: HtmlEditor;
     private copyButton: IconButtonView | undefined;
+    private browserButton: IconButtonView | undefined;
     private moreButton: IconButtonView | undefined;
     private drawIcon!: SVGElement;
     private menuHandle: MenuHandle | undefined;
     private focusedBeforeMenu: HTMLElement | null = null;
     private readonly pendingTimers = new Set<ReturnType<typeof setTimeout>>();
     private stateSubscription: (() => void) | undefined;
+    private pipeSubscription: (() => void) | undefined;
 
     public constructor(props: { model: HtmlEditor }) {
         super(props, createContentsRoot());
@@ -45,14 +48,18 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     protected onMount(): void {
         this.drawIcon = createIconComponentElement(DrawIcon);
         this.copyButton = this.child(new IconButtonView(this.copyButtonProps()));
+        this.browserButton = this.child(new IconButtonView(this.browserButtonProps()));
         this.moreButton = this.child(new IconButtonView(this.moreButtonProps()));
-        this.root.append(this.copyButton.root, this.moreButton.root);
+        this.root.append(this.copyButton.root, this.browserButton.root, this.moreButton.root);
         this.copyButton.mount();
+        this.browserButton.mount();
         this.moreButton.mount();
         this.bindState();
         this.own(() => {
             this.stateSubscription?.();
             this.stateSubscription = undefined;
+            this.pipeSubscription?.();
+            this.pipeSubscription = undefined;
         });
     }
 
@@ -72,6 +79,7 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
         this.pendingTimers.forEach((timer) => clearTimeout(timer));
         this.pendingTimers.clear();
         this.copyButton = undefined;
+        this.browserButton = undefined;
         this.moreButton = undefined;
     }
 
@@ -81,12 +89,35 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
             (capturing) => this.applyCapturing(capturing),
             (state) => state.capturing ?? false,
         );
+        this.pipeSubscription?.();
+        this.pipeSubscription = this.model.host?.pipeState.subscribe(() => this.applyBrowserButton());
     }
 
     private applyCapturing(capturing: boolean): void {
         this.copyButton?.update(this.copyButtonProps(capturing));
+        this.browserButton?.update(this.browserButtonProps());
         this.moreButton?.update(this.moreButtonProps(capturing));
     }
+
+    private applyBrowserButton(): void {
+        this.browserButton?.update(this.browserButtonProps());
+    }
+
+    private browserButtonProps(): IconButtonViewProps {
+        return {
+            name: "html-open-in-browser",
+            size: "sm",
+            title: t("editors.openInBrowserTitle"),
+            icon: "globe",
+            hidden: this.model.browserUrl() === undefined,
+            onClick: this.handleBrowserClick,
+        };
+    }
+
+    private readonly handleBrowserClick = (): void => {
+        const url = this.model.browserUrl();
+        if (url) void pagesModel.openUrlInBrowserTab(url);
+    };
 
     private copyButtonProps(disabled = this.model.state.get().capturing ?? false): IconButtonViewProps {
         return {

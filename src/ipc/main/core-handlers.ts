@@ -457,9 +457,9 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return image.toPNG();
     };
 
-    setHtmlPreview = async (event: IpcMainEvent, id: string, html: string): Promise<void> => {
+    setHtmlPreview = async (event: IpcMainEvent, id: string, html: string, resourceRoot?: string): Promise<void> => {
         const { setHtmlPreview } = await import("../../main/html-preview-protocol");
-        setHtmlPreview(event.sender, id, html);
+        setHtmlPreview(event.sender, id, html, resourceRoot);
     };
 
     clearHtmlPreview = async (_event: IpcMainEvent, id: string): Promise<void> => {

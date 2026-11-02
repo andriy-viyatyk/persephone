@@ -622,6 +622,8 @@
     "editors.openInDrawingEditor": "Abrir en el editor de dibujo",
     "editors.openInEditor": "Abrir en el editor",
     "editors.openInImageView": "Abrir en la vista de imagen",
+
+    "editors.openInBrowserTitle": "Abrir en el navegador",
     "editors.openInNewTab": "Abrir en una pestaña nueva",
     "editors.openInNewTabLower": "Abrir en una pestaña nueva",
     "editors.openInNewTabTitle": "Abrir en una pestaña nueva",
@@ -2316,6 +2318,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

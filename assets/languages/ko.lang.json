@@ -604,6 +604,8 @@
     "editors.openInDrawingEditor": "그리기 편집기에서 열기",
     "editors.openInEditor": "편집기에서 열기",
     "editors.openInImageView": "이미지 보기에서 열기",
+
+    "editors.openInBrowserTitle": "브라우저에서 열기",
     "editors.openInNewTab": "새 탭에서 열기",
     "editors.openInNewTabLower": "새 탭에서 열기",
     "editors.openInNewTabTitle": "새 탭에서 열기",
@@ -2222,6 +2224,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

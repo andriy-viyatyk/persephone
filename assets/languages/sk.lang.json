@@ -631,6 +631,8 @@
     "editors.openInDrawingEditor": "Otvoriť v editore kreslenia",
     "editors.openInEditor": "Otvoriť v editore",
     "editors.openInImageView": "Otvoriť v zobrazení obrázka",
+
+    "editors.openInBrowserTitle": "Otvoriť v prehliadači",
     "editors.openInNewTab": "Otvoriť na novej karte",
     "editors.openInNewTabLower": "Otvoriť na novej karte",
     "editors.openInNewTabTitle": "Otvoriť na novej karte",
@@ -2363,6 +2365,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

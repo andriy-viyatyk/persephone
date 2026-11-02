@@ -115,7 +115,7 @@ export function setupMainProcess() {
             // Native HTML preview documents (US-1590). A srcdoc frame would inherit the main window's
             // strict CSP; this scheme serves each preview with its own (the pre-US-1590 policy).
             scheme: "html-preview",
-            privileges: { standard: true, secure: true },
+            privileges: { standard: true, secure: true, supportFetchAPI: true },
         },
     ]);
 

@@ -613,6 +613,8 @@
     "editors.openInDrawingEditor": "Ava joonistusredaktoris",
     "editors.openInEditor": "Ava redaktoris",
     "editors.openInImageView": "Ava pildina",
+
+    "editors.openInBrowserTitle": "Ava brauseris",
     "editors.openInNewTab": "Ava uuel vahekaardil",
     "editors.openInNewTabLower": "Ava uuel vahekaardil",
     "editors.openInNewTabTitle": "Ava uuel vahekaardil",
@@ -2269,6 +2271,8 @@
     "editors.openInDrawingEditor": "466c79f3",
     "editors.openInEditor": "a8b50601",
     "editors.openInImageView": "d53c75da",
+
+    "editors.openInBrowserTitle": "e219a7b0",
     "editors.openInNewTab": "9afd8d91",
     "editors.openInNewTabLower": "691bd191",
     "editors.openInNewTabTitle": "9afd8d91",

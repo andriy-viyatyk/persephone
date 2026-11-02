@@ -495,8 +495,8 @@ class ApiCalls implements Api {
         return executeOnce<string>(Endpoint.registerBoard, boardRoot, theme, tokens, i18n, hostText);
     };
 
-    setHtmlPreview = async (id: string, html: string) => {
-        return executeOnce<void>(Endpoint.setHtmlPreview, id, html);
+    setHtmlPreview = async (id: string, html: string, resourceRoot?: string) => {
+        return executeOnce<void>(Endpoint.setHtmlPreview, id, html, resourceRoot);
     };
 
     clearHtmlPreview = async (id: string) => {
