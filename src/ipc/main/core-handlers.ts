@@ -97,6 +97,11 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         openWindows.setCanQuit(window, canQuit);
     }
 
+    resolveWindowClose = async (event: IpcMainEvent, result: import("../api-types").WindowCloseResolution): Promise<void> => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        openWindows.resolveWindowClose(window, result);
+    }
+
     showOpenFileDialog = (event: IpcMainEvent, params: OpenFileDialogParams) => {
         return showOpenFileDialog(BrowserWindow.fromWebContents(event.sender), params);
     }
@@ -486,6 +491,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);
     bindEndpoint(Endpoint.closeWindow, controllerInstance.closeWindow);
     bindEndpoint(Endpoint.setCanQuit, controllerInstance.setCanQuit);
+    bindEndpoint(Endpoint.resolveWindowClose, controllerInstance.resolveWindowClose);
     bindEndpoint(Endpoint.setVoiceTypingConfig, controllerInstance.setVoiceTypingConfig);
     bindEndpoint(Endpoint.setVoiceTypingState, controllerInstance.setVoiceTypingState);
     bindEndpoint(Endpoint.armVoiceTypingMicrophone, controllerInstance.armVoiceTypingMicrophone);

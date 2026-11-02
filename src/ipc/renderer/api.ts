@@ -140,6 +140,10 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.setCanQuit, canQuit);
     };
 
+    resolveWindowClose = async (result: import("../api-types").WindowCloseResolution) => {
+        return executeOnce<void>(Endpoint.resolveWindowClose, result);
+    };
+
     showOpenFileDialog = async (params: OpenFileDialogParams) => {
         return executeOnce<string[] | undefined>(
             Endpoint.showOpenFileDialog,

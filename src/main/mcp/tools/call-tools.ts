@@ -67,7 +67,7 @@ export function routeCallPath(path: string, explicitWindow: number | undefined):
 }
 
 function isWindowOpen(index: number): boolean {
-    return !!openWindows.windows.find(w => w.index === index)?.window;
+    return !!openWindows.findWindowDataByIndex(index)?.window;
 }
 
 /**
@@ -229,8 +229,8 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 } else {
                     const forward = route.forward!;
                     const targetWindowData = forward.windowIndex !== undefined
-                        ? openWindows.windows.find(windowData => windowData.index === forward.windowIndex)
-                        : openWindows.windows.find(windowData => windowData.window);
+                        ? openWindows.findWindowDataByIndex(forward.windowIndex)
+                        : openWindows.allWindowData().find(windowData => !windowData.boardRoot && windowData.window);
                     const targetWindowIndex = targetWindowData?.index;
                     const eventCursor = targetWindowIndex === undefined
                         ? 0

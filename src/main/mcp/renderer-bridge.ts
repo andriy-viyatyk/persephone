@@ -38,8 +38,8 @@ export async function sendToRenderer(method: string, params: unknown, windowInde
     // board calls at once — so their replies were dropped and the call timed out.
     initMcpIpc();
     const windowData = windowIndex !== undefined
-        ? openWindows.windows.find(w => w.index === windowIndex)
-        : openWindows.windows.find(w => w.window);
+        ? openWindows.findWindowDataByIndex(windowIndex)
+        : openWindows.allWindowData().find(w => !w.boardRoot && w.window);
 
     if (!windowData) {
         return { error: { code: -32603, message: windowIndex !== undefined
@@ -88,7 +88,7 @@ export function sendToRendererForWebContents(
     timeoutMs?: number,
 ): Promise<McpResponse> {
     const hostWindow = BrowserWindow.fromWebContents(hostWebContents);
-    const windowData = openWindows.windows.find((entry) => entry.window?.window === hostWindow);
+    const windowData = openWindows.allWindowData().find((entry) => entry.window?.window === hostWindow);
     if (!windowData) {
         return Promise.resolve({ error: { code: -32603, message: "The Board host renderer is unavailable." } });
     }

@@ -108,7 +108,14 @@ export function isValidOpenPath(filePath: string | undefined): boolean {
 
 /** Select launch operands from either packaged or `electron <appPath>` argv. */
 export function launchOperands(argv: string[]): string[] {
-    const operands = argv.slice(1).filter((argument) => !argument.startsWith("--"));
+    const raw = argv.slice(1);
+    const operands: string[] = [];
+    for (let index = 0; index < raw.length; index += 1) {
+        if (raw[index] === "--board" && raw[index + 1]) {
+            operands.push("--board", raw[index + 1]);
+            index += 1;
+        } else if (!raw[index].startsWith("--")) operands.push(raw[index]);
+    }
     return process.defaultApp ? operands.slice(1) : operands;
 }
 
@@ -118,6 +125,16 @@ export function parseLaunchArguments(operands: string[], cwd: string): LaunchInp
 
     for (let index = 0; index < operands.length; index += 1) {
         const operand = operands[index];
+        if (operand === "--board") {
+            const boardPath = operands[index + 1];
+            index += 1;
+            if (!boardPath) continue;
+            const resolvedPath = path.resolve(cwd, boardPath);
+            try {
+                if (fs.statSync(resolvedPath).isDirectory()) inputs.push({ kind: "board", path: resolvedPath });
+            } catch { /* Invalid board roots are ignored like invalid file inputs. */ }
+            continue;
+        }
         if (index === 0 && operand.toLowerCase() === "diff") {
             const firstOperand = operands[index + 1];
             const secondOperand = operands[index + 2];

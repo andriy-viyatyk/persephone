@@ -13,7 +13,7 @@ import {
     type ExplorerEditorState,
 } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
-import { signalReadyToQuit } from "../window";
+import { appWindow, signalReadyToQuit } from "../window";
 import { fs as appFs } from "../fs";
 import { panelKey, parsePanelKey } from "../../ui/secondary-views/panel-key";
 import type { BoardEditorState } from "../../editors/board";
@@ -147,7 +147,7 @@ export class PagesPersistenceModel {
     private restored = false;
 
     saveState = async (): Promise<void> => {
-        if (!this.restored) return;
+        if (!this.restored || appWindow.isBoardMode) return;
 
         const { pages, leftRight } = this.model.state.get();
         const pageDescriptors: PageDescriptor[] = pages.map((p) => p.getDescriptor());
@@ -169,6 +169,7 @@ export class PagesPersistenceModel {
     saveStateDebounced = debounce(this.saveState, 500, () => this.restored);
 
     restoreState = async () => {
+        if (appWindow.isBoardMode) return;
         const data = parseObject(
             await appFs.getDataFile(openFilesNameTemplate),
         ) as Partial<WindowState> | undefined;
@@ -438,13 +439,14 @@ export class PagesPersistenceModel {
      */
     init = async () => {
         try {
-            await this.restoreState();
+            if (!appWindow.isBoardMode) await this.restoreState();
         } finally {
             this.restored = true;
         }
     };
 
     onAppQuit = async () => {
+        if (appWindow.isBoardMode) { signalReadyToQuit(); return; }
         await Promise.all(
             this.model.state.get().pages.map((page) => page.saveState()),
         );

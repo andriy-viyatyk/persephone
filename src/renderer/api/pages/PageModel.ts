@@ -879,6 +879,22 @@ export class PageModel implements IPageHost {
             this.onClose?.();
             return true;
         }
+        if (!(await this.confirmRelease())) return false;
+        this.onClose?.();
+        return true;
+    }
+
+    /** Whether `confirmRelease()` would ask the user anything. Unlike `modified`, it reads the main
+     *  editor through its host, the same object `confirmRelease()` asks. */
+    get needsReleaseConfirmation(): boolean {
+        if (this.pinSide === "right" || this.isRestoring) return false;
+        return this.editors.some((editor) => editor.id !== this._mainEditorId && editor.modified)
+            || !!this.mainEditor?.modified;
+    }
+
+    async confirmRelease(): Promise<boolean> {
+        if (this.pinSide === "right") return false;
+        if (this.isRestoring) return true;
         // Panel-contributing editors first.
         for (const editor of this.editors) {
             if (editor.id === this._mainEditorId) continue;
@@ -892,7 +908,6 @@ export class PageModel implements IPageHost {
             const released = await main.confirmRelease();
             if (!released) return false;
         }
-        this.onClose?.();
         return true;
     }
 

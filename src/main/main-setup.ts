@@ -3,6 +3,7 @@ import { app, components, net, protocol, session } from "electron";
 import path from "node:path";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { controller } from "../ipc/main/controller";
+import { takeBoardStartupInput, takeStartupInputsForMain } from "../ipc/main/window-handlers";
 import { getAssetPath, launchOperands, parseLaunchArguments } from "./utils";
 import { pathToFileURL } from "node:url";
 import { openWindows } from "./open-windows";
@@ -179,7 +180,12 @@ export function setupMainProcess() {
         } catch (error: unknown) {
             console.error(`Recording cleanup initialization failed: ${errMessage(error)}`);
         }
-        openWindows.restoreState();
+        const boardStartupInput = takeBoardStartupInput();
+        openWindows.restoreState(!boardStartupInput);
+        if (boardStartupInput) {
+            openWindows.openBoardWindow(boardStartupInput.path);
+            void openWindows.dispatchNormalInputs(takeStartupInputsForMain());
+        }
         setupTray();
         startPipeServer();
 
@@ -248,8 +254,8 @@ export function setupMainProcess() {
     });
 
     app.on("second-instance", (event, commandLine, workingDirectory) => {
-        openWindows.bringToFront();
         const inputs = parseLaunchArguments(launchOperands(commandLine), workingDirectory);
+        if (inputs.length === 0 || inputs.some((input) => input.kind !== "board")) openWindows.bringToFront();
         inputs.forEach((input) => openWindows.handleLaunchInput(input));
     });
 }

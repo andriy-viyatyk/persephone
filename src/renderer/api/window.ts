@@ -20,9 +20,7 @@ import type { IWindow } from "./types/window";
  * `false` means "hide me instead" — and main only honours that for the *last*
  * window, and never when the user picked Quit from the tray.
  */
-export function signalReadyToQuit(): void {
-    api.setCanQuit(!settings.get("window.close-to-tray"));
-}
+export function signalReadyToQuit(): void { appWindow.resolveWindowClose("close"); }
 
 interface WindowState {
     isMaximized: boolean;
@@ -33,6 +31,7 @@ interface WindowState {
 }
 
 export class Window implements IWindow {
+    private readonly _boardRoot: string | undefined;
     readonly menuBar = new MenuBarModel();
     readonly screen = new WindowScreen();
     private _windowIndex: number | null = null;
@@ -45,6 +44,8 @@ export class Window implements IWindow {
     });
 
     constructor() {
+        const boardArgument = process.argv.find((argument) => argument.startsWith("--persephone-board-root="));
+        this._boardRoot = boardArgument ? decodeURIComponent(boardArgument.slice("--persephone-board-root=".length)) : undefined;
         this._initWindowIndex();
         this._initMcpStatus();
     }
@@ -101,6 +102,13 @@ export class Window implements IWindow {
     close(): void {
         api.closeWindow();
     }
+
+    resolveWindowClose(outcome: "prompting" | "cancel" | "close"): void {
+        void api.resolveWindowClose(outcome === "close" ? { outcome, canQuit: !settings.get("window.close-to-tray") } : { outcome });
+    }
+
+    get isBoardMode(): boolean { return this._boardRoot !== undefined; }
+    get boardRoot(): string | undefined { return this._boardRoot; }
 
     toggleWindow(): void {
         if (this._state.get().isMaximized) {

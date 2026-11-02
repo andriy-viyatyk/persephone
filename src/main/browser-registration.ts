@@ -10,7 +10,7 @@ import { app } from "electron";
  * Uses reg.exe for simplicity — no npm packages needed.
  */
 
-function getLauncherPath(): string {
+export function getLauncherPath(): string {
     // In production: persephone-launcher.exe sits next to persephone.exe
     const exeDir = path.dirname(app.getPath("exe"));
     const launcherPath = path.join(exeDir, "persephone-launcher.exe");

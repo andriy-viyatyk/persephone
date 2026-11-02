@@ -27,6 +27,12 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     await customEditorRegistry.ensureInitialized();
     await app.initPages();
     await app.initEvents();
+    const { appWindow } = await import("./renderer/api/window");
+    if (appWindow.boardRoot) {
+        const { encodePersephoneBoardLink } = await import("./renderer/content/persephone-board-link");
+        const { createLinkData } = await import("./shared/link-data");
+        await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(appWindow.boardRoot)));
+    }
     await app.openStartupInputs();
     setTimeout(() => api.windowReady(), 0);
     return cont.mount;

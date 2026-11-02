@@ -68,7 +68,7 @@ export class WindowNode implements IAiVisible {
     constructor(readonly index: number) {}
 
     private get data() {
-        return openWindows.windows.find(w => w.index === this.index);
+        return openWindows.findWindowDataByIndex(this.index);
     }
 
     get nativeDialog(): NativeDialogNode {
@@ -117,7 +117,8 @@ export class WindowNode implements IAiVisible {
             data.window.focus();
             return { windowIndex: this.index, status: "open" };
         }
-        openWindows.createWindow(this.index);
+        if (data.boardRoot) openWindows.openBoardWindow(data.boardRoot);
+        else openWindows.createWindow(this.index);
         if (data.whenReady) await data.whenReady;
         return { windowIndex: this.index, status: "open" };
     }
@@ -182,7 +183,7 @@ class NativeDialogNode implements IAiVisible {
 
 export class WindowsNode implements IAiVisible {
     get count(): number {
-        return openWindows.windows.length;
+        return openWindows.allWindowData().length;
     }
 
     get aiVision(): IAiVisionDescriptor {
@@ -194,14 +195,14 @@ export class WindowsNode implements IAiVisible {
             children: () => this.children(),
             index: (key) => {
                 const index = typeof key === "number" ? key : Number(key);
-                return openWindows.windows.some(w => w.index === index) ? new WindowNode(index) : undefined;
+                return openWindows.findWindowDataByIndex(index) ? new WindowNode(index) : undefined;
             },
-            summarize: () => ({ kind: "Windows", count: this.count, open: openWindows.windows.filter(w => w.window).map(w => w.index) }),
+            summarize: () => ({ kind: "Windows", count: this.count, open: openWindows.allWindowData().filter(w => w.window).map(w => w.index) }),
         };
     }
 
     private children(): IAiChild[] {
-        return openWindows.windows.map(w => {
+        return openWindows.allWindowData().map(w => {
             const node = new WindowNode(w.index);
             const state = windowStates.getState(w.index);
             return {

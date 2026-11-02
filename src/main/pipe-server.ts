@@ -18,6 +18,9 @@ function handleMessage(message: string): void {
         }
 
         dispatchInputs(parseLaunchArguments([argument], process.cwd()));
+    } else if (trimmed.startsWith("BOARD ")) {
+        const root = trimmed.substring(6).trim();
+        if (root) dispatchInputs([{ kind: "board", path: root }]);
     } else if (trimmed === "SHOW") {
         openWindows.bringToFront();
     } else if (trimmed.startsWith("DIFF ")) {
@@ -34,7 +37,7 @@ function handleMessage(message: string): void {
 
 function dispatchInputs(inputs: ReturnType<typeof parseLaunchArguments>): void {
     if (inputs.length === 0) return;
-    openWindows.bringToFront();
+    if (inputs.some((input) => input.kind !== "board")) openWindows.bringToFront();
     inputs.forEach((input) => openWindows.handleLaunchInput(input));
 }
 

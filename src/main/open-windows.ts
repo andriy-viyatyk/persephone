@@ -7,12 +7,14 @@ import { windowStates } from "./window-states";
 import { getDataFolder, preparePath } from "./utils";
 import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
+import type { WindowCloseResolution } from "../ipc/api-types";
 
 interface OpenWindowData {
     window?: OpenWindow;
     index: number;
     whenReady?: Promise<void>;
     ready?: () => void;
+    boardRoot?: string;
 }
 
 const windowsFileName = "openWindows.json";
@@ -22,7 +24,7 @@ class OpenWindows {
     doQuit = false;
 
     get mainWindow(): OpenWindow | undefined {
-        return this.windows.find((w) => w.window)?.window;
+        return this.windows.find((w) => !w.boardRoot && w.window)?.window;
     }
 
     send = (eventName: EventEndpoint, data: unknown) => {
@@ -32,8 +34,7 @@ class OpenWindows {
     };
 
     createWindow = (index?: number, dropPosition?: { x: number; y: number }): OpenWindowData => {
-        const wIndex =
-            index ?? Math.max(-1, ...this.windows.map((w) => w.index)) + 1;
+        const wIndex = index ?? this.nextWindowIndex();
         const newWindow = new OpenWindow(dropPosition);
         newWindow.index = wIndex;
         newWindow.onClose = this.windowOnClose;
@@ -54,9 +55,39 @@ class OpenWindows {
         return windowData;
     };
 
+    private nextWindowIndex = (): number => Math.max(-1, ...this.windows.map((w) => w.index)) + 1;
+
+    ensureNormalWindow = (): OpenWindow => {
+        const existing = this.mainWindow;
+        if (existing) return existing;
+        const saved = this.windows.find((record) => !record.boardRoot && !record.window);
+        return this.createWindow(saved?.index).window;
+    };
+
+    openBoardWindow = (root: string): OpenWindow => {
+        const identity = path.normalize(path.resolve(root)).toLowerCase();
+        const existing = this.windows.find((record) => record.boardRoot && path.normalize(path.resolve(record.boardRoot)).toLowerCase() === identity);
+        if (existing?.window) { existing.window.focus(); return existing.window; }
+        const data: OpenWindowData = { index: this.nextWindowIndex(), boardRoot: root };
+        const win = new OpenWindow(undefined, root);
+        win.index = data.index;
+        win.onClose = this.windowOnClose;
+        data.window = win;
+        data.whenReady = new Promise<void>((resolve) => { data.ready = () => { resolve(); data.ready = undefined; }; });
+        this.windows.push(data);
+        return win;
+    };
+
     windowOnClose = (window: OpenWindow) => {
+        const record = this.findWindowDataByOpenWindow(window);
+        if (record?.boardRoot) {
+            this.windows = this.windows.filter((item) => item !== record);
+            windowStates.deleteState(record.index);
+            this.saveState();
+            return;
+        }
         let removeWindow = false;
-        if (this.windows.length > 1) {
+        if (this.windows.filter((record) => !record.boardRoot).length > 1) {
             const wState = windowStates.getState(window.index);
             if (!wState?.pages.some((p) => p.modified || p.pinSide === "left" || p.pinSide === "right" || p.pinned)) {
                 removeWindow = true;
@@ -76,6 +107,8 @@ class OpenWindows {
         }
     };
 
+    private findWindowDataByOpenWindow = (openWindow: OpenWindow): OpenWindowData | undefined => this.windows.find((w) => w.window === openWindow);
+
     findWindowDataByWindow = (
         openWindow: BrowserWindow
     ): OpenWindowData | undefined => {
@@ -84,6 +117,22 @@ class OpenWindows {
 
     findByWindow = (browserWindow: BrowserWindow): OpenWindow | undefined => {
         return this.findWindowDataByWindow(browserWindow)?.window;
+    };
+
+    allWindowData = (): OpenWindowData[] => [...this.windows];
+    findWindowDataByIndex = (index: number): OpenWindowData | undefined => this.windows.find((record) => record.index === index);
+
+    resolveWindowClose = (browserWindow: BrowserWindow | undefined, result: WindowCloseResolution): void => {
+        const data = this.findWindowDataByWindow(browserWindow);
+        const win = data?.window;
+        if (!win) return;
+        // Both keep the window: "prompting" waits for the user's answer, "cancel" is that answer.
+        if (result.outcome === "prompting" || result.outcome === "cancel") {
+            if (win.quitTimeout) clearTimeout(win.quitTimeout);
+            win.quitTimeout = null;
+            return;
+        }
+        this.setCanQuit(browserWindow, data.boardRoot ? true : result.canQuit);
     };
 
     /**
@@ -107,7 +156,8 @@ class OpenWindows {
     ) => {
         const openWindowData = this.findWindowDataByWindow(browserWindow);
         const openWindow = openWindowData?.window;
-        const isLastWindow = !this.windows.some(w => w !== openWindowData && w.window);
+        if (openWindowData?.boardRoot) { openWindow?.close(); return; }
+        const isLastWindow = !this.windows.some(w => w !== openWindowData && !w.boardRoot && w.window);
         if (isLastWindow && !this.doQuit && !canQuit) {
             if (openWindow.quitTimeout) {
                 clearTimeout(openWindow.quitTimeout);
@@ -122,27 +172,21 @@ class OpenWindows {
     };
 
     handleOpenFile = (filePath: string) => {
-        const mainWin = this.mainWindow;
-        if (mainWin) {
-            mainWin.send(EventEndpoint.eOpenFile, filePath);
-            mainWin.focus();
-        }
+        const mainWin = this.ensureNormalWindow();
+        mainWin.send(EventEndpoint.eOpenFile, filePath);
+        mainWin.focus();
     };
 
     handleOpenDiff = (firstPath: string, secondPath: string) => {
-        const mainWin = this.mainWindow;
-        if (mainWin) {
-            mainWin.send(EventEndpoint.eOpenDiff, { firstPath, secondPath });
-            mainWin.focus();
-        }
+        const mainWin = this.ensureNormalWindow();
+        mainWin.send(EventEndpoint.eOpenDiff, { firstPath, secondPath });
+        mainWin.focus();
     }
 
     handleOpenUrl = (url: string) => {
-        const mainWin = this.mainWindow;
-        if (mainWin) {
-            mainWin.send(EventEndpoint.eOpenExternalUrl, url);
-            mainWin.focus();
-        }
+        const mainWin = this.ensureNormalWindow();
+        mainWin.send(EventEndpoint.eOpenExternalUrl, url);
+        mainWin.focus();
     }
 
     handleLaunchInput = (input: LaunchInput) => {
@@ -156,11 +200,23 @@ class OpenWindows {
             case "diff":
                 this.handleOpenDiff(input.firstPath, input.secondPath);
                 break;
+            case "board":
+                this.openBoardWindow(input.path);
+                break;
         }
     };
 
+    dispatchNormalInputs = async (inputs: LaunchInput[]): Promise<void> => {
+        const normalInputs = inputs.filter((input) => input.kind !== "board");
+        if (!normalInputs.length) return;
+        const normalWindow = this.ensureNormalWindow();
+        const data = this.findWindowDataByOpenWindow(normalWindow);
+        if (data?.whenReady) await data.whenReady;
+        normalInputs.forEach((input) => this.handleLaunchInput(input));
+    };
+
     private saveState = (): void => {
-        const state: OpenWindowData[] = this.windows.map((w) => ({
+        const state: OpenWindowData[] = this.windows.filter((w) => !w.boardRoot).map((w) => ({
             index: w.index,
         }));
         const dataFolder = getDataFolder();
@@ -187,7 +243,7 @@ class OpenWindows {
         }
     };
 
-    restoreState = (): void => {
+    restoreState = (constructNormalWindow = true): void => {
         let windows = this.loadState();
         if (!Array.isArray(windows) || windows.some(w => !(typeof w.index === "number"))) {
             windows = [];
@@ -197,7 +253,7 @@ class OpenWindows {
             windows[0].index = 0;
         }
         this.windows = windows;
-        this.createWindow(this.windows[0]?.index);
+        if (constructNormalWindow) this.ensureNormalWindow();
     };
 
     getWindowPages = (): WindowPages[] => {
@@ -214,16 +270,15 @@ class OpenWindows {
         windowIndex: number,
         pageId: string
     ): Promise<void> => {
-        const openWindowData = this.windows.find(
-            (w) => w.index === windowIndex
-        );
+        const openWindowData = this.findWindowDataByIndex(windowIndex);
 
         if (!openWindowData) {
             return;
         }
 
         if (!openWindowData.window) {
-            this.createWindow(windowIndex);
+            if (openWindowData.boardRoot) this.openBoardWindow(openWindowData.boardRoot);
+            else this.createWindow(windowIndex);
         } else {
             openWindowData.window.focus();
         }
@@ -241,16 +296,12 @@ class OpenWindows {
         targetPageId?: string,
         dropPosition?: { x: number; y: number },
     ): Promise<void> => {
-        const sourceWindow = this.windows.find(
-            (w) => w.index === sourceWindowIndex
-        );
+        const sourceWindow = this.findWindowDataByIndex(sourceWindowIndex);
         if (!sourceWindow) { return;}
 
         sourceWindow.window?.send(EventEndpoint.eMovePageOut, page.id);
 
-        let targetWindow = this.windows.find(
-            (w) => w.index === targetWindowIndex
-        );
+        let targetWindow = targetWindowIndex === undefined ? undefined : this.findWindowDataByIndex(targetWindowIndex);
 
         if (!targetWindow) {
             targetWindow = this.createWindow(targetWindowIndex, dropPosition);
@@ -275,23 +326,23 @@ class OpenWindows {
     }
 
     hideWindows = (): void => {
-        this.windows.forEach((w) => {
+        this.windows.filter((w) => !w.boardRoot).forEach((w) => {
             w.window?.window.hide();
         });
     }
 
     showWindows = (): void => {
-        this.windows.forEach((w) => {
+        this.windows.filter((w) => !w.boardRoot).forEach((w) => {
             w.window?.window.show();
         });
     }
 
     anyVisible = (): boolean => {
-        return this.windows.some((w) => w.window?.window.isVisible());
+        return this.windows.some((w) => !w.boardRoot && w.window?.window.isVisible());
     };
 
     activateSomeWindow = (): void => {
-        const activeWindow = this.windows.find((w) => w.window?.window);
+        const activeWindow = this.windows.find((w) => !w.boardRoot && w.window?.window);
         activeWindow?.window?.focus();
     }
 
@@ -305,6 +356,7 @@ class OpenWindows {
     }
 
     bringToFront = (): void => {
+        if (!this.mainWindow) this.ensureNormalWindow();
         this.makeVisible();
         this.activateSomeWindow();
     }

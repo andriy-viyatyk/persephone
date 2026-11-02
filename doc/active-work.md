@@ -8,7 +8,11 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-136** — [Boards as standalone apps](epics/EPIC-136.md)
+  - [ ] [US-1749: Board-mode window: `--board` launch, routing, lifetime, bounds](tasks/US-1749-board-mode-window/README.md)
+  - [ ] US-1750: Board-mode chrome: title bar, locked board tab, tab bar on demand
+  - [ ] US-1751: Create a Windows shortcut for a board
+  - [ ] US-1752: `persephone-board://` links from outside Persephone (trusted boards only) — optional
 
 ## Planned
 

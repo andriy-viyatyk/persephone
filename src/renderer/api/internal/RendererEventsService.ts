@@ -2,7 +2,7 @@ import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { pagesModel } from "../pages";
 import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
-import { signalReadyToQuit } from "../window";
+import { appWindow, signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
 import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
@@ -128,6 +128,25 @@ export class RendererEventsService {
     };
 
     private handleBeforeQuit = async () => {
+        if (appWindow.isBoardMode) {
+            const pages = pagesModel.state.get().pages.filter((page) => page.pinSide !== "right");
+            // A save prompt waits for the user; without this, main's 2-second unresponsive-renderer
+            // timer destroys the window while the dialog is still open.
+            if (pages.some((page) => page.needsReleaseConfirmation)) appWindow.resolveWindowClose("prompting");
+            for (const page of pages) {
+                if (!(await page.confirmRelease())) {
+                    appWindow.resolveWindowClose("cancel");
+                    return;
+                }
+            }
+            try {
+                await saveWindowStateForShutdown();
+            } catch (err) {
+                console.error("Failed to prepare board window close:", errMessage(err));
+            }
+            appWindow.resolveWindowClose("close");
+            return;
+        }
         try {
             await saveWindowStateForShutdown();
         } catch (err) {

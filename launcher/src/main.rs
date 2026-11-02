@@ -139,9 +139,12 @@ fn main() {
 
     // Detect "diff" mode: persephone-launcher.exe diff <file1> <file2>
     let is_diff = raw_args[0].eq_ignore_ascii_case("diff") && raw_args.len() >= 3;
+    let is_board = raw_args[0] == "--board" && raw_args.len() >= 2;
 
     // Build the pipe message
-    let message = if is_diff {
+    let message = if is_board {
+        format!("BOARD {}\nEND\n", resolve_arg(&raw_args[1]))
+    } else if is_diff {
         let first = resolve_arg(&raw_args[1]);
         let second = resolve_arg(&raw_args[2]);
         format!("DIFF {}\t{}\nEND\n", first, second)
@@ -164,7 +167,9 @@ fn main() {
     }
 
     // Pipe not available — spawn Electron with the resolved arguments
-    if is_diff {
+    if is_board {
+        spawn_electron(&["--board".to_string(), resolve_arg(&raw_args[1])]);
+    } else if is_diff {
         let first = resolve_arg(&raw_args[1]);
         let second = resolve_arg(&raw_args[2]);
         spawn_electron(&["diff".to_string(), first, second]);

@@ -46,6 +46,7 @@ export enum Endpoint {
     restoreWindow = "restoreWindow",
     closeWindow = "closeWindow",
     setCanQuit = "setCanQuit",
+    resolveWindowClose = "resolveWindowClose",
     showOpenFileDialog = "showOpenFileDialog",
     showSaveFileDialog = "showSaveFileDialog",
     showOpenFolderDialog = "showOpenFolderDialog",
@@ -260,6 +261,10 @@ export interface MnemeStatus {
     error?: string;
 }
 
+/** `prompting`: the renderer is asking the user about unsaved pages, so main stops its unresponsive-renderer
+ *  close timer until a `cancel` or `close` answer arrives. */
+export type WindowCloseResolution = { outcome: "prompting" } | { outcome: "cancel" } | { outcome: "close"; canQuit: boolean };
+
 export type Api = {
     [Endpoint.getAppRootPath]: () => Promise<string>;
     [Endpoint.getAssetsPath]: (fileName: string) => Promise<string>;
@@ -276,6 +281,7 @@ export type Api = {
     [Endpoint.restoreWindow]: () => Promise<void>;
     [Endpoint.closeWindow]: () => Promise<void>;
     [Endpoint.setCanQuit]: (canQuit: boolean) => Promise<void>;
+    [Endpoint.resolveWindowClose]: (result: WindowCloseResolution) => Promise<void>;
     [Endpoint.showOpenFileDialog]: (
         params: OpenFileDialogParams
     ) => Promise<string[] | undefined>;

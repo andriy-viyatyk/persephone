@@ -17,6 +17,8 @@ import type { TextFileModel } from "../text/TextEditorModel";
 import { spacing } from "../../uikit/tokens";
 import { BoardStatusBarItems } from "./BoardStatusBarItems";
 import { t } from "../../../shared/i18n/t";
+import { appWindow } from "../../api/window";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -172,6 +174,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
     private readonly swap: SubtreeSwap<string>;
     private activeBranch: BranchView | undefined;
     private activeBranchKey: string | undefined;
+    private trustPromptRoot: string | undefined;
 
     public constructor(props: BoardEditorViewProps) {
         if (!(props.model instanceof BoardEditorModel)) {
@@ -215,6 +218,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
 
         if (this.activeBranchKey === key && this.activeBranch) {
             this.updateActiveBranch(selectedRoot, state.contentHostError);
+            if (key === "untrusted" && selectedRoot) this.requestBoardModeTrust(selectedRoot);
             return;
         }
 
@@ -229,6 +233,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
             });
             if (!this.activeBranch) return;
             this.activeBranch.mount();
+            if (key === "untrusted" && selectedRoot) this.requestBoardModeTrust(selectedRoot);
         } catch (mountError) {
             this.activeBranch = undefined;
             this.activeBranchKey = undefined;
@@ -291,5 +296,18 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
 
     private async trustBoard(boardRoot: string): Promise<void> {
         await requestBoardTrust(boardRoot);
+    }
+
+    private requestBoardModeTrust(boardRoot: string): void {
+        // Only the board this window was launched for: declining closes the whole window,
+        // so another untrusted board opened inside it keeps the ordinary Trust button.
+        if (!appWindow.isBoardMode || !appWindow.boardRoot) return;
+        const identity = fpNormalizeForCompare(boardRoot);
+        if (identity !== fpNormalizeForCompare(appWindow.boardRoot)) return;
+        if (this.trustPromptRoot === identity) return;
+        this.trustPromptRoot = identity;
+        void requestBoardTrust(boardRoot).then((trusted) => {
+            if (!trusted && !this.isDisposed) appWindow.close();
+        });
     }
 }

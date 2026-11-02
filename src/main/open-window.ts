@@ -1,5 +1,6 @@
 import { app, BrowserWindow, clipboard, screen, type WebContents } from "electron";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { EventEndpoint } from "../ipc/api-types";
@@ -9,6 +10,7 @@ import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
 import { appPartition } from "./constants";
 import { getBoardRootForHost } from "./board-protocol-service";
+import { getLauncherPath } from "./browser-registration";
 
 interface WindowState {
     width: number;
@@ -61,8 +63,12 @@ export class OpenWindow {
     private voiceTypingSession: { id: string; target: WebContents } | undefined;
     private voiceTypingControlSession: { id: string; target: WebContents; mode: VoiceTypingMode } | undefined;
 
-    constructor(position?: { x: number; y: number }) {
-        let windowState: WindowState = electronStore.get("windowState", {
+    boardRoot?: string;
+
+    constructor(position?: { x: number; y: number }, boardRoot?: string) {
+        this.boardRoot = boardRoot;
+        const boardKey = boardRoot ? `boardWindowState.${createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex")}` : "windowState";
+        let windowState: WindowState = electronStore.get(boardKey, {
             width: 1024,
             height: 680,
             x: undefined as number | undefined,
@@ -92,6 +98,7 @@ export class OpenWindow {
                 additionalArguments: [
                     `--persephone-preferred-languages=${JSON.stringify(app.getPreferredSystemLanguages())}`,
                     `--persephone-languages-dir=${getAssetPath("languages")}`,
+                    ...(boardRoot ? [`--persephone-board-root=${encodeURIComponent(boardRoot)}`] : []),
                 ],
                 // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
                 // Chromium fetch — favicon cache, Image editor, the in-app MCP client (which must send no Origin:
@@ -105,6 +112,16 @@ export class OpenWindow {
                 spellcheck: false,
             },
         });
+
+        if (boardRoot) {
+            const displayName = path.basename(boardRoot);
+            const identity = path.normalize(path.resolve(boardRoot)).toLowerCase();
+            this.window.setAppDetails({
+                appId: `Persephone.Board.${createHash("sha256").update(identity).digest("hex")}`,
+                relaunchCommand: `"${getLauncherPath()}" --board "${boardRoot}"`,
+                relaunchDisplayName: displayName,
+            });
+        }
 
         this.window.once("ready-to-show", () => {
             this.window?.setSize(windowState.width, windowState.height);
@@ -344,7 +361,7 @@ export class OpenWindow {
         if (this.window && !this.window.isMaximized() && !this.window.isFullScreen()) {
             const bounds = this.window?.getBounds();
             if (bounds) {
-                electronStore.set("windowState", {
+                electronStore.set(this.boardRoot ? `boardWindowState.${createHash("sha256").update(path.normalize(path.resolve(this.boardRoot)).toLowerCase()).digest("hex")}` : "windowState", {
                     width: bounds.width,
                     height: bounds.height,
                     x: bounds.x,
