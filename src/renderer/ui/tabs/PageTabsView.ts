@@ -25,6 +25,7 @@ import { PageTabView } from "./PageTabView";
 import type { PageModel } from "../../api/pages/PageModel";
 import "./PageTabs.css";
 import { EditorCategoriesPopoverView } from "./EditorCategoriesPopoverView";
+import { appWindow } from "../../api/window";
 
 interface TabProjection {
     pages: PageModel[];
@@ -157,6 +158,11 @@ export class PageTabsView extends VanillaView<object> {
 
     private updateTabs(projection: TabProjection): void {
         const mainPages = projection.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
+        const rightPageCount = projection.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
+        if (appWindow.isBoardMode) {
+            mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
+            this.root.toggleAttribute("data-board-tabs-hidden", mainPages.length <= 1 && rightPageCount === 0);
+        }
         this.currentPages = mainPages;
         this.syncPageLayoutSubscriptions(mainPages);
         this.tabs.update(mainPages);
@@ -167,6 +173,11 @@ export class PageTabsView extends VanillaView<object> {
     private refreshTabLayout(): void {
         const state = pagesModel.state.get();
         const mainPages = state.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
+        const rightPageCount = state.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
+        if (appWindow.isBoardMode) {
+            mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
+            this.root.toggleAttribute("data-board-tabs-hidden", mainPages.length <= 1 && rightPageCount === 0);
+        }
         this.currentPages = mainPages;
         this.syncPageLayoutSubscriptions(mainPages);
         this.tabs.update(mainPages);
@@ -213,6 +224,10 @@ export class PageTabsView extends VanillaView<object> {
         let left = 0;
         for (const candidate of pages) {
             if (candidate === page) break;
+            if (candidate.isLockedBoardPage) {
+                left += 208;
+                continue;
+            }
             if (!candidate.pinned) continue;
             const editor = candidate.mainEditor;
             const encrypted = Boolean(

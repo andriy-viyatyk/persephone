@@ -195,7 +195,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         }));
         this.bind(
             this.props.model.state,
-            (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId }),
+            (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
             () => {
                 this.syncEditorSubscription();
                 this.syncWorkingSubscription();
@@ -309,6 +309,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private updateView(): void {
         const page = this.props.model;
+        const lockedBoard = page.isLockedBoardPage;
         this.root.dataset.pageId = page.id;
         this.root.dataset.mode = this.props.mode;
         const pinned = page.pinned;
@@ -319,6 +320,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const editor = this.currentEditor ?? page.mainEditor;
 
         setPresence(this.root, "data-active", this.isActive);
+        setPresence(this.root, "data-locked-board", lockedBoard);
         setPresence(this.root, "data-modified", this.projection.modified);
         setPresence(this.root, "data-temp", this.projection.temp);
         setPresence(this.root, "data-deleted", this.projection.deleted);
@@ -326,6 +328,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         setPresence(this.root, "data-grouped", this.isGrouped);
         setPresence(this.root, "data-has-encryption", hasEncryption);
         setPresence(this.root, "data-popover-open", this.props.mode === "right" && this.isPopoverOpen);
+        this.root.draggable = !lockedBoard;
         if (this.props.mode === "main" && page.pinSide === "left" && this.props.pinnedLeft !== undefined) this.root.style.left = `${this.props.pinnedLeft}px`;
         else this.root.style.removeProperty("left");
 
@@ -351,6 +354,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             ...{"data-part": "close-button"},
             onClick: () => this.closeClick(),
         });
+        this.closeButton.root.hidden = lockedBoard;
         this.updateIcons();
         this.updateCloseIcon();
     }
@@ -559,6 +563,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const isRight = this.props.mode === "right";
         const isLeftPinned = page.pinSide === "left";
         const menuItems: MenuItem[] = [];
+        if (page.isLockedBoardPage) {
+            const editorItems = editorInstance?.onGetMenuItems() ?? [];
+            ctxEvent.items.push(...editorItems);
+            return;
+        }
         if (isRight || isLeftPinned) {
             menuItems.push({
                 label: t("shell.unpin"),
@@ -637,12 +646,16 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private handleDragStart(event: DragEvent): void {
         const page = this.props.model;
+        if (page.isLockedBoardPage) {
+            event.preventDefault();
+            return;
+        }
         setTraitDragData(event.dataTransfer, TraitTypeId.PageTab, { key: page.id });
         if (page.pinSide !== "right") event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
     }
 
     private handleDragEnd(event: DragEvent): void {
-        if (this.props.model.pinSide === "right" || this.props.model.pinned) return;
+        if (this.props.model.isLockedBoardPage || this.props.model.pinSide === "right" || this.props.model.pinned) return;
         const droppedOutside = event.clientX < 0
             || event.clientX > window.innerWidth
             || event.clientY < 0
@@ -674,6 +687,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
+        if (pagesModel.query.findPage(sourceId)?.isLockedBoardPage) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
         if (sourceId !== targetId && (this.props.mode !== "right" || pagesModel.query.isRightPinned(sourceId))) {
             pagesModel.moveTab(sourceId, targetId);
         }
@@ -705,6 +723,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private closeClick(): void {
         const page = this.props.model;
+        if (page.isLockedBoardPage) return;
         if (this.isGrouped) {
             pagesModel.ungroup(page.id);
             pagesModel.showPage(page.id);

@@ -72,6 +72,13 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return setUiPreference(key, value);
     }
 
+    setBoardWindowIdentity = async (event: IpcMainEvent, request: { displayName: string; iconDataUrl: string }): Promise<void> => {
+        const browserWindow = BrowserWindow.fromWebContents(event.sender);
+        const boardWindow = browserWindow ? openWindows.findByWindow(browserWindow) : undefined;
+        if (!boardWindow?.boardRoot) throw new Error("Board identity updates are only available to registered board windows.");
+        await boardWindow.updateBoardIdentity(request?.displayName, request?.iconDataUrl);
+    }
+
     maximizeWindow = async (event: IpcMainEvent): Promise<void> => {
         const window = BrowserWindow.fromWebContents(event.sender);
         window?.maximize();
@@ -486,6 +493,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.reloadAllWindows, controllerInstance.reloadAllWindows);
     bindEndpoint(Endpoint.getUiPreferences, controllerInstance.getUiPreferences);
     bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
+    bindEndpoint(Endpoint.setBoardWindowIdentity, controllerInstance.setBoardWindowIdentity);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);
     bindEndpoint(Endpoint.minimizeWindow, controllerInstance.minimizeWindow);
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);

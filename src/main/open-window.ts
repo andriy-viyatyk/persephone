@@ -1,5 +1,6 @@
-import { app, BrowserWindow, clipboard, screen, type WebContents } from "electron";
+import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
@@ -25,6 +26,30 @@ type VoiceTypingSource = "app" | { kind: "guest"; webContentsId: number };
 
 function inputMatchesShortcut(input: Electron.Input, shortcut: string): boolean {
     return voiceTypingShortcutForInput(input) === shortcut;
+}
+
+function boardIdentityHash(boardRoot: string): string {
+    return createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex");
+}
+
+export function boardWindowIconPath(boardRoot: string): string {
+    return path.join(app.getPath("userData"), "board-icons", `${boardIdentityHash(boardRoot)}.ico`);
+}
+
+function pngBackedIco(png: Buffer): Buffer {
+    const header = Buffer.alloc(22);
+    header.writeUInt16LE(0, 0);
+    header.writeUInt16LE(1, 2);
+    header.writeUInt16LE(1, 4);
+    header.writeUInt8(0, 6);
+    header.writeUInt8(0, 7);
+    header.writeUInt8(0, 8);
+    header.writeUInt8(0, 9);
+    header.writeUInt16LE(1, 10);
+    header.writeUInt16LE(32, 12);
+    header.writeUInt32LE(png.length, 14);
+    header.writeUInt32LE(22, 18);
+    return Buffer.concat([header, png]);
 }
 
 function withDeadline<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
@@ -64,6 +89,32 @@ export class OpenWindow {
     private voiceTypingControlSession: { id: string; target: WebContents; mode: VoiceTypingMode } | undefined;
 
     boardRoot?: string;
+
+    get boardIconPath(): string | undefined {
+        return this.boardRoot ? boardWindowIconPath(this.boardRoot) : undefined;
+    }
+
+    async updateBoardIdentity(displayName: string, iconDataUrl: string): Promise<void> {
+        if (!this.boardRoot) throw new Error("Board identity updates require a board-mode window.");
+        if (typeof displayName !== "string" || !displayName.trim() || displayName.length > 256) {
+            throw new Error("Invalid board display name.");
+        }
+        const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(iconDataUrl);
+        if (!match || match[1].length > 7_000_000) throw new Error("Invalid board icon data URL.");
+        const image = nativeImage.createFromDataURL(iconDataUrl);
+        const size = image.getSize();
+        if (image.isEmpty() || size.width !== 256 || size.height !== 256) throw new Error("Board icons must be 256x256 PNG images.");
+        this.window.setIcon(image);
+        const iconPath = boardWindowIconPath(this.boardRoot);
+        await fs.mkdir(path.dirname(iconPath), { recursive: true });
+        await fs.writeFile(iconPath, pngBackedIco(image.toPNG()));
+        this.window.setAppDetails({
+            appId: `Persephone.Board.${boardIdentityHash(this.boardRoot)}`,
+            relaunchCommand: `"${getLauncherPath()}" --board "${this.boardRoot}"`,
+            relaunchDisplayName: displayName.trim(),
+            appIconPath: iconPath,
+        });
+    }
 
     constructor(position?: { x: number; y: number }, boardRoot?: string) {
         this.boardRoot = boardRoot;
@@ -115,9 +166,8 @@ export class OpenWindow {
 
         if (boardRoot) {
             const displayName = path.basename(boardRoot);
-            const identity = path.normalize(path.resolve(boardRoot)).toLowerCase();
             this.window.setAppDetails({
-                appId: `Persephone.Board.${createHash("sha256").update(identity).digest("hex")}`,
+                appId: `Persephone.Board.${boardIdentityHash(boardRoot)}`,
                 relaunchCommand: `"${getLauncherPath()}" --board "${boardRoot}"`,
                 relaunchDisplayName: displayName,
             });

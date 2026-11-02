@@ -994,7 +994,7 @@ export class PagesLifecycleModel {
             if (pages[i].id === pageId) {
                 break;
             }
-            if (pages[i].pinSide === undefined) {
+            if (!pages[i].isLockedBoardPage && pages[i].pinSide === undefined) {
                 pagesToClose.push(pages[i]);
             }
         }
@@ -1010,7 +1010,7 @@ export class PagesLifecycleModel {
         const { pages } = this.model.state.get();
         const pagesToClose = [];
         for (let i = pages.length - 1; i >= 0; i--) {
-            if (pages[i].id !== pageId && pages[i].pinSide === undefined) {
+            if (pages[i].id !== pageId && !pages[i].isLockedBoardPage && pages[i].pinSide === undefined) {
                 pagesToClose.push(pages[i]);
             }
         }
@@ -1041,9 +1041,10 @@ export class PagesLifecycleModel {
         const page = await this.model.persistence.restorePage(data.page);
         if (!page) return;
 
-        const targetIndex = data.targetPageId
+        let targetIndex = data.targetPageId
             ? this.model.state.get().pages.findIndex((p) => p.id === data.targetPageId)
             : -1;
+        if (targetIndex >= 0 && this.model.state.get().pages[targetIndex]?.isLockedBoardPage) targetIndex++;
 
         if (targetIndex === -1) {
             this.addPage(page.mainEditorInstance, page);
@@ -1066,6 +1067,7 @@ export class PagesLifecycleModel {
     movePageOut = async (pageId?: string) => {
         const page = this.model.query.findPage(pageId);
         if (!page) return;
+        if (page.isLockedBoardPage) return;
         if (this.model.popoverPageId === page.id) this.model.closePopover();
         if (this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be moved between windows.");

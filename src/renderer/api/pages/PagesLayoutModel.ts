@@ -4,10 +4,18 @@ import type { PageModel } from "./PageModel";
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
 
+    markLockedBoardPage = (page: PageModel, boardRoot: string): void => {
+        page.setLockedBoardRoot(boardRoot);
+        this.model.state.update((state) => {
+            state.pages = this.sortByPinSide(state.pages);
+        });
+    };
+
     moveTab = (fromId: string, toId: string) => {
         const { pages } = this.model.state.get();
         const fromIndex = pages.findIndex((p) => p.id === fromId);
-        const toIndex = pages.findIndex((p) => p.id === toId);
+        let toIndex = pages.findIndex((p) => p.id === toId);
+        if (pages[toIndex]?.isLockedBoardPage && fromIndex !== toIndex) toIndex++;
         this.moveTabByIndex(fromIndex, toIndex);
     };
 
@@ -15,26 +23,33 @@ export class PagesLayoutModel {
         if (fromIndex === -1 || toIndex === -1) return;
         const { pages } = this.model.state.get();
         if (!pages[fromIndex] || !pages[toIndex]) return;
-        if (this.zone(pages[fromIndex].pinSide) !== this.zone(pages[toIndex].pinSide)) return;
+        const movedPage = pages[fromIndex];
+        const lockedIndex = pages.findIndex((page) => page.isLockedBoardPage);
+        if (movedPage.isLockedBoardPage || (lockedIndex >= 0 && toIndex <= lockedIndex && fromIndex !== lockedIndex)) return;
+        if (this.zone(pages[fromIndex]) !== this.zone(pages[toIndex])) return;
         const newPages = [...pages];
-        const [movedPage] = newPages.splice(fromIndex, 1);
-        newPages.splice(toIndex, 0, movedPage);
+        const [moved] = newPages.splice(fromIndex, 1);
+        newPages.splice(toIndex, 0, moved);
         this.model.state.update((s) => {
             s.pages = newPages;
         });
         this.fixGrouping();
         this.model.persistence.saveStateDebounced();
-        if (movedPage.pinSide !== "right") this.model.onFocus.send(movedPage);
+        if (moved.pinSide !== "right") this.model.onFocus.send(moved);
     };
 
-    private zone = (side: "left" | "right" | undefined): number =>
-        side === "left" ? 0 : side === "right" ? 2 : 1;
+    private zone = (page: PageModel): number =>
+        page.isLockedBoardPage ? -1 : page.pinSide === "left" ? 0 : page.pinSide === "right" ? 2 : 1;
 
-    sortByPinSide = (pages: PageModel[]): PageModel[] => [
-        ...pages.filter((page) => page.pinSide === "left"),
-        ...pages.filter((page) => page.pinSide === undefined),
-        ...pages.filter((page) => page.pinSide === "right"),
-    ];
+    sortByPinSide = (pages: PageModel[]): PageModel[] => {
+        const locked = pages.filter((page) => page.isLockedBoardPage);
+        return [
+            ...locked,
+            ...pages.filter((page) => !page.isLockedBoardPage && page.pinSide === "left"),
+            ...pages.filter((page) => !page.isLockedBoardPage && page.pinSide === undefined),
+            ...pages.filter((page) => !page.isLockedBoardPage && page.pinSide === "right"),
+        ];
+    };
 
     pinTab = (pageId: string, side: "left" | "right" = "left") => this.setPinSide(pageId, side);
 
@@ -46,6 +61,7 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
+        if (page.isLockedBoardPage) return;
         if (page.pinSide === side) return;
         const wasRightPinned = this.model.query.isRightPinned(pageId);
         if (side === "right" && this.model.query.isGrouped(pageId)) this.ungroup(pageId);
@@ -56,7 +72,7 @@ export class PagesLayoutModel {
         page.pinSide = side;
         let insertionIndex: number;
         if (side === "left") {
-            insertionIndex = remainingPages.filter((candidate) => candidate.pinSide === "left").length;
+            insertionIndex = remainingPages.filter((candidate) => candidate.isLockedBoardPage || candidate.pinSide === "left").length;
         } else if (side === "right") {
             insertionIndex = remainingPages.length;
         } else {
@@ -80,6 +96,7 @@ export class PagesLayoutModel {
     };
 
     group = (leftPageId: string, rightPageId: string) => {
+        if (this.model.query.findPage(leftPageId)?.isLockedBoardPage || this.model.query.findPage(rightPageId)?.isLockedBoardPage) return;
         if (this.model.query.isRightPinned(leftPageId) || this.model.query.isRightPinned(rightPageId)) {
             throw new Error("Right-pinned pages cannot be grouped.");
         }
@@ -141,6 +158,7 @@ export class PagesLayoutModel {
         const pageId2 = this.model.query.findPage(id2)?.id ?? id2;
         const idx1 = state.pages.findIndex((p) => p.id === pageId1);
         const idx2 = state.pages.findIndex((p) => p.id === pageId2);
+        if (state.pages[idx1]?.isLockedBoardPage || state.pages[idx2]?.isLockedBoardPage) return;
         if (this.model.query.isRightPinned(pageId1) || this.model.query.isRightPinned(pageId2)) {
             throw new Error("Right-pinned pages cannot be grouped.");
         }

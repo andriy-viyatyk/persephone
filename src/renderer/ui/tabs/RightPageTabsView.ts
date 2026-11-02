@@ -5,6 +5,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { PageModel } from "../../api/pages/PageModel";
 import { PageTabView } from "./PageTabView";
 import "./PageTabs.css";
+import { appWindow } from "../../api/window";
 
 export class RightPageTabsView extends VanillaView<object> {
     private readonly tabViews = new WeakMap<HTMLElement, PageTabView>();
@@ -31,7 +32,12 @@ export class RightPageTabsView extends VanillaView<object> {
         this.bind(
             pagesModel.state,
             (state) => state.pages,
-            (pages) => this.tabs.update(pages.filter((page) => pagesModel.query.isRightPinned(page.id))),
+            (pages) => {
+                const rightPages = pages.filter((page) => pagesModel.query.isRightPinned(page.id));
+                const mainCount = pages.length - rightPages.length;
+                if (appWindow.isBoardMode) this.root.toggleAttribute("data-board-tabs-hidden", mainCount <= 1 && rightPages.length === 0);
+                this.tabs.update(rightPages);
+            },
         );
     }
 

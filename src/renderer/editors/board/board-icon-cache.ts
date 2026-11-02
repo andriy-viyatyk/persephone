@@ -17,14 +17,14 @@ const cache = new Map<string, string>();
 // boardRoot → in-flight probe, so concurrent callers share one filesystem walk.
 const pending = new Map<string, Promise<string | null>>();
 // Components subscribed to "any board icon (re)resolved" — re-render on change.
-const listeners = new Set<() => void>();
+const listeners = new Set<(boardRoot: string) => void>();
 
 // Probe order — SVG first (crispest at every size), then PNG, then ICO.
 const ICON_FILES = ["icon.svg", "icon.png", "icon.ico"];
 
-function notify() {
+function notify(boardRoot: string) {
     for (const cb of listeners) {
-        try { cb(); } catch { /* ignore */ }
+        try { cb(boardRoot); } catch { /* ignore */ }
     }
 }
 
@@ -52,7 +52,7 @@ export async function resolveBoardIcon(boardRoot: string): Promise<string | null
         }
         cache.set(boardRoot, found);
         pending.delete(boardRoot);
-        notify();
+        notify(boardRoot);
         return found || null;
     })();
     pending.set(boardRoot, probe);
@@ -65,12 +65,12 @@ export function invalidateBoardIcon(boardRoot: string): void {
     if (!boardRoot) return;
     cache.delete(boardRoot);
     pending.delete(boardRoot);
-    notify();
+    notify(boardRoot);
     void resolveBoardIcon(boardRoot);
 }
 
 /** Subscribe DOM-owning consumers to board icon probe/invalidation notifications. */
-export function subscribeBoardIconChanges(callback: () => void): () => void {
+export function subscribeBoardIconChanges(callback: (boardRoot: string) => void): () => void {
     listeners.add(callback);
     return () => listeners.delete(callback);
 }

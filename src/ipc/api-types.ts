@@ -41,6 +41,7 @@ export enum Endpoint {
     reloadAllWindows = "reloadAllWindows",
     getUiPreferences = "getUiPreferences",
     setUiPreference = "setUiPreference",
+    setBoardWindowIdentity = "setBoardWindowIdentity",
     maximizeWindow = "maximizeWindow",
     minimizeWindow = "minimizeWindow",
     restoreWindow = "restoreWindow",
@@ -276,6 +277,7 @@ export type Api = {
         key: string,
         value: string | number | boolean,
     ) => Promise<string | number | boolean>;
+    [Endpoint.setBoardWindowIdentity]: (request: { displayName: string; iconDataUrl: string }) => Promise<void>;
     [Endpoint.maximizeWindow]: () => Promise<void>;
     [Endpoint.minimizeWindow]: () => Promise<void>;
     [Endpoint.restoreWindow]: () => Promise<void>;

@@ -261,6 +261,20 @@ export class PageModel implements IPageHost {
         return this.getTransient<BoardRunPageOwner>("boardRunOwner");
     }
 
+    setLockedBoardRoot(root: string): void {
+        this.setTransient("lockedBoardRoot", root);
+        this.pinSide = undefined;
+        this.state.update((state) => { state.version++; });
+    }
+
+    get lockedBoardRoot(): string | undefined {
+        return this.getTransient<string>("lockedBoardRoot");
+    }
+
+    get isLockedBoardPage(): boolean {
+        return this.lockedBoardRoot !== undefined;
+    }
+
     // ── Markdown back-navigation history ────────────────────────────────
 
     /** Back-navigation stack for the Markdown view — see NavBackStack. Owned
@@ -357,6 +371,7 @@ export class PageModel implements IPageHost {
     }
 
     set pinSide(value: PagePinSide) {
+        if (this.isLockedBoardPage && value !== undefined) return;
         this.state.update((s) => { s.pinSide = value; });
     }
 
@@ -873,6 +888,7 @@ export class PageModel implements IPageHost {
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
+        if (this.isLockedBoardPage) return false;
         if (this.pinSide === "right") return false;
         if (this.isRestoring) {
             this.cancelRestore();

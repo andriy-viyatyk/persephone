@@ -120,6 +120,10 @@ class ApiCalls implements Api {
         return executeOnce<string | number | boolean>(Endpoint.setUiPreference, key, value);
     };
 
+    setBoardWindowIdentity = async (request: { displayName: string; iconDataUrl: string }) => {
+        return executeOnce<void>(Endpoint.setBoardWindowIdentity, request);
+    };
+
     maximizeWindow = async () => {
         return executeOnce<void>(Endpoint.maximizeWindow);
     };

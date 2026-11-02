@@ -76,8 +76,8 @@ the board.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1749](../tasks/US-1749-board-mode-window/README.md) | Board-mode window: `--board` launch, routing, lifetime, bounds | Planned |
-| US-1750 | Board-mode chrome: title bar, locked board tab, tab bar on demand | Planned |
+| [US-1749](../tasks/US-1749-board-mode-window/README.md) | Board-mode window: `--board` launch, routing, lifetime, bounds | Done |
+| [US-1750](../tasks/US-1750-board-mode-chrome/README.md) | Board-mode chrome: title bar, locked board tab, tab bar on demand | Done |
 | US-1751 | Create a Windows shortcut for a board | Planned |
 | US-1752 | `persephone-board://` links from outside Persephone (trusted boards only) | Planned (optional) |
 
@@ -113,8 +113,8 @@ Order: US-1749 → US-1750 → US-1751 → US-1752.
   - The shortcut's `appUserModelId` must equal the board window's `setAppDetails` `appId`
     (same derivation from the board root). Otherwise a pinned shortcut and its running window
     show as two separate taskbar buttons.
-  - The board icon converted to `.ico`; decide where the `.ico` lives so the shortcut keeps
-    working.
+  - Reuse the stable per-board `.ico` created by US-1750 for the window/taskbar icon. US-1751
+    uses that same icon file for the shortcut so both identities remain aligned.
   - Save location: a save dialog defaulting to the board folder, with a Desktop option.
 - **US-1752:**
   - HKCU registration like `PersephoneURL` in `src/main/browser-registration.ts`.

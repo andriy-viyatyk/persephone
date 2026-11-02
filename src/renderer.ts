@@ -32,6 +32,9 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
         const { encodePersephoneBoardLink } = await import("./renderer/content/persephone-board-link");
         const { createLinkData } = await import("./shared/link-data");
         await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(appWindow.boardRoot)));
+        const { pagesModel } = await import("./renderer/api/pages");
+        const launchedBoardPage = pagesModel.query.findPageByBoardRoot(appWindow.boardRoot);
+        if (launchedBoardPage) pagesModel.layout.markLockedBoardPage(launchedBoardPage, appWindow.boardRoot);
     }
     await app.openStartupInputs();
     setTimeout(() => api.windowReady(), 0);

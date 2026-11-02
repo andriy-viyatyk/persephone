@@ -20,6 +20,8 @@
         overflow: hidden;
     }
 
+    [data-type="page-tab"][data-locked-board] [data-part="close-button"] { display: none; }
+
     [data-type="page-tab"] [data-part="title-label"] {
         flex: 1 1 auto;
         font-size: 13px;

@@ -1,6 +1,7 @@
 import { TOneState } from "../core/state/state";
 import { menuFolders, type MenuFolder } from "./menu-folders";
 import type { IMenuBar, IMenuBarFolder } from "./types/window";
+import { appWindow } from "./window";
 
 export const openTabsId = "open-tabs";
 export const recentFilesId = "recent-files";
@@ -53,6 +54,7 @@ export class MenuBarModel implements IMenuBar {
     }
 
     open = (folderId?: string): void => {
+        if (appWindow.isBoardMode) return;
         if (folderId !== undefined) {
             const folder = this.findFolder(folderId);
             if (!folder) {
@@ -80,10 +82,12 @@ export class MenuBarModel implements IMenuBar {
     };
 
     toggle = (): void => {
+        if (appWindow.isBoardMode) return;
         this.setOpen(!this.isOpen);
     };
 
     openLegacy = (panelId?: string): void => {
+        if (appWindow.isBoardMode) return;
         const folder = panelId ? this.findFolder(panelId) : undefined;
         this.state.update((state) => {
             state.isOpen = true;

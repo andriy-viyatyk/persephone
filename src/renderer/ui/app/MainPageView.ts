@@ -20,6 +20,14 @@ import { VoiceTypingOverlayView } from "../voice-typing/VoiceTypingOverlayView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
 import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
+import { appWindow } from "../../api/window";
+import { api } from "../../../ipc/renderer/api";
+import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { resolveBoardIcon, subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
+import { BoardIcon } from "../../theme/icons";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import "./MainPage.css";
 
 async function runSnip(hideWindows: boolean): Promise<void> {
@@ -53,6 +61,8 @@ export class MainPageView extends VanillaView<object> {
     private readonly autoloadWrap = document.createElement("span");
     private readonly zoomButton = document.createElement("button");
     private readonly toggleWindowButton = document.createElement("button");
+    private readonly boardIdentity = document.createElement("div");
+    private readonly dragSpacer = document.createElement("div");
     private readonly statusIndicators = document.createElement("div");
     private readonly recordingControls = document.createElement("div");
     private readonly mnemeIndicator = document.createElement("span");
@@ -122,7 +132,7 @@ export class MainPageView extends VanillaView<object> {
         this.autoloadButton.mount();
         this.bind(app.window.state, (state): MainPageState => state, (state) => this.updateIndicators(state));
         this.bind(app.window.menuBar.state, (state) => state.isOpen, (open) => {
-            this.menuBar.update({ open, onClose: this.closeMenuBar });
+            this.menuBar.update({ open: appWindow.isBoardMode ? false : open, onClose: this.closeMenuBar });
         });
         this.bind(autoloadService.state, (state) => state.needsReload, (visible) => { this.autoloadWrap.style.display = visible ? "" : "none"; });
         this.bind(
@@ -137,19 +147,50 @@ export class MainPageView extends VanillaView<object> {
 
     /** Retained so the theme binding can rebuild its glyph — see `bindMenuGlyphToTheme`. */
     private menuButton: HTMLButtonElement | undefined;
+    private minimizeButton: HTMLButtonElement | undefined;
+    private closeButton: HTMLButtonElement | undefined;
+    private boardIdentityActive = true;
+    private boardIconRevision = 0;
+    private boardIdentitySend: Promise<void> = Promise.resolve();
 
     private buildHeader(): void {
         this.header.className = "app-header";
         this.header.dataset.name = "app-header";
         this.menuButton = this.createButton("persephone-menu", "app-button", t("shell.menu"), createIconElement("persephone"), () => app.window.toggleMenuBar());
-        this.header.append(this.menuButton, this.pageTabs.root);
-        this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
-        this.header.append(this.rightPageTabs.root);
+        this.minimizeButton = this.createSystemButton("window-minimize", createIconElement("window-minimize"), t("shell.minimize"), () => app.window.minimize());
+        this.closeButton = this.createSystemButton("window-close", createIconElement("close"), t("shell.closeWindow"), () => app.window.close());
+        if (appWindow.isBoardMode) {
+            this.header.dataset.boardMode = "";
+            this.boardIdentity.className = "board-window-identity";
+            this.boardIdentity.dataset.name = "board-window-identity";
+            this.boardIdentity.append(createBoardGlyphElement(appWindow.boardRoot, 24));
+            this.dragSpacer.className = "board-header-drag-spacer";
+            this.header.append(this.boardIdentity, this.pageTabs.root, this.rightPageTabs.root,
+                this.dragSpacer, this.minimizeButton, this.toggleWindowButton, this.closeButton);
+            void this.refreshBoardIdentity();
+            this.own(onBoardDisplayTextChanged((root) => {
+                if (appWindow.boardRoot && fpNormalizeForCompare(root) === fpNormalizeForCompare(appWindow.boardRoot)) {
+                    void this.refreshBoardIdentity();
+                }
+            }));
+            this.own(subscribeBoardIconChanges((root) => {
+                if (root && appWindow.boardRoot && fpNormalizeForCompare(root) === fpNormalizeForCompare(appWindow.boardRoot)) {
+                    this.refreshBoardGlyph();
+                    void this.refreshBoardIdentity();
+                }
+            }));
+            this.own(() => { this.boardIdentityActive = false; this.boardIconRevision++; });
+        } else {
+            this.header.append(this.menuButton, this.pageTabs.root);
+            this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
+            this.header.append(this.rightPageTabs.root);
+        }
         this.autoloadWrap.className = "autoload-reload";
         this.recordingControls.className = "recording-controls";
         this.recordingControls.dataset.name = "window-recording-controls";
         this.recordingControls.hidden = true;
-        this.header.append(this.autoloadWrap, this.buildZoomButton(), this.recordingControls, this.createSystemButton("window-minimize", createIconElement("window-minimize"), t("shell.minimize"), () => app.window.minimize()), this.toggleWindowButton, this.createSystemButton("window-close", createIconElement("close"), t("shell.closeWindow"), () => app.window.close()));
+        if (!appWindow.isBoardMode) this.header.append(this.autoloadWrap, this.buildZoomButton(), this.recordingControls,
+            this.minimizeButton, this.toggleWindowButton, this.closeButton);
         this.toggleWindowButton.className = "system-button darkBackground";
         this.toggleWindowButton.type = "button";
         this.toggleWindowButton.dataset.name = "window-toggle";
@@ -163,8 +204,80 @@ export class MainPageView extends VanillaView<object> {
         this.snipButton.append(createIconElement("more-horiz", { width: 28, height: 28 }));
         this.listen(this.snipButton, "click", () => this.toggleSnipMenu());
         this.statusIndicators.append(this.snipButton, this.mnemeIndicator, this.mcpIndicator);
-        this.header.append(this.statusIndicators);
-        this.root.append(this.quickSettingsPopover.root);
+        if (!appWindow.isBoardMode) {
+            this.header.append(this.statusIndicators);
+            this.root.append(this.quickSettingsPopover.root);
+        }
+    }
+
+    private refreshBoardGlyph(): void {
+        if (!appWindow.boardRoot) return;
+        const label = this.boardIdentity.querySelector("span");
+        this.boardIdentity.replaceChildren(createBoardGlyphElement(appWindow.boardRoot, 24), ...(label ? [label] : []));
+    }
+
+    private async refreshBoardIdentity(): Promise<void> {
+        const root = appWindow.boardRoot;
+        if (!root || !this.boardIdentityActive) return;
+        const revision = ++this.boardIconRevision;
+        try {
+            const manifest = await readNormalizedBoardManifest(root);
+            if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
+            if (manifest) await ensureBoardDisplayText(root, manifest);
+            if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
+            const fallback = manifest?.name?.trim() || fpBasename(root);
+            const name = boardDisplayText(root, manifest, boardMetadataKeys.name, fallback);
+            const label = document.createElement("span");
+            label.textContent = name;
+            this.refreshBoardGlyph();
+            const glyph = this.boardIdentity.firstChild;
+            this.boardIdentity.replaceChildren(...(glyph ? [glyph, label] : [label]));
+            document.title = name;
+            const iconDataUrl = await this.renderBoardIcon(root);
+            if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
+            const identity = { displayName: name, iconDataUrl };
+            this.boardIdentitySend = this.boardIdentitySend.catch((): void => undefined).then(async (): Promise<void> => {
+                if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
+                await api.setBoardWindowIdentity(identity);
+            });
+            await this.boardIdentitySend;
+        } catch (error) {
+            console.error("Failed to update board window identity", error);
+        }
+    }
+
+    private async renderBoardIcon(root: string): Promise<string> {
+        const iconPath = await resolveBoardIcon(root);
+        let image: HTMLImageElement;
+        if (iconPath) {
+            image = new Image();
+            image.src = iconPath;
+            try { await image.decode(); } catch { image = this.boardGlyphImage(); }
+        } else {
+            image = this.boardGlyphImage();
+        }
+        if (!image.complete || !image.naturalWidth) await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas is unavailable for board icon rendering.");
+        context.clearRect(0, 0, 256, 256);
+        const scale = Math.min(256 / image.naturalWidth, 256 / image.naturalHeight);
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
+        context.drawImage(image, (256 - width) / 2, (256 - height) / 2, width, height);
+        return canvas.toDataURL("image/png");
+    }
+
+    private boardGlyphImage(): HTMLImageElement {
+        const builder = BoardIcon.createElement;
+        if (!builder) throw new Error("BoardIcon does not expose a DOM builder");
+        const svg = builder({ width: 256, height: 256 });
+        const source = new XMLSerializer().serializeToString(svg);
+        const image = new Image();
+        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
+        return image;
     }
 
     /**
