@@ -31,6 +31,7 @@ import {
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
 import type { ExplorerEditor, ExplorerBoardsTab } from "./ExplorerEditorModel";
 import { BoardsTreeView } from "../board/BoardsTreeView";
+import { createBoardShortcut } from "../board/board-shortcut";
 import { ToolsTreeView } from "../tools/ToolsTreeView";
 import { isBoardRootBusy, subscribeBusyBoardRoots } from "../board/busy-boards";
 import "../../uikit/Button/Button.css";
@@ -410,6 +411,13 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
                 label: t("shell.openBoardFolder"),
                 icon: createIconElement("folder-open", { width: 14, height: 14 }),
                 onClick: () => { void app.pages.openFile(root); },
+            },
+            {
+                id: "create-board-shortcut",
+                label: t("shell.createBoardShortcut"),
+                icon: createIconElement("open-link", { width: 14, height: 14 }),
+                onClick: () => { void createBoardShortcut(root); },
+                startGroup: true,
             },
             {
                 id: "delete-board",

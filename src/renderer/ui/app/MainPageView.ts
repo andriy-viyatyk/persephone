@@ -25,8 +25,8 @@ import { api } from "../../../ipc/renderer/api";
 import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
-import { resolveBoardIcon, subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
-import { BoardIcon } from "../../theme/icons";
+import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
+import { renderBoardIconDataUrl } from "../../editors/board/board-window-icon";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import "./MainPage.css";
 
@@ -233,7 +233,7 @@ export class MainPageView extends VanillaView<object> {
             const glyph = this.boardIdentity.firstChild;
             this.boardIdentity.replaceChildren(...(glyph ? [glyph, label] : [label]));
             document.title = name;
-            const iconDataUrl = await this.renderBoardIcon(root);
+            const iconDataUrl = await renderBoardIconDataUrl(root);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             const identity = { displayName: name, iconDataUrl };
             this.boardIdentitySend = this.boardIdentitySend.catch((): void => undefined).then(async (): Promise<void> => {
@@ -244,40 +244,6 @@ export class MainPageView extends VanillaView<object> {
         } catch (error) {
             console.error("Failed to update board window identity", error);
         }
-    }
-
-    private async renderBoardIcon(root: string): Promise<string> {
-        const iconPath = await resolveBoardIcon(root);
-        let image: HTMLImageElement;
-        if (iconPath) {
-            image = new Image();
-            image.src = iconPath;
-            try { await image.decode(); } catch { image = this.boardGlyphImage(); }
-        } else {
-            image = this.boardGlyphImage();
-        }
-        if (!image.complete || !image.naturalWidth) await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = 256;
-        canvas.height = 256;
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Canvas is unavailable for board icon rendering.");
-        context.clearRect(0, 0, 256, 256);
-        const scale = Math.min(256 / image.naturalWidth, 256 / image.naturalHeight);
-        const width = image.naturalWidth * scale;
-        const height = image.naturalHeight * scale;
-        context.drawImage(image, (256 - width) / 2, (256 - height) / 2, width, height);
-        return canvas.toDataURL("image/png");
-    }
-
-    private boardGlyphImage(): HTMLImageElement {
-        const builder = BoardIcon.createElement;
-        if (!builder) throw new Error("BoardIcon does not expose a DOM builder");
-        const svg = builder({ width: 256, height: 256 });
-        const source = new XMLSerializer().serializeToString(svg);
-        const image = new Image();
-        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
-        return image;
     }
 
     /**

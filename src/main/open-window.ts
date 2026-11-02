@@ -1,7 +1,5 @@
 import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
-import fs from "node:fs/promises";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { EventEndpoint } from "../ipc/api-types";
@@ -11,7 +9,7 @@ import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
 import { appPartition } from "./constants";
 import { getBoardRootForHost } from "./board-protocol-service";
-import { getLauncherPath } from "./browser-registration";
+import { boardIdentityHash, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
 
 interface WindowState {
     width: number;
@@ -26,30 +24,6 @@ type VoiceTypingSource = "app" | { kind: "guest"; webContentsId: number };
 
 function inputMatchesShortcut(input: Electron.Input, shortcut: string): boolean {
     return voiceTypingShortcutForInput(input) === shortcut;
-}
-
-function boardIdentityHash(boardRoot: string): string {
-    return createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex");
-}
-
-export function boardWindowIconPath(boardRoot: string): string {
-    return path.join(app.getPath("userData"), "board-icons", `${boardIdentityHash(boardRoot)}.ico`);
-}
-
-function pngBackedIco(png: Buffer): Buffer {
-    const header = Buffer.alloc(22);
-    header.writeUInt16LE(0, 0);
-    header.writeUInt16LE(1, 2);
-    header.writeUInt16LE(1, 4);
-    header.writeUInt8(0, 6);
-    header.writeUInt8(0, 7);
-    header.writeUInt8(0, 8);
-    header.writeUInt8(0, 9);
-    header.writeUInt16LE(1, 10);
-    header.writeUInt16LE(32, 12);
-    header.writeUInt32LE(png.length, 14);
-    header.writeUInt32LE(22, 18);
-    return Buffer.concat([header, png]);
 }
 
 function withDeadline<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
@@ -105,12 +79,10 @@ export class OpenWindow {
         const size = image.getSize();
         if (image.isEmpty() || size.width !== 256 || size.height !== 256) throw new Error("Board icons must be 256x256 PNG images.");
         this.window.setIcon(image);
-        const iconPath = boardWindowIconPath(this.boardRoot);
-        await fs.mkdir(path.dirname(iconPath), { recursive: true });
-        await fs.writeFile(iconPath, pngBackedIco(image.toPNG()));
+        const iconPath = await writeBoardWindowIcon(this.boardRoot, image.toPNG());
         this.window.setAppDetails({
             appId: `Persephone.Board.${boardIdentityHash(this.boardRoot)}`,
-            relaunchCommand: `"${getLauncherPath()}" --board "${this.boardRoot}"`,
+            relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(this.boardRoot)}"`,
             relaunchDisplayName: displayName.trim(),
             appIconPath: iconPath,
         });
@@ -118,7 +90,7 @@ export class OpenWindow {
 
     constructor(position?: { x: number; y: number }, boardRoot?: string) {
         this.boardRoot = boardRoot;
-        const boardKey = boardRoot ? `boardWindowState.${createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex")}` : "windowState";
+        const boardKey = boardRoot ? `boardWindowState.${boardIdentityHash(boardRoot)}` : "windowState";
         let windowState: WindowState = electronStore.get(boardKey, {
             width: 1024,
             height: 680,
@@ -168,7 +140,7 @@ export class OpenWindow {
             const displayName = path.basename(boardRoot);
             this.window.setAppDetails({
                 appId: `Persephone.Board.${boardIdentityHash(boardRoot)}`,
-                relaunchCommand: `"${getLauncherPath()}" --board "${boardRoot}"`,
+                relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(boardRoot)}"`,
                 relaunchDisplayName: displayName,
             });
         }
@@ -411,7 +383,7 @@ export class OpenWindow {
         if (this.window && !this.window.isMaximized() && !this.window.isFullScreen()) {
             const bounds = this.window?.getBounds();
             if (bounds) {
-                electronStore.set(this.boardRoot ? `boardWindowState.${createHash("sha256").update(path.normalize(path.resolve(this.boardRoot)).toLowerCase()).digest("hex")}` : "windowState", {
+                electronStore.set(this.boardRoot ? `boardWindowState.${boardIdentityHash(this.boardRoot)}` : "windowState", {
                     width: bounds.width,
                     height: bounds.height,
                     x: bounds.x,

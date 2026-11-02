@@ -34,6 +34,7 @@ import { errMessage } from "../../../shared/utils";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
+import { createBoardShortcut } from "./board-shortcut";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
@@ -599,6 +600,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 icon: createIconElement("folder-open"),
                 onClick: () => { if (boardRoot) void app.pages.openFile(boardRoot); },
                 disabled: !boardRoot,
+            },
+            {
+                id: "create-board-shortcut",
+                label: t("shell.createBoardShortcut"),
+                onClick: () => { if (boardRoot) void createBoardShortcut(boardRoot); },
+                disabled: !boardRoot,
+                startGroup: true,
             },
         ];
     }

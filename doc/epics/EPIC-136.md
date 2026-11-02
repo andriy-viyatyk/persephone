@@ -78,8 +78,8 @@ the board.
 |------|-------|--------|
 | [US-1749](../tasks/US-1749-board-mode-window/README.md) | Board-mode window: `--board` launch, routing, lifetime, bounds | Done |
 | [US-1750](../tasks/US-1750-board-mode-chrome/README.md) | Board-mode chrome: title bar, locked board tab, tab bar on demand | Done |
-| US-1751 | Create a Windows shortcut for a board | Planned |
-| US-1752 | `persephone-board://` links from outside Persephone (trusted boards only) | Planned (optional) |
+| [US-1751](../tasks/US-1751-board-shortcut/README.md) | Create a Windows shortcut for a board | Planned |
+| US-1752 | `persephone-board://` links from outside Persephone (trusted boards only) | Dropped (2026-11-02) |
 
 Order: US-1749 → US-1750 → US-1751 → US-1752.
 
@@ -128,3 +128,9 @@ Order: US-1749 → US-1750 → US-1751 → US-1752.
 ### 2026-11-02
 - First proposal was a dedicated board window. The user rejected it because a board must be
   able to reuse every Persephone page type. A board mode for the normal window keeps that for free.
+- US-1752 dropped by the user. A `.lnk` shortcut runs the launcher directly and needs no scheme
+  registration. Registering `persephone-board://` with Windows would let any web page trigger board
+  launches, which is an outside entry point not worth the risk. In-app `persephone-board://` links
+  keep working as before.
+- US-1751 extended at the user's request. Dev builds (`npm start`) target the installed
+  Persephone's launcher, so dev-created shortcuts open boards in the running dev instance.

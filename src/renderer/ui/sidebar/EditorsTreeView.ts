@@ -10,6 +10,7 @@ import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { buildBoardsTree, type BoardTreeNode } from "../../editors/board/boards-tree-build";
 import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { createBoardShortcut } from "../../editors/board/board-shortcut";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { toClipboard } from "../../core/utils/utils";
@@ -242,6 +243,12 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         if (update) items.push({ label: t("shell.updateBoard", { version: update.latestVersion }), onClick: () => { void runBoardUpdate(update).then(this.refresh); } });
         items.push({ label: t("shell.copyBoardPath"), onClick: () => toClipboard(root) });
         items.push({ label: t("shell.openBoardFolder"), onClick: () => { void app.pages.openFile(root); } });
+        items.push({
+            id: "create-board-shortcut",
+            label: t("shell.createBoardShortcut"),
+            onClick: () => { void createBoardShortcut(root); },
+            startGroup: true,
+        });
         items.push({
             label: t("common.remove"),
             startGroup: true,

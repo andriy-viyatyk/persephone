@@ -1,5 +1,5 @@
-import { app, BrowserWindow, IpcMainEvent, nativeTheme, shell } from "electron";
-import { CaptureRect, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
+import { app, BrowserWindow, IpcMainEvent, nativeImage, nativeTheme, shell } from "electron";
+import { CaptureRect, CreateBoardShortcutRequest, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
@@ -29,6 +29,7 @@ import {
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
+import { boardIdentityHash, boardRootForLaunchArgs, getBoardLauncherPath, writeBoardWindowIcon } from "../../main/board-window-identity";
 import { setMainLocale } from "../../main/i18n-locale";
 import fs from "node:fs";
 import path from "node:path";
@@ -77,6 +78,47 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const boardWindow = browserWindow ? openWindows.findByWindow(browserWindow) : undefined;
         if (!boardWindow?.boardRoot) throw new Error("Board identity updates are only available to registered board windows.");
         await boardWindow.updateBoardIdentity(request?.displayName, request?.iconDataUrl);
+    }
+
+    createBoardShortcut = async (event: IpcMainEvent, request: CreateBoardShortcutRequest): Promise<boolean> => {
+        const browserWindow = BrowserWindow.fromWebContents(event.sender);
+        if (!browserWindow) throw new Error("Board shortcuts can only be created by an application window.");
+        if (!request || typeof request.boardRoot !== "string" || !request.boardRoot.trim()
+            || typeof request.linkPath !== "string" || !request.linkPath.trim()
+            || typeof request.displayName !== "string" || !request.displayName.trim() || request.displayName.length > 256) {
+            throw new Error("Invalid board shortcut details.");
+        }
+
+        const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(request.iconDataUrl);
+        if (!match || match[1].length > 7_000_000) throw new Error("Invalid board icon data URL.");
+        const image = nativeImage.createFromDataURL(request.iconDataUrl);
+        const size = image.getSize();
+        if (image.isEmpty() || size.width !== 256 || size.height !== 256) {
+            throw new Error("Board icons must be 256x256 PNG images.");
+        }
+
+        const iconPath = await writeBoardWindowIcon(request.boardRoot, image.toPNG());
+        const details: Electron.ShortcutDetails = {
+            target: getBoardLauncherPath(),
+            args: `--board "${boardRootForLaunchArgs(request.boardRoot)}"`,
+            description: request.displayName,
+            icon: iconPath,
+            // Electron writes the icon only when iconIndex is present too; with `icon` alone the
+            // shortcut silently gets no icon (verified 2026-11-02, read back as an empty icon).
+            iconIndex: 0,
+            appUserModelId: `Persephone.Board.${boardIdentityHash(request.boardRoot)}`,
+        };
+        if (!shell.writeShortcutLink(request.linkPath, "create", details)) return false;
+
+        const written = shell.readShortcutLink(request.linkPath);
+        const normalizePath = (value: unknown): string | null => typeof value === "string"
+            ? path.normalize(path.resolve(value)).replace(/[\\/]+$/, "").toLowerCase()
+            : null;
+        return normalizePath(written.target) === normalizePath(details.target)
+            && written.args === details.args
+            && written.description === details.description
+            && normalizePath(written.icon) === normalizePath(details.icon)
+            && written.appUserModelId === details.appUserModelId;
     }
 
     maximizeWindow = async (event: IpcMainEvent): Promise<void> => {
@@ -494,6 +536,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.getUiPreferences, controllerInstance.getUiPreferences);
     bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
     bindEndpoint(Endpoint.setBoardWindowIdentity, controllerInstance.setBoardWindowIdentity);
+    bindEndpoint(Endpoint.createBoardShortcut, controllerInstance.createBoardShortcut);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);
     bindEndpoint(Endpoint.minimizeWindow, controllerInstance.minimizeWindow);
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);

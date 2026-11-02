@@ -33,6 +33,13 @@ import type { LaunchInput } from "../shared/launch-input";
 /** Metadata carried with `eBoardServiceChannel`; the endpoint itself is `event.ports[0]`. */
 export interface BoardServiceChannelDelivery { boardId: string; channelId: string }
 
+export interface CreateBoardShortcutRequest {
+    boardRoot: string;
+    linkPath: string;
+    displayName: string;
+    iconDataUrl: string;
+}
+
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
     getAssetsPath = "getAssetsPath",
@@ -42,6 +49,7 @@ export enum Endpoint {
     getUiPreferences = "getUiPreferences",
     setUiPreference = "setUiPreference",
     setBoardWindowIdentity = "setBoardWindowIdentity",
+    createBoardShortcut = "createBoardShortcut",
     maximizeWindow = "maximizeWindow",
     minimizeWindow = "minimizeWindow",
     restoreWindow = "restoreWindow",
@@ -278,6 +286,7 @@ export type Api = {
         value: string | number | boolean,
     ) => Promise<string | number | boolean>;
     [Endpoint.setBoardWindowIdentity]: (request: { displayName: string; iconDataUrl: string }) => Promise<void>;
+    [Endpoint.createBoardShortcut]: (request: CreateBoardShortcutRequest) => Promise<boolean>;
     [Endpoint.maximizeWindow]: () => Promise<void>;
     [Endpoint.minimizeWindow]: () => Promise<void>;
     [Endpoint.restoreWindow]: () => Promise<void>;

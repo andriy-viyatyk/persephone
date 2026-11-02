@@ -19,6 +19,7 @@ import {
 import {
     Api,
     CaptureRect,
+    type CreateBoardShortcutRequest,
     Endpoint,
     EventEndpoint,
     McpStatus,
@@ -122,6 +123,10 @@ class ApiCalls implements Api {
 
     setBoardWindowIdentity = async (request: { displayName: string; iconDataUrl: string }) => {
         return executeOnce<void>(Endpoint.setBoardWindowIdentity, request);
+    };
+
+    createBoardShortcut = async (request: CreateBoardShortcutRequest) => {
+        return executeOnce<boolean>(Endpoint.createBoardShortcut, request);
     };
 
     maximizeWindow = async () => {
