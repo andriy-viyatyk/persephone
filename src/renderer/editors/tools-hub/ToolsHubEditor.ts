@@ -4,8 +4,13 @@ import { untranslated } from "../../../shared/i18n/t";
 export const TOOLS_HUB_PAGE_ID = "tools-hub-page";
 
 /** Which content tab the hub shows. Persisted in editor state (survives restart). */
-export type HubTab = "builtin" | "boards" | "search" | "tools" | "site-extensions";
-const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools", "site-extensions"];
+export type HubTab = "editors" | "search" | "tools" | "site-extensions";
+const VALID_HUB_TABS: readonly HubTab[] = ["editors", "search", "tools", "site-extensions"];
+
+function restoreHubTab(value: unknown): HubTab {
+    if (value === "builtin" || value === "boards") return "editors";
+    return VALID_HUB_TABS.includes(value as HubTab) ? value as HubTab : "editors";
+}
 
 export interface ToolsHubEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -19,7 +24,7 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
     modified: false,
     type: "toolsHubPage",
     editor: "tools-hub-view",
-    tab: "builtin",
+    tab: "editors",
 });
 
 /**
@@ -47,6 +52,9 @@ export class ToolsHubEditor extends EditorModel<ToolsHubEditorState> {
     /** Preserve the title across restore (parity with About). */
     async restore(): Promise<void> {
         await super.restore();
-        this.state.update((s) => { s.title = untranslated("Tools & Editors"); });
+        this.state.update((s) => {
+            s.tab = restoreHubTab(s.tab);
+            s.title = untranslated("Tools & Editors");
+        });
     }
 }

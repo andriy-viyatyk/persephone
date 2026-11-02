@@ -883,7 +883,10 @@ group or to the selected section, and the scroll-spy selects the topmost visible
 scrolling the Content pane. The Clipboard section owns
 `clipboard.enabled` and `clipboard.max-items`; the clipboard root is exposed to AiVision only while
 history is enabled. Three real settings have no Settings-page row (`tab-recent-languages`,
-`search-max-file-size`, and `pinned-editors`) and remain available through `get`/`set`.
+`search-max-file-size`, and `editor-categories`) and remain available through `get`/`set`. The
+`editor-categories` value is an ordered `{ id, name, items }[]`; Top is fixed first and Other is
+derived from eligible unassigned refs. The old `pinned-editors` array migrates losslessly into Top
+and is removed; MCP Object Model `settings.get`/`settings.set` observes the same setting.
 The AiVision descriptor's `set` seam refuses only the self-severing
 `mcp.enabled` and `mcp.port` changes; direct `app.settings.set` is unchanged. Computed catalog
 lookups use own-property checks so prototype names are not treated as setting keys.

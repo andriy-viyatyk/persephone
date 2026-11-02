@@ -34,6 +34,8 @@ export interface SplitButtonProps
     onClick: () => void;
     /** Dropdown items revealed by the caret region. */
     items: MenuItem[];
+    /** Optional caller-owned menu lifecycle for the caret. */
+    onOpenMenu?: (anchor: HTMLElement) => void;
     /** Disables the primary region (the caret stays usable unless `menuDisabled`). */
     disabled?: boolean;
     /** Disables the caret / dropdown. */
@@ -172,6 +174,10 @@ export class SplitButtonView extends VanillaView<SplitButtonProps> {
     }
 
     private readonly onCaretClick = (): void => {
+        if (this.props.onOpenMenu && this.caretView) {
+            this.props.onOpenMenu(this.caretView.root);
+            return;
+        }
         if (this.menuHandle) {
             this.menuHandle.update(this.menuOptions(this.props));
             return;

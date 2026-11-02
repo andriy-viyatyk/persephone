@@ -12,8 +12,8 @@ Boards can be dashboards, viewers, tools, or custom editors associated with file
 
 ## How to Open
 
-Open a trusted board from the Explorer **Boards** panel, a `board-manifest.json` row, or the Boards
-tab in **Tools & Editors**. Bundled boards are opened from the **Built-in** tab instead and do not
+Open a trusted board from the Explorer **Boards** panel, a `board-manifest.json` row, or the Editors
+tree in **Tools & Editors**. Bundled boards appear under its **Built-in** folder and do not
 ask for trust. Published boards can be installed from the catalog. A trusted or bundled board
 declaring `fileMasks` can appear in the editor switch for matching files; a board declaring
 `folderEditorMasks` can open as the editor for matching folders. See [Boards](../boards.md) for

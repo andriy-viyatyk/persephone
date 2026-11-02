@@ -12,11 +12,11 @@ disabled, or replaced independently of Persephone.
 
 ## How to Open
 
-Open a `.excalidraw` file, choose **Excalidraw** from **Tools & Editors → Built-in**, or use an
+Open a `.excalidraw` file, choose **Excalidraw** from **Tools & Editors → Editors → Built-in**, or use an
 image, SVG, Mermaid, or HTML preview's **Edit Image**, **Open in Drawing**, or **Convert to
 Excalidraw** action. The board is bundled with Persephone and does not require a trust prompt.
 
-If Excalidraw is disabled, right-click it in **Tools & Editors → Built-in** and choose **Enable**.
+If Excalidraw is disabled, right-click it in **Tools & Editors → Editors → Built-in** and choose **Enable**.
 If no replacement handles the requested image or diagram action, Persephone shows **No image editor
 is registered** or **No diagram editor is registered** and tells you how to restore the capability.
 

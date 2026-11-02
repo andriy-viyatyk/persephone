@@ -6,10 +6,10 @@ import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 
-const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools", "site-extensions"];
+const VALID_HUB_TABS: readonly HubTab[] = ["editors", "search", "tools", "site-extensions"];
 
 const TOOLS_HUB_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "tools-hub-tabs", purpose: "Locate the hub's Built-in, Boards, Search, Tools, and Site extensions tab switcher.", where: "top of the Tools & Editors hub" },
+    { name: "tools-hub-tabs", purpose: "Locate the hub's Editors, Search, Tools, and Site extensions tab switcher.", where: "top of the Tools & Editors hub" },
     { name: "search-boards-filter", purpose: "Locate the Search boards query field.", where: "Search boards tab, top of the search body" },
     { name: "search-boards-refresh", purpose: "Locate the Search boards catalog refresh control.", where: "Search boards tab, beside the query field" },
     { name: "site-extensions-filter", purpose: "Locate the Site extensions filter field (name, id, or host).", where: "Site extensions tab, top of the list" },
@@ -20,12 +20,12 @@ const TOOLS_HUB_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete editor id: tools-hub-view." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "activeTab", kind: "property", summary: "The model-backed active tab, or undefined for absent or invalid persisted state." },
-    { name: "setTab", kind: "method", signature: "setTab(tab: HubTab): void", summary: "Select builtin, boards, search, tools, or site-extensions." },
+    { name: "setTab", kind: "method", signature: "setTab(tab: HubTab): void", summary: "Select editors, search, tools, or site-extensions." },
 ];
 
 const TOOLS_HUB_HELP = `Access via pages[i].editor after narrowing editor.id to "tools-hub-view".
-The model-backed activeTab is one of "builtin", "boards", "search", "tools", or "site-extensions";
-setTab() accepts only those five values and rejects guesses. The Tools tab's canonical data path is
+The model-backed activeTab is one of "editors", "search", "tools", or "site-extensions";
+setTab() accepts only those values and rejects guesses. The Tools tab's canonical data path is
 tools.toolsets[...], not a projection of the hub's visual tree. Explorer/sidebar tool trees belong
 to page.panels.
 

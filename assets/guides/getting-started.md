@@ -63,7 +63,7 @@ editor when available, or the guide contents otherwise.
   - **Grid (CSV)** — Grid editor for CSV data
   - **Browser** — Built-in web browser (or pick a specific profile / incognito)
 
-  The dropdown shows your **pinned** editors. You can add or remove items from the **Tools & Editors** panel in the sidebar (see [Tabs & Navigation](./tabs-and-navigation.md#tools--editors)).
+  The dropdown groups available editors into **Top**, your named categories, and **Other**. Manage categories in the **Tools & Editors** hub (see [Tabs & Navigation](./tabs-and-navigation.md#tools--editors)).
 
 ### Opening Files
 - Press `Ctrl+O` to open file dialog

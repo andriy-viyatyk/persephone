@@ -1,54 +1,72 @@
-import { DEFAULT_PINNED_EDITORS, settings } from "../../api/settings";
+import { settings, type EditorCategory } from "../../api/settings";
 
-/**
- * Unified pinned-item model for the "Tools & Editors" sidebar and the header
- * "add new page" dropdown. A pinned entry is either a built-in editor/tool or a
- * trusted Board — both live in **one ordered list** so they interleave and
- * reorder freely.
- *
- * Persistence reuses the existing `pinned-editors` settings key (`string[]`),
- * overloading its entries — no migration:
- *   - editor → the bare `CreatableItem.id`, e.g. `"script-js"`.
- *   - board  → `"board:" + absoluteRoot`, e.g. `"board:D:\\boards\\dev-clock"`.
- * Editor ids never contain `":"`, so the `board:` prefix is unambiguous.
- */
 export type PinnedRef =
     | { kind: "editor"; id: string }
     | { kind: "board"; root: string };
 
-export type PinnedDragData =
-    | { kind: "reorder"; index: number; ref: PinnedRef }
-    | { kind: "source"; ref: PinnedRef };
+export type EditorCategoryDragData =
+    | { kind: "source"; ref: PinnedRef }
+    | { kind: "category-item"; categoryId: string; ref: PinnedRef }
+    | { kind: "category-block"; categoryId: string };
+
+export type PinnedDragData = { kind: "reorder"; index: number; ref: PinnedRef }
+    | Extract<EditorCategoryDragData, { kind: "source" }>;
 
 const BOARD_PREFIX = "board:";
 
-/** Encode a ref to its stored string in the `pinned-editors` array. */
 export function encodePin(ref: PinnedRef): string {
     return ref.kind === "board" ? BOARD_PREFIX + ref.root : ref.id;
 }
 
-/** Decode a stored string back into a ref. */
 export function decodePin(stored: string): PinnedRef {
     return stored.startsWith(BOARD_PREFIX)
         ? { kind: "board", root: stored.slice(BOARD_PREFIX.length) }
         : { kind: "editor", id: stored };
 }
 
-/** Current raw pinned-items array (editor ids + `board:<root>` entries). */
+/**
+ * A fresh copy of the stored categories. Callers reorder it in place (`splice`) and save it
+ * back; handing out the settings array itself would mutate stored state, and saving the same
+ * reference back would look like no change.
+ */
+export function getEditorCategories(): EditorCategory[] {
+    return settings.get("editor-categories").map((category) => ({ ...category, items: [...category.items] }));
+}
+
+/** Compatibility projection for callers that still render the old flat pinned list. */
 export function getPinnedStrings(): string[] {
-    return settings.get("pinned-editors") ?? [...DEFAULT_PINNED_EDITORS];
+    return getEditorCategories().flatMap((category) => category.items);
 }
 
-function setPinnedStrings(items: string[]): void {
-    settings.set("pinned-editors", items);
-}
-
-/** True iff the ref is currently pinned. */
 export function isPinned(ref: PinnedRef): boolean {
     return getPinnedStrings().includes(encodePin(ref));
 }
 
-/** Runtime guard for refs carried in serialized drag payloads. */
+export function addPin(ref: PinnedRef): void {
+    moveEditorToCategory(ref, "top");
+}
+
+export function removePin(ref: PinnedRef): void {
+    removeCategoryMembership(ref);
+}
+
+export function insertPin(ref: PinnedRef, index: number): void {
+    moveCategoryItem(ref, "top", index);
+}
+
+export function movePin(dragIndex: number, hoverIndex: number): void {
+    const categories = getEditorCategories();
+    const top = categories.find((category) => category.id === "top");
+    if (!top) return;
+    const [ref] = top.items.splice(dragIndex, 1);
+    top.items.splice(hoverIndex, 0, ref);
+    saveEditorCategories(categories);
+}
+
+export function saveEditorCategories(categories: EditorCategory[]): void {
+    settings.set("editor-categories", categories);
+}
+
 export function isPinnedRef(value: unknown): value is PinnedRef {
     if (!value || typeof value !== "object") return false;
     const ref = value as { kind?: unknown; id?: unknown; root?: unknown };
@@ -57,42 +75,68 @@ export function isPinnedRef(value: unknown): value is PinnedRef {
     return false;
 }
 
-/** Append a ref to the pinned list if not already present. */
-export function addPin(ref: PinnedRef): void {
-    const s = encodePin(ref);
-    const cur = getPinnedStrings();
-    if (!cur.includes(s)) setPinnedStrings([...cur, s]);
-}
-
-/** Insert a ref at an indexed position, moving it when it is already pinned. */
-export function insertPin(ref: PinnedRef, index: number): void {
+export function getCategoryForRef(ref: PinnedRef): EditorCategory | undefined {
     const encoded = encodePin(ref);
-    const original = getPinnedStrings();
-    const current = [...original];
-    const existingIndex = current.indexOf(encoded);
-
-    for (let i = current.length - 1; i >= 0; i--) {
-        if (current[i] === encoded) current.splice(i, 1);
-    }
-
-    const adjustedIndex = existingIndex >= 0 && existingIndex < index ? index - 1 : index;
-    const boundedIndex = Math.max(0, Math.min(adjustedIndex, current.length));
-    current.splice(boundedIndex, 0, encoded);
-    if (current.length !== original.length || current.some((item, i) => item !== original[i])) {
-        setPinnedStrings(current);
-    }
+    return getEditorCategories().find((category) => category.items.includes(encoded));
 }
 
-/** Remove a ref from the pinned list (idempotent). */
-export function removePin(ref: PinnedRef): void {
-    const s = encodePin(ref);
-    setPinnedStrings(getPinnedStrings().filter((x) => x !== s));
+export function createEditorCategory(name = ""): EditorCategory {
+    const category: EditorCategory = { id: crypto.randomUUID(), name, items: [] };
+    saveEditorCategories([...getEditorCategories(), category]);
+    return category;
 }
 
-/** Reorder: move the entry at `dragIndex` to `hoverIndex`. */
-export function movePin(dragIndex: number, hoverIndex: number): void {
-    const cur = [...getPinnedStrings()];
-    const [removed] = cur.splice(dragIndex, 1);
-    cur.splice(hoverIndex, 0, removed);
-    setPinnedStrings(cur);
+export function renameEditorCategory(categoryId: string, name: string): void {
+    saveEditorCategories(getEditorCategories().map((category) =>
+        category.id === categoryId ? { ...category, name } : category,
+    ));
+}
+
+export function deleteEditorCategory(categoryId: string): void {
+    if (categoryId === "top") return;
+    saveEditorCategories(getEditorCategories().filter((category) => category.id !== categoryId));
+}
+
+export function moveCategory(categoryId: string, targetIndex: number): void {
+    if (categoryId === "top") return;
+    const categories = getEditorCategories();
+    const from = categories.findIndex((category) => category.id === categoryId);
+    if (from <= 0) return;
+    const [category] = categories.splice(from, 1);
+    const adjustedIndex = from < targetIndex ? targetIndex - 1 : targetIndex;
+    const destination = Math.max(1, Math.min(adjustedIndex, categories.length));
+    categories.splice(destination, 0, category);
+    saveEditorCategories(categories);
+}
+
+export function moveEditorToCategory(ref: PinnedRef, categoryId: string): void {
+    const encoded = encodePin(ref);
+    const categories = getEditorCategories().map((category) => ({
+        ...category,
+        items: category.items.filter((item) => item !== encoded),
+    }));
+    const target = categories.find((category) => category.id === categoryId);
+    if (!target) return;
+    target.items.push(encoded);
+    saveEditorCategories(categories);
+}
+
+export function moveCategoryItem(ref: PinnedRef, categoryId: string, index: number): void {
+    const encoded = encodePin(ref);
+    const categories = getEditorCategories().map((category) => ({
+        ...category,
+        items: category.items.filter((item) => item !== encoded),
+    }));
+    const target = categories.find((category) => category.id === categoryId);
+    if (!target) return;
+    target.items.splice(Math.max(0, Math.min(index, target.items.length)), 0, encoded);
+    saveEditorCategories(categories);
+}
+
+export function removeCategoryMembership(ref: PinnedRef): void {
+    const encoded = encodePin(ref);
+    saveEditorCategories(getEditorCategories().map((category) => ({
+        ...category,
+        items: category.items.filter((item) => item !== encoded),
+    })));
 }

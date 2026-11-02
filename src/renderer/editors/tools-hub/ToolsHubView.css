@@ -1,0 +1,12 @@
+@layer app {
+    [data-type="tools-hub"] > [data-part="tabs-row"] { align-items: center; gap: 8px; }
+    /* Right-aligned tree filter; shown on the Editors tab only. */
+    [data-type="tools-hub"] > [data-part="tabs-row"] > [data-part="editors-filter"] { width: 240px; margin-left: auto; }
+    [data-type="tools-hub"] > [data-part="tabs-row"] > [data-part="editors-filter"][hidden] { display: none; }
+    [data-type="tools-hub"] [data-part="body"] { display: flex; flex-direction: column; min-width: 0; }
+    [data-type="tools-hub"] [data-part="body"][data-layout="editors"] { flex-direction: row; }
+    [data-type="tools-hub"] [data-layout="editors"] > [data-type="editor-categories-view"] { flex: 0 0 var(--categories-width, 50%); }
+    [data-type="tools-hub"] [data-layout="editors"] > [data-type="editors-tree-view"] { flex: 1 1 0; min-width: 0; }
+    [data-type="tools-hub"] [data-layout="editors"] > [data-type="splitter"] { flex: 0 0 auto; }
+    [data-type="tools-hub"] [data-layout="single"] > * { flex: 1 1 auto; min-height: 0; }
+}

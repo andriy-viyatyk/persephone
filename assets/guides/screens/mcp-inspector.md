@@ -9,7 +9,7 @@ editorId: "mcp-view"
 # MCP Inspector
 
 The MCP Inspector is a dedicated editor for connecting to and exercising an MCP (Model Context
-Protocol) server. Open it from the `+` editor menu when it is pinned, from the **Tools & Editors**
+Protocol) server. Open it from the `+` editor menu under a category or **Other**, from the **Tools & Editors**
 panel, or with `app.pages.showMcpInspectorPage({ url })`. It supports HTTP and stdio transports.
 
 ## Layout

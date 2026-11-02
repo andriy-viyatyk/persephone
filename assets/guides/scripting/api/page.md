@@ -153,7 +153,7 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
   remain user actions.
 - `toolset-view`: registered toolset identity, validity and errors, plus `refresh()`, `openFolder()`
   and `openLog()`.
-- `tools-hub-view`: the active hub tab (`builtin`, `boards`, `search`, or `tools`) and `setTab()`.
+- `tools-hub-view`: the active hub tab (`editors`, `search`, `tools`, or `site-extensions`) and `setTab()`.
 - `mneme-config`: Mneme service, root, reindex, and model state, with refresh/restart, root-config,
   reindex, and model-update actions.
 - `mneme-root`: Mneme search query, mode, tag/date filters, result state, and search/filter actions.

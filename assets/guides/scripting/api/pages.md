@@ -200,8 +200,8 @@ await app.pages.showMnemeConfigPage();
 
 ### showToolsHubPage(options?) → `Promise<void>`
 
-Open the **Tools & Editors** hub, optionally selecting its `builtin`, `boards`, `search`, or
-`tools` tab.
+Open the **Tools & Editors** hub, optionally selecting its `editors`, `search`, `tools`, or
+`site-extensions` tab.
 
 ```javascript
 await app.pages.showToolsHubPage({ tab: "tools" });

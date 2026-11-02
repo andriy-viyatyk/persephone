@@ -38,7 +38,8 @@ const SETTINGS_AGENT_SECTIONS = SETTINGS_CATALOG.map((section) => ({
 const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
     "tab-recent-languages": "Setting \"tab-recent-languages\" is a real setting, but it has no row on the Settings page. Use settings.get(\"tab-recent-languages\") or settings.set(\"tab-recent-languages\", value); it is owned by each page tab's language menu.",
     "search-max-file-size": "Setting \"search-max-file-size\" is a real setting, but it has no row on the Settings page. Use settings.get(\"search-max-file-size\") or settings.set(\"search-max-file-size\", value); it is owned by File Search behavior.",
-    "pinned-editors": "Setting \"pinned-editors\" is a real setting, but it has no row on the Settings page. Use settings.get(\"pinned-editors\") or settings.set(\"pinned-editors\", value); it is owned by the + new-page menu.",
+    "editor-categories": "Setting \"editor-categories\" stores ordered editor categories for the + new-page menu. Use settings.get(\"editor-categories\") or settings.set(\"editor-categories\", value); each category has id, name, and item refs. Top is fixed first; Other is derived.",
+    "editor-categories-popover-size": "Setting \"editor-categories-popover-size\" is a real setting, but it has no row on the Settings page. Use settings.get(\"editor-categories-popover-size\") or settings.set(\"editor-categories-popover-size\", value); it is { width, height } in pixels or null, owned by the + new-page popover's resize corner.",
 };
 
 /**

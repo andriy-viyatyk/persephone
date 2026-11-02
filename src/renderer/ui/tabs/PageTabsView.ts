@@ -13,6 +13,7 @@ import { isTextFileModel } from "../../editors/text";
 import type { EditorOrHost } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SplitButtonView } from "../../uikit/SplitButton/SplitButtonView";
+import { PopoverView } from "../../uikit/Popover/PopoverView";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IState } from "../../core/state/state";
@@ -23,6 +24,7 @@ import { minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab"
 import { PageTabView } from "./PageTabView";
 import type { PageModel } from "../../api/pages/PageModel";
 import "./PageTabs.css";
+import { EditorCategoriesPopoverView } from "./EditorCategoriesPopoverView";
 
 interface TabProjection {
     pages: PageModel[];
@@ -48,6 +50,7 @@ export class PageTabsView extends VanillaView<object> {
     private currentPages: PageModel[] = [];
     private readonly warmedBoardRoots = new Set<string>();
     private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
+    private categoryPopover: PopoverView | undefined;
 
     public constructor(props: object) {
         super(props);
@@ -73,6 +76,7 @@ export class PageTabsView extends VanillaView<object> {
             onClick: () => pagesModel.addEmptyPage(),
             menuTitle: "New editor page",
             items: [],
+            onOpenMenu: (anchor) => this.openCategoryPopover(anchor),
         });
         this.tabs = new KeyedList<PageModel, string, HTMLElement>(this.wrapper, {
             keyOf: (page) => page.id,
@@ -103,7 +107,7 @@ export class PageTabsView extends VanillaView<object> {
         const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
             if (
                 key === "browser-profiles"
-                || key === "pinned-editors"
+                || key === "editor-categories"
                 || key === "disabled-bundled-boards"
             ) this.updateAddMenu();
         });
@@ -353,7 +357,30 @@ export class PageTabsView extends VanillaView<object> {
             onClick: () => pagesModel.addEmptyPage(),
             menuTitle: "New editor page",
             items,
+            onOpenMenu: (anchor) => this.openCategoryPopover(anchor),
         });
+    }
+
+    private openCategoryPopover(anchor: HTMLElement): void {
+        if (this.categoryPopover) this.releaseChild(this.categoryPopover);
+        const close = (): void => {
+            if (this.categoryPopover !== popover) return;
+            this.releaseChild(popover);
+            popover.root.remove();
+            this.categoryPopover = undefined;
+        };
+        const popover = new PopoverView({
+            name: "editor-categories-popover",
+            open: true,
+            elementRef: anchor,
+            placement: "bottom-start",
+            maxHeight: "calc(100vh - 16px)",
+            scroll: false,
+            onClose: close,
+            contentView: (host) => new EditorCategoriesPopoverView({ host, onClose: close }),
+        });
+        this.categoryPopover = this.child(popover);
+        popover.mount();
     }
 
     private warmBoard(root: string): void {

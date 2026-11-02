@@ -122,7 +122,7 @@ Persephone launches the Mneme service and connects to it over loopback HTTP. A s
 
 ## Config & monitoring editor
 
-Open it from the **Tools & Editors** panel → **Mneme** (or the **+** dropdown if you've pinned it). This is where you manage roots, indexing, and the embedding model.
+Open it from the **Tools & Editors** panel → **Tools** (or from the **+** menu under its assigned category or **Other**). This is where you manage roots, indexing, and the embedding model.
 
 - **Roots** — add one or more folders ("roots") to index. Each root gets a small `.mneme` store folder holding its index. Remove a root to stop indexing it — your documents are never deleted.
 - **Include / ignore** — per-root glob patterns control which files are indexed and searched. They do **not** hide files from browsing: the whole folder stays navigable; include/ignore only scope what search looks at.

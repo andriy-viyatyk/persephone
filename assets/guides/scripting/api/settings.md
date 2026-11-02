@@ -85,8 +85,16 @@ The catalog has 14 built-in sections and 27 Settings-page rows:
 | Terminal | `terminal.command` |
 
 Three real settings have no Settings-page row because their controls live elsewhere:
-`tab-recent-languages`, `search-max-file-size`, and `pinned-editors`. They remain available through
+`tab-recent-languages`, `search-max-file-size`, and `editor-categories`. They remain available through
 `app.settings.get()` and `app.settings.set()`.
+
+`editor-categories` is an ordered array of `{ id, name, items }` records. The fixed first category
+has `id: "top"`; its displayed name is localized. User categories follow in stored order. Each item
+is an editor id or a `board:<absolute-root>` ref, and a ref belongs to at most one category. Other
+is derived from eligible editors that are not assigned. On first load, Persephone migrates the old
+`pinned-editors` array (including the legacy `draw-view` id mapping) into Top, or uses the defaults
+when no old setting exists, then removes the old key. Arbitrary-key `settings.get`/`settings.set`
+continues to be the API; MCP Object Model `settings.get` and `settings.set` observe the same key.
 
 Board settings are separate from `app.settings`. A board declares them in its manifest and reads
 its own effective values through `persephone.settings.get(id)` and

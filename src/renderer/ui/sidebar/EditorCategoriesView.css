@@ -1,0 +1,45 @@
+@layer app {
+    [data-type="editor-categories-view"] { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
+    [data-type="editor-categories-view"] [data-part="toolbar"] {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 10px;
+        color: var(--color-text-light, currentColor);
+    }
+    [data-type="editor-categories-view"] [data-part="toolbar"] button,
+    [data-type="editor-categories-view"] [data-part="heading"] button {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+    }
+    [data-type="editor-categories-view"] [data-name="editor-category-new"] {
+        padding: 2px 8px;
+        border: 1px solid var(--color-border-default, currentColor);
+        color: var(--color-text-default, currentColor);
+    }
+    [data-type="editor-categories-view"] [data-part="toolbar"] button:hover,
+    [data-type="editor-categories-view"] [data-part="heading"] button:hover {
+        background: var(--color-bg-message, transparent);
+    }
+    [data-type="editor-categories-view"] [data-part="heading"] > span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* The inline rename field is a uikit Input; keep the heading's uppercase/bold off it. */
+    [data-type="editor-categories-view"] [data-part="heading"] > [data-type="input"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-weight: normal;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+    [data-type="editor-categories-view"] [data-part="heading"][draggable="true"] { cursor: grab; }
+    [data-type="editor-categories-view"] [data-name="editor-category-remove"] { padding: 0 4px; opacity: 0; cursor: pointer; }
+    [data-type="editor-categories-view"] [data-part="row"]:hover [data-name="editor-category-remove"] { opacity: 1; }
+    [data-type="editor-categories-view"] [data-name="editor-category-rename"],
+    [data-type="editor-categories-view"] [data-name="editor-category-delete"] { padding: 0 4px; opacity: 0; }
+    [data-type="editor-categories-view"] [data-part="heading"]:hover [data-name="editor-category-rename"],
+    [data-type="editor-categories-view"] [data-part="heading"]:hover [data-name="editor-category-delete"] { opacity: 1; }
+}

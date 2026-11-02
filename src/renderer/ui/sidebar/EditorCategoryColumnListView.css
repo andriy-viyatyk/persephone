@@ -1,0 +1,85 @@
+@layer app {
+    [data-type="editor-category-column-list"] {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: var(--color-bg-default, currentColor);
+    }
+
+    /* A category is not a box: its heading and rows are separate flex items, so a long
+       category continues at the top of the next column instead of being clipped. */
+    [data-type="editor-category-column-list"] [data-part="column"] {
+        display: contents;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="heading"],
+    [data-type="editor-category-column-list"] [data-part="row"],
+    [data-type="editor-category-column-list"] [data-part="placeholder"] {
+        flex: 0 0 auto;
+        box-sizing: border-box;
+        width: 226px;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="heading"] {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 20px;
+        margin: 6px 5px 3px;
+        padding: 0 0 3px;
+        border-bottom: 1px solid var(--color-border-default, currentColor);
+        color: var(--color-primary-text, currentColor);
+        font-size: var(--font-xs, 11px);
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row"] {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 5px;
+        padding: 3px 5px;
+        border: 0;
+        background: transparent;
+        color: var(--color-text-default, currentColor);
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row"]:hover {
+        /* Same hover as the Explorer tree (TreeItem.css). */
+        background: var(--color-bg-message, transparent);
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row"][data-active],
+    [data-type="editor-category-column-list"] [data-part="row"]:focus-visible {
+        background: var(--color-bg-selection, currentColor);
+        outline: 1px solid var(--color-border-active, currentColor);
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row"] > svg,
+    [data-type="editor-category-column-list"] [data-part="row"] > img {
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row-label"] {
+        overflow: hidden;
+        flex: 1;
+        text-overflow: ellipsis;
+    }
+
+    [data-type="editor-category-column-list"] [data-part="row-trailing"],
+    [data-type="editor-category-column-list"] [data-part="placeholder"] {
+        color: var(--color-text-light, currentColor);
+        font-size: var(--font-xs, 11px);
+    }
+
+    [data-type="editor-category-column-list"] [data-part="placeholder"] { padding: 3px 10px; }
+}

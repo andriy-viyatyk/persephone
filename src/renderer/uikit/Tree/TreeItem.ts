@@ -72,7 +72,7 @@ export interface TreeItemProps
      * content rebuilt per render. Takes precedence over `trailing`.
      *
      * This arm short-circuits on node identity, avoiding a new fill generation so a caller that
-     * owns an `IconButtonView`/`TagView` per row (see `ui/sidebar/TrustedBoardsListView.ts`) can
+     * owns an `IconButtonView`/`TagView` per row (see `ui/sidebar/EditorsTreeView.ts`) can
      * hand over its root and keep it mounted across refreshes and virtual-scroll recycling.
      */
     trailingElement?: Node;

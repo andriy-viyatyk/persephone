@@ -12,7 +12,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.17 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Editor categories:** Organize built-in editors and trusted boards into ordered categories. The
+  **+** menu groups editors under Top, named categories, and Other; the Tools & Editors hub includes
+  a category manager beside the merged Editors tree.
 
 ---
 

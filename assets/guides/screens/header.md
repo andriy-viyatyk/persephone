@@ -59,6 +59,20 @@ every state.
 +---------------------------------------------------------------------+
 ```
 
+### When the editor menu is open
+
+```
++---------------------------------------------------------------------+
+| [filter] [Show all…]                                                |  menu header aligned to the left edge of the + caret
+| [Top] [named category] [Other]                                      |  editor columns; wheel-scroll horizontally when they overflow
+| [editor rows]                                                       |  choose an editor to open it
++---------------------------------------------------------------------+
+```
+
+The menu opens below the caret and can be resized from its lower-right corner; its size is
+remembered. **Show all…** opens the **Tools & Editors** hub on **Editors**. Each editor appears in
+one category, while unassigned editors appear under **Other**.
+
 ### When autoload files need a reload or the window is zoomed
 
 ```
@@ -113,6 +127,7 @@ every state.
 
 - Quick-settings snip and service rows — no entry: transient popover surface, outside the shell contract.
 - Split primary and split caret — no entry: internal parts of the addressable `page-tabs-add` split control.
+- Editor-menu filter, **Show all…**, category headings, and editor rows — no entry: controls and data in the transient editor-menu popover.
 - Header spacer — no entry: structural spacer, not a user control.
 
 Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabsView.ts:35-84`.

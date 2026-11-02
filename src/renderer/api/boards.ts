@@ -350,8 +350,8 @@ export const boards: IBoards = {
         const { boardTrust } = await import("./board-trust");
         await boardTrust.load();
         const wasTrusted = boardTrust.isTrusted(boardRoot);
-        const { isPinned, addPin, removePin } = await import("../ui/sidebar/pinned-items");
-        const wasPinned = isPinned({ kind: "board", root: boardRoot });
+        const { getCategoryForRef, removeCategoryMembership, moveEditorToCategory } = await import("../ui/sidebar/pinned-items");
+        const previousCategory = getCategoryForRef({ kind: "board", root: boardRoot });
         const { boardInstallRegistry } = await import("./board-install-registry");
         await boardInstallRegistry.load();
         const installEntry = boardInstallRegistry.getByRoot(boardRoot);
@@ -367,9 +367,9 @@ export const boards: IBoards = {
             await boardTrust.trust(newRoot);
         }
         // Pins.
-        if (wasPinned) {
-            removePin({ kind: "board", root: boardRoot });
-            addPin({ kind: "board", root: newRoot });
+        if (previousCategory) {
+            removeCategoryMembership({ kind: "board", root: boardRoot });
+            moveEditorToCategory({ kind: "board", root: newRoot }, previousCategory.id);
         }
         // Install-registry root (catalog-installed boards). record() replaces by id.
         if (installEntry) {

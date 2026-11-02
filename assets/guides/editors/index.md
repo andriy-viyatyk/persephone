@@ -41,7 +41,7 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 ## How a user gets to an editor
 
 Open a file and its extension normally selects the editor. You can also use the arrow beside **+**
-to choose a pinned editor or **Show All...** for the **Tools & Editors** hub, or open that hub from
+to choose an editor from its category list or **Show all…** for the **Tools & Editors** hub, or open that hub from
 the Menu Bar. Files with more than one applicable editor expose switch buttons in the page toolbar.
 On a new or extensionless page, choose a language from the tab's language menu to make its matching
 editor switch available. Markdown, JSON, CSV, JSONL, HTML, and Mermaid use their selected language;

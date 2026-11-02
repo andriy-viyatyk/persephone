@@ -78,9 +78,9 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 
 ```
 +---------------------------------------------------------------------+
-| [Built-in] [Boards] [Search] [Tools] [Site extensions]              |  Tools & Editors: tabs across the top
+| [Editors] [Search boards] [Tools] [Site extensions]                 |  Tools & Editors: tabs across the top
 +---------------------------------------------------------------------+
-| [active hub body]                                   [pinned rail]   |  active hub body below the tabs, pinned rail at the right
+| [Editors tree] [splitter] [Categories]                              |  Editors tab: tree left, resizable Categories pane right
 +---------------------------------------------------------------------+
 ```
 
@@ -128,11 +128,16 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 
 ```
 +---------------------------------------------------------------------+
-| [Built-in] [Boards] [Search] [Tools] [Site extensions]              |  tab row at the top of the hub
+| [Editors] [Search boards] [Tools] [Site extensions]                 |  tab row; the name filter appears at the right on Editors only
 +---------------------------------------------------------------------+
-| [active hub body]                                   [pinned rail]   |  active body below the tabs, pinned rail at the right
+| [expanded Editors tree] [splitter] [Categories]                     |  Editors tab: tree left and category manager right
 +---------------------------------------------------------------------+
 ```
+
+The splitter sets the Categories pane width in pixels and keeps it between 30% and 70% of the
+hub width. The tree starts fully expanded. Its name filter keeps matching rows and their folders;
+matching a folder keeps all its boards. Tree rows can show a bordered category chip and an accent
+**Update** chip when a board update is available.
 
 ### Drawn controls without `elements`
 

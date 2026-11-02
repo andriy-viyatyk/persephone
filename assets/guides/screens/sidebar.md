@@ -62,10 +62,10 @@ layout anchors.
 
 ```
 +---------------------------------------------------------------------+
-| [Boards/Tools switch]                              [Boards close]   |  Boards panel header and switch at the top of the panel body
-| [active Boards or Tools list]                                       |  repeated board or toolset list below the switch
-| [empty state: message]                                              |  Boards empty state message
-| [Create] [Create Demo]                                              |  Boards empty-state actions below the message
+| [Editors/Tools switch]                              [Boards close]  |  Editors and Tools tabs at the top of the panel body
+| [Editors tree or toolsets]                                          |  selected list below the switch
+| [empty state: message]                                              |  Editors empty state message
+| [Create] [Create Demo]                                              |  board empty-state actions below the message
 +---------------------------------------------------------------------+
 ```
 

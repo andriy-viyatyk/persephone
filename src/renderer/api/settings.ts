@@ -24,6 +24,12 @@ export interface BrowserProfile {
     network?: BrowserNetwork;
 }
 
+export interface EditorCategory {
+    id: string;
+    name: string;
+    items: string[];
+}
+
 export type AppSettingsKey =
     | "tab-recent-languages"
     | "language"
@@ -51,7 +57,8 @@ export type AppSettingsKey =
     | "mneme.port"
     | "script-library.path"
     | "site-extensions.path"
-    | "pinned-editors"
+    | "editor-categories"
+    | "editor-categories-popover-size"
     | "disabled-bundled-boards"
     | "tor.exe-path"
     | "tor.socks-port"
@@ -135,7 +142,8 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "mneme.port": "Port for the Mneme HTTP (MCP) server.\nNumber. Default: 7700. Changing this alone does NOT move a running server —\nset \"mneme.enabled\": false, save, then set it back to true.",
     "script-library.path": "Absolute path to the script library folder — saved scripts and reusable modules.\nEmpty means no library is linked; the Menu Bar's Script Library category then offers\nto pick one. Changing it here re-points the category immediately.",
     "site-extensions.path": "Absolute path to the site extensions folder: one sub-folder per extension, each with\nmanifest.json and its script. Empty means the default, <userData>/data/site-extensions.\nChanging it revokes trust for every extension: each one in the new folder asks to be trusted again.\nPages that already ran an extension keep it until they reload or navigate.",
-    "pinned-editors": "Editors listed in the '+' new-page menu, in this order.\nArray of creatable item ids, e.g. \"grid-json\", \"bundled-board:excalidraw\", \"browser\", \"script-js\".\nThe full set is in the Tools & Editors page; unpinned editors remain available there.",
+    "editor-categories": "Ordered editor categories for the '+' new-page menu. Each entry has id, name, and item refs; Top is fixed first and Other is derived from eligible items not assigned to a category.",
+    "editor-categories-popover-size": "Size of the '+' new-page popover, saved when you resize it by its corner.\nObject { width, height } in pixels, or null for the default size. The popover never opens larger than the window.",
     "disabled-bundled-boards": "Bundled boards disabled in Tools & Editors.\nArray of stable bundled board folder ids; changes apply live without restarting. Default: [].",
     "tor.exe-path": "Absolute path to tor.exe. Required for Browser (Tor) mode; empty disables it.\nGet it from the Tor Expert Bundle, or reuse the tor.exe inside a Tor Browser installation.",
     "tor.socks-port": "SOCKS proxy port for Tor.\nNumber. Default: 9050. Change only if 9050 is already in use on this machine.",
@@ -154,7 +162,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
-/** Items in the "+" new-page menu on a fresh install, in order (see `pinned-editors`). */
+/** Items in the Top category on a fresh install, in order. */
 export const DEFAULT_PINNED_EDITORS: readonly string[] = [
     "open-folder", "open-file", "script-ts", "bundled-board:excalidraw", "grid-csv", "browser",
 ];
@@ -187,7 +195,8 @@ const defaultAppSettingsState = {
         "mneme.port": 7700,
         "script-library.path": "",
         "site-extensions.path": "",
-        "pinned-editors": [...DEFAULT_PINNED_EDITORS],
+        "editor-categories": [{ id: "top", name: "", items: [...DEFAULT_PINNED_EDITORS] }] as EditorCategory[],
+        "editor-categories-popover-size": null as { width: number; height: number } | null,
         "disabled-bundled-boards": [] as string[],
         "tor.exe-path": "",
         "tor.socks-port": 9050,
@@ -221,7 +230,7 @@ export function normalizeVoiceTypingAutoStopSilence(value: unknown): number {
 
 /**
  * Value comparison for change detection on reload. Settings hold arrays and objects
- * (`browser-profiles`, `search-extensions`, `pinned-editors`), and every reload re-parses the
+ * (`browser-profiles`, `search-extensions`, `editor-categories`), and every reload re-parses the
  * file into fresh instances — so `!==` would report every one of them as changed on every
  * touch of the file, waking subscribers that reload the script library or reconnect Mneme.
  *
@@ -246,6 +255,49 @@ function migrateLegacyPinnedEditors(value: unknown): string[] | undefined {
     });
 
     return changed ? migrated as string[] : undefined;
+}
+
+function normalizeEditorCategories(value: unknown, legacyValue: unknown): EditorCategory[] {
+    const source = Array.isArray(value) ? value : [];
+    const seenIds = new Set<string>();
+    const seenItems = new Set<string>();
+    const categories: EditorCategory[] = [{ id: "top", name: "", items: [] }];
+    const topRaw = source.find((raw) => !!raw && typeof raw === "object" && (raw as Partial<EditorCategory>).id === "top");
+    const orderedSource = topRaw ? [topRaw, ...source.filter((raw) => raw !== topRaw)] : source;
+    let foundTop = Boolean(topRaw);
+    for (const raw of orderedSource) {
+        if (!raw || typeof raw !== "object") continue;
+        const category = raw as Partial<EditorCategory>;
+        if (category.id === "top") {
+            foundTop = true;
+            for (const item of Array.isArray(category.items) ? category.items : []) {
+                if (typeof item === "string" && !seenItems.has(item)) {
+                    seenItems.add(item);
+                    categories[0].items.push(item);
+                }
+            }
+            continue;
+        }
+        if (typeof category.id !== "string" || !category.id || seenIds.has(category.id)) continue;
+        seenIds.add(category.id);
+        const items: string[] = [];
+        for (const item of Array.isArray(category.items) ? category.items : []) {
+            if (typeof item !== "string" || seenItems.has(item)) continue;
+            seenItems.add(item);
+            items.push(item);
+        }
+        categories.push({ id: category.id, name: typeof category.name === "string" ? category.name : "", items });
+    }
+    if (!Array.isArray(value)) {
+        const migrated = migrateLegacyPinnedEditors(legacyValue);
+        categories[0].items = migrated ?? (Array.isArray(legacyValue)
+            ? legacyValue.filter((item): item is string => typeof item === "string")
+            : [...DEFAULT_PINNED_EDITORS]);
+    } else if (!foundTop) {
+        // A malformed category list still gets the documented defaults in its fixed Top group.
+        categories[0].items = [...DEFAULT_PINNED_EDITORS];
+    }
+    return categories;
 }
 
 // =============================================================================
@@ -362,17 +414,19 @@ class Settings implements ISettings {
             newSettings["voice-typing.shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.shortcut"]) ?? "Alt+V";
             newSettings["voice-typing.translate-shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.translate-shortcut"]) ?? "Alt+Shift+V";
             newSettings["voice-typing.auto-stop-silence-ms"] = normalizeVoiceTypingAutoStopSilence(newSettings["voice-typing.auto-stop-silence-ms"]);
-            const migratedPinnedEditors = migrateLegacyPinnedEditors(
-                newSettings["pinned-editors"],
-            );
-            if (migratedPinnedEditors) {
-                newSettings["pinned-editors"] = migratedPinnedEditors;
-            }
+            const categoriesAbsent = !Object.prototype.hasOwnProperty.call(content, "editor-categories");
+            const rawCategories = content["editor-categories"];
+            const categories = normalizeEditorCategories(rawCategories, (content as Record<string, unknown>)["pinned-editors"]);
+            (newSettings as Record<string, unknown>)["editor-categories"] = categories;
+            const removedLegacyPinnedEditors = Object.prototype.hasOwnProperty.call(content, "pinned-editors");
+            delete (newSettings as Record<string, unknown>)["pinned-editors"];
             this.state.update((s) => {
                 s.settings = newSettings;
             });
 
-            if (migratedPinnedEditors) this.saveSettingsDebounced();
+            if (categoriesAbsent || removedLegacyPinnedEditors || JSON.stringify(categories) !== JSON.stringify(rawCategories)) {
+                this.saveSettingsDebounced();
+            }
 
             applyThemePreservingPreview(newSettings["theme"]);
 

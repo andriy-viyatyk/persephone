@@ -2,31 +2,21 @@ import type { EditorModel } from "../base/EditorModel";
 import { ToolsHubEditor, type HubTab } from "./ToolsHubEditor";
 import { SearchBoardsTabView } from "./SearchBoardsTab";
 import { SiteExtensionsTabView } from "./SiteExtensionsTab";
-import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
-import { BuiltinEditorsListView } from "../../ui/sidebar/BuiltinEditorsListView";
-import { PinnedRailView } from "../../ui/sidebar/PinnedRailView";
-import { TrustedBoardsListView } from "../../ui/sidebar/TrustedBoardsListView";
+import { EditorsTreeView } from "../../ui/sidebar/EditorsTreeView";
+import { EditorCategoriesView } from "../../ui/sidebar/EditorCategoriesView";
 import { TrustedToolsListView } from "../../ui/sidebar/TrustedToolsListView";
-import {
-    PINNED_DRAG_SESSION_EVENT,
-    endPinnedDragSession,
-    type PinnedDragSessionDetail,
-} from "../../ui/sidebar/pinned-drag-session";
-import { encodePin, isPinnedRef, removePin, type PinnedRef } from "../../ui/sidebar/pinned-items";
+import { SplitterView } from "../../uikit/Splitter/SplitterView";
+import { InputView } from "../../uikit/Input/InputView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SegmentedControlView } from "../../uikit/SegmentedControl/SegmentedControlView";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
 import { t } from "../../../shared/i18n/t";
-import "../../uikit/Button/Button.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
-import "../../uikit/Text/Text.css";
-import "../../uikit/Tag/Tag.css";
+import "./ToolsHubView.css";
 
 function requireToolsHubModel(model: EditorModel): ToolsHubEditor {
-    if (!(model instanceof ToolsHubEditor)) {
-        throw new Error("Tools hub view received an invalid model.");
-    }
+    if (!(model instanceof ToolsHubEditor)) throw new Error("Tools hub view received an invalid model.");
     return model;
 }
 
@@ -34,57 +24,36 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
     private model: ToolsHubEditor;
     private tabs: SegmentedControlView | undefined;
     private body: HTMLDivElement | undefined;
-    private activeBody: IOwnedView | undefined;
+    private activeViews: IOwnedView[] = [];
     private activeTab: HubTab | undefined;
-    private unpinSourceRef: PinnedRef | undefined;
+    private filterView: InputView | undefined;
+    private filterText = "";
+    private editorsTree: EditorsTreeView | undefined;
     private modelSubscription: (() => void) | undefined;
 
     public constructor(props: { model: EditorModel }) {
-        const root = createPanelElement({
-            name: "tools-hub",
-            direction: "row",
-            width: "100%",
-            height: "100%",
-            minHeight: 0,
-        });
+        const root = createPanelElement({ name: "tools-hub", direction: "column", width: "100%", height: "100%", minHeight: 0 });
         root.dataset.type = "tools-hub";
         super(props, root);
         this.model = requireToolsHubModel(props.model);
     }
 
     protected onMount(): void {
-        const main = createPanelElement({ direction: "column", flex: 1, minWidth: 0, minHeight: 0 });
         const tabsHost = createPanelElement({ direction: "row", paddingX: "lg", paddingY: "md", shrink: false });
         this.body = createPanelElement({ direction: "column", flex: 1, minHeight: 0 });
         this.body.dataset.part = "body";
-        this.listen(this.body, "dragenter", (event) => this.onBodyDragEnter(event));
-        this.listen(this.body, "dragover", (event) => this.onBodyDragOver(event));
-        this.listen(this.body, "dragleave", (event) => this.onBodyDragLeave(event));
-        this.listen(this.body, "drop", (event) => this.onBodyDrop(event));
-        const sessionListener = (event: Event): void => {
-            this.onPinnedDragSession(event as CustomEvent<PinnedDragSessionDetail>);
-        };
-        document.addEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener);
-        this.own(() => document.removeEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener));
-        this.own(() => this.clearUnpinTarget());
         this.tabs = this.child(new SegmentedControlView(this.tabProps()));
-        tabsHost.append(this.tabs.root);
-        main.append(tabsHost, this.body);
-
-        const pinned = this.child(new PinnedRailView({ layout: "vertical" }));
-        this.root.append(main, pinned.root);
+        tabsHost.dataset.part = "tabs-row";
+        const filterView = this.child(new InputView(this.filterProps()));
+        this.filterView = filterView;
+        filterView.mount();
+        filterView.root.dataset.part = "editors-filter";
+        tabsHost.append(this.tabs.root, filterView.root);
+        this.root.append(tabsHost, this.body);
         this.tabs.mount();
-        pinned.mount();
-
         this.mountBody(this.model.state.get().tab);
-        this.modelSubscription = this.model.state.subscribe<HubTab>(
-            (tab) => this.applyTab(tab),
-            (state) => state.tab,
-        );
-        this.own(() => {
-            this.modelSubscription?.();
-            this.modelSubscription = undefined;
-        });
+        this.modelSubscription = this.model.state.subscribe<HubTab>((tab) => this.applyTab(tab), (state) => state.tab);
+        this.own(() => { this.modelSubscription?.(); this.modelSubscription = undefined; });
     }
 
     protected onUpdate(props: { model: EditorModel }): void {
@@ -92,21 +61,27 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
         if (model !== this.model) {
             this.modelSubscription?.();
             this.model = model;
-            this.modelSubscription = this.model.state.subscribe<HubTab>(
-                (tab) => this.applyTab(tab),
-                (state) => state.tab,
-            );
-        } else {
-            this.model = model;
+            this.modelSubscription = this.model.state.subscribe<HubTab>((tab) => this.applyTab(tab), (state) => state.tab);
         }
         this.applyTab(this.model.state.get().tab);
     }
 
-    protected onDispose(): void {
-        this.clearUnpinTarget();
-        this.activeBody = undefined;
-        this.activeTab = undefined;
-        this.body?.replaceChildren();
+    protected onDispose(): void { this.clearBody(); }
+
+    private readonly onFilterChange = (value: string): void => {
+        this.filterText = value;
+        this.filterView?.update(this.filterProps());
+        this.editorsTree?.setFilter(value);
+    };
+
+    private filterProps(): ConstructorParameters<typeof InputView>[0] {
+        return {
+            name: "editors-tree-filter",
+            size: "sm",
+            value: this.filterText,
+            placeholder: t("shell.editorCategoryFilterPlaceholder"),
+            onChange: this.onFilterChange,
+        };
     }
 
     private tabProps() {
@@ -115,8 +90,7 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
             value: this.model.state.get().tab,
             onChange: (value: string) => this.model.setTab(value as HubTab),
             items: [
-                { value: "builtin", label: t("tools.hubBuiltin") },
-                { value: "boards", label: t("tools.hubBoards") },
+                { value: "editors", label: t("shell.editorCategoryEditorsTab") },
                 { value: "search", label: t("tools.hubSearchBoards") },
                 { value: "tools", label: t("tools.hubTools") },
                 { value: "site-extensions", label: t("tools.hubSiteExtensions") },
@@ -126,87 +100,68 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
 
     private applyTab(tab: HubTab): void {
         this.tabs?.update({ ...this.tabProps(), value: tab });
-        if (tab === this.activeTab) return;
-        this.clearUnpinTarget();
-        this.mountBody(tab);
+        if (tab !== this.activeTab) this.mountBody(tab);
+    }
+
+    private clearBody(): void {
+        this.editorsTree = undefined;
+        for (const view of this.activeViews) this.releaseChild(view);
+        this.activeViews = [];
+        this.body?.replaceChildren();
     }
 
     private mountBody(tab: HubTab): void {
-        if (this.activeBody) this.releaseChild(this.activeBody);
-        const view = tab === "builtin"
-            ? new BuiltinEditorsListView({})
-            : tab === "boards"
-                ? new TrustedBoardsListView({})
-                : tab === "search"
-                    ? new SearchBoardsTabView({})
-                    : tab === "site-extensions"
-                        ? new SiteExtensionsTabView({})
-                        : new TrustedToolsListView({});
-        this.activeBody = this.child(view);
-        this.body?.append(view.root);
-        view.mount();
+        this.clearBody();
+        if (!this.body) return;
+        if (tab === "editors") {
+            this.body.dataset.layout = "editors";
+            const categories = this.child(new EditorCategoriesView({}));
+            // The splitter works in pixels; the Categories width is kept within 30-70% of the body.
+            const body = this.body;
+            const clampWidth = (px: number): number => {
+                const total = body.clientWidth;
+                return total > 0 ? Math.min(Math.max(px, total * 0.3), total * 0.7) : px;
+            };
+            const splitterProps = {
+                name: "editor-categories-splitter",
+                orientation: "vertical" as const,
+                side: "after" as const,
+                value: 0,
+                onChange: (value: number) => {
+                    const width = clampWidth(value);
+                    body.style.setProperty("--categories-width", `${width}px`);
+                    splitterProps.value = width;
+                    splitter.update({ ...splitterProps });
+                },
+            };
+            const splitter = this.child(new SplitterView(splitterProps));
+            // Seed the drag origin from the rendered width (50% by default) on first press.
+            splitter.root.addEventListener("pointerdown", () => {
+                if (splitterProps.value === 0) {
+                    splitterProps.value = categories.root.offsetWidth;
+                    splitter.update({ ...splitterProps });
+                }
+            }, { capture: true });
+            const tree = this.child(new EditorsTreeView({ onNewCategory: (categoryId) => categories.startRename(categoryId) }));
+            this.editorsTree = tree;
+            // Tree left, Categories right; `side: "after"` makes the splitter size the pane after it.
+            this.activeViews = [tree, splitter, categories];
+            this.body.append(tree.root, splitter.root, categories.root);
+            categories.mount();
+            splitter.mount();
+            tree.mount();
+            tree.setFilter(this.filterText);
+        } else {
+            this.body.dataset.layout = "single";
+            const view = tab === "search" ? new SearchBoardsTabView({})
+                : tab === "site-extensions" ? new SiteExtensionsTabView({})
+                    : new TrustedToolsListView({});
+            this.activeViews = [this.child(view)];
+            this.body.append(view.root);
+            view.mount();
+        }
+        // The tree filter sits on the tab row and applies to the Editors tab only.
+        if (this.filterView) this.filterView.root.hidden = tab !== "editors";
         this.activeTab = tab;
     }
-
-    private isAcceptedUnpinTarget(): boolean {
-        return this.unpinSourceRef !== undefined
-            && (this.activeTab === "builtin" || this.activeTab === "boards");
-    }
-
-    private onPinnedDragSession(event: CustomEvent<PinnedDragSessionDetail>): void {
-        this.unpinSourceRef = event.detail.ref !== null && event.detail.mode === "unpin"
-            ? event.detail.ref
-            : undefined;
-        if (!this.isAcceptedUnpinTarget()) this.clearUnpinTarget();
-    }
-
-    private onBodyDragEnter(event: DragEvent): void {
-        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        this.body?.setAttribute("data-unpin-target", "");
-    }
-
-    private onBodyDragOver(event: DragEvent): void {
-        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        this.body?.setAttribute("data-unpin-target", "");
-    }
-
-    private onBodyDragLeave(event: DragEvent): void {
-        if (event.relatedTarget instanceof Node && this.body?.contains(event.relatedTarget)) return;
-        this.clearUnpinTarget();
-    }
-
-    private onBodyDrop(event: DragEvent): void {
-        if (!this.isAcceptedUnpinTarget()) return;
-        event.preventDefault();
-        event.stopPropagation();
-        const sourceRef = this.unpinSourceRef;
-        const payload = getTraitDragData(event.dataTransfer);
-        this.clearUnpinTarget();
-        endPinnedDragSession();
-        const ref = getReorderedPinnedRef(payload);
-        if (!sourceRef || !ref || encodePin(sourceRef) !== encodePin(ref)) return;
-        removePin(ref);
-    }
-
-    private clearUnpinTarget(): void {
-        this.body?.removeAttribute("data-unpin-target");
-    }
-}
-
-function getReorderedPinnedRef(payload: ReturnType<typeof getTraitDragData>): PinnedRef | undefined {
-    if (!payload || payload.typeId !== TraitTypeId.PinnedEditor) return undefined;
-    const data = payload.data;
-    if (!data || typeof data !== "object") return undefined;
-    const candidate = data as { kind?: unknown; index?: unknown; ref?: unknown };
-    if (candidate.kind !== "reorder"
-        || typeof candidate.index !== "number"
-        || !Number.isInteger(candidate.index)
-        || candidate.index < 0) {
-        return undefined;
-    }
-    return isPinnedRef(candidate.ref) ? candidate.ref : undefined;
 }

@@ -1,0 +1,42 @@
+@layer app {
+    /* Adopts the popover shell as its root, so it declares its whole layout (see uikit/CLAUDE.md). */
+    [data-name="editor-categories-popover"] {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        /* The view sets these from the saved size; inline width/height belong to PopoverView. */
+        width: min(var(--editor-categories-popover-width, 518px), calc(100vw - 16px));
+        height: min(var(--editor-categories-popover-height, 379px), calc(100vh - 16px));
+        overflow: hidden;
+        background: var(--color-bg-default, currentColor);
+    }
+    [data-name="editor-categories-popover"] > [data-part="header"] {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+    }
+    [data-name="editor-categories-popover"] > [data-part="header"] > :first-child { flex: 1 1 auto; min-width: 0; }
+    [data-name="editor-categories-popover"] > [data-part="header"] > :last-child { flex: 0 0 auto; }
+    [data-name="editor-categories-popover"] > [data-type="editor-category-column-list"] {
+        flex: 1 1 0;
+        min-height: 0;
+        padding-bottom: 8px;
+    }
+    [data-name="editor-categories-popover"] > [data-part="resize-handle"] {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 12px;
+        height: 12px;
+        cursor: nwse-resize;
+        box-sizing: border-box;
+        border-right: 2px solid var(--color-border-default, currentColor);
+        border-bottom: 2px solid var(--color-border-default, currentColor);
+    }
+    [data-name="editor-categories-popover"] > [data-part="resize-handle"]:hover {
+        border-color: var(--color-border-active, currentColor);
+    }
+}

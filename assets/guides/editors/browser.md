@@ -19,7 +19,7 @@ closed, the next call creates a fresh Browser page with one tab.
 
 ## How to Open
 
-Choose **Browser** from the arrow beside **+** when it is pinned, use the **Tools & Editors** hub,
+Choose **Browser** from the arrow beside **+** in its category or under **Other**, use the **Tools & Editors** hub,
 or open a URL from a script with `pages.openUrlInBrowserTab(url, options)`. Browser, Browser Incognito,
 Browser (Tor), and browser profiles are separate choices in the hub.
 

@@ -15,7 +15,7 @@ Each open file appears as a tab in the tab bar. Tabs show the file name, a langu
 | Action | How |
 |--------|-----|
 | New empty tab | `Ctrl+N` or click the **+** button |
-| New with specific editor | Click the dropdown arrow (&#9662;) next to **+** — shows your pinned editors plus "Show All..." to open the Tools & Editors hub page |
+| New with specific editor | Click the dropdown arrow (&#9662;) next to **+** — shows Top, named editor categories, and Other; choose **Show all…** to open the Tools & Editors hub |
 | Open a file | `Ctrl+O`, or drag a single file onto the window |
 | Open multiple files or a folder | Drag multiple files or a folder onto the window — opens a link collection page listing all files. Click any file to view it in the main area. Subfolders become link categories. |
 
@@ -258,28 +258,24 @@ the current guide-browser location.
 
 ### Tools & Editors
 
-The **Tools & Editors** entry appears between Recent Files and Script Library. It opens as a slide-out panel with a **Pinned** rail at the top and a row of tabs below it:
+The **Tools & Editors** entry appears between Recent Files and Script Library. Its slide-out panel has **Editors** and **Tools** tabs. Editors combines built-in editors with every trusted [board](./boards.md), including boards associated with file types, grouped by folder. Click an item to open it; right-click bundled boards to **Disable** or **Enable** them. Disabled bundled boards remain in the tree for management but cannot be assigned to a category.
 
-- **Pinned** — Your favorite editors and boards, shown at the top. Drag to reorder. Drag a built-in editor or a registered board onto a pinned row to insert it before that row, or onto the rail background, **Pinned** header, or empty space below the rows to append it. Drag a pinned item onto the **Built-in Editors** or **Boards** tab body to unpin it. These are also the items that appear in the **+** dropdown menu in the tab bar.
-- **Built-in Editors** — Every standard editor/tool, including **Clipboard**, sorted alphabetically. Hover a row to reveal **Pin to menu**, or drag the row to the **Pinned** rail. Click the pin button to add an item to your pinned list.
-- **Boards** — All trusted [boards](./boards.md) across every location, grouped by folder. Drag a board leaf to the **Pinned** rail; folder rows cannot be pinned by dragging.
-- **Tools** — All registered [Agent Tools](./agent-tools.md) toolsets.
+In the full **Tools & Editors** hub, the **Editors** tab has the fully expanded editor tree on the left and the category manager on the right. Drag the splitter to resize the Categories pane; it stays between 30% and 70% of the hub width. The filter at the right of the tab row appears only on Editors and matches names in the tree. Matching a folder keeps all its boards visible. Tree rows show a bordered category chip, and boards with an available update show an accent **Update** chip.
 
-Click any item to create a new page (or open the board/toolset) with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set (for new installations) is: **Open Folder**, **Open File**, Script (TS), **Excalidraw**, Grid (CSV), Browser.
+**Top** is fixed first; create, rename, reorder, and delete named categories in the hub. Drag editor rows into categories, reorder items within a category, or drag a categorized item onto the Editors tree to return it to **Other**. Drag a category header onto another header to place it before that category. Deleting a nonempty category moves its members to **Other**. Categories persist across restarts.
 
-Bundled boards such as **Excalidraw** are listed in **Built-in Editors**, not in the **Boards** /
-**Registered boards** list. Right-click a bundled board and choose **Disable** to remove its file
+The **+** dropdown shows **Top**, nonempty named categories, and **Other**. Its filter narrows the list, with **Show all…** beside it, and opens the hub. The menu opens below the caret with its left edge aligned to the caret's left edge; resize it from the lower-right corner and its size is remembered. When category columns extend beyond the visible width, use the mouse wheel to scroll horizontally. On a fresh install, Top starts with **Open Folder**, **Open File**, Script (TS), **Excalidraw**, Grid (CSV), and Browser. The Categories pane also scrolls horizontally with the mouse wheel when its columns overflow.
+
+Bundled boards such as **Excalidraw** appear under the **Built-in** root in **Editors**. Right-click a bundled board and choose **Disable** to remove its file
 association and capabilities. It stays listed, greyed out, so you can right-click it again and
 choose **Enable**. If no replacement handles an image or diagram handoff while it is disabled,
 Persephone shows the corresponding “No … editor is registered” message.
 
-**Open in new tab** — A button in the panel header opens the same content as a full page instead of a slide-out panel — handy when you want more room, or want to keep browsing while doing something else in the app. The full-page **Tools & Editors hub** has the same **Pinned** rail plus four tabs: **Built-in**, **Registered boards**, **Search boards**, and **Tools**. **Search boards** is hub-only — it browses the catalog of boards published by the project and lets you install one directly, without needing a matching file open. See [Boards — Published boards catalog](./boards.md#published-boards-catalog--discover-install-update).
+**Open in new tab** — A button in the panel header opens the same content as a full page. The hub also has **Search boards** and **Site extensions** tabs. **Search boards** browses the published catalog and lets you install a board directly. See [Boards — Published boards catalog](./boards.md#published-boards-catalog--discover-install-update).
 
-The pin and unpin drag actions work in both the slide-out panel and the full-page hub. Dropping on a pinned row inserts before it; dropping on the rail background appends. Dropping a pinned item anywhere other than the **Built-in** or **Registered boards** tab body leaves it pinned.
+**Open Folder** — The first entry in the default Top category. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**.
 
-**Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
-
-Items include all standard editors (Script, Grid, Notebook, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always listed and can be pinned regardless of the clipboard-history setting.
+Items include all standard editors (Script, Grid, Notebook, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always available regardless of the clipboard-history setting.
 
 **Clipboard** — Opens one dedicated page whose sidebar contains the Clipboard history panel. If
 history is disabled, the panel shows a **Disabled** badge, an explanation, and an **Open Settings**

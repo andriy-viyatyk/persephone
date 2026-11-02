@@ -116,7 +116,7 @@ Opening a toolset shows a read-only **toolset view** with:
 
 - **File Explorer** — rows for `tools-manifest.json` files show an **Open Toolset** button (wrench icon) directly in the row. Click it to register (if needed) and open that toolset. Clicking the row itself still opens the JSON in Monaco.
 - **Boards panel → Tools** — open the **Boards** panel from the File Explorer header, then flip its inner switch from **Boards** to **Tools**. This lists every registered toolset under the current Explorer root. Click one to open it.
-- **Tools & Editors panel → Tools tab** — the sidebar **Tools & Editors** panel has three segments: **Built-in Editors**, **Boards**, and **Tools**. The **Tools** tab lists *all* registered toolsets across every location. Click one to open it; right-click for **Remove** (unregister).
+- **Tools & Editors panel → Tools tab** — the sidebar **Tools & Editors** panel has **Editors** and **Tools** tabs. The **Tools** tab lists *all* registered toolsets across every location. Click one to open it; right-click for **Remove** (unregister).
 
 ---
 

@@ -367,14 +367,14 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── OpenTabsListView.ts      # Native open-tabs list
 │   │   ├── RecentFileListView.ts    # Native recent-files panel
 │   │   ├── ToolsEditorsPanelView.ts # Native Tools & Editors panel
-│   │   ├── TrustedBoardsListView.ts   # Native trusted-board list and owned trailing controls
 │   │   ├── TrustedToolsListView.ts    # Native trusted-toolset list and owned trailing controls
-│   │   ├── pinned-items.ts          # Unified PinnedRef model over the pinned-editors setting (editors + "board:<root>" pins)
+│   │   ├── pinned-items.ts          # Editor-category model, membership helpers, and editor/board ref encoding
+│   │   ├── EditorsTreeView.ts       # Built-in root plus trusted boards in one tree
+│   │   ├── EditorCategoriesView.ts  # Hub-only category manager
+│   │   ├── EditorCategoryColumnListView.ts # Shared category/item column-flow layout
 │   │   ├── tools-editors-registry.ts # Creatable items registry (editors + tools)
 │   │   ├── ScriptLibraryPanelView.ts # Native script-library panel
 │   │   ├── FolderItemView.ts        # Native folder tree item
-│   │   ├── BuiltinEditorsListView.ts # Native built-in editor list
-│   │   ├── PinnedRailView.ts        # Native pinned rail
 │   ├── dialogs/            # Application dialogs
 │   │   ├── Dialogs.ts              # Dialog state/actions API
 │   │   ├── DialogsView.ts          # Native dialog host and slot ownership
@@ -686,7 +686,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
-│   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache; gates pin affordances)
+│   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache)
 │   │   ├── busy-boards.ts            # Reactive registry of busy board roots (drives the Boards panel "running" dot)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
 │   │   ├── board-scaffold.ts         # Scaffold helpers — copy board-template into a new board folder (writes board-manifest.json)
@@ -702,8 +702,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── open-board-info.ts        # openBoardInfo(page,opts) replaces a page's editor; openBoardInfoPage(opts) opens a new page
 │   │   └── index.ts
 │   ├── tools-hub/          # Tools & Editors hub ("tools-hub-view") — full-page counterpart of the sidebar panel (singleton via fixed PageModel id)
-│   │   ├── ToolsHubEditor.ts         # EditorModel — HubTab state; Built-in / Registered boards / Search boards / Tools
-│   │   ├── ToolsHubView.ts            # Tab strip + body + right Pinned rail
+│   │   ├── ToolsHubEditor.ts         # EditorModel — Editors / Search / Tools / Site extensions tabs
+│   │   ├── ToolsHubView.ts            # Tab strip and category manager + merged Editors tree layout
 │   │   ├── SearchBoardsTab.ts         # Published-catalog browse/filter — board cards → Board Info page
 │   │   └── index.ts
 │   ├── toolset/            # Per-toolset viewer (non-text, no trait) — opened via persephone-toolset://
