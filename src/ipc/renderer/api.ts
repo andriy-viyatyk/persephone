@@ -129,6 +129,10 @@ class ApiCalls implements Api {
         return executeOnce<boolean>(Endpoint.createBoardShortcut, request);
     };
 
+    openBoardWindow = async (boardRoot: string) => {
+        return executeOnce<void>(Endpoint.openBoardWindow, boardRoot);
+    };
+
     maximizeWindow = async () => {
         return executeOnce<void>(Endpoint.maximizeWindow);
     };

@@ -36,6 +36,7 @@ export interface BoardServiceChannelDelivery { boardId: string; channelId: strin
 export interface CreateBoardShortcutRequest {
     boardRoot: string;
     linkPath: string;
+    overwrite?: boolean;
     displayName: string;
     iconDataUrl: string;
 }
@@ -50,6 +51,7 @@ export enum Endpoint {
     setUiPreference = "setUiPreference",
     setBoardWindowIdentity = "setBoardWindowIdentity",
     createBoardShortcut = "createBoardShortcut",
+    openBoardWindow = "openBoardWindow",
     maximizeWindow = "maximizeWindow",
     minimizeWindow = "minimizeWindow",
     restoreWindow = "restoreWindow",
@@ -287,6 +289,7 @@ export type Api = {
     ) => Promise<string | number | boolean>;
     [Endpoint.setBoardWindowIdentity]: (request: { displayName: string; iconDataUrl: string }) => Promise<void>;
     [Endpoint.createBoardShortcut]: (request: CreateBoardShortcutRequest) => Promise<boolean>;
+    [Endpoint.openBoardWindow]: (boardRoot: string) => Promise<void>;
     [Endpoint.maximizeWindow]: () => Promise<void>;
     [Endpoint.minimizeWindow]: () => Promise<void>;
     [Endpoint.restoreWindow]: () => Promise<void>;

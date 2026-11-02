@@ -409,6 +409,25 @@ dialogs").
 > and `app.boards.openBoard(root)`. (`app.openRawLink(href)` is a generic opener — files, URLs,
 > in-app links.)
 
+The host agent namespace `boards` and script service `app.boards` expose the same shortcut and
+window operations:
+
+- **`boards.createShortcut(boardRoot, opts?)` / `app.boards.createShortcut(boardRoot, opts?)`**
+  -> `Promise<{ linkPath: string } | null>`: create a Windows `.lnk` that launches the board in
+  its board-mode window. The root must be absolute, contain `board-manifest.json`, and be trusted
+  or bundled; an untrusted board is rejected with guidance to call `boards.registerBoard(root)`.
+  Without `opts.linkPath`, the existing Save dialog appears and cancellation returns `null`. Pass
+  an absolute `.lnk` `opts.linkPath` to skip the dialog; its parent directory must exist, and an
+  existing shortcut is refused unless `opts.overwrite` is `true`. The returned `linkPath` is the
+  resolved absolute destination. Failures reject to the caller without a UI notification.
+- **`boards.openBoardWindow(boardRoot)` / `app.boards.openBoardWindow(boardRoot)`**
+  -> `Promise<void>`: create a visible board-mode window or focus the existing one for that root.
+  The absolute root must contain `board-manifest.json` and be trusted or bundled; this agent call
+  rejects an untrusted board without opening a trust dialog. Use `boards.openBoard(root)` when the
+  desired result is an ordinary tab in the current window.
+
+These are host Object Model calls and do not add methods to the board's `persephone` bridge.
+
 ### Trust, forget & rename a board (script API)
 
 Three `app.boards` calls manage an **existing** board's lifecycle — for boards you did not

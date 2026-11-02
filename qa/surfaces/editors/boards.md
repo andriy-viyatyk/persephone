@@ -123,3 +123,29 @@ trust, and try `boards.registerBoard(root)` on an untrusted board.
 **Verify:** No member trusts a board directly. `registerBoard` raises the user's trust dialog and
 the result carries `attention` naming it. The agent cannot answer it on the user's behalf, and
 nothing in `$help` suggests it should.
+
+## Test B.8: Shortcuts and board-mode windows
+
+**Preparation:** one trusted board, one untrusted board with a valid manifest, and a writable
+scratch folder. Do not use a repository folder for shortcut destinations.
+
+**Start:** Read the `boards` descriptor and help, then check the `app.boards` script typings/docs.
+
+**Call:** Exercise `boards.createShortcut(root)` once and cancel the Save dialog. Then create a
+shortcut with `boards.createShortcut(root, { linkPath })`, where `linkPath` is an absolute `.lnk`
+inside the scratch folder. Try relative, non-`.lnk`, and missing-parent destinations; try the
+existing destination once without `overwrite` and once with `overwrite: true`. Call both new methods
+with the untrusted board. Call `boards.openBoardWindow(root)` twice for the trusted board, and
+`boards.openBoard(root)` once.
+
+**Overview route:** `PASS | PARTIAL | FAIL` â€” `overview â†’ <paths in call order>`; wrong paths:
+`none` or `<every incorrect path, in order>`.
+
+**Verify:** Cancellation returns `null`. Explicit valid destination creates the shortcut without
+showing a dialog and returns its resolved absolute path. Invalid destinations fail with actionable
+errors; an existing shortcut is refused unless `overwrite: true`. The untrusted board is rejected
+before either a Save dialog or window opens, with guidance to call `boards.registerBoard(root)`;
+the caller receives the failure without a toast. Repeated `openBoardWindow()` calls focus one
+board-mode window for that root. A missing manifest is rejected before a window opens. The existing
+`boards.openBoard()` still opens a regular tab. Verify the UI Create shortcut action remains
+available for an untrusted open board and preserves its normal trust-dialog launch flow.

@@ -77,9 +77,9 @@ closed or dragged. Closing the window closes the board.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1749](../tasks/US-1749-board-mode-window/README.md) | Board-mode window: `--board` launch, routing, lifetime, bounds | Done |
-| [US-1750](../tasks/US-1750-board-mode-chrome/README.md) | Board-mode chrome: locked board tab and app controls | Done |
-| [US-1751](../tasks/US-1751-board-shortcut/README.md) | Create a Windows shortcut for a board | Done |
+| US-1749 | Board-mode window: `--board` launch, routing, lifetime, bounds | Done |
+| US-1750 | Board-mode chrome: locked board tab and app controls | Done |
+| US-1751 | Create a Windows shortcut for a board | Done |
 | US-1752 | External `persephone-board://` protocol registration | Dropped (2026-11-02) |
 
 Order: US-1749 → US-1750 → US-1751.

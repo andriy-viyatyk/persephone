@@ -85,6 +85,22 @@ async function defaultInstallDir(): Promise<string> {
     return fpJoin(await api.getCommonFolder("userData"), "data", "boards");
 }
 
+async function resolveTrustedBoardRoot(boardRoot: string): Promise<string> {
+    if (!fpIsAbsolute(boardRoot)) throw new Error("boardRoot must be absolute.");
+    const root = fpResolve(boardRoot);
+    const { isBoardFolder } = await import("../editors/board/board-manifest");
+    if (!(await isBoardFolder(root))) {
+        throw new Error(`Not a board folder: "${root}" is missing or has no board-manifest.json.`);
+    }
+    await boardTrust.load();
+    const { bundledBoardRegistry } = await import("../editors/board/bundled-board-registry");
+    await bundledBoardRegistry.ensureInitialized();
+    if (!boardTrust.isTrusted(root) && !bundledBoardRegistry.isBundled(root)) {
+        throw new Error("Board is not trusted; call boards.registerBoard(root) first.");
+    }
+    return root;
+}
+
 interface BoardListingSource {
     readonly key: string;
     readonly root: string;
@@ -287,6 +303,21 @@ export const boards: IBoards = {
     },
     createBoard: (name, dir) => create(name, dir, "board-template"),
     createDemoBoard: (name, dir) => create(name, dir, "demo-board"),
+    createShortcut: async (boardRoot, options) => {
+        const root = await resolveTrustedBoardRoot(boardRoot);
+        let shortcutOptions = options;
+        if (options?.linkPath !== undefined) {
+            if (!fpIsAbsolute(options.linkPath)) throw new Error("linkPath must be absolute.");
+            shortcutOptions = { ...options, linkPath: fpResolve(options.linkPath) };
+        }
+        const { createBoardShortcutCore } = await import("../editors/board/board-shortcut");
+        const result = await createBoardShortcutCore(root, shortcutOptions);
+        return result ? { linkPath: result.linkPath } : null;
+    },
+    openBoardWindow: async (boardRoot) => {
+        const root = await resolveTrustedBoardRoot(boardRoot);
+        await api.openBoardWindow(root);
+    },
     openBoard: async (boardRoot: string) => {
         const { isBoardFolder } = await import("../editors/board/board-manifest");
         if (!(await isBoardFolder(boardRoot))) {

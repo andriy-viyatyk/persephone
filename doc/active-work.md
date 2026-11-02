@@ -8,6 +8,9 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- *(no epic)*
+  - [ ] [US-1753: Agent API for board shortcuts and board windows](tasks/US-1753-board-shortcut-agent-api/README.md)
+
 ## Planned
 
 - *(no epic)*

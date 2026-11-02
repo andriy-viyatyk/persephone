@@ -89,6 +89,19 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
             throw new Error("Invalid board shortcut details.");
         }
 
+        if (!path.isAbsolute(request.linkPath)) throw new Error("linkPath must be absolute.");
+        const resolvedLinkPath = path.resolve(request.linkPath);
+        if (path.extname(resolvedLinkPath).toLowerCase() !== ".lnk") {
+            throw new Error("linkPath must end in .lnk.");
+        }
+        const parentPath = path.dirname(resolvedLinkPath);
+        if (!fs.existsSync(parentPath) || !fs.statSync(parentPath).isDirectory()) {
+            throw new Error("linkPath parent directory does not exist.");
+        }
+        if (fs.existsSync(resolvedLinkPath) && request.overwrite !== true) {
+            throw new Error("File exists; pass overwrite: true.");
+        }
+
         const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(request.iconDataUrl);
         if (!match || match[1].length > 7_000_000) throw new Error("Invalid board icon data URL.");
         const image = nativeImage.createFromDataURL(request.iconDataUrl);
@@ -108,17 +121,30 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
             iconIndex: 0,
             appUserModelId: `Persephone.Board.${boardIdentityHash(request.boardRoot)}`,
         };
-        if (!shell.writeShortcutLink(request.linkPath, "create", details)) return false;
+        if (!shell.writeShortcutLink(resolvedLinkPath, "create", details)) {
+            throw new Error("Failed to create board shortcut.");
+        }
 
-        const written = shell.readShortcutLink(request.linkPath);
+        const written = shell.readShortcutLink(resolvedLinkPath);
         const normalizePath = (value: unknown): string | null => typeof value === "string"
             ? path.normalize(path.resolve(value)).replace(/[\\/]+$/, "").toLowerCase()
             : null;
-        return normalizePath(written.target) === normalizePath(details.target)
+        const verified = normalizePath(written.target) === normalizePath(details.target)
             && written.args === details.args
             && written.description === details.description
             && normalizePath(written.icon) === normalizePath(details.icon)
             && written.appUserModelId === details.appUserModelId;
+        if (!verified) throw new Error("Board shortcut verification failed.");
+        return true;
+    }
+
+    openBoardWindow = async (_event: IpcMainEvent, boardRoot: string): Promise<void> => {
+        if (typeof boardRoot !== "string" || !boardRoot.trim()) throw new Error("Invalid board root.");
+        const resolvedRoot = path.resolve(boardRoot);
+        if (!fs.existsSync(path.join(resolvedRoot, "board-manifest.json"))) {
+            throw new Error(`Not a board folder: "${resolvedRoot}" is missing or has no board-manifest.json.`);
+        }
+        await openWindows.openBoardWindow(resolvedRoot);
     }
 
     maximizeWindow = async (event: IpcMainEvent): Promise<void> => {
@@ -537,6 +563,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setUiPreference, controllerInstance.setUiPreference);
     bindEndpoint(Endpoint.setBoardWindowIdentity, controllerInstance.setBoardWindowIdentity);
     bindEndpoint(Endpoint.createBoardShortcut, controllerInstance.createBoardShortcut);
+    bindEndpoint(Endpoint.openBoardWindow, controllerInstance.openBoardWindow);
     bindEndpoint(Endpoint.maximizeWindow, controllerInstance.maximizeWindow);
     bindEndpoint(Endpoint.minimizeWindow, controllerInstance.minimizeWindow);
     bindEndpoint(Endpoint.restoreWindow, controllerInstance.restoreWindow);

@@ -151,6 +151,36 @@ export interface IBoards {
     createDemoBoard(name: string, dir: string): Promise<string>;
 
     /**
+     * Create a Windows shortcut that launches a board in its board-mode window.
+     * The board root must be absolute, contain `board-manifest.json`, and be trusted (or bundled).
+     * Without `opts.linkPath`, shows the standard Save dialog and returns `null` if it is cancelled.
+     * With `opts.linkPath`, no dialog is shown; the destination must be an absolute `.lnk` path
+     * whose parent directory exists. Existing targets are refused unless `overwrite` is `true`.
+     * Errors reject to the caller without showing a UI notification. The returned path is absolute.
+     *
+     * @param boardRoot - Absolute root folder of a trusted or bundled board.
+     * @param opts.linkPath - Optional explicit absolute `.lnk` destination.
+     * @param opts.overwrite - Allow replacing an existing explicit destination.
+     * @returns The created shortcut path, or `null` when the Save dialog is cancelled.
+     * @throws If the root is invalid/untrusted or the destination cannot be written or verified.
+     */
+    createShortcut(
+        boardRoot: string,
+        opts?: { linkPath?: string; overwrite?: boolean },
+    ): Promise<{ linkPath: string } | null>;
+
+    /**
+     * Open a trusted or bundled board in its own board-mode window, creating one or focusing the
+     * existing window for that root. Unlike {@link openBoard}, this does not open a regular tab.
+     * The root must be absolute and contain `board-manifest.json`; untrusted boards are rejected
+     * without showing a trust dialog. Call {@link registerBoard} first to request user consent.
+     *
+     * @param boardRoot - Absolute root folder of a trusted or bundled board.
+     * @throws If the root is invalid, is not a board folder, or is not trusted.
+     */
+    openBoardWindow(boardRoot: string): Promise<void>;
+
+    /**
      * Open an existing board by its root folder path (the folder containing
      * `board-manifest.json`) — opens a new tab (or reuses the board's tab) and makes
      * it active. A board created via {@link createBoard} / {@link createDemoBoard} is
