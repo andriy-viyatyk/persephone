@@ -9,7 +9,14 @@
         margin-left: 4px;
     }
 
-    [data-type="page-tabs"][data-board-tabs-hidden] { display: none; }
+    [data-type="page-tabs"][data-mode="right"][data-board-tabs-hidden] { display: none; }
+
+    /* Board window with only its board open: the locked board tab stands in for a title, so it
+     * drops the active-tab border and background instead of looking like one selected tab. */
+    [data-type="page-tabs"][data-board-single] [data-type="page-tab"][data-active] {
+        background-color: transparent;
+        border-color: transparent;
+    }
 
     [data-type="page-tabs"][data-mode="right"] {
         flex: 0 0 auto;

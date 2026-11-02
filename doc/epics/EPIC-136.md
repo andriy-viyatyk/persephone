@@ -2,22 +2,22 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed 2026-11-03
 **Created:** 2026-11-02
 **Completed:** —
 
 ## Overview
 
 A board can run in its own Persephone window that looks like a standalone program: the board's
-icon and name in a plain title bar, no sidebar, no MCP/mneme indicators, no `...` menu, and its
-own taskbar entry. The user starts it by double-clicking a Windows shortcut (`.lnk`) that
+icon and name appear on its locked tab, with no sidebar, MCP/Mneme indicators or `...` menu, and
+with its own taskbar entry. The user starts it by double-clicking a Windows shortcut (`.lnk`) that
 Persephone creates in the board folder, on the desktop, or wherever the user saves it.
 
 The window is **not** a new kind of host. It is an ordinary Persephone window running the full
 app in a **board mode**, so the board keeps everything Persephone offers: it can open text,
-Markdown, grids, dialogs, and any other page. When the board opens a page, the tab bar appears.
-The board's own tab is always first and can't be closed or dragged. Closing the window closes
-the board.
+Markdown, grids, dialogs, and any other page. The locked board tab is always shown flush left;
+when it is the only page, it is drawn without a tab border or background. The board tab can't be
+closed or dragged. Closing the window closes the board.
 
 ## Goals
 
@@ -25,7 +25,6 @@ the board.
   board-mode window, or focuses that board's window if one is already open.
 - Board-mode windows look like the board's own app: its icon, name and taskbar entry.
 - A board can create a Windows shortcut that launches it this way.
-- Optionally, `persephone-board://` links from outside Persephone open trusted boards the same way.
 
 ## Design decisions (2026-11-02, agreed with the user)
 
@@ -35,9 +34,12 @@ the board.
    script services already work in every Persephone window.
 2. **Chrome.**
    - The top bar hides the sidebar button, the MCP and mneme indicators, and the `...` menu.
-   - It shows the board icon and name, with minimize, maximize and close.
-   - The tab bar appears only while more than one page is open.
-   - The board tab is always first, can't be closed, and can't be reordered or dragged out.
+   - The locked board tab carries the board icon and name and sits flush left. When it is the
+     only page, it is styled as inactive with no border or background.
+   - The tab strip is always present for the locked board tab; other page tabs appear beside it.
+     The new-page button is hidden and Ctrl+N is ignored in board windows.
+   - The locked board tab can't be closed, reordered or dragged out. The File Explorer button is
+     hidden on its toolbar.
 3. **Closing the window closes the board.** Other pages in the window that have unsaved changes
    get the usual save prompt.
 4. **No session persistence.**
@@ -69,7 +71,6 @@ the board.
       normal window first.
     - Trusting there runs the board in place. Declining closes the board window.
     - Launching never trusts a board automatically.
-    - The same applies to US-1752 links.
 12. **Agent/MCP access** stays as it is: the board is still a page in a window.
 
 ## Linked Tasks
@@ -77,11 +78,11 @@ the board.
 | Task | Title | Status |
 |------|-------|--------|
 | [US-1749](../tasks/US-1749-board-mode-window/README.md) | Board-mode window: `--board` launch, routing, lifetime, bounds | Done |
-| [US-1750](../tasks/US-1750-board-mode-chrome/README.md) | Board-mode chrome: title bar, locked board tab, tab bar on demand | Done |
-| [US-1751](../tasks/US-1751-board-shortcut/README.md) | Create a Windows shortcut for a board | Planned |
-| US-1752 | `persephone-board://` links from outside Persephone (trusted boards only) | Dropped (2026-11-02) |
+| [US-1750](../tasks/US-1750-board-mode-chrome/README.md) | Board-mode chrome: locked board tab and app controls | Done |
+| [US-1751](../tasks/US-1751-board-shortcut/README.md) | Create a Windows shortcut for a board | Done |
+| US-1752 | External `persephone-board://` protocol registration | Dropped (2026-11-02) |
 
-Order: US-1749 → US-1750 → US-1751 → US-1752.
+Order: US-1749 → US-1750 → US-1751.
 
 - **US-1749** can be tested without the chrome: the window opens with the board as an ordinary
   page.
@@ -100,10 +101,11 @@ Order: US-1749 → US-1750 → US-1751 → US-1752.
   - Per-board bounds and the AppUserModelID.
   - Cold-start behavior, and quit/close-to-tray rules when only board windows remain.
 - **US-1750 (renderer shell):**
-  - Board-mode title bar (icon, name, window buttons; hidden sidebar button, indicators and
-    `...` menu).
+  - Board-mode header with the locked board tab as the identity surface, window buttons, and
+    hidden sidebar button, indicators and `...` menu.
   - Board tab locked first, not closable and not draggable.
-  - Tab bar shown only with more than one page.
+  - Locked board tab always shown and flush left; inactive styling when it is the only page.
+  - New-page button hidden, Ctrl+N ignored, and File Explorer hidden on the locked board page.
   - Window title and icon follow board metadata changes (`onBoardDisplayTextChanged`,
     `subscribeBoardIconChanges`).
 - **US-1751:**
@@ -116,21 +118,13 @@ Order: US-1749 → US-1750 → US-1751 → US-1752.
   - Reuse the stable per-board `.ico` created by US-1750 for the window/taskbar icon. US-1751
     uses that same icon file for the shortcut so both identities remain aligned.
   - Save location: a save dialog defaulting to the board folder, with a Desktop option.
-- **US-1752:**
-  - HKCU registration like `PersephoneURL` in `src/main/browser-registration.ts`.
-  - Only boards already in the trust registry open; anything else shows the trust dialog or is
-    refused.
-  - Decide whether the external link names a path or a registry name; the existing internal
-    `persephone-board://` encoding is base64 JSON.
 
 ## Notes
 
 ### 2026-11-02
 - First proposal was a dedicated board window. The user rejected it because a board must be
   able to reuse every Persephone page type. A board mode for the normal window keeps that for free.
-- US-1752 dropped by the user. A `.lnk` shortcut runs the launcher directly and needs no scheme
-  registration. Registering `persephone-board://` with Windows would let any web page trigger board
-  launches, which is an outside entry point not worth the risk. In-app `persephone-board://` links
-  keep working as before.
+- External `persephone-board://` registration is not part of board-mode launch. Existing in-app
+  links continue to open boards through Persephone's internal content scheme.
 - US-1751 extended at the user's request. Dev builds (`npm start`) target the installed
   Persephone's launcher, so dev-created shortcuts open boards in the running dev instance.

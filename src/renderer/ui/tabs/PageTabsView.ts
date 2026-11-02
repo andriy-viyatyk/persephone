@@ -91,7 +91,10 @@ export class PageTabsView extends VanillaView<object> {
         this.root.dataset.type = "page-tabs";
         this.root.dataset.name = "page-tabs";
         this.root.className = "page-tabs";
-        this.root.append(this.wrapper, this.addButton.root);
+        // A board window opens only the pages its board asks for; new custom pages belong in a
+        // normal Persephone window, so board mode has no new-page button (EPIC-136).
+        this.root.append(this.wrapper);
+        if (!appWindow.isBoardMode) this.root.append(this.addButton.root);
 
         this.child(this.scrollLeftButton).mount();
         this.child(this.scrollRightButton).mount();
@@ -161,7 +164,7 @@ export class PageTabsView extends VanillaView<object> {
         const rightPageCount = projection.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
         if (appWindow.isBoardMode) {
             mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
-            this.root.toggleAttribute("data-board-tabs-hidden", mainPages.length <= 1 && rightPageCount === 0);
+            this.root.toggleAttribute("data-board-single", mainPages.length <= 1 && rightPageCount === 0);
         }
         this.currentPages = mainPages;
         this.syncPageLayoutSubscriptions(mainPages);
@@ -176,7 +179,7 @@ export class PageTabsView extends VanillaView<object> {
         const rightPageCount = state.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
         if (appWindow.isBoardMode) {
             mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
-            this.root.toggleAttribute("data-board-tabs-hidden", mainPages.length <= 1 && rightPageCount === 0);
+            this.root.toggleAttribute("data-board-single", mainPages.length <= 1 && rightPageCount === 0);
         }
         this.currentPages = mainPages;
         this.syncPageLayoutSubscriptions(mainPages);

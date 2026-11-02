@@ -1,3 +1,14 @@
+## EPIC-136 — Boards as standalone apps
+
+Completed 2026-11-03. A board can run as its own app: a Windows shortcut launches it in a dedicated
+Persephone board window with its own taskbar identity, icon and title. Epic document:
+[EPIC-136](EPIC-136.md).
+
+- [x] **Board-mode window (US-1749).** `--board <root>` (launcher pipe or cold start) opens one window per board, outside session persistence and default routing; per-board bounds; trust prompt in the window (declining closes it); closing the window closes the board, prompting for unsaved pages.
+- [x] **Board-mode chrome (US-1750).** Reduced header with the board tab flush left and window controls only; the board tab is locked first (no close, move, pin, group, drag-out) and drawn inactive when alone; no **+** button, Ctrl+N ignored, File Explorer hidden on the locked board; per-board PNG-in-ICO taskbar icon via `setAppDetails`.
+- [x] **Board shortcut (US-1751).** **Create shortcut…** on the board's context menus writes a `.lnk` to the launcher with `--board`, the board icon and AppUserModelID; dev builds target the installed launcher.
+- US-1752 (`persephone-board://` scheme registration) was dropped for security reasons.
+
 ## EPIC-135 — Translation service
 
 Completed 2026-10-27. Translate pages you cannot read, locally and offline. Persephone reserves a

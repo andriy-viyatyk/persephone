@@ -24,7 +24,6 @@ import { appWindow } from "../../api/window";
 import { api } from "../../../ipc/renderer/api";
 import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { renderBoardIconDataUrl } from "../../editors/board/board-window-icon";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
@@ -61,7 +60,6 @@ export class MainPageView extends VanillaView<object> {
     private readonly autoloadWrap = document.createElement("span");
     private readonly zoomButton = document.createElement("button");
     private readonly toggleWindowButton = document.createElement("button");
-    private readonly boardIdentity = document.createElement("div");
     private readonly dragSpacer = document.createElement("div");
     private readonly statusIndicators = document.createElement("div");
     private readonly recordingControls = document.createElement("div");
@@ -160,12 +158,11 @@ export class MainPageView extends VanillaView<object> {
         this.minimizeButton = this.createSystemButton("window-minimize", createIconElement("window-minimize"), t("shell.minimize"), () => app.window.minimize());
         this.closeButton = this.createSystemButton("window-close", createIconElement("close"), t("shell.closeWindow"), () => app.window.close());
         if (appWindow.isBoardMode) {
+            // The locked board tab is always shown and carries the board's icon and name, so the
+            // header holds no separate identity block — it would repeat the tab (EPIC-136).
             this.header.dataset.boardMode = "";
-            this.boardIdentity.className = "board-window-identity";
-            this.boardIdentity.dataset.name = "board-window-identity";
-            this.boardIdentity.append(createBoardGlyphElement(appWindow.boardRoot, 24));
             this.dragSpacer.className = "board-header-drag-spacer";
-            this.header.append(this.boardIdentity, this.pageTabs.root, this.rightPageTabs.root,
+            this.header.append(this.pageTabs.root, this.rightPageTabs.root,
                 this.dragSpacer, this.minimizeButton, this.toggleWindowButton, this.closeButton);
             void this.refreshBoardIdentity();
             this.own(onBoardDisplayTextChanged((root) => {
@@ -175,7 +172,6 @@ export class MainPageView extends VanillaView<object> {
             }));
             this.own(subscribeBoardIconChanges((root) => {
                 if (root && appWindow.boardRoot && fpNormalizeForCompare(root) === fpNormalizeForCompare(appWindow.boardRoot)) {
-                    this.refreshBoardGlyph();
                     void this.refreshBoardIdentity();
                 }
             }));
@@ -210,12 +206,6 @@ export class MainPageView extends VanillaView<object> {
         }
     }
 
-    private refreshBoardGlyph(): void {
-        if (!appWindow.boardRoot) return;
-        const label = this.boardIdentity.querySelector("span");
-        this.boardIdentity.replaceChildren(createBoardGlyphElement(appWindow.boardRoot, 24), ...(label ? [label] : []));
-    }
-
     private async refreshBoardIdentity(): Promise<void> {
         const root = appWindow.boardRoot;
         if (!root || !this.boardIdentityActive) return;
@@ -227,11 +217,6 @@ export class MainPageView extends VanillaView<object> {
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             const fallback = manifest?.name?.trim() || fpBasename(root);
             const name = boardDisplayText(root, manifest, boardMetadataKeys.name, fallback);
-            const label = document.createElement("span");
-            label.textContent = name;
-            this.refreshBoardGlyph();
-            const glyph = this.boardIdentity.firstChild;
-            this.boardIdentity.replaceChildren(...(glyph ? [glyph, label] : [label]));
             document.title = name;
             const iconDataUrl = await renderBoardIconDataUrl(root);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;

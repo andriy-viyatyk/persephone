@@ -357,6 +357,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Launch argument parsing and open-path validation | `/src/main/utils.ts` |
 | Window creation, persisted bounds, and Voice Typing target ownership (main; BrowserWindow setup, per-window transcription/translation shortcut and state routing including right Ctrl tap detection, and captured-WebContents insertion with clipboard fallback) | `/src/main/open-window.ts` |
 | Window close / hide / quit arbitration (main; the `eBeforeQuit` round-trip, the last-window hide that implements close-to-tray, the `doQuit` tray-Quit override, and the modified-or-pinned rule deciding whether a closed secondary window is remembered. Reasoning in [pages-architecture.md § Window Shutdown, Tray, and Quit](pages-architecture.md#11-window-shutdown-tray-and-quit)) | `/src/main/open-windows.ts` |
+| Board-window and shortcut identity (root hash, stable ICO path, launcher selection for packaged/dev builds, and quoted launch-root normalization) | `/src/main/board-window-identity.ts` |
 | System tray (main; Show App / Quit menu, click-toggles-visibility. Quit sets `openWindows.doQuit`, the one flag that overrides close-to-tray) | `/src/main/tray-setup.ts` |
 | Windows browser registration | `/src/main/browser-registration.ts`           |
 | MCP HTTP transport (sessions, HTTP, lifecycle) | `/src/main/mcp-http-server.ts`  |

@@ -7,10 +7,10 @@ screen: "header"
 
 # Header Strip
 
-The header strip is the app chrome across the top of every Persephone window. It contains the
-Persephone menu, page tabs, page creation controls, window controls, and conditional status
-indicators. This guide covers the header itself; the screens opened by its indicators have their
-own guides.
+The header strip is the app chrome across the top of every Persephone window. A regular window has
+the Persephone menu, page tabs, page creation controls, window controls, and conditional status
+indicators. A board window has a reduced header with the board tab and window controls. This guide
+covers the header itself; the screens opened by its indicators have their own guides.
 
 The header and its status cluster are app-owned shell elements. Use their purpose and current
 visibility to decide what to point out, rather than assuming that every control is present in
@@ -31,12 +31,12 @@ every state.
 
 - Header strip → `app-header`
 - Persephone menu → `persephone-menu`
-- Page tabs → `page-tabs`
+- Page tabs → `page-tabs` (regular window: immediately right of the menu; board window: flush left)
 - Page tabs wrapper → `page-tabs-wrapper`
 - Right-pinned page chips → `right-page-tabs`
 - Scroll left → `page-tabs-scroll-left`
 - Scroll right → `page-tabs-scroll-right`
-- Add page → `page-tabs-add`
+- Add page (regular windows only) → `page-tabs-add`
 - Autoload reload → `autoload-reload`
 - Zoom indicator → `zoom-indicator`
 - Minimize → `window-minimize`
@@ -50,6 +50,22 @@ every state.
 - Start / Cancel / Pause / Resume / Stop → `recording-start`, `recording-cancel`, `recording-pause`, `recording-resume`, `recording-stop` (shown according to recording state)
 - Mneme → `mneme-indicator`
 - MCP → `mcp-indicator`
+
+### When a board runs in its own window
+
+```
++---------------------------------------------------------------------+
+| [locked board tab]                                  [–] [□] [×]     |  board tab flush left; window controls at the right
++---------------------------------------------------------------------+
+```
+
+The board tab remains visible even when it is the only page. In that state it has no active-tab
+border or background. The board window has no separate menu button, **+** page button, or status
+cluster; its locked board tab cannot be closed or moved to another window. Pages opened by the board
+appear as normal tabs beside it. The **+** button is absent and `Ctrl+N` is ignored in this window.
+
+The page-tab strip begins flush with the left edge of the header in a board window. In a regular
+window it sits immediately to the right of the Persephone menu.
 
 ### When the tabs overflow
 

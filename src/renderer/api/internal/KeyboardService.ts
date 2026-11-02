@@ -1,6 +1,7 @@
 import { globalKeyDown } from "../../core/state/events";
 import { pagesModel } from "../pages";
 import { api } from "../../../ipc/renderer/api";
+import { appWindow } from "../window";
 import { cycleAppTheme } from "../cycle-app-theme";
 import { getGuideIndex, type GuideTreeNode } from "../../guides";
 import { getBoardGuideMountId } from "../../guides/board-guide-mounts";
@@ -122,7 +123,8 @@ export class KeyboardService {
                     e.preventDefault();
                     if (e.shiftKey) {
                         api.openNewWindow();
-                    } else {
+                    } else if (!appWindow.isBoardMode) {
+                        // Board windows open only the board's own pages (EPIC-136).
                         pagesModel.addEmptyPage();
                     }
                 }

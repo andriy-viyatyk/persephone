@@ -728,6 +728,13 @@ dropped. The last window is exempt from the check entirely — its state is alwa
 kept, which is what makes a normal quit restore the session. Remembered windows are
 reopenable from the app bar's "Open Tabs" menu.
 
+**Board-mode windows use the same BrowserWindow lifecycle with a separate registry.** They are
+not written to `openWindows.json`, do not restore or save normal page-session state, and keep
+bounds per board root. Closing a board window always closes it; close-to-tray applies to normal
+windows only. A board window is excluded from default external-open routing, while its own pages,
+explicit window-index targeting and tab transfers continue to use the combined live-window lookup.
+Its locked board page cannot be closed or moved out of the window.
+
 **Implementation:** [`/src/main/open-window.ts`](../../src/main/open-window.ts),
 [`/src/main/open-windows.ts`](../../src/main/open-windows.ts),
 [`/src/main/tray-setup.ts`](../../src/main/tray-setup.ts),

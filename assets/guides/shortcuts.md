@@ -12,7 +12,7 @@ These shortcuts work regardless of which editor is active.
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+N` | New tab |
+| `Ctrl+N` | New tab (ignored in a board's own window) |
 | `Ctrl+Shift+N` | New window |
 | `Ctrl+O` | Open — paste file path, URL, or cURL command |
 | `Ctrl+S` | Save |

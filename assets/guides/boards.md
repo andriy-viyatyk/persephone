@@ -629,6 +629,23 @@ The board opens immediately after creation.
 - **Tools & Editors panel → Editors tab** — lists all trusted boards, including file-associated boards, grouped by folder alongside built-in editors. Click a board to open it. In the full hub, assign trusted boards to categories so they appear in that category in the **+** menu. Only disabled bundled boards are excluded from categories. Click **Open in new tab** in the panel header for the full-page hub, with a **Search boards** tab for discovering and installing boards published by the project — see [Published boards catalog](#published-boards-catalog--discover-install-update) below.
 - **Scripting / agent** — call `app.boards.openBoard(boardRoot)` with the absolute path to the board's root folder.
 
+### Run a board in its own window
+
+Create a Windows shortcut for the board, then open that shortcut to launch the board in a dedicated
+Persephone window. To create one, right-click the board in the **Boards** panel, the **Tools &
+Editors** Editors tree, or its open page tab and choose **Create shortcut…**. The Save dialog starts
+in the board's folder; choose another location such as **Desktop** if you want the shortcut there.
+
+The board stays open in that window as a locked tab at the left. When it is the only page, the tab
+shows the board's name and icon without the usual active-tab highlight. The board tab cannot be
+closed or dragged away. Pages the board opens appear in ordinary tabs beside it and can be closed
+normally. Board windows do not have the **+** new-page button, and `Ctrl+N` does not create a page
+there. The File Explorer button is also hidden from the locked board page's toolbar.
+
+A shortcut created while running a development build opens the board in that running development
+instance when available; if no installed Persephone launcher is available, it uses the normal
+launcher.
+
 Bundled boards are opened from the **Built-in** folder in the Editors list. They do not
 write to the board trust list. Their stable bundled identity also means an open page and its saved
 state continue to refer to the same board when the application is installed in a different folder.
@@ -714,7 +731,7 @@ Every open board displays a thin toolbar above the board's content area. The too
 
 | Control | Description |
 |---------|-------------|
-| **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. |
+| **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. Hidden on the locked board page in a board window. |
 | **Text slot** | Empty unless the open board fills it with `persephone.toolbar.setText()`. A non-interactive label; the board's own folder path is under **… → Board properties** and the tab's **Copy Board Path**. |
 | **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. A board can add its own actions at the top of this menu. An update-available dot appears here when a newer catalog version is ready. |
 | **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns, segmented choice buttons and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
@@ -1887,6 +1904,7 @@ side without modifying source files.
 | Open a board from Explorer | Click the **Open Board** button on a `board-manifest.json` row |
 | Open a board from the Boards panel | Click the board in the **Boards** Explorer-sibling panel |
 | Open a board in a new tab (keep it running) | Right-click the board in the **Boards** panel → **Open in New Tab** |
+| Run a board in its own window | Right-click it in the **Boards** panel, **Tools & Editors** Editors tree, or its page tab → **Create shortcut…**, then open the saved shortcut |
 | Keep a board's spawned processes running after navigating away or reloading | Board calls `persephone.setBoardBusy(true)` — see [Long-running processes](#long-running-processes-setboardbusy--getboardbusy--getjobs) |
 | See which boards have processes still running in the background | Look for the green **running** dot next to the board name in the **Boards** panel |
 | Open a board from the sidebar | **Tools & Editors** panel → **Editors** tab → click the board |

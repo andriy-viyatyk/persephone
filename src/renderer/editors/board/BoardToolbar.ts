@@ -119,6 +119,10 @@ export class BoardToolbarView extends VanillaView<{
             boardRoot: state.boardRoot,
             toolbarText: state.toolbarText,
         }), this.sync);
+        // A board window's own board is the whole app there; File Explorer would open the
+        // Persephone sidebar on it, so the locked board page hides the button (EPIC-136).
+        const page = this.model.page;
+        if (page) this.bind(page.state, (state) => state.version, this.sync);
     }
 
     protected onUpdate(): void {
@@ -138,6 +142,7 @@ export class BoardToolbarView extends VanillaView<{
         const state = this.model.state.get();
         this.boardRoot = state.boardRoot;
         const boardRoot = this.boardRoot;
+        this.explorerButton.root.hidden = this.model.page?.isLockedBoardPage === true;
         // The slot is the board's to fill and is EMPTY until it does. It used to fall back to
         // the board root, which spent the toolbar's whole flexible span on a path the user
         // already chose and cannot act on; the path is still one click away under

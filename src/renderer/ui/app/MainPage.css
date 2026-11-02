@@ -2,10 +2,9 @@
     .app-root { background-color: var(--color-bg-default); flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
     .app-root .app-header { display: flex; flex-direction: row; column-gap: 4px; color: var(--color-text-light); align-items: center; padding: 4px 0 0 8px; border-bottom: 1px solid var(--color-border-light); position: relative; background-color: var(--color-bg-dark); -webkit-app-region: drag; }
     .app-root .app-header button { -webkit-app-region: no-drag; }
-    .app-root .app-header[data-board-mode] .board-window-identity { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 360px; height: 28px; padding: 0 8px; color: var(--color-text-default); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .app-root .app-header[data-board-mode] .board-window-identity img,
-    .app-root .app-header[data-board-mode] .board-window-identity svg { flex: 0 0 auto; width: 24px; height: 24px; object-fit: contain; }
-    .app-root .app-header[data-board-mode] .board-window-identity span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    /* No menu button precedes the tabs in a board window, so the board tab sits flush left. */
+    .app-root .app-header[data-board-mode] { padding-left: 0; }
+    .app-root .app-header[data-board-mode] [data-name="page-tabs"] { margin-left: 0; }
     .app-root .app-header[data-board-mode] .board-header-drag-spacer { flex: 1 1 auto; min-width: 40px; -webkit-app-region: drag; }
     .app-root .app-header [data-name="right-page-tabs"] { -webkit-app-region: no-drag; }
     .app-root .app-header .app-button { flex-shrink: 0; align-self: flex-end; padding: 0; margin-bottom: 3px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }

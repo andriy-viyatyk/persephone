@@ -52,6 +52,8 @@ export interface IPageHost {
 
     // ── OPTIONAL — page-tab property (an embedded host isn't a pinnable tab) ──
     pinned?: boolean;
+    /** The board a board-mode window was launched for (EPIC-136); its tab is locked first. */
+    readonly isLockedBoardPage?: boolean;
 
     // ── OPTIONAL — main-editor navigation (a Browser host omits these).
     //    Membership FINAL as of US-600 (Link exercised the full surface): every

@@ -17,6 +17,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Editor categories:** Organize built-in editors and trusted boards into ordered categories. The
   **+** menu groups editors under Top, named categories, and Other; the Tools & Editors hub includes
   a category manager beside the merged Editors tree.
+- **Boards as standalone apps:** Create a Windows shortcut from a board's context menu and open it
+  in its own window. The board stays locked in the first tab while pages it opens use regular tabs.
+  See the [Boards guide](./boards.md#run-a-board-in-its-own-window).
 
 ---
 
