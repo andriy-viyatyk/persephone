@@ -179,7 +179,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── ts-project-files.ts # Bounded tsconfig-based TypeScript project file selection
 │   ├── ts-project-registry.ts # Board-owned TypeScript project roots and file lookup
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
-│   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
+│   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle, trusted-board shortcut/window operations, and published-catalog ops (search/download/install/uninstall/updates)
 │   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
 │   ├── board-install.ts    # Install engine — downloadBoard (download→extract→validate→registry, traversal-guarded) + installVersion/updateBoard folder-swap + uninstallCatalogBoard
 │   ├── board-install-registry.ts # installedBoards.json reactive registry (record/remove/getByRoot/getById/useInstalled; one entry per catalog id; stale-entry reconciliation)

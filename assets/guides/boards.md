@@ -636,6 +636,10 @@ Persephone window. To create one, right-click the board in the **Boards** panel,
 Editors** Editors tree, or its open page tab and choose **Create shortcut…**. The Save dialog starts
 in the board's folder; choose another location such as **Desktop** if you want the shortcut there.
 
+You can also ask an AI agent connected to Persephone to create the shortcut or open the board in
+its own window. The board must be trusted or bundled; ask the agent to trust an untrusted board
+first.
+
 The board stays open in that window as a locked tab at the left. When it is the only page, the tab
 shows the board's name and icon without the usual active-tab highlight. The board tab cannot be
 closed or dragged away. Pages the board opens appear in ordinary tabs beside it and can be closed

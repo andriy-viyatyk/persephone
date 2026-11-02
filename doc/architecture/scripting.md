@@ -319,7 +319,13 @@ trusted-root registry, catalog install registry, or currently open board pages. 
 trust, optional installed id/version/update information, manifest metadata when readable, and the
 open page ids. Listing is read-only and local: it makes no network request and does not grant trust;
 `app.boards.registerBoard(root)` remains the consent path through the user trust dialog. Use a
-returned `root` with `app.boards.openBoard(root)`.
+returned `root` with `app.boards.openBoard(root)` to open an ordinary tab. `createShortcut(root,
+opts?)` creates a Windows `.lnk`, either through the Save dialog or at an explicit absolute
+`opts.linkPath`; explicit existing targets require `opts.overwrite: true`, and dialog cancellation
+returns `null`. `openBoardWindow(root)` creates or focuses the standalone board-mode window.
+Both operations require an absolute board root containing `board-manifest.json` that is trusted or
+bundled; they reject untrusted boards without showing a trust dialog. The host `boards.*` MCP
+namespace exposes the same operations.
 
 Scripts call `app.capabilities.invoke(id, payload)` for capability dispatch so the request follows
 the capability bus lifecycle and returns its result. The legacy `openBoard` intent option and
