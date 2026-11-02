@@ -1,6 +1,7 @@
 import { handleCall } from "./call-command";
 import { handleBoardCall } from "./board-call-command";
 import { handleBoardOpenRawLink } from "./board-open-raw-link";
+import { handleBoardOpenBoard } from "./board-open-board";
 import {
     handleBoardRegisterTsProject,
     handleBoardReleaseTsProjects,
@@ -13,6 +14,7 @@ type McpCommandMethod =
     | "call"
     | "board_call"
     | "board_openRawLink"
+    | "board_openBoard"
     | "board_registerTsProject"
     | "board_unregisterTsProject"
     | "board_releaseTsProjects";
@@ -21,6 +23,7 @@ export const commandRegistry: Record<McpCommandMethod, McpCommandHandler> = {
     call: handleCall,
     board_call: handleBoardCall,
     board_openRawLink: handleBoardOpenRawLink,
+    board_openBoard: handleBoardOpenBoard,
     board_registerTsProject: handleBoardRegisterTsProject,
     board_unregisterTsProject: handleBoardUnregisterTsProject,
     board_releaseTsProjects: handleBoardReleaseTsProjects,

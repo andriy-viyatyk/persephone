@@ -80,6 +80,10 @@ contents. A board can run a built local app with
 `persephone.openRawLink(runUrl, { editor: "browser-view", reuseKey: "my-board:run" })`; the stable
 key gives that board its own reusable Browser page. See the [agent bridge reference](../agents/boards.md).
 
+Bridge **1.48.0+** lets a board open a board folder it is authorized to list with
+`persephone.openBoard(folder)`. The target board follows the normal trust flow; set
+`minBridgeVersion: "1.48.0"` when relying on this method.
+
 Bridge **1.47.0+** lets a board register a TypeScript project folder with
 `persephone.registerTypeScriptProject(root)`. Text pages that edit `.ts` or `.tsx` files under it
 then get project IntelliSense, and a **Show TypeScript errors** toolbar toggle appears on those pages.

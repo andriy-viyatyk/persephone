@@ -202,6 +202,7 @@ export interface BoardWriteFileMsg {
 /** Request/reply methods (board → main, awaited by the shim). */
 export type BoardRpcMethod =
     | "openRawLink"
+    | "openBoard"
     | "openFileDialog"
     | "saveFileDialog"
     | "openFolderDialog"

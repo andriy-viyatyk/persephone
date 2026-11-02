@@ -176,7 +176,7 @@ The permission list in the trust dialog uses these meanings:
 |---|---|
 | `execute` | Run programs and scripts on this computer. **Full access.** |
 | `service` | Run a background program while Persephone is open. **Full access.** |
-| `fileSystem: "board"` / `"full"` | Read and write the board folder and files selected in its dialogs, or any file you can access. `"full"` is **Full access**. |
+| `fileSystem: "board"` / `"full"` | Read and write the board folder and files selected in its dialogs, or any file you can access. These grants also allow `openBoard()` for folders the board can list. Target-board trust remains a separate user decision. `"full"` is **Full access**. |
 | `openExternal` | Open links or files in your browser or another app. |
 | `appScripting` | Control Persephone, run app scripts, open and change pages, and use agent tools. **Full access.** |
 | `network: "internet"` / `"full"` | Connect to public internet services, or also this computer and your local network. `"full"` is **Full access**. |
@@ -197,7 +197,7 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.42.0**. Bridge `1.42.0` adds `format: "multiline"` for string board
+The current board bridge is **1.48.0**. Bridge `1.48.0` adds `persephone.openBoard(folder)` for opening a folder this board can list; the target follows its normal trust flow. Boards using it should set `minBridgeVersion: "1.48.0"`. Folder listing authorization and target-board trust are independent decisions. Bridge `1.42.0` adds `format: "multiline"` for string board
 settings, rendered as a multi-line Textarea in Persephone's Settings page; boards that rely on it
 must set `minBridgeVersion: "1.42.0"`. It also adds the host-service API
 `persephone.mcp.issueSessionEndpoint()` for explicitly authorized board services. The returned
@@ -1026,7 +1026,8 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.clipboard.writeText(text)` | Write text to the OS clipboard. Useful for board actions triggered from Persephone's own toolbar, where the board page may not be focused. |
 | `persephone.clipboard.writeImage(data)` | Write encoded image bytes (`Uint8Array` or `ArrayBuffer`) to the OS clipboard. |
 | `persephone.icons.forFiles(names)` | Get the icon Persephone shows for each file name, as `{ [name]: dataUrl }` for `<img src>`, so a board's file list can match the Explorer. The file does not need to exist. Single-colour icons follow the current theme; request again after `persephone.onThemeChange` fires. |
-| `persephone.openRawLink(href, options?)` | Open a file or URL in a new Persephone tab. Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — for example, render a Markdown doc instead of opening its source; falls back to the default editor when omitted. |
+| `persephone.openRawLink(href, options?)` | Open a file or URL in a new Persephone tab. Main accepts absolute local paths (`path.isAbsolute` under Windows, including `/docs/x.md` and `\docs\x.md`), `file:`, `http:`, `https:`, `mailto:`, `data:image/png;base64,`, and `torrent:` links; relative paths and other schemes are rejected. Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — for example, render a Markdown doc instead of opening its source; falls back to the default editor when omitted. |
+| `persephone.openBoard(folder)` | Open a board folder this board can list; relative paths resolve from the caller board root. Requires list-equivalent `fileSystem` access. The target board uses its normal trust and permission-change dialogs; folder access does not grant target trust. Added in bridge 1.48.0; declare `minBridgeVersion: "1.48.0"`. |
 | `persephone.openContent(options)` | Create a new in-memory page in another content-host editor and return its page id. Use this for content held by the board rather than a file or URL. |
 | `persephone.openFileDialog(params?)` | Show a native Open File dialog; returns the selected path. |
 | `persephone.saveFileDialog(params?)` | Show a native Save File dialog; returns the chosen path. |

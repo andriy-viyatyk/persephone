@@ -271,6 +271,13 @@
                 <button class="p-btn primary" data-test="openFolderDialog">openFolderDialog</button>
             </div>
 
+            <p class="muted">
+                On bridge 1.48.0+, <code>persephone.openBoard(folder)</code> opens a board folder the
+                caller is authorized to list. Relative paths resolve from the caller board root; target
+                trust still follows the normal user prompt. Declare <code>minBridgeVersion: "1.48.0"</code>
+                when using it.
+            </p>
+
             <h2><code>persephone.call()</code> — inspect the hosting page</h2>
             <p class="muted">
                 This demo declares <code>appScripting: true</code> for these board-origin calls. A trusted Board can resolve the page-scoped AiVision tree through its hosting page.

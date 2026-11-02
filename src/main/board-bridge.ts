@@ -672,6 +672,17 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
         if (typeof href !== "string" || !href.trim()) {
             throw rpcFailure("invalid-argument", "A non-empty link is required.");
         }
+        const trimmedHref = href.trim();
+        const isAbsolutePath = path.isAbsolute(href);
+        const isPngDataUrl = /^data:image\/png;base64,/i.test(trimmedHref);
+        let parsedUrl: URL | undefined;
+        if (!isAbsolutePath && !isPngDataUrl) {
+            try { parsedUrl = new URL(trimmedHref); } catch { /* Not a URL; reject below. */ }
+        }
+        const allowedProtocol = parsedUrl && ["file:", "http:", "https:", "mailto:", "torrent:"].includes(parsedUrl.protocol.toLowerCase());
+        if (!isAbsolutePath && !isPngDataUrl && !allowedProtocol) {
+            throw rpcFailure("invalid-argument", "openRawLink accepts only absolute paths, file:, http:, https:, mailto:, data:image/png;base64, and torrent: links.");
+        }
         if (rawOptions !== undefined && (!rawOptions || typeof rawOptions !== "object" || Array.isArray(rawOptions))) {
             throw rpcFailure("invalid-argument", "openRawLink options must be an object.");
         }
@@ -692,8 +703,8 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
             throw rpcFailure("invalid-argument", "openRawLink reuseKey must be a string.");
         }
         let target = href;
-        if (/^file:/i.test(href)) {
-            try { target = fileURLToPath(href); }
+        if (/^file:/i.test(trimmedHref)) {
+            try { target = fileURLToPath(trimmedHref); }
             catch (error: unknown) { throw rpcFailure("invalid-argument", errMessage(error, "Invalid file URL.")); }
         }
         ownerWindow(entry.hostWebContents)?.focus();
@@ -701,6 +712,30 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
             "board_openRawLink",
             { target, ...options, boardRoot: entry.root },
             entry.hostWebContents,
+        );
+        if (response.error) throw new Error(response.error.message);
+        return undefined;
+    },
+    async openBoard(entry, args) {
+        const folder = args[0];
+        if (typeof folder !== "string" || !folder.trim()) {
+            throw rpcFailure("invalid-argument", "A non-empty board folder path is required.");
+        }
+        const grant = await boardTrustService.getGrantedPermissions(entry.root);
+        if (!grant) throw Object.assign(boardPermissionError("fileSystem"), { code: "permission-denied" });
+        let canonicalFolder: string;
+        try {
+            canonicalFolder = await resolveAuthorizedPath({ boardRoot: entry.root, requestedPath: folder, permissions: grant, intent: "list" });
+        } catch (error: unknown) {
+            const errorCode = (error as NodeJS.ErrnoException)?.code;
+            if (errorCode === "ENOENT") throw rpcFailure("not-found", "The board folder does not exist.");
+            if (error instanceof Error && error.message === boardPermissionError("fileSystem").message) {
+                throw Object.assign(error, { code: "permission-denied" });
+            }
+            throw error;
+        }
+        const response = await sendToRendererForWebContents(
+            "board_openBoard", { folder: canonicalFolder }, entry.hostWebContents,
         );
         if (response.error) throw new Error(response.error.message);
         return undefined;

@@ -543,8 +543,9 @@ interface PersephoneVoiceTypingApi {
 }
 
 interface PersephoneBoardApi {
-    /** The current host bridge is 1.47.0; compare `version` before using newer members. */
-    /** Bridge version, e.g. "1.47.0"; 1.47.0 adds TypeScript project registration;
+    /** The current host bridge is 1.48.0; compare `version` before using newer members. */
+    /** Bridge version, e.g. "1.48.0"; 1.48.0 adds opening authorized board folders;
+     *  1.47.0 adds TypeScript project registration;
      *  1.46.0 adds awaitable openRawLink navigation and Run-page reuse;
      *  1.44.0 adds the live voice-typing auto-stop setting API;
      *  1.42.0 adds multiline board settings and private MCP session
@@ -582,6 +583,10 @@ interface PersephoneBoardApi {
         highlightText?: string;
         reuseKey?: string;
     }): Promise<void>;
+    /** Open a board folder this board can list; requires list-equivalent `fileSystem` authorization.
+     *  The target uses the normal user trust flow. Added in bridge 1.48.0; requires
+     *  `minBridgeVersion: "1.48.0"` in the caller's manifest. */
+    openBoard(folder: string): Promise<void>;
     /** Register a TypeScript project folder (bridge 1.47.0). Monaco pages that edit `.ts`/`.tsx` files under
      *  `root` then get project IntelliSense (relative imports, sibling files, project `.d.ts`, imported JSON).
      *  `root` must contain a `tsconfig.json`. Authorized like `listFolder` (needs a `fileSystem` grant that

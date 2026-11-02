@@ -5,8 +5,11 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.47.0** in this build. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.47.0` adds
+The board bridge is version **1.48.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app. Bridge `1.48.0` adds
+`persephone.openBoard(folder)` for opening a board folder this board is authorized to list; target
+trust remains a separate user decision, and callers using it should set
+`minBridgeVersion: "1.48.0"`. Bridge `1.47.0` adds
 `persephone.registerTypeScriptProject(root)` / `unregisterTypeScriptProject(root)`. Bridge `1.46.0` adds awaitable `openRawLink()`
 navigation, line/highlight hints, and board-owned Browser Run-page reuse. Bridge `1.44.0` adds
 `persephone.voiceTyping.autoStopSilenceMs` and `onAutoStopSilenceChange(callback)` for reading and
@@ -949,7 +952,14 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   rejection, don't fire and forget. It is **create-only**: the id it returns belongs to a page the
   board just made, and there is no counterpart call to read, list, navigate, close, or modify any
   other page, so `persephone.call` keeps its scoping to the page hosting this board.
+- `persephone.openBoard(folder)` — open a board folder the caller can list. A relative folder
+  resolves against this board's root. Requires list-equivalent `fileSystem` authorization; that
+  access does not grant trust to the target, which follows the normal trust and permission-change
+  dialogs. It rejects if the folder is inaccessible or is not a board. Declare
+  `minBridgeVersion: "1.48.0"` when using it.
 - `persephone.openRawLink(href, options?)` — open a file/URL through Persephone's page pipeline;
+  main accepts absolute local paths, `file:`, `http:`, `https:`, `mailto:`, `data:image/png;base64,`
+  URLs, and `torrent:` links. Relative paths and other schemes are rejected.
   bridge 1.46.0+ returns `Promise<void>` and reports navigation failures to callers that await it.
   Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — useful to open a
   Markdown doc rendered rather than as source; falls back to the default editor when omitted/unmatched.

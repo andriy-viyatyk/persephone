@@ -2429,6 +2429,11 @@ function createHandle(
         return rpc("unregisterTypeScriptProject", [root]) as Promise<void>;
     },
 
+    /** Open a board folder this board can list; the target uses the normal user trust flow (bridge 1.48.0). */
+    openBoard(folder: string): Promise<void> {
+        return rpc("openBoard", [folder]) as Promise<void>;
+    },
+
     // ── Busy / surviving jobs (US-799) ────────────────────────────────────────
 
     /** Declare that this board's spawned processes must outlive the board itself.
