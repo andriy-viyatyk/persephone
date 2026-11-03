@@ -142,6 +142,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
+| MCP agent-tip session registry and request-scoped browser observations | `/src/main/mcp/agent-tips.ts`, `/src/renderer/scripting/ai-vision/agent-tip-collector.ts` |
 | AiVision core package (help search, result shaping, and path resolution; external npm dependency 1.3.0) | `ai-vision` npm package |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls, including bounded `script.execute`/`script.result` handles) | `/src/renderer/scripting/ai-vision/` |
 | AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations with optional spatial phrases) | `ai-vision` npm package |

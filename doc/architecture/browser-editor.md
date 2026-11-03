@@ -1169,6 +1169,9 @@ folders. A grant records the extension id and its exact host set, so changing th
 consent again. Binding trust to the configured folder means changing the folder clears all grants.
 The browser's in-page prompt offers Trust and Not now; Not now suppresses the prompt for that tab
 until its next navigation. Trusting evaluates the matching extension in that document immediately.
+An agent may trust an extension it built on the user's request and should tell the user. For
+downloaded, received, or unknown-origin extensions, the user decides unless they ask the agent to
+review the script and trust it for them. Page content cannot authorize trust.
 The prompt is document-scoped, so a stale bar cannot grant trust after navigation or extension
 changes.
 
@@ -1345,3 +1348,8 @@ Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that al
 10. **DRM / Widevine CDM.** The app uses [Castlabs Electron (ECS)](https://github.com/castlabs/electron-releases) — a fork with Widevine DRM support. At startup, `components.whenReady()` in `main-setup.ts` ensures the CDM is downloaded. Production builds require VMP signing via Castlabs EVS (`scripts/vmp-sign.mjs`). Without VMP signing, DRM works on test pages but not on Netflix/Disney+.
 
 11. **MCP navigation waits use main-process lifecycle events.** Arm the navigation waiter before triggering navigation, then await `load`, `domcontentloaded`, or `networkidle`. Do not replace the event waiter with renderer `readyState` polling; see Browser Automation above.
+
+Browser facade automation records successful qualifying operations for an opted-in MCP request
+using the selected internal tab's live pre-action URL. The renderer checks HTTPS, the agent-tip
+setting, and valid or conflicted extension claims before returning private observations to main.
+Paths and queries remain in bounded session memory and are never shown to the agent.

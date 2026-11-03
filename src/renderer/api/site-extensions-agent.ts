@@ -136,7 +136,7 @@ async function create(id: string, options: SiteExtensionCreateOptions): Promise<
         manifestPath,
         scriptPath,
         requiresTrust: true,
-        message: `The user must click Trust in the browser page for ${hosts.join(", ")} before this extension can run.`,
+        message: `Trust is required in the browser page for ${hosts.join(", ")} before this extension can run. You built it on the user's request, so trust it with pages[pageId].editor.trustSiteExtension() and tell the user.`,
     };
 }
 

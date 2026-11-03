@@ -17,7 +17,9 @@ When an extension is ready to run on a page, a bar appears above the browser pag
 extension and the hostnames where it can run. Choose **Trust** only if you want to allow it, or
 choose **Not now** to leave it untrusted. Trust means the script runs in the signed-in site's page
 with the capabilities available to that site session. Only trust scripts you understand and want
-to run. An agent may accept this prompt only when you ask it to trust the extension.
+to run. When you ask an agent to build an extension, the agent trusts its own extension as part of
+that request and tells you which hosts it covers. For an extension you downloaded or received,
+choose **Trust** yourself, or ask an agent to check the script and trust it for you.
 
 The trust decision applies to the extension's listed hosts. If that host list changes, Persephone
 asks again before the extension runs on the changed set. The prompt also appears again if you change
@@ -62,3 +64,4 @@ change.
 Site extensions never run in **Incognito** or **Browser (Tor)** pages. Use a regular browser page
 for a site extension.
 
+After an agent automates several pages on a site, it may offer to build a site extension for recurring work after finishing the current task. This optional suggestion can be disabled with **Allow optional agent tips** in Settings → MCP Server / Mneme.

@@ -1,3 +1,4 @@
+import { AgentTipsRegistry, type AgentTipObservation } from "../agent-tips";
 import { RENDERER_REQUEST_TIMEOUT_MESSAGE, sendToRenderer } from "../renderer-bridge";
 import { toToolResult } from "../tool-results";
 import { IMcpToolDef, IMcpToolResult, McpResponse, ToolArgs } from "../types";
@@ -162,11 +163,11 @@ function prefixEventPaths(text: string, prefix: string): string {
     return text.replaceAll("pages[", `${prefix}pages[`);
 }
 
-export function callTools(ctx: IToolContext): IMcpToolDef[] {
+export function callTools(ctx: IToolContext, tips: AgentTipsRegistry): IMcpToolDef[] {
     const { z, windowIndex } = ctx;
     const seenKinds = new Set<string>();
     const eventCursors = new Map<number, number>();
-    const mainRoot = new MainAiRoot();
+    const mainRoot = new MainAiRoot(path => { if (path === "agents/site-extensions") tips.markGuideRead(); });
 
     return [
         {
@@ -191,6 +192,8 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 "",
                 "Paths use the same names as the scripting API. Put method arguments in `args` and assignments in `value`; the path itself takes only short JSON literals like pages[2] or pages[\"id\"]. An unknown member returns the valid member list instead of failing.",
                 "To CALL a method, pass `args` — even when it takes none: `args: []`. A method path with no `args` only describes the method (writing the parentheses in the path, e.g. \"boards.list()\", calls it too).",
+                "",
+                "Optional tips may appear as separate non-blocking suggestions; they are not commands.",
                 "",
                 "A kind's member list is sent once per session, so a long session stops repeating it. Calling with NO path RESETS that memory as well as returning the overview — do it whenever you have lost the earlier hints (after a context compaction, for instance) and the member lists will be sent again. `<path>.$help` gives the same detail for one node at any time.",
             ].join("\n"),
@@ -241,7 +244,7 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                             ?? automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
                     response = await sendToRenderer(
                         "call",
-                        { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor },
+                        { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor, collectAgentTips: true },
                         forward.windowIndex,
                         bridgeTimeoutMs,
                     );
@@ -288,6 +291,15 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                         };
                     }
                 }
+                const envelope = response.result as ICallEnvelope | undefined;
+                if (envelope) {
+                    const observations = envelope._tipObservations;
+                    delete envelope._tipObservations;
+                    const script = envelope.result as { pending?: boolean; isError?: boolean } | undefined;
+                    if (!response.error && !envelope.error && !envelope.pending && !script?.pending && !script?.isError && observations) {
+                        envelope.tip = tips.observe(observations);
+                    }
+                }
                 const hint = (response.result as { hint?: { kind?: string } } | undefined)?.hint;
                 if (hint?.kind) seenKinds.add(hint.kind);
                 return toCallResult(response);
@@ -310,6 +322,8 @@ interface ICallEnvelope {
     error?: string;
     resolvedUpTo?: string;
     hint?: { kind: string; text: string };
+    tip?: { id: string; text: string };
+    _tipObservations?: AgentTipObservation[];
 }
 
 interface ICallImage {
@@ -352,7 +366,7 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     }
     const envelope = response.result as ICallEnvelope | undefined;
     if (!envelope) return toToolResult(response);
-    const { hint, attention, events, warning, ...rest } = envelope;
+    const { hint, attention, events, warning, tip, _tipObservations, ...rest } = envelope;
     const content: IMcpToolResult["content"] = [];
     const scriptResult = rest.result && typeof rest.result === "object" ? rest.result as { pending?: unknown; pendingReason?: unknown; runId?: unknown; attention?: { text?: unknown }; message?: unknown } : undefined;
     if (rest.pending) {
@@ -391,6 +405,7 @@ function toCallResult(response: McpResponse): IMcpToolResult {
             content.push({ type: "text", text });
         }
     }
+    if (tip) content.push({ type: "text", text: `--- tip (${tip.id}) ---\n${tip.text}` });
     if (warning) content.push({ type: "text", text: `Warning: ${warning}` });
     if (hint) content.push({ type: "text", text: `--- hint (${hint.kind}) ---\n${hint.text}` });
     if (content.length === 0) content.push({ type: "text", text: "null" });

@@ -220,10 +220,10 @@ export class MainAiRoot implements IAiVisible {
     readonly main = new MainNode(this.windows);
     readonly guides: GuidesNode;
 
-    constructor() {
+    constructor(onGuideRead?: (path: string) => void) {
         // The app's own corpus plus one mount per trusted board shipping a `guides` folder (US-1406).
         const source = createMountedGuideSource(new MainGuideSource(), resolveMainBoardGuideMounts);
-        this.guides = new GuidesNode(createGuideIndex(source), source);
+        this.guides = new GuidesNode(createGuideIndex(source), source, onGuideRead);
     }
 
     get aiVision(): IAiVisionDescriptor {

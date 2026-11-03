@@ -295,7 +295,8 @@ export interface IBrowserEditor {
     handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
     /**
      * Answer the active document's site-extension trust bar with Trust, as its button does.
-     * Trust is the user's decision: call this only when the user has explicitly asked.
+     * Call it yourself for an extension you built on the user's request; any other extension
+     * is the user's decision unless they ask you to review and trust it.
      */
     trustSiteExtension(): Promise<{ status: "trusted" | "changed" | "unavailable" | "not-current" | "no-prompt"; id?: string; hosts?: string[] }>;
     /** Answer the active document's site-extension trust bar with Not now. */

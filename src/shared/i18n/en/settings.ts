@@ -20,6 +20,7 @@ export const settingsCatalog = {
     groupTitleBrowserProfiles: { message: "Browser Profiles" },
     groupTitleDefaultBrowser: { message: "Default Browser" },
     groupTitleLinks: { message: "Links" },
+    agentTipsEnable: { message: "Allow optional agent tips" },
     groupTitleMcp: { message: "MCP Server / Mneme" },
     groupTitleGitIntegration: { message: "Git Integration" },
     groupTitleBoardVars: { message: "Board Environment Variables" },

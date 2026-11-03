@@ -217,3 +217,5 @@ A `target` selector with several visible matches needs `{ nth }`. Cross-origin i
 screenshots are unsupported; the error says to pass the iframe element's own ref from the parent
 document. Drag source and target must be in the same frame; cross-frame drag fails with
 `drag source and target must be in the same frame`.
+
+After several pages of a site are automated, MCP may offer an optional site-extension suggestion. Finish the current task first, then ask whether the work recurs and offer an extension if appropriate. Read `guides.agents["site-extensions"]` before building one. The user can disable agent tips in Settings → MCP Server / Mneme.

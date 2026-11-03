@@ -341,13 +341,15 @@ are separate from local inventory.
 
 `app.siteExtensions.list()` reports each installed extension's validation, host-conflict, and trust
 state. `create(id, options)` scaffolds a manifest and starter script in the configured extensions
-folder; it never grants trust. The user approves execution in the matching browser page's trust bar.
+folder; it does not grant trust by itself. When the agent built the extension on the user's request,
+it can approve execution in the matching browser page's trust bar with
+`pages[i].editor.trustSiteExtension()` and tell the user. For downloaded, received, or unknown-origin
+extensions, the user decides unless they ask the agent to review the script and trust it for them.
 `reload(pageId)` disposes and re-injects the trusted extension in the current browser document,
 preserving that page's navigation and form state. `remove(id)` asks the user to confirm before
 deleting the extension and revoking its trust. The `siteExtensions` AiVision node exposes inventory
 and authoring/removal operations. Its browser-page `trustSiteExtension()` and
-`dismissSiteExtensionTrustPrompt()` methods may answer an active bar only when the user explicitly
-asks.
+`dismissSiteExtensionTrustPrompt()` methods may answer an active bar under the same trust policy.
 
 Trust is owned by the main process and bound to the configured extension folder and the extension's
 exact host list. Editing the script does not invalidate consent; changing its hosts does. Incognito
@@ -1500,3 +1502,5 @@ Scripts have full Node.js access. This is by design for power users, but means:
 - Scripts can execute any Node.js code
 
 This is appropriate for a developer tool where the user writes/controls the scripts.
+
+Each MCP transport owns an `AgentTipsRegistry` in main. Forwarded MCP calls opt into a request-scoped renderer collector, including completed `script.execute` runs; ordinary scripts and board calls do not. Private observation metadata crosses IPC only to the owning session and is removed from request logs and MCP output. Pending runs discard their collector. Guide reads suppress the suggestion, and transport close disposes the registry.

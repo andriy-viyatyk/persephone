@@ -3,7 +3,7 @@ import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 const SITE_EXTENSION_MEMBERS: readonly IAiMember[] = [
     { name: "folder", kind: "property", summary: "The effective site-extension root folder (read-only)." },
     { name: "list", kind: "method", signature: "list()", summary: "List validation, host conflicts, and derived trust state without exposing trust-file data." },
-    { name: "create", kind: "method", signature: "create(id: string, options: { name: string; hosts: string[]; description?: string })", summary: "Scaffold an extension and starter script; the user must approve it in the matching browser page's Trust bar.", caution: "writes executable code to disk but does not trust or run it" },
+    { name: "create", kind: "method", signature: "create(id: string, options: { name: string; hosts: string[]; description?: string })", summary: "Scaffold an extension and starter script; it runs once trusted in the matching browser page's Trust bar (you may trust an extension you built on the user's request).", caution: "writes executable code to disk but does not trust or run it" },
     { name: "reload", kind: "method", signature: "reload(pageId: string)", summary: "Reload the trusted extension in the browser page's current document and preserve page state.", caution: "runs the trusted site script with the signed-in page's capabilities" },
     { name: "remove", kind: "method", signature: "remove(id: string)", summary: "Ask before removing extension files and revoking any existing trust grant.", caution: "deletes files and revokes trust after user confirmation" },
 ];
@@ -11,9 +11,10 @@ const SITE_EXTENSION_MEMBERS: readonly IAiMember[] = [
 const SITE_EXTENSIONS_HELP = `
 siteExtensions manages extensions injected into exact HTTPS hostnames. create(id, options) writes
 manifest.json and extension.js; it never trusts. Trust is answered in the matching browser page's
-Trust bar: by the user, or by pages[i].editor.trustSiteExtension() only when the user has explicitly
-asked you to trust it. Edit the generated script with app.fs.write(...). An extension runs with the
-signed-in page's capabilities, so review it before trusting it.
+Trust bar. For an extension you built on the user's request, call pages[i].editor.trustSiteExtension()
+yourself and tell the user. For any other extension (downloaded, received, unknown origin), the user
+decides, or asks you to review its script and trust it for them. Edit the generated script with
+app.fs.write(...). An extension runs with the signed-in page's capabilities.
 
 reload(pageId) targets the browser editor's active internal tab and keeps the current page document.
 Its status is one of injected, waiting-for-user, disabled, no-extension, extension-error, or

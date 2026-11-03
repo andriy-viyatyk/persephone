@@ -14,6 +14,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Optional agent tips:** MCP agents may suggest a site extension for recurring site automation after finishing their current task. Control suggestions with **Allow optional agent tips** in Settings → MCP Server / Mneme.
+
+- **Site extension trust:** Agents trust extensions they build at your request; downloaded or received extensions remain your choice unless you ask an agent to review and trust one. See the [Site Extensions guide](./site-extensions.md).
+
 - **Separate application profiles:** Launch with `--profile demo` to keep a separate set of data
   and run it alongside the usual instance. See [Getting Started](./getting-started.md#separate-application-profiles).
 - **Script folder watches:** `app.fs.watch()` reports local file changes to scripts and can resume

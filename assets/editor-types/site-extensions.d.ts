@@ -41,8 +41,9 @@ export interface SiteExtensionReloadResult {
 
 /**
  * Inspect and manage injected AiVision models for HTTPS sites.
- * Creating an extension writes files but never trusts it; the user must approve it in the
- * matching browser page's Trust bar before it can run.
+ * Creating an extension writes files without granting trust. The agent may trust
+ * extensions it built on the user's request; other extensions remain the user's decision
+ * unless the agent reviews and trusts them when asked.
  *
  * @example
  * const created = await app.siteExtensions.create("example-site", {
@@ -56,7 +57,7 @@ export interface ISiteExtensions {
     readonly folder: Promise<string>;
     /** List extension validation, conflict, and derived trust state. */
     list(): Promise<SiteExtensionAgentListing[]>;
-    /** Scaffold an extension. The user must click Trust in the matching browser page before it runs. */
+    /** Scaffold an extension. Trust follows the extension's origin and explicit request context. */
     create(id: string, options: SiteExtensionCreateOptions): Promise<SiteExtensionCreateResult>;
     /** Re-inject the trusted extension into the browser page's current document. */
     reload(pageId: string): Promise<SiteExtensionReloadResult>;

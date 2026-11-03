@@ -12,6 +12,9 @@ export function logIncomingRequest(
     response: McpResponse,
     durationMs: number,
 ): void {
+    const result = response.result && typeof response.result === "object"
+        ? Object.fromEntries(Object.entries(response.result).filter(([key]) => key !== "_tipObservations"))
+        : response.result;
     requestHistory.push({
         type: "output.mcp-request",
         id: crypto.randomUUID(),
@@ -19,7 +22,7 @@ export function logIncomingRequest(
         direction: "incoming",
         method,
         params,
-        result: response.result ?? null,
+        result: result ?? null,
         error: response.error?.message ?? null,
         durationMs,
     });

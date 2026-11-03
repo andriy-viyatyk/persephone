@@ -1,3 +1,4 @@
+import type { IAiCallContext } from "./ai-vision/root";
 import { EditorOrHost } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
@@ -66,12 +67,12 @@ export class ScriptContext {
     // Stack-based ui getter
     private previousUiDescriptor: PropertyDescriptor | undefined;
 
-    constructor(page?: EditorOrHost, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
+    constructor(page?: EditorOrHost, consoleLogs?: ConsoleLogEntry[], libraryPath?: string, callContext?: IAiCallContext) {
         // consoleLogs is only passed for MCP-originated runs (script.execute, `call`) — that is the
         // provenance signal: browser pages such a run opens are "opened by agent".
         const isMcp = !!consoleLogs;
-        this.page = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
-        this.app = new AppWrapper(this.releaseList, isMcp, this.page);
+        this.page = page ? new PageWrapper(page, this.releaseList, this.outputFlags, callContext) : undefined;
+        this.app = new AppWrapper(this.releaseList, isMcp, this.page, callContext);
         this.preventOutput = () => { this.outputFlags.outputPrevented = true; };
         this.customRequire = this.createCustomRequire(libraryPath);
 

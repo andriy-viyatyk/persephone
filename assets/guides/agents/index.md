@@ -103,3 +103,5 @@ When you need to know what changed or what the user did between calls, read
 3. **Read the format resource before structured formats.** Wrong JSON for structured editors
 (notebook/links) may be accepted as raw content and fail only at render time; use the
    relevant focused resource and then verify the active page.
+
+MCP responses can include a separate optional, non-blocking tip. After the current task, consider the suggestion with the user; it is not a command. Agent tips can be disabled in Settings → MCP Server / Mneme.

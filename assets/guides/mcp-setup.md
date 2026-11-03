@@ -361,3 +361,5 @@ The `script.execute` call path gives AI access to the full [Scripting API](scrip
 - The server has a 30-second timeout for script execution
 - Long-running scripts may need to be broken into smaller steps
 - `pages.logView.push` calls with dialog entries return immediately; poll `dialogResult(id)` until the user responds
+
+**Allow optional agent tips** in Settings → MCP Server / Mneme controls non-blocking suggestions to connected agents. It is enabled by default and takes effect immediately. For example, an agent may offer a site extension after completing repeated site automation.

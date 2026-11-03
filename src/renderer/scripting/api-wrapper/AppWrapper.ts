@@ -1,3 +1,4 @@
+import type { IAiCallContext } from "../ai-vision/root";
 import { app } from "../../api/app";
 import { appServiceDescriptors, type AppServiceKey, type AppServiceSurface } from "../../api/app-service-registry";
 import { PageCollectionWrapper } from "./PageCollectionWrapper";
@@ -83,9 +84,10 @@ class AppWrapperImplementation {
         releaseList: Array<() => void>,
         openedByAgent = false,
         private readonly contextPage?: PageWrapper,
+        callContext?: IAiCallContext,
     ) {
         this.releaseList = releaseList;
-        this._pages = new PageCollectionWrapper(app.pages, releaseList, openedByAgent);
+        this._pages = new PageCollectionWrapper(app.pages, releaseList, openedByAgent, callContext);
         for (const { key } of appServiceDescriptors) {
             if (key === "fs") continue;
             Object.defineProperty(this, key, {
@@ -173,12 +175,14 @@ export const AppWrapper: {
         releaseList: Array<() => void>,
         openedByAgent?: boolean,
         contextPage?: PageWrapper,
+        callContext?: IAiCallContext,
     ): AppWrapper;
 } = AppWrapperImplementation as unknown as {
     new (
         releaseList: Array<() => void>,
         openedByAgent?: boolean,
         contextPage?: PageWrapper,
+        callContext?: IAiCallContext,
     ): AppWrapper;
 };
 

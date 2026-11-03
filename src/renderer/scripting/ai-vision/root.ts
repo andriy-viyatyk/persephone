@@ -1,3 +1,4 @@
+import type { AgentTipCollector } from "./agent-tip-collector";
 import "./namespaces";
 import { DialogsNode } from "./dialogs";
 import { MenusNode } from "./menus";
@@ -36,6 +37,7 @@ export interface AiRootOptions {
 export interface IAiCallContext {
     readonly timeoutMs?: number;
     readonly eventCursor?: number;
+    readonly tipCollector?: AgentTipCollector;
 }
 
 /**
@@ -156,6 +158,8 @@ args or value (not both), and never returns hints or resolver metadata.
  * can do with it.
  */
 const ROOT_OVERVIEW = `
+Optional tips may appear in MCP results as separate, non-blocking suggestions.
+
 Persephone is a developer notepad on the user's desktop: tabbed pages, each with a specialized
 editor (Monaco text, JSON/CSV grids, markdown, notebooks, compare, browser). Every path here has
 the same name in scripts, so a hint doubles as a scripting tutorial. Paths address this window;
@@ -223,6 +227,7 @@ export class AiRoot implements IAiVisible {
         private readonly options: AiRootOptions = {},
     ) {
         this.clipboardNode = new ClipboardHistoryNode(this.app);
+        this.scriptNode = new ScriptNode(this.options.callContext?.tipCollector);
     }
 
     private readonly dialogsNode = new DialogsNode();
@@ -231,7 +236,7 @@ export class AiRoot implements IAiVisible {
         eventLog,
         () => this.options.callContext?.eventCursor ?? 0,
     );
-    private readonly scriptNode = new ScriptNode();
+    private readonly scriptNode: ScriptNode;
     get pages(): PageCollectionWrapper {
         return this.app.pages.withCallContext(this.options.callContext);
     }
@@ -326,6 +331,7 @@ const PENDING_SCRIPT_RUN_TTL_MS = 5 * 60_000;
 const SCRIPT_RUN_WAIT_MS = 25_000;
 
 class ScriptNode implements IAiVisible {
+    constructor(private readonly tipCollector?: AgentTipCollector) {}
 
     async execute(code: string, pageId?: string, language?: string) {
         if (typeof code !== "string" || !code) {
@@ -335,7 +341,7 @@ class ScriptNode implements IAiVisible {
         this.pruneRuns();
         const runId = globalThis.crypto.randomUUID();
         const watcher = watchForPendingDialog();
-        const promise = scriptRunner.runWithCapture(code, editor, language);
+        const promise = scriptRunner.runWithCapture(code, editor, language, this.tipCollector);
         const entry: PendingScriptRun = { createdAt: Date.now(), promise };
         pendingScriptRuns.set(runId, entry);
         void promise.then(result => { entry.result = result; }, (): undefined => undefined);
@@ -352,6 +358,7 @@ class ScriptNode implements IAiVisible {
                 new Promise<{ kind: "running" }>(resolve => { timeout = setTimeout(() => resolve({ kind: "running" }), SCRIPT_RUN_WAIT_MS); }),
             ]);
             if (raced.kind === "result") { pendingScriptRuns.delete(runId); return raced.result; }
+            this.tipCollector?.discard();
             if (raced.kind === "dialog") return { pending: true, runId, pendingReason: "dialog", attention: raced.attention };
             return { pending: true, runId, pendingReason: "running", message: `Script is still running; await script.result(${JSON.stringify(runId)}).` };
         } finally {

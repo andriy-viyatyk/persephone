@@ -1,3 +1,4 @@
+import { AgentTipCollector } from "./agent-tip-collector";
 import { ScriptContext } from "../ScriptContext";
 import { ICallRequest, ICallResult, resolveCall, SeenKinds } from "ai-vision";
 import { AiRoot } from "./root";
@@ -17,16 +18,24 @@ export async function aiCall(
     request: ICallRequest,
     seenKinds?: SeenKinds,
     eventCursor = 0,
+    collectTips = false,
 ): Promise<ICallResult> {
+    const tipCollector = collectTips ? new AgentTipCollector() : undefined;
     const context = new ScriptContext(undefined, []);
     try {
         // script.execute owns a retained run registry and its dialog/running pending handles;
         // resolveWithAttention decorates it with events but skips the generic early dialog race.
-        return await resolveWithAttention(
+        const result = await resolveWithAttention(
             request,
-            () => resolveAiCall(context, request, seenKinds, { callContext: { eventCursor } }),
+            () => resolveAiCall(context, request, seenKinds, { callContext: { eventCursor, tipCollector } }),
             eventCursor,
         );
+        if (tipCollector) {
+            const script = result.result as { pending?: boolean; isError?: boolean } | undefined;
+            if (result.error || result.pending || script?.pending || script?.isError) tipCollector.discard();
+            else Object.assign(result, { _tipObservations: await tipCollector.finish() });
+        }
+        return result;
     } finally {
         context.dispose();
     }

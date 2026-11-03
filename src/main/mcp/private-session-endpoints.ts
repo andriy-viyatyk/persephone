@@ -1,3 +1,4 @@
+import { AgentTipsRegistry } from "./agent-tips";
 import { randomBytes, timingSafeEqual, randomUUID } from "node:crypto";
 import http from "node:http";
 import path from "node:path";
@@ -12,6 +13,7 @@ const SESSION_SWEEP_MS = 60_000;
 
 interface PrivateSession {
     owner: string;
+    tips: AgentTipsRegistry;
     server: McpServerInstance;
     transport: McpTransportInstance;
     lastActivity: number;
@@ -91,7 +93,8 @@ async function startTransport(token: string, req: http.IncomingMessage, res: htt
 
     try {
         const { StreamableHTTPServerTransport } = requireSdk();
-        const mcpServer = createMcpServer();
+        const tips = new AgentTipsRegistry();
+        const mcpServer = createMcpServer(tips);
         const address = server?.address();
         const port = address && typeof address !== "string" ? address.port : 0;
         const transport = new StreamableHTTPServerTransport({
@@ -99,11 +102,12 @@ async function startTransport(token: string, req: http.IncomingMessage, res: htt
             enableDnsRebindingProtection: true,
             allowedHosts: [`127.0.0.1:${port}`],
             onsessioninitialized: (sid: string) => {
-                sessions.set(sid, { owner: token, server: mcpServer, transport, lastActivity: Date.now() });
+                sessions.set(sid, { owner: token, tips, server: mcpServer, transport, lastActivity: Date.now() });
                 broadcast();
             },
         });
         transport.onclose = () => {
+            tips.dispose();
             if (transport.sessionId) sessions.delete(transport.sessionId);
             broadcast();
         };
@@ -120,6 +124,7 @@ async function closeSession(sessionId: string | undefined): Promise<void> {
     if (!sessionId) return;
     const session = sessions.get(sessionId);
     if (!session) return;
+    session.tips.dispose();
     try { await session.transport.close(); }
     catch { sessions.delete(sessionId); broadcast(); }
 }

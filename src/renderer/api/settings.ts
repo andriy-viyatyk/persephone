@@ -49,6 +49,7 @@ export type AppSettingsKey =
     | "browser-translate-target"
     | "browser-private-search-engine"
     | "link-open-behavior"
+    | "agent-tips.enabled"
     | "mcp.enabled"
     | "mcp.port"
     | "clipboard.enabled"
@@ -134,6 +135,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-translate-target": "Target language for browser page translation. Use \"app\" to follow the active application language, or a BCP-47 language code supported by a trusted text translation provider. Default: app.",
     "browser-private-search-engine": "Search engine preselected in new Incognito and Tor browser pages — same values as\n\"browser-search-engine\", remembered separately from it. Default: google.",
     "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
+    "agent-tips.enabled": "Allow optional, non-blocking suggestions to MCP agents.\nBoolean. Default: true. Changes take effect immediately.",
     "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
     "mcp.port": "Port for the MCP HTTP server.\nNumber. Default: 7865; named application profiles (--profile): 7965 (+100).\nChanging this alone does NOT move a running server — set \"mcp.enabled\": false, save, then set it back to true.",
     "clipboard.enabled": "Enable the clipboard history tracker.\nBoolean. Default: false. When enabled, clipboard content is recorded for the history feature.\nOccasionally-copied secrets may remain on disk in readable form.",
@@ -187,6 +189,7 @@ const defaultAppSettingsState = {
         "browser-translate-target": "app",
         "browser-private-search-engine": "google",
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
+        "agent-tips.enabled": true,
         "mcp.enabled": false,
         "mcp.port": profileDefaultPort(7865, rendererProfileName()),
         "clipboard.enabled": false,

@@ -33,6 +33,7 @@ export class GuidesNode implements IAiVisible {
     constructor(
         private readonly index: GuideIndex,
         private readonly source: GuideEntryKindProbe,
+        private readonly onGuideRead?: (path: string) => void,
     ) {}
 
     search(...args: unknown[]) {
@@ -76,8 +77,8 @@ export class GuidesNode implements IAiVisible {
 
     private createNode(path: string): IAiVisible {
         return this.source.getEntryKind(path) === "directory"
-            ? new GuideFolderNode(this.index, this.source, path)
-            : new GuidePageNode(this.index, path);
+            ? new GuideFolderNode(this.index, this.source, path, this.onGuideRead)
+            : new GuidePageNode(this.index, path, this.onGuideRead);
     }
 
     private async readWhatsNew(): Promise<string> {
@@ -95,6 +96,7 @@ class GuideFolderNode implements IAiVisible {
         private readonly index: GuideIndex,
         private readonly source: GuideEntryKindProbe,
         private readonly path: string,
+        private readonly onGuideRead?: (path: string) => void,
     ) {}
 
     get aiVision(): IAiVisionDescriptor {
@@ -118,8 +120,8 @@ class GuideFolderNode implements IAiVisible {
 
     private createNode(path: string): IAiVisible {
         return this.source.getEntryKind(path) === "directory"
-            ? new GuideFolderNode(this.index, this.source, path)
-            : new GuidePageNode(this.index, path);
+            ? new GuideFolderNode(this.index, this.source, path, this.onGuideRead)
+            : new GuidePageNode(this.index, path, this.onGuideRead);
     }
 }
 
@@ -127,6 +129,7 @@ class GuidePageNode implements IAiVisible {
     constructor(
         private readonly index: GuideIndex,
         private readonly path: string,
+        private readonly onGuideRead?: (path: string) => void,
     ) {}
 
     get layout(): Promise<string> {
@@ -142,6 +145,7 @@ class GuidePageNode implements IAiVisible {
             summarize: async () => {
                 const page = await this.index.getPage(this.path);
                 if (!page) throw guideNotFound(this.path);
+                this.onGuideRead?.(this.path);
                 return page.content;
             },
         };

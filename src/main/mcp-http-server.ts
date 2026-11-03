@@ -1,3 +1,4 @@
+import { AgentTipsRegistry } from "./mcp/agent-tips";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { openWindows } from "./open-windows";
@@ -33,7 +34,7 @@ const MAX_SESSIONS = 500;            // backstop cap against burst leaks
 
 let httpServer: http.Server | undefined;
 let currentPort = DEFAULT_PORT;
-interface Session { server: McpServerInstance; transport: McpTransportInstance; lastActivity: number }
+interface Session { tips: AgentTipsRegistry; server: McpServerInstance; transport: McpTransportInstance; lastActivity: number }
 const sessions = new Map<string, Session>();
 let sessionSweepTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -53,6 +54,7 @@ function sweepIdleSessions(): void {
         if (now - session.lastActivity > SESSION_IDLE_MS) {
             // close() is async and rejects pending streams; if it throws, drop the
             // entry directly so a wedged transport can't pin the session forever.
+            session.tips.dispose();
             Promise.resolve(session.transport.close()).catch(() => {
                 sessions.delete(sid);
                 broadcastMcpStatus();
@@ -185,24 +187,29 @@ async function startSession(req: http.IncomingMessage, res: http.ServerResponse,
             if (s.lastActivity < oldest) { oldest = s.lastActivity; oldestSid = sid; }
         }
         const victim = oldestSid && sessions.get(oldestSid);
-        if (victim) Promise.resolve(victim.transport.close()).catch(() => {
-            sessions.delete(oldestSid);
-            broadcastMcpStatus();
-        });
+        if (victim) {
+            victim.tips.dispose();
+            Promise.resolve(victim.transport.close()).catch(() => {
+                sessions.delete(oldestSid);
+                broadcastMcpStatus();
+            });
+        }
     }
 
-    const mcpServer = createMcpServer();
+    const tips = new AgentTipsRegistry();
+    const mcpServer = createMcpServer(tips);
     const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         enableDnsRebindingProtection: true,
         allowedHosts: [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`],
         onsessioninitialized: (sid: string) => {
-            sessions.set(sid, { server: mcpServer, transport, lastActivity: Date.now() });
+            sessions.set(sid, { tips, server: mcpServer, transport, lastActivity: Date.now() });
             broadcastMcpStatus();
         },
     });
 
     transport.onclose = () => {
+        tips.dispose();
         const sid = transport.sessionId;
         if (sid) sessions.delete(sid);
         broadcastMcpStatus();
@@ -274,6 +281,7 @@ export async function stopMcpHttpServer(): Promise<void> {
 
     // Close all active sessions
     for (const [, session] of sessions) {
+        session.tips.dispose();
         try { await session.transport.close(); } catch { /* ignore cleanup errors */ }
     }
     sessions.clear();

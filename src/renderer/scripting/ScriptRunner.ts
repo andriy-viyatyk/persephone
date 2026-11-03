@@ -1,3 +1,4 @@
+import type { AgentTipCollector } from "./ai-vision/agent-tip-collector";
 import { EditorOrHost } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
@@ -31,9 +32,9 @@ class ScriptRunner extends ScriptRunnerBase {
     /**
      * MCP mode — creates context, captures console, cleans up, returns structured result.
      */
-    runWithCapture = async (script: string, page?: EditorOrHost, language?: string): Promise<McpScriptResult> => {
+    runWithCapture = async (script: string, page?: EditorOrHost, language?: string, tipCollector?: AgentTipCollector): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
-        const result = await this.executeWithContext(script, page, consoleLogs, language);
+        const result = await this.executeWithContext(script, page, consoleLogs, language, tipCollector);
         const isError = result instanceof Error;
         const textAndLang = convertToText(result);
         return {
@@ -86,8 +87,9 @@ class ScriptRunner extends ScriptRunnerBase {
         page?: EditorOrHost,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
+        tipCollector?: AgentTipCollector,
     ): Promise<unknown> {
-        const { result } = await this.executeWithContextAndFlags(script, page, consoleLogs, language);
+        const { result } = await this.executeWithContextAndFlags(script, page, consoleLogs, language, tipCollector);
         return result;
     }
 
@@ -100,13 +102,14 @@ class ScriptRunner extends ScriptRunnerBase {
         page?: EditorOrHost,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
+        tipCollector?: AgentTipCollector,
     ): Promise<{ result: unknown; outputFlags: ScriptOutputFlags }> {
         this.handlePromiseException += 1;
         let scriptContext: import("./ScriptContext").ScriptContext | undefined;
         try {
             const contextModule = await import("./ScriptContext");
             const libraryPath = settings.get("script-library.path") as string | undefined;
-            scriptContext = new contextModule.ScriptContext(page, consoleLogs, libraryPath);
+            scriptContext = new contextModule.ScriptContext(page, consoleLogs, libraryPath, { tipCollector });
 
             const result = await this.execute(script, scriptContext, language);
             return { result, outputFlags: scriptContext.outputFlags };

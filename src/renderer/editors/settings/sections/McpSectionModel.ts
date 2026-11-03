@@ -6,6 +6,7 @@ import rendererEvents from "../../../../ipc/renderer/renderer-events";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 
 export interface McpSectionProps {
+    agentTipsEnabled: boolean;
     mcpEnabled: boolean;
     mcpPort: number;
     mainScriptsEnabled: boolean;
@@ -109,6 +110,7 @@ export class McpSectionModel extends TComponentModel<McpSectionState, McpSection
     setPortValue = (portValue: string) => this.state.update((state) => { state.portValue = portValue; });
     setMnemePortValue = (mnemePortValue: string) => this.state.update((state) => { state.mnemePortValue = mnemePortValue; });
 
+    handleAgentTipsToggle = () => settings.set("agent-tips.enabled", !this.props.agentTipsEnabled);
     handleToggle = () => settings.set("mcp.enabled", !this.props.mcpEnabled);
     handleMainScriptsToggle = () => settings.set("main.scripting.enabled", !this.props.mainScriptsEnabled);
     handleMnemeToggle = () => settings.set("mneme.enabled", !this.props.mnemeEnabled);

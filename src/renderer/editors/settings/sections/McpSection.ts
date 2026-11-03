@@ -93,6 +93,7 @@ class McpStatusView extends VanillaView<StatusProps> {
 export class McpSectionView extends VanillaView<Record<string, never>> {
     private driver: ComponentModelDriver<McpSectionState, McpSectionProps, McpSectionModel> | undefined;
     private model: McpSectionModel | undefined;
+    private agentTipsCheckbox: CheckboxView | undefined;
     private mcpEnabledCheckbox: CheckboxView | undefined;
     private mainScriptsCheckbox: CheckboxView | undefined;
     private mnemeEnabledCheckbox: CheckboxView | undefined;
@@ -131,6 +132,14 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         mcpRow.append(this.mcpEnabledCheckbox.root);
         this.mcpEnabledCheckbox.mount();
         this.root.append(mcpRow);
+
+        const tipsRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
+        this.agentTipsCheckbox = this.child(new CheckboxView(this.checkboxProps(
+            model.props.agentTipsEnabled, model.handleAgentTipsToggle, t("settings.agentTipsEnable"),
+        )));
+        tipsRow.append(this.agentTipsCheckbox.root);
+        this.agentTipsCheckbox.mount();
+        this.root.append(tipsRow);
 
         const mainScriptsRow = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
         this.mainScriptsCheckbox = this.child(new CheckboxView(this.checkboxProps(
@@ -200,7 +209,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         driver.mount();
         this.bind(model.state, (state) => state, (state) => this.syncState(state));
         const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "mcp.enabled" || key === "mcp.port" || key === "main.scripting.enabled" || key === "mneme.enabled" || key === "mneme.port") {
+            if (key === "agent-tips.enabled" || key === "mcp.enabled" || key === "mcp.port" || key === "main.scripting.enabled" || key === "mneme.enabled" || key === "mneme.port") {
                 driver.update(this.currentProps());
                 this.syncState(model.state.get());
             }
@@ -211,6 +220,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
     protected onDispose(): void {
         this.driver = undefined;
         this.model = undefined;
+        this.agentTipsCheckbox = undefined;
         this.mcpEnabledCheckbox = undefined;
         this.mainScriptsCheckbox = undefined;
         this.mnemeEnabledCheckbox = undefined;
@@ -224,6 +234,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
 
     private currentProps(): McpSectionProps {
         return {
+            agentTipsEnabled: settings.get("agent-tips.enabled"),
             mcpEnabled: settings.get("mcp.enabled"),
             mcpPort: settings.get("mcp.port"),
             mainScriptsEnabled: settings.get("main.scripting.enabled"),
@@ -266,6 +277,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
     private syncState(state: McpSectionState): void {
         const model = this.model;
         if (!model) return;
+        this.agentTipsCheckbox?.update(this.checkboxProps(model.props.agentTipsEnabled, model.handleAgentTipsToggle, t("settings.agentTipsEnable")));
         this.mcpEnabledCheckbox?.update(this.checkboxProps(model.props.mcpEnabled, model.handleToggle, t("settings.mcpEnable")));
         this.mainScriptsCheckbox?.update(this.checkboxProps(model.props.mainScriptsEnabled, model.handleMainScriptsToggle, t("settings.mainScriptsEnable")));
         this.mnemeEnabledCheckbox?.update(this.checkboxProps(model.props.mnemeEnabled, model.handleMnemeToggle, t("settings.mnemeEnable")));

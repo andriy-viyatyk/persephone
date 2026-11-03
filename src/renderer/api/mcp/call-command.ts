@@ -25,6 +25,6 @@ export async function handleCall(params: McpParams): Promise<McpResponse> {
     const request = { path, args, hints, maxLength, timeoutMs, ...(params && "value" in params ? { value: params.value } : {}) };
 
     const { aiCall } = await import("../../scripting/ai-vision/call");
-    const result = await aiCall(request, seenKinds, eventCursor);
+    const result = await aiCall(request, seenKinds, eventCursor, params?.collectAgentTips === true);
     return { result };
 }

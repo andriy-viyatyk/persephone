@@ -224,6 +224,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         panelName: "settings-panel-mcp",
         where: "Settings > Integrations > MCP Server / Mneme",
         rows: [
+            { key: "agent-tips.enabled", label: "Agent tips", purpose: "Offer optional suggestions to MCP agents after repeated site automation." },
             { key: "mcp.enabled", label: "MCP server", purpose: "Whether the MCP HTTP server is enabled for AI agents to drive Persephone." },
             { key: "mcp.port", label: "MCP port", purpose: "The loopback port used by the MCP HTTP server." },
             { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call â†’ main.script.execute may run code in Persephone's main process." },
