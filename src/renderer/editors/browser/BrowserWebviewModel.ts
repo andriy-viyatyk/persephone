@@ -79,6 +79,30 @@ export class BrowserWebviewModel {
     webviewRefs = new Map<string, Electron.WebviewTag>();
     /** Set of internalTabIds whose webview has fired dom-ready. */
     webviewReady = new Set<string>();
+    private readonly loadedWaiters = new Map<string, Set<() => void>>();
+
+    waitForLoaded(id: string): Promise<void> {
+        if (this.webviewReady.has(id)) return Promise.resolve();
+        return new Promise((resolve) => {
+            const waiters = this.loadedWaiters.get(id) ?? new Set<() => void>();
+            this.loadedWaiters.set(id, waiters);
+            const finish = (): void => {
+                clearTimeout(timer);
+                waiters.delete(finish);
+                if (!waiters.size) this.loadedWaiters.delete(id);
+                resolve();
+            };
+            const timer = setTimeout(finish, 5000);
+            waiters.add(finish);
+        });
+    }
+    clearLoadedWaiters(id: string): void {
+        for (const resolve of this.loadedWaiters.get(id) ?? []) resolve();
+    }
+    markLoaded(id: string): void {
+        this.webviewReady.add(id);
+        this.clearLoadedWaiters(id);
+    }
 
     /** When true, rate limiting is disabled (user clicked "Allow"). */
     popupsAllowed = false;

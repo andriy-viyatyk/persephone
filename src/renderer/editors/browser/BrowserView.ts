@@ -77,6 +77,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     private readonly tabId: string;
     private readonly webview: Electron.WebviewTag;
     private registered = false;
+    private readonly initialUrl: string;
     private wasCurrentWebview = false;
     private htmlFullscreen = false;
 
@@ -89,6 +90,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.model = props.model;
         this.tabId = props.tab.id;
         this.webview = webview;
+        this.initialUrl = props.tab.url;
         this.webview.src = props.tab.url;
         this.webview.partition = props.partition;
         this.webview.preload = WEBVIEW_PRELOAD_URL;
@@ -134,7 +136,6 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             if (this.model.webview.webviewRefs.get(this.tabId) !== this.webview) return;
             const currentUrl = this.webview.getURL();
             if (currentUrl && currentUrl !== "about:blank") this.model.tabs.currentUrls.set(this.tabId, currentUrl);
-            this.model.webview.webviewReady.add(this.tabId);
             const request: BrowserRegisterRequest = {
                 tabId: this.model.id,
                 internalTabId: this.tabId,
@@ -142,8 +143,14 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
                 zoomPercent: this.model.state.get().tabs.find((tab) => tab.id === this.tabId)?.zoomPercent ?? 100,
             };
             ipcRenderer.send(BrowserChannel.register, request);
+            this.model.webview.markLoaded(this.tabId);
+            const firstReady = !this.registered;
             this.registered = true;
-            if (this.model.state.get().pageMuted) {
+            const tab = this.model.state.get().tabs.find((item) => item.id === this.tabId);
+            if (firstReady && tab && tab.url !== this.initialUrl && tab.url !== currentUrl) {
+                void this.webview.loadURL(tab.url);
+            }
+            if (tab?.muted || this.model.state.get().pageMuted) {
                 ipcRenderer.send(BrowserChannel.setAudioMuted, `${this.model.id}/${this.tabId}`, true);
             }
             // Probe here as well as on `did-stop-loading`: a tab restored with the page (a session
@@ -1137,6 +1144,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
             this.urlBarFocusDisposer = undefined;
             this.model.urlBar.setFocusScheduler(undefined);
         });
+        this.own(this.model.tabs.materializationRevision.subscribe(() => this.sync(this.model.state.get())));
         this.bind(this.model.state, (state) => state, this.sync); this.sync(this.model.state.get());
     }
     protected onUpdate(): void { this.sync(this.model.state.get()); }
@@ -1157,7 +1165,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", state.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
         // No webview mounts while the profile's proxy could not be applied (US-1557):
         // its session route is unknown, and a mounted webview would start loading.
-        this.pageManager.update({ pageIds: state.networkError ? [] : state.tabs.map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
+        this.pageManager.update({ pageIds: state.networkError ? [] : state.tabs.filter((tab) => this.model.tabs.isMaterialized(tab.id)).map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
         const active = state.tabs.find((tab) => tab.id === state.activeTabId); const navigationKey = `${state.activeTabId}\u0000${active?.url ?? ""}`;
         if (navigationKey !== this.lastNavigationKey) { this.lastNavigationKey = navigationKey; if (active) this.model.webview.navigateWebview(state.activeTabId, active.url); }
         if (state.url !== this.lastUrl) { this.lastUrl = state.url; this.model.urlBar.syncFromUrl(state.url); }

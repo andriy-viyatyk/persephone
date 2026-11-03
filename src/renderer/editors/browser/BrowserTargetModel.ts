@@ -14,6 +14,14 @@ export class BrowserTargetModel implements IBrowserTarget {
         return this.model.id;
     }
 
+    async ensureReady(tabId?: string): Promise<void> {
+        const id = tabId || this.model.state.get().activeTabId;
+        if (!this.model.state.get().tabs.some((tab) => tab.id === id)) return;
+        const ready = this.model.webview.waitForLoaded(id);
+        this.model.tabs.materialize(id);
+        await ready;
+    }
+
     cdp(tabId?: string): CdpSession {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
@@ -40,7 +48,9 @@ export class BrowserTargetModel implements IBrowserTarget {
     async insertText(text: string, tabId?: string): Promise<void> {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
+        await this.ensureReady(targetTab);
         const webview = this.model.webview.webviewRefs.get(targetTab);
+        if (!webview) throw new Error("Browser tab webview is not ready.");
         if (webview) {
             webview.focus();
             await webview.insertText(text);

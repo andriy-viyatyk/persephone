@@ -164,6 +164,7 @@ export class BrowserEditor extends EditorModel<
         const url = new URL(currentUrl);
         if (url.protocol !== "https:") return undefined;
 
+        await this.target.ensureReady(internalTabId);
         const response = await this.target.cdp(internalTabId).send(
             "Network.getCertificate",
             { origin: url.origin },
@@ -413,6 +414,7 @@ export class BrowserEditor extends EditorModel<
                 // Re-assign fresh IDs to restored tabs
                 s.tabs = data.tabs.map((t) => ({
                     ...t,
+                    loading: false, audible: false, canGoBack: false, canGoForward: false,
                     id: createInternalTabId(),
                     groupId: t.groupId || createTabGroupId(),
                     zoomPercent: Number.isFinite(t.zoomPercent) && t.zoomPercent >= 50 && t.zoomPercent <= 200 ? t.zoomPercent : 100,
@@ -445,6 +447,18 @@ export class BrowserEditor extends EditorModel<
                 if (data.url) s.url = data.url;
                 if (data.pageTitle) s.pageTitle = data.pageTitle;
             }
+            s.loading = false;
+            s.canGoBack = false;
+            s.canGoForward = false;
+            s._anyTabAudible = false;
+            if (!data.tabs?.length && s.tabs.length) {
+                s.tabs[0].url = s.url;
+                s.tabs[0].pageTitle = s.pageTitle;
+                s.tabs[0].loading = false;
+                s.tabs[0].audible = false;
+                s.tabs[0].canGoBack = false;
+                s.tabs[0].canGoForward = false;
+            }
             if (data.tabsPanelWidth) s.tabsPanelWidth = data.tabsPanelWidth;
             if (data.bookmarksWidth !== undefined) s.bookmarksWidth = data.bookmarksWidth; // NH3
             if (data.bookmarksSidebarWidth !== undefined) s.bookmarksSidebarWidth = data.bookmarksSidebarWidth; // US-601
@@ -475,12 +489,14 @@ export class BrowserEditor extends EditorModel<
                     s.activeTabId = fresh.id;
                     s.url = DEFAULT_URL;
                     s.pageTitle = "";
+                    s.favicon = "";
                     s.title = englishMessage("editors.browser");
                 }
             }
             if (data.searchEngineId) s.searchEngineId = data.searchEngineId;
             if (data.lastSearchQuery) s.lastSearchQuery = data.lastSearchQuery;
         });
+        this.tabs.resetMaterialized(this.state.get().activeTabId);
     }
 
     getIconElement = (): SVGElement | undefined => {

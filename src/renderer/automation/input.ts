@@ -434,6 +434,7 @@ export async function typeText(target: IBrowserTarget, options: TypeOptions): Pr
     const { selector, ref, text, tabId, slowly, submit } = options;
     if (!selector && !ref) throw new Error("Missing 'selector' or 'ref' parameter");
 
+    await target.ensureReady?.(tabId);
     const cdp = target.cdp(tabId);
 
     // The old synthetic path still asks Electron to focus the host before DOM evaluation.

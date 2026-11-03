@@ -341,3 +341,5 @@ blocked popups, certificate errors, and pages requiring browser permissions rema
 they are not editor-format errors. The browser's page automation is available only after its tab is
 ready. A proxied page whose proxy is down fails with the browser's connection error; one whose proxy
 setting is invalid shows an error panel instead of any webview — fix the setting, then use **Retry**.
+
+After a restart, only the active browser tab loads immediately. Other tabs retain their saved titles and icons and load when first activated; subsequent switches keep them loaded. A tab's muted setting is also restored.

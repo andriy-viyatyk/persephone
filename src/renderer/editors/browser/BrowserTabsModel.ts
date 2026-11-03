@@ -1,3 +1,4 @@
+import { TOneState } from "../../core/state/state";
 const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -18,6 +19,24 @@ import {
 
 /** Owns internal browser tabs and tab-scoped navigation/bookmark resources. */
 export class BrowserTabsModel {
+    readonly materializationRevision = new TOneState(0);
+    private readonly materialized = new Set<string>();
+
+    isMaterialized = (id: string): boolean => this.materialized.has(id);
+    materialize = (id: string): void => {
+        if (this.materialized.has(id) || !this.model.state.get().tabs.some((tab) => tab.id === id)) return;
+        this.materialized.add(id);
+        this.materializationRevision.set(this.materializationRevision.get() + 1);
+    };
+    resetMaterialized = (id: string): void => {
+        this.materialized.clear();
+        this.materialize(id);
+    };
+    private removeMaterialized = (id: string): void => {
+        this.materialized.delete(id);
+        this.model.webview.clearLoadedWaiters(id);
+    };
+
     readonly currentUrls = new Map<string, string>();
     private readonly faviconCache = new Map<string, string>();
     private activeTabHistory: string[] = [];
@@ -27,6 +46,7 @@ export class BrowserTabsModel {
     private disposed = false;
 
     constructor(readonly model: BrowserEditorModel) {
+        this.materialized.add(model.state.get().activeTabId);
         // Preload bookmarks silently after a short delay (don't block browser page opening).
         const generation = this.bookmarkLifecycleGeneration;
         this.bookmarkPreloadTimer = setTimeout(() => {
@@ -121,6 +141,7 @@ export class BrowserTabsModel {
             groupId: parentGroupId || createTabGroupId(),
             zoomPercent: 100,
         };
+        this.materialized.add(tab.id);
         this.model.state.update((s) => {
             if (parentGroupId) {
                 const activeIdx = s.tabs.findIndex((t) => t.id === s.activeTabId);
@@ -132,11 +153,14 @@ export class BrowserTabsModel {
             s.activeTabId = tab.id;
             this.syncTopLevelFromTab(s, tab);
         });
+        this.materializationRevision.set(this.materializationRevision.get() + 1);
         return tab.id;
     };
 
     closeTab = (internalTabId: string) => {
         const state = this.model.state.get();
+        if (!state.tabs.some((tab) => tab.id === internalTabId)) return;
+        this.removeMaterialized(internalTabId);
         const isActive = state.activeTabId === internalTabId;
         this.model.webview.clearAiVisionSiteExtension(internalTabId);
         this.model.clearAiVisionRegistration(internalTabId);
@@ -171,6 +195,8 @@ export class BrowserTabsModel {
                 this.syncTopLevelFromTab(s, newActive);
             }
         });
+
+        this.materialize(this.model.state.get().activeTabId);
     };
 
     closeOtherTabs = (internalTabId: string) => {
@@ -179,6 +205,7 @@ export class BrowserTabsModel {
         if (!tab) return;
         for (const candidate of state.tabs) {
             if (candidate.id !== internalTabId) {
+                this.removeMaterialized(candidate.id);
                 this.model.webview.clearAiVisionSiteExtension(candidate.id);
                 this.model.clearAiVisionRegistration(candidate.id);
             }
@@ -191,6 +218,8 @@ export class BrowserTabsModel {
             this.activeTabHistory = [];
             this.syncTopLevelFromTab(s, tab);
         });
+
+        this.materialize(internalTabId);
     };
 
     closeTabsBelow = (internalTabId: string) => {
@@ -199,6 +228,7 @@ export class BrowserTabsModel {
         if (idx < 0 || idx >= state.tabs.length - 1) return;
         const removed = state.tabs.slice(idx + 1);
         for (const tab of removed) {
+            this.removeMaterialized(tab.id);
             this.model.webview.clearAiVisionSiteExtension(tab.id);
             this.model.clearAiVisionRegistration(tab.id);
         }
@@ -214,6 +244,8 @@ export class BrowserTabsModel {
                 this.syncTopLevelFromTab(s, tab);
             }
         });
+
+        this.materialize(this.model.state.get().activeTabId);
     };
 
     moveTab = (fromId: string, toId: string) => {
@@ -233,6 +265,7 @@ export class BrowserTabsModel {
     switchTab = (internalTabId: string) => {
         const state = this.model.state.get();
         if (state.activeTabId === internalTabId || !state.tabs.some((tab) => tab.id === internalTabId)) return;
+        this.materialize(internalTabId);
         this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
             const tab = s.tabs.find((t) => t.id === internalTabId);
@@ -274,6 +307,8 @@ export class BrowserTabsModel {
 
     dispose = async () => {
         this.disposed = true;
+        for (const id of this.model.state.get().tabs.map((tab) => tab.id)) this.removeMaterialized(id);
+        this.materialized.clear();
         this.bookmarkLifecycleGeneration++;
         if (this.bookmarkPreloadTimer !== undefined) {
             clearTimeout(this.bookmarkPreloadTimer);

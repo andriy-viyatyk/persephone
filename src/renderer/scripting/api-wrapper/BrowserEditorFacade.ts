@@ -606,7 +606,7 @@ export class BrowserEditorFacade implements IAiVisible {
     async click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> {
         let tipUrl: string | undefined;
         const result = await (async () => {
-            await ensureTargetReady(this.model.target);
+            await ensureTargetReady(this.model.target, options?.tabId);
             tipUrl = this.tipUrl(options?.tabId);
             await clickElement(this.model.target, resolveElementLocator(locator), options);
         })();
@@ -616,7 +616,7 @@ export class BrowserEditorFacade implements IAiVisible {
 
     /** Hover an element by CSS selector or explicit accessibility ref. */
     async hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> {
-        await ensureTargetReady(this.model.target);
+        await ensureTargetReady(this.model.target, options?.tabId);
         await hoverElement(this.model.target, resolveElementLocator(locator), options);
     }
 
@@ -624,7 +624,7 @@ export class BrowserEditorFacade implements IAiVisible {
     async type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void> {
         let tipUrl: string | undefined;
         const result = await (async () => {
-            await ensureTargetReady(this.model.target);
+            await ensureTargetReady(this.model.target, options?.tabId);
             tipUrl = this.tipUrl(options?.tabId);
             await typeTextInto(this.model.target, resolveElementLocator(locator), text, {
                 slowly: options?.slowly,
@@ -673,7 +673,7 @@ export class BrowserEditorFacade implements IAiVisible {
         const tabIds = new Set(fields.map(field => field.options?.tabId || this.model.state.get().activeTabId));
         let tipUrl: string | undefined;
         const result = await (async () => {
-            await ensureTargetReady(this.model.target, fields.find(field => field.options?.tabId)?.options?.tabId);
+            for (const tabId of tabIds) await ensureTargetReady(this.model.target, tabId);
             tipUrl = tabIds.size === 1 ? this.tipUrl([...tabIds][0]) : undefined;
             await fillFormOperation(this.model.target, fields);
         })();

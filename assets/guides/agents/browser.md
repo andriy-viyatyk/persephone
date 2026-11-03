@@ -219,3 +219,5 @@ document. Drag source and target must be in the same frame; cross-frame drag fai
 `drag source and target must be in the same frame`.
 
 After several pages of a site are automated, MCP may offer an optional site-extension suggestion. Finish the current task first, then ask whether the work recurs and offer an extension if appropriate. Read `guides.agents["site-extensions"]` before building one. The user can disable agent tips in Settings → MCP Server / Mneme.
+
+After restore, tab metadata is available without loading background tabs. Guest operations targeting a background tab can start it without switching the active tab.

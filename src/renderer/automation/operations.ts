@@ -387,7 +387,12 @@ export function installAutomationActivity<T extends object>(
                 const tabId = typeof tabOption?.tabId === "string" ? tabOption.tabId
                     : typeof fieldTabId === "string" ? fieldTabId : undefined;
                 const target = targetFor(this);
-                await ensureTargetReady(target, tabId);
+                if (fields) {
+                    const ids = new Set(fields.map(field => typeof field.options?.tabId === "string" ? field.options.tabId : undefined));
+                    for (const id of ids) await ensureTargetReady(target, id);
+                } else {
+                    await ensureTargetReady(target, tabId);
+                }
                 // Reads of main-process buffers never touch the page, so they must not count as
                 // activity: that would run the pending-dialog preflight, dismissing a dialog the
                 // agent only wanted to look at (or, under `manual`, failing the very read that

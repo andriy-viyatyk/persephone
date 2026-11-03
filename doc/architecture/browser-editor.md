@@ -117,11 +117,13 @@ A notification bar appears below the loading indicator showing the blocked count
 
 ## Multi-Webview Rendering
 
-Each internal tab has its own `<webview>` element. All webviews are rendered in the DOM simultaneously, but only the active tab's webview is visible (`display` vs `display: none`). This preserves each tab's state (scroll position, form data, session) without re-navigation on tab switch.
+Each materialized internal tab has its own `<webview>` element. On session restore, only the active internal tab is materialized; other tabs keep their saved URL, title, favicon, and tab metadata without creating a guest. Activating one of those tabs materializes it, and it remains mounted across later switches so its scroll position, form data, and session survive. Tabs created during the current session are materialized immediately. Only the active tab's webview is visible (`display` vs `display: none`).
+
+`BrowserTabsModel` owns the runtime-only materialized-ID set. `BrowserView.sync()` passes only those IDs to `PageManagerView`, while retaining tab order. Closing a tab removes its ID; an active-tab fallback is materialized as part of the transition. State-only operations such as reading tab metadata or closing an unloaded tab do not create a guest. An allowed automation operation that targets an unloaded tab explicitly materializes it and waits for its `dom-ready` registration mark, with a bounded timeout, before issuing guest work. This path does not switch the visible tab and still runs after the existing browser access checks.
 
 ### PageManagerView (Native Placeholder DOM Stability)
 
-Webview elements are hosted by `PageManagerView` (`src/renderer/components/page-manager/`). The view owns imperatively-created placeholder divs, appends new placeholders with `appendChild`, and mounts one native `BrowserTabPageView` per tab. Each page view owns its `BrowserWebviewItemView` and its blank-page overlay, so no React island is needed for internal tabs. This prevents `<webview>` elements from being destroyed and recreated when the tab array changes (tabs closed, reordered).
+Webview elements are hosted by `PageManagerView` (`src/renderer/components/page-manager/`). The view owns imperatively-created placeholder divs, appends new placeholders with `appendChild`, and mounts one native `BrowserTabPageView` per materialized tab. Each page view owns its `BrowserWebviewItemView` and its blank-page overlay, so no React island is needed for internal tabs. This prevents `<webview>` elements from being destroyed and recreated when the tab array changes (tabs closed, reordered).
 
 Without PageManager, rebuilding the tab list would detach and reinsert DOM nodes when array positions shift. Reinserted `<webview>` elements are treated as new by the browser and reload, losing user data.
 
@@ -143,7 +145,7 @@ If you add a `tab` field that `BrowserWebviewItem` renders from, extend the memo
 
 ### dom-ready Gating
 
-A `webviewReady` ref (a `Set<string>` of internal tab IDs) tracks which webviews have fired `dom-ready`. The navigation effect checks this before calling `webview.loadURL()`. Without this, calling `loadURL()` on a newly created webview before it's attached to the DOM crashes the app.
+A `webviewReady` set tracks which mounted webviews have fired `dom-ready`. The navigation effect checks this before calling `webview.loadURL()`. Without this, calling `loadURL()` on a newly created webview before it's attached to the DOM crashes the app. Automation readiness waiters are separate: they are resolved after the guest is registered with the main process, or after a bounded timeout, so a targeted background tab can be used without activating it.
 
 ### IPC Registration
 
@@ -492,7 +494,7 @@ and the challenge passes without it.
 
 ## Session Restore
 
-`getRestoreData()` saves all internal tabs with their actual current URLs (from the `BrowserTabsModel.currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore. Profile name, incognito flag, and Tor flag are also saved/restored.
+`getRestoreData()` saves all internal tabs with their actual current URLs (from the `BrowserTabsModel.currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore and is the only restored tab initially materialized; other tabs retain saved URL, title, favicon, and settings until activation or explicit guest automation access. Transient loading, audible, and back/forward flags reset on restore because they describe live guest state. Mute intent and zoom are retained and applied when a guest is created. Profile name, incognito flag, and Tor flag are also saved/restored.
 
 Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito and Tor profiles skip search history persistence.
 

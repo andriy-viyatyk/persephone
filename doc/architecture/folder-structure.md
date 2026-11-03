@@ -462,7 +462,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── browser/            # Built-in browser (non-text, no trait)
 │   │   ├── BrowserEditor.ts          # EditorModel subclass — registry entry point
 │   │   ├── BrowserEditorModel.ts     # Browser state types, defaults, and partition helper
-│   │   ├── BrowserTabsModel.ts       # Internal tabs, URL/favicon caches, bookmarks resource
+│   │   ├── BrowserTabsModel.ts       # Internal tabs and lazy materialization, URL/favicon caches, bookmarks resource
 │   │   ├── BrowserTorModel.ts         # Tor partition and daemon lifecycle
 │   │   ├── BrowserProfileNetworkModel.ts # Profile/Incognito proxy: apply before mount, follow settings edits, image route for app-drawn resources
 │   │   ├── BrowserView.ts             # Native browser UI and per-tab webview host
