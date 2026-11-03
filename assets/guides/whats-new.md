@@ -40,6 +40,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board dialogs:** a board's `alert`, `confirm` and `prompt` now show as Persephone dialogs that
   you and agents can answer; a lost dialog can no longer freeze every board.
 
+### Bug Fixes
+
+- **Git Changes panel:** the changed-files lists fill the panel and follow it when you resize it,
+  instead of stopping short until you switched tabs.
+
 ---
 
 ## Version 5.0.16

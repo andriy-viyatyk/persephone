@@ -234,14 +234,6 @@ across three editors. Worth doing when someone is already inside the focus path.
 Note these are also raw `setTimeout`, not owner-bound `this.schedule.timeout` — EPIC-080's US-1263
 swept rAF sites only. Converting them is not a fix on its own, so do not do it in isolation.
 
-### `cell-tooltip`'s module-global popover observer needs an upstream av-grid hook
-
-`uikit/DataGrid/cell-tooltip.ts:155` installs a `MutationObserver` on `document.body` that matches
-`.avg-popover` by class name and is "installed once for the module and never torn down".
-**Recorded 2026-09-01**, routed out of EPIC-081: the comment already names the right fix — an
-av-grid popover open/close hook — which is an upstream change, not a Persephone one. Pick this up
-alongside the next av-grid version adoption, where the upstream surface is already in scope.
-
 ### Two more callers of `getExpandedMap()` have US-1039's hint-only blind spot
 
 Surfaced by the `/review` pass on US-1039 (2026-08-29) and verified against source, but

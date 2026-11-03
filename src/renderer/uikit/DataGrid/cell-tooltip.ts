@@ -53,16 +53,17 @@
  *    2.2.3 it latched on, and reading a version-dependent flag to decide a hover is worse than
  *    reading the button state that is already on the event.
  *  • **An open cell editor** — `grid.isEditing()`, plus the hovered cell's own `.avg-editing`.
- *  • **av-grid's own popovers** (filter, cell dropdown) are the library's DOM on `document.body`,
- *    so `overlayRegistry` has never heard of them — and the tooltip's `z-index` beats theirs, so
- *    without this it paints *over* an open filter popover. One observer registers them.
+ *  • **av-grid's own popovers** (filter, cell dropdown) are the library's DOM on `document.body`
+ *    (or inside an open `<dialog>`), so `overlayRegistry` has never heard of them — and the
+ *    tooltip's `z-index` beats theirs, so without this it paints *over* an open filter popover.
+ *    av-grid's `Popover.onOpenChange` registers them.
  */
 
 import { attachTooltip, type TooltipAttachment } from "../Tooltip/attach-tooltip";
 import { overlayRegistry } from "../shared/overlayRegistry";
 import { DisposableStore, type Cleanup, type IDisposable } from "../../core/utils/DisposableStore";
 import { formatNumber } from "../../core/utils/format";
-import { columnDisplayValue, formatDisplayValue } from "av-grid";
+import { columnDisplayValue, formatDisplayValue, Popover } from "av-grid";
 import type { Column, DataGridInstance } from "./types";
 
 /** Longer than this and a tooltip stops being a peek. See `truncate`. */
@@ -134,33 +135,18 @@ function contentElement(text: string): HTMLElement {
  * Register av-grid's popovers with the app's overlay registry, so a cell tooltip does not paint
  * over an open filter popover or cell dropdown.
  *
- * Installed once for the module and never torn down. It is one observer watching one childList for
- * a class match, and being blunt is correct: another grid's popover should suppress this grid's
- * tooltip too. The alternative is an upstream open/close hook on av-grid's `Popover`, which is the
- * better design and a bigger change than this feature needs — recorded in the task's concerns
- * rather than done quietly here.
+ * Subscribed once for the module and never released. `Popover.onOpenChange` is library-wide, and
+ * being blunt is correct: another grid's popover should suppress this grid's tooltip too.
  */
-let popoverObserver: MutationObserver | undefined;
+let popoverSubscribed = false;
 
-function ensureAvgPopoverObserver(): void {
-    if (popoverObserver || typeof document === "undefined") return;
-
-    const visit = (nodes: NodeList, add: boolean): void => {
-        nodes.forEach((node) => {
-            if (!(node instanceof HTMLElement)) return;
-            if (!node.classList.contains("avg-popover")) return;
-            if (add) overlayRegistry.register(node);
-            else overlayRegistry.unregister(node);
-        });
-    };
-
-    popoverObserver = new MutationObserver((records) => {
-        for (const record of records) {
-            visit(record.addedNodes, true);
-            visit(record.removedNodes, false);
-        }
+function ensureAvgPopoverRegistration(): void {
+    if (popoverSubscribed) return;
+    popoverSubscribed = true;
+    Popover.onOpenChange((root, open) => {
+        if (open) overlayRegistry.register(root);
+        else overlayRegistry.unregister(root);
     });
-    popoverObserver.observe(document.body, { childList: true });
 }
 
 export class CellTooltip {
@@ -175,7 +161,7 @@ export class CellTooltip {
         private readonly disposables: DisposableStore,
         private readonly name?: string,
     ) {
-        ensureAvgPopoverObserver();
+        ensureAvgPopoverRegistration();
         this.tooltip = attachTooltip(root, { content: null, name });
 
         // `pointermove`, not `mousemove`. av-grid calls `preventDefault()` on a cell's pointerdown
