@@ -99,9 +99,12 @@ export function extractHtmlResources(html: string, options?: ExtractOptions): IL
     });
 
     // Media
-    $("video[src]").each((_: number, el: any) => add("Media", $(el).attr("src"))); // eslint-disable-line @typescript-eslint/no-explicit-any
-    $("audio[src]").each((_: number, el: any) => add("Media", $(el).attr("src"))); // eslint-disable-line @typescript-eslint/no-explicit-any
-    $("video source[src], audio source[src]").each((_: number, el: any) => add("Media", $(el).attr("src"))); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Explicit target: the Links page passes a Monaco fallback that would otherwise win for URLs.
+    // The video player plays audio too.
+    const addMedia = (_: number, el: any) => add("Media", $(el).attr("src"), undefined, undefined, "video-view"); // eslint-disable-line @typescript-eslint/no-explicit-any
+    $("video[src]").each(addMedia);
+    $("audio[src]").each(addMedia);
+    $("video source[src], audio source[src]").each(addMedia);
 
     // Fonts
     $("link[rel=preload][as=font][href]").each((_: number, el: any) => add("Fonts", $(el).attr("href"))); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -110,7 +113,12 @@ export function extractHtmlResources(html: string, options?: ExtractOptions): IL
     $("iframe[src]").each((_: number, el: any) => add("Iframes", $(el).attr("src"))); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     // Favicons
-    $("link[rel~=icon][href]").each((_: number, el: any) => add("Favicons", $(el).attr("href"))); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Favicons are images too — same thumbnail + image viewer target as the Images category.
+    $("link[rel~=icon][href]").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const href = $(el).attr("href");
+        const resolved = resolveUrl(href.trim(), options?.baseUrl);
+        add("Favicons", href, undefined, resolved, "image-view");
+    });
 
     // Links (external only — skip anchors and javascript:)
     $("a[href]").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -119,6 +127,35 @@ export function extractHtmlResources(html: string, options?: ExtractOptions): IL
         add("Links", href, $(el).text().trim() || undefined);
     });
 
+    return links;
+}
+
+const FONT_EXTENSION = /\.(woff2?|ttf|otf|eot)$/i;
+
+/**
+ * Font links from the URLs a page actually loaded (its Resource Timing entries). Fonts are
+ * declared in stylesheets, so the HTML alone rarely names them.
+ */
+export function loadedFontLinks(urls: string[]): ILink[] {
+    const links: ILink[] = [];
+    const seen = new Set<string>();
+    for (const url of urls) {
+        let pathname: string;
+        try {
+            pathname = new URL(url).pathname;
+        } catch {
+            continue;
+        }
+        if (!FONT_EXTENSION.test(pathname) || seen.has(url)) continue;
+        seen.add(url);
+        links.push({
+            title: urlBaseName(url) || url,
+            href: url,
+            category: "Fonts",
+            tags: [] as string[],
+            isDirectory: false,
+        });
+    }
     return links;
 }
 

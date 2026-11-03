@@ -1391,6 +1391,9 @@ Declare the association with fields in `board-manifest.json`:
 | `editorKind` | Optional — `"simple"` (default), `"content-host"`, or `"stream-host"`. A simple board reads/writes a path; a content-host board receives text through `persephone.host.*`; a stream-host board receives an origin-local pipe URL through `persephone.host.streamUrl()` without materialization. |
 | `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive or at an `http(s)` URL. Persephone copies those non-local sources into a local cache file first, so the board's own code can use `persephone.getFilePath()`. It is the copy-based alternative to `stream-host` and is ignored by content-host and stream-host boards. |
 
+When an HTTP(S) URL has an extension claimed by an eligible custom editor board, Persephone can
+open it in that board directly, including from a Browser **Show Resources** collection.
+
 ### Inspecting board metadata from scripts
 
 Scripts running on an open board can call `page.editor.getManifest()` after narrowing the editor id

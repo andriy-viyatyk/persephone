@@ -351,8 +351,15 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         ) headerTarget = "monaco";
     }
 
+    const { resolveEditorIdForFile, isBoardEditorId } =
+        await import("../editors/board/custom-editor-registry");
+    // A board that registered this extension as a custom editor (a font, an office document)
+    // is content intent too; otherwise the browser would just download the file.
+    const boardClaimsExtension = !hasContentExtension && !!ext
+        && isBoardEditorId(resolveEditorIdForFile(data.url, effectivePath));
+
     const hasExplicitEditorTarget = data.target && data.target !== "browser";
-    const hasContentIntent = hasContentExtension || !!data.headers || !!data.fallbackTarget;
+    const hasContentIntent = hasContentExtension || boardClaimsExtension || !!data.headers || !!data.fallbackTarget;
     const browserMode = data.browserMode;
     if (browserMode || openInBrowser || (!hasContentIntent && !hasExplicitEditorTarget)) {
         await openLinkInBrowser(data);
@@ -360,8 +367,6 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         return;
     }
 
-    const { resolveEditorIdForFile, isBoardEditorId } =
-        await import("../editors/board/custom-editor-registry");
     const resolvedTarget = hasContentIntent
         ? resolveEditorIdForFile(data.url, effectivePath)
         : undefined;

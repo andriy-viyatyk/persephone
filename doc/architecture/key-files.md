@@ -130,7 +130,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Pipe rebuild from persisted source data (`pipeFromSourcePath` and descriptor-first `pipeFromPersistedSource`) | `/src/renderer/content/rebuild-pipe.ts` |
 | Provider-availability and source-move watches; shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
-| Pipe resolvers (Layer 2; the HTTP resolver's content-extension set decides browser-vs-content, then normal registry matching and eligible board resolution choose the editor; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
+| Pipe resolvers (Layer 2; HTTP content extensions and eligible board claims inform browser-vs-content routing; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution and URL path/fragment helpers | `/src/renderer/content/link-utils.ts` |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
 | HTTP provider (content-only default User-Agent; `nodeFetch` remains header-neutral) | `/src/renderer/content/providers/HttpProvider.ts` |

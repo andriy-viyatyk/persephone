@@ -14,6 +14,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Show Resources:** Browser resource collections include loaded fonts. Open favicons in Image
+  Viewer and audio or video resources in Video Player; compatible custom editor boards can open
+  matching web resources such as fonts.
 - **Editor categories:** Organize built-in editors and trusted boards into ordered categories. The
   **+** menu groups editors under Top, named categories, and Other; the Tools & Editors hub includes
   a category manager beside the merged Editors tree.

@@ -226,6 +226,13 @@ When a page link uses a scheme registered by a trusted board, clicking it leaves
 opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
 blocked rather than being sent to Chromium.
 
+## Show Resources
+
+Choose **Show Resources** from the page menu or the page's right-click menu to open a categorized
+link collection. It includes fonts loaded by the page, including fonts loaded from stylesheets and
+the cache. Favicons open in Image Viewer, and audio and video resources open in Video Player. A font
+can open in an installed custom editor that supports its file type and web URLs.
+
 ## Translate a page
 
 Choose **Translate** in the browser toolbar to translate the current page in place. The page keeps

@@ -1066,17 +1066,21 @@ ${source}
 
     /** Collect DOM resources + network log and open as a link collection. */
     private showResources = async (regKey: string, pageUrl: string, title: string) => {
-        const [html, networkLog] = await Promise.all([
+        const [html, networkLog, loadedUrls] = await Promise.all([
             ipcRenderer.invoke(BrowserChannel.collectDom, regKey),
             ipcRenderer.invoke(BrowserChannel.getNetworkLog, regKey),
+            ipcRenderer.invoke(BrowserChannel.collectLoadedResources, regKey) as Promise<string[]>,
         ]);
 
-        const { extractHtmlResources } = await import("../../core/utils/html-resources");
+        const { extractHtmlResources, loadedFontLinks } = await import("../../core/utils/html-resources");
         const { networkLogToLinks } = await import("./network-log-links");
 
         const domLinks = extractHtmlResources(html, { baseUrl: pageUrl });
+        // Fonts come from the page's own Resource Timing list: the network log misses cache hits.
+        const domHrefs = new Set(domLinks.map((link) => link.href));
+        const fontLinks = loadedFontLinks(loadedUrls).filter((link) => !domHrefs.has(link.href));
         const networkLinks = networkLogToLinks(networkLog);
-        const links = [...domLinks, ...networkLinks];
+        const links = [...domLinks, ...fontLinks, ...networkLinks];
         // The list opens as a standalone page outside this page's session, so on a
         // Tor or proxied page its image thumbnails would load direct (US-1557).
         if (this.model.network.imageRoute) {

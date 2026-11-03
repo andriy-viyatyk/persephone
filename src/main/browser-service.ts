@@ -711,6 +711,30 @@ function urlsMatch(a: string, b: string): boolean {
     }
 }
 
+/**
+ * URLs of every resource the page's frames loaded, read from each frame's Resource Timing
+ * buffer. Unlike the network log, this includes HTTP-cache hits and requests made before the
+ * tab registered, and it sees fonts that stylesheets pull in.
+ */
+async function collectLoadedResources(key: string): Promise<string[]> {
+    const reg = registrations.get(key);
+    if (!reg || reg.webContents.isDestroyed()) return [];
+    const urls = new Set<string>();
+    for (const frame of reg.webContents.mainFrame.framesInSubtree) {
+        try {
+            const names = await frame.executeJavaScript(
+                "performance.getEntriesByType('resource').map((entry) => entry.name)",
+            ) as unknown;
+            if (Array.isArray(names)) {
+                for (const name of names) if (typeof name === "string") urls.add(name);
+            }
+        } catch {
+            // Frame destroyed or navigated away mid-collection — skip it.
+        }
+    }
+    return [...urls];
+}
+
 interface FrameResult {
     url: string;
     name: string;
@@ -1004,6 +1028,10 @@ export function initBrowserHandlers(): void {
 
     guardedIpcHandle(BrowserChannel.collectDom, async (_event, key: string) => {
         return collectDom(key);
+    });
+
+    guardedIpcHandle(BrowserChannel.collectLoadedResources, async (_event, key: string) => {
+        return collectLoadedResources(key);
     });
 
     // CDP session management for browser automation

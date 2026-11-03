@@ -34,6 +34,8 @@ export const BrowserChannel = {
     resetSitePermissions: "browser:reset-site-permissions",
     /** Renderer → Main (invoke): collect full DOM including iframe content. Args: (key: string) */
     collectDom: "browser:collect-dom",
+    /** Renderer → Main (invoke): URLs of resources every frame loaded, cache hits included. Args: (key: string) */
+    collectLoadedResources: "browser:collect-loaded-resources",
     /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
     getNetworkLog: "browser:get-network-log",
     /** Renderer → Main (invoke): read bounded CDP event records for a target/session. */
