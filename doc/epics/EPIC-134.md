@@ -133,8 +133,8 @@ draft that US-1728 added to voice typing.
 
 - **Hallucinations on short or silent segments.** Whisper can invent short phrases such as
   "Thank you." on silence. This can also start Agent Chat's auto-stop countdown.
-- **Native memory leak (US-1732).** The board service's native memory leak remains a planned
-  follow-up.
+- **Native memory leak (US-1732).** Fixed 2026-11-03 in Speech to Text 1.4.1: a live channel that
+  never committed an utterance (a quiet microphone) kept all of its audio until it closed.
 - **Echo without headphones.** Capturing both microphone and computer audio can duplicate speech
   when speakers are used without headphones; this is not handled.
 - **Words cut at segment boundaries**, and lost context between segments (the previous text as a
