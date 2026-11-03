@@ -83,9 +83,9 @@ guides). Three things were deliberately left out.
   `setMcpEnabled` / `setMnemeEnabled`. Removes the startup double-call and the fragile reliance
   on idempotency. Per-window settings (script library path, theme, board vars, connection models)
   stay in the renderer — the split is global-vs-per-window, not main-vs-renderer.
-- [ ] **Stop-during-start.** `stopMcpHttpServer` returns early on `!httpServer`, so a stop issued
-  while the server is still starting is lost and the server ends up running after being disabled.
-  `stopMneme` has the same shape. Fold into the item above.
+- [ ] **Stop-during-start.** An MCP stop can still be lost during the `loadSdk()` await before
+  `startPromise` is assigned in `src/main/mcp-http-server.ts` (rest done: US-1448 fixed the later
+  MCP startup window; Mneme handles its pending start).
 - [ ] **Configure the agent for the user.** The real cold-start blocker is not documentation but
   the client config. Settings already offers *Copy Config*; going from "copy this" to "write it
   for me" (the MCP entry in the user's agent config, optionally a short block appended to
@@ -93,18 +93,6 @@ guides). Three things were deliberately left out.
   removes the step a first-time user is least equipped to do. A **Claude Code plugin** published
   from the repo could carry the MCP config and the guides together and install in one command;
   worth evaluating first, as it may subsume the rest.
-
----
-
-## Publish the todo board (follow-up to EPIC-045)
-
-Deferred out of [EPIC-045](../epics/EPIC-045.md) (Published Boards Catalog), which develops and
-tests the whole publish/install flow on drawio-viewer only. Once that epic ships:
-
-- [ ] Polish the `todo/` board (`C:\projects\persephone-boards\boards\todo`)
-- [ ] Retire the built-in todo editor in favor of the board (migration story for existing users)
-- [ ] Publish it: `board-manifest.json` gets `standalone: true` (file editor that can start
-  empty) + a `version`, then bump-and-merge to `main`
 
 ---
 
@@ -207,9 +195,6 @@ The remaining items are one user sentence each from being settled; none is block
   `app.settings` entry is a small follow-up.
 - **Whether the guide browser needs its own search box** (EPIC-093). Deferred so the pane could
   prove itself first.
-- **`pages` and `pages.closePage` do not see folder pages** (EPIC-093). `PageCollectionWrapper.all`
-  filters on `mainEditor`; admitting an editor-less page raises what `pages[i].editor` should be for
-  a folder tab. Unrelated to guides.
 - **Screenshots stay out of the guides** (EPIC-094). Additive over finished pages if wanted.
 - **`editors/index.md` shrank to a table** (EPIC-094). A bookmark to the long catalogue lands
   somewhere different.
@@ -222,57 +207,11 @@ dashboard so it only shows what is actually being worked on. Each doc keeps its 
 the task ids below are reserved. To pick one up, move its entry back to the **Planned** section
 of [`active-work.md`](../active-work.md) along with its task list.
 
-### Platform roadmap — boards as modules, capability registry, external providers
-
-**Completed historical roadmap.** Its phases (EPIC-105 to EPIC-114) are recorded in the
-[completed epic index](../epics/completed.md); the roadmap document itself was removed on
-2026-10-10 and remains in git history.
-
-### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
-
-**Delivered.** All three epics are complete — see [EPIC-096, EPIC-097 and EPIC-098](../epics/completed.md).
-The engine is published as an MIT library from its own repository
-([andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision), `C:\projects\ai-vision`),
-Persephone adopted it and deleted the internal copy, and a remote party's descriptor **shape** mounts
-as a proxy node under `pages[id].editor.app`. `doc/ai-vision-library-roadmap.md` was deleted
-2026-09-19 once the last epic landed; it remains in git history. Kept here only as a pointer —
-nothing in this entry is outstanding work.
-
 ### De-React package 8 — teardown-rebuild renders, `{state,setState}` props, ref drilling
 
-**No document, and deliberately not an epic** — package 8 of the De-React second-pass roadmap
-(`doc/de-react-refactoring-2.md`, deleted 2026-09-05 when the user declared De-React finished; it
-remains in git history). Recorded 2026-09-01 when EPIC-082
-was cut; **re-scoped 2026-09-03** after the four strands were verified against source. Two slices
-were worth extracting as tasks, two were not worth doing at all.
-
-**Extracted as standalone tasks (see [active-work.md](../active-work.md) Planned):**
-
-- [US-1282](US-1282-header-host-rename/README.md) — §1.7's ref work. The "43 uses of the
-  `(el | null)` unmount convention" claim was wrong: only **8** occurrences are the callback
-  protocol, all inside `uikit/CollapsiblePanelStack/CollapsiblePanelStackView.ts`, and **nothing
-  supplies it** — the sole `CollapsiblePanelProps` producer (`SecondaryViewsView:171-181`) never
-  sets the field, so the protocol is unreachable and deletable. The other 35 sites drill a plain
-  `HTMLDivElement | null` **element** through ~17 sibling leaf views that each consume it one hop
-  down — host-passing, exactly what US-1273 concluded for `toolbarPortalRef`. Actionable work: a
-  dead-code deletion plus a `headerRef` → `headerHost` rename.
-
-**Not doing:**
-
-- **§1.4 teardown-and-rebuild `render()`** — dropped as a blanket item, replaced by a rule:
-  *rebuild-on-update is a defect only when the rebuilt subtree holds something a user can be in the
-  middle of* (focus, caret, selection, scroll offset, `<details>` state, an in-flight drag). By that
-  test `AboutView` and `BoardInfoEditorView` are fine — they update on demand and hold nothing. The
-  one live specimen is `editors/mcp-inspector/McpInspectorView.ts:255` (`ServerInfoPanelView.render`
-  disposes and rebuilds a `MarkdownBlockView` inside an `overflow: auto` panel, resetting the
-  Instructions scroll position on every update); fix it if it ever annoys anyone. Also note
-  `editors/base/TextChromeView.ts:335,470` never belonged on the list — both `replaceChildren()`
-  calls are *branch teardown* on a content-host identity change, where a full rebuild is correct.
-- **`ExpandedNoteView.ts:367-369`'s private `setState(partial)`** — dropped. Three lines wrapping
-  `state.update`, called 10x with literals. A naming preference with no behavioural difference.
-- **§1.5's three `lastProjection` chains** (`GitRefsView:116-120`, `MarkdownBodyView:391-405`,
-  `PopoverView:377-380`) — still recorded, still unscheduled. Hand-inlined `React.memo` shallow
-  compares where a selector `bind()` would do. Cheap individually; take one when already in the file.
+- **Two `lastProjection` chains** in `editors/git-tree/GitRefsView.ts` and
+  `editors/markdown/MarkdownBodyView.ts` could use selector `bind()` (rest done: the
+  `PopoverView` chain is gone).
 - **The `{ current: T }` ref boxes** (`components/git-tree/GitTreeView.ts:204,242`) — still
   recorded. Out of scope for US-1282, which is scoped to `headerRef`.
 
@@ -372,18 +311,11 @@ three-quarters done — and worth considering whether `getExpandedMap()` itself 
 effective map, which would remove the trap instead of patching its fourth and fifth exits.
 
 
-### Six unsafe type assertions deferred by EPIC-072
+### Five unsafe type assertions deferred by EPIC-072
 
-EPIC-072's `/review` pass left these unfixed rather than widen its scope, and they are still
-present (re-checked 2026-08-30, after the review file that recorded them was deleted):
-
-- `as unknown as` — `src/renderer/editors/board/index.ts`, `src/renderer/editors/board/BoardEditorView.ts`
-- `as never` — `src/renderer/editors/browser/BrowserView.ts` (4 sites)
-
-Two other entries on the original list are already gone: `UrlSuggestionsDropdown.ts`'s `as never`
-and `BoardToolbar.ts`'s definite-assignment `!`. The `BrowserView.ts` ESLint suppression was not
-re-verified. Low priority — each assertion is local and none is known to be wrong; the value is in
-removing the class, not in fixing a bug.
+Remove the two `as unknown as` casts in `src/renderer/editors/board/index.ts` and
+`BoardEditorView.ts`, and three `as never` casts in `src/renderer/editors/browser/BrowserView.ts`
+(rest done: the fourth browser assertion is gone).
 
 ### A content-host editor's module failure is still a silent no-op
 
@@ -396,19 +328,6 @@ file-diff or the text editors surfaces on a path nothing guards, and that is the
 the **third** silent path in the family (US-1163 covered standalone pages, US-1185 covered no-host
 files); it is uncovered, and finding it cost two wrong probes because breaking a content-host editor
 looks exactly like a failed fix. Worth closing so the class is finished rather than two-thirds done.
-
-### `ToolbarView` lets a caller append into its root, then wipes it
-
-`ToolbarView.onUpdate` calls `fillSlot(this.root, props.children)`, which owns the root and can destroy
-anything a caller appended directly when the requested children differ or are empty. Matching slot
-nodes now remain in place, but direct appends still violate the contract. **Both** of its callers did
-that: `Toolbar.story.ts` (live defect, fixed as US-1187) and `StorybookEditorView.ts:81`, which escapes
-only because it never calls `this.toolbar.update(...)` — latent, and one future `update()` from an
-empty application toolbar. Two of two callers making the same mistake reads as an under-documented
-contract rather than carelessness.
-Options: document it on `ToolbarProps.children`, or make `ToolbarView` refuse/absorb a manual append
-so the hazard cannot be hit. Cheap either way, and it removes a trap rather than a bug.
-
 
 ### Smoke-test the script `app` surface at runtime
 
@@ -429,72 +348,15 @@ getter. It cannot catch a getter that returns `undefined` because a service fail
 
 ### Script Service Enhancements
 
-**Goal:** Expand scripting with hooks and toolbar builder API.
-
-**Target State:**
-- `ScriptHooks.ts` - language/event hooks system
-- `ToolbarBuilder.ts` - API for scripts to add toolbar items
-- Expanded ScriptContext with `app` and `toolbar` namespaces
-
-#### Script Hooks System
-
-**Tasks:**
-- [ ] Create `scripting/ScriptHooks.ts`
-- [ ] Define hook types: `onLanguageChange`, `onFileOpen`, `onFileSave`
-- [ ] Create hooks registry and execution logic
-- [ ] Integrate with TextFileModel language change
-- [ ] Add UI for configuring hooks
-
-#### Toolbar Builder API
-
-**Tasks:**
-- [ ] Create `scripting/ToolbarBuilder.ts`
-- [ ] Define API: `toolbar.addButton()`, `toolbar.addCombobox()`, `toolbar.clear()`
-- [ ] Connect to editor toolbar ref system
-- [ ] Add to ScriptContext
-
-#### Expand ScriptContext
-
-**Tasks:**
-- [ ] Add `app` namespace: `openFile()`, `showAlert()`, `showConfirm()`
-- [ ] Add `toolbar` namespace
-- [ ] Document new script capabilities
-
-**Complexity:** High
-
----
+- [ ] Add language-change, file-open, and file-save script hooks, a registry, and configuration UI
+  (rest done: the `app` namespace is available in `src/renderer/scripting/ScriptContext.ts`).
+- [ ] Add a script toolbar builder for buttons and comboboxes, connect it to editor toolbars, and document
+  the new hooks and toolbar APIs (rest done: existing capabilities are in `assets/guides/scripting/`).
 
 ### Script Output Mode Improvement
 
-**Goal:** Allow scripts to control output page content directly without being overwritten.
-
-**Current Behavior:**
-- Script executes
-- On success: return value overwrites `page.grouped.content` (prints "undefined" if no return)
-- On error: error message with stack trace overwrites `page.grouped.content`
-- Any assignment to `page.grouped.content` during script execution is overwritten
-
-**Problem:** Scripts cannot incrementally write to output (useful for long-running tasks that want to show progress).
-
-**Proposed Behavior:**
-- If script does NOT assign to `page.grouped.content`: preserve current behavior (return value → output)
-- If script DOES assign to `page.grouped.content`: "manual output mode"
-  - Do NOT overwrite with return value
-  - Script controls output content directly
-  - On error in manual mode: show error dialog instead of overwriting output page
-
-**Use Cases:**
-- Long-running scripts that append progress updates to output
-- Scripts that want to format output in a specific way during execution
-- Scripts that build output incrementally
-
-**Tasks:**
-- [ ] Track whether `page.grouped.content` was assigned during script execution
-- [ ] Modify ScriptRunner to check output mode after execution
-- [ ] In manual mode: skip writing return value to output
-- [ ] In manual mode on error: show error dialog instead of overwriting output
-- [ ] Update scripting documentation with new behavior
-- [ ] Add examples of incremental output scripts
+- [ ] Add an incremental-progress output example to `assets/guides/scripting/index.md` (rest done:
+  grouped-content writes suppress default output and errors use a dialog in `ScriptRunner.ts`).
 
 **Complexity:** Medium
 
@@ -528,49 +390,12 @@ getter. It cannot catch a getter that returns `undefined` because a service fail
 
 ---
 
-### Shared folder-watcher service (Explorer + consumers)
-
-**Goal:** Extract folder-change watching into a single shared service that multiple consumers subscribe to, instead of each feature opening its own `DirectoryWatcher`.
-
-**Motivation:** The Explorer already watches folders for changes. Features that live *inside* a watched folder — e.g. the Board editor (EPIC-034) reflecting boards added/removed under `.persephone/boards/` — would otherwise each need their own watcher. A single watcher on a **parent** folder can detect descendant changes and fan out events to all interested subscribers (Explorer, Board editor, …), avoiding duplicate OS watchers on overlapping paths.
-
-**Sketch:**
-- A service owning `DirectoryWatcher` instances (`core/utils/file-watcher.ts`), de-duplicated by path — one watcher per parent; nested subscribers share it.
-- Subscribe API (e.g. `watch(path, cb): unsubscribe`); the service merges the minimal set of OS watchers and routes change events to matching subscribers.
-- Explorer migrates to it; the Board editor's board-list live refresh (EPIC-034 / US-722 C6) becomes a subscriber rather than its own watcher.
-
-**Complexity:** Medium
-
----
-
 ## New Features
-
-### Tool Editors Infrastructure
-
-**Goal:** Editors for structured data files.
-
-> ToDo Editor moved to active tasks: US-022
-
-#### Bookmarks Editor (`*.link.json`)
-
-Categorized bookmarks with tags.
-
-**Tasks:**
-- [ ] Create `editors/tools/bookmarks/` structure
-- [ ] Create `BookmarkPageModel` extending PageModel
-- [ ] Create `BookmarkEditor.tsx` component
-- [ ] Register for `*.link.json` files
-- [ ] Implement bookmark management with categories
-
-**Complexity:** High (each)
-
----
 
 ### Hex Editor
 
-**Goal:** Open and view/edit binary files (`.bin`, `.dat`, `.wasm`, `.exe`, `.dll`, etc.) in hex format.
-
-Developers frequently need to inspect binary data — file headers, protocols, WASM modules. A hex view with offset columns, hex bytes, and ASCII representation. Could build on top of existing virtualization for large files.
+Add a general hex/ASCII view and binary editing for files such as `.bin`, `.dat`, `.wasm`, `.exe`,
+and `.dll` (rest done: `persephone-boards/boards/pe-viewer` inspects EXE/DLL metadata).
 
 **Complexity:** Medium-High
 
@@ -578,9 +403,8 @@ Developers frequently need to inspect binary data — file headers, protocols, W
 
 ### Log Viewer
 
-**Goal:** Specialized viewer for `.log` files with live tail, line filtering, regex search, and severity-level coloring.
-
-Developers deal with logs daily and plain text editors don't help. A dedicated view with real-time filtering, severity highlighting (ERROR/WARN/INFO/DEBUG), and follow-tail mode would be very useful.
+Add a general `.log` viewer with live tail, regex filtering, and severity colors (rest done:
+`src/renderer/editors/log-view/` and `persephone-boards/boards/agent-log-viewer` cover app and agent logs).
 
 **Complexity:** Medium
 
@@ -588,9 +412,8 @@ Developers deal with logs daily and plain text editors don't help. A dedicated v
 
 ### REST Client
 
-**Goal:** Lightweight API testing tool using `.http` file format (same as VS Code REST Client extension).
-
-Note: persephone already supports a basic REST workflow — create a JS file, write `const resp = await fetch(...); return await resp.json()` and execute it. A dedicated REST editor would add a more visual experience with request/response panels, headers UI, and history. Discussable whether the added value justifies the effort.
+Add `.http` file support and request history (rest done: `assets/boards/rest-client/` provides the
+bundled visual REST client using `.rest.json` collections).
 
 **Complexity:** High
 
@@ -618,9 +441,8 @@ Note: Already achievable via script panel (`page.content.split(".").slice(0,2).m
 
 ### Color Palette Editor
 
-**Goal:** Create and edit color palettes with a palette generator for background/foreground combinations.
-
-Good candidate for a tool editor. Could generate proper color schemes for web apps — complementary, analogous, triadic palettes. Display swatches, convert between hex/rgb/hsl, check contrast ratios (WCAG), and export as CSS variables or JSON.
+Add complementary, analogous, and triadic palette generation plus CSS and standalone palette export
+(rest done: `persephone-boards/boards/theme-editor` generates theme palettes and exports theme JSON).
 
 **Complexity:** Medium-High
 
@@ -685,16 +507,6 @@ Good candidate for a tool editor. Could generate proper color schemes for web ap
 
 ---
 
-### Certificate Viewer
-
-**Goal:** Open `.pem`, `.crt`, `.cer` files and display parsed certificate details (issuer, subject, expiry, chain).
-
-DevOps and backend developers deal with certificates frequently and usually resort to `openssl` CLI commands. A visual viewer would be more convenient.
-
-**Complexity:** Low-Medium | **Priority:** Very Low
-
----
-
 ### Font Preview
 
 **Goal:** Open `.ttf`, `.woff`, `.woff2` font files and preview glyphs at different sizes with customizable sample text.
@@ -705,103 +517,24 @@ Frontend developers occasionally need to inspect fonts. Could show glyph table, 
 
 ---
 
-### Custom Editor Plugins (Single-File HTML)
-
-**Goal:** Allow loading external React (or any web) applications as custom editors inside persephone, enabling a plugin-like extensibility model without a full plugin framework.
-
-**Concept:**
-- Any React application bundled into a single `.html` file (via `vite-plugin-singlefile` or similar) can be loaded as a custom editor
-- The editor host loads the HTML file in an Electron `<webview>` tag
-- A preload script injects a `window.jsNotepad` API into the guest page, giving it access to page content, settings, and editor lifecycle
-
-**Architecture:**
-```
-persephone
-  └─ CustomEditorHost (registered as a page-editor)
-       └─ <webview src="file:///path/to/editor.html" preload="custom-editor-api.js">
-            └─ Custom React/HTML App
-                 └─ uses window.jsNotepad API
-```
-
-**API Surface (injected via preload):**
-- `jsNotepad.getContent()` / `jsNotepad.setContent(value)` — read/write page content
-- `jsNotepad.getLanguage()` — current language mode
-- `jsNotepad.onContentChanged(callback)` — subscribe to external content changes
-- `jsNotepad.getTheme()` — current theme info for visual consistency
-- `jsNotepad.showMessage(text)` / `jsNotepad.showConfirm(text)` — basic UI dialogs
-
-**Key Decisions:**
-- **`<webview>` vs `<iframe>`**: `<webview>` preferred — native preload support, better isolation, proper IPC bridge
-- **Single-file bundling**: Eliminates asset management; one `.html` file = one editor plugin
-- **Registration**: Could register by file extension pattern (e.g., `*.xyz` → custom editor) or via a manifest file
-
-**Use Cases:**
-- Domain-specific editors (diagram editors, form builders, visual config editors)
-- Third-party integrations without modifying persephone core
-- User-created tools that need richer UI than the scripting system provides
-
-**Tasks:**
-- [ ] Design the `jsNotepad` API contract (TypeScript interface)
-- [ ] Create preload script that bridges webview ↔ persephone stores
-- [ ] Create `CustomEditorHost` component with `<webview>` management
-- [ ] Register custom editors in EditorRegistry (manifest or settings-based)
-- [ ] Build a sample custom editor as a proof of concept
-- [ ] Document how to create and register custom editor plugins
-- [ ] Handle theme synchronization between host and guest
-
-**Complexity:** High
-
----
-
-### Other Feature Ideas
-
-| Idea | Description | Complexity |
-|------|-------------|------------|
-| Settings UI | Visual settings editor | Medium |
-
----
-
 ## Developer Experience
 
 | Idea | Description | Complexity |
 |------|-------------|------------|
 | Testing Infrastructure | Vitest setup with component tests. Postponed until core features stabilize to avoid test rewrites during refactoring. | Medium |
-| Storybook | Component development environment | Medium |
-| CI/CD Pipeline | Automated builds and releases | Medium |
 | Performance Monitoring | Track bundle size, startup time | Low |
 
 ---
 
 ## User Experience
 
-### Graph detail panel collapses on selection change and never restores
-
-Found 2026-09-01 while verifying US-1267 (EPIC-082), and **confirmed pre-existing** — reproduced on
-the pre-US-1267 file before the change, so it is not refactoring fallout.
-
-With the graph detail panel expanded, selecting a different node collapses it, and re-selecting the
-original node does not restore it; the user must click the header again every time. The mechanism:
-`GraphDetailModel.wasExpanded` is initialised `true`, but the **initial no-selection prop pump** takes
-the `hasSelection === false` branch and overwrites it with `false`. That branch fires on the first
-pump in both the old and new code, because `depsChanged(undefined, next)` returns `true`
-(`core/state/model.ts:10-16`) so the original `DepsGate` also reported a change on its first
-evaluation. The `wasExpanded = true` initialiser is therefore dead in both versions, and the
-"restore the panel on first selection" path can only ever restore `false`.
-
-Deliberately **not** fixed in US-1267: that task's contract was to be behaviour-preserving, and
-changing this would have made the diff no longer reviewable as a pure de-effecting. Whoever picks it
-up should decide what the intended behaviour is first — the code reads as though the panel was meant
-to remember its expanded state across selections.
-
-
 | Idea | Description | Complexity |
 |------|-------------|------------|
 | Markdown Diagram Viewer | Zoom/pan for Mermaid diagrams in Markdown preview; option to open diagram in separate Mermaid editor page | Medium |
 | Middle-click Tab Close | Close tab with middle mouse button (standard behavior) | Low |
 | Sidebar Toggle Shortcut | Add `Ctrl+B` to show/hide sidebar | Low |
-| Keyboard Shortcuts Panel | View/customize shortcuts | Medium |
-| Themes | Multiple color themes | Medium |
-| Welcome Page | Onboarding for new users | Low |
+| Keyboard Shortcuts Panel | Add a panel to view and customize shortcuts (rest done: `assets/guides/shortcuts.md` documents them). | Medium |
+| Welcome Page | Add a first-run onboarding page (rest done: `assets/guides/getting-started.md` provides a guide). | Low |
 | Command Palette | VS Code-like Ctrl+Shift+P | Medium |
 
 ---
@@ -811,7 +544,6 @@ to remember its expanded state across selections.
 | Idea | Description | Complexity |
 |------|-------------|------------|
 | Video Tutorials | Screen recordings of features | Medium |
-| API Reference | Script API documentation | Low |
 
 ### Guide routing for models that skip guides
 
@@ -894,19 +626,11 @@ What the investigation established (2026-10-01), so it need not be repeated:
 
 ## Technical Debt
 
-### Two residuals from closed De-React entries *(2026-08-28)*
+### Residual from closed De-React entries *(2026-08-28)*
 
-Both are what survived re-measuring [US-1091 and US-1132](../active-work.md) after the De-React
-programme closed. Neither is a defect; both are questions or cosmetics, which is why they are here
-rather than on the dashboard.
+The remaining question from [US-1132](../active-work.md) is recorded here after the De-React
+programme closed.
 
-- [ ] **Rename `data-part="react-slot"`.** The name is now a lie: `DialogView.ts:73` and
-  `TagView.ts:124` stamp it on a permanently native host, and nothing in the app renders React
-  outside `editors/draw/`. Three stylesheets select on it — `uikit/ListBox/ListItem.css:111,113`,
-  `uikit/Panel/Panel.css:68`, `uikit/Tree/TreeItem.css:133` — so it is a coordinated rename, not a
-  one-line change. `children-slot` or `slot` would say what it is. Purely a readability fix; the
-  De-React root-counting instrument it used to mislead is retired, and `data-react-root` (written
-  only by `editors/draw/react-island.ts:22`) is the marker that means anything.
 - [ ] **Decide whether `ListBoxView`'s `rowViews` retention on eviction is correct.** It looks
   deliberate: `releaseCell` (`:405-414`) removes a view on a *kind change* and its comment says
   "never on eviction", because a recycled wrapper keeps its view (`:383`), and re-adding listeners
@@ -928,15 +652,13 @@ rather than on the dashboard.
 
 | Issue | Description | Complexity |
 |-------|-------------|------------|
-| US-195: Simplify `addEditorPage` + content | `addEditorPage` now accepts optional `content` param (added in PagesLifecycleModel). ~6 callsites still use `isTextFileModel(page)` + `page.changeContent()` pattern instead: mcp-handler `set_page_content`/`ui_push`, ScriptContext log pages, Grid/Markdown/Mermaid/Text `openInEditor()`. Migrate them to use the new parameter. | Low |
 | TypeScript Strict Mode | Enable stricter type checking | Medium |
 | Reduce Bundle Size | Analyze and optimize bundle | Medium |
 | Accessibility Audit | Keyboard nav, screen readers | Medium |
 | Memory Leak Audit | Check for subscription leaks | Low |
 | Orphaned duplicate webview repro hunt | Observed once during US-806: two live guest webContents for one browser tab (stale element stayed mounted after an abandoned view tree; pins a whole guest renderer process). Trigger unknown. A detector in `BrowserView.tsx` logs `[browser] duplicate webview mount…` when it recurs — investigate on first sighting. Evidence summary in the US-806 entry of `completed.md`. | Medium |
-| Browser editor selector split | `BrowserEditorView` subscribes to a ~28-key selector; every browser state update re-renders the toolbar/URL-bar subtree (~110 components). Webview subtree is already memoized (US-806); splitting the selector / extracting memoized toolbar components would cut the remaining per-event render cost. | Medium |
-| Explorer tree keyboard actions (remainder) | Selection/focus visuals and Ctrl+C/X/V, Delete, F2 keys are covered by US-808. Remaining: multi-select, dimming cut items. | Medium |
-| ai-vision: exempt image `data` from the `maxLength` text budget | The published resolver applies its generic text/JSON bound to `{ type: "image", data, mimeType }` records before the host emits the separate MCP image content block, so a small bound strips the discriminator fields and yields `{}` plus a generic item-count notice. Measured during US-1453: `maxLength: 200` over such a record returns `{}`. The default 20,000 admits only ~14 KB of image at 1.37x base64 expansion. Fix belongs in the `ai-vision` package (`core/result-shaper.js`): recognize image records and exempt the binary `data`, keeping structured metadata bounded. Repairs browser `screenshot()` and `clipboard.read()` too; Persephone's `image-view.read()` keeps its bounded `maxDimension` contract until it lands. | Medium |
+| Browser editor selector split | Measure and narrow toolbar updates: `src/renderer/editors/browser/BrowserView.ts` binds the entire browser state and updates the toolbar on each change (rest done: the browser uses native views). | Medium |
+| Explorer tree keyboard actions (remainder) | Dim cut items (rest done: EPIC-049 added multi-selection and plural actions). | Medium |
 | A transient restore failure destroys pages permanently | `PagesPersistenceModel.restorePage()` catches a per-editor construction failure and returns `null`; `applyState()` then drops the whole page, and the next `saveState()` writes the reduced set over `openFiles{windowIndex}.json`. A failure that is only momentary — a dynamic editor-module import that loses a race with a Vite rebuild, a slow disk, a module cache not yet warm — is therefore indistinguishable from a page the user closed, and the session file is overwritten before anyone can look. **Observed 2026-09-25 during EPIC-110 US-1508 verification: four pages, including one with unsaved content, were lost on a single renderer reload that landed mid-rebuild; the unsaved content's cache file was GC'd in the same startup.** Worth considering: do not persist a session that lost pages to a caught error without saying so; or keep one generation of the previous session file; or distinguish "this editor id is unknown" (drop it) from "this module failed to load" (keep the descriptor and retry). | Medium |
 | `moveItemsInto` skips the refresh after a directory-only category move | In `tree-drop-actions.ts`, when a provider has `renameCategoryPath` and the dragged set is **all** directories, the sub-trees move but `remaining` is empty, so every following branch fails and the function returns `false` — the caller never re-lists. Affects link-collection trees only (the file provider has no `renameCategoryPath`); the move itself succeeds, the tree just shows stale rows until the next refresh. Pre-existing; preserved verbatim by the US-941 refactor rather than fixed inside it. | Low |
 
