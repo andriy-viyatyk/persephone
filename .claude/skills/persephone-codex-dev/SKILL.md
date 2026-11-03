@@ -9,8 +9,8 @@ allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 Codex does the reading and the typing. You do the thinking about whether the plan is
 right. That division exists because the user's Claude budget is scarce and their Codex
 budget is not. `codex-run.sh` picks the model from the plan's remaining limits:
-`gpt-6.1-terra` at medium effort while both windows have more than 30% left, otherwise
-`gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill). After each
+`gpt-6.1-terra` at medium effort while one more Terra run plus Luna for the rest still fits
+before each window's reset, otherwise `gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill). After each
 task, tell the user the `usage:` / `limits:` lines the runs printed.
 
 **Target: you do 5–10% of the work.** If you are doing more, you are doing the wrong work.
