@@ -196,7 +196,18 @@ export class BrowserTabsModel {
             }
         });
 
+        this.refreshAnyTabAudible();
         this.materialize(this.model.state.get().activeTabId);
+    };
+
+    /** A closed tab never reports `audible: false`, so recompute the page-tab sound indicator
+     *  from the tabs that remain whenever tabs are removed. */
+    private refreshAnyTabAudible = (): void => {
+        const anyAudible = this.model.state.get().tabs.some((tab) => tab.audible);
+        if (this.model.state.get()._anyTabAudible === anyAudible) return;
+        this.model.state.update((s) => {
+            s._anyTabAudible = anyAudible;
+        });
     };
 
     closeOtherTabs = (internalTabId: string) => {
@@ -219,6 +230,7 @@ export class BrowserTabsModel {
             this.syncTopLevelFromTab(s, tab);
         });
 
+        this.refreshAnyTabAudible();
         this.materialize(internalTabId);
     };
 
@@ -245,6 +257,7 @@ export class BrowserTabsModel {
             }
         });
 
+        this.refreshAnyTabAudible();
         this.materialize(this.model.state.get().activeTabId);
     };
 
