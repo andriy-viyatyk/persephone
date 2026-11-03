@@ -1251,7 +1251,8 @@ by the target. The app target's webview boundary remains separate: its snapshot 
 page subtree allowed by the target but excludes browser webviews and their frames.
 
 `type()` focuses by trusted click, replaces existing content, and inserts through CDP for text-like
-inputs and contenteditable. Mapped `slowly` characters produce key events; native date/time/color/
+inputs and contenteditable. For text inputs, selection runs on the resolved element in its own
+frame; `clear()` uses the same selection path. Mapped `slowly` characters produce key events; native date/time/color/
 range controls use validated value assignment and untrusted `input`/`change`; file inputs use
 `setInputFiles`. `select()` changes native `<select>` values programmatically and dispatches
 untrusted `input`/`change`; custom dropdowns use trusted click and keys. It currently also receives
@@ -1271,8 +1272,9 @@ The pipeline reads the current frame's AX tree, discovers attached iframe target
 trees through flattened sessions, and merges them under iframe placeholders. Discovery filters to
 iframes descended from the current target id; it excludes other browser tabs, unrelated webviews,
 and background private pages. Main-frame refs are `e123`; iframe refs are `f1-e456`. `ref.ts`
-dispatches DOM work through the session that minted each ref. New snapshots replace only that
-target's ref map; replaced documents/nodes make refs stale, and refs from another host are rejected.
+dispatches DOM work through the session that minted each ref. A snapshot rooted in a frame retains
+the host's existing frame-session map; a snapshot that discovers frames replaces that target's map.
+Replaced documents/nodes make refs stale, and refs from another host are rejected.
 Text-node refs are coerced to their displaying element for element operations.
 
 ### Page events, waits, and navigation

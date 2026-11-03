@@ -564,7 +564,12 @@ async function selectEditableContent(
         if (!ownsSelection) throw new Error("The contenteditable element does not own focus or the current selection.");
         await pressKey(cdp, "Control+a", { sessionId });
     } else {
-        await cdp.evaluate(`(() => { const el = document.activeElement; if (el && typeof el.select === 'function') { try { el.select(); } catch {} } })()`);
+        // Select on the located element itself, in its own frame. `document.activeElement` in the
+        // top document is the <iframe> for a frame ref, so selecting it there selected nothing and
+        // the typed text was inserted at the click point instead of replacing the value.
+        await runOnLocator<void>(cdp, locator, nth, `
+            if (typeof this.select === 'function') { try { this.select(); } catch {} }
+        `);
     }
 }
 

@@ -27,7 +27,10 @@ boards, and `window.screen`.
 Clickable roleless nodes carry `[cursor=pointer]`. The default snapshot budget is 18,000 characters
 and the outer `call` result cap is 20,000. `# Shortened … Not shown: …` means lines were omitted;
 use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `maxNodes`, or
-`maxChars`. Iframe refs belong to the target page/frame that produced them.
+`maxChars`. Iframe refs belong to the target page/frame that produced them. For example,
+`window.screen` can use a board-frame ref such as `{ ref: "f1-e12" }` to scope a snapshot or
+type into a field. A frame-rooted snapshot keeps those frame refs usable while the elements remain
+attached.
 
 ## Hosts and members
 
@@ -113,6 +116,9 @@ browser-webview limitation.
 | date, time, datetime-local, month, week, color, range | Validated native value assignment and untrusted `input`/`change`. |
 | file input | Use `setInputFiles`; files are assigned directly, without native chooser interception. |
 | Other non-editable elements | `type()` fails with a clear error. |
+
+`type()` replaces existing content, and `clear()` removes it, including for fields addressed by
+board-frame refs in `window.screen`.
 
 `select()` sets native `<select>` values programmatically (arrays work for `multiple`) and dispatches
 untrusted `input`/`change`. It checks visible, enabled and stable, but not the pointer hit-test.

@@ -158,7 +158,10 @@ export async function buildSnapshot(cdp: CdpSession, options: SnapshotOptions = 
         const prefixText = options.prefix ? `${options.prefix}\n` : "";
         return fitSnapshot(lines, prefixText, maxChars, options.maxNodes);
     }
-    setFrameSessions(cdp.registrationKey, sessionMap);
+    // A snapshot rooted inside a frame skips frame discovery, and its refs keep the frame index of
+    // the snapshot that minted the root — so the existing map stays authoritative. Replacing it
+    // with the empty map would break every f<N>- ref, the root's own frame included.
+    if (rootSessionId === undefined) setFrameSessions(cdp.registrationKey, sessionMap);
 
     const pointerIds = await getPointerBackendNodeIds(cdp, mainNodes, rootSessionId);
     const mainPrefix = rootFramePrefix;
