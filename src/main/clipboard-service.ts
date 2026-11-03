@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { app, clipboard, nativeImage, webContents } from "electron";
+import { app, clipboard, ClipboardItem, nativeImage, webContents } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
 import type {
     ClipboardDropEffect,
@@ -519,9 +519,17 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
         });
     }
 
+    let items: Electron.ClipboardItem[] = [];
+    try {
+        items = await clipboard.read();
+    } catch (err) {
+        log(`Failed to read clipboard: ${errMessage(err)}`);
+    }
+
     if (hasFormat(formats, [], "HTML Format")) {
         try {
-            const html = clipboard.readHTML();
+            const item = items.find((candidate) => candidate.types.includes("text/html"));
+            const html = item ? await (await item.getType("text/html")).text() : "";
             if (html) payloads.push({ flavor: "html", bytes: Buffer.from(html, "utf8") });
         } catch (err) {
             log(`Failed to capture HTML: ${errMessage(err)}`);
@@ -530,9 +538,9 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
 
     if (hasFormat(formats, [8, 17, 2], "PNG")) {
         try {
-            const image = clipboard.readImage();
-            if (!image.isEmpty()) {
-                const bytes = image.toPNG();
+            const item = items.find((candidate) => candidate.types.includes("image/png"));
+            if (item) {
+                const bytes = Buffer.from(await (await item.getType("image/png")).arrayBuffer());
                 if (bytes.length) payloads.push({ flavor: "image", bytes });
             }
         } catch (err) {
@@ -542,7 +550,8 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
 
     if (hasFormat(formats, [13, 1, 7])) {
         try {
-            payloads.push({ flavor: "text", bytes: Buffer.from(clipboard.readText(), "utf8") });
+            const item = items.find((candidate) => candidate.types.includes("text/plain"));
+            if (item) payloads.push({ flavor: "text", bytes: Buffer.from(await (await item.getType("text/plain")).text(), "utf8") });
         } catch (err) {
             log(`Failed to capture text: ${errMessage(err)}`);
         }
@@ -902,19 +911,17 @@ export function copyClipboardItem(id: string): Promise<boolean> {
             const text = payloads.bytes.text ? await decodeUtf8(payloads.bytes.text) : undefined;
             const html = payloads.bytes.html ? await decodeUtf8(payloads.bytes.html) : undefined;
             const image = payloads.images.image;
-            if (item.primary === "text") {
-                if (text === undefined) return false;
-                clipboard.writeText(text);
-                return true;
-            }
-            if (item.primary === "html") {
-                if (html === undefined) return false;
-                clipboard.write({ html, ...(text !== undefined ? { text } : {}), ...(image ? { image } : {}) });
-                return true;
-            }
-            if (item.primary === "image") {
-                if (!image) return false;
-                clipboard.write({ image, ...(text !== undefined ? { text } : {}), ...(html !== undefined ? { html } : {}) });
+            if (item.primary !== "files") {
+                if ((item.primary === "text" && text === undefined) ||
+                    (item.primary === "html" && html === undefined) ||
+                    (item.primary === "image" && !image)) return false;
+                const data: Record<string, string | Blob> = {};
+                if (text !== undefined) data["text/plain"] = text;
+                if (item.primary !== "text") {
+                    if (html !== undefined) data["text/html"] = html;
+                    if (image) data["image/png"] = new Blob([new Uint8Array(image.toPNG())], { type: "image/png" });
+                }
+                await clipboard.write([new ClipboardItem(data)]);
                 return true;
             }
             if (!payloads.files) return false;

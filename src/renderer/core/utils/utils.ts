@@ -1,4 +1,4 @@
-const { clipboard: electronClipboard } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
+import { api } from "../../../ipc/renderer/api";
 
 type SetStateAction<S> = S | ((previous: S) => S);
 
@@ -26,12 +26,12 @@ export const range = (from: number, to: number) => from <= to
  * clipboard-history tools honour (EPIC-104 D6). Persephone's own tracker no
  * longer drops those, because the watcher exempts copies our own process owns
  * (EPIC-104 D15), but every other history tool on the machine still does.
- * Electron's native write sets no such format. It is also synchronous and,
+ * Electron's native write sets no such format and,
  * unlike the Web API, does not require document focus, which removes a class of
  * "Document is not focused" copy failures.
  */
 export function toClipboard(text: string): void {
-    electronClipboard.writeText(text);
+    void api.clipboardWriteText(text).catch((error: unknown) => console.error("Failed to copy text:", error));
 }
 
 /** Format an ISO date string as YYYY-MM-DD */

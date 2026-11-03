@@ -14,6 +14,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Runtime update:** Persephone now uses Electron 44 and Chromium 152.
 - **Show Resources:** Browser resource collections include loaded fonts. Open favicons in Image
   Viewer and audio or video resources in Video Player; compatible custom editor boards can open
   matching web resources such as fonts.

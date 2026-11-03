@@ -1,4 +1,4 @@
-const { clipboard: electronClipboard, nativeImage } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
+import { api } from "../../../ipc/renderer/api";
 
 import { fs as appFs } from "../../api/fs";
 import { ui } from "../../api/ui";
@@ -99,7 +99,7 @@ export async function blobToBuffer(blob: Blob): Promise<Buffer> {
  * format, and needs no document focus.
  */
 export async function copyPngBlobToClipboard(blob: Blob): Promise<void> {
-    electronClipboard.writeImage(nativeImage.createFromBuffer(await blobToBuffer(blob)));
+    await api.clipboardWritePng(new Uint8Array(await blob.arrayBuffer()));
 }
 
 /** Render an image-export-capable editor and copy its PNG representation. */

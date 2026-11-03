@@ -163,7 +163,7 @@ The GitHub Actions pipeline automatically VMP-signs the production build using C
 
 **Requirements:**
 - GitHub repo secrets: `EVS_ACCOUNT_NAME` and `EVS_PASSWD` (Castlabs EVS credentials)
-- The `afterPack` hook in `electron-builder.yml` runs `scripts/vmp-sign.mjs`
+- The `afterSign` hook in `electron-builder.yml` runs `scripts/vmp-sign.mjs`
 
 **Local builds:** Set `VMP_SIGN=true` to enable VMP signing locally:
 ```bash

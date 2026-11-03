@@ -50,7 +50,7 @@
     "@types/node": "^20.0.0",
     "@types/turndown": "^5.0.6",
     "@typescript-eslint/parser": "^8.63.0",
-    "electron": "github:castlabs/electron-releases#v43.0.0+wvcus",
+    "electron": "github:castlabs/electron-releases#v44.9.3+wvcus",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.5",

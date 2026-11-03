@@ -30,6 +30,7 @@ import {
     MessagePortMain,
     WebContents,
     clipboard,
+    ClipboardItem,
     dialog,
     nativeImage,
     shell,
@@ -963,15 +964,15 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
     // focused one and the write throws "Document is not focused". Electron's clipboard
     // has no focus requirement, and it is what every built-in editor already copies
     // through (`editors/shared/image-export.ts`).
-    clipboardWriteImage(_entry, args) {
+    async clipboardWriteImage(_entry, args) {
         const bytes = toBytes(args[0], "clipboard.writeImage");
         const image = nativeImage.createFromBuffer(Buffer.from(bytes));
         if (image.isEmpty()) throw new Error("clipboard.writeImage got bytes that are not a readable image.");
-        clipboard.writeImage(image);
+        await clipboard.write([new ClipboardItem({ "image/png": new Blob([new Uint8Array(image.toPNG())], { type: "image/png" }) })]);
     },
-    clipboardWriteText(_entry, args) {
+    async clipboardWriteText(_entry, args) {
         if (typeof args[0] !== "string") throw new Error("clipboard.writeText needs a string.");
-        clipboard.writeText(args[0]);
+        await clipboard.writeText(args[0]);
     },
 };
 

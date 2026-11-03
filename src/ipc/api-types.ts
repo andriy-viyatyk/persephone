@@ -111,6 +111,8 @@ export enum Endpoint {
     appendWindowRecordingChunk = "appendWindowRecordingChunk",
     finalizeWindowRecording = "finalizeWindowRecording",
     cancelWindowRecording = "cancelWindowRecording",
+    clipboardWriteText = "clipboardWriteText",
+    clipboardWritePng = "clipboardWritePng",
     clipboardReadFilePaths = "clipboardReadFilePaths",
     clipboardWriteFilePaths = "clipboardWriteFilePaths",
     startOsFileDrag = "startOsFileDrag",
@@ -356,6 +358,8 @@ export type Api = {
     [Endpoint.appendWindowRecordingChunk]: (request: RecordingSessionChunk) => Promise<void>;
     [Endpoint.finalizeWindowRecording]: (request: RecordingFinalizeRequest) => Promise<string>;
     [Endpoint.cancelWindowRecording]: (recordingId: string) => Promise<void>;
+    [Endpoint.clipboardWriteText]: (text: string) => Promise<void>;
+    [Endpoint.clipboardWritePng]: (bytes: Uint8Array) => Promise<void>;
     [Endpoint.clipboardReadFilePaths]: () => Promise<ClipboardFileList>;
     [Endpoint.clipboardWriteFilePaths]: (paths: string[], cut: boolean) => Promise<boolean>;
     [Endpoint.startOsFileDrag]: (paths: string[]) => Promise<void>;

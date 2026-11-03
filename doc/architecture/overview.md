@@ -372,8 +372,10 @@ restores list focus after navigation. A successful copy follows the recaptured i
 row. The Settings page owns `clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes
 `.clipboard` only when history is enabled, reads file-list payloads as `string[]`, and never reads
 the live OS clipboard.
-The service uses Electron's native clipboard for copy-back, and renderer-owned writes should use
-the same native path for focus independence and compatibility with other history tools. Chromium
+The service asynchronously reads MIME payloads using Electron's main-process `ClipboardItem` API
+and restores available text, HTML and PNG flavours in one write; file lists use the Windows helper.
+Renderer text and PNG writes cross typed IPC to the main-process clipboard for focus independence
+and compatibility with other history tools. Chromium
 renderer writes that do reach the OS clipboard carry `CanIncludeInClipboardHistory = 0` and are
 owned there by Electron's main process; the watcher is given that process id as its sole trusted
 owner and ignores only that marker for that owner. `ExcludeClipboardContentFromMonitorProcessing`

@@ -459,7 +459,7 @@ export class OpenWindow {
                 }
             }
         }
-        if (!deferClipboard) clipboard.writeText(text);
+        if (!deferClipboard) await clipboard.writeText(text);
         this.clearVoiceTypingSession();
         return { copied: true };
     }

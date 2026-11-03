@@ -1,4 +1,4 @@
-import { app, BrowserWindow, IpcMainEvent, nativeImage, nativeTheme, shell } from "electron";
+import { app, clipboard, ClipboardItem, BrowserWindow, IpcMainEvent, nativeImage, nativeTheme, shell } from "electron";
 import { CaptureRect, CreateBoardShortcutRequest, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
@@ -474,6 +474,14 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         await cancelRecording(event.sender.id, recordingId);
     }
 
+    clipboardWriteText = async (_event: IpcMainEvent, text: string): Promise<void> => {
+        await clipboard.writeText(text);
+    }
+
+    clipboardWritePng = async (_event: IpcMainEvent, bytes: Uint8Array): Promise<void> => {
+        await clipboard.write([new ClipboardItem({ "image/png": new Blob([new Uint8Array(bytes)], { type: "image/png" }) })]);
+    }
+
     clipboardReadFilePaths = async (_event: IpcMainEvent): Promise<ClipboardFileList> => {
         const { readClipboardFiles } = await import("../../main/clip-service");
         return readClipboardFiles();
@@ -629,6 +637,8 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.appendWindowRecordingChunk, controllerInstance.appendWindowRecordingChunk);
     bindEndpoint(Endpoint.finalizeWindowRecording, controllerInstance.finalizeWindowRecording);
     bindEndpoint(Endpoint.cancelWindowRecording, controllerInstance.cancelWindowRecording);
+    bindEndpoint(Endpoint.clipboardWriteText, controllerInstance.clipboardWriteText);
+    bindEndpoint(Endpoint.clipboardWritePng, controllerInstance.clipboardWritePng);
     bindEndpoint(Endpoint.clipboardReadFilePaths, controllerInstance.clipboardReadFilePaths);
     bindEndpoint(Endpoint.clipboardWriteFilePaths, controllerInstance.clipboardWriteFilePaths);
     bindEndpoint(Endpoint.startOsFileDrag, controllerInstance.startOsFileDrag);

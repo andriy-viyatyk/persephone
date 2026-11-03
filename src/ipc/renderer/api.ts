@@ -380,6 +380,14 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelWindowRecording, recordingId);
     }
 
+    clipboardWriteText = async (text: string): Promise<void> => {
+        return executeOnce<void>(Endpoint.clipboardWriteText, text);
+    }
+
+    clipboardWritePng = async (bytes: Uint8Array): Promise<void> => {
+        return executeOnce<void>(Endpoint.clipboardWritePng, bytes);
+    }
+
     clipboardReadFilePaths = async (): Promise<ClipboardFileList> => {
         return executeOnce<ClipboardFileList>(Endpoint.clipboardReadFilePaths);
     }

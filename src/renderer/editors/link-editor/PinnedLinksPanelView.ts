@@ -20,7 +20,7 @@ import "../../uikit/ListBox/ListItem.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
-const { clipboard } = require("electron");
+import { toClipboard } from "../../core/utils/utils";
 
 let draggingPinIndex = -1;
 
@@ -367,7 +367,7 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
             id: "pinned-link-copy-url",
             label: t("links.copyUrl"),
             icon: "copy",
-            onClick: () => { if (link.href) clipboard.writeText(link.href); },
+            onClick: () => { if (link.href) toClipboard(link.href); },
             disabled: !link.href,
         });
         if (link.imgSrc) {
@@ -377,7 +377,7 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
                     id: "pinned-link-copy-image-url",
                     label: t("links.copyImageUrl"),
                     icon: "copy",
-                    onClick: () => clipboard.writeText(imageUrl),
+                    onClick: () => toClipboard(imageUrl),
                     startGroup: true,
                 },
                 {

@@ -1,5 +1,5 @@
 /**
- * electron-builder afterPack hook — VMP-signs the Electron binary
+ * electron-builder afterSign hook — VMP-signs the Electron binary
  * using Castlabs EVS for Widevine DRM support.
  *
  * The EVS tool tries to sign all .exe files in the directory, but only
@@ -18,7 +18,7 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-export default async function afterPack(context) {
+export default async function afterSign(context) {
     if (process.env.VMP_SIGN !== "true") {
         console.log("  • VMP signing skipped (set VMP_SIGN=true to enable)");
         return;

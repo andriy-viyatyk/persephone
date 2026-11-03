@@ -53,7 +53,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
-| Renderer-native clipboard writes (text and PNG; required for app-owned writes to remain visible to clipboard history) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts` |
+| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts`, `/src/ipc/main/core-handlers.ts` |
 | State primitives         | `/src/renderer/core/state/`                        |
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
@@ -406,7 +406,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Rust screen snip, clipboard, and Windows SSO helper (`clipboard-read`/`clipboard-write`/`clipboard-watch`/`sso-cookies` subcommands; CF_HDROP interop, JSON-lines watcher protocol, and proof-of-possession cookie retrieval) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs`, `/snip-tool/src/sso_cookies.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |
 | Window recording file service (main; owner-checked sessions, serialized chunk writes, one-shot media permission grant, finalization, and seven-day cleanup) | `/src/main/recording-service.ts`, `/src/main/permission-policy-service.ts` |
-| Clipboard history service (main; opt-in watcher sidecar, `.files.txt` path-list payloads with legacy `.json` reads, flavour-aware hashes, on-disk retention, duplicate promotion, renderer events, health monitoring, and native copy-back) | `/src/main/clipboard-service.ts` |
+| Clipboard history service (main; watcher, storage and asynchronous MIME capture and copy-back) | `/src/main/clipboard-service.ts` |
 | File-clipboard service (main; Windows-Explorer copy/paste interop — CF_HDROP read/write via the snip exe; degrades to empty when the exe is missing) | `/src/main/clip-service.ts` |
 | Native OS file drag-out service (main; `startOsFileDrag` via `webContents.startDrag` — real CF_HDROP so Windows Explorer / Teams accept the dragged file; win32-only, shell icon via `app.getFileIcon` + fallback) | `/src/main/os-drag-service.ts` |
 | Provider-backed tree view model (the Explorer, Archive, Mneme, Script-library and link-category trees; lazy `list()` per expanded folder, `buildTree` refresh, expansion persisted as `expandedPaths`. `buildTree` re-lists children ONLY for currently-expanded paths, so a collapsed folder's subtree is dropped on every refresh — which is why the view opts into `Tree`'s `collapseDescendants`) | `/src/renderer/components/tree-provider/TreeProviderViewModel.ts` |

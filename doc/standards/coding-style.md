@@ -51,9 +51,10 @@ function process(data: any): void {
 
 ### Clipboard writes
 
-Renderer-owned clipboard writes must use Electron's native `clipboard` API, normally through
-`toClipboard()` in `src/renderer/core/utils/utils.ts` or the shared image-export helper for PNG
-data. Do not use `navigator.clipboard.writeText()` or `navigator.clipboard.write()` for app-owned
+Renderer-owned clipboard writes go through typed IPC to Electron's main-process `clipboard` API:
+use `toClipboard()` in `src/renderer/core/utils/utils.ts` for text or the shared image-export helper
+for PNG data. The text helper is fire-and-forget and logs failures; the PNG helper awaits the write.
+Do not use `navigator.clipboard.writeText()` or `navigator.clipboard.write()` for app-owned
 writes: Chromium marks Web API writes with `CanIncludeInClipboardHistory = 0`. Other Windows
 clipboard-history tools still exclude those writes, and the Persephone tracker ignores the marker
 only when the clipboard owner is the trusted Persephone main-process pid — it is honoured for

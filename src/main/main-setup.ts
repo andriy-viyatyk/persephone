@@ -37,6 +37,12 @@ import { initPermissionPolicy } from "./permission-policy-service";
 import { shutdownPathWatchService } from "./path-watch-service";
 
 export function setupMainProcess() {
+    app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
+        if (webContents === null) {
+            event.preventDefault();
+            callback();
+        }
+    });
     // Permission handlers must be present before any renderer or webview session is created.
     initPermissionPolicy();
     // Likewise the fallback User-Agent: a renderer process reads it when it starts.

@@ -21,7 +21,7 @@ import "../../uikit/Panel/Panel.css";
 import "../../uikit/Splitter/Splitter.css";
 import "../../uikit/Text/Text.css";
 
-const { clipboard } = require("electron");
+import { toClipboard } from "../../core/utils/utils";
 
 interface BodyProjection {
     searchText: string;
@@ -440,7 +440,7 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
             id: "link-copy-url",
             label: t("links.copyUrl"),
             icon: "copy",
-            onClick: () => { if (link.href) clipboard.writeText(link.href); },
+            onClick: () => { if (link.href) toClipboard(link.href); },
             disabled: !link.href,
         });
         if (link.imgSrc) {
@@ -450,7 +450,7 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
                     id: "link-copy-image-url",
                     label: t("links.copyImageUrl"),
                     icon: "copy",
-                    onClick: () => clipboard.writeText(imageUrl),
+                    onClick: () => toClipboard(imageUrl),
                     startGroup: true,
                 },
                 {

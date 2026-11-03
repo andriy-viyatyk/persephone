@@ -160,7 +160,7 @@ preview, and the bundled REST Client board for `.rest.json` collections.
 
 ## Tech Stack
 
-- **Runtime:** Electron 43 — [Castlabs ECS](https://github.com/castlabs/electron-releases) fork with Widevine DRM (nodeIntegration: true, contextIsolation: false)
+- **Runtime:** Electron 44 — [Castlabs ECS](https://github.com/castlabs/electron-releases) fork with Widevine DRM (nodeIntegration: true, contextIsolation: false)
 - **Frontend:** framework-free `VanillaView` classes; the shipped renderer has no React runtime
 - **Editor:** Monaco
 - **State:** custom reactive primitives (TOneState, TGlobalState, TComponentState, TModel)
@@ -175,6 +175,11 @@ npm run dist        # Build NSIS installer + ZIP
 npm run dist:publish # Build and publish to GitHub Releases (draft)
 npm run lint        # ESLint
 ```
+
+If an existing install does not pick up the git-pinned Electron upgrade, a plain `npm install`
+may leave the old package in place and skip its binary download. For the current pin, run
+`npm install --save-dev electron@github:castlabs/electron-releases#v44.9.3+wvcus`, then
+`node node_modules/electron/install.js` to download the runtime.
 
 ## Folder Structure (Summary)
 

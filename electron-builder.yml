@@ -60,7 +60,7 @@ electronFuses:
 # Use Castlabs Electron for Widevine CDM (DRM) support.
 # @electron/get builds the URL as `mirror + customDir`, and customDir defaults
 # to `v${version}` — so the mirror must NOT end in `v`, otherwise the tag
-# doubles up (…/download/vv43.0.0+wvcus/…) and 404s.
+# doubles up (…/download/vv44.9.3+wvcus/…) and 404s.
 electronDownload:
   mirror: "https://github.com/castlabs/electron-releases/releases/download/"
 
