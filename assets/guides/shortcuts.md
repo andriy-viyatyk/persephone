@@ -8,7 +8,8 @@ summary: "Global and editor-specific keyboard shortcuts."
 
 ## Application (Global)
 
-These shortcuts work regardless of which editor is active.
+These shortcuts work regardless of which editor is active. Browser pages handle zoom shortcuts
+separately when focus is inside the web page; see [Browser](#browser).
 
 | Shortcut | Action |
 |----------|--------|
@@ -177,6 +178,10 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 
 | Shortcut | Action |
 |----------|--------|
+| `Ctrl+=` / `Ctrl++` | Zoom the focused web page in by 5% |
+| `Ctrl+-` | Zoom the focused web page out by 5% |
+| `Ctrl+0` | Reset the focused web page zoom to 100% |
+| `Ctrl+Mouse Wheel` | Zoom the focused web page in or out by 5% |
 | `Ctrl+L` | Focus URL bar |
 | `Ctrl+F` | Find in page (open search bar unless the page handles the shortcut) |
 | `F3` | Next match (when find bar is open) |

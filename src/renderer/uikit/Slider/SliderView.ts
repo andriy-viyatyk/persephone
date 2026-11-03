@@ -1,3 +1,4 @@
+import "./Slider.css";
 import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
 import type { NativeInputHTMLAttributes, RestPropsState } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
@@ -18,6 +19,7 @@ export interface SliderProps
     disabled?: boolean;
     width?: number | string;
     showProgress?: boolean;
+    orientation?: "horizontal" | "vertical";
 }
 
 const ACTIVE_COLOR = "var(--color-border-active, currentColor)";
@@ -44,7 +46,7 @@ export class SliderView extends VanillaView<SliderProps> {
     private applyProps(props: SliderProps): void {
         const {
             name, value, onChange: _onChange, min, max, step = 1, size = "md",
-            disabled, width, showProgress, children: _children, ..._rest
+            disabled, width, showProgress, orientation = "horizontal", children: _children, ..._rest
         } = props;
         const input = this.root as HTMLInputElement;
         input.type = "range";
@@ -58,6 +60,10 @@ export class SliderView extends VanillaView<SliderProps> {
         if (name === undefined) delete this.root.dataset.name;
         else this.root.dataset.name = name;
         this.root.dataset.size = size;
+        this.root.dataset.orientation = orientation;
+        input.setAttribute("aria-orientation", orientation);
+        if (props["aria-valuetext"] !== undefined) input.setAttribute("aria-valuetext", String(props["aria-valuetext"]));
+        else input.removeAttribute("aria-valuetext");
         if (disabled) this.root.dataset.disabled = "";
         else delete this.root.dataset.disabled;
         if (showProgress) this.root.dataset.showProgress = "";
@@ -74,7 +80,7 @@ export class SliderView extends VanillaView<SliderProps> {
             const clamped = Math.max(0, Math.min(100, pct));
             this.root.style.setProperty(
                 "--slider-track-bg",
-                `linear-gradient(to right, ${ACTIVE_COLOR} ${clamped}%, ${DEFAULT_COLOR} ${clamped}%)`,
+                `linear-gradient(to ${orientation === "vertical" ? "top" : "right"}, ${ACTIVE_COLOR} ${clamped}%, ${DEFAULT_COLOR} ${clamped}%)`,
             );
         }
     }
@@ -91,6 +97,7 @@ export class SliderView extends VanillaView<SliderProps> {
             disabled: _disabled,
             width: _width,
             showProgress: _showProgress,
+            orientation: _orientation,
             children: _children,
             ...rest
         } = props;

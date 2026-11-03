@@ -52,3 +52,11 @@
 /* HTML fullscreen: the window is fullscreen, so the page covers the whole app (tabs, toolbar). */
 .browser-root [data-webview-wrapper][data-html-fullscreen] { position: fixed; inset: 0; z-index: 2147483647; -webkit-app-region: no-drag; }
 .browser-root [data-webview-click-overlay] { position: absolute; inset: 0; z-index: 1; }
+
+@layer editor {
+    [data-type="browser-zoom-controls"] { display: flex; align-items: stretch; gap: var(--gap-md, 8px); padding: var(--space-lg, 12px) var(--space-sm, 4px); }
+    /* Presets are placed at their slider values (top set in BrowserView.ts), centred on that point. */
+    [data-type="browser-zoom-controls"] [data-part="presets"] { position: relative; width: 56px; }
+    /* Right-aligned: the labels are numbers, so their digits line up. */
+    [data-type="browser-zoom-controls"] [data-part="presets"] > * { position: absolute; right: 0; transform: translateY(-50%); }
+}

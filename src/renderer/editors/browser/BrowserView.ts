@@ -19,6 +19,7 @@ import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { InputView } from "../../uikit/Input/InputView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
+import { SliderView } from "../../uikit/Slider/SliderView";
 import { SwitchView } from "../../uikit/Switch/SwitchView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
 import { SelectView } from "../../uikit/Select/SelectView";
@@ -51,6 +52,7 @@ import "../../uikit/Text/Text.css";
 import "../../uikit/Input/Input.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Button/Button.css";
+import "../../uikit/Slider/Slider.css";
 import "../../uikit/Switch/Switch.css";
 import "../../uikit/Popover/Popover.css";
 import "../../uikit/Select/Select.css";
@@ -137,6 +139,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
                 tabId: this.model.id,
                 internalTabId: this.tabId,
                 webContentsId: this.webview.getWebContentsId(),
+                zoomPercent: this.model.state.get().tabs.find((tab) => tab.id === this.tabId)?.zoomPercent ?? 100,
             };
             ipcRenderer.send(BrowserChannel.register, request);
             this.registered = true;
@@ -494,8 +497,74 @@ class SitePermissionsContentView extends VanillaView<SitePermissionsContentProps
     }
 }
 
+interface BrowserZoomContentProps {
+    value: number;
+    onChange: (value: number) => void;
+}
+
+// Page-zoom popover geometry: the presets sit beside the slider at their own values, like a scale.
+const PAGE_ZOOM_MIN = 50;
+const PAGE_ZOOM_MAX = 200;
+const PAGE_ZOOM_SLIDER_HEIGHT = 200; // px; tall enough that the 75% and 50% presets do not overlap
+const PAGE_ZOOM_THUMB_SIZE = 12; // px; matches the uikit slider thumb
+const PAGE_ZOOM_STEP = 5; // %; slider step and one wheel notch
+const PAGE_ZOOM_PRESETS = [200, 150, 100, 75, 50];
+
+/** Distance from the slider top to the thumb centre for a value (vertical slider, max at top). */
+function pageZoomOffset(value: number): number {
+    const travel = PAGE_ZOOM_SLIDER_HEIGHT - PAGE_ZOOM_THUMB_SIZE;
+    return PAGE_ZOOM_THUMB_SIZE / 2 + (PAGE_ZOOM_MAX - value) / (PAGE_ZOOM_MAX - PAGE_ZOOM_MIN) * travel;
+}
+
+/** Adopts the popover shell: do not assign its data-type, className, or replace its children. */
+class BrowserZoomContentView extends VanillaView<BrowserZoomContentProps> {
+    private readonly slider: SliderView;
+    private readonly presets: ButtonView[];
+
+    public constructor(props: BrowserZoomContentProps, host: HTMLElement) {
+        super(props, host);
+        const controls = document.createElement("div");
+        controls.dataset.type = "browser-zoom-controls";
+        this.slider = this.child(new SliderView(this.sliderProps(props)));
+        const buttons = document.createElement("div");
+        buttons.dataset.part = "presets";
+        buttons.style.height = `${PAGE_ZOOM_SLIDER_HEIGHT}px`;
+        this.presets = PAGE_ZOOM_PRESETS.map((value) => {
+            const button = this.child(new ButtonView({ name: `zoom-preset-${value}`, size: "sm", variant: "ghost", children: `${value}%`, title: t("browser.pageZoomPreset", { percent: value }), "aria-label": t("browser.pageZoomPreset", { percent: value }), onClick: () => this.props.onChange(value) }));
+            button.root.style.top = `${pageZoomOffset(value)}px`;
+            buttons.append(button.root);
+            return button;
+        });
+        controls.append(this.slider.root, buttons);
+        host.append(controls);
+    }
+
+    protected onMount(): void {
+        this.slider.mount();
+        this.presets.forEach((button) => button.mount());
+        // Wheel anywhere over the popover moves the slider one step (up = zoom in). Not passive,
+        // so it can stop the page underneath from scrolling.
+        this.listen(this.root, "wheel", this.handleWheel, { passive: false });
+    }
+    protected onUpdate(props: BrowserZoomContentProps): void { this.slider.update(this.sliderProps(props)); }
+
+    private readonly handleWheel = (event: WheelEvent): void => {
+        event.preventDefault();
+        if (event.deltaY === 0) return;
+        const next = Math.max(PAGE_ZOOM_MIN, Math.min(PAGE_ZOOM_MAX, this.props.value + (event.deltaY < 0 ? PAGE_ZOOM_STEP : -PAGE_ZOOM_STEP)));
+        if (next !== this.props.value) this.props.onChange(next);
+    };
+    private sliderProps(props: BrowserZoomContentProps) {
+        return { name: "zoom-slider", value: props.value, onChange: props.onChange, min: PAGE_ZOOM_MIN, max: PAGE_ZOOM_MAX, step: PAGE_ZOOM_STEP, orientation: "vertical" as const, width: PAGE_ZOOM_SLIDER_HEIGHT, showProgress: true, "aria-label": t("browser.pageZoom"), "aria-valuetext": `${props.value}%` };
+    }
+}
+
 class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private readonly model: BrowserEditor;
+    private readonly zoomButton: ButtonView;
+    private readonly zoomPopover: PopoverView;
+    private zoomContent: BrowserZoomContentView | undefined;
+    private zoomOpen = false;
     private readonly controls: IconButtonView[];
     private readonly input: InputView;
     private readonly navigate: IconButtonView;
@@ -534,6 +603,8 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     public constructor(props: BrowserToolbarProps) {
         super(props, createPanelElement({ name: "browser-toolbar-content", direction: "row", align: "center", flex: true, gap: "xs" }));
         this.model = props.model;
+        this.zoomButton = this.child(new ButtonView(this.zoomButtonProps(props.state)));
+        this.zoomPopover = this.child(new PopoverView(this.zoomPopoverProps()));
         this.startSlot = document.createElement("span"); this.startSlot.style.display = "contents";
         this.endSlot = document.createElement("span"); this.endSlot.style.display = "contents";
         this.torIndicator.dataset.torIndicator = "";
@@ -569,10 +640,10 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.root.append(
             home.root, back.root, forward.root, reload.root,
             this.inputPanel,
-            bookmarks.root, torInfo.root, downloads.root,
+            this.zoomButton.root, bookmarks.root, torInfo.root, downloads.root,
             more.root, devtools.root, close.root,
             this.sitePermissionsPopover.root,
-            this.translatePopover.root,
+            this.translatePopover.root, this.zoomPopover.root,
         );
         this.downloads = downloads;
     }
@@ -581,7 +652,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.translation.state.subscribe(() => this.sync(this.props.state))); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.translation.state.subscribe(() => this.sync(this.props.state))); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
     protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; this.translationStateUnsubscribe?.(); }
 
@@ -601,6 +672,9 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         if (aiVisionIndicator.source === "none") delete this.sitePermissionsButton.root.dataset.aiVisionSource;
         else this.sitePermissionsButton.root.dataset.aiVisionSource = aiVisionIndicator.source;
         const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+        this.zoomButton.update(this.zoomButtonProps(state));
+        this.zoomPopover.update(this.zoomPopoverProps());
+        this.zoomContent?.update(this.zoomContentProps());
         this.controls[0].update({ name: "toolbar-home", size: "sm", icon: "home", title: active?.homeUrl ? t("browser.toolbarGoToHome", { url: active.homeUrl }) : t("browser.toolbarHome"), onClick: this.model.goHome, disabled: !active?.homeUrl });
         this.controls[1].update({ name: "toolbar-back", size: "sm", icon: "arrow-left", title: t("browser.toolbarBack", { shortcut: "Alt+Left" }), onClick: this.model.webview.goBack, disabled: !state.canGoBack });
         this.controls[2].update({ name: "toolbar-forward", size: "sm", icon: "arrow-right", title: t("browser.toolbarForward", { shortcut: "Alt+Right" }), onClick: this.model.webview.goForward, disabled: !state.canGoForward });
@@ -810,6 +884,33 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.translatePopover.update(this.translatePopoverProps());
         void this.model.translation.toggle(tabId);
     };
+
+    private zoomContentProps(): BrowserZoomContentProps {
+        const state = this.model.state.get();
+        return {
+            value: state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? 100,
+            onChange: (value) => this.model.webview.setTabZoom(this.model.state.get().activeTabId, value),
+        };
+    }
+
+    private zoomButtonProps(state: BrowserEditorState) {
+        const value = state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? 100;
+        return { name: "toolbar-page-zoom", size: "sm" as const, children: `${value}%`, title: t("browser.pageZoom"), "aria-label": t("browser.pageZoom"), "aria-expanded": this.zoomOpen, onClick: () => { this.zoomOpen = !this.zoomOpen; if (!this.zoomOpen) this.zoomContent = undefined; this.zoomPopover.update(this.zoomPopoverProps()); this.zoomButton.update(this.zoomButtonProps(this.model.state.get())); } };
+    }
+
+    private zoomPopoverProps() {
+        return {
+            name: "page-zoom-popover", open: this.zoomOpen, elementRef: this.zoomButton?.root,
+            placement: "bottom-end" as const, offset: [0, 4] as [number, number],
+            outsideClickIgnoreSelector: '[data-name="toolbar-page-zoom"]',
+            onClose: () => { this.zoomOpen = false; this.zoomContent = undefined; this.zoomPopover.update(this.zoomPopoverProps()); this.zoomButton.update(this.zoomButtonProps(this.model.state.get())); },
+            contentView: (host: HTMLElement) => {
+                const content = new BrowserZoomContentView(this.zoomContentProps(), host);
+                this.zoomContent = content;
+                return content;
+            },
+        };
+    }
 
     private translatePopoverProps() {
         return {

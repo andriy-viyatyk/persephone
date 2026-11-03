@@ -128,6 +128,8 @@ export function detectSearchEngine(url: string): { engine: SearchEngine; query: 
 
 /** State for a single internal browser tab. */
 export interface BrowserTabData {
+    /** Page zoom relative to the host window. */
+    zoomPercent: number;
     id: string;
     url: string;
     pageTitle: string;
@@ -268,6 +270,7 @@ function createTab(url = DEFAULT_URL, groupId?: string): BrowserTabData {
         homeUrl: url !== DEFAULT_URL ? url : "",
         navHistory: [],
         groupId: groupId || createTabGroupId(),
+        zoomPercent: 100,
     };
 }
 

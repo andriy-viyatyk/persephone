@@ -134,6 +134,7 @@ export class ButtonView extends VanillaView<ButtonViewProps> {
         setRestProp(this.root, "onClick", rest.onClick, this.restPropsState);
         setRestProp(this.root, "role", rest.role, this.restPropsState);
         setRestProp(this.root, "aria-checked", rest["aria-checked"], this.restPropsState);
+        setRestProp(this.root, "aria-expanded", rest["aria-expanded"], this.restPropsState);
         setRestProp(this.root, "tabIndex", rest.tabIndex, this.restPropsState);
     }
 

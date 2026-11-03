@@ -119,6 +119,7 @@ export class BrowserTabsModel {
             canGoBack: false, canGoForward: false, favicon: "", audible: false,
             muted: false, homeUrl: url !== DEFAULT_URL ? url : "", navHistory: [],
             groupId: parentGroupId || createTabGroupId(),
+            zoomPercent: 100,
         };
         this.model.state.update((s) => {
             if (parentGroupId) {
@@ -287,7 +288,7 @@ export class BrowserTabsModel {
     private createBlankTab = (): BrowserTabData => ({
         id: createInternalTabId(), url: DEFAULT_URL, pageTitle: "", loading: false,
         canGoBack: false, canGoForward: false, favicon: "", audible: false,
-        muted: false, homeUrl: "", navHistory: [], groupId: createTabGroupId(),
+        muted: false, homeUrl: "", navHistory: [], groupId: createTabGroupId(), zoomPercent: 100,
     });
 
     private syncTopLevelFromTab = (s: BrowserEditorState, tab: BrowserTabData) => {

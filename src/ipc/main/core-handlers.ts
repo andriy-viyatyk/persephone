@@ -1,3 +1,4 @@
+import { reapplyBrowserGuestZoom } from "../../main/browser-service";
 import { app, clipboard, ClipboardItem, BrowserWindow, IpcMainEvent, nativeImage, nativeTheme, shell } from "electron";
 import { CaptureRect, CreateBoardShortcutRequest, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
@@ -215,12 +216,14 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const currentZoom = window?.webContents.getZoomLevel() || 0;
         const newZoom = currentZoom + delta;
         window?.webContents.setZoomLevel(newZoom);
+        if (window) reapplyBrowserGuestZoom(window.webContents);
         window?.webContents.send(EventEndpoint.eZoomChanged, newZoom);
     }
 
     resetZoom = async (event: IpcMainEvent): Promise<void> => {
         const window = BrowserWindow.fromWebContents(event.sender);
         window?.webContents.setZoomLevel(0);
+        if (window) reapplyBrowserGuestZoom(window.webContents);
         window?.webContents.send(EventEndpoint.eZoomChanged, 0);
     }
 

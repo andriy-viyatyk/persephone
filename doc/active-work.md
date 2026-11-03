@@ -11,7 +11,6 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1755: Browser page zoom](tasks/US-1755-browser-page-zoom/README.md)
   - [ ] [US-1732: Native memory leak in a board service during live transcription](tasks/US-1732-board-service-native-memory-leak/README.md) — about +9 MB/min in the Speech to Text service with two live channels; found during EPIC-134 verification
 
 ## Scheduled
@@ -20,6 +19,7 @@ Tasks that must not start before a date. When the date arrives, move the entry t
 **Planned**) and investigate it as usual.
 
 - [ ] **2027-01-03** — [US-1609: Remove the legacy (undeclared) board permission fallback](tasks/US-1609-remove-legacy-board-permissions/README.md) — ends the EPIC-119 / US-1608 deprecation period
+- [ ] **2027-02-01** — [US-1757: Upgrade Castlabs Electron (recurring)](tasks/US-1757-castlabs-electron-upgrade/README.md) — recurring every ~3 months; when picked up, first schedule the next round (step 0 of the doc)
 
 Recorded epic ideas live in [`tasks/backlog.md`](tasks/backlog.md).
 

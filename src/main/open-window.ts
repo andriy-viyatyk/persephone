@@ -1,3 +1,4 @@
+import { reapplyBrowserGuestZoom } from "./browser-service";
 import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -208,15 +209,18 @@ export class OpenWindow {
                     event.preventDefault();
                     const currentZoom = this.window.webContents.getZoomLevel();
                     this.window.webContents.setZoomLevel(currentZoom + 0.5);
+                    reapplyBrowserGuestZoom(this.window.webContents);
                     this.send(EventEndpoint.eZoomChanged, currentZoom + 0.5);
                 } else if (input.key === "-") {
                     event.preventDefault();
                     const currentZoom = this.window.webContents.getZoomLevel();
                     this.window.webContents.setZoomLevel(currentZoom - 0.5);
+                    reapplyBrowserGuestZoom(this.window.webContents);
                     this.send(EventEndpoint.eZoomChanged, currentZoom - 0.5);
                 } else if (input.key === "0") {
                     event.preventDefault();
                     this.window.webContents.setZoomLevel(0);
+                    reapplyBrowserGuestZoom(this.window.webContents);
                     this.send(EventEndpoint.eZoomChanged, 0);
                 }
             }

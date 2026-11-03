@@ -27,9 +27,9 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Translate][★] [⋮][</>][×] | toolbar: navigation at left, address box across middle
+| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Translate][★] [100%][Bookmarks][Downloads][⋮][</>][×] | toolbar: navigation at left, address box across middle
 |                                                                     |  (proxy chip inside it when routed), Go, Translate and Add Bookmark at its right edge,
-|                                                                     |  bookmarks/more/devtools/close at the right
+|                                                                     |  page zoom before Bookmarks, Downloads, More, DevTools and Close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
 | [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar at the top of browser content when present
@@ -50,6 +50,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
 - Go → `url-navigate`
 - Bookmark → `url-bookmark-toggle`
+- Page zoom → `toolbar-page-zoom`
 - Bookmarks → `toolbar-bookmarks`
 - Tor info (shown only on Tor pages) → `toolbar-tor-info`
 - Downloads → `toolbar-downloads`
@@ -83,6 +84,18 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 ```
 +---------------------------------------------------------------------+
 | [More] [Page menu]                                                  |  page menu opened from the toolbar's More control
++---------------------------------------------------------------------+
+```
+
+### When page zoom is open
+
+```
++---------------------------------------------------------------------+
+| [Page zoom] [Slider] [200%]                                        |  page zoom popover below the toolbar control
+|             [Slider] [150%]                                        |
+|             [Slider] [100%]                                        |
+|             [Slider]  [75%]                                        |
+|             [Slider]  [50%]                                        |
 +---------------------------------------------------------------------+
 ```
 
@@ -155,7 +168,7 @@ session.
 ### Drawn controls without `elements`
 
 - Page navigation and Editor switch — no entry: the measured browser toolbar draws neither generic control.
-- URL suggestion, search-engine, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces. The browser facade separately lists `site-certificate-view`, which is available in the HTTPS site-info popover.
+- URL suggestion, search-engine, page, page-zoom, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces. The browser facade separately lists `site-certificate-view`, which is available in the HTTPS site-info popover.
 - Webview page controls — no entry: third-party browser content.
 
 ## URL Bar
@@ -209,6 +222,17 @@ when no browser page claims it, `F12` opens Persephone's DevTools.
 
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.
+
+### Page zoom
+
+The percentage button in the toolbar shows the active browser tab's page zoom. Select it to use the
+vertical slider or choose a preset from 50% to 200%; scroll over the popover to change zoom in 5%
+steps. Each inner tab keeps its own zoom across navigation and normal session restore. Page zoom is
+relative to Persephone's window zoom, so changing the window zoom also scales the page.
+
+With focus on the web page, `Ctrl+=` or `Ctrl++` zooms in, `Ctrl+-` zooms out, `Ctrl+0` resets to
+100%, and `Ctrl+Mouse Wheel` changes zoom in 5% steps. With focus on Persephone's controls, these
+shortcuts change the window zoom instead.
 
 ### Cinema mode
 
@@ -296,7 +320,7 @@ After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` faca
 tabs and the automation surface: snapshots, clicks, typing, key presses, evaluation, waiting,
 screenshots, network requests, and tab selection. The verified chrome elements include `url-input`,
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
-`toolbar-home`, `toolbar-translate`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
+`toolbar-home`, `toolbar-translate`, `toolbar-page-zoom`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
 `toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, `popup-blocked-bar`, and, on a proxied page,
 `url-proxy-indicator`.
 Participating web pages may additionally publish a page-authored model at `page.editor.app`; it

@@ -1187,6 +1187,20 @@ serializes file mutations and broadcasts updates to every application window. Re
 helpers keep folder removal and trust revocation together, while the Tools & Editors hub's Site
 extensions tab lists validation status, host conflicts, trust state, and management actions.
 
+## Page zoom
+
+Each internal tab persists its own `zoomPercent` (50–200, default 100). `BrowserView` exposes
+the active tab's value through a toolbar button and a popover with a vertical Slider and presets.
+The popover wheel and guest keyboard or Ctrl+wheel zoom intents change the value in 5% steps.
+`BrowserWebviewModel` updates tab state and sends `BrowserChannel.setZoom`; the main process
+validates the value and verifies that the requesting renderer owns the registered guest.
+
+Browser guests use `zoomMode: "isolated"`, so tabs sharing an origin do not share page zoom.
+The applied guest zoom factor is the host window's zoom factor multiplied by the tab percentage
+divided by 100. Registration applies the stored value, and `reapplyBrowserGuestZoom` reapplies it
+after host window zoom changes and Chromium's embedder synchronization. This keeps page zoom
+relative to the app window's zoom.
+
 ## Browser Automation (MCP)
 
 Browser automation lives in `src/renderer/automation/`. `operations.ts` provides shared operations

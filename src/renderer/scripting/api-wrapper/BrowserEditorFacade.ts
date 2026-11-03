@@ -114,6 +114,7 @@ const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "toolbar-forward", purpose: "Go forward in browser history", where: "left side of the browser toolbar, after Back" },
     { name: "toolbar-reload", purpose: "Reload or stop the current page", where: "left side of the browser toolbar, after Forward" },
     { name: "toolbar-home", purpose: "Open the browser home page", where: "left edge of the browser toolbar" },
+    { name: "toolbar-page-zoom", purpose: "Open the current browser tab's page zoom controls", where: "right side of the browser address field, before Bookmarks" },
     { name: "toolbar-bookmarks", purpose: "Open the bookmarks drawer", where: "right side of the browser toolbar, after the bookmark toggle" },
     { name: "toolbar-downloads", purpose: "Open browser downloads", where: "right side of the browser toolbar, after Bookmarks and Tor info when Tor mode is active" },
     { name: "toolbar-more", purpose: "Open the browser page menu", where: "right side of the browser toolbar, after Downloads" },

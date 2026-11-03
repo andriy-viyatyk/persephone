@@ -13,6 +13,7 @@ export const sliderStory: Story<SliderProps> = {
         { name: "max", type: "number", default: 100 },
         { name: "step", type: "number", default: 1, min: 0.01, step: 0.01 },
         { name: "size", type: "enum", options: ["sm", "md"], default: "md" },
+        { name: "orientation", type: "enum", options: ["horizontal", "vertical"], default: "horizontal" },
         { name: "disabled", type: "boolean", default: false },
         { name: "showProgress", type: "boolean", default: false, label: "Show progress (fill played portion)" },
         { name: "width", type: "number", default: 0, min: 0, max: 600, step: 10, label: "Width (0 = fill parent)" },

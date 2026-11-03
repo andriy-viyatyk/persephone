@@ -415,6 +415,7 @@ export class BrowserEditor extends EditorModel<
                     ...t,
                     id: createInternalTabId(),
                     groupId: t.groupId || createTabGroupId(),
+                    zoomPercent: Number.isFinite(t.zoomPercent) && t.zoomPercent >= 50 && t.zoomPercent <= 200 ? t.zoomPercent : 100,
                 }));
                 // Map activeTabId: if the original activeTabId matches a tab by index, use the new ID
                 const origIndex = data.tabs.findIndex(
@@ -468,6 +469,7 @@ export class BrowserEditor extends EditorModel<
                         homeUrl: "",
                         navHistory: [] as string[],
                         groupId: createTabGroupId(),
+                        zoomPercent: 100,
                     } satisfies BrowserTabData;
                     s.tabs = [fresh];
                     s.activeTabId = fresh.id;
@@ -617,6 +619,7 @@ export class BrowserEditor extends EditorModel<
         this.state.update((s) => {
             const tab = s.tabs.find((t) => t.id === internalTabId);
             if (!tab) return;
+            if (updates.zoomPercent !== undefined) tab.zoomPercent = updates.zoomPercent;
             if (updates.url !== undefined) tab.url = updates.url;
             if (updates.pageTitle !== undefined) tab.pageTitle = updates.pageTitle;
             if (updates.loading !== undefined) tab.loading = updates.loading;

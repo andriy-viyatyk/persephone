@@ -394,6 +394,13 @@ export class BrowserWebviewModel {
         this.model.updateTab(internalTabId, { url: safeUrl });
     }
 
+    setTabZoom = (internalTabId: string, zoomPercent: number): void => {
+        if (!Number.isFinite(zoomPercent) || zoomPercent < 50 || zoomPercent > 200) return;
+        if (!this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
+        this.model.updateTab(internalTabId, { zoomPercent });
+        void ipcRenderer.invoke(BrowserChannel.setZoom, { registrationKey: `${this.model.id}/${internalTabId}`, zoomPercent });
+    };
+
     private handleBrowserEvent = async (
         _event: Electron.IpcRendererEvent,
         browserEvent: BrowserEvent,
@@ -403,6 +410,13 @@ export class BrowserWebviewModel {
         const { internalTabId, type, data } = browserEvent;
 
         switch (type) {
+            case "zoom-intent": {
+                const tab = this.model.state.get().tabs.find((item) => item.id === internalTabId);
+                if (!tab || !data.zoomIntent) break;
+                const value = data.zoomIntent === "reset" ? 100 : Math.max(50, Math.min(200, tab.zoomPercent + (data.zoomIntent === "in" ? 5 : -5)));
+                this.setTabZoom(internalTabId, value);
+                break;
+            }
             case "did-navigate": {
                 this.endPageTranslation(internalTabId);
                 this.translationLifecycle?.(internalTabId);

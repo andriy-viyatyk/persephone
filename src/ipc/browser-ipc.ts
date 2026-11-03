@@ -13,6 +13,7 @@
 export const BrowserChannel = {
     // Renderer → Main
     register: "browser:register",
+    setZoom: "browser:set-zoom",
     unregister: "browser:unregister",
     /** Clear all storage data + cache for a given partition. Returns when done. */
     clearProfileData: "browser:clear-profile-data",
@@ -85,6 +86,12 @@ export interface BrowserRegisterRequest {
     tabId: string;
     internalTabId: string;
     webContentsId: number;
+    zoomPercent: number;
+}
+
+export interface BrowserSetZoomRequest {
+    registrationKey: string;
+    zoomPercent: number;
 }
 
 export interface CdpAttachOptions {
@@ -164,6 +171,7 @@ export interface BrowserEvent {
 }
 
 export type BrowserEventType =
+    | "zoom-intent"
     | "did-navigate"
     | "did-navigate-in-page"
     | "page-title-updated"
@@ -209,6 +217,7 @@ export interface BrowserPermissionPromptData {
 }
 
 export interface BrowserEventData {
+    zoomIntent?: "in" | "out" | "reset";
     url?: string;
     title?: string;
     favicon?: string;

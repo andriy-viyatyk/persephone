@@ -16,6 +16,7 @@ import * as cheerio from "cheerio";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
+    BrowserSetZoomRequest,
     BrowserSitePermissionRegistrationRequest,
     SetBrowserSitePermissionRequest,
     BrowserSitePermissions,
@@ -143,6 +144,7 @@ function parseFeature(features: string, name: string): number | undefined {
 interface RegisteredWebview {
     tabId: string;
     internalTabId: string;
+    zoomPercent: number;
     webContents: WebContents;
     senderWebContents: WebContents;
     listeners: Array<{ event: string; handler: AnyEventHandler }>;
@@ -163,6 +165,25 @@ interface RegisteredWebview {
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
 const registrations = new Map<string, RegisteredWebview>();
+
+function validZoomPercent(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value) && value >= 50 && value <= 200;
+}
+
+function applyGuestZoom(registration: RegisteredWebview): void {
+    if (registration.webContents.isDestroyed() || registration.senderWebContents.isDestroyed()) return;
+    registration.webContents.setZoomFactor(registration.senderWebContents.getZoomFactor() * registration.zoomPercent / 100);
+}
+
+/** Run after Chromium's embedder zoom synchronization, using the latest host and tab values. */
+export function reapplyBrowserGuestZoom(sender: WebContents): void {
+    setImmediate(() => {
+        if (sender.isDestroyed()) return;
+        for (const registration of registrations.values()) {
+            if (registration.senderWebContents === sender) applyGuestZoom(registration);
+        }
+    });
+}
 
 /** True only for a Browser editor guest that was registered by the renderer. */
 export function isRegisteredBrowserWebContents(contents: WebContents): boolean {
@@ -328,11 +349,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // Clean up any previous registration for this key. This re-runs on every dom-ready, so a
     // re-registration of the SAME webContents keeps its CDP state: pending navigation waits
     // (which this very load is about to satisfy), page-event buffers and the dialog policy.
-    const previous = registrations.get(key);
-    unregisterWebview(key, { keepCdpState: previous?.webContents.id === webContentsId });
-
     const wc = webContents.fromId(webContentsId);
-    if (!wc) return;
+    if (!wc || wc.isDestroyed() || wc.hostWebContents !== event.sender) return;
+    const previous = registrations.get(key);
+    if (previous && previous.senderWebContents !== event.sender) return;
+    unregisterWebview(key, { keepCdpState: previous?.webContents.id === webContentsId });
 
     const sender = event.sender;
     const listeners: RegisteredWebview["listeners"] = [];
@@ -550,6 +571,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
             return;
         }
         const keyLower = input.key.toLowerCase();
+        if (input.control && !input.alt && !input.meta && ["=", "+", "-", "0"].includes(input.key)) {
+            _e.preventDefault();
+            sendEvent(sender, tabId, internalTabId, "zoom-intent", { zoomIntent: input.key === "0" ? "reset" : input.key === "-" ? "out" : "in" });
+            return;
+        }
         if (input.key === "F5" || (keyLower === "r" && input.control)) {
             _e.preventDefault();
             if (input.key === "F5" ? input.control : input.shift) {
@@ -620,6 +646,11 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         return { action: "allow", overrideBrowserWindowOptions };
     });
 
+    on("zoom-changed", (event: Electron.Event, direction: "in" | "out") => {
+        event.preventDefault();
+        sendEvent(sender, tabId, internalTabId, "zoom-intent", { zoomIntent: direction });
+    });
+
     // Block popup chains: child popup windows cannot open more popups
     // unless the user has activated (focused) them first.
     // Must go through on() — registerWebview re-runs on every dom-ready, and
@@ -659,6 +690,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     registrations.set(key, {
         tabId,
         internalTabId,
+        zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : 100,
         webContents: wc,
         senderWebContents: sender,
         listeners,
@@ -667,6 +699,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         pressed: null,
         lastUserActivation: 0,
     });
+    const registration = registrations.get(key);
+    if (registration) applyGuestZoom(registration);
 }
 
 function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}) {
@@ -868,6 +902,8 @@ export function initBrowserHandlers(): void {
                 webPreferences.nodeIntegrationInSubFrames = true;
                 webPreferences.contextIsolation = true;
                 webPreferences.nodeIntegration = false;
+                // Isolate browser-tab zoom from other guests sharing the origin.
+                webPreferences.zoomMode = "isolated";
             }
             if (!isPersistentBrowserProfilePartition(params.partition)) {
                 if (argumentsList.includes("--persephone-webmcp-enabled")) {
@@ -907,6 +943,14 @@ export function initBrowserHandlers(): void {
             || registration.webContents.isDestroyed()) return undefined;
         return registration;
     };
+    guardedIpcHandle(BrowserChannel.setZoom, (event, request: BrowserSetZoomRequest): boolean => {
+        if (!request || !validZoomPercent(request.zoomPercent)) return false;
+        const registration = ownedRegistration(event, request.registrationKey);
+        if (!registration) return false;
+        registration.zoomPercent = request.zoomPercent;
+        applyGuestZoom(registration);
+        return true;
+    });
     const isBrowserPermissionSession = (registration: RegisteredWebview): boolean =>
         registration.webContents.session !== session.fromPartition(appPartition)
         && registration.webContents.session !== session.fromPartition(fileAccessPersistPartition);

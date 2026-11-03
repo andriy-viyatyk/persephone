@@ -1,6 +1,8 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const browserCatalog = {
+    pageZoom: { message: "Page zoom" },
+    pageZoomPreset: { message: "Set page zoom to {percent}%" },
     pageTitle: { message: "Browser", note: "Localized shell label for the default Browser page title; keep state.title English." },
     pageTitleAgent: { message: "Browser (agent)", note: "Localized shell label for a private Browser page opened by an agent; state.title remains English." },
     sourceTitle: { message: "Source: {title}", note: "Localized shell display for a Browser-generated source editor title; the stored title remains English." },
