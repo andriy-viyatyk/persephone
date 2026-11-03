@@ -1537,13 +1537,21 @@ palette + metric set you can use:
 - **Metrics** (constants): `--p-space-*`, `--p-gap-*`, `--p-radius-*`, `--p-size-*`,
   `--p-font-*` (e.g. `--p-space-md`, `--p-radius-sm`, `--p-font-base`).
 
-### Confirmations and prompts — never `window.confirm` / `alert` / `prompt`
+### Confirmations and prompts — `window.confirm` / `alert` / `prompt`
 
-A native JavaScript dialog raised from a board frame can leave **every** board frame in the app
-unresponsive until Persephone restarts, and automation cannot see or dismiss it. Build modals on
-the native `<dialog>` element with `showModal()` instead, skinned by the recommended
-`dialog.css` from the components catalog (`boards-assets/`, see the manifest). The bundled REST
-Client board's `src/components/confirm.js` is a small promise-returning example.
+These work: Persephone replaces them in every board frame (main and secondary views) and shows its
+own dialog in the app window, titled with the board name. The call stays synchronous and returns
+what the user chose (`undefined`, `true`/`false`, or the prompt text — an empty string is allowed —
+or `null` on Cancel). Agents see the dialog too and can answer it. While a dialog is open, **every**
+board pauses, because all boards share one renderer process; if the page or window goes away the
+call returns the cancel result, so nothing stays frozen.
+
+For anything richer than a message and OK/Cancel, build a modal on the native `<dialog>` element with
+`showModal()`, skinned by the recommended `dialog.css` from the components catalog (`boards-assets/`,
+see the manifest); it does not pause other boards. The bundled REST Client board's
+`src/components/confirm.js` is a small promise-returning example. Child `about:blank` and `srcdoc`
+frames a board creates itself still get Chromium's native dialogs, and `beforeunload` prompts are not
+covered.
 
 ### Toolbars and buttons — use the `.p-*` classes, don't invent your own
 

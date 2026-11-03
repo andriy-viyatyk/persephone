@@ -113,6 +113,10 @@ blocking application dialogs. They wait for an answer or cancellation and are mo
 not regions of the shell. Explain the question and use the available answer or cancel action;
 do not treat a transient dialog's internal names as a general contract.
 
+Board JavaScript `alert()`, `confirm()`, and `prompt()` also appear here as Persephone dialogs titled
+with the board name: OK (and Cancel for confirm and prompt; a prompt may be submitted empty). Every
+board pauses until it is answered.
+
 ## Log View dialog entries
 
 Log View is an inline output surface. Its interactive entries are distinct from the modal stack and

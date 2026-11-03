@@ -61,7 +61,7 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (page.isLockedBoardPage) return;
+        if (page.isLockedBoardPage || page.retainedDescriptor) return;
         if (page.pinSide === side) return;
         const wasRightPinned = this.model.query.isRightPinned(pageId);
         if (side === "right" && this.model.query.isGrouped(pageId)) this.ungroup(pageId);

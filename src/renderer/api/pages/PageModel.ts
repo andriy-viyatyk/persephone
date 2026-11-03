@@ -24,6 +24,9 @@ import { panelKey, parsePanelKey, panelIdOf, isCompositePanelKey } from "../../u
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { uiPreferences } from "../ui-preferences";
 import { errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
+import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 interface PageModelOptions {
     seedSecondaryViewsWidth?: boolean;
@@ -103,6 +106,27 @@ const defaultPageState: IPageState = {
 export class PageModel implements IPageHost {
     /** Stable page UUID — tab identity and cache key. Never changes. */
     readonly id: string;
+    retainedDescriptor?: PageDescriptor;
+    recoveryRetry?: Promise<void>;
+    recoveryInvalidated = false;
+    private recoveryCloseAuthorized = false;
+    private recoveryProtectionOwned = false;
+
+    retainDescriptor(descriptor: PageDescriptor): void {
+        this.retainedDescriptor = descriptor;
+        this.recoveryProtectionOwned = true;
+    }
+
+    releaseRecoveryProtection(): void {
+        if (!this.recoveryProtectionOwned || !this.retainedDescriptor) return;
+        this.recoveryProtectionOwned = false;
+        fs.releaseCacheIds(this.retainedDescriptor.editors.map((editor) => editor.id));
+    }
+
+    async cancelRecovery(): Promise<void> {
+        this.recoveryInvalidated = true;
+        await this.recoveryRetry;
+    }
 
     /** Reactive page-level state. UI subscribes directly for repainting. */
     readonly state = new TOneState<IPageState>({ ...defaultPageState });
@@ -316,6 +340,7 @@ export class PageModel implements IPageHost {
     }
 
     set mainEditor(editor: EditorModel | null) {
+        if (this.retainedDescriptor) return;
         if (editor && !this.editors.includes(editor)) {
             this.attach(editor);
         }
@@ -371,7 +396,7 @@ export class PageModel implements IPageHost {
     }
 
     set pinSide(value: PagePinSide) {
-        if (this.isLockedBoardPage && value !== undefined) return;
+        if (this.retainedDescriptor || (this.isLockedBoardPage && value !== undefined)) return;
         this.state.update((s) => { s.pinSide = value; });
     }
 
@@ -401,6 +426,7 @@ export class PageModel implements IPageHost {
 
     /** Aggregate modified flag: true if any editor in `editors[]` is modified. */
     get modified(): boolean {
+        if (this.retainedDescriptor) return this.retainedDescriptor.modified || this.retainedDescriptor.editors.some((editor) => editor.state.modified === true || editor.host?.state.modified === true);
         return this.editors.some((e) => e.modified);
     }
 
@@ -590,6 +616,7 @@ export class PageModel implements IPageHost {
      *    isn't TextFileModel.
      */
     async setMainEditor(newEditor: EditorModel | null): Promise<void> {
+        if (this.retainedDescriptor) return;
         const oldMain = this.mainEditorInstance;
         if (oldMain && newEditor && oldMain !== newEditor) {
             oldMain.beforeNavigateAway(newEditor);
@@ -648,6 +675,7 @@ export class PageModel implements IPageHost {
      *  lives in editors/base/editor-switch.ts; the dynamic import keeps the
      *  board/registry switching machinery out of the page model. */
     async switchMainEditor(newEditorId: string): Promise<void> {
+        if (this.retainedDescriptor) return;
         const { switchMainEditor } = await import("../../editors/base/editor-switch");
         return switchMainEditor(this, newEditorId);
     }
@@ -868,11 +896,13 @@ export class PageModel implements IPageHost {
     /** Toggle the SecondaryViews panel. Creates an ExplorerEditor if needed —
      *  implementation in editors/explorer/page-explorer.ts. */
     async toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void> {
+        if (this.retainedDescriptor) return;
         return togglePageNavigator(this, pipe, filePath);
     }
 
     /** Whether the navigator can be opened. */
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean {
+        if (this.retainedDescriptor) return false;
         if (this.findExplorer()) return true;
         if (this.secondaryViewsModel) return true;
         if (pipe?.provider.type === "file") return true;
@@ -888,6 +918,18 @@ export class PageModel implements IPageHost {
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
+        if (this.retainedDescriptor) {
+            if (this.recoveryInvalidated) return false;
+            this.recoveryInvalidated = true;
+            if (!(await this.confirmRelease())) {
+                this.recoveryInvalidated = false;
+                return false;
+            }
+            await this.cancelRecovery();
+            this.recoveryCloseAuthorized = true;
+            this.onClose?.();
+            return true;
+        }
         if (this.isLockedBoardPage) return false;
         if (this.pinSide === "right") return false;
         if (this.isRestoring) {
@@ -903,12 +945,16 @@ export class PageModel implements IPageHost {
     /** Whether `confirmRelease()` would ask the user anything. Unlike `modified`, it reads the main
      *  editor through its host, the same object `confirmRelease()` asks. */
     get needsReleaseConfirmation(): boolean {
+        if (this.retainedDescriptor) return this.modified;
         if (this.pinSide === "right" || this.isRestoring) return false;
         return this.editors.some((editor) => editor.id !== this._mainEditorId && editor.modified)
             || !!this.mainEditor?.modified;
     }
 
     async confirmRelease(): Promise<boolean> {
+        if (this.retainedDescriptor) {
+            return !this.modified || await showConfirmationDialog({ message: t("editors.restoreFailedDiscard") }) === DialogButton.yes;
+        }
         if (this.pinSide === "right") return false;
         if (this.isRestoring) return true;
         // Panel-contributing editors first.
@@ -935,6 +981,7 @@ export class PageModel implements IPageHost {
      * PageTab.getDragData, and PagesLifecycleModel.duplicatePage.
      */
     getDescriptor(): PageDescriptor {
+        if (this.retainedDescriptor) return this.retainedDescriptor;
         const navState = this.secondaryViewsModel?.state.get();
         return {
             id: this.id,
@@ -957,6 +1004,7 @@ export class PageModel implements IPageHost {
 
     /** Compat shim used by PagesPersistenceModel's v3 restore path. */
     setMainEditorId(id: string | null): void {
+        if (this.retainedDescriptor) return;
         this._mainEditorId = id;
         this.state.update((s) => { s.mainEditorId = id; });
     }
@@ -971,6 +1019,7 @@ export class PageModel implements IPageHost {
 
     async dispose(): Promise<void> {
         this.cancelRestore();
+        await this.cancelRecovery();
         this.pageDisposed = true;
         // Notify before anything is torn down, so a subscriber can still read the page it is
         // releasing state for. Guarded because dispose() has no early return of its own.
@@ -985,8 +1034,12 @@ export class PageModel implements IPageHost {
 
         for (const editor of this.editors) {
             editor.setPage(null);
-            await editor.dispose();
-            await fs.deleteCacheFiles(editor.id);
+            try {
+                await editor.dispose();
+                await fs.deleteCacheFiles(editor.id);
+            } catch (error) {
+                console.warn("[page] editor cleanup:", error);
+            }
         }
         this.editors.length = 0;
         this._mainEditorId = null;
@@ -994,6 +1047,14 @@ export class PageModel implements IPageHost {
         this.secondaryViewsModel?.dispose();
         this.secondaryViewsModel = null;
         this.disposed.dispose();
+        if (this.recoveryCloseAuthorized && this.retainedDescriptor) {
+            const ids = [...new Set(this.retainedDescriptor.editors.map((editor) => editor.id).filter(Boolean))];
+            this.releaseRecoveryProtection();
+            for (const id of ids) {
+                await fs.deleteCacheFiles(id);
+                if (!fs.isCacheIdProtected(id)) await fs.removeDir(fs.resolveCachePath(id), true);
+            }
+        }
         // No page-level cache file; per-editor caches were cleaned in the
         // loop above.
     }

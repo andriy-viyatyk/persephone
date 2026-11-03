@@ -57,7 +57,7 @@ layer includes `capabilities`, whose handlers are seeded from editor capability 
 
 **Layer 2 — Pages** (`app.initPages()`): Restores pages from persistent storage. Saving is suppressed for the whole of the restore. Restore attaches pages one at a time, and each `attachPage` subscribes the page and its editors to the debounced save, so a save that fired mid-restore would serialise an empty or partial page list over the real session — normally harmless because a later save wins, but permanent if the window is closed or reloaded inside that window. `PagesPersistenceModel` gates both the debounced wrapper and `saveState` itself, because some call sites save without the debounce. The gate re-schedules rather than drops, so a suppressed save still runs once restore completes.
 
-The gate tracks *restore in progress* and nothing else, and is released in a `finally`. A descriptor that fails to restore is an expected outcome — restore drops it and carries on, and a `schemaVersion` bump discards every page by design — so persistence must keep working afterwards. Switching saving off because a descriptor was rejected would turn a one-time loss of open pages into a session that never persists again.
+The gate tracks *restore in progress* and nothing else, and is released in a `finally`. A persisted page that fails to restore remains as a recovery placeholder with Retry and Close actions, so the original descriptor is retained until the user retries successfully or closes the page. A `schemaVersion` bump still discards every page by design. Persistence must keep working after failures; switching saving off because one descriptor failed would turn a recoverable page into a session that never persists again.
 
 Cold-start inputs are consumed separately by `app.openStartupInputs()` after `app.initEvents()`. Main selects launch operands and parses them into a typed list of file, HTTP(S) URL, and diff inputs. The same parser handles Electron's `second-instance` event and launcher-pipe messages; relative paths use the working directory supplied by each entry point. The renderer dispatches startup inputs through the retained `RendererEventsService` only after the raw-link pipeline is registered. Files and URLs use the normal link pipeline, with launch URLs marked for internal-browser handling; diffs open through the page diff flow. After all inputs are dispatched, the app ensures an empty page exists if needed. The development launcher forwards arguments after `npm start --` to Electron, and all valid cold-start operands are opened in order.
 
@@ -177,9 +177,10 @@ descriptors rather than restored sidebar state.
   completes. Await it before work that depends on restored content. It rejects on restore failure
   or cancellation. Editors that do not opt in preserve restore-before-add behavior.
 - **Loading UI:** while `restoreStatus` is `loading`, `PageContentView` shows a loading shell with
-  pipe stage status. The tile's close icon closes the page and cancels its restore; an error replaces the loading
-  message with the failure and offers Retry, which starts a new restore attempt. The editor is
-  shown after restore succeeds.
+  pipe stage status. For a fresh deferred open, the tile's close icon cancels its restore; an error
+  replaces the loading message with the failure and offers Retry. A persisted page that fails
+  restoration instead keeps its tab and descriptor behind a recovery placeholder, with Retry and
+  Close actions. The intended editor is shown after restore succeeds.
 - **Pipe status badge:** while a pipe reports connecting/active work, the editor status bar
   (`EditorStatusBarView`, the footer) shows its status and any known byte progress. Successful reads show a brief completion label; errors remain
   visible until dismissed. Opening the badge's popover shows the provider and transformer stages
@@ -422,7 +423,7 @@ During restore (initialization):  catch and notify, don't crash
 During user actions:              throw, let caller handle
 ```
 
-- **Restore errors** are caught during `app.initPages()` and reported; `app.openStartupInputs()` later ensures an empty page exists if no content opened. Cold-start file and URL opens are individually guarded and reported without aborting bootstrap.
+- **Restore errors** are isolated so other pages can initialize. Persisted pages keep a recovery placeholder instead of being discarded; retry failures keep the placeholder available. `app.openStartupInputs()` later ensures an empty page exists if no content opened. Cold-start file and URL opens are individually guarded and reported without aborting bootstrap.
 - **User action errors** (open file, navigate): the method throws, and the caller (keyboard service, renderer events service, or UI component) catches and shows a notification.
 
 ### ID resolution

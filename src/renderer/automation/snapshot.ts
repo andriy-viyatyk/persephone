@@ -242,7 +242,27 @@ async function getOwnedIframeTargets(
     }
 }
 
+/** How long one iframe's AX tree may take before the snapshot leaves that frame out. A frame
+ *  whose renderer is blocked — every board frame while a board dialog awaits its answer (US-1762)
+ *  — never replies, and must not hang the whole host snapshot that shows the dialog. */
+const IFRAME_AX_TREE_TIMEOUT_MS = 1500;
+
 async function getIframeAXTree(
+    cdp: CdpSession,
+    targetId: string,
+): Promise<{ nodes: AXNode[]; sessionId: string } | null> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), IFRAME_AX_TREE_TIMEOUT_MS);
+    });
+    try {
+        return await Promise.race([readIframeAXTree(cdp, targetId), timeout]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function readIframeAXTree(
     cdp: CdpSession,
     targetId: string,
 ): Promise<{ nodes: AXNode[]; sessionId: string } | null> {

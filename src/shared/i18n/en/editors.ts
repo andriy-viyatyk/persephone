@@ -1,6 +1,11 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const editorsCatalog = {
+    restoreFailedTitle: { message: "Page could not be restored" },
+    restoreFailedError: { message: "The page could not be restored: {error}" },
+    restoreFailedRetry: { message: "Retry" },
+    restoreFailedClose: { message: "Close" },
+    restoreFailedDiscard: { message: "Discard the unrecovered changes on this page?" },
     textEditor: { message: "Text Editor" },
     gridJson: { message: "Grid (JSON)" },
     gridCsv: { message: "Grid (CSV)" },

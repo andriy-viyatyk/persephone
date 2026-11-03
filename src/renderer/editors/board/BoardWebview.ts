@@ -624,13 +624,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         iframe.title = t("board.frameTitle");
         iframe.allow = iframeFeaturesForGrant(grant).join("; ");
         this.iframeGrant = grant;
+        this.iframe = iframe;
+        this.props.model.setIframe(iframe, this.tabId);
+        await api.registerBoardFrame(this.props.model.id, host, this.boardId, this.tabId, this.props.model.title, this.props.model.page?.id);
+        if (!this.live || this.host !== host || this.iframe !== iframe) return;
         iframe.src = `board://${host}/${entry}?v=${this.boardId}&view=${encodeURIComponent(view)}`;
         iframe.style.flex = "1";
         iframe.style.width = "100%";
         iframe.style.border = "none";
         iframe.style.backgroundColor = color.background.default;
-        this.iframe = iframe;
-        this.props.model.setIframe(iframe, this.tabId);
         this.props.model.setAiVisionTransport(this.tabId, iframe, this.generation, this.requestAiVision);
         this.listen(iframe, "load", this.handleLoad);
         this.listen(iframe, "error", this.handleFrameError);
@@ -907,7 +909,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const currentFilePath = model.currentFilePath();
         const hostedLocalPath = currentFilePath && isPlainLocalPath(currentFilePath) ? currentFilePath : null;
         void api.requestBoardPort(this.boardId, host, model.id, hostedLocalPath, this.hostedPathToken);
-        void api.registerBoardFrame(model.id, host, this.boardId, this.tabId).then(() => {
+        void api.registerBoardFrame(model.id, host, this.boardId, this.tabId, model.title, model.page?.id).then(() => {
             if (this.live && generation === this.generation) model.markFrameLoaded(this.tabId);
             else if (model.frames.get(this.tabId) === frame) {
                 void api.unregisterBoardFrame(model.id, this.tabId, this.boardId);

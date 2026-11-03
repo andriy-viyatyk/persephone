@@ -225,7 +225,7 @@ export async function navigatePageTo(
     options?: NavigatePageToOptions,
 ): Promise<boolean> {
     const page = model.query.findPage(pageId);
-    if (!page) return false;
+    if (!page || page.retainedDescriptor) return false;
     await page.ready;
 
     const currentFilePath = (page.mainEditor as { filePath?: string } | null)?.filePath;

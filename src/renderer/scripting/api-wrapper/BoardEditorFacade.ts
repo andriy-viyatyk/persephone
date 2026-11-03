@@ -19,7 +19,6 @@ import type {
     IBrowserSelectOptions,
     IBrowserTab,
     IBrowserTypeOptions,
-    IBrowserDialogPolicy,
     IBrowserConsoleLevel,
     IBrowserDragOptions,
     IBrowserFormField,
@@ -40,11 +39,10 @@ import {
     clearElement,
     ensureTargetReady,
     evaluateInTarget,
-    dialogs,
-    handlePageDialog,
+    boardDialogs,
+    answerBoardDialog,
     consoleMessages,
     pageErrors,
-    setDialogPolicy,
     installAutomationActivity,
     hoverElement,
     keyDownOnTarget,
@@ -94,7 +92,7 @@ const BOARD_MEMBERS: readonly IAiMember[] = [
     { name: "frameReady", kind: "property", summary: "Whether the mounted main board frame is registered and ready." },
     { name: "contentHostError", kind: "property", summary: "The trusted content-host restore error, when present." },
     { name: "reload", kind: "method", signature: "reload(): Promise<IBoardReloadResult>", summary: "Reload the board and report whether its main frame became ready.", caution: "unsaved changes prompt the user" },
-    { name: "dialogs", kind: "method", signature: "dialogs(options?: { tabId?: string; policy?: 'accept' | 'dismiss' | 'manual' }): Promise<{ policy: string; dialogs: object[] }>", summary: "Read recent dialogs for the selected board frame and its policy, or set the policy. Default dismiss for automation activity; dialogs opened while idle remain user-controlled." },
+    { name: "dialogs", kind: "method", signature: "dialogs(options?: { tabId?: string }): Promise<{ dialogs: object[] }>", summary: "Read board dialog requests without accessing the blocked frame; dialogs are also visible in window.screen.snapshot()." },
     { name: "handleDialog", kind: "method", signature: "handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>", summary: "Accept or dismiss the pending JavaScript dialog in the selected board frame." },
 ];
 
@@ -366,13 +364,12 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         return waitForResponseOperation(this.editor.target, urlOrRegex, options);
     }
 
-    async dialogs(options?: TabOption & { policy?: IBrowserDialogPolicy }): Promise<Awaited<ReturnType<typeof dialogs>>> {
-        if (options?.policy !== undefined) await setDialogPolicy(this.editor.target, options.policy, options.tabId);
-        return dialogs(this.editor.target, options?.tabId);
+    async dialogs(options?: TabOption): Promise<{ dialogs: Awaited<ReturnType<typeof boardDialogs>> }> {
+        return { dialogs: await boardDialogs(this.editor.id, options?.tabId ?? this.editor.activeTabId) };
     }
 
     async handleDialog(accept: boolean, promptText?: string, options?: TabOption): Promise<void> {
-        await handlePageDialog(this.editor.target, accept, promptText, options?.tabId);
+        await answerBoardDialog(this.editor.id, options?.tabId ?? this.editor.activeTabId, accept, promptText);
     }
 
     async consoleMessages(options?: TabOption & { since?: number; level?: IBrowserConsoleLevel }) {
@@ -678,7 +675,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
 installAutomationActivity(BoardEditorFacade.prototype, [
     "snapshot", "click", "hover", "type", "select", "check", "uncheck", "clear", "pressKey", "keyDown", "keyUp",
-    "evaluate", "waitFor", "screenshot", "networkRequests", "waitForResponse", "dialogs", "handleDialog", "consoleMessages", "pageErrors", "drag", "fillForm", "setInputFiles", "reload",
+    "evaluate", "waitFor", "screenshot", "networkRequests", "waitForResponse", "consoleMessages", "pageErrors", "drag", "fillForm", "setInputFiles", "reload",
 ], instance => (instance as unknown as { editor: BoardEditorModel }).editor.target);
 
 type BoardElementDeclaration = IAiElementDeclaration & { readonly view?: string };

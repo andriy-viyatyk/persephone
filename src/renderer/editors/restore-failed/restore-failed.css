@@ -1,0 +1,4 @@
+@layer editor {
+    [data-type="restore-failed"] { padding: 2rem; color: var(--color-text-default, currentColor); }
+    [data-type="restore-failed"] [data-part="actions"] { display: flex; gap: 1rem; }
+}

@@ -14,6 +14,8 @@ export interface InputDialogProps {
     buttons?: DialogButtonInput[];
     selectAll?: boolean;
     defaultButton?: string;
+    /** Allow Enter to submit an empty or whitespace-only value. */
+    allowEmpty?: boolean;
     /** Optional radio button options rendered below the input field. */
     options?: string[];
     /** Initially selected option (must match one of `options`). */
@@ -41,7 +43,7 @@ class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | unde
         if (e.key === "Enter") {
             e.preventDefault();
             const state = this.state.get();
-            if (!state.buttons || state.buttons.length === 0 || !state.value?.trim()) {
+            if (!state.buttons || state.buttons.length === 0 || (!state.allowEmpty && !state.value?.trim())) {
                 return;
             }
             const buttons = (state.buttons ?? []).map(normalizeDialogButton);

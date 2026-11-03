@@ -1,6 +1,6 @@
 ---
 name: persephone-codex-dev
-description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (Terra/medium or Luna/high, picked by remaining plan limits); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
+description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (Terra/medium or Luna/high, picked by remaining plan limits; completion skills always Luna/high); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
 allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -10,7 +10,7 @@ Codex does the reading and the typing. You do the thinking about whether the pla
 right. That division exists because the user's Claude budget is scarce and their Codex
 budget is not. `codex-run.sh` picks the model from the plan's remaining limits:
 `gpt-6.1-terra` at medium effort while one more Terra run plus Luna for the rest still fits
-before each window's reset, otherwise `gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill). After each
+before each window's reset, otherwise `gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill). The **completion skills** are the exception: always run them on Luna (step 6), so the Terra budget goes to planning and implementation. After each
 task, tell the user the `usage:` / `limits:` lines the runs printed.
 
 **Target: you do 5–10% of the work.** If you are doing more, you are doing the wrong work.
@@ -290,6 +290,10 @@ conversion broke the app" when a restart fixes it sends the user chasing nothing
 ### 6. Delegate the completion skills
 
 `/review`, `/document`, and `/userdoc` go to Codex too — do not run them yourself.
+
+**Always run them on Luna:** pass `-m gpt-6-luna -e high` to `codex-run.sh` instead of letting the
+policy pick. *(User decision, 2026-11-03.)* Review and documentation are less critical than planning
+and implementation, so they should not spend the Terra budget those need.
 
 `AGENTS.md` already carries the mechanism: it requires Codex to spawn **one dedicated
 sub-agent per skill**, each reading `.agents/skills/<name>/SKILL.md` completely (these

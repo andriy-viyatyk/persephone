@@ -413,7 +413,7 @@ export type Api = {
     // `frameNonce` (the iframe's ?v= value) pins CDP automation to THIS tab's specific
     // board frame — disambiguating multiple tabs of the same board + the pre-reload
     // frame after a remount (US-796).
-    [Endpoint.registerBoardFrame]: (boardId: string, boardHost: string, frameNonce?: string, tab?: string) => Promise<void>;
+    [Endpoint.registerBoardFrame]: (boardId: string, boardHost: string, frameNonce?: string, tab?: string, title?: string, pageId?: string) => Promise<void>;
     [Endpoint.unregisterBoardFrame]: (boardId: string, tab?: string, frameNonce?: string) => Promise<void>;
     [Endpoint.registerBoardPipePage]: (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => Promise<void>;
     [Endpoint.unregisterBoardPipePage]: (pageId: string) => Promise<void>;

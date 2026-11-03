@@ -609,7 +609,6 @@ programme closed.
 | Orphaned duplicate webview repro hunt | Observed once during US-806: two live guest webContents for one browser tab (stale element stayed mounted after an abandoned view tree; pins a whole guest renderer process). Trigger unknown. A detector in `BrowserView.tsx` logs `[browser] duplicate webview mount…` when it recurs — investigate on first sighting. Evidence summary in the US-806 entry of `completed.md`. | Medium |
 | Browser editor selector split | Measure and narrow toolbar updates: `src/renderer/editors/browser/BrowserView.ts` binds the entire browser state and updates the toolbar on each change (rest done: the browser uses native views). | Medium |
 | Explorer tree keyboard actions (remainder) | Dim cut items (rest done: EPIC-049 added multi-selection and plural actions). | Medium |
-| A transient restore failure destroys pages permanently | `PagesPersistenceModel.restorePage()` catches a per-editor construction failure and returns `null`; `applyState()` then drops the whole page, and the next `saveState()` writes the reduced set over `openFiles{windowIndex}.json`. A failure that is only momentary — a dynamic editor-module import that loses a race with a Vite rebuild, a slow disk, a module cache not yet warm — is therefore indistinguishable from a page the user closed, and the session file is overwritten before anyone can look. **Observed 2026-09-25 during EPIC-110 US-1508 verification: four pages, including one with unsaved content, were lost on a single renderer reload that landed mid-rebuild; the unsaved content's cache file was GC'd in the same startup.** Worth considering: do not persist a session that lost pages to a caught error without saying so; or keep one generation of the previous session file; or distinguish "this editor id is unknown" (drop it) from "this module failed to load" (keep the descriptor and retry). | Medium |
 | `moveItemsInto` skips the refresh after a directory-only category move | In `tree-drop-actions.ts`, when a provider has `renameCategoryPath` and the dragged set is **all** directories, the sub-trees move but `remaining` is empty, so every following branch fails and the function returns `false` — the caller never re-lists. Affects link-collection trees only (the file provider has no `renameCategoryPath`); the move itself succeeds, the tree just shows stale rows until the next refresh. Pre-existing; preserved verbatim by the US-941 refactor rather than fixed inside it. | Low |
 
 ---
@@ -629,16 +628,3 @@ Feel free to add ideas here with:
 - Brief description
 - Rough complexity estimate
 - Any initial thoughts on approach
-
----
-
-## Native JS dialogs in a board frame wedge every board (found 2026-10-05, EPIC-121 / US-1624)
-
-A `window.confirm()` raised from a bundled board's secondary-view frame left all board frames in
-the app unresponsive (`frameReady` false, automation "WebContents not found or destroyed"), including
-newly opened boards of a different board, and a renderer `location.reload()` did not recover; only a
-main-process restart did. Automation `dialogs()` / `handleDialog()` did not see the dialog. Boards now
-document "never use native dialogs" (`assets/board-template/CLAUDE.md`), but the platform should
-either intercept JS dialogs for board frames (e.g. a `will-prevent-unload` / dialog handler that
-auto-dismisses and logs) or isolate them so one frame cannot wedge the rest. Repro: any board with a
-button calling `window.confirm("x")` in a secondary view; click it.

@@ -19,6 +19,7 @@
  *    session (the app UI) with no frame routing.
  */
 import { WebContents } from "electron";
+import { cancelBoardDialogs } from "./board-dialog-service";
 import {
     BrowserChannel,
     type CdpAttachOptions,
@@ -184,21 +185,35 @@ interface BoardReg {
      *  frame from other tabs of the same board (same origin) and from the pre-reload
      *  frame after a remount — origin alone is not unique (US-796). */
     frameNonce?: string;
+    title?: string;
+    pageId?: string;
     /** Cached flattened session for the board frame; cleared on reload/re-register. */
     sessionId?: string;
 }
 const boardRegistrations = new Map<string, BoardReg>();
 
-export function registerBoardFrame(key: string, host: WebContents, boardHost: string, frameNonce?: string): void {
+export function resolveBoardDialogFrame(boardHost: string, frameNonce: string, view: string): { key: string; host: WebContents; title: string; pageId: string } | undefined {
+    const tab = view === "main" ? "main" : `board-secondary:${view}`;
+    const matches = [...boardRegistrations.entries()].filter(([key, registration]) =>
+        key.endsWith(`/${tab}`) && registration.boardHost === boardHost && registration.frameNonce === frameNonce && !registration.host.isDestroyed());
+    return matches.length === 1 ? { key: matches[0][0], host: matches[0][1].host, title: matches[0][1].title ?? "Board", pageId: matches[0][1].pageId ?? "" } : undefined;
+}
+
+export function registerBoardFrame(key: string, host: WebContents, boardHost: string, frameNonce?: string, title?: string, pageId?: string): void {
+    const previous = boardRegistrations.get(key);
+    if (previous && (previous.host !== host || previous.boardHost !== boardHost || previous.frameNonce !== frameNonce)) {
+        cancelBoardDialogs(key);
+    }
     // Re-registration (e.g. a reload recreated the frame) invalidates the cached
     // session — the OOPIF target id changes, so a stale session would be dead. The new
     // `frameNonce` re-points resolution at the freshly-loaded frame.
-    boardRegistrations.set(key, { host, boardHost, frameNonce });
+    boardRegistrations.set(key, { host, boardHost, frameNonce, title, pageId });
 }
 
 export function unregisterBoardFrame(key: string, frameNonce?: string): void {
     const registration = boardRegistrations.get(key);
     if (frameNonce !== undefined && registration?.frameNonce !== frameNonce) return;
+    cancelBoardDialogs(key);
     boardRegistrations.delete(key);
     clearCdpTargetState(key);
 }

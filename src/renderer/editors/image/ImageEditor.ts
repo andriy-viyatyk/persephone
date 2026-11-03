@@ -256,7 +256,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             URL.revokeObjectURL(url);
         }
         // Delete cache file (on-disk resource) if we created one.
-        if (this.cacheFileCreated) {
+        if (this.cacheFileCreated && !appFs.isCacheIdProtected(this.id)) {
             const cachePath = appFs.resolveCachePath(this.id + ".img");
             try { await appFs.delete(cachePath); } catch { /* ignore */ }
         }

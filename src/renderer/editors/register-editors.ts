@@ -189,6 +189,7 @@ const EDITORS: EditorRow[] = [
     { id: "archive-view", nameKey: "editors.archive", guidePath: "editors/archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
     { id: "video-view", nameKey: "editors.videoPlayer", guidePath: "editors/video", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
     { id: "settings-view", nameKey: "editors.settings", guidePath: "screens/settings", mcpHint: "Use script.execute with: await app.pages.showSettingsPage()", load: async () => (await import("./settings")).settingsModule },
+    { id: "restore-failed", nameKey: "editors.restoreFailedTitle", load: async () => (await import("./restore-failed")).restoreFailedModule },
     { id: "about-view", nameKey: "editors.about", guidePath: "screens/index", mcpHint: "Use script.execute with: await app.pages.showAboutPage()", load: async () => (await import("./about")).aboutModule },
     // Reached only via showToolsHubPage (the AppBar panel's "Open in new tab" button) —
     // never a file-open target.

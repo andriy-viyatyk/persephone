@@ -39,6 +39,8 @@ import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
+import { errMessage } from "../../../shared/utils";
+import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import { fpBasename, fpExtname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 
@@ -474,6 +476,7 @@ export class PagesLifecycleModel {
             sessionHandle?: string;
         },
     ): Promise<void> => {
+        if (page.retainedDescriptor) return;
         const failedEditor = page.mainEditorInstance;
         const filePath = options?.filePath ?? failedEditor?.filePath;
         const host = failedEditor?.contentHost as unknown as TextFileModel | null | undefined;
@@ -1029,6 +1032,54 @@ export class PagesLifecycleModel {
      * delegates to `PagesPersistenceModel.restorePage` for the shared restore
      * pathway; this method only does the target-window-side splice + activate.
      */
+    retryRestore = async (pageId: string): Promise<void> => {
+        const placeholder = this.model.query.findPage(pageId);
+        const descriptor = placeholder?.retainedDescriptor;
+        const editor = placeholder?.mainEditorInstance;
+        if (!placeholder || !descriptor || !(editor instanceof RestoreFailedEditor) || editor.state.get().retrying || placeholder.recoveryInvalidated) return;
+        editor.state.update((state) => { state.retrying = true; });
+        const attempt = async (): Promise<void> => {
+            try {
+                const result = await this.model.persistence.constructPage(descriptor);
+                if (result.kind !== "restored") {
+                    editor.state.update((state) => {
+                        state.error = result.kind === "failed"
+                            ? errMessage(result.error, t("editors.restoreFailedTitle"))
+                            : t("editors.restoreFailedTitle");
+                    });
+                    return;
+                }
+                const recovered = result.page;
+                if (placeholder.recoveryInvalidated || this.model.query.findPage(pageId) !== placeholder) {
+                    await recovered.dispose();
+                    return;
+                }
+                const active = this.model.query.activePage === placeholder;
+                this.model.detachPage(placeholder);
+                this.model.attachPage(recovered);
+                this.model.state.update((state) => {
+                    state.pages = state.pages.map((page) => page === placeholder ? recovered : page);
+                    state.ordered = state.ordered.map((page) => page === placeholder ? recovered : page);
+                });
+                placeholder.releaseRecoveryProtection();
+                placeholder.recoveryRetry = undefined;
+                await placeholder.dispose();
+                this.model.persistence.saveStateDebounced();
+                if (active) {
+                    this.model.onShow.send(recovered);
+                    this.model.onFocus.send(recovered);
+                }
+            } catch (error) {
+                editor.state.update((state) => { state.error = errMessage(error, t("editors.restoreFailedTitle")); });
+            } finally {
+                editor.state.update((state) => { state.retrying = false; });
+            }
+        };
+        const promise = attempt();
+        placeholder.recoveryRetry = promise;
+        try { await promise; } finally { if (placeholder.recoveryRetry === promise) placeholder.recoveryRetry = undefined; }
+    };
+
     movePageIn = async (data?: {
         page: PageDescriptor;
         targetPageId: string | undefined;
@@ -1068,6 +1119,10 @@ export class PagesLifecycleModel {
         const page = this.model.query.findPage(pageId);
         if (!page) return;
         if (page.isLockedBoardPage) return;
+        // Recovery descriptors own cache protection in this renderer. Until the
+        // destination acknowledges ownership, transferring one could expose its
+        // cache to source-window cleanup.
+        if (page.retainedDescriptor) return;
         if (this.model.popoverPageId === page.id) this.model.closePopover();
         if (this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be moved between windows.");
@@ -1112,7 +1167,7 @@ export class PagesLifecycleModel {
         if (page && this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be duplicated.");
         }
-        if (!page?.mainEditor) return;
+        if (!page?.mainEditor || page.retainedDescriptor) return;
 
         const sourceDesc = page.getDescriptor();
         // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id.

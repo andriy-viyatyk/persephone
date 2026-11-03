@@ -124,6 +124,12 @@ its optional named model at `page.editor.app`, with help, hints, state, methods,
 highlighting in the owning frame. Board iframe content without that model is reached through
 snapshots rather than the chrome inventory.
 
+A board's `alert()`, `confirm()` and `prompt()` open a Persephone dialog in the app window, titled
+with the board name. Agents see it in `window.screen.snapshot()` and can answer it there, through
+the MCP dialog notice, or with the board page's `dialogs()` / `handleDialog()`. While it is open
+every board pauses (boards share one renderer process); closing the page or reloading the window
+cancels it. Child `about:blank` and `srcdoc` frames a board creates still use native dialogs.
+
 The app's `board-info` id is a separate screen-owned content-host exception: the page lifecycle can
 accept it through `pages.addEditorPage` because its registration has `hasContentHost: true`. This does
 not make `board-info` one of the 23 editor guide pages, and the old blanket claim that every app/tool

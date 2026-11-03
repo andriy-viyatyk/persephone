@@ -104,6 +104,28 @@ import { installBoardContextMenu } from "./board-context-menu";
 import { errMessage } from "./shared/utils";
 import type { ThemeDefinition, ThemeDraft, ContrastReport, CustomThemeFile, CustomThemeBase } from "./renderer/api/types/themes";
 
+function boardDialog(type: "alert" | "confirm" | "prompt", message: string, defaultPrompt = ""): unknown {
+    try {
+        const identity = new URL(location.href);
+        const payload = JSON.stringify({ type, message, defaultPrompt, url: location.href, nonce: identity.searchParams.get("v"), view: identity.searchParams.get("view") ?? "main" });
+        if (new TextEncoder().encode(payload).length > 65536) return null;
+        const request = new XMLHttpRequest();
+        request.open("POST", `${location.protocol}//${location.host}/__persephone/dialog`, false);
+        request.setRequestHeader("Content-Type", "application/json");
+        request.send(payload);
+        return request.status === 200 ? JSON.parse(request.responseText) : null;
+    } catch {
+        return null;
+    }
+}
+
+window.alert = (message?: unknown): void => { boardDialog("alert", String(message ?? "")); };
+window.confirm = (message?: string): boolean => boardDialog("confirm", String(message ?? "")) === true;
+window.prompt = (message?: string, defaultValue?: string): string | null => {
+    const result = boardDialog("prompt", String(message ?? ""), String(defaultValue ?? ""));
+    return typeof result === "string" ? result : null;
+};
+
 type BoardThemes = {
     list(): Promise<ThemeDefinition[]>;
     get(id: string): Promise<ThemeDefinition | null>;

@@ -6,7 +6,11 @@ import type {
 } from "../../../shared/persistence";
 import { openFilesNameTemplate } from "../../../shared/constants";
 import { parseObject } from "../../core/utils/parse-utils";
-import { debounce } from "../../../shared/utils";
+import { debounce, errMessage } from "../../../shared/utils";
+import { t } from "../../../shared/i18n/t";
+import { editorRegistry } from "../../editors/base/editorRegistry";
+import type { EditorModel } from "../../editors/base/EditorModel";
+import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import {
     ExplorerEditor,
     getDefaultExplorerEditorState,
@@ -129,6 +133,8 @@ function sameBoardRoot(left: string, right: string): boolean {
 const NO_HOST_EDITOR_IDS = new Set([
     "browser-view",       "image-view",       "archive-view",       "video-view",         "settings-view",      "about-view",         "mcp-view",           "mneme-config",       "mneme-root",         "storybook-view",     "category-view",      "git-tree",           "board-view",         "toolset-view",       "tools-hub-view",  ]);
 
+type RestoreAttempt = { kind: "restored"; page: PageModel } | { kind: "invalid" } | { kind: "failed"; error: unknown };
+
 export class PagesPersistenceModel {
     constructor(private model: PagesModel) {}
 
@@ -178,12 +184,48 @@ export class PagesPersistenceModel {
         await this.applyState(data as WindowState);
     };
 
-    restorePage = async (
-        descriptor: PageDescriptor,
-        options: { seedSecondaryViewsWidth?: boolean } = {},
-    ): Promise<PageModel | null> => {
+    createRestoreFailedPage = (descriptor: PageDescriptor, error: unknown): PageModel => {
+        const page = new PageModel(descriptor.id);
+        page.pinSide = descriptor.pinSide === "left" || descriptor.pinSide === "right" ? descriptor.pinSide : descriptor.pinned ? "left" : undefined;
+        const main = descriptor.editors.find((editor) => editor.id === descriptor.mainEditorId);
+        const candidate = main?.host?.state.title ?? main?.state.title;
+        const title = typeof candidate === "string" && candidate ? candidate : t("editors.restoreFailedTitle");
+        const originalIds = new Set(descriptor.editors.map((editor) => editor.id.toLowerCase()));
+        let id = crypto.randomUUID();
+        while (originalIds.has(id.toLowerCase())) id = crypto.randomUUID();
+        const editor = new RestoreFailedEditor(id, title, errMessage(error, t("editors.restoreFailedTitle")));
+        editor.retry = () => this.model.lifecycle.retryRestore(page.id);
+        editor.closePage = () => page.close();
+        page.attach(editor);
+        page.mainEditor = editor;
+        page.retainDescriptor(descriptor);
+        return page;
+    };
+
+    restorePage = async (descriptor: PageDescriptor, options: { seedSecondaryViewsWidth?: boolean } = {}): Promise<PageModel | null> => {
+        const ids = descriptor.editors.map((editor) => editor.id);
+        appFs.protectCacheIds(ids);
+        let transferred = false;
+        try {
+            const result = await this.constructPage(descriptor, options);
+            if (result.kind === "restored") return result.page;
+            if (result.kind === "invalid") return null;
+            const page = this.createRestoreFailedPage(descriptor, result.error);
+            transferred = true;
+            return page;
+        } finally {
+            if (!transferred) appFs.releaseCacheIds(ids);
+        }
+    };
+
+    constructPage = async (descriptor: PageDescriptor, options: { seedSecondaryViewsWidth?: boolean } = {}): Promise<RestoreAttempt> => {
+        const constructed: EditorModel[] = [];
+        let page: PageModel | undefined;
+        let failure: unknown;
+        let failed = false;
+        try {
         const desc = await normalizePageDescriptor(descriptor);
-        const page = new PageModel(desc.id, {
+        page = new PageModel(desc.id, {
             seedSecondaryViewsWidth: options.seedSecondaryViewsWidth ?? false,
         });
         page.pinSide = desc.pinSide === "left" || desc.pinSide === "right"
@@ -249,6 +291,7 @@ export class PagesPersistenceModel {
                                 id: d.id,
                             }),
                         );
+                        constructed.push(model);
                         model.applyRestoreData(
                             d as unknown as Parameters<typeof model.applyRestoreData>[0],
                         );
@@ -260,17 +303,21 @@ export class PagesPersistenceModel {
                             "../../editors/base"
                         );
                         const editor = await editorRegistry.createEditor(d.editorId, d.id);
+                        constructed.push(editor);
                         editor.applyRestoreData(
                             d as unknown as Parameters<typeof editor.applyRestoreData>[0],
                         );
                         await editor.restore();
                         return editor;
                     }
+                    if (d.editorId === "restore-failed") return null;
+                    if (d.host && !editorRegistry.getById(d.editorId)) return null;
                     if (d.host) {
                         const { editorRegistry } = await import(
                             "../../editors/base"
                         );
                         const editor = await editorRegistry.createEditor(d.editorId, d.id);
+                        constructed.push(editor);
                         editor.applyRestoreData(d as unknown as Parameters<typeof editor.applyRestoreData>[0]);
                         await editor.restore();
                         return editor;
@@ -285,6 +332,7 @@ export class PagesPersistenceModel {
                             id: d.id,
                         });
                         const explorer = new ExplorerEditor(explorerState);
+                        constructed.push(explorer);
                         explorer.applyRestoreData(d.state as unknown as Parameters<typeof explorer.applyRestoreData>[0]);
                         await explorer.restore();
                         return explorer;
@@ -294,6 +342,7 @@ export class PagesPersistenceModel {
                             "../../editors/base"
                         );
                         const editor = await editorRegistry.createEditor(d.editorId, d.id);
+                        constructed.push(editor);
                         editor.state.update((s) => {
                             Object.assign(s as object, d.state);
                             // Guarantee a non-empty id. A blank id (from a
@@ -319,11 +368,14 @@ export class PagesPersistenceModel {
                         `[restore] editor ${d.editorId} in page ${desc.id}:`,
                         err,
                     );
+                    failed = true;
+                    failure = err;
                     return null;
                 }
             }),
         );
 
+        if (failed) throw failure;
         for (const editor of editors) {
             if (editor) page.attach(editor);
         }
@@ -334,6 +386,7 @@ export class PagesPersistenceModel {
                     ...getDefaultExplorerEditorState(),
                     rootPath: invalidFolderBoard.folderPath,
                 }));
+                constructed.push(explorer);
                 page.attach(explorer);
                 await explorer.restore();
             }
@@ -346,6 +399,7 @@ export class PagesPersistenceModel {
                 "category-view",
                 invalidFolderBoard.editorId,
             );
+            constructed.push(category);
             if (!(category instanceof CategoryEditorModel)) {
                 throw new Error("Folder View fallback created an unexpected editor.");
             }
@@ -385,8 +439,22 @@ export class PagesPersistenceModel {
             if (!firstPanel) nav.setStateQuiet({ open: false, activePanel: "" });
         }
 
-        if (page.editors.length === 0 && !desc.sidebar) return null;
-        return page;
+        if (page.editors.length === 0 && !desc.sidebar) {
+            await page.dispose();
+            return { kind: "invalid" };
+        }
+        return { kind: "restored", page };
+        } catch (error) {
+            const attached = new Set(page?.editors ?? []);
+            if (page) {
+                try { await page.dispose(); } catch (disposeError) { console.warn("[restore] page cleanup:", disposeError); }
+            }
+            for (const editor of constructed) {
+                if (attached.has(editor)) continue;
+                try { await editor.dispose(); } catch (disposeError) { console.warn("[restore] editor cleanup:", disposeError); }
+            }
+            return { kind: "failed", error };
+        }
     };
 
     private applyState = async (data: WindowState): Promise<void> => {
@@ -396,7 +464,10 @@ export class PagesPersistenceModel {
                     return await this.restorePage(d);
                 } catch (err) {
                     console.warn(`[restore] page ${d.id}:`, err);
-                    return null;
+                    const ids = d.editors.map((editor) => editor.id);
+                    appFs.protectCacheIds(ids);
+                    try { return this.createRestoreFailedPage(d, err); }
+                    catch (placeholderError) { appFs.releaseCacheIds(ids); throw placeholderError; }
                 }
             }),
         );

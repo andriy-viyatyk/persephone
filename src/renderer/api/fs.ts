@@ -568,6 +568,32 @@ class FileSystem implements IFileSystem {
 
     // ── Cache operations ──────────────────────────────────────────────
 
+    private readonly protectedCacheIds = new Map<string, number>();
+
+    protectCacheIds(ids: string[]): void {
+        for (const id of new Set(ids.filter(Boolean).map((value) => value.toLowerCase()))) {
+            this.protectedCacheIds.set(id, (this.protectedCacheIds.get(id) ?? 0) + 1);
+        }
+    }
+
+    releaseCacheIds(ids: string[]): void {
+        for (const id of new Set(ids.filter(Boolean).map((value) => value.toLowerCase()))) {
+            const count = this.protectedCacheIds.get(id);
+            if (count === undefined) continue;
+            if (count === 1) this.protectedCacheIds.delete(id);
+            else this.protectedCacheIds.set(id, count - 1);
+        }
+    }
+
+    isCacheIdProtected(id: string): boolean {
+        const lowerId = id.toLowerCase();
+        return [...this.protectedCacheIds.keys()].some((protectedId) =>
+            lowerId.startsWith(protectedId)
+            && (lowerId.length === protectedId.length
+                || lowerId[protectedId.length] === "_"
+                || lowerId[protectedId.length] === "."));
+    }
+
     private async _cacheFileName(id: string, name?: string): Promise<string> {
         await this.wait();
         return path.join(
@@ -585,6 +611,10 @@ class FileSystem implements IFileSystem {
     deleteCacheFile = async (id: string, name?: string): Promise<void> => {
         const filePath = await this._cacheFileName(id, name);
         await this.wait();
+        if (this.isCacheIdProtected(id + (name ? "_" + name : ""))) {
+            console.debug(`[cache] Skipping protected cache deletion for ${id}`);
+            return;
+        }
         if (!this._unlinkFile(filePath)) {
             throw new Error(`Failed to delete cache file: ${path.basename(filePath)}`);
         }
@@ -592,6 +622,10 @@ class FileSystem implements IFileSystem {
 
     deleteCacheFiles = async (id: string): Promise<void> => {
         await this.wait();
+        if (this.isCacheIdProtected(id)) {
+            console.debug(`[cache] Skipping protected cache deletion for ${id}`);
+            return;
+        }
         const lowerId = id.toLowerCase();
         const files = this._listDirFiles(this._cachePath).filter((file) => {
             const lowerFile = file.toLowerCase();
@@ -601,7 +635,8 @@ class FileSystem implements IFileSystem {
                     || lowerFile[lowerId.length] === ".");
         });
         for (const file of files) {
-            await this._removeFile(path.join(this._cachePath, file));
+            if (this.isCacheIdProtected(file)) continue;
+            this._unlinkFile(path.join(this._cachePath, file));
         }
     };
 

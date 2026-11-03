@@ -1503,7 +1503,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         (this as { pipe?: { dispose?: () => void } }).pipe?.dispose?.();
         // Drop the materialized content cache (non-local sources only). The whole per-editor
         // subfolder goes, since the cache file lives inside one.
-        if (this.state.get().contentCached) {
+        if (this.state.get().contentCached && !appFs.isCacheIdProtected(this.id)) {
             try {
                 await appFs.removeDir(appFs.resolveCachePath(this.id), true);
             } catch { /* best-effort cleanup — never block teardown */ }

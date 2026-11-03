@@ -31,6 +31,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   in its own window. The board stays locked in the first tab while pages it opens use regular tabs.
   You can also ask an AI agent to create the shortcut or open the board window for a trusted or
   bundled board. See the [Boards guide](./boards.md#run-a-board-in-its-own-window).
+- **Recover pages after a restore error:** A page that fails to restore stays available with its
+  error and a **Retry** action. Closing it can discard unrecovered changes after confirmation.
+- **Board dialogs:** a board's `alert`, `confirm` and `prompt` now show as Persephone dialogs that
+  you and agents can answer; a lost dialog can no longer freeze every board.
 
 ---
 

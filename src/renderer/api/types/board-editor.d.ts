@@ -11,8 +11,6 @@ import type {
     IBrowserResponseWaitOptions,
     IBrowserScreenshot,
     IBrowserTab,
-    IBrowserDialogPolicy,
-    IBrowserDialogRecord,
     IBrowserConsoleLevel,
     IBrowserConsoleMessage,
     IBrowserPageError,
@@ -24,6 +22,19 @@ import type {
 } from "./browser-editor";
 
 export type BoardRenderState = "trusted" | "bundled" | "untrusted" | "not-found";
+
+export interface IBoardDialogRecord {
+    id: string;
+    key: string;
+    title: string;
+    pageId: string;
+    type: "alert" | "confirm" | "prompt";
+    message: string;
+    defaultPrompt: string;
+    url: string;
+    disposition: "pending" | "accepted" | "dismissed";
+    timestamp: number;
+}
 
 export interface IBoardSecondaryViewDeclaration {
     readonly id: string;
@@ -166,8 +177,8 @@ export interface IBoardEditor {
     networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
     /** Wait for a matching completed response on the board frame; owned existing OOPIFs are included. */
     waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
-    /** Read and optionally update dialog policy for the selected board frame. */
-    dialogs(options?: { tabId?: string; policy?: IBrowserDialogPolicy }): Promise<{ policy: IBrowserDialogPolicy; dialogs: IBrowserDialogRecord[] }>;
+    /** Read host-owned dialogs without accessing the blocked board frame. */
+    dialogs(options?: { tabId?: string }): Promise<{ dialogs: IBoardDialogRecord[] }>;
     /** Resolve a pending JavaScript dialog in the selected board frame. */
     handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
     /** Read recent console messages from the selected board frame. */

@@ -206,6 +206,10 @@ export abstract class TextHostEditorModel<
     }
 
     async restore(options?: EditorRestoreOptions): Promise<void> {
+        // Restoring a persisted page: a failure must reach `restorePage()`, which keeps the
+        // original descriptor as a recovery placeholder (US-1761). Swapping in an empty
+        // document here would be saved over the real one on the next session save.
+        const fromPersistedHost = this._pendingHost !== undefined;
         try {
             if (!this._host) {
                 this._host = this._pendingHost
@@ -220,6 +224,7 @@ export abstract class TextHostEditorModel<
         } catch (err) {
             // Cancelled while loading: the page is closing, so there is nothing to report.
             if (options?.signal?.aborted) return;
+            if (fromPersistedHost) throw err;
             ui.notify(
                 errMessage(err, `Failed to restore ${this.displayName} editor.`),
                 "error",

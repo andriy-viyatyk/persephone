@@ -1,6 +1,7 @@
 import { AlertsBarView } from "./uikit/Notification/AlertsBar";
 import { ProgressOverlayView } from "./uikit/Progress/ProgressOverlayView";
 import { DialogsView } from "./ui/dialogs/DialogsView";
+import { installBoardDialogController } from "./ui/dialogs/board-dialog-controller";
 import { PoppersView } from "./ui/dialogs/poppers/PoppersView";
 import { MainPageView } from "./ui/app/MainPageView";
 import { installGlobalStyles } from "./theme/global-styles";
@@ -18,6 +19,7 @@ export function mount(container: HTMLElement): () => void {
     const dialogs = new DialogsView(undefined);
     container.append(dialogs.root);
     dialogs.mount();
+    const disposeBoardDialogs = installBoardDialogController();
 
     const progress = new ProgressOverlayView({});
     container.append(progress.root);
@@ -35,6 +37,7 @@ export function mount(container: HTMLElement): () => void {
     poppers.mount();
 
     return () => {
+        disposeBoardDialogs();
         disposePageActivationEvents();
         poppers.dispose();
         poppers.root.remove();

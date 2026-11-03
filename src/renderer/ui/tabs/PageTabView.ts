@@ -568,7 +568,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             ctxEvent.items.push(...editorItems);
             return;
         }
-        if (isRight || isLeftPinned) {
+        if (!page.retainedDescriptor && (isRight || isLeftPinned)) {
             menuItems.push({
                 label: t("shell.unpin"),
                 id: "page-tab-unpin",
@@ -579,7 +579,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 id: isRight ? "page-tab-pin-to-left" : "page-tab-pin-to-right",
                 onClick: () => pagesModel.pinTab(page.id, isRight ? "left" : "right"),
             });
-        } else {
+        } else if (!page.retainedDescriptor) {
             menuItems.push({
                 label: t("shell.pinTabToLeft"),
                 id: "page-tab-pin-to-left",
@@ -617,11 +617,12 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 {
                     label: t("shell.openInNewWindow"),
                     id: "page-tab-open-in-new-window",
+                    disabled: !!page.retainedDescriptor,
                     onClick: () => api.addDragEvent(this.getDragData()),
                 },
             );
         }
-        if (!isRight) menuItems.push({
+        if (!isRight && !page.retainedDescriptor) menuItems.push({
             label: t("shell.duplicateTab"),
             id: "page-tab-duplicate",
             icon: createIconElement("duplicate"),
@@ -651,11 +652,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
             return;
         }
         setTraitDragData(event.dataTransfer, TraitTypeId.PageTab, { key: page.id });
-        if (page.pinSide !== "right") event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
+        if (page.pinSide !== "right" && !page.retainedDescriptor) event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
     }
 
     private handleDragEnd(event: DragEvent): void {
-        if (this.props.model.isLockedBoardPage || this.props.model.pinSide === "right" || this.props.model.pinned) return;
+        if (this.props.model.isLockedBoardPage || this.props.model.retainedDescriptor || this.props.model.pinSide === "right" || this.props.model.pinned) return;
         const droppedOutside = event.clientX < 0
             || event.clientX > window.innerWidth
             || event.clientY < 0
