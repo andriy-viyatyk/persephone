@@ -309,7 +309,9 @@ class App {
         setTimeout(async () => {
             if (services.settings.get("mcp.enabled")) {
                 const port = services.settings.get("mcp.port") as number | undefined;
-                api.setMcpEnabled(true, port || undefined);
+                void api.setMcpEnabled(true, port || undefined).catch((error: unknown) => {
+                    services.ui.notify(t("api.mcpProfileStartFailed", { port: port || 7865, error: errMessage(error) }), "error");
+                });
             }
 
             // Auto-start Mneme if enabled. Toast only on failure here (success on every
@@ -365,7 +367,9 @@ class App {
             }
             if (key === "mcp.enabled") {
                 const port = services.settings.get("mcp.port") as number | undefined;
-                api.setMcpEnabled(!!value, port || undefined);
+                void api.setMcpEnabled(!!value, port || undefined).catch((error: unknown) => {
+                    services.ui.notify(t("api.mcpProfileStartFailed", { port: port || 7865, error: errMessage(error) }), "error");
+                });
             }
             if (key === "mneme.enabled") {
                 const mnemePort = services.settings.get("mneme.port") as number | undefined;

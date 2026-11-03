@@ -707,7 +707,7 @@ Boards that rely on multiline settings must declare `minBridgeVersion: "1.42.0"`
 
 The settings appear in a board-named panel in **Settings**. A board that is also a custom editor
 appears under **Editors**; a standalone board appears under **Boards**. Persephone stores explicit
-values in `%APPDATA%\persephone\data\board-settings.json`, namespaced by the board's stable
+values in the application profile's `data\board-settings.json` (normally `%APPDATA%\persephone\data\board-settings.json`), namespaced by the board's stable
 `author`/`name` identity. Resetting a setting removes its stored value and restores the manifest
 default.
 
@@ -907,7 +907,7 @@ receive Electron objects such as `electron`, `app`, `BrowserWindow`, `webContent
 The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1` and
 `PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in the board's `ui.log`. For
 boards you add, that file is `<boardRoot>/ui.log`; bundled boards keep it at
-`%APPDATA%\persephone\board-logs\<id>\ui.log`.
+`%APPDATA%\persephone\board-logs\<id>\ui.log` (or the corresponding named application profile folder).
 
 The service host injects `persephone.storage`, and the service shares the frame's per-board JSON
 store. A service can handle requests and provider operations from multiple windows concurrently;
@@ -1806,7 +1806,7 @@ Board errors — including script and load failures — are appended to `ui.log`
 `console.error` and `console.warn` from the board, service output, and warnings or errors sent
 through `persephone.notify()`. Choose **Open board log** from the in-board toolbar's **…** menu
 to review it. Ordinary boards keep the file in their board folder; bundled boards keep it at
-`%APPDATA%\persephone\board-logs\<id>\ui.log`.
+`%APPDATA%\persephone\board-logs\<id>\ui.log` (or the corresponding named application profile folder).
 
 Opening or reloading a board adds a `----- board loaded -----` separator, so earlier entries remain
 available across reloads. The log is limited to 256 KiB; when it grows beyond that, older entries

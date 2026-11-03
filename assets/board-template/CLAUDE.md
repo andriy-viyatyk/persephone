@@ -775,8 +775,8 @@ Requests start the service lazily and may reject with readable lifecycle errors 
 `service-exited`, or `service-failed`; catch them and render a useful result. A service's stdout
 and stderr are captured in the board's `ui.log`, which is the first place to inspect when an ESM
 import, handshake, request, or dependency fails. For ordinary boards this file is `<boardRoot>/ui.log`;
-for bundled boards it is under `<userData>/board-logs/<id>/ui.log` (on Windows,
-`%APPDATA%\persephone\board-logs\<id>\ui.log`). Service output and all other board-log
+for bundled boards it is under `<userData>/board-logs/<id>/ui.log` (the Windows default is
+`%APPDATA%\persephone\board-logs\<id>\ui.log`; named application profiles use their own data root). Service output and all other board-log
 writes go through main's `src/main/board-log.ts`. The log is bounded at 256 KiB and trims toward
 the last ~128 KiB on overflow. Service status is visible in `app.boards.list()`
 as `service.state`, `reason`, `pid`, `startedAt`, and `restartCount`. The host starts, supervises,
@@ -1707,7 +1707,7 @@ leading/trailing sticky data columns.
 Report failures with `persephone.notify(message, "error")` — they're toasted **and**
 appended to the board's **`ui.log`** (choose **… → Open board log** in the in-board toolbar
 to open it). For ordinary boards the file is in this folder; bundled boards store it under
-`<userData>/board-logs/<id>/ui.log` (on Windows, `%APPDATA%\persephone\board-logs\<id>\ui.log`).
+`<userData>/board-logs/<id>/ui.log` (the Windows default is `%APPDATA%\persephone\board-logs\<id>\ui.log`; named application profiles use their own data root).
 Persephone also logs board *load* failures there automatically: navigation
 errors, CSP violations, and uncaught script errors / unhandled rejections — and it mirrors
 every **`console.error`** / **`console.warn`** from the board's frames into the log

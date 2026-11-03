@@ -1,3 +1,4 @@
+import { rendererProfileName } from "../../../../shared/application-profile";
 import { TComponentState } from "../../../core/state/state";
 import { api } from "../../../../ipc/renderer/api";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
@@ -66,6 +67,10 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
             text(t("settings.defaultBrowserDescription"), { color: "light", size: "xs" }),
         ));
 
+        if (rendererProfileName()) {
+            this.root.append(text(t("settings.profileBrowserRegistration"), { size: "sm", color: "light" }));
+            return;
+        }
         const statusHost = document.createElement("div");
         statusHost.style.display = "contents";
         this.root.append(statusHost);

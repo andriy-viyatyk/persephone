@@ -1,6 +1,7 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const settingsCatalog = {
+    profileBrowserRegistration: { message: "Default browser registration is available only in the default Persephone instance." },
     groupGeneral: { message: "General" },
     groupEditors: { message: "Editors" },
     groupBrowser: { message: "Browser" },

@@ -48,6 +48,21 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 - Scripts can `require()` any Node.js module or npm package
 - Multi-window support — each window has its own `app` instance
 
+### Application profiles
+
+The optional `--profile` argument selects a separate application data root at
+`%APPDATA%/persephone-profiles/<name>`. Names are normalized to lowercase and limited to
+1–32 ASCII letters, digits, and hyphens; `default` is reserved. Without the option, the
+existing data root remains in use. Main sets Electron's `userData` and `sessionData` before
+acquiring the single-instance lock, and the launcher and pipe server route requests by profile.
+Board window identities and shortcuts retain the profile as well. This application profile is
+separate from the browser profiles that select session partitions within an application instance.
+
+Main passes the profile name to renderer windows at creation. Unconfigured named profiles use
+ports 7965 (MCP), 7800 (Mneme), 7966 (video streaming), and 9052 (Tor); explicit settings
+still take precedence. Named profiles do not register as the system default browser or run the
+automatic application update check.
+
 ### Main-Process Security Boundaries
 
 Every `ipcMain` event or invoke registration must authorize its sender through the shared

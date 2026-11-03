@@ -2,15 +2,6 @@
 
 Ideas and future tasks not yet planned for implementation.
 
-## Separate application data profile
-
-- [ ] **Add a `--data-dir` / `--profile` launch option.** Demo and clean-profile sessions currently
-  require moving the user's data directories while Persephone is closed. A separate profile must
-  isolate all three process-level identities: the single-instance lock, the named-pipe name in
-  `src/main/pipe-server.ts`, and the MCP port.
-
----
-
 ## Follow-ups from EPIC-130 (editors follow file and folder moves)
 
 - [ ] **Follow moved video sources.** Pipe-backed video sources currently recover only when a

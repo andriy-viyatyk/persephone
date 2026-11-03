@@ -1,3 +1,5 @@
+import { applicationProfileName } from "./application-profile";
+import { profileDefaultPort } from "../shared/application-profile";
 import http from "node:http";
 import https from "node:https";
 import fs from "node:fs";
@@ -17,7 +19,6 @@ import {
 import { errMessage } from "../shared/utils";
 import { mimeTypeForPath } from "../shared/mime-types";
 
-const DEFAULT_PORT = 7866;
 const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 // ── Faststart types ────────────────────────────────────────────────
@@ -57,14 +58,14 @@ interface SessionData {
 
 const sessions = new Map<string, SessionData>();
 let httpServer: http.Server | undefined;
-let currentPort = DEFAULT_PORT;
+let currentPort = 7866;
 let cleanupInterval: ReturnType<typeof setInterval> | undefined;
 
 // ── Public API ──────────────────────────────────────────────────────
 
 export async function createSession(
     config: VideoStreamSessionConfig,
-    port = DEFAULT_PORT,
+    port = profileDefaultPort(7866, applicationProfileName()),
     owner?: WebContents,
 ): Promise<VideoStreamSessionResult> {
     const sourceCount = [config.filePath !== undefined, config.url !== undefined, config.pipe === true]

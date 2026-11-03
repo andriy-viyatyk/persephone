@@ -1,3 +1,4 @@
+import { applicationProfileName } from "./application-profile";
 import { reapplyBrowserGuestZoom } from "./browser-service";
 import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
@@ -10,7 +11,7 @@ import { electronStore } from "./e-store";
 import { getAssetPath } from "./utils";
 import { appPartition } from "./constants";
 import { getBoardRootForHost } from "./board-protocol-service";
-import { boardIdentityHash, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
+import { boardAppId, boardProfileArgument, boardIdentityHash, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
 
 interface WindowState {
     width: number;
@@ -82,8 +83,8 @@ export class OpenWindow {
         this.window.setIcon(image);
         const iconPath = await writeBoardWindowIcon(this.boardRoot, image.toPNG());
         this.window.setAppDetails({
-            appId: `Persephone.Board.${boardIdentityHash(this.boardRoot)}`,
-            relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(this.boardRoot)}"`,
+            appId: boardAppId(this.boardRoot),
+            relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(this.boardRoot)}"${boardProfileArgument()}`,
             relaunchDisplayName: displayName.trim(),
             appIconPath: iconPath,
         });
@@ -122,6 +123,7 @@ export class OpenWindow {
                 additionalArguments: [
                     `--persephone-preferred-languages=${JSON.stringify(app.getPreferredSystemLanguages())}`,
                     `--persephone-languages-dir=${getAssetPath("languages")}`,
+                    ...(applicationProfileName() ? [`--persephone-application-profile=${applicationProfileName()}`] : []),
                     ...(boardRoot ? [`--persephone-board-root=${encodeURIComponent(boardRoot)}`] : []),
                 ],
                 // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
@@ -140,8 +142,8 @@ export class OpenWindow {
         if (boardRoot) {
             const displayName = path.basename(boardRoot);
             this.window.setAppDetails({
-                appId: `Persephone.Board.${boardIdentityHash(boardRoot)}`,
-                relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(boardRoot)}"`,
+                appId: boardAppId(boardRoot),
+                relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(boardRoot)}"${boardProfileArgument()}`,
                 relaunchDisplayName: displayName,
             });
         }

@@ -39,9 +39,9 @@ fn allow_foreground() {
     unsafe { AllowSetForegroundWindow(ASFW_ANY); }
 }
 
-fn get_pipe_path() -> String {
+fn get_pipe_path(profile: Option<&str>) -> String {
     let username = env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string());
-    format!(r"\\.\pipe\persephone-{}", username)
+    format!(r"\\.\pipe\persephone-{}{}", username, profile.map(|name| format!("-{}", name)).unwrap_or_default())
 }
 
 fn is_url(arg: &str) -> bool {
@@ -123,58 +123,66 @@ fn spawn_electron(args: &[String]) {
 }
 
 fn main() {
-    let raw_args: Vec<String> = env::args().skip(1).collect();
+    let args: Vec<String> = env::args().skip(1).collect();
+    let mut raw_args = Vec::new();
+    let mut profile: Option<String> = None;
+    let mut index = 0;
+    while index < args.len() {
+        let arg = &args[index];
+        if arg == "--profile" || arg.starts_with("--profile=") {
+            let value = if arg == "--profile" { index += 1; args.get(index).map(String::as_str) } else { Some(&arg[10..]) };
+            let normalized = value.unwrap_or("").to_ascii_lowercase();
+            if profile.is_some() || normalized.is_empty() || normalized.len() > 32 || normalized == "default" || !normalized.bytes().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-') {
+                spawn_electron(&args);
+                return;
+            }
+            profile = Some(normalized);
+        } else { raw_args.push(arg.clone()); }
+        index += 1;
+    }
+    let spawn = |operands: &[String]| {
+        let mut args = operands.to_vec();
+        if let Some(name) = &profile { args.push("--profile".to_string()); args.push(name.clone()); }
+        spawn_electron(&args);
+    };
 
     if raw_args.is_empty() {
         // No arguments — try to bring existing instance to front via pipe
-        let pipe_path = get_pipe_path();
+        let pipe_path = get_pipe_path(profile.as_deref());
         allow_foreground();
         if try_send_via_pipe(&pipe_path, "SHOW\nEND\n").is_ok() {
             return; // Existing instance activated
         }
         // No running instance — launch the app
-        spawn_electron(&[]);
+        spawn(&[]);
         return;
     }
 
-    // Detect "diff" mode: persephone-launcher.exe diff <file1> <file2>
-    let is_diff = raw_args[0].eq_ignore_ascii_case("diff") && raw_args.len() >= 3;
-    let is_board = raw_args[0] == "--board" && raw_args.len() >= 2;
-
-    // Build the pipe message
-    let message = if is_board {
-        format!("BOARD {}\nEND\n", resolve_arg(&raw_args[1]))
-    } else if is_diff {
-        let first = resolve_arg(&raw_args[1]);
-        let second = resolve_arg(&raw_args[2]);
-        format!("DIFF {}\t{}\nEND\n", first, second)
-    } else {
-        let mut msg = String::new();
-        for arg in &raw_args {
-            let resolved = resolve_arg(arg);
-            msg.push_str(&format!("OPEN {}\n", resolved));
+    // Preserve operand order and resolve paths against the caller's directory.
+    let mut message = String::new();
+    let mut index = 0;
+    while index < raw_args.len() {
+        let arg = &raw_args[index];
+        if arg == "--board" && index + 1 < raw_args.len() {
+            message.push_str(&format!("BOARD {}\n", resolve_arg(&raw_args[index + 1])));
+            index += 2;
+        } else if index == 0 && arg.eq_ignore_ascii_case("diff") && index + 2 < raw_args.len() {
+            message.push_str(&format!("DIFF {}\t{}\n", resolve_arg(&raw_args[index + 1]), resolve_arg(&raw_args[index + 2])));
+            index += 3;
+        } else {
+            message.push_str(&format!("OPEN {}\n", resolve_arg(arg)));
+            index += 1;
         }
-        msg.push_str("END\n");
-        msg
-    };
-
-    // Try to send via Named Pipe (app is running)
-    let pipe_path = get_pipe_path();
-    allow_foreground();
-    if try_send_via_pipe(&pipe_path, &message).is_ok() {
-        // Success — message delivered, exit immediately
-        return;
     }
-
-    // Pipe not available — spawn Electron with the resolved arguments
-    if is_board {
-        spawn_electron(&["--board".to_string(), resolve_arg(&raw_args[1])]);
-    } else if is_diff {
-        let first = resolve_arg(&raw_args[1]);
-        let second = resolve_arg(&raw_args[2]);
-        spawn_electron(&["diff".to_string(), first, second]);
-    } else {
-        let resolved: Vec<String> = raw_args.iter().map(|a| resolve_arg(a)).collect();
-        spawn_electron(&resolved);
+    message.push_str("END\n");
+    let pipe_path = get_pipe_path(profile.as_deref());
+    allow_foreground();
+    if try_send_via_pipe(&pipe_path, &message).is_err() {
+        // Cold start: resolve operands against the caller's directory, keeping the keywords.
+        let resolved: Vec<String> = raw_args.iter().enumerate().map(|(i, arg)| {
+            let keyword = arg == "--board" || (i == 0 && arg.eq_ignore_ascii_case("diff"));
+            if keyword { arg.clone() } else { resolve_arg(arg) }
+        }).collect();
+        spawn(&resolved);
     }
 }

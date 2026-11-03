@@ -1,3 +1,4 @@
+import { applicationProfileName } from "./application-profile";
 import { app } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -42,6 +43,16 @@ export function getBoardLauncherPath(): string {
     return findInstalledLauncher() ?? getLauncherPath();
 }
 
+export function boardAppId(boardRoot: string): string {
+    const name = applicationProfileName();
+    return `Persephone.Board.${name ? name + "." : ""}${boardIdentityHash(boardRoot)}`;
+}
+
+export function boardProfileArgument(): string {
+    const name = applicationProfileName();
+    return name ? ` --profile ${name}` : "";
+}
+
 /** Stable board identity shared by board windows and their Windows shortcuts. */
 export function boardIdentityHash(boardRoot: string): string {
     return createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex");
@@ -55,7 +66,7 @@ export function boardWindowIconPath(boardRoot: string): string {
 export function boardRootForLaunchArgs(boardRoot: string): string {
     const resolved = path.resolve(boardRoot);
     const root = path.parse(resolved).root;
-    return resolved.length > root.length ? resolved.replace(/[\\/]+$/, "") : resolved;
+    return resolved.length > root.length ? resolved.replace(/[\\/]+$/, "") : resolved.replace(/\\+$/, (slashes) => slashes + slashes);
 }
 
 function pngBackedIco(png: Buffer): Buffer {

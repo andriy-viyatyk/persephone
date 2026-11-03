@@ -117,7 +117,7 @@ Evidence: `MnemeConfigView.ts:54-87`, `ModelPanel.ts:87-113`, `RootsPanel.ts:46-
 
 Persephone launches the Mneme service and connects to it over loopback HTTP. A status line then shows **Running / Stopped**, the server URL (e.g. `http://127.0.0.1:7700/mcp`), and a **Copy URL** button.
 
-- **Port** — defaults to `7700`. To change it, toggle Mneme **off**, edit the port, then toggle it back **on** (the port field is locked while Mneme is running).
+- **Port** — defaults to `7700`, or `7800` in a named [application profile](./getting-started.md#separate-application-profiles). To change it, toggle Mneme **off**, edit the port, then toggle it back **on** (the port field is locked while Mneme is running).
 - When disabled (the default), the service is never launched and no indexing happens.
 
 ## Config & monitoring editor

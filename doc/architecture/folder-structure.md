@@ -965,6 +965,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
+├── application-profile.ts  # Profile argument validation and main-process profile identity
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
 ├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting

@@ -228,7 +228,7 @@ translation.
 
 The declaration creates a panel named after the board under **Editors** when it is a custom
 editor, or under **Boards** otherwise. Persephone owns the explicit values in
-`%APPDATA%\persephone\data\board-settings.json`, namespaced by `author/name`; a reset removes
+`<userData>/data/board-settings.json`, namespaced by `author/name`; a reset removes
 the stored value and returns the manifest default. The board itself is read-only:
 
 ```js
@@ -738,8 +738,8 @@ Bridge 1.36.0. A board that depends on this service locale contract must set
 `minAppVersion: "5.0.15"`. The host injects
 `persephone.storage`, shared with the frame and routed through main; a service must not open
 `store.json` itself. Service stdout/stderr is written to the board's `ui.log`. Ordinary boards
-store it at `<boardRoot>/ui.log`; bundled boards store it at `%APPDATA%\persephone\board-logs\<id>\ui.log`
-(equivalent to `<userData>/board-logs/<id>/ui.log`).
+store it at `<boardRoot>/ui.log`; bundled boards store it at `<userData>/board-logs/<id>/ui.log`.
+The selected application profile determines `userData`.
 
 ### Service-backed content providers
 
@@ -1113,7 +1113,7 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   1.33.0) for a message the user must read in full, such as a failed sync that needs action. Do
   not use `"error"` just to keep a message on screen. Errors and warnings are
   also appended to the board's **`ui.log`** (an on-board indicator opens it). For ordinary boards,
-  it is in the board folder; for bundled boards, it is `%APPDATA%\persephone\board-logs\<id>\ui.log`.
+  it is in the board folder; for bundled boards, it is `<userData>/board-logs/<id>/ui.log`.
   The log also receives automatically: load failures, CSP violations, uncaught errors / unhandled rejections,
   and every **`console.error`/`console.warn`** from the board's frames — read it when debugging.
 - `persephone.openFileDialog(params)` / `saveFileDialog(params)` / `openFolderDialog(params)` —
@@ -1847,7 +1847,7 @@ untitled drawing, PNG-over-SVG). Add a new recipe there when you solve a fresh i
 The debugging surfaces, in the order to check them:
 
 - **`ui.log`** is the board's black box: ordinary boards keep it in the board folder; bundled
-  boards keep it at `%APPDATA%\persephone\board-logs\<id>\ui.log`. All entries, including
+  boards keep it at `<userData>/board-logs/<id>/ui.log`. All entries, including
   service stdout/stderr, are written through the main-process `src/main/board-log.ts`. Each
   main-frame load appends a `----- board loaded -----` separator, preserving history across reloads.
   The log is bounded at 256 KiB and trims toward its last ~128 KiB on overflow. It contains load

@@ -1,3 +1,5 @@
+import { applicationProfileName } from "../../main/application-profile";
+import { t } from "../../shared/i18n/t";
 import { reapplyBrowserGuestZoom } from "../../main/browser-service";
 import { app, clipboard, ClipboardItem, BrowserWindow, IpcMainEvent, nativeImage, nativeTheme, shell } from "electron";
 import { CaptureRect, CreateBoardShortcutRequest, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
@@ -30,7 +32,7 @@ import {
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
-import { boardIdentityHash, boardRootForLaunchArgs, getBoardLauncherPath, writeBoardWindowIcon } from "../../main/board-window-identity";
+import { boardAppId, boardProfileArgument, boardRootForLaunchArgs, getBoardLauncherPath, writeBoardWindowIcon } from "../../main/board-window-identity";
 import { setMainLocale } from "../../main/i18n-locale";
 import fs from "node:fs";
 import path from "node:path";
@@ -114,13 +116,13 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const iconPath = await writeBoardWindowIcon(request.boardRoot, image.toPNG());
         const details: Electron.ShortcutDetails = {
             target: getBoardLauncherPath(),
-            args: `--board "${boardRootForLaunchArgs(request.boardRoot)}"`,
+            args: `--board "${boardRootForLaunchArgs(request.boardRoot)}"${boardProfileArgument()}`,
             description: request.displayName,
             icon: iconPath,
             // Electron writes the icon only when iconIndex is present too; with `icon` alone the
             // shortcut silently gets no icon (verified 2026-11-02, read back as an empty icon).
             iconIndex: 0,
-            appUserModelId: `Persephone.Board.${boardIdentityHash(request.boardRoot)}`,
+            appUserModelId: boardAppId(request.boardRoot),
         };
         if (!shell.writeShortcutLink(resolvedLinkPath, "create", details)) {
             throw new Error("Failed to create board shortcut.");
@@ -344,10 +346,12 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
     }
 
     registerAsDefaultBrowser = async (_event: IpcMainEvent): Promise<void> => {
+        if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
         browserRegistration.registerAsDefaultBrowser();
     }
 
     unregisterAsDefaultBrowser = async (_event: IpcMainEvent): Promise<void> => {
+        if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
         browserRegistration.unregisterAsDefaultBrowser();
     }
 

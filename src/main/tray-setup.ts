@@ -1,3 +1,4 @@
+import { applicationProfileName } from "./application-profile";
 import { app, Menu, Tray } from 'electron';
 import { getAssetPath } from './utils';
 import { openWindows } from './open-windows';
@@ -34,6 +35,6 @@ export function rebuildTray(): void {
             },
         },
     ]);
-    tray.setToolTip('Persephone');
+    tray.setToolTip(`Persephone${applicationProfileName() ? ` — ${applicationProfileName()}` : ''}`);
     tray.setContextMenu(contextMenu);
 }

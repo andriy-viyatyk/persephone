@@ -103,7 +103,8 @@ does not respond, Settings reports a timeout separately.
 In **General → Language**, choose **Automatic** to use the first supported language from your
 system preferences, or choose a language pack from the list. Each pack shows its native and English
 names and translation completeness percentage. To load a compatible pack, place its
-`<code>.lang.json` file in `%APPDATA%\persephone\data\languages\`, then reopen Settings or restart
+`<code>.lang.json` file in the application profile's `data\languages\` folder (normally
+`%APPDATA%\persephone\data\languages\`), then reopen Settings or restart
 Persephone to refresh the list. Choosing a language saves the setting and immediately reloads all
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
 uses English. Persephone includes 17 built-in translations alongside English. Ask your agent to add
@@ -216,7 +217,8 @@ settings appear as a board-named panel in Settings, with controls for the declar
 **Reset** action that returns the value to the manifest default. The panel is grouped under
 **Editors** for boards that are custom editors and under **Boards** for other boards.
 
-Persephone owns the values in `%APPDATA%\persephone\data\board-settings.json`; a board can only
+Persephone owns the values in the application profile's `data\board-settings.json` (normally
+`%APPDATA%\persephone\data\board-settings.json`); a board can only
 read its own declared values through `persephone.settings.get(id)` and subscribe with
 `persephone.settings.onChange(callback)`. The bridge exposes effective values, so a reset sends
 the declaration's default. See [Boards](../boards.md#board-settings) for the manifest and bridge
@@ -227,7 +229,7 @@ example.
 | Key | Why it comes up |
 |---|---|
 | `mcp.enabled` | Off by default; enables the MCP server and starts it immediately when saved |
-| `mcp.port` | Defaults to 7865; changing it requires disabling and re-enabling MCP to move a running server |
+| `mcp.port` | Defaults to 7865, or 7965 in a named application profile; changing it requires disabling and re-enabling MCP to move a running server |
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
 | `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
@@ -244,6 +246,9 @@ example.
 Session restoration is not a Settings option. See [Page Tabs → Session restore](./tabs.md#session-restore)
 for the fact that a valid saved session is always attempted and there is no setting to disable it.
 
+In a named [application profile](../getting-started.md#separate-application-profiles), the Default
+Browser panel explains that browser registration must be managed from the usual instance.
+
 ## Connected MCP versus file editing
 
 When connected over MCP, use the settings API. It applies and persists a change and triggers the
@@ -257,7 +262,8 @@ return { theme: app.settings.get("theme"), path: app.settings.settingsFilePath }
 The `call` surface refuses changes to `mcp.enabled` and `mcp.port` because either can disconnect
 the caller. Direct `app.settings.set` remains the normal script and UI path.
 
-When not connected, edit `%APPDATA%\persephone\data\appSettings.json` to turn MCP on. The file is
+When not connected, edit the application profile's `data\appSettings.json` (normally
+`%APPDATA%\persephone\data\appSettings.json`) to turn MCP on. The file is
 JSON5, so comments and trailing commas are allowed. Persephone watches it and reloads changes
 without a restart. It rewrites the file and its comments when a setting changes in the UI, so
 change values rather than relying on added commentary. Deleting a key restores its default, and

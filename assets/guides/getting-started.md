@@ -29,6 +29,29 @@ persephone.exe diff before.txt after.txt
 
 Quote paths that contain spaces. If Persephone is already running, these inputs open in that instance. If you're upgrading from an older version that had the (now removed) "Set as default app for text files" option checked, that upgrade releases those file associations — each extension reverts to whatever app previously handled it.
 
+### Separate application profiles
+
+Use a named application profile to run an isolated instance alongside your usual one:
+
+```text
+persephone.exe --profile demo
+persephone.exe --profile=demo notes.md
+```
+
+Names are case-insensitive and normalized to lowercase. Use 1–32 ASCII letters, digits or hyphens;
+`default` is reserved. Launching the same name again opens its existing instance. The name appears
+in window titles and the tray tooltip. This is separate from browser profiles in Settings.
+
+Each application profile has its own settings, sessions and application data under
+`%APPDATA%\persephone-profiles\<name>`. Files and external folders you choose, as well as the Windows
+clipboard, remain shared. To reset a profile, quit it and delete its folder. Board shortcuts created
+in a profile reopen that profile. Browser registration is available from the usual instance, and
+named profiles do not check for updates automatically.
+
+Named profiles default to MCP port 7965, Mneme 7800, video streaming 7966 and Tor SOCKS 9052.
+These are configurable per profile; multiple named profiles use the same defaults, so change ports
+when running their services simultaneously. An existing customized Tor configuration is preserved.
+
 ### From Source
 
 ```bash
@@ -127,7 +150,7 @@ You can also cycle through themes with `Ctrl+Alt+]` (next) and `Ctrl+Alt+[` (pre
 
 Your theme preference is saved automatically and applied on next launch. New settings start with the Persephone theme; a valid theme already saved in your settings continues to be used.
 
-The Settings page also has a "View Settings File" button to open the raw `appSettings.json` for manual editing (`%APPDATA%\persephone\data\appSettings.json`). Edits to the file — made by hand, by a script, or by an AI agent — take effect immediately, with no restart needed, including settings that start or stop something (the MCP server, Mneme). The file carries a header comment plus a per-setting comment (accepted values, default, and any gotcha — for example, changing a port only moves a running server if you also toggle the feature off and on). Persephone rewrites these comments on every save, so they always match the current version.
+The Settings page also has a "View Settings File" button to open the raw `appSettings.json` for manual editing (normally `%APPDATA%\persephone\data\appSettings.json`, or under the named application profile folder). Edits to the file — made by hand, by a script, or by an AI agent — take effect immediately, with no restart needed, including settings that start or stop something (the MCP server, Mneme). The file carries a header comment plus a per-setting comment (accepted values, default, and any gotcha — for example, changing a port only moves a running server if you also toggle the feature off and on). Persephone rewrites these comments on every save, so they always match the current version.
 
 ## Window Behavior
 

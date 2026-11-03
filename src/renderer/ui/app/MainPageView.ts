@@ -1,3 +1,4 @@
+import { rendererProfileName } from "../../../shared/application-profile";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -112,6 +113,8 @@ export class MainPageView extends VanillaView<object> {
             this.voiceTypingController = undefined;
             this.voiceTypingOverlay = undefined;
         });
+        const profileName = rendererProfileName();
+        if (profileName) document.title += ` — ${profileName}`;
         this.buildHeader();
         const content = document.createElement("div");
         content.className = "app-content";
@@ -181,6 +184,12 @@ export class MainPageView extends VanillaView<object> {
             this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
             this.header.append(this.rightPageTabs.root);
         }
+        const profileName = rendererProfileName();
+        if (profileName) {
+            const label = document.createElement("span");
+            label.textContent = ` — ${profileName}`;
+            this.header.append(label);
+        }
         this.autoloadWrap.className = "autoload-reload";
         this.recordingControls.className = "recording-controls";
         this.recordingControls.dataset.name = "window-recording-controls";
@@ -217,7 +226,7 @@ export class MainPageView extends VanillaView<object> {
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             const fallback = manifest?.name?.trim() || fpBasename(root);
             const name = boardDisplayText(root, manifest, boardMetadataKeys.name, fallback);
-            document.title = name;
+            document.title = name + (rendererProfileName() ? ` — ${rendererProfileName()}` : "");
             const iconDataUrl = await renderBoardIconDataUrl(root);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             const identity = { displayName: name, iconDataUrl };

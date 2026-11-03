@@ -14,6 +14,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Separate application profiles:** Launch with `--profile demo` to keep a separate set of data
+  and run it alongside the usual instance. See [Getting Started](./getting-started.md#separate-application-profiles).
 - **Script folder watches:** `app.fs.watch()` reports local file changes to scripts and can resume
   watching a folder after it is recreated. See the [filesystem reference](./scripting/api/fs.md#watching-paths).
 - **Browser page zoom:** Adjust each browser tab independently with the toolbar slider, presets,

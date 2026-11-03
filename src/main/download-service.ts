@@ -1,3 +1,4 @@
+import { applicationProfileName } from "./application-profile";
 import path from "node:path";
 import fs from "node:fs";
 import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents } from "electron";
@@ -203,7 +204,7 @@ class DownloadService {
         const referrerUrl = recordSource && !webContents.isDestroyed() ? webContents.getURL() : "";
         const parentWindow = this.getParentWindow(webContents);
         const defaultPath = resolveDefaultPath({ kind: "save", defaultPath: item.getFilename(), location: "downloads" });
-        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER);
+        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER + (applicationProfileName() ? `-${applicationProfileName()}` : ""));
         const tempPath = path.join(tempDirectory, id + ".part");
         if (!preparePath(tempDirectory)) { item.cancel(); return; }
         item.setSavePath(tempPath);
@@ -308,7 +309,7 @@ class DownloadService {
     }
 
     private async cleanupTemporaryDownloads(): Promise<void> {
-        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER);
+        const tempDirectory = path.join(app.getPath("temp"), TEMP_DOWNLOAD_FOLDER + (applicationProfileName() ? `-${applicationProfileName()}` : ""));
         try {
             const entries = await fs.promises.readdir(tempDirectory, { withFileTypes: true });
             await Promise.all(entries.filter(entry => entry.isFile() && entry.name.endsWith(".part"))

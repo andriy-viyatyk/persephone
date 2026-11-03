@@ -1,3 +1,4 @@
+import { applicationProfileName } from "./application-profile";
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { app, components, net, protocol, session } from "electron";
 import path from "node:path";
@@ -197,7 +198,7 @@ export function setupMainProcess() {
 
         // Check for updates after a short delay to not slow down startup
         setTimeout(() => {
-            versionService.checkForUpdates();
+            if (!applicationProfileName()) versionService.checkForUpdates();
             // Refresh the published-boards catalog on the same 24h-gated cadence (US-862).
             import("./published-boards-service").then(({ publishedBoardsService }) =>
                 publishedBoardsService.getPublishedBoards(),

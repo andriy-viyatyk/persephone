@@ -19,7 +19,7 @@ persephone includes a built-in [Model Context Protocol (MCP)](https://modelconte
 4. Click **Copy URL** to grab the server address, or **Copy Config** to get a ready-to-paste JSON snippet for your AI client
 5. Paste the configuration into your AI client (see below)
 
-> **Tip:** You can also change the port number in the Settings UI (disable MCP first, change the port, then re-enable). The default port is `7865`.
+> **Tip:** You can also change the port number in the Settings UI (disable MCP first, change the port, then re-enable). The default port is `7865`, or `7965` in a named [application profile](./getting-started.md#separate-application-profiles). Copy the URL or configuration from that instance; the examples below use the usual default port.
 
 ## AI Client Configuration
 
@@ -349,7 +349,7 @@ The `script.execute` call path gives AI access to the full [Scripting API](scrip
 **Server not starting?**
 - Check that the **Enable MCP server** checkbox is checked in Settings → MCP Server
 - Look at the status indicator — a red dot means the server failed to start (usually a port conflict)
-- Check that port 7865 is not in use by another application
+- Check that the configured MCP port is not in use by another application or profile
 - Try changing the port: disable MCP, enter a different port number, then re-enable
 
 **AI client can't connect?**

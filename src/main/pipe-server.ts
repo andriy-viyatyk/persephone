@@ -1,10 +1,13 @@
+import { applicationProfileName } from "./application-profile";
 import net from "node:net";
 import os from "node:os";
 import { openWindows } from "./open-windows";
 import { parseLaunchArguments } from "./utils";
 
-const PIPE_NAME = `persephone-${os.userInfo().username}`;
-const PIPE_PATH = `\\\\.\\pipe\\${PIPE_NAME}`;
+function pipePath(): string {
+    const profile = applicationProfileName();
+    return `\\\\.\\pipe\\persephone-${os.userInfo().username}${profile ? `-${profile}` : ""}`;
+}
 
 let server: net.Server | undefined;
 
@@ -77,7 +80,7 @@ export function startPipeServer(): void {
         if (err.code === "EADDRINUSE") {
             // Stale pipe from a crashed instance — remove and retry once
             server = undefined;
-            net.connect(PIPE_PATH)
+            net.connect(pipePath())
                 .on("error", () => {
                     // Nobody listening — safe to reclaim
                     retryPipeServer();
@@ -91,7 +94,7 @@ export function startPipeServer(): void {
         }
     });
 
-    server.listen(PIPE_PATH);
+    server.listen(pipePath());
 }
 
 function retryPipeServer(): void {
@@ -99,7 +102,7 @@ function retryPipeServer(): void {
     server.on("error", (err) => {
         console.error("Pipe server retry failed:", err);
     });
-    server.listen(PIPE_PATH);
+    server.listen(pipePath());
 }
 
 export function stopPipeServer(): void {

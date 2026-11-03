@@ -1,3 +1,4 @@
+import { parseApplicationProfile } from "./application-profile";
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
@@ -108,7 +109,7 @@ export function isValidOpenPath(filePath: string | undefined): boolean {
 
 /** Select launch operands from either packaged or `electron <appPath>` argv. */
 export function launchOperands(argv: string[]): string[] {
-    const raw = argv.slice(1);
+    const { remainingArgs: raw } = parseApplicationProfile(argv.slice(1));
     const operands: string[] = [];
     for (let index = 0; index < raw.length; index += 1) {
         if (raw[index] === "--board" && raw[index + 1]) {
