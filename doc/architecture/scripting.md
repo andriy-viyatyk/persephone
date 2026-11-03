@@ -758,7 +758,7 @@ Interface definitions: `/src/renderer/api/types/*.d.ts`
 
 ## Auto-Cleanup Lifecycle
 
-Editor facades are stateless wrappers — there is nothing to release when a script ends. Event subscriptions made through `app.events`, however, are tracked and released automatically. A shared `releaseList` ensures cleanup:
+Editor facades are stateless wrappers — there is nothing to release when a script ends. Event subscriptions made through `app.events` and watches made through `app.fs.watch` are tracked and released automatically. A shared `releaseList` ensures cleanup:
 
 ```
 1. Script starts → new ScriptContext() creates releaseList = []
@@ -774,11 +774,16 @@ Editor facades are stateless wrappers — there is nothing to release when a scr
    → release()  (removes event handler)
 ```
 
-The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionWrapper → PageWrapper → Facades`. Event subscriptions made through `app.events` from any path are automatically released when the script completes.
+The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionWrapper → PageWrapper → Facades`. Event subscriptions and filesystem watches are released when their script context is disposed. Normal runs dispose on completion; autoload contexts persist until reload or teardown.
 
 ### Events Proxy
 
 `AppWrapper.events` returns a recursive proxy that wraps `app.events`. When a script calls `subscribe()` on any EventChannel, the proxy intercepts the call, subscribes on the real channel, and pushes the returned `() => void` disposer to the `releaseList`. This means scripts never need to manually release subscriptions — cleanup happens automatically when `ScriptContext.dispose()` is called. The proxy also exposes `send()` and `sendAsync()` methods, allowing scripts to trigger events through the pipeline (e.g., `app.events.openRawLink.sendAsync(event)`).
+
+`AppWrapper.fs` lazily proxies the current filesystem singleton, binding ordinary methods to it and
+tracking the idempotent disposer returned by `watch`. Folder watches recover after removal and emit
+a rescan when re-established; errors and revocations are terminal. Archive and asar paths report
+an asynchronous error. The callback-based API is intended for scripts rather than direct MCP calls.
 
 ## Wrapper Architecture
 

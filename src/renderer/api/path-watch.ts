@@ -3,9 +3,13 @@ import rendererEvents from "../../ipc/renderer/renderer-events";
 import { EventEndpoint, type PathWatchBatch, type PathWatchSubscribeRequest } from "../../ipc/api-types";
 import { errMessage } from "../../shared/utils";
 
+// Recovery probes cannot use app.fs: fs.ts imports this module.
+const nodefs = require("fs") as typeof import("fs");
+
 export interface PathWatchOptions {
     recursive?: boolean;
     debounceMs?: number;
+    recoverRemoved?: boolean;
     label: string;
 }
 
@@ -36,6 +40,10 @@ interface LocalSubscription {
     callbacks: Map<symbol, (batch: PathWatchBatch) => void>;
     active: boolean;
     acknowledgment: Promise<void>;
+    recoverRemoved: boolean;
+    retryTimer?: ReturnType<typeof setTimeout>;
+    retryAttempt: number;
+    retryGeneration: number;
 }
 
 const subscriptionsByKey = new Map<string, LocalSubscription>();
@@ -45,10 +53,14 @@ function removeLocal(subscription: LocalSubscription): void {
     if (subscriptionsByKey.get(subscription.key) === subscription) subscriptionsByKey.delete(subscription.key);
     if (subscriptionsByClient.get(subscription.clientId) === subscription) subscriptionsByClient.delete(subscription.clientId);
     subscription.active = false;
+    subscription.retryGeneration++;
+    clearTimeout(subscription.retryTimer);
+    subscription.retryTimer = undefined;
 }
 
 function sendUnsubscribe(subscription: LocalSubscription): void {
-    void subscription.acknowledgment.then(() => api.unsubscribePathWatch({ clientId: subscription.clientId }))
+    const clientId = subscription.clientId;
+    void subscription.acknowledgment.then(() => api.unsubscribePathWatch({ clientId }))
         .catch((error: unknown) => {
             console.warn(`Path-watch unsubscribe failed: ${errMessage(error)}`);
         });
@@ -63,10 +75,64 @@ function deliver(subscription: LocalSubscription, batch: PathWatchBatch): void {
         }
     }
     if (batch.ended) {
+        if (!subscription.active) return;
+        if (batch.ended === "removed" && subscription.recoverRemoved) {
+            subscriptionsByClient.delete(subscription.clientId);
+            sendUnsubscribe(subscription);
+            scheduleRetry(subscription);
+            return;
+        }
         removeLocal(subscription);
         subscription.callbacks.clear();
         sendUnsubscribe(subscription);
     }
+}
+
+function probeFolder(path: string): "directory" | "missing" | "error" {
+    try {
+        return nodefs.statSync(path).isDirectory() ? "directory" : "error";
+    } catch (error: unknown) {
+        const code = (error as NodeJS.ErrnoException).code;
+        return code === "ENOENT" || code === "ENOTDIR" ? "missing" : "error";
+    }
+}
+
+function scheduleRetry(subscription: LocalSubscription): void {
+    if (!subscription.active || subscription.retryTimer) return;
+    const generation = subscription.retryGeneration;
+    const delay = Math.min(250 * 2 ** subscription.retryAttempt++, 5000);
+    subscription.retryTimer = setTimeout(() => {
+        subscription.retryTimer = undefined;
+        if (!subscription.active || generation !== subscription.retryGeneration) return;
+        const state = probeFolder(subscription.request.path);
+        if (state === "missing") {
+            scheduleRetry(subscription);
+            return;
+        }
+        if (state === "error") {
+            deliver(subscription, { changes: [], ended: "error" });
+            return;
+        }
+        const clientId = crypto.randomUUID();
+        subscription.clientId = clientId;
+        subscription.request = { ...subscription.request, clientId };
+        subscriptionsByClient.set(clientId, subscription);
+        const acknowledgment = api.subscribePathWatch(subscription.request);
+        subscription.acknowledgment = acknowledgment;
+        void acknowledgment.then(() => {
+            if (!subscription.active || generation !== subscription.retryGeneration || subscriptionsByClient.get(clientId) !== subscription) {
+                void api.unsubscribePathWatch({ clientId }).catch(() => {});
+                return;
+            }
+            subscription.retryAttempt = 0;
+            deliver(subscription, { changes: [], rescan: true });
+        }, () => {
+            if (!subscription.active || generation !== subscription.retryGeneration || subscriptionsByClient.get(clientId) !== subscription) return;
+            subscriptionsByClient.delete(clientId);
+            if (probeFolder(subscription.request.path) === "missing") scheduleRetry(subscription);
+            else deliver(subscription, { changes: [], ended: "error" });
+        });
+    }, delay);
 }
 
 rendererEvents[EventEndpoint.ePathWatchBatch].subscribe(event => {
@@ -84,7 +150,8 @@ export function subscribe(
     const recursive = options.recursive ?? false;
     const requestedDebounce = options.debounceMs ?? 300;
     const debounceMs = Number.isFinite(requestedDebounce) ? Math.max(50, Math.floor(requestedDebounce)) : 300;
-    const key = JSON.stringify([targetPath, recursive, debounceMs]);
+    const recoverRemoved = options.recoverRemoved ?? false;
+    const key = JSON.stringify([targetPath, recursive, debounceMs, recoverRemoved]);
     let subscription = subscriptionsByKey.get(key);
     let callbackKey: symbol;
 
@@ -110,6 +177,9 @@ export function subscribe(
             callbacks,
             active: true,
             acknowledgment: Promise.resolve(),
+            recoverRemoved,
+            retryAttempt: 0,
+            retryGeneration: 0,
         };
         subscriptionsByKey.set(key, subscription);
         subscriptionsByClient.set(clientId, subscription);

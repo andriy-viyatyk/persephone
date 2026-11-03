@@ -311,6 +311,7 @@ const nodefs = require("fs");
 - `fs.ts` itself — the one module that wraps `require("fs")`
 - `archive-service.ts` — low-level archive I/O provider that `fs.ts` routes to (using `fs.ts` would create circular dependency)
 - `file-watcher.ts` — synchronous `statSync` snapshot used to keep `FileWatcher.stat` current
+- `path-watch.ts` — synchronous folder recovery probe; importing `app.fs` would create a cycle
 - `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
 - `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files
 - `content/tree-providers/FileTreeProvider.ts` — filesystem tree provider that intentionally bypasses `app.fs` archive transparency (archive browsing is handled by ArchiveTreeProvider)

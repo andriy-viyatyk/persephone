@@ -1,6 +1,7 @@
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const FILE_SYSTEM_MEMBERS: readonly IAiMember[] = [
+    { name: "watch", kind: "method", signature: "watch(path: string, callback: (batch: IFsWatchBatch) => void, options?: { recursive?: boolean; debounceMs?: number })", summary: "Watch a local path during the script context; callback functions cannot be supplied through MCP calls." },
     { name: "read", kind: "method", signature: "read(filePath: string, encoding?: string)", summary: "Read a FILE's text with auto-detected or specified encoding; a directory path fails with EISDIR — use listDir." },
     { name: "readFile", kind: "method", signature: "readFile(filePath: string, encoding?: string)", summary: "Read text with content and detected encoding." },
     { name: "readBinary", kind: "method", signature: "readBinary(filePath: string)", summary: "Read a file as binary data." },

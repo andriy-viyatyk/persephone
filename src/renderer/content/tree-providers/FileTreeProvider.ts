@@ -51,12 +51,19 @@ export class FileTreeProvider implements ITreeProvider {
     }
 
     async list(dirPath: string): Promise<ITreeProviderItem[]> {
-        let entries: import("fs").Dirent[];
         try {
-            entries = nodefs.readdirSync(dirPath, { withFileTypes: true });
+            return this.listStrict(dirPath);
         } catch {
             return [];
         }
+    }
+
+    async listIncremental(dirPath: string): Promise<ITreeProviderItem[]> {
+        return this.listStrict(dirPath);
+    }
+
+    private listStrict(dirPath: string): ITreeProviderItem[] {
+        const entries = nodefs.readdirSync(dirPath, { withFileTypes: true });
 
         const folders: ITreeProviderItem[] = [];
         const files: ITreeProviderItem[] = [];
@@ -214,22 +221,23 @@ export class FileTreeProvider implements ITreeProvider {
      * Uses the shared main-process watcher with a 500ms per-subscriber batch delay.
      * Returns a disposer to stop watching.
      */
-    watch(callback: () => void): () => void {
+    watch(callback: (batch?: PathWatchBatch) => void): () => void {
         if (isArchivePath(this.sourceUrl) || isAsarPath(this.sourceUrl)) return () => {};
 
         let hasReceivedBatch = false;
         let isEnded = false;
         return subscribe(this.sourceUrl, (batch: PathWatchBatch) => {
             if (isEnded) return;
-            if (batch.ended) {
+            if (batch.ended && batch.ended !== "removed") {
                 isEnded = true;
-                if (hasReceivedBatch) callback();
+                if (hasReceivedBatch) callback(batch);
                 return;
             }
             hasReceivedBatch = true;
-            if (batch.changes.length || batch.rescan) callback();
+            if (batch.changes.length || batch.rescan || batch.ended) callback(batch);
         }, {
             recursive: true,
+            recoverRemoved: true,
             debounceMs: 500,
             // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Diagnostic label, not user-facing text.
             label: "Explorer",

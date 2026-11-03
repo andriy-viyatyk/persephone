@@ -89,7 +89,20 @@ export interface IFolderDialogOptions {
  * // Show open dialog
  * const paths = await app.fs.showOpenDialog({ filters: [{ name: "JSON", extensions: ["json"] }] });
  */
+export type IFsWatchChange =
+    | { path: string; type: "created" | "changed" | "deleted" }
+    | { path: string; type: "moved"; to: string };
+
+export interface IFsWatchBatch {
+    changes: IFsWatchChange[];
+    rescan?: true;
+    ended?: "removed" | "error" | "revoked";
+}
+
 export interface IFileSystem {
+    /** Watch a local path. Folder removal is temporary; error and revoked are terminal.
+     * The watch is released when its script context ends. Archive paths are unsupported. */
+    watch(path: string, callback: (batch: IFsWatchBatch) => void, options?: { recursive?: boolean; debounceMs?: number }): () => void;
     // ── File I/O — simple (for scripts) ──────────────────────────────
 
     /**

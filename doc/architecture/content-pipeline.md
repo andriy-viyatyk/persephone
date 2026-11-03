@@ -217,6 +217,13 @@ an intent before the filesystem operation. External file renames can be followed
 watcher reports the destination and its file identity (`dev` and `ino`) matches the subscribed
 file. The board bridge translates this internal event to its existing deleted/created contract.
 
+Renderer subscriptions can opt folder watches into recovery after removal. The client probes the
+original path with bounded exponential backoff, subscribes again when it is a directory, and emits
+a rescan after acknowledgment to cover the gap. Disposal cancels recovery; errors and revocations
+remain terminal. Explorer, the script library, and script folder watches opt in; file-source and
+board watches remain terminal on removal. Recovering and terminal subscriptions use separate
+local leases.
+
 `FileProvider.watch()` forwards a confirmed move as `("moved", { newPath })`. Pipe owners use
 `watchSourceMove()` to handle it separately from ordinary change/recovery notifications. They
 rebind with `IContentPipe.cloneForMovedSource(newPath)`, which creates a provider for the new path

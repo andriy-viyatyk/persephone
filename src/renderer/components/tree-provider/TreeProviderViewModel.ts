@@ -40,10 +40,16 @@ import {
 } from "./item-menus";
 import { sameHref, sameHrefs } from "./href-utils";
 import type { SlotText } from "../../uikit/shared/slots";
+import type { PathWatchBatch } from "../../../ipc/api-types";
 
 // =============================================================================
 // Types
 // =============================================================================
+
+/** A provider that can list one folder strictly (throws on read errors) for incremental watch updates. */
+interface IncrementalTreeProvider extends ITreeProvider {
+    listIncremental(dirPath: string): Promise<ITreeProviderItem[]>;
+}
 
 /** Internal tree node wrapping ITreeProviderItem for UIKit Tree rendering. */
 export interface TreeProviderNode {
@@ -150,6 +156,9 @@ export class TreeProviderViewModel extends TComponentModel<
     private previousProvider: ITreeProvider | undefined;
     private previousShowLinks: boolean | undefined;
     private previousSelectedHref: string | undefined;
+    private treeGeneration = 0;
+    private watchQueue: Promise<void> = Promise.resolve();
+    private disposed = false;
 
     setProps = () => {
         const props = this.props;
@@ -260,16 +269,89 @@ export class TreeProviderViewModel extends TComponentModel<
         this.watchSubscription = undefined;
         const provider = this.props.provider as any; // eslint-disable-line @typescript-eslint/no-explicit-any
         if (typeof provider.watch === "function") {
-            const unsubscribe = provider.watch(() => this.buildTree());
+            const unsubscribe = provider.watch((batch?: PathWatchBatch) => this.queueWatchRefresh(batch));
             this.watchSubscription = unsubscribe;
         }
     };
 
     dispose = () => {
+        this.disposed = true;
+        this.treeGeneration++;
         this.watchSubscription?.();
         this.watchSubscription = undefined;
         // The host owns Tree/search children and VanillaView disposes them before this driver.
         // Keep the model handoff clear only after those children have released their resources.
+    };
+
+    private queueWatchRefresh = (batch?: PathWatchBatch) => {
+        const provider = this.props.provider;
+        this.watchQueue = this.watchQueue.then(async () => {
+            if (this.disposed || this.props.provider !== provider) return;
+            // Batches run one at a time, so the generation is taken when this one starts: a later
+            // batch is not a reason to rebuild, but an expansion load or rebuild in between is.
+            const generation = ++this.treeGeneration;
+            if (!batch || batch.rescan || batch.ended ||
+                batch.changes.length > 100 || typeof (provider as IncrementalTreeProvider).listIncremental !== "function") {
+                await this.buildTree();
+                return;
+            }
+            const original = this.state.get().tree;
+            if (!original) { await this.buildTree(); return; }
+            const normalize = (value: string) => fpResolve(value).replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+            const root = normalize(provider.rootPath);
+            const find = (node: TreeProviderNode, path: string): TreeProviderNode | null => {
+                if (normalize(node.data.href) === path) return node;
+                for (const child of node.items ?? []) {
+                    const found = find(child, path);
+                    if (found) return found;
+                }
+                return null;
+            };
+            const parents = new Map<string, TreeProviderNode>();
+            const addParent = (path: string) => {
+                const key = normalize(path);
+                const node = find(original, key);
+                if (node?.items) parents.set(key, node);
+            };
+            for (const change of batch.changes) {
+                const paths = change.type === "moved" ? [change.path, change.to] : [change.path];
+                for (const path of paths) {
+                    const key = normalize(path);
+                    if (key === root || !key.startsWith(root + "/")) { await this.buildTree(); return; }
+                    const node = find(original, key);
+                    if (change.type === "changed" && !node?.data.isDirectory) continue;
+                    const parent = fpDirname(path);
+                    addParent(parent);
+                    const marker = key.endsWith("/.git/head") || key.endsWith("/.git/objects");
+                    if (marker && change.type !== "changed") addParent(fpDirname(fpDirname(parent)));
+                }
+            }
+            let next = original;
+            try {
+                for (const parent of parents.values()) {
+                    // Earlier listings in this batch may already have updated or removed this node.
+                    const currentParent = find(next, normalize(parent.data.href));
+                    if (!currentParent?.items) continue;
+                    const items = filterTreeItems(await (provider as IncrementalTreeProvider).listIncremental(parent.data.href));
+                    if (generation !== this.treeGeneration || this.state.get().tree !== original || this.disposed || this.props.provider !== provider) {
+                        await this.buildTree(); return;
+                    }
+                    const children = items.map(item => {
+                        const old = currentParent.items.find(child => normalize(child.data.href) === normalize(item.href));
+                        if (old && old.data.isDirectory !== item.isDirectory) throw new Error("Directory type changed");
+                        return { data: item, items: item.isDirectory ? old?.items : undefined };
+                    });
+                    next = updateNodeChildren(next, parent.data.href, children);
+                }
+                if (parents.size) this.state.update(state => {
+                    state.tree = next;
+                    state.displayTree = this.computeDisplayTree(next, state.searchText);
+                    state.selectedValues = state.selectedValues.filter(href => !!find(next, normalize(href)));
+                });
+            } catch {
+                await this.buildTree();
+            }
+        }).catch(error => { console.warn("Tree watch refresh failed", error); });
     };
 
     private initializeTree = async () => {
@@ -316,6 +398,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
     buildTree = async () => {
         const { provider } = this.props;
+        const generation = ++this.treeGeneration;
 
         // Capture currently-expanded paths before rebuild. We need the EFFECTIVE expansion
         // — both user-toggled state from Tree (state.expanded) AND restored hints
@@ -387,6 +470,7 @@ export class TreeProviderViewModel extends TComponentModel<
             // expands the root (whose chevron is hidden — only this default keeps it open).
             // Subsequent builds skip the seed: once the root is in the map, user state in
             // Tree's own `state.expanded` overrides the hint anyway.
+            if (this.disposed || this.props.provider !== provider || generation !== this.treeGeneration) return;
             if (!this.initialExpandMap || !(provider.rootPath in this.initialExpandMap)) {
                 const collapsedMap = this.buildAllCollapsedMap(workingTree);
                 this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
@@ -401,6 +485,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.error = null;
             });
         } catch (err) {
+            if (this.disposed || this.props.provider !== provider || generation !== this.treeGeneration) return;
             this.state.update((s) => {
                 s.tree = null;
                 s.displayTree = null;
@@ -413,6 +498,8 @@ export class TreeProviderViewModel extends TComponentModel<
 
     private loadChildrenIfNeeded = async (href: string) => {
         const { tree } = this.state.get();
+        const provider = this.props.provider;
+        const generation = this.treeGeneration;
         if (!tree) return;
 
         const node = findNode(tree, href);
@@ -423,7 +510,12 @@ export class TreeProviderViewModel extends TComponentModel<
         const listPath = this.getListPath(node);
 
         try {
-            const items = filterTreeItems(await this.props.provider.list(listPath));
+            const items = filterTreeItems(await provider.list(listPath));
+            if (this.disposed || provider !== this.props.provider) return;
+            if (generation !== this.treeGeneration || this.state.get().tree !== tree) {
+                this.queueWatchRefresh();
+                return;
+            }
             const newTree = updateNodeChildren(tree, href, items.map(toNode));
             const { searchText } = this.state.get();
             const displayTree = this.computeDisplayTree(newTree, searchText);
@@ -433,6 +525,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.displayTree = displayTree;
             });
         } catch {
+            if (this.disposed || provider !== this.props.provider || generation !== this.treeGeneration || this.state.get().tree !== tree) return;
             // Mark as loaded but empty on error
             const newTree = updateNodeChildren(tree, href, []);
             this.state.update((s) => {
@@ -445,6 +538,9 @@ export class TreeProviderViewModel extends TComponentModel<
     private loadChildrenForPaths = async (paths: string[]) => {
         let { tree } = this.state.get();
         if (!tree) return;
+        const original = tree;
+        const provider = this.props.provider;
+        const generation = this.treeGeneration;
 
         const sorted = [...paths].sort((a, b) => a.length - b.length);
         let changed = false;
@@ -454,7 +550,7 @@ export class TreeProviderViewModel extends TComponentModel<
             if (node && node.data.isDirectory && node.items === undefined) {
                 const listPath = this.getListPath(node);
                 try {
-                    const items = filterTreeItems(await this.props.provider.list(listPath));
+                    const items = filterTreeItems(await provider.list(listPath));
                     tree = updateNodeChildren(tree, href, items.map(toNode));
                     changed = true;
                 } catch {
@@ -465,6 +561,11 @@ export class TreeProviderViewModel extends TComponentModel<
         }
 
         if (changed) {
+            if (this.disposed || provider !== this.props.provider) return;
+            if (generation !== this.treeGeneration || this.state.get().tree !== original) {
+                this.queueWatchRefresh();
+                return;
+            }
             const { searchText } = this.state.get();
             const displayTree = this.computeDisplayTree(tree, searchText);
             this.state.update((s) => {

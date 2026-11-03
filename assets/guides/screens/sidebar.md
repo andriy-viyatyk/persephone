@@ -235,6 +235,9 @@ enabled. An Explorer panel can be closed from its header; its dynamic editor-spe
 deliberately not part of this shell contract. The dedicated Clipboard page is opened from
 **Tools & Editors** and does not depend on that Explorer shortcut.
 
+For local folders, Explorer updates as files change. If the root folder is deleted and later
+recreated, Explorer resumes watching it and refreshes its contents.
+
 ### Clipboard
 
 Clipboard is a page-owned sibling panel of Explorer. It lists captured text, HTML, images, and file

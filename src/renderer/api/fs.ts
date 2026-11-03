@@ -6,12 +6,30 @@ import jschardet from "jschardet";
 import iconv from "iconv-lite";
 import { api } from "../../ipc/renderer/api";
 import type { CommonFolder } from "../../ipc/api-param-types";
-import type { IFileSystem, ITextFile, IFileStat, IDirEntry } from "./types/fs";
+import type { IFileSystem, ITextFile, IFileStat, IDirEntry, IFsWatchBatch } from "./types/fs";
 import { isArchivePath, parseArchivePath, isAsarFile, isAsarPath } from "../core/utils/file-path";
 import { archiveService } from "./archive-service";
-import { beginPathMove, completePathMove } from "./path-watch";
+import { beginPathMove, completePathMove, subscribe } from "./path-watch";
 
 class FileSystem implements IFileSystem {
+    watch(filePath: string, callback: (batch: IFsWatchBatch) => void, options?: { recursive?: boolean; debounceMs?: number }): () => void {
+        let disposed = false;
+        let unsubscribe: (() => void) | undefined;
+        queueMicrotask(() => {
+            if (disposed) return;
+            if (isArchivePath(filePath) || isAsarPath(filePath) || isAsarFile(filePath)) {
+                callback({ changes: [], ended: "error" });
+                return;
+            }
+            let recoverRemoved = false;
+            try { recoverRemoved = nodefs.statSync(filePath).isDirectory(); } catch { /* subscribe reports the error */ }
+            unsubscribe = subscribe(filePath, batch => { if (!disposed) callback(batch); }, {
+                // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Diagnostic label.
+                ...options, recoverRemoved, label: "script",
+            });
+        });
+        return () => { disposed = true; unsubscribe?.(); };
+    }
     // ── Init state ────────────────────────────────────────────────────
 
     private _windowIndex: number | null = null;

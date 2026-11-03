@@ -197,16 +197,17 @@ class LibraryService extends TModel<LibraryServiceState> {
         let isEnded = false;
         this.watcher = subscribe(libraryPath, (batch: PathWatchBatch) => {
             if (isEnded) return;
-            if (batch.ended) {
+            if (batch.ended && batch.ended !== "removed") {
                 isEnded = true;
                 if (hasReceivedBatch) void this.refreshAfterChange(libraryPath);
                 this.watcher = undefined;
                 return;
             }
             hasReceivedBatch = true;
-            if (batch.changes.length || batch.rescan) void this.refreshAfterChange(libraryPath);
+            if (batch.changes.length || batch.rescan || batch.ended) void this.refreshAfterChange(libraryPath);
         }, {
             recursive: true,
+            recoverRemoved: true,
             debounceMs: 300,
             // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Diagnostic label, not user-facing text.
             label: "library",

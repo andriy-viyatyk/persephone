@@ -144,6 +144,11 @@ await app.pages.navigatePageTo(pageId, filePath, { revealLine, highlightText })
 
 ### app.fs
 
+`app.fs.watch(path, callback, options?)` observes local changes within the script context; callback
+functions cannot be supplied through MCP calls. Normal scripts release watches when they complete;
+autoload scripts retain them until reload. See the [filesystem reference](../scripting/api/fs.md#watching-paths)
+for batch contents, recovery, and disposal.
+
 ```javascript
 const text = await app.fs.read(filePath)              // Read text file
 const { content, encoding } = await app.fs.readFile(filePath)  // Read with encoding info

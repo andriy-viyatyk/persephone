@@ -75,6 +75,7 @@ function createEventsProxy<T extends object>(target: T, releaseList: Array<() =>
 class AppWrapperImplementation {
     private readonly _pages: PageCollectionWrapper;
     private _events: unknown;
+    private _fs?: typeof app.fs;
     private readonly releaseList: Array<() => void>;
 
     /** @param openedByAgent true for MCP-originated contexts — browser pages they open are the agent's own. */
@@ -86,10 +87,30 @@ class AppWrapperImplementation {
         this.releaseList = releaseList;
         this._pages = new PageCollectionWrapper(app.pages, releaseList, openedByAgent);
         for (const { key } of appServiceDescriptors) {
+            if (key === "fs") continue;
             Object.defineProperty(this, key, {
                 get: () => app[key],
             });
         }
+        Object.defineProperty(this, "fs", { get: () => this.getFsFacade() });
+    }
+
+    private getFsFacade(): typeof app.fs {
+        if (!this._fs) {
+            this._fs = new Proxy({} as typeof app.fs, {
+                get: (_target, property) => {
+                    const filesystem = app.fs;
+                    if (property === "watch") return (...args: Parameters<typeof filesystem.watch>) => {
+                        const dispose = filesystem.watch(...args);
+                        this.releaseList.push(dispose);
+                        return dispose;
+                    };
+                    const value = Reflect.get(filesystem, property);
+                    return typeof value === "function" ? value.bind(filesystem) : value;
+                },
+            });
+        }
+        return this._fs;
     }
 
     get version() {

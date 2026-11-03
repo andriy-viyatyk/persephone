@@ -14,6 +14,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Script folder watches:** `app.fs.watch()` reports local file changes to scripts and can resume
+  watching a folder after it is recreated. See the [filesystem reference](./scripting/api/fs.md#watching-paths).
 - **Browser page zoom:** Adjust each browser tab independently with the toolbar slider, presets,
   keyboard shortcuts, or mouse wheel.
 - **Runtime update:** Persephone now uses Electron 44 and Chromium 152.

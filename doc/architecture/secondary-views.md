@@ -708,10 +708,16 @@ action, and the selection is pruned so an item inside a selected folder is never
 each tick, so it tracks changes made anywhere else — the Explorer tree beside it, another window,
 Windows Explorer, or an agent. `watch` is an opt-in capability rather than part of `ITreeProvider`,
 so the check is duck-typed exactly as the tree's is; the file provider implements it with one
-recursive `fs.watch` debounced at 500ms. Re-listing never flashes, because the loading placeholder
+recursive shared path watch debounced at 500ms. Re-listing never flashes, because the loading placeholder
 is gated on an empty listing and the previous items stay on screen; the selection is re-validated
 against the new listing, so an externally deleted file drops out instead of being carried into the
 next batch action.
+
+The Explorer tree uses classified file batches to re-list affected loaded parents and reconcile
+their children, preserving loaded subtrees and valid selection. File-content changes need no
+listing; unsafe batches, rescans, terminal notifications, and listing failures use a full rebuild.
+Other providers can continue sending unclassified notifications. Folder watches recover after
+their root is recreated and send a rescan to refresh changes missed during the gap.
 
 The set-shaped actions themselves are shared with the Explorer tree rather than reimplemented —
 see [`plural-actions.ts`](../../src/renderer/components/tree-provider/plural-actions.ts) and

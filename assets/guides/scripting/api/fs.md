@@ -50,6 +50,34 @@ The following methods support archive paths: `read`, `readFile`, `readBinary`, `
 
 Write operations read the full archive, modify the entry, and write it back. For best performance, batch multiple writes to the same archive.
 
+## Watching paths
+
+### watch(path, callback, options?) → `() => void`
+
+Watch a local file or folder and receive batches of changes. `options.recursive` watches a folder's
+descendants (default `false`); `options.debounceMs` sets the batching delay in milliseconds
+(default 300, minimum 50). The returned function stops the watch and can be called more than once.
+
+```javascript
+// In an autoload script, keep watching until reload or until stop() is called.
+const stop = app.fs.watch("C:/data", batch => {
+    if (batch.rescan) console.log("Re-read the folder");
+    for (const change of batch.changes) console.log(change.type, change.path, change.to);
+    if (batch.ended) console.log("Watch ended:", batch.ended);
+}, { recursive: true });
+```
+
+Each batch has a `changes` array. Entries have `path` and `type` (`created`, `changed`, `deleted`,
+or `moved`); a move also has `to`. A `rescan: true` batch means to re-read the watched path because
+the changes may be incomplete. An `ended` value of `error` or `revoked` is terminal. For an
+existing folder, `removed` is temporary: the watch retries the original path and sends a rescan
+after the folder returns. For a file, `removed` is terminal. Setup failures and archive or ASAR
+paths report an asynchronous `error` batch.
+
+Watches are released when their script context ends. A normal script releases its watches on
+completion; an autoload script keeps them until its context is reloaded or disposed. MCP calls
+cannot supply the callback function.
+
 ## File I/O
 
 ### read(filePath, encoding?) → `Promise<string>`
