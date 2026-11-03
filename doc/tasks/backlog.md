@@ -507,16 +507,6 @@ Add complementary, analogous, and triadic palette generation plus CSS and standa
 
 ---
 
-### Font Preview
-
-**Goal:** Open `.ttf`, `.woff`, `.woff2` font files and preview glyphs at different sizes with customizable sample text.
-
-Frontend developers occasionally need to inspect fonts. Could show glyph table, character set coverage, and font metadata.
-
-**Complexity:** Low-Medium | **Priority:** Low
-
----
-
 ## Developer Experience
 
 | Idea | Description | Complexity |
