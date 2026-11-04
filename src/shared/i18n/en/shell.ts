@@ -19,7 +19,7 @@ export const shellCatalog = {
     defaultBoardEditor: { message: "Board: {name} (Default)", note: "Editor-choice label; `{name}` is the board's display name." },
     defaultEditor: { message: "{name} (Default)", note: "Editor-choice label; `{name}` is the selected editor's display name." },
     disable: { message: "Disable" },
-    editorCategoryTop: { message: "Top" },
+    editorCategoryTop: { message: "Top", note: "Name of the fixed first editor category: the user's main, most-used editors (top picks). Not a screen position." },
     editorCategoryEditorsTab: { message: "Editors" },
     editorCategoryBuiltinRoot: { message: "Built-in" },
     editorCategoryOther: { message: "Other" },

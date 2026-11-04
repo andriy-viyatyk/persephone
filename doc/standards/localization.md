@@ -56,6 +56,10 @@ label.
 For app-pack authoring and repair, see the [language-pack agent guide](../../assets/guides/agents/languages.md)
 and the [shipped language glossary](../../assets/guides/agents/languages-glossary.md).
 
+New or changed English messages must reach every built-in pack in `assets/languages/` before the
+task or epic closes; see "Translations at completion" in [agents-common.md](../agents-common.md).
+`npm run i18n:check` lists the missing and stale keys per pack.
+
 Language packs use schema version 1: BCP-47 `code`, localized `name`, English `englishName`,
 optional `direction: "ltr"`, `messages`, and optional `source` hashes. See
 [`assets/languages/README.md`](../../assets/languages/README.md) and the shape in

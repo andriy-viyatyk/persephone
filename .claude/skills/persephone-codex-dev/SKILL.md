@@ -303,8 +303,10 @@ instructions do the rest:
 
 > Run the completion skills for <task/epic scope> per `AGENTS.md`: one sub-agent each for
 > `/review`, `/document`, and `/userdoc`, in that order. Do not perform their workflows
-> yourself. Do not commit. Reply with only a ≤15-line summary: what each skill changed, and
-> any finding you did not act on.
+> yourself. Then, if the work added or changed messages in `src/shared/i18n/en/`, translate them
+> into every pack per "Translations at completion" in `doc/agents-common.md` until
+> `npm run i18n:check` reports every pack complete. Do not commit. Reply with only a ≤15-line
+> summary: what each skill changed, the i18n:check result, and any finding you did not act on.
 
 Timing follows `doc/agents-common.md`, not convenience: for an **epic task** these are deferred to
 epic close, so do not run them per task. For a **standalone task** they are mandatory at

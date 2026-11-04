@@ -97,10 +97,11 @@ structure — the crate's own `README.md` is its primary documentation.
 2. Run `/review` — validate against architecture docs
 3. Run `/document` — update developer docs in `/doc/`
 4. Run `/userdoc` — update the user-facing guides in `/assets/guides/`
-5. Update dashboard: mark `[x]`, move to [tasks/completed.md](tasks/completed.md), remove from dashboard
-6. Task folder cleanup (if any): **ask user before deleting**
+5. Translate new UI text — see [Translations at completion](#translations-at-completion)
+6. Update dashboard: mark `[x]`, move to [tasks/completed.md](tasks/completed.md), remove from dashboard
+7. Task folder cleanup (if any): **ask user before deleting**
 
-Steps 2-4 are mandatory unless the user explicitly says to skip.
+Steps 2-5 are mandatory unless the user explicitly says to skip.
 
 #### Epic tasks — deferred review model
 
@@ -111,12 +112,21 @@ re-reviewing the same code).
   do NOT run the skills unless the user asks.
 - **User requests review mid-epic** ("review done tasks"): run the three skills over all
   implemented-but-unreviewed tasks, then mark them `[x]`.
-- **Completing the epic:** run the skills for any unreviewed tasks first and mark `[x]`; move the
-  entire epic block to [epics/completed.md](epics/completed.md) and remove from dashboard;
-  ask before deleting task folders.
+- **Completing the epic:** run the skills for any unreviewed tasks first and mark `[x]`; translate
+  new UI text (below); move the entire epic block to [epics/completed.md](epics/completed.md) and
+  remove from dashboard; ask before deleting task folders.
 
 **Summary:** `[ ]` = implemented but unreviewed; `[x]` = reviewed. Review is mandatory before an
 epic closes.
+
+#### Translations at completion
+
+If the work added or changed English catalog messages in `src/shared/i18n/en/`, add them to
+**every** built-in pack in `assets/languages/` before the task or epic closes, following
+[standards/localization.md](standards/localization.md), the
+[language-pack guide](../assets/guides/agents/languages.md) and its glossary (copy the current
+`hashEnglishMessage()` value into `source`). Done means `npm run i18n:check` reports every pack
+complete (`N/N`) with no stale hashes. Work that changed no catalog messages skips this step.
 
 ## Documentation Map
 
