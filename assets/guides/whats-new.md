@@ -10,28 +10,28 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.17 (Upcoming)
+## Version 5.0.18 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.17
 
 ### New Features
 
-- **Optional agent tips:** MCP agents may suggest a site extension for recurring site automation after finishing their current task. Control suggestions with **Allow optional agent tips** in Settings → MCP Server / Mneme.
-
-- **Site extension trust:** Agents trust extensions they build at your request; downloaded or received extensions remain your choice unless you ask an agent to review and trust one. See the [Site Extensions guide](./site-extensions.md).
-
+- **Optional agent tips:** MCP agents may suggest a site extension for recurring site automation
+  after finishing their current task. Control suggestions with **Allow optional agent tips** in
+  Settings → MCP Server / Mneme.
+- **Site extension trust:** Agents trust extensions they build at your request; downloaded or
+  received extensions remain your choice unless you ask an agent to review and trust one. See the
+  [Site Extensions guide](./site-extensions.md).
 - **Separate application profiles:** Launch with `--profile demo` to keep a separate set of data
   and run it alongside the usual instance. See [Getting Started](./getting-started.md#separate-application-profiles).
 - **Script folder watches:** `app.fs.watch()` reports local file changes to scripts and can resume
   watching a folder after it is recreated. See the [filesystem reference](./scripting/api/fs.md#watching-paths).
 - **Browser page zoom:** Adjust each browser tab independently with the toolbar slider, presets,
   keyboard shortcuts, or mouse wheel.
-- **Browser downloads:** Completed downloads can be opened in a matching Persephone editor or board,
-  or handed to their Windows default app.
-- **Lazy browser tab restore:** After restart, only the active tab loads right away. Other tabs keep
-  their saved titles and icons and load when you first activate them; restored muted tabs stay muted.
-- **Runtime update:** Persephone now uses Electron 44 and Chromium 152.
-- **Show Resources:** Browser resource collections include loaded fonts. Open favicons in Image
-  Viewer and audio or video resources in Video Player; compatible custom editor boards can open
-  matching web resources such as fonts.
 - **Editor categories:** Organize built-in editors and trusted boards into ordered categories. The
   **+** menu groups editors under Top, named categories, and Other; the Tools & Editors hub includes
   a category manager beside the merged Editors tree.
@@ -41,8 +41,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
   bundled board. See the [Boards guide](./boards.md#run-a-board-in-its-own-window).
 - **Recover pages after a restore error:** A page that fails to restore stays available with its
   error and a **Retry** action. Closing it can discard unrecovered changes after confirmation.
+
+### Improvements
+
+- **Browser downloads:** Completed downloads can be opened in a matching Persephone editor or board,
+  or handed to their Windows default app.
+- **Lazy browser tab restore:** After restart, only the active tab loads right away. Other tabs keep
+  their saved titles and icons and load when you first activate them; restored muted tabs stay muted.
+- **Show Resources:** Browser resource collections include loaded fonts. Open favicons in Image
+  Viewer and audio or video resources in Video Player; compatible custom editor boards can open
+  matching web resources such as fonts.
 - **Board dialogs:** a board's `alert`, `confirm` and `prompt` now show as Persephone dialogs that
   you and agents can answer; a lost dialog can no longer freeze every board.
+- **Runtime update:** Persephone now uses Electron 44 and Chromium 152.
 
 ### Bug Fixes
 
@@ -273,49 +284,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Breaking Changes
 
-- **Removed the script-level Claude API integration:** scripts no longer expose the `ai` global. Scripts that use it now fail with `ReferenceError: ai is not defined`. Connect external agents to Persephone through the MCP server instead; see the [MCP Server Setup guide](./mcp-setup.md).
-
-- **Markdown preview removes active raw HTML:** scripts, iframes, forms, and styles in Markdown are removed. Documents that relied on those elements may look different.
-
-- **Browser-based MCP clients are refused:** requests sent from web pages include an `Origin` header and are no longer accepted by the Persephone or Mneme MCP servers. Desktop agents and Persephone's in-app MCP Inspector are unaffected; see the [MCP Server Setup guide](./mcp-setup.md).
-
-- **Release builds ignore `NODE_OPTIONS` and `NODE_EXTRA_CA_CERTS`:** Persephone no longer reads these environment variables.
-
-- **Browser cookies are now encrypted:** if you return to an older Persephone version after using 5.0.7, that version cannot read the encrypted cookies and you will need to sign in to websites again.
-
-- **Browser pages cannot open internal Persephone links or schemes:** web pages can no longer launch Persephone's internal links. Popup windows are also blocked from navigating to local files or non-web schemes.
-
-### Security
-
-- **Browser site extensions require your trust:** agents can build reusable page models with scripts, but a script runs with the signed-in site's capabilities only after you choose **Trust**. Manage extension folders and trust in Settings and Tools & Editors. Incognito and Tor pages never run extensions. See the [Site Extensions guide](./site-extensions.md).
-
-- **Boards now enforce declared permissions:** the Trust board dialog shows the requested access, marks broad grants as **Full access**, and when a trusted board adds or expands a permission it shows **Board permissions changed** with the kept, added and removed permissions in one list and two choices: **Accept** or **Unregister board**. Boards without an object-form permissions declaration are marked **Unrestricted** and deprecated; trusted legacy boards show a persistent warning when opened. See the [Boards guide](./boards.md#board-trust-gate).
-
-- **Board file access follows the permissions granted at trust time:** boards can be limited to their own folder or files selected in their dialogs, while object-form boards' `board://` assets stay inside their folder.
-
-- **Internet-only boards are protected from DNS rebinding:** Persephone checks DNS results and connects to the checked public addresses; requests resolving to local or private addresses are blocked. See the [Boards guide](./boards.md#service-declarations-in-board-manifestjson).
-
-- **Markdown and Mermaid previews are safer:** raw HTML in Markdown is filtered; scripts, iframes, forms, and styles are removed. Mermaid diagrams render in strict mode.
-
-- **MCP servers reject browser requests:** Persephone and Mneme refuse requests from web pages to prevent DNS-rebinding and Origin-based attacks. Desktop agents and the in-app MCP Inspector continue to work; see the [MCP Server Setup guide](./mcp-setup.md).
-
-- **The main window has a stricter security policy, and HTML previews use an isolated `html-preview://` origin.**
-
-- **Electron's security fuses are locked in release builds.** The environment-variable and browser-cookie effects are listed under [Breaking Changes](#breaking-changes).
-
-- **Browser downloads carry Mark-of-the-Web:** Windows SmartScreen and Office Protected View can apply their usual protections to downloaded files.
+- **Script `ai` global removed:** connect external agents through the MCP server instead.
+- **Markdown preview removes active raw HTML** (scripts, iframes, forms and styles).
+- **MCP servers refuse browser-based clients** that send an `Origin` header.
+- **Release builds ignore `NODE_OPTIONS` and `NODE_EXTRA_CA_CERTS`.**
+- **Browser cookies are encrypted:** older versions can no longer read them.
+- **Web pages cannot open internal Persephone links or schemes.**
 
 ### New Features
 
-- **Record the Persephone window, active page, or editor area:** choose a region from quick settings, then control capture in the header. Review the video in Video Player and use **Save as…** or **Discard**. Closing the player without saving deletes the recording; anything left over is cleaned up after seven days. Agents can also record through `window.screen.recording`; see the [Header Strip guide](./screens/header.md), [Video Player guide](./editors/video.md), and [window API reference](./scripting/api/window.md).
-
-- **Agents can cancel native dialogs:** an agent working through MCP is told when a native file dialog is open and can close it with `windows[i].nativeDialog.dismiss()`. It can only cancel; it never picks a path or confirms. See the [MCP Server Setup guide](./mcp-setup.md).
-
-### Improvements
-
-- **MCP gives agents clearer hints, better search, and complete screenshots:** image results from `call` are returned as inline images without `maxLength` truncation, guide search and `helpSearch` rank the answers to plain questions such as "show a table to the user" first, and hints no longer repeat the same warning or the same pending-dialog notice on every call. See the [MCP Server Setup guide](./mcp-setup.md) and [AI Vision guide](./agents/ai-vision.md).
-
-- **Browser downloads start while Save As is open:** the file downloads in the background while you pick a location, and the rest of Persephone keeps responding. A download that finishes first shows **Waiting for save location** in the downloads list until you choose where to save it; cancelling the dialog cancels the download.
+- **Screen recording:** record the window, active page or editor area from the header.
+- **Agents can cancel native dialogs** through `windows[i].nativeDialog.dismiss()`.
 
 ---
 
