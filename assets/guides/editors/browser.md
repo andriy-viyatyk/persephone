@@ -103,7 +103,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [Downloads] [Downloads popup]                                       |  downloads popup anchored to the toolbar control
+| [Downloads] [Downloads popup]                                       |  popup with download entries and their available actions
 +---------------------------------------------------------------------+
 ```
 
@@ -222,6 +222,15 @@ when no browser page claims it, `F12` opens Persephone's DevTools.
 
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.
+
+### Downloads
+
+Select **Downloads** in the toolbar to see current and completed downloads. Active downloads show
+their progress and can be cancelled. For every completed download, choose **Open in Windows Default
+App** to hand it to Windows. When Persephone has a matching built-in editor, installed board, or
+Monaco language for the file type, **Open in Persephone** also opens the file in a Persephone tab.
+**Show in Folder** opens its location in File Explorer. Use **Clear** in the popup header to remove
+completed, failed, and cancelled entries from the list.
 
 ### Page zoom
 

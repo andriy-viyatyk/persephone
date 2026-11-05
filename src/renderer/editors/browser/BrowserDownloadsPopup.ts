@@ -13,6 +13,9 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import color from "../../theme/color";
+import { WindowsIcon } from "../../theme/language-icons";
+import { createIconElement } from "../../uikit/shared/slots";
+import { canOpenInPersephone, openInPersephone } from "../../content/open-in-persephone";
 import {
     closePopper,
     showPopper,
@@ -205,11 +208,29 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
             }));
         }
         if (status === "completed") {
+            // A file type Persephone has an editor or board for gets an "Open in Persephone" button;
+            // every completed download can also be handed to the Windows default application.
+            const savePath = entry.savePath;
+            if (savePath && canOpenInPersephone(savePath)) {
+                addButton(new ButtonView({
+                    name: "downloads-open",
+                    size: "sm",
+                    variant: "ghost",
+                    title: t("browser.downloadsOpenInPersephone"),
+                    icon: createOpenIconPair(createIconElement("persephone")),
+                    onClick: () => {
+                        closeDownloadsPopup();
+                        void openInPersephone(savePath);
+                    },
+                }));
+            }
             addButton(new ButtonView({
+                name: "downloads-open-default-app",
                 size: "sm",
                 variant: "ghost",
+                title: t("browser.downloadsOpenInDefaultApp"),
+                icon: createOpenIconPair(WindowsIcon.createElement()),
                 onClick: () => { void downloads.openDownload(id); },
-                children: t("common.open"),
             }));
             addButton(new IconButtonView({
                 size: "sm",
@@ -319,3 +340,14 @@ export const isDownloadsPopupOpen = (): boolean =>
 // =============================================================================
 // Module-private helpers
 // =============================================================================
+
+/** A target icon followed by the "open" arrow, packed tighter than the button's own icon/label
+ *  gap so the pair reads as one glyph. Built fresh per button: a DOM icon node is single-use. */
+function createOpenIconPair(targetIcon: Element): HTMLSpanElement {
+    const pair = document.createElement("span");
+    pair.style.display = "inline-flex";
+    pair.style.alignItems = "center";
+    pair.style.gap = "1px";
+    pair.append(targetIcon, createIconElement("open-link"));
+    return pair;
+}

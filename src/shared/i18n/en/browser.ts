@@ -20,6 +20,8 @@ export const browserCatalog = {
     downloadsCancelled: { message: "Cancelled" },
     downloadsFailed: { message: "Failed" },
     downloadsShowInFolder: { message: "Show in Folder" },
+    downloadsOpenInPersephone: { message: "Open in Persephone", note: "Tooltip of a Downloads popup button that opens the file in a Persephone tab with its editor or board." },
+    downloadsOpenInDefaultApp: { message: "Open in Windows Default App", note: "Tooltip of a Downloads popup button that opens the file with the application Windows associates with its type." },
     downloadsDismiss: { message: "Dismiss" },
     profileNetworkApplyFailed: { message: "Could not apply the profile network: {error}" },
     profileNetworkChanged: { message: "The profile network changed — reload open tabs to load them over the new route." },

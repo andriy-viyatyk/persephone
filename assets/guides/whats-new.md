@@ -24,6 +24,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   watching a folder after it is recreated. See the [filesystem reference](./scripting/api/fs.md#watching-paths).
 - **Browser page zoom:** Adjust each browser tab independently with the toolbar slider, presets,
   keyboard shortcuts, or mouse wheel.
+- **Browser downloads:** Completed downloads can be opened in a matching Persephone editor or board,
+  or handed to their Windows default app.
 - **Lazy browser tab restore:** After restart, only the active tab loads right away. Other tabs keep
   their saved titles and icons and load when you first activate them; restored muted tabs stay muted.
 - **Runtime update:** Persephone now uses Electron 44 and Chromium 152.
