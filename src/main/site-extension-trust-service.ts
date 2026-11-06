@@ -1,3 +1,4 @@
+import { validateSiteExtensionFetchHosts } from "../shared/site-extension-hosts";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -33,16 +34,20 @@ function parseTrustFile(text: string): { folder?: string; snapshot: SiteExtensio
     const snapshot: SiteExtensionTrustSnapshot = {};
     for (const [id, raw] of Object.entries(root.extensions)) {
         if (!ID_PATTERN.test(id) || !raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid site extension trust record.");
-        const record = raw as { hosts?: unknown; enabled?: unknown };
+        const record = raw as { hosts?: unknown; fetchHosts?: unknown; enabled?: unknown };
         if (!Array.isArray(record.hosts) || record.hosts.length === 0 || !record.hosts.every(validHost)
             || typeof record.enabled !== "boolean") throw new Error("Invalid site extension trust record.");
-        snapshot[id] = { hosts: [...new Set(record.hosts)].sort(), enabled: record.enabled };
+        const fetchHosts = validateSiteExtensionFetchHosts(record.fetchHosts === undefined ? [] : record.fetchHosts);
+        if (!fetchHosts) throw new Error("Invalid site extension trust record.");
+        snapshot[id] = { hosts: [...new Set(record.hosts)].sort(), fetchHosts: fetchHosts.sort(), enabled: record.enabled };
     }
     return { folder: root.folder as string | undefined, snapshot };
 }
 
 class SiteExtensionTrustService {
     private snapshot: SiteExtensionTrustSnapshot = {};
+    private readonly listeners = new Set<() => void>();
+    onChange(listener: () => void): void { this.listeners.add(listener); }
     /** The site extensions folder the grants were made in. Grants never carry over to another folder. */
     private folder: string | undefined;
     private initialization: Promise<void> | undefined;
@@ -76,14 +81,16 @@ class SiteExtensionTrustService {
             return true;
         }, folder);
     }
-    async trust(id: string, hosts: string[], folder: string): Promise<SiteExtensionTrustSnapshot> {
+    async trust(id: string, hosts: string[], fetchHosts: string[], folder: string): Promise<SiteExtensionTrustSnapshot> {
         await this.init();
         return this.mutate((next) => {
             this.validateInput(id, hosts);
+            const validatedFetchHosts = validateSiteExtensionFetchHosts(fetchHosts);
+            if (!validatedFetchHosts) throw new Error("Invalid site extension fetch host list.");
             if (this.folder === undefined || typeof folder !== "string" || folderKey(folder) !== folderKey(this.folder)) {
                 throw new Error("The site extensions folder changed. Reload the page and trust the extension again.");
             }
-            next[id] = { hosts: [...new Set(hosts)].sort(), enabled: true };
+            next[id] = { hosts: [...new Set(hosts)].sort(), fetchHosts: validatedFetchHosts.sort(), enabled: true };
         });
     }
     async revoke(id: string): Promise<SiteExtensionTrustSnapshot> {
@@ -109,6 +116,7 @@ class SiteExtensionTrustService {
             await this.writeAtomically(next, nextFolder);
             this.snapshot = next;
             this.folder = nextFolder;
+            for (const listener of this.listeners) listener();
             const snapshot = this.copy();
             openWindows.send(EventEndpoint.eSiteExtensionTrustChanged, snapshot);
             return snapshot;
@@ -120,7 +128,7 @@ class SiteExtensionTrustService {
         if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(validHost)) throw new Error("Invalid site extension host list.");
     }
     private copy(): SiteExtensionTrustSnapshot {
-        return Object.fromEntries(Object.entries(this.snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], enabled: grant.enabled }]));
+        return Object.fromEntries(Object.entries(this.snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], fetchHosts: [...grant.fetchHosts], enabled: grant.enabled }]));
     }
     private serialize<T>(task: () => Promise<T>): Promise<T> {
         const result = this.operation.then(task, task);

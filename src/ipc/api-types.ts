@@ -186,6 +186,8 @@ export enum Endpoint {
     authorizeBoardFilePath = "authorizeBoardFilePath",
     bindBoardSessionSource = "bindBoardSessionSource",
     setDisabledBundledBoards = "setDisabledBundledBoards",
+    fetchSiteExtensionText = "fetchSiteExtensionText",
+    cancelSiteExtensionFetches = "cancelSiteExtensionFetches",
     getSiteExtensionTrust = "getSiteExtensionTrust",
     bindSiteExtensionFolder = "bindSiteExtensionFolder",
     trustSiteExtension = "trustSiteExtension",
@@ -463,14 +465,16 @@ export type Api = {
     [Endpoint.unsubscribePathWatch]: (request: PathWatchUnsubscribeRequest) => Promise<void>;
     [Endpoint.beginPathMove]: (request: BeginPathMoveRequest) => Promise<string>;
     [Endpoint.completePathMove]: (request: CompletePathMoveRequest) => Promise<void>;
+    [Endpoint.fetchSiteExtensionText]: (tab: string, id: string, url: string) => Promise<{ text?: string; error?: string }>;
+    [Endpoint.cancelSiteExtensionFetches]: (tab: string) => Promise<void>;
     [Endpoint.getSiteExtensionTrust]: () => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.bindSiteExtensionFolder]: (folder: string) => Promise<SiteExtensionTrustSnapshot>;
-    [Endpoint.trustSiteExtension]: (id: string, hosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;
+    [Endpoint.trustSiteExtension]: (id: string, hosts: string[], fetchHosts: string[], folder: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.revokeSiteExtensionTrust]: (id: string) => Promise<SiteExtensionTrustSnapshot>;
     [Endpoint.setSiteExtensionEnabled]: (id: string, enabled: boolean) => Promise<SiteExtensionTrustSnapshot>;
 };
 
-export interface SiteExtensionTrustGrant { hosts: string[]; enabled: boolean }
+export interface SiteExtensionTrustGrant { hosts: string[]; fetchHosts: string[]; enabled: boolean }
 export type SiteExtensionTrustSnapshot = Record<string, SiteExtensionTrustGrant>;
 
 export interface ModuleServicePortPayload {

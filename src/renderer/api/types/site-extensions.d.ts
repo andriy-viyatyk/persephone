@@ -1,6 +1,7 @@
 export interface SiteExtensionCreateOptions {
     name: string;
     hosts: string[];
+    fetchHosts?: string[];
     description?: string;
 }
 
@@ -25,6 +26,7 @@ export interface SiteExtensionAgentListing {
     name?: string;
     version?: string;
     hosts?: string[];
+    fetchHosts?: string[];
     scriptPath?: string;
     status: "valid" | "invalid" | "conflict";
     reason?: string;
@@ -63,4 +65,42 @@ export interface ISiteExtensions {
     reload(pageId: string): Promise<SiteExtensionReloadResult>;
     /** Ask before deleting extension files and revoking its trust grant. */
     remove(id: string): Promise<SiteExtensionRemoveResult>;
+}
+
+/** Metadata published by a trusted site extension. */
+export interface SiteAction {
+    id: string;
+    label: string;
+    icon?: "play" | "file-text" | "image" | "table" | "link";
+    children?: SiteAction[];
+}
+
+/** An action definition in an extension script. Branches have children; leaves have run. */
+export type SiteActionDefinition = Omit<SiteAction, "children"> & (
+    | { children: SiteActionDefinition[]; run?: never }
+    | { children?: never; run: () => SiteActionResult | Promise<SiteActionResult> }
+);
+
+export type SiteActionResult =
+    | { kind: "video"; items: { label: string; url: string; headers?: { Referer?: string; Origin?: string } }[] }
+    | { kind: "text"; title: string; format: "markdown" | "json" | "csv" | "plain"; content: string }
+    | { kind: "url"; url: string }
+    | { kind: "links"; title: string; items: { title: string; url: string }[] }
+    | { kind: "message"; text: string };
+
+/** Result of running an action or selecting a previously returned video choice. */
+export type SiteActionOutcome =
+    | { status: "opened" | "busy" | "not-current" }
+    | { status: "message"; text: string }
+    | { status: "error"; error: string }
+    | { status: "choice-required"; token: string; choices: { label: string }[] };
+
+/** Action publication provided by window.__persephoneSiteRuntime in an injected script. */
+export interface SiteExtensionActionRuntime {
+    readonly schemaVersion: number;
+    setActions(items: SiteActionDefinition[]): void;
+    /** Fetch cookieless HTTPS text from a separately trusted host. */
+    fetchText(url: string): Promise<string>;
+    onDispose(callback: () => void): void;
+    dispose(): void;
 }

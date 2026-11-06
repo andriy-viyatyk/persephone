@@ -3,7 +3,7 @@ import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 const SITE_EXTENSION_MEMBERS: readonly IAiMember[] = [
     { name: "folder", kind: "property", summary: "The effective site-extension root folder (read-only)." },
     { name: "list", kind: "method", signature: "list()", summary: "List validation, host conflicts, and derived trust state without exposing trust-file data." },
-    { name: "create", kind: "method", signature: "create(id: string, options: { name: string; hosts: string[]; description?: string })", summary: "Scaffold an extension and starter script; it runs once trusted in the matching browser page's Trust bar (you may trust an extension you built on the user's request).", caution: "writes executable code to disk but does not trust or run it" },
+    { name: "create", kind: "method", signature: "create(id: string, options: { name: string; hosts: string[]; fetchHosts?: string[]; description?: string })", summary: "Scaffold an extension and starter script; it runs once trusted in the matching browser page's Trust bar (you may trust an extension you built on the user's request).", caution: "writes executable code to disk but does not trust or run it" },
     { name: "reload", kind: "method", signature: "reload(pageId: string)", summary: "Reload the trusted extension in the browser page's current document and preserve page state.", caution: "runs the trusted site script with the signed-in page's capabilities" },
     { name: "remove", kind: "method", signature: "remove(id: string)", summary: "Ask before removing extension files and revoking any existing trust grant.", caution: "deletes files and revokes trust after user confirmation" },
 ];

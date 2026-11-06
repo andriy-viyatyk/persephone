@@ -386,10 +386,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         }
     });
 
-    on("did-start-navigation", (_e: Electron.Event, url: string, _inPlace: boolean, isMainFrame: boolean) => {
+    on("did-start-navigation", (_e: Electron.Event, url: string, inPlace: boolean, isMainFrame: boolean) => {
         if (isMainFrame) {
             settlePermissionRequestsForWebContents(wc);
-            sendEvent(sender, tabId, internalTabId, "did-start-navigation", { url, isMainFrame });
+            sendEvent(sender, tabId, internalTabId, "did-start-navigation", { url, isMainFrame, isSameDocument: inPlace });
         }
     });
 
@@ -1082,7 +1082,7 @@ export function initBrowserHandlers(): void {
     initCdpHandlers((key: string) => {
         const reg = registrations.get(key);
         return reg && !reg.webContents.isDestroyed() ? reg.webContents : undefined;
-    }, (webContents, payload) => {
+    }, (webContents, payload, executionContextId, mainContext) => {
         for (const [key, registration] of registrations) {
             if (registration.webContents !== webContents) continue;
             if (registration.webContents.isDestroyed()) return;
@@ -1091,7 +1091,7 @@ export function initBrowserHandlers(): void {
                 registration.tabId,
                 registration.internalTabId,
                 "ai-vision-signal",
-                { registrationKey: key, payload },
+                { registrationKey: key, payload, executionContextId, mainContext },
             );
             return;
         }

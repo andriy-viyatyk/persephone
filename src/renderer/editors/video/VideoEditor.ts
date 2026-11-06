@@ -324,7 +324,17 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         const trimmed = text.trim();
         if (!trimmed) return;
         const parsed = parseHttpRequest(trimmed);
-        const resolvedUrl = parsed ? parsed.url : trimmed;
+        await this.submitRequest(parsed ?? { url: trimmed, method: "GET", headers: {}, body: "" }, trimmed, !!parsed);
+    };
+
+    /** Submit a structured request that the caller has already validated. */
+    submitValidatedRequest = async (request: ParsedHttpRequest): Promise<void> => {
+        await this.submitRequest(request, request.url, true);
+    };
+
+    private submitRequest = async (request: ParsedHttpRequest, trimmed: string, hasRequest: boolean): Promise<void> => {
+        const parsed = hasRequest ? request : null;
+        const resolvedUrl = request.url;
         const format = detectVideoFormat(resolvedUrl);
         this.state.update((s) => {
             s.inputText = trimmed;

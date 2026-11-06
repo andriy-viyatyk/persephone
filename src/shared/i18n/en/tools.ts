@@ -99,6 +99,8 @@ export const toolsCatalog = {
     openFolder: { message: "open folder", note: "Button opening the selected site's extension folder in Explorer." },
     removeExtension: { message: "Remove extension" },
     hosts: { message: "Hosts:" },
+    fetchHosts: { message: "Fetch hosts:" },
+    noFetchHosts: { message: "None" },
     problem: { message: "Problem:" },
     conflict: { message: "Conflict:" },
     extensionConflict: { message: "another extension also claims {hosts}; neither runs there" },

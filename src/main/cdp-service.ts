@@ -42,6 +42,8 @@ import { guardedIpcHandle } from "./ipc-sender-guard";
 
 /** Track which webContents have an attached debugger. */
 const attachedDebuggers = new WeakSet<WebContents>();
+const defaultExecutionContexts = new WeakMap<WebContents, Map<number, string>>();
+const mainFrameIds = new WeakMap<WebContents, string>();
 type CdpEventHandler = (method: string, params: unknown, sessionId: string | undefined) => void;
 interface CdpEventDispatcher {
     handler: DebuggerMessageHandler;
@@ -222,8 +224,24 @@ function ensureAttached(wc: WebContents): void {
     if (attachedDebuggers.has(wc)) return;
     wc.debugger.attach("1.3");
     attachedDebuggers.add(wc);
+    const contexts = new Map<number, string>();
+    defaultExecutionContexts.set(wc, contexts);
+    const contextHandler: DebuggerMessageHandler = (_event, method, raw, sessionId) => {
+        if (sessionId || !raw || typeof raw !== "object") return;
+        const event = raw as { context?: { id?: unknown; auxData?: { isDefault?: unknown; frameId?: unknown } }; executionContextId?: unknown };
+        if (method === "Runtime.executionContextCreated" && typeof event.context?.id === "number"
+            && event.context.auxData?.isDefault === true && typeof event.context.auxData.frameId === "string") {
+            contexts.set(event.context.id, event.context.auxData.frameId);
+        } else if (method === "Runtime.executionContextDestroyed" && typeof event.executionContextId === "number") {
+            contexts.delete(event.executionContextId);
+        } else if (method === "Runtime.executionContextsCleared") contexts.clear();
+    };
+    wc.debugger.on("message", contextHandler);
     wc.debugger.on("detach", () => {
         attachedDebuggers.delete(wc);
+        wc.debugger.removeListener("message", contextHandler);
+        defaultExecutionContexts.delete(wc);
+        mainFrameIds.delete(wc);
         clearAiVisionBinding(wc);
         clearCdpSubscriptions(wc);
         enabledDomains.delete(wc);
@@ -526,7 +544,7 @@ function clearAiVisionBinding(wc: WebContents): void {
 
 async function ensureAiVisionBinding(
     wc: WebContents,
-    onAiVisionSignal: (webContents: WebContents, payload: string) => void,
+    onAiVisionSignal: (webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void,
 ): Promise<void> {
     const existing = aiVisionBindingStates.get(wc);
     if (existing?.installed) return;
@@ -536,10 +554,13 @@ async function ensureAiVisionBinding(
         handler: (_event, method, params) => {
             if (method !== "Runtime.bindingCalled") return;
             if (!params || typeof params !== "object") return;
-            const binding = params as { name?: unknown; payload?: unknown };
+            const binding = params as { name?: unknown; payload?: unknown; executionContextId?: unknown };
             if (binding.name !== AI_VISION_HOST_SIGNAL) return;
-            if (typeof binding.payload !== "string") return;
-            onAiVisionSignal(wc, binding.payload);
+            if (typeof binding.payload !== "string" || Buffer.byteLength(binding.payload, "utf8") > 262_144
+                || typeof binding.executionContextId !== "number") return;
+            const frame = mainFrameIds.get(wc);
+            const mainContext = !!frame && defaultExecutionContexts.get(wc)?.get(binding.executionContextId) === frame;
+            onAiVisionSignal(wc, binding.payload, binding.executionContextId, mainContext);
         },
         installed: false,
     };
@@ -549,6 +570,9 @@ async function ensureAiVisionBinding(
     }
 
     const installing = (async () => {
+        const tree = await wc.debugger.sendCommand("Page.getFrameTree") as { frameTree?: { frame?: { id?: string } } };
+        if (!tree.frameTree?.frame?.id) throw new Error("Missing main frame");
+        mainFrameIds.set(wc, tree.frameTree.frame.id);
         await enableDomain(wc, "Runtime");
         await wc.debugger.sendCommand("Runtime.addBinding", { name: AI_VISION_HOST_SIGNAL });
         if (aiVisionBindingStates.get(wc) === state) state.installed = true;
@@ -1028,7 +1052,7 @@ async function boardSend(reg: BoardReg, method: string, params: object | undefin
  */
 export function initCdpHandlers(
     getWebContents: (key: string) => WebContents | undefined,
-    onAiVisionSignal: (webContents: WebContents, payload: string) => void,
+    onAiVisionSignal: (webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void,
 ): void {
     getWebContentsForPageEvents = getWebContents;
     setNetworkResponseBodyResolver(async (key, entries, maxBodyBytes) => {

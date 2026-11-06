@@ -1,3 +1,4 @@
+import { validateSiteExtensionFetchHosts } from "../../shared/site-extension-hosts";
 import { fpJoin } from "../core/utils/file-path";
 import { pagesModel } from "./pages";
 import { fs } from "./fs";
@@ -63,6 +64,7 @@ async function list(): Promise<SiteExtensionAgentListing[]> {
                 name: listing.name,
                 version: listing.version,
                 hosts: [...listing.hosts],
+                fetchHosts: [...listing.fetchHosts],
                 scriptPath: listing.scriptPath,
             } : {}),
             status: listing.status,
@@ -70,7 +72,7 @@ async function list(): Promise<SiteExtensionAgentListing[]> {
             ...(listing.status === "conflict" ? { conflictingHosts: [...listing.conflictingHosts] } : {}),
             trustState: !grant ? "untrusted" : grant.enabled ? "trusted" : "disabled",
             hostsChangedSinceTrust: grant && hasHostList
-                ? !sameSiteExtensionHostSet(grant.hosts, listing.hosts)
+                ? (!sameSiteExtensionHostSet(grant.hosts, listing.hosts) || !sameSiteExtensionHostSet(grant.fetchHosts, listing.fetchHosts))
                 : undefined,
         };
     });
@@ -80,7 +82,7 @@ async function create(id: string, options: SiteExtensionCreateOptions): Promise<
     const [validId, rawOptions] = validateCallArguments("siteExtensions.create", [id, options], CREATE_ARGUMENTS, { maxArgs: 2 });
     if (typeof validId !== "string" || !isValidSiteExtensionId(validId)) throw new Error("Invalid site extension id; use lower-case letters, digits, and hyphens.");
     if (!isObject(rawOptions)) throw new Error("Site extension options must be an object.");
-    const allowedKeys = new Set(["name", "hosts", "description"]);
+    const allowedKeys = new Set(["name", "hosts", "fetchHosts", "description"]);
     const unknownKeys = Object.keys(rawOptions).filter((key) => !allowedKeys.has(key));
     if (unknownKeys.length) throw new Error(`Unknown site extension option${unknownKeys.length === 1 ? "" : "s"}: ${unknownKeys.join(", ")}.`);
 
@@ -95,6 +97,8 @@ async function create(id: string, options: SiteExtensionCreateOptions): Promise<
     }
     const hosts = validateSiteExtensionHosts(rawHosts);
     if (!hosts) throw new Error("Site extension hosts must contain exact lower-case hostnames.");
+    const fetchHosts = validateSiteExtensionFetchHosts(rawOptions.fetchHosts === undefined ? [] : rawOptions.fetchHosts);
+    if (!fetchHosts) throw new Error("fetchHosts must contain at most 32 exact lower-case DNS hostnames.");
     const description = rawOptions.description;
     if (description !== undefined && typeof description !== "string") throw new Error("Site extension description must be a string when provided.");
 
@@ -120,6 +124,7 @@ async function create(id: string, options: SiteExtensionCreateOptions): Promise<
             ? description.trim()
             : `Site extension for ${name.trim()}.`,
         hosts,
+        fetchHosts,
         script: "extension.js",
     };
     await fs.write(manifestPath, JSON.stringify(manifest, null, 2));

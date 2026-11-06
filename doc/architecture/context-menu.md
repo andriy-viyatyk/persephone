@@ -35,6 +35,10 @@ AppPopupMenuModel
     -> Shows the native Menu view via the popper host
 ```
 
+`showAppPopupMenu` accepts `skipDefaults` for menus that must contain only caller-supplied items;
+this suppresses clipboard entries as well as Inspect. The browser site-action menu uses this option
+and closes when its document or published tree changes.
+
 ## ContextMenuEvent on the Native Event
 
 All context menu handlers communicate through a shared `ContextMenuEvent` object attached to the native DOM event.

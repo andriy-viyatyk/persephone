@@ -230,7 +230,7 @@ export interface BrowserEditorState extends IEditorState {
     permissionPrompts: Array<BrowserPermissionPromptData & { internalTabId: string }>;
     /** Site extension consent prompts, scoped to a tab and its document (`siteDocumentId`). */
     siteExtensionTrustPrompts: Array<{
-        internalTabId: string; documentId: number; id: string; name: string; host: string; hosts: string[]; available: boolean;
+        internalTabId: string; documentId: number; id: string; name: string; host: string; hosts: string[]; fetchHosts: string[]; available: boolean;
     }>;
 
     /** Whether the find-in-page bar is visible. */

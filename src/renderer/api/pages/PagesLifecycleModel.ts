@@ -1385,6 +1385,17 @@ export class PagesLifecycleModel {
         }
     };
 
+    openSiteActionVideo = async (
+        request: import("../../core/utils/curl-parser").ParsedHttpRequest,
+        isCurrent: () => boolean,
+    ): Promise<boolean> => {
+        const editor = await editorRegistry.createEditor("video-view");
+        if (!isCurrent()) { await editor.dispose(); return false; }
+        this.addPage(editor);
+        await (editor as import("../../editors/video/VideoEditor").VideoEditor).submitValidatedRequest(request);
+        return true;
+    };
+
     showVideoPlayerPage = async (): Promise<void> => {
         await this.showEditorPage("video-view");
     };

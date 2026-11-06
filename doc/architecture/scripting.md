@@ -13,6 +13,11 @@ TypeScript support is provided via [sucrase](https://github.com/alangpierce/sucr
 All scripting code lives in `/src/renderer/scripting/`.
 Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 
+Browser editor facades expose the trusted current document's `siteActions`, `runSiteAction(id)` and
+`chooseSiteActionResult(token, index)` to both scripts and MCP. Invocations open their validated
+results and may make network requests, including to local addresses; agents receive the same bounded
+statuses and video choices as the toolbar workflow.
+
 ## Architecture
 
 ```

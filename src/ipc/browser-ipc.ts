@@ -224,6 +224,7 @@ export interface BrowserEventData {
     canGoBack?: boolean;
     canGoForward?: boolean;
     isMainFrame?: boolean;
+    isSameDocument?: boolean;
     blocked?: boolean;
     disposition?: string;
     /** Context menu fields (from Electron's context-menu event params) */
@@ -241,6 +242,8 @@ export interface BrowserEventData {
     registrationKey?: string;
     /** Raw JSON text authored by the page. */
     payload?: string;
+    executionContextId?: number;
+    mainContext?: boolean;
     permissionRequest?: BrowserPermissionPromptData;
 }
 

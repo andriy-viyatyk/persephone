@@ -29,7 +29,7 @@ class SiteExtensionTrust {
     }
     applyAuthoritativeSnapshot(snapshot: SiteExtensionTrustSnapshot): void {
         this.revision++;
-        const copy = Object.fromEntries(Object.entries(snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], enabled: grant.enabled }]));
+        const copy = Object.fromEntries(Object.entries(snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], fetchHosts: [...grant.fetchHosts], enabled: grant.enabled }]));
         this.state.set(copy);
     }
     /** Tell main which folder extensions are read from; main drops every grant when it changes. */
@@ -37,9 +37,9 @@ class SiteExtensionTrust {
         this.applyAuthoritativeSnapshot(await api.bindSiteExtensionFolder(folder));
         this.boundFolder = folder;
     }
-    async trust(id: string, hosts: string[]): Promise<void> {
+    async trust(id: string, hosts: string[], fetchHosts: string[]): Promise<void> {
         if (!this.boundFolder) throw new Error("The site extensions folder is not known yet.");
-        this.applyAuthoritativeSnapshot(await api.trustSiteExtension(id, hosts, this.boundFolder));
+        this.applyAuthoritativeSnapshot(await api.trustSiteExtension(id, hosts, fetchHosts, this.boundFolder));
     }
     async revoke(id: string): Promise<void> { this.applyAuthoritativeSnapshot(await api.revokeSiteExtensionTrust(id)); }
     async setEnabled(id: string, enabled: boolean): Promise<void> { this.applyAuthoritativeSnapshot(await api.setSiteExtensionEnabled(id, enabled)); }

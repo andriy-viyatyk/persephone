@@ -1,3 +1,4 @@
+import { validateSiteExtensionFetchHosts } from "../../shared/site-extension-hosts";
 import { fpJoin, fpRelative, fpResolve, fpSep } from "../core/utils/file-path";
 import { fs } from "./fs";
 import { settings } from "./settings";
@@ -11,6 +12,7 @@ interface SiteExtensionManifest {
     version: string;
     description: string;
     hosts: string[];
+    fetchHosts: string[];
     scriptPath: string;
 }
 
@@ -26,6 +28,7 @@ export interface SiteExtensionRecord {
     version: string;
     description: string;
     hosts: string[];
+    fetchHosts: string[];
     scriptPath: string;
 }
 
@@ -82,6 +85,8 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
     if (!nonEmptyString(raw.description)) return "description must be a non-empty string";
     const hosts = validateSiteExtensionHosts(raw.hosts);
     if (!hosts) return "hosts must contain exact lower-case hostnames";
+    const fetchHosts = validateSiteExtensionFetchHosts(raw.fetchHosts === undefined ? [] : raw.fetchHosts);
+    if (!fetchHosts) return "fetchHosts must contain at most 32 exact lower-case DNS hostnames";
 
     const script = raw.script === undefined ? "extension.js" : raw.script;
     if (!nonEmptyString(script)) return "script must be a non-empty relative path";
@@ -97,6 +102,7 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
         version: raw.version,
         description: raw.description,
         hosts,
+        fetchHosts,
         scriptPath,
     };
 }

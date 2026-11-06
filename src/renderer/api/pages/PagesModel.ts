@@ -327,6 +327,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     showMnemeConfigPage = () => this.lifecycle.showMnemeConfigPage();
     showStorybookPage = () => this.lifecycle.showStorybookPage();
     showToolsHubPage = (opts?: { tab?: HubTab }) => this.lifecycle.showToolsHubPage(opts);
+    openSiteActionVideo = (request: import("../../core/utils/curl-parser").ParsedHttpRequest, isCurrent: () => boolean) =>
+        this.lifecycle.openSiteActionVideo(request, isCurrent);
     showVideoPlayerPage = () => this.lifecycle.showVideoPlayerPage();
     openImageInNewTab = (imageUrl: string, title?: string, sessionHandle?: string) =>
         this.lifecycle.openImageInNewTab(imageUrl, title, sessionHandle);

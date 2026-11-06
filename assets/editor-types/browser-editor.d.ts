@@ -1,3 +1,5 @@
+import type { SiteAction, SiteActionOutcome } from "./site-extensions";
+
 /**
  * IBrowserEditor — script interface for browser pages.
  *
@@ -150,6 +152,12 @@ export interface IBrowserPageError {
 export interface IBrowserEditor {
     readonly id: "browser-view";
     readonly name: string;
+    /** Actions published by the trusted extension for the active document. */
+    readonly siteActions: SiteAction[];
+    /** Run page code and open its result; URLs may access local networks and redirects. */
+    runSiteAction(id: string): Promise<SiteActionOutcome>;
+    /** Consume a video choice returned by runSiteAction. */
+    chooseSiteActionResult(token: string, index: number): Promise<SiteActionOutcome>;
     /** Current URL of the active tab. */
     readonly url: string | undefined;
 
@@ -293,12 +301,14 @@ export interface IBrowserEditor {
     dialogs(options?: { tabId?: string; policy?: IBrowserDialogPolicy }): Promise<{ policy: IBrowserDialogPolicy; dialogs: IBrowserDialogRecord[] }>;
     /** Resolve a pending page-authored JavaScript dialog. */
     handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>;
+    /** Current document trust prompt, including separately requested fetch hosts. */
+    readonly siteExtensionTrustPrompt: { status: "waiting-for-user"; name: string; id: string; host: string; otherHosts: string[]; fetchHosts: string[]; note: string } | undefined;
     /**
      * Answer the active document's site-extension trust bar with Trust, as its button does.
      * Call it yourself for an extension you built on the user's request; any other extension
      * is the user's decision unless they ask you to review and trust it.
      */
-    trustSiteExtension(): Promise<{ status: "trusted" | "changed" | "unavailable" | "not-current" | "no-prompt"; id?: string; hosts?: string[] }>;
+    trustSiteExtension(): Promise<{ status: "trusted" | "changed" | "unavailable" | "not-current" | "no-prompt"; id?: string; hosts?: string[]; fetchHosts?: string[] }>;
     /** Answer the active document's site-extension trust bar with Not now. */
     dismissSiteExtensionTrustPrompt(): { status: "dismissed" | "no-prompt" };
     /** Read recent copied console records, optionally filtered by epoch-millisecond receipt time and level. */

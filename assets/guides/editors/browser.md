@@ -27,8 +27,8 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Translate][★] [100%][Bookmarks][Downloads][⋮][</>][×] | toolbar: navigation at left, address box across middle
-|                                                                     |  (proxy chip inside it when routed), Go, Translate and Add Bookmark at its right edge,
+| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Site actions*][Translate][★] [100%][Bookmarks][Downloads][⋮][</>][×] | toolbar: navigation at left, address box across middle
+|                                                                     |  (proxy chip inside it when routed), Go, Site actions* (when published), Translate and Add Bookmark at its right edge,
 |                                                                     |  page zoom before Bookmarks, Downloads, More, DevTools and Close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
@@ -49,6 +49,7 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 - Site permissions (HTTP(S) page, while no address text has been typed) → `url-site-permissions`
 - Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
 - Go → `url-navigate`
+- Site actions (when the active page has published actions) → `toolbar-site-actions`
 - Bookmark → `url-bookmark-toggle`
 - Page zoom → `toolbar-page-zoom`
 - Bookmarks → `toolbar-bookmarks`
@@ -330,8 +331,12 @@ tabs and the automation surface: snapshots, clicks, typing, key presses, evaluat
 screenshots, network requests, and tab selection. The verified chrome elements include `url-input`,
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
 `toolbar-home`, `toolbar-translate`, `toolbar-page-zoom`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
-`toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, `popup-blocked-bar`, and, on a proxied page,
+`toolbar-site-actions` (when the active page has published actions), `toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, `popup-blocked-bar`, and, on a proxied page,
 `url-proxy-indicator`.
+For site actions, `siteActions` lists the active document's published action tree. Use
+`runSiteAction(id)` to run a requested leaf and `chooseSiteActionResult(token, index)` to complete a
+video choice when the result requires one. These actions execute page code and can open content as a
+side effect; see [Site extensions](../site-extensions.md) for the trust and network behavior.
 Participating web pages may additionally publish a page-authored model at `page.editor.app`; it
 offers the page's help, hints, state, methods, elements, and in-frame `highlight(...)`. Its kinds
 are prefixed `page:` and its content remains confined to `.app`. User-opened private pages are

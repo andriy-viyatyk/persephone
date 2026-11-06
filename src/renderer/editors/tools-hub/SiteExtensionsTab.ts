@@ -21,7 +21,7 @@ import "../../uikit/Switch/Switch.css";
 import "../../uikit/Text/Text.css";
 import "./SiteExtensionsTab.css";
 
-type Grant = { hosts: string[]; enabled: boolean };
+type Grant = { hosts: string[]; fetchHosts: string[]; enabled: boolean };
 type Entry = { listing?: SiteExtensionListing; id: string; grant?: Grant };
 type RowView = ButtonView | IconButtonView | SwitchView;
 
@@ -175,11 +175,14 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         }
         row.append(header);
 
-        if (usable) row.append(detail(t("tools.hosts"), usable.hosts.join(", ")));
+        if (usable) {
+            row.append(detail(t("tools.hosts"), usable.hosts.join(", ")));
+            row.append(detail(t("tools.fetchHosts"), usable.fetchHosts.join(", ") || t("tools.noFetchHosts")));
+        }
         if (listing?.status === "invalid") row.append(detail(t("tools.problem"), listing.reason, "error"));
         if (listing?.status === "conflict") row.append(detail(t("tools.conflict"), t("tools.extensionConflict", { hosts: listing.conflictingHosts.join(", ") }), "warning"));
         if (!listing) row.append(detail(t("tools.folder"), t("tools.deletedFolderTrust")));
-        if (entry.grant && usable && !sameSiteExtensionHostSet(entry.grant.hosts, usable.hosts)) {
+        if (entry.grant && usable && (!sameSiteExtensionHostSet(entry.grant.hosts, usable.hosts) || !sameSiteExtensionHostSet(entry.grant.fetchHosts, usable.fetchHosts))) {
             row.append(detail(t("tools.trust"), t("tools.trustChanged"), "warning"));
         }
         return row;
@@ -211,8 +214,8 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
 function matches(entry: Entry, query: string): boolean {
     const listing = entry.listing;
     const texts = [entry.id];
-    if (listing && listing.status !== "invalid") texts.push(listing.name, ...listing.hosts);
-    if (entry.grant) texts.push(...entry.grant.hosts);
+    if (listing && listing.status !== "invalid") texts.push(listing.name, ...listing.hosts, ...listing.fetchHosts);
+    if (entry.grant) texts.push(...entry.grant.hosts, ...entry.grant.fetchHosts);
     return texts.some((value) => value.toLowerCase().includes(query));
 }
 

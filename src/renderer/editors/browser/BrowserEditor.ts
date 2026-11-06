@@ -103,13 +103,20 @@ export class BrowserEditor extends EditorModel<
         this.tor = new BrowserTorModel(this);
         this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
+        let activeActionTab = state.get().activeTabId;
+        this.own(state.subscribe(() => {
+            const next = state.get().activeTabId;
+            if (next !== activeActionTab) this.webview.deactivateSiteActions(activeActionTab);
+            activeActionTab = next;
+        }));
         this.translation = new BrowserTranslationController(this);
         this.webview.setTranslationLifecycle(this.translation.onPageNavigation);
         this.own(siteExtensionTrust.subscribe((snapshot) => {
+            this.webview.refreshActionTrust();
             this.state.update((state) => {
                 state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {
                     const grant = snapshot[prompt.id];
-                    return !grant || !sameSiteExtensionHostSet(grant.hosts, prompt.hosts);
+                    return !grant || !sameSiteExtensionHostSet(grant.hosts, prompt.hosts) || !sameSiteExtensionHostSet(grant.fetchHosts, prompt.fetchHosts);
                 });
             });
         }));
@@ -119,6 +126,10 @@ export class BrowserEditor extends EditorModel<
         this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e));
         this.own(this.keyDownSub);
     }
+
+    get siteActions() { return this.webview.getSiteActions(); }
+    runSiteAction = (id: string) => this.webview.runSiteAction(id);
+    chooseSiteActionResult = (token: string, index: number) => this.webview.chooseSiteActionResult(token, index);
 
     /** Electron session partition string, derived from profile state. */
     get partition(): string {

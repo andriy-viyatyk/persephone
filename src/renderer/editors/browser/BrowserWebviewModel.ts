@@ -24,13 +24,16 @@ import { api } from "../../../ipc/renderer/api";
 import { fs } from "../../api/fs";
 import { siteExtensionStore } from "../../api/site-extensions";
 import type { SiteExtensionRecord } from "../../api/site-extensions";
-import type { SiteExtensionReloadResult } from "../../api/types/site-extensions";
+import type { SiteExtensionReloadResult, SiteActionOutcome, SiteActionResult } from "../../api/types/site-extensions";
 import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
 import {
     logBrowserNavigated,
     logBrowserShapeChanged,
     logRemoteNotify,
 } from "../../scripting/ai-vision/event-log";
+import { validateSiteActions } from "../../../shared/site-extension-actions";
+import type { SiteActionItem } from "../../../shared/site-extension-actions";
+import { validateSiteActionResult } from "./site-extension-actions";
 import { BrowserPageTranslationController } from "./BrowserPageTranslationController";
 
 const AI_VISION_PROBE = `(() => {
@@ -127,6 +130,13 @@ export class BrowserWebviewModel {
      *  finds no model (always, on a page whose extension is still untrusted). */
     private readonly siteDocuments = new Map<string, number>();
     private readonly injectedSiteExtensions = new Map<string, { documentId: number; name: string }>();
+    private readonly actionDocuments = new Map<string, {
+        documentId: number; host: string; id: string; hosts: string[]; fetchHosts: string[]; contextId?: number;
+        fetchKey: string; fetchRequests: Set<number>;
+        injected: boolean; items: SiteActionItem[]; running: boolean; runVersion: number; lastPublish: number;
+        pending?: SiteActionItem[]; timer?: ReturnType<typeof setTimeout>; cancelRun?: () => void;
+    }>();
+    private readonly actionChoices = new Map<string, { tabId: string; document: object; expires: number; runVersion: number; items: Extract<SiteActionResult, { kind: "video" }> ["items"] }>();
     private readonly pageTranslations = new Map<string, BrowserPageTranslationController>();
     private translationLifecycle: ((internalTabId: string) => void) | undefined;
 
@@ -169,13 +179,29 @@ export class BrowserWebviewModel {
     }
 
     clearAiVisionSiteExtension(internalTabId: string): void {
-        if (this.injectedSiteExtensions.delete(internalTabId)) this.model.notifyAiVisionIndicatorChanged();
+        const actions = this.actionDocuments.get(internalTabId);
+        if (actions?.timer) clearTimeout(actions.timer);
+        actions?.cancelRun?.();
+        if (actions) {
+            void api.cancelSiteExtensionFetches(actions.fetchKey).catch((): undefined => undefined);
+            if (actions.contextId !== undefined) for (const id of actions.fetchRequests) {
+                const response = JSON.stringify({ id, error: "Fetch cancelled" });
+                void this.model.target.cdp(internalTabId).send("Runtime.evaluate", {
+                    expression: `window.__persephoneSiteRuntime?.resolveFetch(${response})`,
+                    contextId: actions.contextId, returnByValue: true,
+                }).catch((): undefined => undefined);
+            }
+            actions.fetchRequests.clear();
+        }
+        this.actionDocuments.delete(internalTabId);
+        for (const [token, choice] of this.actionChoices) if (choice.tabId === internalTabId) this.actionChoices.delete(token);
+        if (this.injectedSiteExtensions.delete(internalTabId) || actions) this.model.notifyAiVisionIndicatorChanged();
     }
 
     dispose(): void {
         for (const controller of this.pageTranslations.values()) controller.dispose();
         this.pageTranslations.clear();
-        for (const internalTabId of this.injectedSiteExtensions.keys()) this.clearAiVisionSiteExtension(internalTabId);
+        for (const internalTabId of new Set([...this.injectedSiteExtensions.keys(), ...this.actionDocuments.keys()])) this.clearAiVisionSiteExtension(internalTabId);
     }
 
     private setAiVisionSiteExtension(internalTabId: string, documentId: number, name: string): void {
@@ -211,6 +237,7 @@ export class BrowserWebviewModel {
             wv.stop();
         } else {
             this.resetTranslationForReload();
+            this.clearAiVisionSiteExtension(this.model.state.get().activeTabId);
             wv.reload();
         }
     };
@@ -222,6 +249,7 @@ export class BrowserWebviewModel {
         const { activeTabId } = this.model.state.get();
         if (!this.webviewRefs.has(activeTabId)) return;
         this.resetTranslationForReload(activeTabId);
+        this.clearAiVisionSiteExtension(activeTabId);
         ipcRenderer.send(
             BrowserChannel.hardReload,
             `${this.model.id}/${activeTabId}`,
@@ -494,6 +522,7 @@ export class BrowserWebviewModel {
                 this.model.updateTab(internalTabId, { audible: !!data.audible });
                 break;
             case "did-start-navigation": {
+                if (data.isMainFrame && !data.isSameDocument) this.clearAiVisionSiteExtension(internalTabId);
                 this.model.state.update((state) => {
                     state.permissionPrompts = state.permissionPrompts.filter((item) => item.internalTabId !== internalTabId);
                 });
@@ -585,7 +614,7 @@ export class BrowserWebviewModel {
 
         if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return;
         const grant = siteExtensionTrust.get(extension.id);
-        const hostsMatch = !!grant && sameSiteExtensionHostSet(grant.hosts, extension.hosts);
+        const hostsMatch = !!grant && (sameSiteExtensionHostSet(grant.hosts, extension.hosts) && sameSiteExtensionHostSet(grant.fetchHosts, extension.fetchHosts));
         if (grant?.enabled && hostsMatch) {
             await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, extension, documentId);
             return;
@@ -593,7 +622,7 @@ export class BrowserWebviewModel {
         if (grant && !grant.enabled) return;
         const promptKey = `${internalTabId}:${documentId}`;
         if (!this.dismissedExtensionPrompts.has(promptKey)) {
-            this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: extension.id, name: extension.name, host: pageUrl.hostname, hosts: [...extension.hosts], available: true });
+            this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: extension.id, name: extension.name, host: pageUrl.hostname, hosts: [...extension.hosts], fetchHosts: [...extension.fetchHosts], available: true });
         }
     }
 
@@ -609,12 +638,12 @@ export class BrowserWebviewModel {
         if (!prompt.available) return "unavailable";
         const current = await siteExtensionStore.findForHost(prompt.host).catch((): undefined => undefined);
         if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return "not-current";
-        if (!current || current.id !== prompt.id || !sameSiteExtensionHostSet(current.hosts, prompt.hosts)) {
-            if (current) this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: current.id, name: current.name, host: prompt.host, hosts: [...current.hosts], available: true });
+        if (!current || current.id !== prompt.id || (!sameSiteExtensionHostSet(current.hosts, prompt.hosts) || !sameSiteExtensionHostSet(current.fetchHosts, prompt.fetchHosts))) {
+            if (current) this.model.setSiteExtensionTrustPrompt({ internalTabId, documentId, id: current.id, name: current.name, host: prompt.host, hosts: [...current.hosts], fetchHosts: [...current.fetchHosts], available: true });
             else this.model.setSiteExtensionTrustPrompt({ ...prompt, available: false });
             return current ? "changed" : "unavailable";
         }
-        await siteExtensionTrust.trust(current.id, prompt.hosts);
+        await siteExtensionTrust.trust(current.id, prompt.hosts, prompt.fetchHosts);
         if (!this.isCurrentDocument(internalTabId, documentId, prompt.host)) return "trusted";
         this.model.clearSiteExtensionTrustPrompt(internalTabId, documentId);
         await this.injectTrustedExtensionIntoCurrentDocument(internalTabId, current, documentId);
@@ -666,7 +695,7 @@ export class BrowserWebviewModel {
         if (!extension) return { status: "no-extension", registered: false };
         let grant = siteExtensionTrust.get(extension.id);
         if (grant && !grant.enabled) return { status: "disabled", registered: false };
-        if (!grant || !sameSiteExtensionHostSet(grant.hosts, extension.hosts)) {
+        if (!grant || !(sameSiteExtensionHostSet(grant.hosts, extension.hosts) && sameSiteExtensionHostSet(grant.fetchHosts, extension.fetchHosts))) {
             this.showExtensionTrustPrompt(internalTabId, documentId, extension, host);
             return { status: "waiting-for-user", registered: false };
         }
@@ -688,7 +717,7 @@ export class BrowserWebviewModel {
             extension = currentExtension;
             grant = siteExtensionTrust.get(extension.id);
             if (grant && !grant.enabled) return { status: "disabled", registered: false };
-            if (!grant || !sameSiteExtensionHostSet(grant.hosts, currentExtension.hosts)) {
+            if (!grant || !(sameSiteExtensionHostSet(grant.hosts, currentExtension.hosts) && sameSiteExtensionHostSet(grant.fetchHosts, currentExtension.fetchHosts))) {
                 this.showExtensionTrustPrompt(internalTabId, documentId, extension, host);
                 return { status: "waiting-for-user", registered: false };
             }
@@ -699,6 +728,7 @@ export class BrowserWebviewModel {
     delete window.__persephoneSiteExtension;
     return "ok";
 })()`;
+            this.clearAiVisionSiteExtension(internalTabId);
             const teardownResult = await evaluateInTarget(this.model.target, teardown, internalTabId);
             if (!isCurrent(host)) return notCurrent();
             if (String(teardownResult) !== "ok") return notCurrent();
@@ -757,6 +787,7 @@ export class BrowserWebviewModel {
             name: extension.name,
             host,
             hosts: [...extension.hosts],
+            fetchHosts: [...extension.fetchHosts],
             available: true,
         });
     }
@@ -771,7 +802,15 @@ export class BrowserWebviewModel {
         if (!webview || this.model.state.get().isIncognito || this.model.state.get().isTor) return { status: "not-current" };
         let pageUrl: URL;
         try { pageUrl = new URL(webview.getURL()); } catch { return { status: "not-current" }; }
-        if (pageUrl.protocol !== "https:" || !this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+        const isAllowed = (): boolean => {
+            const grant = siteExtensionTrust.get(extension.id);
+            const state = this.model.state.get();
+            return !state.isIncognito && !state.isTor && !!grant?.enabled
+                && (sameSiteExtensionHostSet(grant.hosts, extension.hosts) && sameSiteExtensionHostSet(grant.fetchHosts, extension.fetchHosts))
+                && extension.hosts.includes(pageUrl.hostname)
+                && this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname);
+        };
+        if (pageUrl.protocol !== "https:" || !isAllowed()) return { status: "not-current" };
 
         let expression: string;
         try {
@@ -779,7 +818,7 @@ export class BrowserWebviewModel {
                 fs.read(extension.scriptPath),
                 api.getSiteExtensionRuntime(),
             ]);
-            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+            if (!isAllowed()) return { status: "not-current" };
             expression = `(() => {
     const host = ${JSON.stringify(pageUrl.hostname)};
     if (location.protocol !== "https:" || location.hostname !== host) return "host-mismatch";
@@ -808,31 +847,49 @@ ${source}
             return { status: "extension-error", error: boundExtensionError(`Extension files could not be read: ${errMessage(error, "read failed")}`) };
         }
 
-        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+        if (!isAllowed()) return { status: "not-current" };
 
         let result: unknown;
+        let actionDocument: NonNullable<ReturnType<typeof this.actionDocuments.get>> | undefined;
+        const clearOwnActions = (): void => {
+            if (actionDocument && this.actionDocuments.get(internalTabId) === actionDocument) this.clearAiVisionSiteExtension(internalTabId);
+        };
         try {
             const cdp = this.model.target.cdp(internalTabId);
             if (!await cdp.attach({ aiVisionBinding: true })) {
                 console.warn(`[site-extension] ${extension.id}: CDP attach failed`);
                 return { status: "not-current" };
             }
-            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+            if (!isAllowed()) return { status: "not-current" };
             await ensureTargetReady(this.model.target, internalTabId);
-            if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+            if (!isAllowed()) return { status: "not-current" };
+            const existing = this.actionDocuments.get(internalTabId);
+            if (existing && this.isActionDocumentCurrent(internalTabId, existing, false)) {
+                return existing.injected ? { status: "injected" } : { status: "not-current" };
+            }
+            this.clearAiVisionSiteExtension(internalTabId);
+            actionDocument = { documentId, host: pageUrl.hostname, id: extension.id, hosts: [...extension.hosts], fetchHosts: [...extension.fetchHosts], fetchKey: `${this.model.id}/${internalTabId}`, fetchRequests: new Set(), injected: false, items: [], running: false, runVersion: 0, lastPublish: 0 };
+            this.actionDocuments.set(internalTabId, actionDocument);
             result = await evaluateInTarget(this.model.target, expression, internalTabId);
         } catch (error) {
+            clearOwnActions();
             console.warn(`[site-extension] ${extension.id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
             return { status: "extension-error", error: boundExtensionError(`Extension evaluation failed: ${errMessage(error, "injection failed")}`) };
         }
-        if (!this.isCurrentDocument(internalTabId, documentId, pageUrl.hostname)) return { status: "not-current" };
+        if (!isAllowed() || this.actionDocuments.get(internalTabId) !== actionDocument) { clearOwnActions(); return { status: "not-current" }; }
         const detail = String(result);
+        if (detail !== "ok") clearOwnActions();
         if (detail.startsWith("extension-error:")) {
             console.warn(`[site-extension] ${extension.id}: extension script failed`);
             return { status: "extension-error", error: pageExtensionError(detail.slice("extension-error:".length)) };
         }
         if (detail === "host-mismatch" || detail === "already-injected") return { status: "not-current" };
         if (detail !== "ok") return { status: "extension-error", error: boundExtensionError("Extension evaluation returned an unexpected result.") };
+        const actions = this.actionDocuments.get(internalTabId);
+        if (actions && this.isActionDocumentCurrent(internalTabId, actions, false)) {
+            actions.injected = true;
+            this.model.notifyAiVisionIndicatorChanged();
+        }
         this.setAiVisionSiteExtension(internalTabId, documentId, extension.name);
         if (probeAfterInjection) this.probeAiVisionAgain(internalTabId);
         return { status: "injected" };
@@ -974,7 +1031,7 @@ ${source}
 
     private handleAiVisionSignal(
         internalTabId: string,
-        data: { registrationKey?: string; payload?: string },
+        data: { registrationKey?: string; payload?: string; executionContextId?: number; mainContext?: boolean },
     ): void {
         if (!agentMayAccessBrowserPage(this.model.state.get())) return;
         if (data.registrationKey !== `${this.model.id}/${internalTabId}`
@@ -983,7 +1040,26 @@ ${source}
         if (!webview || !this.webviewReady.has(internalTabId)
             || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
 
+        if (data.payload.length > 262_144 || new TextEncoder().encode(data.payload).byteLength > 262_144) return;
         const signal = tryParseJson<unknown>(data.payload, undefined);
+        if (signal && typeof signal === "object" && (signal as { type?: unknown }).type === "fetch-cancel") {
+            const doc = this.actionDocuments.get(internalTabId);
+            if (doc && data.mainContext && typeof data.executionContextId === "number"
+                && (doc.contextId === undefined || doc.contextId === data.executionContextId)
+                && Object.keys(signal).length === 1 && this.isActionDocumentCurrent(internalTabId, doc, false)) {
+                doc.fetchRequests.clear();
+                void api.cancelSiteExtensionFetches(doc.fetchKey).catch((): undefined => undefined);
+            }
+            return;
+        }
+        if (signal && typeof signal === "object" && (signal as { type?: unknown }).type === "fetch-request") {
+            this.acceptFetchRequest(internalTabId, data, signal);
+            return;
+        }
+        if (signal && typeof signal === "object" && (signal as { type?: unknown }).type === "actions-published") {
+            this.acceptActionPublication(internalTabId, data, signal);
+            return;
+        }
         if (!isAiHostSignal(signal)) return;
         if (signal.type === "shape") {
             const registration = this.model.getAiVisionRegistration(internalTabId);
@@ -1017,6 +1093,172 @@ ${source}
         const pageId = this.model.page?.id;
         const path = pageId ? `pages[${JSON.stringify(pageId)}].editor.app` : undefined;
         logRemoteNotify(boundedText, path, "page");
+    }
+
+    private isActionDocumentCurrent(tabId: string, doc: NonNullable<ReturnType<typeof this.actionDocuments.get>>, active: boolean): boolean {
+        const state = this.model.state.get();
+        const grant = siteExtensionTrust.get(doc.id);
+        return this.actionDocuments.get(tabId) === doc && !state.isIncognito && !state.isTor
+            && (!active || state.activeTabId === tabId) && state.tabs.some(tab => tab.id === tabId)
+            && !!grant?.enabled && (sameSiteExtensionHostSet(grant.hosts, doc.hosts) && sameSiteExtensionHostSet(grant.fetchHosts, doc.fetchHosts))
+            && this.isCurrentDocument(tabId, doc.documentId, doc.host);
+    }
+
+    deactivateSiteActions(tabId: string): void {
+        const doc = this.actionDocuments.get(tabId);
+        if (doc) { doc.runVersion++; doc.cancelRun?.(); }
+        for (const [token, choice] of this.actionChoices) if (choice.tabId === tabId) this.actionChoices.delete(token);
+    }
+
+    refreshActionTrust(): void {
+        for (const [tabId, doc] of this.actionDocuments) if (!this.isActionDocumentCurrent(tabId, doc, false)) this.clearAiVisionSiteExtension(tabId);
+    }
+
+    private acceptFetchRequest(tabId: string, data: { mainContext?: boolean; executionContextId?: number }, value: object): void {
+        const doc = this.actionDocuments.get(tabId);
+        const request = value as { id?: unknown; url?: unknown };
+        if (!doc || !data.mainContext || typeof data.executionContextId !== "number"
+            || !this.isActionDocumentCurrent(tabId, doc, false)
+            || (doc.contextId !== undefined && doc.contextId !== data.executionContextId)
+            || Object.keys(value).some(key => key !== "type" && key !== "id" && key !== "url")
+            || !Number.isSafeInteger(request.id) || (request.id as number) < 1
+            || typeof request.url !== "string" || request.url.length > 4096) return;
+        doc.contextId = data.executionContextId;
+        const id = request.id as number;
+        if (doc.fetchRequests.has(id)) return;
+        const respond = (result: { text?: string; error?: string }): void => {
+            if (!doc.fetchRequests.has(id) || !this.isActionDocumentCurrent(tabId, doc, false) || doc.contextId !== data.executionContextId) return;
+            const response = JSON.stringify({ id, ...result });
+            void this.model.target.cdp(tabId).send("Runtime.evaluate", {
+                expression: `window.__persephoneSiteRuntime?.resolveFetch(${response})`,
+                contextId: doc.contextId, returnByValue: true,
+            }).catch((): undefined => undefined);
+        };
+        if (doc.fetchRequests.size >= 4) {
+            void this.model.target.cdp(tabId).send("Runtime.evaluate", {
+                expression: `window.__persephoneSiteRuntime?.resolveFetch(${JSON.stringify({ id, error: "Too many fetch requests" })})`,
+                contextId: doc.contextId, returnByValue: true,
+            }).catch((): undefined => undefined);
+            return;
+        }
+        doc.fetchRequests.add(id);
+        void api.fetchSiteExtensionText(doc.fetchKey, doc.id, request.url)
+            .then(respond, () => respond({ error: "Fetch failed" }))
+            .finally(() => doc.fetchRequests.delete(id));
+    }
+
+    private acceptActionPublication(tabId: string, data: { mainContext?: boolean; executionContextId?: number }, value: object): void {
+        const doc = this.actionDocuments.get(tabId);
+        if (!doc || !data.mainContext || typeof data.executionContextId !== "number"
+            || !this.isActionDocumentCurrent(tabId, doc, false)
+            || (doc.contextId !== undefined && doc.contextId !== data.executionContextId)) return;
+        const envelope = value as { items?: unknown };
+        if (Object.keys(value).some(key => key !== "type" && key !== "items")) return;
+        let items: SiteActionItem[];
+        try { items = validateSiteActions(envelope.items, false).items; } catch { return; }
+        doc.contextId = data.executionContextId;
+        doc.pending = items;
+        const publish = (): void => {
+            doc.timer = undefined;
+            if (!this.isActionDocumentCurrent(tabId, doc, false) || !doc.pending) return;
+            doc.items = doc.pending; doc.pending = undefined; doc.lastPublish = Date.now();
+            this.model.notifyAiVisionIndicatorChanged();
+        };
+        if (doc.timer) return;
+        const delay = Math.max(0, doc.lastPublish + 100 - Date.now());
+        if (delay) doc.timer = setTimeout(publish, delay); else publish();
+    }
+
+    getSiteActions(tabId = this.model.state.get().activeTabId): SiteActionItem[] {
+        const doc = this.actionDocuments.get(tabId);
+        return doc?.injected && this.isActionDocumentCurrent(tabId, doc, false) ? structuredClone(doc.items) : [];
+    }
+
+    async runSiteAction(id: string): Promise<SiteActionOutcome> {
+        const tabId = this.model.state.get().activeTabId;
+        const doc = this.actionDocuments.get(tabId);
+        const contains = (items: SiteActionItem[]): boolean => items.some(item => item.children?.length ? contains(item.children) : item.id === id);
+        if (!doc?.injected || doc.contextId === undefined || !this.isActionDocumentCurrent(tabId, doc, true)) return { status: "not-current" };
+        if (!contains(doc.items)) return { status: "error", error: t("browser.siteActionUnknown") };
+        if (doc.running) return { status: "busy" };
+        doc.running = true;
+        const runVersion = ++doc.runVersion;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const expression = `(async () => {
+    try {
+        const value = await window.__persephoneSiteRuntime.invokeAction(${JSON.stringify(id)});
+        if (typeof value !== "string" || value.length > 2097152 || new TextEncoder().encode(value).byteLength > 2097152) throw new Error("Invalid action result size");
+        return value;
+    } catch (error) {
+        let message = "Action handler failed";
+        try { message = String(error && typeof error === "object" && "message" in error ? error.message : error).slice(0, 512); } catch { /* Use fallback. */ }
+        throw new Error(message);
+    }
+})()`;
+        const operation = this.model.target.cdp(tabId).send("Runtime.evaluate", {
+            expression, contextId: doc.contextId, awaitPromise: true, returnByValue: true,
+        }).then(response => {
+            if (response.exceptionDetails) {
+                // The description is "Error: <message>\n    at …"; keep only the message line.
+                const description = String(response.exceptionDetails.exception?.description ?? "Action handler failed");
+                throw new Error(description.split("\n")[0].replace(/^Error: /, "").slice(0, 512));
+            }
+            return response.result?.value as unknown;
+        });
+        let timedOut = false;
+        let settled = false;
+        const cancelled = Symbol("cancelled");
+        const cancellation = new Promise<typeof cancelled>(resolve => { doc.cancelRun = () => resolve(cancelled); });
+        void operation.then(() => { settled = true; if (timedOut) doc.running = false; }, () => { settled = true; if (timedOut) doc.running = false; });
+        try {
+            const result = await Promise.race([operation, cancellation, new Promise<undefined>(resolve => { timer = setTimeout(() => resolve(undefined), 60_000); })]);
+            if (result === cancelled) { timedOut = !settled; return { status: "not-current" }; }
+            if (doc.runVersion !== runVersion || !this.isActionDocumentCurrent(tabId, doc, true)) return { status: "not-current" };
+            if (result === undefined) { timedOut = !settled; throw new Error(t("browser.siteActionTimeout")); }
+            const outcome = await this.openActionResult(tabId, doc, runVersion, validateSiteActionResult(result));
+            return doc.runVersion === runVersion && this.isActionDocumentCurrent(tabId, doc, true) ? outcome : { status: "not-current" };
+        } catch (error) {
+            if (doc.runVersion !== runVersion || !this.isActionDocumentCurrent(tabId, doc, true)) return { status: "not-current" };
+            const message = boundExtensionError(errMessage(error, t("browser.siteActionFailure")));
+            ui.notify(t("browser.siteActionFailed", { error: message }), "error");
+            return { status: "error", error: message };
+        } finally { if (timer) clearTimeout(timer); doc.cancelRun = undefined; if (!timedOut) doc.running = false; }
+    }
+
+    private async openActionResult(tabId: string, doc: NonNullable<ReturnType<typeof this.actionDocuments.get>>, runVersion: number, result: SiteActionResult): Promise<SiteActionOutcome> {
+        if (doc.runVersion !== runVersion || !this.isActionDocumentCurrent(tabId, doc, true)) return { status: "not-current" };
+        if (result.kind === "message") { ui.notify(result.text, "info"); return { status: "message", text: result.text }; }
+        if (result.kind === "url") { await app.openRawLink(result.url); return { status: "opened" }; }
+        if (result.kind === "links") { pagesModel.openLinks(result.items.map(item => ({ title: item.title, href: item.url, category: "", tags: [] as string[], isDirectory: false })), result.title); return { status: "opened" }; }
+        if (result.kind === "text") {
+            const formats = { markdown: ["md-view", "markdown"], json: ["grid-json", "json"], csv: ["grid-csv", "csv"], plain: ["monaco", "plaintext"] } as const;
+            const [editor, language] = formats[result.format];
+            pagesModel.addEditorPage(editor, language, result.title, result.content); return { status: "opened" };
+        }
+        if (result.items.length > 1) {
+            const token = crypto.randomUUID();
+            for (const [key, choice] of this.actionChoices) if (choice.expires < Date.now() || choice.tabId === tabId) this.actionChoices.delete(key);
+            this.actionChoices.set(token, { tabId, document: doc, expires: Date.now() + 60_000, runVersion, items: result.items });
+            return { status: "choice-required", token, choices: result.items.map(item => ({ label: item.label })) };
+        }
+        return this.openActionVideo(tabId, doc, runVersion, result.items[0]);
+    }
+
+    private async openActionVideo(tabId: string, doc: NonNullable<ReturnType<typeof this.actionDocuments.get>>, runVersion: number, item: Extract<SiteActionResult, { kind: "video" }>["items"][number]): Promise<SiteActionOutcome> {
+        const opened = await pagesModel.openSiteActionVideo({ url: item.url, method: "GET", body: "", headers: item.headers ?? {} }, () => doc.runVersion === runVersion && this.isActionDocumentCurrent(tabId, doc, true));
+        return { status: opened ? "opened" : "not-current" };
+    }
+
+    async chooseSiteActionResult(token: string, index: number): Promise<SiteActionOutcome> {
+        const choice = this.actionChoices.get(token);
+        this.actionChoices.delete(token);
+        const doc = choice && this.actionDocuments.get(choice.tabId);
+        if (!choice || !doc || choice.document !== doc || choice.runVersion !== doc.runVersion || choice.expires < Date.now() || !Number.isInteger(index) || !choice.items[index] || !this.isActionDocumentCurrent(choice.tabId, doc, true)) return { status: "not-current" };
+        try {
+            const outcome = await this.openActionVideo(choice.tabId, doc, choice.runVersion, choice.items[index]);
+            return choice.runVersion === doc.runVersion && this.isActionDocumentCurrent(choice.tabId, doc, true) ? outcome : { status: "not-current" };
+        }
+        catch (error) { if (!this.isActionDocumentCurrent(choice.tabId, doc, true) || choice.runVersion !== doc.runVersion) return { status: "not-current" }; const message = boundExtensionError(errMessage(error)); ui.notify(t("browser.siteActionFailed", { error: message }), "error"); return { status: "error", error: message }; }
     }
 
     // =====================================================================

@@ -678,9 +678,11 @@ class ApiCalls implements Api {
     grantBoardSourceReads = async (boardRoot: string, sourcePaths: string[], contextPaths: string[] = []) =>
         executeOnce<void>(Endpoint.grantBoardSourceReads, boardRoot, sourcePaths, contextPaths);
 
+    fetchSiteExtensionText = async (tab: string, id: string, url: string) => executeOnce<{ text?: string; error?: string }>(Endpoint.fetchSiteExtensionText, tab, id, url);
+    cancelSiteExtensionFetches = async (tab: string) => executeOnce<void>(Endpoint.cancelSiteExtensionFetches, tab);
     getSiteExtensionTrust = async () => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.getSiteExtensionTrust);
     bindSiteExtensionFolder = async (folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.bindSiteExtensionFolder, folder);
-    trustSiteExtension = async (id: string, hosts: string[], folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts, folder);
+    trustSiteExtension = async (id: string, hosts: string[], fetchHosts: string[], folder: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.trustSiteExtension, id, hosts, fetchHosts, folder);
     revokeSiteExtensionTrust = async (id: string) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.revokeSiteExtensionTrust, id);
     setSiteExtensionEnabled = async (id: string, enabled: boolean) => executeOnce<import("../api-types").SiteExtensionTrustSnapshot>(Endpoint.setSiteExtensionEnabled, id, enabled);
 

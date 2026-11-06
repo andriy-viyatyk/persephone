@@ -25,6 +25,18 @@ The trust decision applies to the extension's listed hosts. If that host list ch
 asks again before the extension runs on the changed set. The prompt also appears again if you change
 the site extensions folder in Settings.
 
+## Use site actions
+
+A trusted extension may add a puzzle-piece **Site actions** button inside the address bar, to the
+left of Translate. Open it and choose an action for the current tab; a video action may ask you which video to
+open. Results can open Video, a text or grid editor, a link collection, or a notification. Actions
+are available only for the current trusted document and disappear when you navigate or revoke trust.
+
+A page shares its main world with its extension, so page scripts can use the granted action
+capability. Opening a result may contact loopback or private network addresses. Redirects, media
+playlists and link thumbnails can also request other addresses beyond the initial URL. Choose actions
+from pages and extensions you trust. If an action times out, its page handler may continue running.
+
 ## Choose the extensions folder
 
 Open **Settings → Browser → Site Extensions** to see the current folder. **Browse...** selects a
@@ -65,3 +77,16 @@ Site extensions never run in **Incognito** or **Browser (Tor)** pages. Use a reg
 for a site extension.
 
 After an agent automates several pages on a site, it may offer to build a site extension for recurring work after finishing the current task. This optional suggestion can be disabled with **Allow optional agent tips** in Settings → MCP Server / Mneme.
+
+## Cross-host text access
+
+An extension may separately request `fetchHosts` in its manifest. The Trust bar shows these hosts
+before approval; adding or removing either the page hosts or fetch hosts requires renewed trust.
+Existing grants without fetch hosts continue to work. Fetch hosts are exact lower-case DNS names,
+at most 32, and cannot include wildcards, ports, IP literals or localhost.
+
+`fetchText` performs cookieless HTTPS GET requests without the browser profile, cookies, custom
+headers or authenticated sessions. Up to three redirects are followed only to approved fetch hosts.
+Responses are limited to 8 MiB of decoded UTF-8, ten seconds and four concurrent requests per tab.
+Navigation, reload and trust loss cancel requests. The page shares the granted capability, and a
+trusted name may resolve or rebind to a private address; DNS addresses are not filtered or pinned.

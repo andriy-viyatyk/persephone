@@ -20,6 +20,11 @@ The dedicated New Notebook entry is gone. Create or open an empty `*.note.json` 
 
 The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco IntelliSense and commands; file/link-to-category and note-to-category drag (use the card category field); and content-only Notebook switching. The `INotebookEditor` API and `pages.addEditorPage("notebook-view", ...)` are removed; use the board's `page.editor.app` API.
 
+### New Features
+
+- **Site extension actions:** Trusted extensions can add a **Site actions** menu to the Browser URL bar
+  and open their results in Persephone. Extensions can separately request limited, cookieless text
+  fetches from approved hosts. See the [Site Extensions guide](./site-extensions.md).
 
 ---
 

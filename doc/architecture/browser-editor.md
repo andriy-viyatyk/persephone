@@ -38,10 +38,21 @@ facade and IPC contracts.
 
 `BrowserToolbarView` spells out its left-to-right DOM order in one append operation:
 Home, Back, Forward, Reload, URL bar, Bookmarks, Tor info, Downloads, Page Menu, DevTools,
-and Close Tab. The `controls` array may retain a different construction/index order because
+and Close Tab. Inside the URL bar's end slot the order is Navigate, Site actions, Translate, and
+the bookmark star; Site actions sits there because its actions belong to the current site. The `controls` array may retain a different construction/index order because
 `sync()` updates those views positionally; changing the visual order must not silently change
 those indexes. The Tor-info control remains in the DOM when Tor is inactive but is hidden and
 zero-sized, preserving the same layout contract in both modes.
+
+### Site extension actions
+
+The site runtime retains action handlers in its main world and publishes bounded metadata over the
+existing AiVision binding. Main forwards execution-context identity; browser webview state accepts
+only the current main-frame context for a tracked, trusted injected document. Publication during
+injection is held until evaluation succeeds. Navigation, reload, tab closure, disposal and trust
+changes invalidate the state. The toolbar and browser facade share the same run and choice paths;
+result validation happens before dispatch to existing editors. A page shares its extension's main
+world, so the grant authorizes that page context, not an independently authenticated script.
 
 ### Tab Reordering
 
@@ -1355,3 +1366,14 @@ Browser facade automation records successful qualifying operations for an opted-
 using the selected internal tab's live pre-action URL. The renderer checks HTTPS, the agent-tip
 setting, and valid or conflicted extension claims before returning private observations to main.
 Paths and queries remain in bounded session memory and are never shown to the agent.
+
+### Site extension cross-host fetch
+
+The manifest's separate `fetchHosts` set is part of the folder-bound grant; legacy grants migrate
+to an empty set, and either host set changing requires consent again. The main-world runtime sends
+bounded `fetch-request` signals through the existing binding. BrowserWebviewModel associates them
+with the current trusted document and context; the guarded main broker checks the persisted grant
+for each HTTPS destination and redirect. It uses cookieless Node fetch, a ten-second deadline,
+three redirects, four requests per tab, and an 8 MiB decoded UTF-8 limit. Lifecycle invalidation
+cancels requests and discards late results. No DNS filtering or pinning is performed, and the shared
+page world can use the extension's granted capability. Trust changes abort outstanding fetches.

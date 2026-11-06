@@ -22,6 +22,7 @@ const defaultAppPopupMenuState = {
     y: 0,
     items: [] as MenuItem[],
     skipInspect: false,
+    skipDefaults: false,
 };
 
 type AppPopupMenuState = typeof defaultAppPopupMenuState;
@@ -29,6 +30,7 @@ type AppPopupMenuPositionState = Pick<AppPopupMenuState, "items" | "x" | "y">;
 
 class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
     addDefaultMenus = async () => {
+        if (this.state.get().skipDefaults) return;
         const savedSelection = window.getSelection();
         const selText = savedSelection?.toString();
         const activeElement = document.activeElement;
@@ -208,6 +210,10 @@ registerDialogView(showAppPopupMenuId, AppPopupMenuView);
 export interface ShowAppPopupMenuOptions {
     /** Skip the default "Inspect" menu item (e.g. when the caller provides its own). */
     skipInspect?: boolean;
+    /** Omit all clipboard and inspect entries. */
+    skipDefaults?: boolean;
+    /** Recheck a caller's document after asynchronous menu preparation. */
+    isCurrent?: () => boolean;
 }
 
 /** Close any currently open app popup menu. */
@@ -268,9 +274,11 @@ export const showAppPopupMenu = async (
         s.y = y;
         s.items = [...items];
         s.skipInspect = options?.skipInspect || false;
+        s.skipDefaults = options?.skipDefaults || false;
     });
     const model = new AppPopupMenuModel(state);
     await model.addDefaultMenus();
+    if (options?.isCurrent && !options.isCurrent()) return;
     if (!model.state.get().items.length) {
         return;
     }
