@@ -175,6 +175,14 @@ of [`active-work.md`](../active-work.md) along with its task list.
 - **The `{ current: T }` ref boxes** (`components/git-tree/GitTreeView.ts:204,242`) — still
   recorded. Out of scope for US-1282, which is scoped to `headerRef`.
 
+### [EPIC-138: Persephone as a runtime for agent-built tools](../epics/EPIC-138.md)
+
+An agent installs Persephone with one command (`winget install` / `scoop install`), writes the
+user's tool as a board, and puts a shortcut for it on the user's desktop; the user runs the tool
+without ever opening Persephone itself. Builds on EPIC-136's standalone board windows and adds a
+`persephone` CLI on PATH, a board host mode with no tray or app notices, package-manager
+publishing, and an agent guide with `llms.txt` on the site. 5 tasks: US-1778 … US-1782.
+
 ### [EPIC-039: Secure Peer-to-Peer Connections](../epics/EPIC-039.md) (Contacts, Chat, Remote Control)
 
 End-to-end-encrypted connection between two Persephone instances — out-of-band contact pairing
