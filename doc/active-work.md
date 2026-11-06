@@ -8,6 +8,15 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-137** — [Notebook moves to a published board](epics/EPIC-137.md)
+  - [ ] BT-078 *(persephone-boards)*: Notebook board — scaffold, format-preserving model, paged card list, CodeMirror, search
+  - [ ] BT-079 *(persephone-boards)*: Notebook board — Categories & Tags secondary view
+  - [ ] BT-080 *(persephone-boards)*: Notebook board — Markdown preview and av-grid view for JSON array notes
+  - [ ] BT-081 *(persephone-boards)*: Notebook board — aiVision model, guides, language packs; publish v1.0.0
+  - [ ] [US-1771: Board toolbar breadcrumb control](tasks/US-1771-board-toolbar-breadcrumb/README.md)
+  - [ ] US-1769: Remove the built-in Notebook editor from the core
+  - [ ] US-1770: Research — simplify editor architecture that existed only for Notebook
+
 ## Planned
 
 ## Scheduled

@@ -1681,7 +1681,8 @@ onHostMessage((event) => {
     if (!data || data.__persephone !== "toolbar:control"
         || typeof data.id !== "string" || !data.id
         || (data.type !== "button" && data.type !== "toggle" && data.type !== "menu"
-            && data.type !== "select" && data.type !== "segmented" && data.type !== "input")
+            && data.type !== "select" && data.type !== "segmented" && data.type !== "input"
+            && data.type !== "breadcrumb")
         || (data.value !== undefined && typeof data.value !== "boolean" && typeof data.value !== "string")) return;
     const value = data.type === "button" ? undefined : data.value;
     const publicEvent: PersephoneToolbarActionEvent = {

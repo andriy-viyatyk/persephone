@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.48.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.49.0** in this build. Bridge `1.49.0` adds toolbar breadcrumbs. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox
 multi-select controls for string settings; boards that rely on them must set
@@ -245,6 +245,31 @@ panel changes.
 
 ## Host-rendered board toolbar
 
+A `breadcrumb` (bridge 1.49.0) is `{ id, type: "breadcrumb", rootLabel, value, separators?,
+title?, disabled? }`. `rootLabel` and `value` are strings, including empty strings; `separators`
+is a nonempty string of separator characters and defaults to `/`. `update()` can change those
+fields together, including `separators`, but cannot change type or placement. Segments are trimmed
+and empty segments dropped; ancestor values join the remaining segments with the first separator
+character, without a trailing separator. Clicking an ancestor immediately updates the host value
+and emits `{ id, type: "breadcrumb", value }`; the root emits `""`. The current item and disabled
+breadcrumbs emit nothing. Disabled controls expose `aria-disabled` and suppress clicks.
+
+Breadcrumbs appear after start buttons and menus, before normal controls. They share the flexible
+space equally and clip their start when narrow. While any exist, the `setText()` slot is hidden but
+its text and tooltip are retained and restored when the last breadcrumb is removed. Each control
+is available through `BoardEditor.elements` while its trusted main frame is live. An older host
+ignores the unknown descriptor with a warning and still renders other valid controls. A manifest
+requiring `minBridgeVersion: "1.49.0"` is gated on older hosts; choose the manifest and feature
+detection accordingly if fallback is needed.
+
+```js
+persephone.toolbar.set([{ id: "path", type: "breadcrumb", rootLabel: "Home", value: "a/b/c" }]);
+persephone.toolbar.update([{ id: "path", value: "tag:child", separators: ":" }]);
+persephone.toolbar.onAction((event) => {
+  if (event.type === "breadcrumb") console.log(event.value); // "tag" or ""
+});
+```
+
 Trusted and bundled boards can declare up to eight controls in the page toolbar. The board owns
 the catalog and calls `set()` with the complete ordered list; `update()` patches known controls by
 `id` without adding, removing, or reordering them. Invalid entries, duplicate ids, updates for
@@ -266,11 +291,11 @@ persephone.toolbar.set([
 ]);
 persephone.toolbar.update([{ id: "enabled", value: false }]);
 const off = persephone.toolbar.onAction(({ id, type, value }) => {
-  // button: no value; toggle: boolean; menu/select/segmented/input: string
+  // button: no value; toggle: boolean; menu/select/segmented/input/breadcrumb: string
 });
 ```
 
-The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`, and `input`. A button
+The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`, `input`, and `breadcrumb`. A button
 action has `{ id, type: "button" }`; toggles send a boolean, menus send the selected item id,
 selects and segmented controls send the selected option value, and inputs send the current string
 after 500 ms of quiet time. An input shows a clear (×) button while it holds text; clicking it
@@ -1376,7 +1401,8 @@ file content and file saving.
 - `persephone.toolbar.setText(text)` — set transient text in the wide middle slot of the page
   toolbar from the board's **main** view. **The slot is empty unless your board fills it** — it
   no longer falls back to the board path — so `""` and an unset value both leave it blank. While
-  your text is visible, the slot's native tooltip carries the board's full path. The value is not persisted
+  your text is visible, the slot's native tooltip carries the board's full path. Breadcrumbs hide
+  the slot while retaining its text and tooltip until they are removed. The value is not persisted
   and is cleared when the main frame reloads, errors, is disposed, loses trust, or the board is
   navigated away from; a newly mounted frame must set it again.
 

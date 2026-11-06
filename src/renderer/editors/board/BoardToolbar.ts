@@ -75,6 +75,9 @@ export class BoardToolbarView extends VanillaView<{
         });
         this.switchWidget = new SwitchWidgetView({ model: props.model });
         this.boardControls = new BoardToolbarControls({ model: props.model, onAction: props.onAction });
+        this.boardControls.onBreadcrumbVisibilityChange = (visible) => {
+            this.pathPanel.style.display = visible ? "none" : "";
+        };
     }
 
     public setToolbarControls(
@@ -103,6 +106,7 @@ export class BoardToolbarView extends VanillaView<{
             this.explorerButton.root,
             this.boardControls.startRoot,
             this.pathPanel,
+            this.boardControls.breadcrumbRoot,
             this.boardControls.root,
             this.morePanel,
             this.switchWidget.root,

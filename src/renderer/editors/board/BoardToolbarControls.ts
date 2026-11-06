@@ -10,6 +10,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import "../../uikit/Button/Button.css";
+import { BreadcrumbView, type BreadcrumbProps } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { InputView } from "../../uikit/Input/InputView";
 import { SelectView, type SelectViewProps } from "../../uikit/Select/SelectView";
 import { SwitchView, type SwitchProps } from "../../uikit/Switch/SwitchView";
@@ -36,7 +37,7 @@ import { t } from "../../../shared/i18n/t";
 
 export const BOARD_TOOLBAR_CONTROL_LIMIT = 8;
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
-const CONTROL_TYPES = new Set<BoardToolbarControlType>(["button", "toggle", "menu", "select", "segmented", "input"]);
+const CONTROL_TYPES = new Set<BoardToolbarControlType>(["button", "toggle", "menu", "select", "segmented", "input", "breadcrumb"]);
 
 export type ToolbarAction = {
     readonly id: string;
@@ -49,7 +50,8 @@ type BoardToolbarToggleDescriptor = Extract<BoardToolbarControlDescriptor, { typ
 type BoardToolbarSelectDescriptor = Extract<BoardToolbarControlDescriptor, { type: "select" }>;
 type BoardToolbarSegmentedDescriptor = Extract<BoardToolbarControlDescriptor, { type: "segmented" }>;
 type BoardToolbarInputDescriptor = Extract<BoardToolbarControlDescriptor, { type: "input" }>;
-type ToolbarRecordView = IconButtonView | ButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
+type BoardToolbarBreadcrumbDescriptor = Extract<BoardToolbarControlDescriptor, { type: "breadcrumb" }>;
+type ToolbarRecordView = BreadcrumbView | IconButtonView | ButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value);
@@ -201,6 +203,15 @@ export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning)
         if (shown.length !== options.length) warning(`Ignored segmented options without a label or icon on "${id}".`);
         return { ...common, type, options: shown, value: value.value };
     }
+    if (type === "breadcrumb") {
+        if (typeof value.rootLabel !== "string" || typeof value.value !== "string"
+            || value.separators !== undefined && (typeof value.separators !== "string" || !value.separators)) {
+            warning(`Ignored invalid board toolbar breadcrumb "${id}".`);
+            return undefined;
+        }
+        return { id, type, rootLabel: value.rootLabel, value: value.value,
+            separators: value.separators as string | undefined, title: common.title, disabled: common.disabled };
+    }
     if (typeof value.value !== "string") {
         warning(`Ignored board toolbar input "${id}" without a string value.`);
         return undefined;
@@ -251,10 +262,13 @@ export function normalizeToolbarControlPatches(value: unknown, warning: ToolbarW
             warning(`Ignored invalid type in board toolbar update for "${entry.id}".`);
             continue;
         }
+        if (entry.placement !== undefined) {
+            warning(`Ignored placement in board toolbar update for "${entry.id}".`);
+        }
         const patch: BoardToolbarControlPatch = { id: entry.id };
-        for (const key of ["label", "title", "placeholder"] as const) {
+        for (const key of ["label", "title", "placeholder", "rootLabel", "separators"] as const) {
             if (entry[key] !== undefined) {
-                if (typeof entry[key] !== "string") {
+                if (typeof entry[key] !== "string" || key === "separators" && !entry[key]) {
                     warning(`Ignored invalid ${key} in board toolbar update for "${entry.id}".`);
                     continue;
                 }
@@ -322,7 +336,10 @@ function mergePatch(
         warning(`Ignored type change for board toolbar control "${descriptor.id}".`);
         return undefined;
     }
-    const forbidden = descriptor.type === "button"
+    const breadcrumbFields = descriptor.type === "breadcrumb" ? [] : ["rootLabel", "separators"];
+    const forbidden = [...breadcrumbFields, ...(descriptor.type === "breadcrumb"
+        ? ["label", "icon", "items", "options", "placeholder"]
+        : descriptor.type === "button"
         ? ["value", "items", "options", "placeholder"]
         : descriptor.type === "toggle"
             ? ["items", "options", "placeholder"]
@@ -330,7 +347,7 @@ function mergePatch(
                 ? ["value", "options", "placeholder"]
                 : descriptor.type === "select" || descriptor.type === "segmented"
                     ? ["items", "placeholder", "icon"]
-                    : ["items", "options", "icon"];
+                    : ["items", "options", "icon"])];
     if (forbidden.some((field) => hasField(patch, field))) {
         warning(`Ignored type-incompatible fields in board toolbar update for "${descriptor.id}".`);
     }
@@ -391,7 +408,10 @@ class ToolbarControlRecord {
         this.iconHost = descriptor.type === "toggle" ? document.createElement("span") : undefined;
         if (this.iconHost) this.iconHost.dataset.part = "icon";
 
-        if (descriptor.type === "select") {
+        if (descriptor.type === "breadcrumb") {
+            this.view = new BreadcrumbView(this.breadcrumbProps(descriptor));
+            this.root = this.view.root;
+        } else if (descriptor.type === "select") {
             this.view = new SelectView<IListBoxItem>(this.selectProps(descriptor));
             this.root = this.view.root;
         } else if (descriptor.type === "segmented") {
@@ -426,6 +446,7 @@ class ToolbarControlRecord {
     mount(): void {
         this.clearButton?.mount();
         this.view.mount();
+        this.syncBreadcrumbAttributes();
         this.startIconResolution();
     }
 
@@ -451,7 +472,10 @@ class ToolbarControlRecord {
             clearTimeout(this.inputDebounce);
             this.inputDebounce = undefined;
         }
-        if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
+        if (this.view instanceof BreadcrumbView && descriptor.type === "breadcrumb") {
+            this.view.update(this.breadcrumbProps(descriptor));
+            this.syncBreadcrumbAttributes();
+        } else if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
         else if (this.view instanceof ButtonView) this.view.update(this.textButtonProps());
         else if (this.view instanceof SwitchView && descriptor.type === "toggle") this.view.update(this.switchProps(descriptor));
         else if (this.view instanceof SelectView && descriptor.type === "select") {
@@ -493,6 +517,27 @@ class ToolbarControlRecord {
     private dataName(): string {
         return `board-toolbar-control-${this.descriptor.id}`;
     }
+
+    private breadcrumbProps(descriptor: BoardToolbarBreadcrumbDescriptor): BreadcrumbProps {
+        return {
+            name: this.dataName(), rootLabel: descriptor.rootLabel, value: descriptor.value,
+            separators: descriptor.separators ?? "/", size: "sm", clipStart: true,
+            onChange: this.breadcrumbChanged,
+        };
+    }
+
+    private syncBreadcrumbAttributes(): void {
+        if (this.descriptor.type !== "breadcrumb") return;
+        this.root.title = this.descriptor.title ?? "";
+        this.root.setAttribute("aria-disabled", String(!!this.descriptor.disabled));
+    }
+
+    private readonly breadcrumbChanged = (value: string): void => {
+        if (this.descriptor.type !== "breadcrumb" || this.descriptor.disabled) return;
+        this.descriptor = { ...this.descriptor, value };
+        if (this.view instanceof BreadcrumbView) this.view.update(this.breadcrumbProps(this.descriptor));
+        this.emit({ id: this.descriptor.id, type: "breadcrumb", value });
+    };
 
     private switchProps(descriptor: BoardToolbarToggleDescriptor): SwitchProps {
         return {
@@ -681,12 +726,18 @@ export class BoardToolbarControls extends VanillaView<{
         name: "board-toolbar-start-controls", direction: "row", align: "center", gap: "sm", shrink: false,
     });
 
+    readonly breadcrumbRoot = createPanelElement({
+        name: "board-toolbar-breadcrumbs", direction: "row", align: "center", gap: "sm",
+    });
+    onBreadcrumbVisibilityChange: ((visible: boolean) => void) | undefined;
+
     constructor(props: { model: BoardEditorModel; onAction: (event: ToolbarAction) => void }) {
         super(props, createPanelElement({
             name: "board-toolbar-controls", direction: "row", align: "center", gap: "sm", shrink: false,
         }));
         this.model = props.model;
         this.startRoot.style.display = "none";
+        this.breadcrumbRoot.style.display = "none";
     }
 
     set(controls: readonly BoardToolbarControlDescriptor[], frameGeneration: number, warning: ToolbarWarning): void {
@@ -709,8 +760,9 @@ export class BoardToolbarControls extends VanillaView<{
         this.records.clear();
         for (const [id, record] of next) {
             this.records.set(id, record);
-            const host = atStart(record.descriptor) ? this.startRoot : this.root;
-            if (record.root.parentElement !== host) host.append(record.root);
+            const host = atStart(record.descriptor) ? this.startRoot
+                : record.descriptor.type === "breadcrumb" ? this.breadcrumbRoot : this.root;
+            host.append(record.root);
         }
         this.restoreFocus(previousFocus);
         this.publishDeclarations();
@@ -830,6 +882,9 @@ export class BoardToolbarControls extends VanillaView<{
     private publishDeclarations(): void {
         // An empty start group would still take a toolbar gap, so it is shown only with controls in it.
         this.startRoot.style.display = this.startRoot.childElementCount ? "" : "none";
+        const hasBreadcrumbs = this.breadcrumbRoot.childElementCount > 0;
+        this.breadcrumbRoot.style.display = hasBreadcrumbs ? "" : "none";
+        this.onBreadcrumbVisibilityChange?.(hasBreadcrumbs);
         if (this.frameGeneration === undefined) return;
         // Board-menu items live inside Persephone's … menu, so they have no element of their own.
         const declarations = [...this.records.values()].filter((record) => !inBoardMenu(record.descriptor)).map((record) => ({
@@ -838,7 +893,9 @@ export class BoardToolbarControls extends VanillaView<{
             purpose: `Locate the board toolbar ${record.descriptor.type} "${record.descriptor.label ?? record.descriptor.id}" control.`,
             where: atStart(record.descriptor)
                 ? "board toolbar, at the left before the board text slot"
-                : "board toolbar, between the board text slot and Persephone controls",
+                : record.descriptor.type === "breadcrumb"
+                    ? "board toolbar, after start controls and before normal controls"
+                    : "board toolbar, between the board text slot and Persephone controls",
         }));
         this.model.setLiveToolbarElementDeclarations(this.frameGeneration, declarations);
     }

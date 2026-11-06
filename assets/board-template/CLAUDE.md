@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.48.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.49.0** in this build. Bridge `1.49.0` adds toolbar breadcrumbs. Check `persephone.version` before using a
 bridge member that may not exist in an older app. Bridge `1.48.0` adds
 `persephone.openBoard(folder)` for opening a board folder this board is authorized to list; target
 trust remains a separate user decision, and callers using it should set
@@ -93,11 +93,36 @@ id or display name. Set `minBridgeVersion: "1.43.0"` when using this format.
 
 ## Host-rendered board toolbar
 
+A `breadcrumb` (bridge 1.49.0) is `{ id, type: "breadcrumb", rootLabel, value, separators?,
+title?, disabled? }`. `rootLabel` and `value` are strings, including empty strings; `separators`
+is a nonempty string of separator characters and defaults to `/`. `update()` can change those
+fields together, including `separators`, but cannot change type or placement. Segments are trimmed
+and empty segments dropped; ancestor values join the remaining segments with the first separator
+character, without a trailing separator. Clicking an ancestor immediately updates the host value
+and emits `{ id, type: "breadcrumb", value }`; the root emits `""`. The current item and disabled
+breadcrumbs emit nothing. Disabled controls expose `aria-disabled` and suppress clicks.
+
+Breadcrumbs appear after start buttons and menus, before normal controls. They share the flexible
+space equally and clip their start when narrow. While any exist, the `setText()` slot is hidden but
+its text and tooltip are retained and restored when the last breadcrumb is removed. Each control
+is available through `BoardEditor.elements` while its trusted main frame is live. An older host
+ignores the unknown descriptor with a warning and still renders other valid controls. A manifest
+requiring `minBridgeVersion: "1.49.0"` is gated on older hosts; choose the manifest and feature
+detection accordingly if fallback is needed.
+
+```js
+persephone.toolbar.set([{ id: "path", type: "breadcrumb", rootLabel: "Home", value: "a/b/c" }]);
+persephone.toolbar.update([{ id: "path", value: "tag:child", separators: ":" }]);
+persephone.toolbar.onAction((event) => {
+  if (event.type === "breadcrumb") console.log(event.value); // "tag" or ""
+});
+```
+
 Trusted and bundled boards may call `persephone.toolbar.set(controls)` with the complete ordered
 catalog and `persephone.toolbar.update(partial)` to patch existing ids. The catalog is capped at
 eight rendered controls; malformed, duplicate, unknown-update, and over-cap entries are ignored
 with a warning in `ui.log`. The fixed types are `button`, `toggle`, `menu`, `select`, `segmented`
-(bridge `1.28.0`), and `input`.
+(bridge `1.28.0`), `input`, and `breadcrumb` (bridge `1.49.0`).
 Values are host-owned and uncontrolled.
 
 ```js
@@ -111,7 +136,7 @@ persephone.toolbar.set([
   ] },
 ]);
 const off = persephone.toolbar.onAction(({ id, type, value }) => {
-  // button has no value; toggle is boolean; menu/select/segmented/input are strings
+  // button has no value; toggle is boolean; menu/select/segmented/input/breadcrumb are strings
 });
 ```
 
@@ -177,7 +202,8 @@ Boards using this API require `minBridgeVersion: "1.27.0"`. It coexists with
 The main view may call `persephone.toolbar.setText(text)` to replace the wide middle toolbar label
 temporarily. The slot is blank until the board supplies text; `persephone.toolbar.setText("")` clears
 it rather than restoring the board root path. While board text is shown, the label's native tooltip
-carries that full path. The value is not persisted and
+carries that full path. Breadcrumbs hide the slot while retaining its text and tooltip until they
+are removed. The value is not persisted and
 is cleared when the frame reloads, errors, is disposed, loses trust, or is navigated away from, so
 the replacement frame must set it again.
 

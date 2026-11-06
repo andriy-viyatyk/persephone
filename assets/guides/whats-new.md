@@ -73,6 +73,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Project TypeScript IntelliSense for boards:** Register a project folder to give Monaco pages
   completions for project files, declarations, and supported JSON imports. Project pages can also
   show TypeScript errors from the toolbar.
+- **Board toolbar breadcrumbs:** Bridge 1.49.0 lets boards place path navigation in the page toolbar.
 - **Board bridge 1.48.0:** Boards can open a board folder they are authorized to list with
   `persephone.openBoard(folder)`. The target still uses the normal trust dialog; boards that use
   this method should declare `minBridgeVersion: "1.48.0"`.

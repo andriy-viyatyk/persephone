@@ -368,7 +368,7 @@ export interface BoardVoiceTypingAutoStopChangedMsg {
     milliseconds: number;
 }
 
-export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "segmented" | "input";
+export type BoardToolbarControlType = "button" | "toggle" | "menu" | "select" | "segmented" | "input" | "breadcrumb";
 
 export type BoardToolbarIcon =
     | { name: string }
@@ -429,6 +429,16 @@ export type BoardToolbarControlDescriptor =
     }
     | {
         id: string;
+        type: "breadcrumb";
+        label?: never;
+        rootLabel: string;
+        value: string;
+        separators?: string;
+        title?: string;
+        disabled?: boolean;
+    }
+    | {
+        id: string;
         type: "input";
         label?: string;
         title?: string;
@@ -458,6 +468,8 @@ export type BoardToolbarControlPatch = {
     /** Select options (`label` required, no icons) or segmented options. */
     options?: readonly BoardToolbarSegment[];
     placeholder?: string;
+    rootLabel?: string;
+    separators?: string;
 };
 
 export interface BoardToolbarSetMsg {

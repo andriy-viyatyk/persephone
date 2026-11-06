@@ -1,4 +1,28 @@
 @layer editors {
+    [data-name="board-toolbar-breadcrumbs"] {
+        flex: 1 1 0;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    /* Content-sized, not stretched: a clip-start breadcrumb is row-reverse, so a stretched
+       one would pin a short path to the right edge. A path that fits sits at the left; a
+       longer one shrinks to the available width and clips its start. */
+    [data-name="board-toolbar-breadcrumbs"] > .breadcrumb-root {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    [data-name="board-toolbar-breadcrumbs"] > [aria-disabled="true"] {
+        opacity: 0.5;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    [data-name="board-toolbar-breadcrumbs"] > [aria-disabled="true"] span {
+        cursor: default;
+    }
+
     [data-name="board-toolbar-controls"] {
         flex-shrink: 0;
         margin-left: var(--space-xs, 2px);
