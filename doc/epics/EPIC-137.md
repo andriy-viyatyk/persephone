@@ -142,14 +142,14 @@ a fresh grep.
 | BT-079 | Notebook board: Categories & Tags secondary view, breadcrumb, card category/tag autocomplete | Done |
 | BT-080 | Notebook board: Markdown preview and av-grid view for JSON array notes | Done |
 | BT-081 | Notebook board: aiVision model, guides, language packs, screenshot; publish v1.0.0 | Done |
-| [US-1771](../tasks/US-1771-board-toolbar-breadcrumb/README.md) | Board toolbar breadcrumb control | Done |
-| [US-1769](../tasks/US-1769-remove-builtin-notebook/README.md) | Remove the built-in Notebook editor from the core (after BT-081 is published) | Done |
-| [US-1770](../tasks/US-1770-editor-architecture-simplification/README.md) | Research: simplify editor architecture that existed only to host editors inside Notebook | Done |
-| [US-1772](../tasks/US-1772-remove-editor-state-storage/README.md) | Remove editor state storage | Done |
-| [US-1773](../tasks/US-1773-remove-editor-overlay/README.md) | Remove the editor overlay portal | Done |
-| [US-1774](../tasks/US-1774-remove-embedded-body-views/README.md) | Remove embedded body-view scaffolding | Done |
-| [US-1775](../tasks/US-1775-narrow-content-host/README.md) | Narrow the content-host contract | Done |
-| [US-1776](../tasks/US-1776-remove-html-focus-announcement/README.md) | Remove HTML preview focus announcement | Done |
+| US-1771 | Board toolbar breadcrumb control | Done |
+| US-1769 | Remove the built-in Notebook editor from the core (after BT-081 is published) | Done |
+| US-1770 | Research: simplify editor architecture that existed only to host editors inside Notebook | Done |
+| US-1772 | Remove editor state storage | Done |
+| US-1773 | Remove the editor overlay portal | Done |
+| US-1774 | Remove embedded body-view scaffolding | Done |
+| US-1775 | Narrow the content-host contract | Done |
+| US-1776 | Remove HTML preview focus announcement | Done |
 
 BT tasks live in `persephone-boards/doc/`. While the board is built it runs **A/B next to the
 built-in editor**: the board outranks the built-in Notebook (200 vs 20), and the switch widget can
