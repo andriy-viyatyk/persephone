@@ -199,7 +199,7 @@ may leave the old package in place and skip its binary download. For the current
   /renderer          # VanillaView frontend
     /api             # Object Model — app.settings, app.pages, app.fs, app.proc, etc.
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
-    /editors         # ALL editors (text, grid, markdown, compare, notebook, board, …)
+    /editors         # ALL editors (text, grid, markdown, compare, board, …)
     /content         # Content delivery — providers, transformers, pipes
     /scripting       # Script execution, wrappers, editor facades, worker
     /automation      # Path-based browser-like automation, CDP, snapshots

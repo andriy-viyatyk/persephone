@@ -586,7 +586,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 ### New Features
 
 - **Folder View navigation:** browse folders with breadcrumb navigation.
-- **Editor sidebar panels:** Links, Bookmarks, Notebook, Todo, and REST Client gain persistent sidebar views.
+- **Editor sidebar panels (through 5.0.17):** Links, Bookmarks, Notebook, Todo, and REST Client gain persistent sidebar views.
 
 ---
 
@@ -920,7 +920,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Mermaid and Notebook editors:** preview diagrams and organize structured notes.
+- **Mermaid editor and Notebook (before its 5.0.18 move to a board):** preview diagrams and organize structured notes.
 - **Copy images:** copy images from Image Viewer and SVG Preview to the clipboard.
 
 ---

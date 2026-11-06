@@ -36,8 +36,9 @@ knows the purpose of each control.
 
 Persephone is a Windows notepad replacement built for developers. It keeps Notepad's fast,
 tabbed, open-anything feel and adds the VS Code editor engine (syntax highlighting, IntelliSense,
-multi-cursor, and compare mode), specialized editors for structured data, notebooks, diagrams,
-link collections, HTTP requests, a built-in browser, and a JavaScript/TypeScript runtime with full
+multi-cursor, and compare mode), specialized editors for structured data and diagrams, the catalog
+Notebook board for `.note.json` files, link collections,
+HTTP requests, a built-in browser, and a JavaScript/TypeScript runtime with full
 Node.js access. Boards are small sandboxed web apps an agent can build for the user. Persephone is
 deliberately a container: the app stays light, and the user or their agent brings the integrations.
 

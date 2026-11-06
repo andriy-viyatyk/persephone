@@ -1,3 +1,15 @@
+## EPIC-137 — Notebook moves to a published board
+
+Completed 2026-11-06. The built-in Notebook editor was rebuilt as the published persephone-boards
+**Notebook** board (`notebook` v1.0.0, min app 5.0.18) and removed from the core, together with the
+scaffolding that only existed to host built-in editors inside note cards. Epic document:
+[EPIC-137](EPIC-137.md).
+
+- [x] **Notebook board (BT-078..BT-081, persephone-boards).** Format-preserving `.note.json` model, paged card list with CodeMirror editing and search, Categories & Tags secondary view with breadcrumb, Markdown preview and av-grid view for JSON array notes, aiVision model, guides, language packs; published v1.0.0.
+- [x] **Board toolbar breadcrumb (US-1771).** A `breadcrumb` toolbar control for boards (bridge 1.49.0), demonstrated in the Demo board.
+- [x] **Built-in Notebook removed (US-1769).** Editor, facade, typings, catalog, guides and secondary views deleted; restored pages left with no editor are now dropped; What's New 5.0.18 lists the losses and asks users to save open notebooks before updating.
+- [x] **Embedding leftovers removed (US-1770 research; US-1772..US-1776).** `EditorStateStorage`, the `.editor-overlay` portal, `EditorConfig` and the embedded body-view branches, the `BodyView` registry slot and the HTML preview focus announcement are gone; the content-host contract is typed as `TextFileModel`. The per-host editor-settings slot stays (seven editors use it).
+
 ## EPIC-136 — Boards as standalone apps
 
 Completed 2026-11-03. A board can run as its own app: a Windows shortcut launches it in a dedicated

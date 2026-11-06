@@ -272,7 +272,7 @@ The glyph that represents an editor — on its page tab, in the Tools & Editors 
 - **Language editors** (`noLanguage = false`, the default) derive a file-type icon from their
   `language` + `title` via the native resolver in
   `components/icons/language-icon-resolver.ts`, which resolves the language map, compound-extension
-  patterns like `*.note.json` → Notebook, the OS system icon, then a default.
+  patterns like `*.link.json` → Links, the OS system icon, then a default.
 
 This decision is centralized in the shared **DOM-first editor-icon resolver** ([`components/icons/icon-elements.ts`](../../src/renderer/components/icons/icon-elements.ts)):
 

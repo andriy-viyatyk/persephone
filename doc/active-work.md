@@ -8,20 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-137** — [Notebook moves to a published board](epics/EPIC-137.md)
-  - [ ] BT-078 *(persephone-boards)*: Notebook board — scaffold, format-preserving model, paged card list, CodeMirror, search
-  - [ ] BT-079 *(persephone-boards)*: Notebook board — Categories & Tags secondary view
-  - [ ] BT-080 *(persephone-boards)*: Notebook board — Markdown preview and av-grid view for JSON array notes
-  - [ ] BT-081 *(persephone-boards)*: Notebook board — aiVision model, guides, language packs; publish v1.0.0
-  - [ ] [US-1771: Board toolbar breadcrumb control](tasks/US-1771-board-toolbar-breadcrumb/README.md)
-  - [ ] [US-1769: Remove the built-in Notebook editor from the core](tasks/US-1769-remove-builtin-notebook/README.md)
-  - [ ] [US-1770: Research — simplify editor architecture that existed only for Notebook](tasks/US-1770-editor-architecture-simplification/README.md)
-  - [ ] [US-1772: Remove editor state storage](tasks/US-1772-remove-editor-state-storage/README.md)
-  - [ ] [US-1773: Remove the editor overlay portal](tasks/US-1773-remove-editor-overlay/README.md)
-  - [ ] [US-1774: Remove embedded body-view scaffolding](tasks/US-1774-remove-embedded-body-views/README.md)
-  - [ ] [US-1775: Narrow the content-host contract](tasks/US-1775-narrow-content-host/README.md)
-  - [ ] [US-1776: Remove HTML preview focus announcement](tasks/US-1776-remove-html-focus-announcement/README.md)
-
 ## Planned
 
 ## Scheduled

@@ -72,7 +72,10 @@
         tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
         panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === name));
         out.style.display = consoleTabs.has(name) ? "" : "none";
-        P.toolbar.update([{ id: "demo-view", value: name }]);
+        P.toolbar.update([
+            { id: "demo-view", value: name },
+            { id: "demo-path", value: name === "capabilities" ? "Capabilities" : "" },
+        ]);
     }
     // Host-rendered toolbar controls belong to the live main frame and must be
     // declared again whenever this board is loaded.
@@ -87,8 +90,15 @@
                 { value: "capabilities", label: "Capabilities" },
             ],
         },
+        { id: "demo-path", type: "breadcrumb", rootLabel: "Demo", value: "" },
     ]);
-    P.toolbar.onAction(({ id, value }) => {
+    P.toolbar.onAction(({ id, value, type }) => {
+        if (id === "demo-path" && type === "breadcrumb") {
+            activate(value === "Capabilities" ? "capabilities" : "overview");
+            header(`persephone.toolbar.onAction → breadcrumb ${value || "Demo"}`);
+            print(`Selected breadcrumb value: ${value || ""}`);
+            return;
+        }
         if (id !== "demo-view" || typeof value !== "string") return;
         activate(value);
         header(`persephone.toolbar.onAction → ${value}`);

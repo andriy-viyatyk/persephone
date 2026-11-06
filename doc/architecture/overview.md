@@ -648,8 +648,7 @@ Every editor follows the same pattern:
 /editors/[name]/
 ├── index.ts              # EditorModule registration (factory + matchers; required native View)
 ├── [Name]Editor.ts       # EditorModel subclass — state, lifecycle, business logic
-??? [Name]BodyView.ts      # Native body composed by the page view
-├── [Name]BodyView.ts       # Native embeddable body, when the editor has one
+├── [Name]BodyView.ts      # Native body composed by the page view
 └── components/           # Editor-specific (optional)
 ```
 
