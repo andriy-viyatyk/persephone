@@ -146,6 +146,13 @@ decided for speech to text. Any installed board that provides the interfaces wor
       People can talk *about* the assistant without waking it.
     - Several names, and several people, can be enrolled; a hit on any of them wakes the
       assistant. Every family member must enroll: other voices did not match one person's samples.
+    - **Enrollment asks for the person, not the phrase** *(user decision 2026-11-07, after testing
+      the Wake Word board)*. Every recorded name of the right kind is a wake word, so there is no
+      phrase to type: the provider stores the kind as the phrase. The person defaults to "Me"; the
+      matched person identifies the speaker (decision 7).
+    - **Verified by the user (2026-11-07, BT-083):** "Persy", "Persephone" and "Luna" recorded with
+      a calling intonation triggered every time they were called, and never when the same words
+      were used in ordinary speech.
     - **Stop words are enrolled the same way** (kind `stop`). While listening, a stop word ends
       the request at once instead of waiting for the silence timeout. Its audio is cut from the
       request before transcription, so the agent never sees the stop word. The silence timeout
@@ -214,6 +221,10 @@ decided for speech to text. Any installed board that provides the interfaces wor
      through `voice.say`; one or two sentences; no Markdown or lists; use explanation mode only
      when asked; prefer site-extension actions and the browser for media.
    - The user's own instruction setting is appended after it.
+   - **The speaker travels with each request** *(user decision 2026-11-07)*. The person from the
+     `wake` event that started the request is sent with the turn (US-1787), so the agent knows who
+     is talking and can keep per-person history and preferences. The instruction layer explains
+     the field.
 8. **State machine and feedback.**
    - States: `off` → `waiting for name` → (beep) `listening` → `thinking` → `speaking` →
      `waiting for name`.
