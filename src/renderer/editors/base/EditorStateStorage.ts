@@ -2,7 +2,6 @@
  * Interface for storing and retrieving editor state.
  * Implementations:
  * - `TextFileModel.stateStorage` — file-based via `fs.getCacheFile` / `fs.saveCacheFile`.
- * - `NoteItemEditModel.stateStorage` — backed by the notebook's per-note state map.
  *
  * Consumed by editors that need to read or write a per-page cache.
  */

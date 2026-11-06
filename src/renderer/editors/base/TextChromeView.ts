@@ -516,13 +516,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     };
 }
 
-// Duck-type against `setEditorOverlayRef` — present on TextFileModel,
-// absent on NoteItemEditModel (US-557 inner-note fake host). The original
-// discriminator checked `setEditorToolbarRefFirst`, but US-559 ("Strangler-
-// fig retirement") removed that method from TextFileModel while leaving
-// it on NoteItemEditModel — silently inverting this check. Symptom: the
-// footer toolbar, ScriptPanel, run buttons, compare button, and the
-// editor-overlay portal all stopped rendering for editors.
+// TextFileModel owns the overlay and text-file chrome; other content hosts may not.
 function isTextFileHost(host: IContentHost): host is TextFileModel {
     return typeof (host as unknown as { setEditorOverlayRef?: unknown }).setEditorOverlayRef === "function";
 }

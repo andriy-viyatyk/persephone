@@ -11,7 +11,7 @@ import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
 import { boardDisplayText, boardMetadataKeys } from "../../editors/board/board-display-text";
 import {
     GridIcon, IncognitoIcon, TorIcon,
-    JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
+    JavascriptIcon, LinkIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
@@ -128,14 +128,6 @@ const staticItems: CreatableItem[] = [
         label: englishMessage("editors.gridCsv"),
         icon: GridIcon.createElement(),
         create: () => pagesModel.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
-        category: "editor",
-    },
-    {
-        id: "notebook-view",
-        labelKey: "editors.notebook",
-        label: englishMessage("editors.notebook"),
-        icon: NotebookIcon.createElement(),
-        create: () => pagesModel.addEditorPage("notebook-view", "json", "untitled.note.json"),
         category: "editor",
     },
     {

@@ -142,8 +142,8 @@ a fresh grep.
 | BT-079 | Notebook board: Categories & Tags secondary view, breadcrumb, card category/tag autocomplete | Implemented — awaiting user test |
 | BT-080 | Notebook board: Markdown preview and av-grid view for JSON array notes | Implemented — awaiting user test |
 | BT-081 | Notebook board: aiVision model, guides, language packs, screenshot; publish v1.0.0 | Implemented — awaiting user test |
-| [US-1771](../tasks/US-1771-board-toolbar-breadcrumb/README.md) | Board toolbar breadcrumb control | Planned |
-| US-1769 | Remove the built-in Notebook editor from the core (after BT-081 is published) | Planned |
+| [US-1771](../tasks/US-1771-board-toolbar-breadcrumb/README.md) | Board toolbar breadcrumb control | Implemented |
+| [US-1769](../tasks/US-1769-remove-builtin-notebook/README.md) | Remove the built-in Notebook editor from the core (after BT-081 is published) | Planned |
 | US-1770 | Research: simplify editor architecture that existed only to host editors inside Notebook | Planned |
 
 BT tasks live in `persephone-boards/doc/`. While the board is built it runs **A/B next to the

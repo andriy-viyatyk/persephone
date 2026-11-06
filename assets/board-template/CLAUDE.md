@@ -572,7 +572,7 @@ is no `contentProviders` permission flag. The service requires `service: true`.
   when it **strictly outranks** the built-in editor that also claims the file. Omit or `0` → the
   board is a switch option only and the built-in editor stays the default. The built-in ladder:
   Monaco `0` (the catch-all floor), Markdown Preview `10` (`.md` & friends), compound-name
-  editors `20` (`*.grid.json`, `*.note.json`, `*.rest.json`, …), Drawing `50`, image /
+  editors `20` (`*.grid.json`, `*.grid.csv`, `*.link.json`, …), Drawing `50`, image /
   archive / video viewers `100`. So `1` is enough to beat Monaco on a plain text file, but a
   board claiming `DASHBOARD.md` needs **more than 10** to win over Markdown Preview — ties go
   to the built-in. When in doubt, `100` beats everything except the media viewers, and `200`

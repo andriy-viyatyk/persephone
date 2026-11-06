@@ -8,7 +8,7 @@ summary: "Find or open files, create pages, and work with page properties, edito
 Persephone uses tabbed pages (like browser tabs). Each page has an editor and, where the editor
 supports one, a **`language`** — which throughout Persephone means the **Monaco
 syntax-highlighting mode** (`javascript`, `json`, `python`, …), never a UI locale or a spoken
-language. Editors that are not text editors (grids, notebooks, browser, boards, app pages) have
+language. Editors that are not text editors (grids, browser, boards, app pages) have
 none, and `call` at `pages` reports theirs as empty or absent.
 
 Language arguments are validated against the IDs in `editors.languages`. An unknown ID is an
@@ -19,7 +19,7 @@ normal Monaco fallback.
 
 `pages[i].content` and the page's editor facade adapt to the page type:
 
-- **Text-based pages** (monaco, markdown, grid, notebook, mermaid, svg, …) return `{ id, title, content }` — the source text.
+- **Text-based pages** (monaco, markdown, grid, mermaid, svg, …) return `{ id, title, content }` — the source text.
 - **Image pages** (`image-view`, e.g. screen snips or opened image files) expose their pixels through
   `page.editor.read()`, not `pages[i].content`. It returns a bounded PNG result that MCP `call`
   emits as metadata text plus a native image block, and works for background (non-active) pages too.
@@ -222,7 +222,7 @@ folder Explorer or is browsing an archive.
 **Creatable with `pages.addEditorPage`** (content-hosting editors — see the table below for the
 required `language` and title suffix):
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"`
 
 **Standalone editors** — `pages.addEditorPage` rejects these with a hint; open them the way listed:
 
@@ -248,7 +248,6 @@ optional initial content as its fourth positional argument.
 | `md-view` | **`markdown`** | — | `"README.md"` |
 | `grid-json` | **`json`** | `.grid.json` (optional) | `"Data.grid.json"` or `"Data"` |
 | `grid-csv` | **`csv`** | — | `"Data"` |
-| `notebook-view` | **`json`** | `.note.json` (**required**) | `"My Notes.note.json"` |
 | `link-view` | **`json`** | `.link.json` (**required**) | `"Bookmarks.link.json"` |
 | `svg-view` | **`xml`** | `.svg` (**required**) | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
@@ -257,7 +256,6 @@ optional initial content as its fourth positional argument.
 | `log-view` | **`jsonl`** | `.log.jsonl` (optional) | `"Output.log.jsonl"` |
 
 **Initial content:** Structured editors expect valid JSON content on creation. **Read the dedicated resource guide BEFORE creating pages with these editors** — incorrect JSON will crash the editor:
-- **Notebook:** Read `persephone://guides/notebook` for NoteItem format. Empty: `{"notes":[],"state":{}}`
 - **Links:** Read `persephone://guides/links` for LinkItem format. Empty: `{"links":[],"state":{}}`
 ### REST Client board
 
@@ -285,8 +283,7 @@ Access `page.grouped` to auto-create a grouped page. Set `page.grouped.language`
 
 What failures actually look like, and how to check your work (verified against the app):
 
-- **`pages.addEditorPage` does NOT validate content.** Creating a structured-editor page (notebook,
-  links) with broken content returns a normal `{ id, title }` success — the
+- **`pages.addEditorPage` does NOT validate content.** Creating a structured-editor page (links) with broken content returns a normal `{ id, title }` success — the
   failure happens at render time, in the editor:
   - **Unparseable JSON** → the editor shows a parse error in place of content (e.g.
     `Unexpected token 'h', "this is not"… is not valid JSON`).

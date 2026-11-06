@@ -161,7 +161,7 @@ const ROOT_OVERVIEW = `
 Optional tips may appear in MCP results as separate, non-blocking suggestions.
 
 Persephone is a developer notepad on the user's desktop: tabbed pages, each with a specialized
-editor (Monaco text, JSON/CSV grids, markdown, notebooks, compare, browser). Every path here has
+editor (Monaco text, JSON/CSV grids, markdown, compare, browser). Every path here has
 the same name in scripts, so a hint doubles as a scripting tutorial. Paths address this window;
 prefix windows[i]. to target another, and main is process-wide.
 

@@ -32,7 +32,6 @@ editor when one is available, or the guide contents otherwise.
 - [Getting Started](./getting-started.md) - Installation and first steps
 - [Editors](./editors/index.md) - Overview of all editor types
 - [Grid Editor](./editors/grid.md) - Spreadsheet-like data editor for JSON/CSV
-- [Notebook Editor](./editors/notebook.md) - Structured notes with categories and tags
 - [Browser](./editors/browser.md) - Built-in web browser with profiles, bookmarks, downloads, and scripting/MCP automation
 - [Site Extensions](./site-extensions.md) - Trust and manage scripts that add reusable models to browser pages
 - [Scripting](./scripting/index.md) - JavaScript/TypeScript execution and content transformation
@@ -59,7 +58,6 @@ editor when one is available, or the guide contents otherwise.
 ### For Developers
 - Run JavaScript or TypeScript to transform content, with Log View for structured output and inline dialogs
 - JSON/CSV grid view with sorting, filtering, and full keyboard navigation
-- Notebook editor for structured notes
 - Built-in web browser with profiles, Incognito, Tor mode, DRM video support, and full scripting/MCP automation
 - Markdown preview with syntax highlighting and Mermaid diagrams
 - File comparison (diff view)

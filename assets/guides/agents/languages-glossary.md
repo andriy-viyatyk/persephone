@@ -36,7 +36,7 @@ politely as lowercase **ви** in sentences and instructions.
 | context menu | контекстне меню | |
 | preview | попередній перегляд | |
 | grid | таблиця | Persephone's grid editors display data in rows and columns. |
-| notebook | записник | The interactive, code-oriented document editor. |
+| notebook | записник | The catalog board for structured notes. |
 | log view | перегляд журналу | |
 | request | запит | HTTP request. |
 | response | відповідь | HTTP response. |
@@ -100,7 +100,7 @@ Use the concise Windows Polish register, addressing the user informally in the s
 | context menu | menu kontekstowe | |
 | preview | podgląd | |
 | grid | tabela | Persephone's grid editors display data in rows and columns. |
-| notebook | notatnik | The interactive, code-oriented document editor. |
+| notebook | notatnik | The catalog board for structured notes. |
 | log view | widok dziennika | |
 | request | żądanie | HTTP request. |
 | response | odpowiedź | HTTP response. |
@@ -164,7 +164,7 @@ Use the clear, friendly Windows Lithuanian register and address the user with po
 | context menu | kontekstinis meniu | |
 | preview | peržiūra | |
 | grid | tinklelis | Persephone's grid editors display data in rows and columns. |
-| notebook | užrašinė | The interactive, code-oriented document editor. |
+| notebook | užrašinė | The catalog board for structured notes. |
 | log view | žurnalo rodinys | |
 | request | užklausa | HTTP request. |
 | response | atsakas | HTTP response. |
@@ -228,7 +228,7 @@ Use the clear, concise Windows Latvian register and address the user politely wi
 | context menu | kontekstizvēlne | |
 | preview | priekšskatījums | |
 | grid | režģis | Persephone's grid editors display data in rows and columns. |
-| notebook | piezīmju grāmatiņa | The interactive, code-oriented document editor. |
+| notebook | piezīmju grāmatiņa | The catalog board for structured notes. |
 | log view | žurnāla skats | |
 | request | pieprasījums | HTTP request. |
 | response | atbilde | HTTP response. |
@@ -292,7 +292,7 @@ Use the concise Windows Estonian register and address the user politely in the s
 | context menu | kontekstimenüü | |
 | preview | eelvaade | |
 | grid | ruudustik | Persephone's grid editors display data in rows and columns. |
-| notebook | märkmik | The interactive, code-oriented document editor. |
+| notebook | märkmik | The catalog board for structured notes. |
 | log view | logivaade | |
 | request | päring | HTTP request. |
 | response | vastus | HTTP response. |
@@ -356,7 +356,7 @@ Use the formal **вы** when addressing the user in sentences. Follow Windows Be
 | context menu | кантэкстнае меню | |
 | preview | папярэдні прагляд | |
 | grid | табліца | Persephone's grid editors display data in rows and columns. |
-| notebook | нататнік | The interactive, code-oriented document editor. |
+| notebook | нататнік | The catalog board for structured notes. |
 | log view | прагляд часопіса | |
 | request | запыт | HTTP request. |
 | response | адказ | HTTP response. |
@@ -420,7 +420,7 @@ Use the respectful plural **dumneavoastră** in sentences. Button and menu label
 | context menu | meniu contextual | |
 | preview | previzualizare | |
 | grid | grilă | Persephone's grid editors display data in rows and columns. |
-| notebook | notebook | The interactive, code-oriented document editor; developers commonly retain «notebook». |
+| notebook | notebook | The catalog board for structured notes; developers commonly retain «notebook». |
 | log view | vizualizare jurnal | |
 | request | solicitare | HTTP request. |
 | response | răspuns | HTTP response. |
@@ -484,7 +484,7 @@ Use formal **vy** when addressing the user in sentences. Use infinitives for con
 | context menu | kontextová ponuka | |
 | preview | ukážka | |
 | grid | mriežka | Persephone's grid editors display data in rows and columns. |
-| notebook | poznámkový blok | The interactive, code-oriented document editor. |
+| notebook | poznámkový blok | The catalog board for structured notes. |
 | log view | zobrazenie denníka | |
 | request | požiadavka | HTTP request. |
 | response | odpoveď | HTTP response. |
@@ -548,7 +548,7 @@ Use informal **te** when addressing the user in sentences. Button and menu label
 | context menu | helyi menü | |
 | preview | előnézet | |
 | grid | rács | Persephone's grid editors display data in rows and columns. |
-| notebook | jegyzetfüzet | The interactive, code-oriented document editor. |
+| notebook | jegyzetfüzet | The catalog board for structured notes. |
 | log view | naplónézet | |
 | request | kérés | HTTP request. |
 | response | válasz | HTTP response. |
@@ -612,7 +612,7 @@ Use formal **Sie** when addressing the user in sentences. Use infinitives for co
 | context menu | Kontextmenü | |
 | preview | Vorschau | |
 | grid | Raster | Persephone's grid editors display data in rows and columns. |
-| notebook | Notebook | The interactive, code-oriented document editor; developer usage retains «Notebook». |
+| notebook | Notebook | The catalog board for structured notes; developer usage retains «Notebook». |
 | log view | Protokollansicht | |
 | request | Anforderung | HTTP request. |
 | response | Antwort | HTTP response. |
@@ -676,7 +676,7 @@ Use **vous** when addressing the user in sentences. Use infinitives for concise 
 | context menu | menu contextuel | |
 | preview | aperçu | |
 | grid | grille | Persephone's grid editors display data in rows and columns. |
-| notebook | notebook | The interactive, code-oriented document editor; developers commonly retain «notebook». |
+| notebook | notebook | The catalog board for structured notes; developers commonly retain «notebook». |
 | log view | affichage du journal | |
 | request | requête | HTTP request. |
 | response | réponse | HTTP response. |
@@ -740,7 +740,7 @@ Use **tú** when addressing the user in sentences. Use infinitives for concise b
 | context menu | menú contextual | |
 | preview | vista previa | |
 | grid | cuadrícula | Persephone's grid editors display data in rows and columns. |
-| notebook | cuaderno | The interactive, code-oriented document editor. |
+| notebook | cuaderno | The catalog board for structured notes. |
 | log view | vista del registro | |
 | request | solicitud | HTTP request. |
 | response | respuesta | HTTP response. |
@@ -804,7 +804,7 @@ Use **você** when addressing the user in sentences. Use infinitives for concise
 | context menu | menu de contexto | |
 | preview | visualização | |
 | grid | grade | Persephone's grid editors display data in rows and columns. |
-| notebook | caderno | The interactive, code-oriented document editor. |
+| notebook | caderno | The catalog board for structured notes. |
 | log view | visualização do log | |
 | request | solicitação | HTTP request. |
 | response | resposta | HTTP response. |
@@ -868,7 +868,7 @@ Use **tu** when addressing the user in sentences. Button and menu labels use the
 | context menu | menu di scelta rapida | Windows terminology for context menu. |
 | preview | anteprima | |
 | grid | griglia | Persephone's grid editors display data in rows and columns. |
-| notebook | notebook | The interactive, code-oriented document editor; developers commonly retain «notebook». |
+| notebook | notebook | The catalog board for structured notes; developers commonly retain «notebook». |
 | log view | visualizzazione del registro | |
 | request | richiesta | HTTP request. |
 | response | risposta | HTTP response. |
@@ -932,7 +932,7 @@ Use concise, neutral Simplified Chinese UI wording. Chinese does not mark formal
 | context menu | 上下文菜单 | |
 | preview | 预览 | |
 | grid | 网格 | Persephone's grid editors display data in rows and columns. |
-| notebook | 笔记本 | The interactive, code-oriented document editor. |
+| notebook | 笔记本 | The catalog board for structured notes. |
 | log view | 日志视图 | |
 | request | 请求 | HTTP request. |
 | response | 响应 | HTTP response. |
@@ -996,7 +996,7 @@ Use concise, neutral Japanese UI wording without explicit personal address. Use 
 | context menu | ショートカット メニュー | Windows terminology for context menu. |
 | preview | プレビュー | |
 | grid | グリッド | Persephone's grid editors display data in rows and columns. |
-| notebook | ノートブック | The interactive, code-oriented document editor; developer usage retains «ノートブック». |
+| notebook | ノートブック | The catalog board for structured notes; developer usage retains «ノートブック». |
 | log view | ログ ビュー | |
 | request | 要求 | HTTP request. |
 | response | 応答 | HTTP response. |
@@ -1060,7 +1060,7 @@ Use polite, formal **하십시오체** in complete sentences. Keep UI labels con
 | context menu | 바로 가기 메뉴 | Windows terminology for context menu. |
 | preview | 미리 보기 | |
 | grid | 그리드 | Persephone's grid editors display data in rows and columns. |
-| notebook | 노트북 | The interactive, code-oriented document editor; Korean developer usage retains «노트북». |
+| notebook | 노트북 | The catalog board for structured notes; Korean developer usage retains «노트북». |
 | log view | 로그 보기 | |
 | request | 요청 | HTTP request. |
 | response | 응답 | HTTP response. |

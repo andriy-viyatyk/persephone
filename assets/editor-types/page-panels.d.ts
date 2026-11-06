@@ -35,8 +35,6 @@ export interface IPagePanels {
     readonly search: ISearchPanel | undefined;
     readonly boards: IBoardsPanel | undefined;
     readonly git: IGitPanel | undefined;
-    readonly notebookCategories: IPagePanelNode | undefined;
-    readonly notebookTags: IPagePanelNode | undefined;
     readonly rest: IPagePanelNode | undefined;
     readonly archive: IPagePanelNode | undefined;
     readonly fileHistory: IPagePanelNode | undefined;

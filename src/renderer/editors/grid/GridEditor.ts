@@ -46,7 +46,7 @@ export type GridQueueRequest = never;
  *
  * Deliberately **not** av-grid's `Column` (US-1020 / D2). The old grid persisted its own
  * `Column` objects, which made a third-party type the on-disk contract in two places — the
- * descriptor in `openFiles.txt` and the `editorSettings:<id>` slot inside a `.pnb` notebook —
+ * descriptor in `openFiles.txt` and embedded editor state slots —
  * so a field rename upstream became a migration over users' disks. It also invited a
  * function-valued hook onto a `JSON.stringify` path, which would fail asymmetrically: surviving
  * a Grid↔Monaco switch, vanishing after a restart.

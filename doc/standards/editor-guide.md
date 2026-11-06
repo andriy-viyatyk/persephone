@@ -142,7 +142,7 @@ export class MyEditor extends TextHostEditorModel<MyEditorState> {
 }
 ```
 
-Editors whose initial load must not run inside `adoptHost` itself (the Grid/Link/Notebook
+Editors whose initial load must not run inside `adoptHost` itself (the Grid/Link
 pattern) put it in `protected onHostAttached(host)` instead. The base runs that hook on all
 three construction paths — editor switch (`switchFrom`), session restore (`restore` success),
 and open-file (`attachEditorToPage` via the public `bootstrapFromHost()` bridge) — but never
@@ -166,7 +166,7 @@ The lifecycle hook order during a switch is:
 Choose the page chrome before writing the view:
 
 - **Chrome-free** — use a plain root for standalone content that needs no shared toolbar, or
-  expose `BodyView` for an editor embedded inside another editor (for example notebook notes).
+  expose `BodyView` for an editor embedded inside another editor.
   An embedded body must not add `PageToolbarView` or `TextChromeView`.
 - **`PageToolbarView`** — use for a non-text editor that needs the standard page toolbar but does not
   need text-host actions, script panel, footer, or editor overlay. The Image editor is the native
@@ -277,7 +277,7 @@ export const myEditorModule: EditorModule = {
     // newEditorModel: async (filePath?: string) => { ... },
     // Only for standalone editors that claim a filesystem folder:
     // newEditorModelForFolder: async (anchorFolder: string) => { ... },
-    // Only for embeddable editors (rendered inside Notebook notes):
+    // Only for embeddable editors :
     // BodyView: MyEditorEmbeddedView,
 };
 ```
@@ -347,7 +347,7 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 
 - `0` — Fallback: monaco, the floor that guarantees every file resolves
 - `10` — Rendered view preferred over source: markdown preview
-- `20` — Compound file names: `*.grid.json`, `*.note.json`, `*.rest.json`, `*.link.json`, `*.log.jsonl`, `*.env.json`, `*.grid.csv`
+- `20` — Compound file names: `*.grid.json`, `*.link.json`, `*.log.jsonl`, `*.env.json`, `*.grid.csv`
 - `50` — Available to custom board editors; no built-in `.excalidraw` claimant remains
 - `100` — Exclusive viewers with no text view: image, archive, video
 - `200` — Pseudo-paths: `tree-category://` links
@@ -430,6 +430,5 @@ the editor explicitly owns that panel. Do not register a replaced record view wi
 - **Text-bearing minimal:** `/src/renderer/editors/svg/` — read-only `VanillaView` preview over the host (`/src/renderer/editors/html/` adds an image-export capability)
 - **Text-bearing complex:** `/src/renderer/editors/grid/` — JSON/CSV grid editor with a native `DataGridView`, full edit/save flow, custom write-guard, and host-slot settings
 - **Markdown renderer:** `/src/renderer/editors/markdown/` — native `TextChromeView` shell with a native body and hand-written HAST-to-DOM rendering
-- **Per-note embedding:** `/src/renderer/editors/notebook/note-editor/` — Notebook embeds text-bearing editors per-note via `NoteItemEditModel` (a non-file IContentHost)
 - **No-host with sidebar:** `/src/renderer/editors/explorer/` — Explorer sidebar editor with no main content area
 - **Multi-process editor:** `/src/renderer/editors/browser/` — webview-based browser spanning three processes ([architecture doc](../architecture/browser-editor.md))

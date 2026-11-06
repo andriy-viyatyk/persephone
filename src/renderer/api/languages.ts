@@ -13,7 +13,6 @@ import { logViewCatalog } from "../../shared/i18n/en/logView";
 import { mainCatalog } from "../../shared/i18n/en/main";
 import { menusCatalog } from "../../shared/i18n/en/menus";
 import { mnemeCatalog } from "../../shared/i18n/en/mneme";
-import { notebookCatalog } from "../../shared/i18n/en/notebook";
 import { settingsCatalog } from "../../shared/i18n/en/settings";
 import { shellCatalog } from "../../shared/i18n/en/shell";
 import { toolsCatalog } from "../../shared/i18n/en/tools";
@@ -101,7 +100,6 @@ const ENGLISH_ENTRY_CATALOGS = {
     about: aboutCatalog,
     tools: toolsCatalog,
     uikit: uikitCatalog,
-    notebook: notebookCatalog,
     logView: logViewCatalog,
 } as const;
 

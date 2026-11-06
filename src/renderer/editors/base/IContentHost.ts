@@ -39,7 +39,7 @@ export interface IContentHost {
     /** Optional root-level keystroke handler. Called by `<TextChrome>`'s
      *  outer panel `onKeyDown` so the chrome doesn't need to know the host
      *  class. `TextFileModel` will delegate Ctrl+S / Ctrl+Shift+S / F5 / F2
-     *  to its actions submodel; `NoteItemEditModel` may implement a subset. */
+     *  to its actions submodel; other hosts may implement a subset. */
     handleKeyDown?(e: KeyboardEvent): void;
 
     /** Optional context-menu items contributed to the page tab on behalf of the

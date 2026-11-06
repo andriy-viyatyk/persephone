@@ -14,7 +14,7 @@ import { ExplorerEditor, getDefaultExplorerEditorState } from "./ExplorerEditorM
 // ============================================================================
 
 /** Derive the Explorer root folder from the first panel-contributing editor
- *  exposing a local-file navigator target (Link/Todo/Notebook/…). Returns
+ *  exposing a local-file navigator target (Link/Todo/…). Returns
  *  "" when none has a file target (e.g. an unsaved collection). */
 export function explorerRootForPanels(page: PageModel): string {
     for (const e of page.editors) {

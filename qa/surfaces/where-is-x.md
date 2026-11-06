@@ -81,14 +81,11 @@ immediately right of *About*; `highlight("menubar-settings")`.
 This is the scenario most likely to expose a stale phrase, because US-1378 inserted a new icon into
 that row and shifted every icon after it.
 
-### B.4 — How do I tag a note in a notebook, and where is that control?
+### B.4 - Where are link categories?
 
-**Request:** "How do I put a tag on a note in a notebook, and where is that control on screen?"
-
-Expected: an answer from the notebook guide naming the region, plus a highlight of the relevant
-`NOTEBOOK_ELEMENTS` entry. This scenario tests a **two-part** question — a how and a where — because
-the epic's claim is that one page answers both, and a run that answers the how from the guide and
-the where from the DOM is the split this surface is watching for.
+**Preparation:** Open a link collection with categories.
+**Request:** "Where can I filter links by category?"
+**Expected:** Identify and highlight the Collections sidebar panel using the current page's discovered elements.
 
 ### B.5 — Agent's choice
 

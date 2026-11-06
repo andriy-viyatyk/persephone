@@ -16,7 +16,7 @@ guide to read for which task. It is intentionally short — read it once per ses
   `main.boards`, `main.downloads`, `main.networkLog`, `main.runtime`, `main.watchers`, and the settings-gated
   `main.script.execute(code)` branch in the main process. `windows[i].main` is invalid.
 - **Windows → pages → editors.** A window holds tabbed **pages**; each page renders through an
-  **editor** (`monaco` text, `grid-json`, `md-view`, `notebook-view`, `browser-view`,
+  **editor** (`monaco` text, `grid-json`, `md-view`, `browser-view`,
   `board-view`, …). `call` at `pages` / `windows` shows what's open; paths under `windows[i]`
   target another window.
 - **A browser page contains inner tabs.** One `browser-view` page hosts multiple browser tabs
@@ -63,7 +63,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Open text/code for the user | `pages.addEditorPage(...)` (editor `monaco`) | `pages.$help` |
 | Show a mermaid diagram | `pages.addEditorPage(...)` (`mermaid-view`, language `mermaid`) | `pages.$help` |
 | Show tabular data | `pages.addEditorPage(...)` (`grid-json` / `grid-csv`) | `pages.$help` and `persephone://guides/pages` |
-| Create notebook / links pages | `pages.addEditorPage(...)` (structured editors) | `pages.$help` and the editor resource |
+| Create links pages | `pages.addEditorPage(...)` (structured editors) | `pages.$help` and the editor resource |
 | Read or edit what's open | `call` at `pages` and `pages[i].content` | `pages.$help` and `persephone://guides/pages` |
 | Run code, use `app.*`, touch files | `script.execute` | `script.$help` and `persephone://guides/scripting` |
 | Open a web page or search query | `pages.openUrlInBrowserTab(url, options)` → returns `pageId` | `pages.$help` and `persephone://guides/browser` |
@@ -101,7 +101,7 @@ When you need to know what changed or what the user did between calls, read
 2. **Verify, don't assume.** After creating content, check `pages[i].content` for raw text,
    `window.screen.snapshot()` to see whether an editor rendered or shows an error.
 3. **Read the format resource before structured formats.** Wrong JSON for structured editors
-(notebook/links) may be accepted as raw content and fail only at render time; use the
+(links) may be accepted as raw content and fail only at render time; use the
    relevant focused resource and then verify the active page.
 
 MCP responses can include a separate optional, non-blocking tip. After the current task, consider the suggestion with the user; it is not a command. Agent tips can be disabled in Settings → MCP Server / Mneme.

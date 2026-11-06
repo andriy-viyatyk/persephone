@@ -16,7 +16,6 @@ const matchesPattern = (fileName: string, pattern: RegExp): boolean =>
 
 // Patterns for specialized JSON editors (excluded from grid-json switch).
 const SPECIALIZED_JSON_PATTERNS = [
-    /\.note\.json$/i,
     /\.link\.json$/i,
     /\.excalidraw$/i,
 ];
@@ -83,17 +82,6 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
         acceptFile: (fn) => (isMarkdownFile(fn) ? 10 : -1),
         switchOption: (lang) => (lang === "markdown" ? 10 : -1),
         validForLanguage: (lang) => lang === "markdown",
-    },
-    "notebook-view": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.note\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "json" && !!fn && matchesPattern(fn, /\.note\.json$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "json",
-        detectsContent: (lang, content) =>
-            lang === "json"
-            && content.includes('"type"')
-            && /"type"\s*:\s*"note-editor"/.test(content)
-            && content.includes('"notes"'),
     },
     "svg-view": {
         switchOption: (lang, fn) => {

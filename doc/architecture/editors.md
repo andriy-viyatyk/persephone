@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every editor in Persephone is a top-level `EditorModel` subclass. There is one uniform editor architecture — no separation between "content-views" and "standalone" editors. Text-bearing editors (Monaco, Grid, Markdown, Notebook, etc.) compose an `IContentHost` for content I/O and expose a `CONTENT_HOST_TRAIT` so any owner (page, notebook note, future container) can switch editor types by transferring host ownership.
+Every editor in Persephone is a top-level `EditorModel` subclass. There is one uniform editor architecture — no separation between "content-views" and "standalone" editors. Text-bearing editors (Monaco, Grid, Markdown, etc.) compose an `IContentHost` for content I/O and expose a `CONTENT_HOST_TRAIT` so any owner (page or future container) can switch editor types by transferring host ownership.
 
 Each editor:
 - Subclasses `EditorModel<TState>` (`/src/renderer/editors/base/EditorModel.ts`)
@@ -27,7 +27,6 @@ All editor code lives in `/src/renderer/editors/`.
 | `svg-view` | `SvgEditor` | `.svg` | ✓ | ✓ |
 | `html-view` | `HtmlEditor` | `.html` | ✓ | ✓ |
 | `mermaid-view` | `MermaidEditor` | `.mmd`, `.mermaid` | ✓ | ✓ |
-| `notebook-view` | `NotebookEditor` | `.note.json` | ✓ | ✓ |
 | `link-view` | `LinkEditor` | `.link.json` | ✓ | ✓ |
 | `log-view` | `LogViewEditor` | `.log.jsonl` | ✓ | ✓ |
 | `env-vars-view` | `EnvVarsEditor` | `.env.json` | ✓ | ✓ |
@@ -224,7 +223,7 @@ abstract class EditorModel<TState extends IEditorState = IEditorState> {
 Every text-bearing editor that wraps a `TextFileModel` host extends
 `TextHostEditorModel` (`/src/renderer/editors/base/TextHostEditorModel.ts`), a layer between
 `EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML,
-Link, Notebook, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
+Link, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
 lifecycle those editors would otherwise each reimplement:
 
 - `CONTENT_HOST_TRAIT` registration (host transfer on editor switch), `switchFrom`,
@@ -337,7 +336,6 @@ interface IContentHost {
 | Implementation | Backing | I/O |
 |----------------|---------|-----|
 | `TextFileModel` | Local file (or archive entry, HTTP URL) | File-backed via content pipe, with debounced auto-save to cache |
-| `NoteItemEditModel` | Notebook note (lives in notebook JSON) | No file I/O; reads/writes via the parent notebook's `updateNoteContent` |
 
 Text-bearing editors (Monaco, Grid, Markdown, ...) hold a reference to an `IContentHost` via `this.contentHost` and read content through it. The host outlives the editor — when a user switches a JSON file from text view to grid view, the same `TextFileModel` host transfers to the new `GridEditor` instance.
 
@@ -394,7 +392,7 @@ Two shared entry points sit on top of `exportPng()`: `savePngViaDialog(source)` 
 
 ## Owner-Orchestrated Switching
 
-Editor switching is initiated by the owner (the page, or a notebook), not by the editor itself. `PageModel.switchMainEditor(newEditorId)` — implemented in [`editor-switch.ts`](../../src/renderer/editors/base/editor-switch.ts), reached through a thin dynamic-import delegate on the page — creates the new editor via `editorRegistry.createEditor(newEditorId)` and hands it the old one:
+Editor switching is initiated by the owner (the page), not by the editor itself. `PageModel.switchMainEditor(newEditorId)` — implemented in [`editor-switch.ts`](../../src/renderer/editors/base/editor-switch.ts), reached through a thin dynamic-import delegate on the page — creates the new editor via `editorRegistry.createEditor(newEditorId)` and hands it the old one:
 
 ```typescript
 const newEditor = await editorRegistry.createEditor(newEditorId);
@@ -502,7 +500,6 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 |--------|--------|-------|
 | `page.editor` | `TextEditorFacade` | `MonacoEditor` |
 | `page.editor` | `GridEditorFacade` | `GridEditor` |
-| `page.editor` | `NotebookEditorFacade` | `NotebookEditor` |
 | `page.editor` | `LinkEditorFacade` | `LinkEditor` |
 | `page.editor` | `MarkdownEditorFacade` | `MarkdownEditor` |
 | `page.editor` | `AboutEditorFacade` | `AboutEditor` |
@@ -524,7 +521,7 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 Facades live in `/src/renderer/scripting/api-wrapper/`. Interfaces in `/src/renderer/api/types/*.d.ts`.
 
 The structured-data and navigation facades expose copied model snapshots and model-owned actions;
-they do not inspect mounted views or hand out live state arrays. Grid, Notebook,
+they do not inspect mounted views or hand out live state arrays. Grid,
 Environment Variables, Archive, Folder View, Git Tree, and Log View also publish curated
 `elements` and `highlight(name, message?)` descriptors where the surface has addressable controls.
 The Log View facade is also available as the `pages.logView` collection node, which points at the
@@ -550,7 +547,7 @@ File path → editorRegistry.resolve(filePath) → EditorModule → createEditor
 |----------|-----------|------------|
 | 0 | `monaco` | everything — the floor that guarantees a file always resolves |
 | 10 | `md-view` | any extension the Monaco language table maps to `markdown` |
-| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `link-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
+| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `link-view`, `env-vars-view` | compound file-name patterns (`*.grid.json`, `*.grid.csv`, …) |
 | 100 | `image-view`, `archive-view`, `video-view` | binary-format extensions |
 | 200 | `category-view` | `tree-category://` links |
 
@@ -651,7 +648,7 @@ So a board has **no source-specific code at all** — one `getFilePath()` → `r
 A custom-editor board can go one step further and let Persephone own the file the way it does for every built-in editor. The `board-manifest.json` field `editorKind` selects the variant:
 
 - **`"simple"`** (default, or absent) — the direct-`filePath` case above: the board gets a path and reads/writes it itself.
-- **`"content-host"`** — Persephone builds the board **with an `IContentHost`** (a `TextFileModel`, the same host that backs Monaco/Grid/Notebook). Persephone keeps the file, the content pipe, encoding detection, encryption, the auto-save cache, and dirty tracking; the board works with the content through the injected `persephone.host.*` bridge instead of a raw path. `editorKind` is honored only for a trusted board and is carried through `getBoardEditorAssociation` → `CustomEditorMatch` so construction can pick the model without re-reading the manifest.
+- **`"content-host"`** — Persephone builds the board **with an `IContentHost`** (a `TextFileModel`, the same host that backs Monaco/Grid). Persephone keeps the file, the content pipe, encoding detection, encryption, the auto-save cache, and dirty tracking; the board works with the content through the injected `persephone.host.*` bridge instead of a raw path. `editorKind` is honored only for a trusted board and is carried through `getBoardEditorAssociation` → `CustomEditorMatch` so construction can pick the model without re-reading the manifest.
 
 **The model — `BoardContentEditorModel`** (`editors/board/BoardContentEditorModel.ts`) subclasses `BoardEditorModel`, inheriting the iframe / trust / toolbar / automation / icon machinery unchanged and adding only the host composition (template: `MonacoEditor`). It composes a private `_host: TextFileModel` and registers `CONTENT_HOST_TRAIT`, so it **switches with the built-in editors by transferring the same host** — no reload, no data loss — exactly like Monaco↔Grid:
 
@@ -663,7 +660,7 @@ A custom-editor board can go one step further and let Persephone own the file th
 - `findCompatibleEditors()` returns **all** built-in editors accepting the composed host — via `editorRegistry.findEditorsAccepting(host)`, the *same* call the built-in editors make — plus this board. So a content-host board offers the **identical** switch set to the built-in editors that accept the same file (e.g. `Text Editor` alongside the board itself), letting the user reach Monaco as well as the natural viewer. It applies **no** `isPlainLocalPath` gate — content-host boards edit `https://` / archive / encrypted files too. `findEditorsAccepting` reads the host's `filePath ?? title`, so an **untitled page** stays resolvable and the user can switch back after renaming a fresh page to a matching name (e.g. `untitled` → `diagram.drawio`); before the host is adopted it falls back to the single natural built-in id.
 - `get editorId()` always reports the virtual `board-editor:<root>` whenever a board root is set — a content-host board is *always* a custom file editor, so (unlike the base `BoardEditorModel`, which reports it only once a `filePath` exists) it keeps that id even on an untitled page. This is what lets `switchMainEditor` recognize the board boundary (via `parseBoardEditorId`) when switching back to a built-in editor, and lets the switch widget highlight the active option. Persistence is unaffected — `getRestoreData()` still pins `"board-view"`.
 - **No busy retention** (`keepAliveOnNavigation()` / `survivesNavigation()` → `false`; `setBusy()` is a no-op + `console.warn`). The host transfers out on switch, so a surviving host-less board would be a broken zombie, and duplicating the host would give two unsynchronized writers of the same file.
-- **Footer + Script panel parity.** `BoardEditorView` renders the shared `EditorStatusBarView` (`editors/base/`) below every board iframe: pipe status and provider icon always; the `script` toggle, encoding label and `ScriptPanel` **whenever `model.contentHost` is set** — so a content-host board gets the same footer and script-run affordance the built-in text editors get from `TextChromeView`. Plain boards (no host) get the footer without the text-host parts (`board-status-bar`). A board can also contribute its own **footer status text** (e.g. a Todo board's item count) via `persephone.setStatusText(text)` — it lands in the footer's `footerContributions` slot (between the script toggle and the provider/encoding), the same slot the built-in Grid/Notebook editors fill. It rides the board→host-renderer `postMessage` channel as `board:setStatusText`, is routed only from the **main** frame (a secondary frame can't hijack the main footer), and stored as transient `BoardEditorState.statusText` (stripped from persistence, cleared on restore, re-set by the board on load). An isolated `FooterStatus` subscriber renders it so a frequently-changing count re-renders only the label, never the board iframe. `""` clears it; it works on plain boards too.
+- **Footer + Script panel parity.** `BoardEditorView` renders the shared `EditorStatusBarView` (`editors/base/`) below every board iframe: pipe status and provider icon always; the `script` toggle, encoding label and `ScriptPanel` **whenever `model.contentHost` is set** — so a content-host board gets the same footer and script-run affordance the built-in text editors get from `TextChromeView`. Plain boards (no host) get the footer without the text-host parts (`board-status-bar`). A board can also contribute its own **footer status text** (e.g. a Todo board's item count) via `persephone.setStatusText(text)` — it lands in the footer's `footerContributions` slot (between the script toggle and the provider/encoding), the same slot the built-in Grid editor fills. It rides the board→host-renderer `postMessage` channel as `board:setStatusText`, is routed only from the **main** frame (a secondary frame can't hijack the main footer), and stored as transient `BoardEditorState.statusText` (stripped from persistence, cleared on restore, re-set by the board on load). An isolated `FooterStatus` subscriber renders it so a frequently-changing count re-renders only the label, never the board iframe. `""` clears it; it works on plain boards too.
 
 **Construction & switch & persistence** (`PagesLifecycleModel`, `PageModel`, `PagesPersistenceModel`) branch on the kind: the `board-editor:<root>` construction branch builds the pipe + host + `BoardContentEditorModel` for `"content-host"`; `PageModel.switchMainEditor` transfers the host in **both** directions (built-in→board via `boardModule.createEditor` + `initFromBoardRoot` + `board.switchFrom`; board→built-in via `editorRegistry.createEditor` + `builtin.switchFrom`) with no `confirmRelease` (nothing is lost when the host survives); and `PagesPersistenceModel.restorePage` gains a board branch placed **before** its generic `if (d.host)` branch, so a restored content-host board rebuilds the subclass + host instead of collapsing into a plain `BoardEditorModel`. The three `isPlainLocalPath` gates (`resolveEditorIdForFile`, `findCompatibleEditors`, and the `SwitchWidgetView`) are lifted by kind so a content-host board surfaces as a switch option over non-local files — a simple board reaches the same sources by declaring `editorSources: "any"` (see [Non-Local Sources](#non-local-sources)). The `SwitchWidgetView` additionally treats the page **title** as the file name when there is no path (mirroring `editorRegistry.findEditorsAccepting`, which already resolves the built-in switch via `filePath ?? host.title`), so the board is offered on a freshly-renamed untitled page — only content-host boards qualify there, since a title-only page has no local path and simple boards require a real local file.
 
@@ -743,11 +740,10 @@ but not for a named `.xml` file, which is not assumed to be SVG.
 
 ### Content-Based Editor Detection
 
-Structured JSON editors (notebook and link) embed a `"type"` property in their JSON content:
-- `"type": "note-editor"` → notebook-view
+The Link editor embeds a `"type"` property in its JSON content:
 - `"type": "link-editor"` → link-view
 
-This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorModule`. The bundled REST Client board independently recognizes its collection marker through its manifest `contentMasks`; board content detection never participates in file-open resolution.
+This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.link.json`). Detection uses fast regex checks (no JSON parsing) via the matcher's `detectsContent` function. The bundled REST Client board independently recognizes its collection marker through its manifest `contentMasks`; board content detection never participates in file-open resolution.
 
 `TextFileModel` runs detection:
 - **Immediately** on `restore()` and `changeEditor()`

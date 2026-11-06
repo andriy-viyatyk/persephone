@@ -44,14 +44,7 @@ classDiagram
         +encryption: TextFileEncryptionModel
     }
 
-    class NoteItemEditModel {
-        implements IContentHost
-        -notebookModel: NotebookSource
-        -noteId: string
-    }
-
     IContentHost <|.. TextFileModel
-    IContentHost <|.. NoteItemEditModel
 
     EditorModel <|-- MonacoEditor
     EditorModel <|-- GridEditor
@@ -59,7 +52,6 @@ classDiagram
     EditorModel <|-- SvgEditor
     EditorModel <|-- HtmlEditor
     EditorModel <|-- MermaidEditor
-    EditorModel <|-- NotebookEditor
     EditorModel <|-- LinkEditor
     EditorModel <|-- LogViewEditor
     EditorModel <|-- BrowserEditorModel
@@ -78,11 +70,9 @@ classDiagram
     SvgEditor ..|> IContentHostTrait
     HtmlEditor ..|> IContentHostTrait
     MermaidEditor ..|> IContentHostTrait
-    NotebookEditor ..|> IContentHostTrait
     LinkEditor ..|> IContentHostTrait
     LogViewEditor ..|> IContentHostTrait
 
     MonacoEditor o-- IContentHost : composes
     GridEditor o-- IContentHost : composes
     MarkdownEditor o-- IContentHost : composes
-    NotebookEditor o-- IContentHost : composes

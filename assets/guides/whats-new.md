@@ -12,7 +12,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.18 (Upcoming)
 
-*No changes yet.*
+### Breaking change: Notebook moves to a board
+
+**Save all open notebooks before updating, including untitled notebooks.** Install the Notebook board from the catalog to open `.note.json` files; if it is absent, use the `+` install entry. Restored Notebook tabs and old pins are not migrated. Reopen saved files through the board; an unsaved cache may be orphaned.
+
+The dedicated New Notebook entry is gone. Create or open an empty `*.note.json` file, or create a text page, rename its tab to `untitled.note.json`, select Notebook in the editor switch, and save. The board provides its own guides.
+
+The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco IntelliSense and commands; file/link-to-category and note-to-category drag (use the card category field); and content-only Notebook switching. The `INotebookEditor` API and `pages.addEditorPage("notebook-view", ...)` are removed; use the board's `page.editor.app` API.
+
 
 ---
 

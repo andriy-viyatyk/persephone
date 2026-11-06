@@ -101,7 +101,7 @@ Tab state attributes include `data-active`, `data-modified`, `data-pinned`, `dat
 so on. It does not mean the app's UI locale or a spoken language. The feature is the tab language
 button and the `language` field on `pages.addEditorPage` and `pages`.
 
-Editors that declare no language—most grids, notebooks, browsers, boards, and app pages such as
+Editors that declare no language—most grids, browsers, boards, and app pages such as
 Tools & Editors—show no `tab-language` button. An editor icon appears in its place as
 `[data-part="empty-language"]`; a missing button is expected. Check `pages` before searching the
 DOM. A left-pinned tab shows only icons: its title label is empty and the file path is in a hover

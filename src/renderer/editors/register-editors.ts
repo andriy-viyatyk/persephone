@@ -82,20 +82,6 @@ secondaryViewRegistry.register({
 });
 
 secondaryViewRegistry.register({
-    id: "notebook-categories",
-    labelKey: "shell.categories",
-    label: englishMessage("shell.categories"),
-    loadView: () => import("./notebook/panels/NotebookCategoriesSecondaryView"),
-});
-
-secondaryViewRegistry.register({
-    id: "notebook-tags",
-    labelKey: "shell.tags",
-    label: englishMessage("shell.tags"),
-    loadView: () => import("./notebook/panels/NotebookTagsSecondaryView"),
-});
-
-secondaryViewRegistry.register({
     id: "git-changes",
     labelKey: "shell.git",
     label: englishMessage("shell.git"),
@@ -182,7 +168,6 @@ const EDITORS: EditorRow[] = [
     { id: "html-view", nameKey: "editors.preview", guidePath: "editors/html", hasContentHost: true, capabilities: [{ id: "content.view", representation: "html" }], load: async () => (await import("./html")).htmlModule },
     { id: "mermaid-view", nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "mermaid" }], load: async () => (await import("./mermaid")).mermaidModule },
     { id: "link-view", nameKey: "editors.links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
-    { id: "notebook-view", nameKey: "editors.notebook", guidePath: "editors/notebook", hasContentHost: true, load: async () => (await import("./notebook")).notebookModule },
     { id: "env-vars-view", nameKey: "editors.envVars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
     { id: "browser-view", nameKey: "editors.browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
     { id: "image-view", nameKey: "editors.imageViewer", guidePath: "editors/image", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },

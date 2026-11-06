@@ -26,7 +26,7 @@ function createTip(): HTMLSpanElement {
         Object.assign(document.createElement("code"), { textContent: "variant" }),
         document.createTextNode(" to "),
         Object.assign(document.createElement("code"), { textContent: "ghost" }),
-        document.createTextNode(" for the inline-edit chrome (transparent at rest, hover/focus borders only) used by todo titles and notebook cell descriptions."),
+        document.createTextNode(" for the inline-edit chrome (transparent at rest, hover/focus borders only) used by inline titles and descriptions."),
     );
     return tip;
 }

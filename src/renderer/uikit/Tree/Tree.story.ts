@@ -13,7 +13,7 @@ import { traitRegistry, TraitTypeId } from "../../core/traits/TraitRegistry";
 import type { TraitDragPayload } from "../../core/traits/dnd";
 import type { Story } from "../../editors/storybook/storyTypes";
 
-const TREE_DEMO_TRAIT_KEY: TraitTypeId = TraitTypeId.NotebookCategory;
+const TREE_DEMO_TRAIT_KEY: TraitTypeId = TraitTypeId.PinnedLink;
 if (!traitRegistry.has(TREE_DEMO_TRAIT_KEY)) traitRegistry.register(TREE_DEMO_TRAIT_KEY, new TraitSet());
 
 type StoryTreeItem = ITreeItem & { storyIcon?: "file" | "folder" };

@@ -88,7 +88,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Toast-on-failure wrapper (`guard(label, fn, level?)` — the "try, notify, carry on" handler shape) | `/src/renderer/core/utils/guard.ts` |
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Shared localization runtime (`t()`, English `englishMessage()`, deliberate-English `untranslated()`, pack validation/layering, pseudo-locale, and active locale) | `/src/shared/i18n/` |
-| English source-message catalog areas (common, settings, dialogs, shell, editors, menus, API, browser, board, Explorer, links, Git, Mneme, About, tools, UIKit, notebook, and Log View) | `/src/shared/i18n/en/` |
+| English source-message catalog areas (common, settings, dialogs, shell, editors, menus, API, browser, board, Explorer, links, Git, Mneme, About, tools, UIKit, and Log View) | `/src/shared/i18n/en/` |
 | Renderer startup locale and language-pack loading (before first UI paint; installs localized UIKit defaults) | `/src/renderer/i18n/startup.ts` |
 | UIKit's standalone English defaults and app-supplied text overrides (`uikitText()` / `setUikitText()`) | `/src/renderer/uikit/shared/uikit-text.ts` |
 | Monaco widget message localization (explicit supported-language imports; awaited before Monaco modules load) | `/src/renderer/i18n/monaco-nls.ts`, `/src/renderer.ts` |
@@ -270,9 +270,6 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | DOM-first editor icon resolver (tab + sidebar panel headers; `getIconElement`/file-icon fallback, returning `Element` or `null`) | `/src/renderer/components/icons/icon-elements.ts` |
 | DOM icon resolvers (file/language/board icon elements; no renderer `react-dom/server` dependency) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/theme/language-icons.ts`, `/src/renderer/editors/board/board-glyph-element.ts` |
 | Tree-provider item icon and HTTP favicon cache (directory/provider icons plus shared favicon lookup for link and browser surfaces) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/components/icons/favicon-cache.ts` |
-| Notebook editor (plain notes/filtered-notes collections, indexed lookup, and scalar version/count signals) | `/src/renderer/editors/notebook/NotebookEditor.ts` |
-| Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
-| Note item edit model     | `/src/renderer/editors/notebook/note-editor/NoteItemEditModel.ts` |
 | Settings page composition and section models | `/src/renderer/editors/settings/` |
 | Native settings page and section composition (height-constrained panel stack, fixed two-level Content tree, click-to-scroll/scroll-spy linkage, built-in controls, board-declared controls, and lifecycle ownership) | `/src/renderer/editors/settings/SettingsView.ts`, `/src/renderer/editors/settings/settings-catalog.ts`, `/src/renderer/editors/settings/sections/` |
 | Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts`, `/src/renderer/editors/settings/sections/ClipboardSectionModel.ts` |

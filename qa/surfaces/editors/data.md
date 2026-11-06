@@ -1,6 +1,6 @@
 # Surface QA: the data editors
 
-Manual scenarios for the grid, notebook, REST client, env vars, archive and Log View surfaces —
+Manual scenarios for the grid, published Notebook board, REST client, env vars, archive and Log View surfaces —
 everything a user *holds structured data in* rather than reads. Run through `call` only; do not add
 or run automated tests or a test harness for these surfaces. Leave pinned tabs untouched and close
 only pages the scenario created.
@@ -40,37 +40,11 @@ on this surface means "no attached host", not "no data". `sort` is `undefined` o
 sorted. `csvDelimiter` is `undefined` on a JSON or JSONL grid, where CSV options do not exist.
 Confirm no member writes a header, cell or column value that was not asked for.
 
-## Test D.3: Notebook repeated controls and the honest `count`
+## Test D.3: Published Notebook board
 
-**Preparation:** A notebook page with at least two notes.
+**Preparation:** Install and trust the Notebook board from the catalog, then open an existing `.note.json` file.
 
-**Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
-
-**Call:** Read `editor.elements`, then `editor.highlight("note-delete")`.
-
-**Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
-
-**Verify:** Eleven declarations; the six `note-*` entries say in their purpose text that they occur
-once per note. The highlight result reports `count` equal to the number of mounted notes and
-`highlighted` equal to it as well — the surface rings every instance rather than one arbitrary note.
-On a notebook with no notes the same entries report `visible: false`. Confirm `$help` states that
-singling out one note is what the id-taking actions are for.
-
-## Test D.4: Notebook state and panel ownership
-
-**Preparation:** The same notebook page, with the Categories or Tags sidebar panel open.
-
-**Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
-
-**Call:** Read `filteredCount`, `searchText`, `selectedCategory`, `expandedNoteId` and `notes`.
-Then read `page.panels`.
-
-**Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
-
-**Verify:** `searchText` is a real `""` when no search is active and `expandedNoteId` is `undefined`
-when no note is expanded. `notes` entries carry `language`, `createdDate` and `updatedDate`, and
-`editor` is absent rather than empty when the note has none. The Categories and Tags controls are
-**not** in `editor.elements`: they belong to `page.panels`, and `$help` says so.
+Confirm the board preserves the file data and exposes its own guides and automation surface. Follow those guides to inspect the page and its secondary views. Without the board, verify the catalog install route is available.
 
 ## Test D.7: Env vars — locked is not empty
 

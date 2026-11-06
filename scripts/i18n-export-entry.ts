@@ -18,7 +18,6 @@ import { mnemeCatalog } from "../src/shared/i18n/en/mneme";
 import { aboutCatalog } from "../src/shared/i18n/en/about";
 import { toolsCatalog } from "../src/shared/i18n/en/tools";
 import { uikitCatalog } from "../src/shared/i18n/en/uikit";
-import { notebookCatalog } from "../src/shared/i18n/en/notebook";
 import { logViewCatalog } from "../src/shared/i18n/en/logView";
 import { englishCatalog } from "../src/shared/i18n/en";
 import { hashEnglishMessage } from "../src/shared/i18n/hash";
@@ -42,7 +41,6 @@ const entryCatalogs = {
     about: aboutCatalog,
     tools: toolsCatalog,
     uikit: uikitCatalog,
-    notebook: notebookCatalog,
     logView: logViewCatalog,
 };
 

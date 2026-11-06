@@ -32,7 +32,6 @@ export type EditorView =
     | "image-view"
     | "svg-view"
     | "about-view"
-    | "notebook-view"
     | "mermaid-view"
     | "html-view"
     | "settings-view"

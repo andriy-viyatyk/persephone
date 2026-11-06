@@ -14,7 +14,7 @@ Overview of all active and planned epics and tasks.
   - [ ] BT-080 *(persephone-boards)*: Notebook board — Markdown preview and av-grid view for JSON array notes
   - [ ] BT-081 *(persephone-boards)*: Notebook board — aiVision model, guides, language packs; publish v1.0.0
   - [ ] [US-1771: Board toolbar breadcrumb control](tasks/US-1771-board-toolbar-breadcrumb/README.md)
-  - [ ] US-1769: Remove the built-in Notebook editor from the core
+  - [ ] [US-1769: Remove the built-in Notebook editor from the core](tasks/US-1769-remove-builtin-notebook/README.md)
   - [ ] US-1770: Research — simplify editor architecture that existed only for Notebook
 
 ## Planned

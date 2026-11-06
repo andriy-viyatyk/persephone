@@ -15,7 +15,7 @@ popover. The previous `pinned-editors` array migrates into Top at settings load 
 
 persephone is an **Electron desktop application** — a Windows Notepad replacement designed for developers. It combines:
 - Monaco Editor (VS Code engine) for text editing
-- Custom editors for specific file types (Grid, Markdown, Notebook, etc.)
+- Custom editors for specific file types (Grid, Markdown, etc.)
 - JavaScript/TypeScript execution environment for data transformation
 - Built-in browser with multi-tab support
 
@@ -252,7 +252,7 @@ See [state-management.md](./state-management.md).
 See [editors.md](./editors.md).
 
 - All editors in `/editors/` — every editor is an `EditorModel` subclass (32 editor IDs as of current catalog)
-- Text-bearing editors compose an `IContentHost` (`TextFileModel` for file-backed, `NoteItemEditModel` for notebook notes) and expose `CONTENT_HOST_TRAIT` for owner-orchestrated switching
+- Text-bearing editors compose an `IContentHost` (`TextFileModel` for file-backed content) and expose `CONTENT_HOST_TRAIT` for owner-orchestrated switching
 - Dynamic loading via `import()` for code splitting
 - Scripting facades expose the current editor API through `page.editor`; `page.editorSwitches` mirrors
   the page toolbar's editor choices and performs verified editor switches

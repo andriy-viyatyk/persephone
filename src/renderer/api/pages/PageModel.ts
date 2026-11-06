@@ -436,7 +436,7 @@ export class PageModel implements IPageHost {
     }
 
     /** Sidebar is closeable only when the Explorer is the *sole* panel
-     *  contributor. Any other secondary view (Link/Archive/Todo/Notebook/…
+     *  contributor. Any other secondary view (Link/Archive/Todo/…
      *  panels) makes it mandatory and non-closeable. Discriminates on the same
      *  `type === "fileExplorer"` marker as `findExplorer()`. */
     get sidebarMandatory(): boolean {

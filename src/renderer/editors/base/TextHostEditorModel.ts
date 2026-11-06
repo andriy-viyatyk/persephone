@@ -35,7 +35,7 @@ function isLegacyTextFileHost(host: unknown): host is TextFileModel {
  *    parse when the editor parses inside adoption (Graph, Mermaid,
  *    EnvVars pattern).
  *  - override `onHostAttached` when the initial load must not run inside
- *    `adoptHost` itself (Grid, Link, Notebook, Rest, LogView pattern) — the
+ *    `adoptHost` itself (Grid, Link, Rest, LogView pattern) — the
  *    hook runs on the switch, session-restore, and open-file
  *    (`attachEditorToPage` → `bootstrapFromHost`) paths.
  *  - `writeToHost` for every host content write, so the editor's own

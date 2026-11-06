@@ -270,7 +270,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── menu-folders.d.ts # IMenuFolders
 │       ├── text-editor.d.ts    # ITextEditor
 │       ├── grid-editor.d.ts    # IGridEditor
-│       ├── notebook-editor.d.ts # INotebookEditor
 │       ├── link-editor.d.ts    # ILinkEditor
 │       ├── browser-editor.d.ts # IBrowserEditor and shared automation result types
 │       ├── markdown-editor.d.ts # IMarkdownEditor
@@ -410,7 +409,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── base/               # Shared editor infrastructure
 │   │   ├── EditorModel.ts            # Abstract base class for all editors
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror
-│   │   ├── IContentHost.ts           # Interface for text-content hosting (TextFileModel, NoteItemEditModel)
+│   │   ├── IContentHost.ts           # Interface for text-content hosting (TextFileModel)
 │   │   ├── EditorStateStorage.ts     # Per-editor view-state storage interface (id, name → state)
 │   │   ├── editor-traits.ts          # CONTENT_HOST_TRAIT — owner-orchestrated editor switching
 │   │   ├── editor-matchers.ts        # Acceptance / resolution priority helpers
@@ -487,25 +486,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── browser-search-history.ts # Search history
 │   │   ├── network-log-links.ts      # Network log → ILink[] conversion
 │   │   ├── browser-pages.ts          # showBrowserPage / openUrlInBrowserTab — page opening; keeps the browser chunk out of startup
-│   │   └── index.ts
-│   ├── notebook/           # Notebook editor (text-bearing, IContentHost + TRAIT)
-│   │   ├── NotebookEditor.ts         # EditorModel — page-level notes, categories, tags
-│   │   ├── NotebookBodyView.ts       # Native body (MeasuredRowGrid + expanded overlay)
-│   │   ├── NoteItemView.ts           # Recycled native note cell
-│   │   ├── NoteItemViewModel.ts      # Per-row view model for virtualized note list
-│   │   ├── ExpandedNoteView.ts        # Expanded note overlay
-│   │   ├── TagsListView.ts
-│   │   ├── category-tree.ts
-│   │   ├── notebookTypes.ts
-│   │   ├── note-editor/              # Per-note embedded editor subsystem
-│   │   │   ├── NoteItemEditModel.ts  # IContentHost for one note (no file I/O — state in notebook JSON)
-│   │   │   ├── MiniTextEditorView.ts  # Monaco mini-editor used for monaco notes
-│   │   │   ├── NoteItemActiveEditorView.ts # Embeds language-gated editors per note
-│   │   │   ├── NoteItemToolbarView.ts
-│   │   │   └── index.ts
-│   │   ├── panels/                   # Secondary view panel components
-│   │   │   ├── NotebookCategoriesSecondaryView.ts  # "notebook-categories" panel
-│   │   │   └── NotebookTagsSecondaryView.ts        # "notebook-tags" panel
 │   │   └── index.ts
 │   ├── link-editor/        # Link collection editor (text-bearing, IContentHost + TRAIT)
 │   │   ├── LinkEditor.ts             # EditorModel — links, categories, tags, filters
@@ -744,7 +724,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── PageWrapper.ts          # Wraps page → IPage (with the current editor facade and switch node)
 │       ├── TextEditorFacade.ts     # ITextEditor facade
 │       ├── GridEditorFacade.ts     # IGridEditor facade
-│       ├── NotebookEditorFacade.ts # INotebookEditor facade
 │       ├── LinkEditorFacade.ts     # ILinkEditor facade
 │       ├── BrowserEditorFacade.ts  # IBrowserEditor facade + shared automation members + optional page-authored .app proxy
 │       ├── MarkdownEditorFacade.ts # IMarkdownEditor facade

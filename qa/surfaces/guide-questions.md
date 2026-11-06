@@ -74,17 +74,12 @@ user, the strip is broken.
 **Tests:** `whatsNew` returns the *current* section rather than all 2,200 lines. An agent that
 fetches the whole page and truncates has found a defect in `whatsNew`, not in itself.
 
-### Q.5 — An agent-only format page
+### Q.5 - An agent-only format page
 
-**Request:** "I want to build a notebook file for the user. What JSON shape does it need?"
+**Request:** "I want to build a link collection file. What JSON shape does it need?"
 
-**Expected route:** overview → `guides.search("notebook")` → `guides.formats.notebook`.
-**Answers from:** `formats/notebook.md`.
-**Tests:** that `audience: agent` pages are in the agent's tree and in its search results — the
-single-corpus decision (roadmap principle 1). It also tests ranking: two pages match "notebook"
-(`editors/notebook.md`, the user page, and `formats/notebook.md`, the format), and the agent asking
-about JSON should be able to tell which is which **from the summaries alone**. If it reads both, the
-finding is a summary that does not distinguish them.
+**Expected route:** overview, then `guides.search("links")` and `guides.formats.links`.
+**Answers from:** `formats/links.md`. Verify the format before constructing the file.
 
 ### Q.6 — Setup, outside the app
 
@@ -127,7 +122,7 @@ against a separate `agentGuide` root.
 | Q.2 | table-row passage | `shortcuts.md` |
 | Q.3 | page fetch, front matter stripped | `encryption.md` |
 | Q.4 | `guides.whatsNew` current-section extraction | `whats-new.md` |
-| Q.5 | agent-audience page in tree + search, summary disambiguation | `formats/notebook.md` |
+| Q.5 | agent-audience page in tree + search, summary disambiguation | `formats/links.md` |
 | Q.6 | hyphenated page path, bracket form | `mcp-setup.md` |
 | Q.7 | search across the user's vocabulary gap | `tabs-and-navigation.md` |
 | Q.8 | audience routing between a user and an agent page on one topic | `boards.md`, `agents/boards.md` |

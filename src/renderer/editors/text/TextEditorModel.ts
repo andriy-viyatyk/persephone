@@ -28,7 +28,7 @@ export interface TextFileEditorModelState extends IEditorState {
     encrypted?: boolean;
     restored: boolean;
     temp: boolean;
-    /** Editor detected from content (e.g., "notebook-view" when JSON has "type": "note-editor") */
+    /** Editor detected from content (for example, a link collection marker) */
     detectedContentEditor?: EditorView;
     /** Git repo membership (EPIC-030). Detected once on filePath resolve when
      *  the "Git integration" setting is on. `undefined` = not yet checked;

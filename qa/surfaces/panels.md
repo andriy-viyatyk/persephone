@@ -40,7 +40,7 @@ tree must never change the app.
 
 ## Test P.3: Panel elements are scoped to their own panel
 
-**Preparation:** A page with two panels open at once — for example Explorer plus Git, or a notebook
+**Preparation:** A page with two panels open at once — for example Explorer plus Git, or a link collection
 page with Categories and Tags.
 
 **Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.

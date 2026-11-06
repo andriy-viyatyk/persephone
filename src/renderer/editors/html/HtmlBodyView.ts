@@ -165,8 +165,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
                 dismissOverlays(this.iframe);
                 // Clicking inside a sandboxed iframe makes it the host document's `activeElement`
                 // but dispatches no focus event here, so nothing bubbles to an ancestor that tracks
-                // focus — a notebook note holding an HTML preview stayed inactive however much the
-                // user clicked in it.
+                // focus when a preview is embedded in another view.
                 //
                 // `focus()` alone is not enough: by then the iframe usually *is* the activeElement,
                 // and focusing an already-focused element is specified as a no-op that emits

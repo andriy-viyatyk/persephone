@@ -25,7 +25,7 @@ export const SERVER_INSTRUCTIONS = [
     "Open a web URL with `pages.openUrlInBrowserTab(...)`, then use `pages[i].editor.*`.",
     "Use `window.screen.*` for Persephone's own window and `pages[i].editor.*` for browser or board pages.",
     "Run renderer code with `script.execute(code)`; use `main.script.execute(code)` only when enabled.",
-    "For editor choices, start with `guides.editors.index` or `guides.editors.<editor>`; reading returns text for your use, while showing a guide means opening it — not copying its text into a new page — with `pages.openUrl(\"persephone-guide://editors/<editor>\")` for an ordinary Markdown tab or `pages[\"about-page\"].editor.open(\"editors/<editor>\")` for the About guide browser next to the version card; for notebook or links JSON use `guides.formats.<page>` (the matching resources remain available as an alternative).",
+    "For editor choices, start with `guides.editors.index` or `guides.editors.<editor>`; reading returns text for your use, while showing a guide means opening it — not copying its text into a new page — with `pages.openUrl(\"persephone-guide://editors/<editor>\")` for an ordinary Markdown tab or `pages[\"about-page\"].editor.open(\"editors/<editor>\")` for the About guide browser next to the version card; for links JSON use `guides.formats.<page>` (the matching resources remain available as an alternative).",
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
     "To add a language or fix a translation, follow `guides.agents.languages`; use `guides.agents[\"languages-glossary\"]` when choosing terminology.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
@@ -66,12 +66,6 @@ export const resourceFiles: IGuideResource[] = [
         uri: "persephone://guides/scripting",
         file: "guides/agents/scripting.md",
         description: "Scripting API reference: app objects, editor facades, TypeScript, and Node.js access for script.execute.",
-    },
-    {
-        name: "notebook-guide",
-        uri: "persephone://guides/notebook",
-        file: "guides/formats/notebook.md",
-        description: "Notebook editor reference: NoteItem JSON format and text, markdown, code, mermaid, and grid content types.",
     },
     {
         name: "links-guide",

@@ -6,7 +6,7 @@ import { getFileOpenEditorOptions } from "../editors/base/editor-switch-options"
 import { parseBoardEditorId } from "../editors/board/custom-editor-registry";
 import { createBoardGlyphElement } from "../editors/board/board-glyph-element";
 import { ArchiveIcon, type SvgIconComponent } from "../theme/icons";
-import { DefaultIcon, GridIcon, LinkIcon, NotebookIcon } from "../theme/language-icons";
+import { DefaultIcon, GridIcon, LinkIcon } from "../theme/language-icons";
 import { openWithDefaultApp } from "./open-with-default-app";
 import { t } from "../../shared/i18n/t";
 
@@ -16,7 +16,6 @@ const BUILT_IN_EDITOR_ICONS: Record<string, SvgIconComponent> = {
     "grid-json": GridIcon,
     "grid-csv": GridIcon,
     "grid-jsonl": GridIcon,
-    "notebook-view": NotebookIcon,
     "link-view": LinkIcon,
     "archive-view": ArchiveIcon,
 };

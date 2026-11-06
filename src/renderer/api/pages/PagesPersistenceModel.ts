@@ -439,7 +439,7 @@ export class PagesPersistenceModel {
             if (!firstPanel) nav.setStateQuiet({ open: false, activePanel: "" });
         }
 
-        if (page.editors.length === 0 && !desc.sidebar) {
+        if (page.editors.length === 0) {
             await page.dispose();
             return { kind: "invalid" };
         }

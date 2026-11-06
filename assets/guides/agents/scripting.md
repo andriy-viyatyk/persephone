@@ -349,22 +349,6 @@ grid.setSearch(text)                 // Filter rows
 grid.clearSearch()
 ```
 
-### `page.editor` when `id === "notebook-view"` — Notebook editor
-
-```javascript
-const nb = page.editor;
-nb.notes                             // All notes [{ id, title, content, category, tags }]
-nb.categories                        // All category names
-nb.tags                              // All tag names
-const note = nb.addNote();           // Returns new note
-nb.updateNoteTitle(id, title)
-nb.updateNoteContent(id, content)
-nb.updateNoteCategory(id, category)
-nb.addNoteTag(id, tag)
-nb.removeNoteTag(id, tagIndex)
-nb.deleteNote(id)
-```
-
 ### `page.editor` when `id === "link-view"` — Link collection
 
 ```javascript

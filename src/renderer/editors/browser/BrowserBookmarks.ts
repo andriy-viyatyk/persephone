@@ -57,7 +57,7 @@ export class BrowserBookmarks {
         }
 
         // BR-IMPL2 — construct-then-adoptHost. Mirrors the attachEditorToPage
-        // pattern from Todo / Rest Client / Notebook. LinkEditor adopts the
+        // pattern from Todo / Rest Client. LinkEditor adopts the
         // already-restored host (no re-read) and parses the initial content
         // inline via loadData.
         this.linkEditor.adoptHost(this.textFileHost);

@@ -7,8 +7,6 @@ import { TraitSet } from "./traits";
  */
 export enum TraitTypeId {
     ILink = "ILink",
-    Note = "Note",
-    NotebookCategory = "NotebookCategory",
     BrowserTab = "BrowserTab",
     PinnedLink = "PinnedLink",
     // Added in :

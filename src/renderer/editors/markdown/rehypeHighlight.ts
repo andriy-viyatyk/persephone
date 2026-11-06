@@ -11,7 +11,7 @@ const SKIP_TAGS = new Set(["code", "pre", "script", "style"]);
 
 /**
  * Create a rehype plugin that highlights search words in text nodes.
- * Splits search text into space-separated words (same logic as notebook search).
+ * Splits search text into space-separated words.
  */
 export function createRehypeHighlight(searchText: string) {
     const words = searchText.toLowerCase().trim().split(/\s+/).filter(Boolean);

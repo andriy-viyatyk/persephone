@@ -104,8 +104,6 @@ Every draggable type must have a `TraitTypeId`. Values are serializable strings.
 export enum TraitTypeId {
     // Data items (carry registered TraitSets)
     ILink             = "ILink",
-    Note              = "Note",
-    NotebookCategory  = "NotebookCategory",
     BrowserTab        = "BrowserTab",
     PinnedLink        = "PinnedLink",
 
@@ -335,7 +333,7 @@ const handleDrop = useCallback((e: React.DragEvent) => {
 
 **Required when:** The drop target element has child elements that can receive mouse events. Used in: `BrowserTabsPanel`, `FolderItem`, `PageTab`, `HeaderCell`.
 
-**Not required when:** The element has no interactive children (e.g., a plain `<div>` with only text). Used in: `NoteItemView`, `PinnedLinksPanel`.
+**Not required when:** The element has no interactive children (e.g., a plain `<div>` with only text). Used in: `PinnedLinksPanel`.
 
 ---
 
@@ -380,7 +378,7 @@ const handleDragEnd = useCallback(() => {
 ```typescript
 <Tree
     // ... standard tree props ...
-    traitTypeId={TraitTypeId.NotebookCategory}  // Makes cells draggable
+    traitTypeId={TraitTypeId.PinnedLink}  // Makes cells draggable
     getDragData={(item) => ({ category: item.category })}  // Payload for drag
     acceptsDrop                                  // Enables drop highlighting
     canTraitDrop={(dropItem, payload) => {        // Filter accepted types
@@ -469,9 +467,7 @@ The `LINK`/`FILE_LINK` split keeps each trait single-purpose: identity lives in 
 
 | TraitTypeId | Drag source | Drop targets | TraitSet registered |
 |---|---|---|---|
-| `ILink` | `LinksList`, `LinksTiles`, `TreeProviderView` | `TreeProviderView` (link collection, Mneme tree), `NotebookEditor` | Yes — `LINK` + `FILE_LINK` traits |
-| `Note` | `NoteItemView` | `NotebookEditor` category tree | No |
-| `NotebookCategory` | `NotebookEditor` category tree (via Tree) | `NotebookEditor` category tree | No |
+| `ILink` | `LinksList`, `LinksTiles`, `TreeProviderView` | `TreeProviderView` (link collection, Mneme tree) | Yes — `LINK` + `FILE_LINK` traits |
 | `BrowserTab` | `BrowserTabsPanel` | `BrowserTabsPanel` (reorder) | No |
 | `PinnedLink` | `PinnedLinksPanel` | `PinnedLinksPanel` (reorder) | No |
 | `PageTab` | `PageTab` | `PageTab` (reorder) | No |

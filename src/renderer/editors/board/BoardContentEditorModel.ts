@@ -14,7 +14,7 @@ import { errMessage } from "../../../shared/utils";
 
 /**
  * Content-host board (EPIC-043). A board that edits a file through Persephone's content host —
- * the same `TextFileModel` (`IContentHost`) that backs Monaco / Grid / Notebook. Persephone owns
+ * the same `TextFileModel` (`IContentHost`) that backs Monaco / Grid. Persephone owns
  * the pipe, encoding, encryption, auto-save cache, and dirty state; the board works with the
  * content over the `persephone.host.*` bridge (US-846). It switches with the built-in editors by
  * TRANSFERRING the shared host (no reload / no data loss), via `CONTENT_HOST_TRAIT`.

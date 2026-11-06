@@ -14,7 +14,6 @@ export const editorsCatalog = {
     preview: { message: "Preview" },
     mermaid: { message: "Mermaid" },
     links: { message: "Links" },
-    notebook: { message: "Notebook" },
     envVars: { message: "Env Vars" },
     browser: { message: "Browser" },
     imageViewer: { message: "Image Viewer" },

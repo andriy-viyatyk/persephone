@@ -92,7 +92,7 @@ console.log(page.tab.title, page.tab.active, page.tab.modified);
 await page.tab.highlight("page-tab");
 ```
 
-The operation-bearing ids are `monaco`, `grid-json`, `grid-csv`, `grid-jsonl`, `notebook-view`,
+The operation-bearing ids are `monaco`, `grid-json`, `grid-csv`, `grid-jsonl`,
 `env-vars-view`, `archive-view`, `log-view`, `category-view`, `git-tree`,
 `link-view`, `md-view`, `svg-view`, `html-view`, `mermaid-view`,
 `browser-view`, `mcp-view`, `image-view`, `video-view`, `file-diff`, `board-view`, `board-info`,
@@ -129,7 +129,6 @@ narrowed. A drawing page is a board page, so its `pages[i].editor` value is the 
 - `monaco`: selection, cursor, insertion, replacement, line reveal, highlighting, and the
   page-local `wordWrap` / `toggleWordWrap()` controls.
 - `grid-json`, `grid-csv`, `grid-jsonl`: rows, columns, cell editing, search, and row/column changes.
-- `notebook-view`: notes, categories, tags, and note editing.
 - `link-view`: links, categories, tags, and link editing.
 - `md-view`: markdown preview state and rendered HTML.
 - `svg-view`: SVG source and PNG export.
@@ -317,12 +316,6 @@ The `filters` property is read-only. Built-in text filters have `type: "text"`; 
 `{ op, text }` for `contains`, `equals`, or `startsWith`, and `{ op }` for `blank` or `notBlank`.
 Custom filter values are not prescribed and should be treated as `unknown`.
 
-The Notebook facade exposes copied notes, categories, tags, counts, filters, expanded-note state,
-and parse errors. It supports adding, removing, and updating notes, comments, categories, tags,
-language, and embedded editor, as well as search and category/tag filtering. Notebook sidebar
-panels are available separately through `page.panels.notebookCategories` and
-`page.panels.notebookTags`.
-
 The REST facade exposes copied request and response snapshots, including the URL, headers, body,
 and response body. It can select, add, rename, move, and remove requests, change request metadata
 and header/form keys, and send the selected request. It deliberately does not accept password,
@@ -359,7 +352,7 @@ with each panel's `id`, `label`, owner, and `expanded` state. The node also expo
 number to `width` resizes the sidebar and persists it.
 
 Use the named child nodes when present: `explorer`, `search`, `boards`, `git`,
-`notebookCategories`, `notebookTags`, `rest`, `archive`, and `fileHistory`. Explorer, Search,
+`rest`, `archive`, and `fileHistory`. Explorer, Search,
 Boards, and Git provide state and model-backed actions; other panels expose their live identity,
 state, elements, and available close operation. A child is `undefined` when its panel is not
 currently rendered.

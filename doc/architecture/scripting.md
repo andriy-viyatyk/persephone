@@ -638,7 +638,6 @@ editor-specific operations. Editors without an operation facade still return a
 |--------|--------|-------|----------------|
 | `page.editor` | `TextEditorFacade` | `MonacoEditor` | `getSelectedText()`, `insertText()`, `replaceSelection()`, `revealLine()`, cursor position, `wordWrap`, `toggleWordWrap()` |
 | `page.editor` | `GridEditorFacade` | `GridEditor` | `rows`, `columns`, `editCell()`, `addRows()`, `deleteRows()`, `addColumns()`, `deleteColumns()` |
-| `page.editor` | `NotebookEditorFacade` | `NotebookEditor` | `notes`, `categories`, `tags`, `addNote()`, `deleteNote()`, `updateNoteTitle()` |
 | `page.editor` | `LinkEditorFacade` | `LinkEditor` | `links`, `categories`, `tags`, `addLink()`, `deleteLink()`, `updateLink()` |
 | `page.editor` | `MarkdownEditorFacade` | `MarkdownEditor` | `viewMounted`, `html` (read-only) |
 | `page.editor` | `AboutEditorFacade` | `AboutEditor` | `open()`, `back()`, `current`, `elements`, `highlight()` for the About guide browser |
@@ -865,7 +864,7 @@ instance is expanded. Board-prefix labels are resolved from the owning board's c
 declarations (`title`, then view id, then `"View"`).
 
 The node also exposes optional live children for the addressable panel aliases `explorer`, `search`,
-`boards`, `clipboard`, `git`, `notebookCategories`, `notebookTags`, `rest`, `archive`, and
+`boards`, `clipboard`, `git`, `rest`, `archive`, and
 `fileHistory`.
 Children are returned only when the corresponding panel is currently contributed to that page;
 their `state`, curated `elements`, and model-backed actions are supplied by the owning panel
@@ -1242,7 +1241,6 @@ When output is suppressed and the script throws an error, the error is displayed
 |---------|----------|----------|-----------|
 | F5 (script panel open) | `TextFileActionsModel` | Always `"typescript"` | Script panel content |
 | F5 (script panel closed, JS/TS file) | `TextFileActionsModel` | From page state | Page content (or selection) |
-| F5 (notebook JS/TS note) | `NoteItemEditModel` | From note language | Note content as script |
 | Run button (script panel) | `ScriptPanelView.ts` | Always `"typescript"` | Script panel content |
 | MCP `script.execute` | `mcp-handler.ts` | Caller-specified (optional) | Script from an MCP call path |
 | Autoload (window open) | `AutoloadRunner.ts` | Determined by file extension | Registration scripts from `library/autoload/` |
@@ -1322,7 +1320,6 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `board-vars.d.ts` | `IBoardVars` — `app.boardVars` admin access to the board secrets store (get/set/list per namespace, unrestricted — unlike a board's own sandboxed `persephone.var.*`) |
 | `text-editor.d.ts` | `ITextEditor` — Monaco editor operations |
 | `grid-editor.d.ts` | `IGridEditor` — grid editor operations |
-| `notebook-editor.d.ts` | `INotebookEditor` — notebook operations |
 | `link-editor.d.ts` | `ILinkEditor` — link manager operations |
 | `markdown-editor.d.ts` | `IMarkdownEditor` |
 | `svg-editor.d.ts` | `ISvgEditor` |
@@ -1356,7 +1353,6 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── PageCollectionWrapper.ts # Wraps PagesModel → IPageCollection
     ├── TextEditorFacade.ts      # Monaco operations
     ├── GridEditorFacade.ts      # Grid data operations
-    ├── NotebookEditorFacade.ts  # Notebook operations
     ├── LinkEditorFacade.ts      # Link manager operations
     ├── MarkdownEditorFacade.ts  # Markdown preview (read-only)
     ├── AboutEditorFacade.ts     # About guide-browser navigation and elements
@@ -1407,7 +1403,6 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── common.d.ts                  # IDisposable, IEvent, EditorView, Language
 ├── text-editor.d.ts             # ITextEditor
 ├── grid-editor.d.ts             # IGridEditor
-├── notebook-editor.d.ts         # INotebookEditor
 ├── link-editor.d.ts             # ILinkEditor
 ├── markdown-editor.d.ts         # IMarkdownEditor
 ├── svg-editor.d.ts              # ISvgEditor

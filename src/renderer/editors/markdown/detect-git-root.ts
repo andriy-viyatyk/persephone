@@ -2,7 +2,7 @@ import { fpDirname, fpJoin } from "../../core/utils/file-path";
 import { fs } from "../../api/fs";
 
 // Cache of starting-directory → git root (or undefined). Walks are cheap but
-// repeat often (every markdown link, plus notebook-embedded blocks share a path).
+// repeat often for markdown links sharing a path.
 // The cache lives for the process lifetime with no invalidation — acceptable
 // here because a `.git` location effectively never changes for an open file; a
 // repo cloned into an already-resolved directory won't be picked up until

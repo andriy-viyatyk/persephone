@@ -72,21 +72,11 @@ them.
 schemas. A `PARTIAL` here is expected and is the measurement EPIC-094 starts from — record what the
 agent had to guess.
 
-### A.3 — The notebook JSON format, which the user cannot see by default
+### A.3 - An agent-only format guide
 
-**Request:** "Show me the documentation for the notebook file format."
+**Request:** "Show me the documentation for the link collection file format."
 
-**Start:** The runner's first operation is `call` with no `path`.
-
-**Expected route:** overview → `guides` / `guides.search` → `pages["about-page"].editor.open("formats/notebook")`.
-
-**Verify:** the pane shows the guide, and the *Show agent guides* toggle is now on — `open()` turns
-it on rather than refusing an `audience: agent` page, and leaves it on so the user can see and undo
-what changed. Read `elements` and confirm `about-show-agent-guides` exists; return to contents with
-`back()` and confirm the `agents` and `formats` folders are now listed in the tree.
-
-**Tests:** the single-corpus decision from EPIC-092 seen from the *user's* screen, and whether the
-declared side effect is discoverable from the member summary rather than a surprise.
+**Expected route:** overview, then `guides.search`, then `pages["about-page"].editor.open("formats/links")`. Verify the format guide opens in About.
 
 ### A.4 — Open it properly so I can keep it
 

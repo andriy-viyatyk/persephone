@@ -10,7 +10,6 @@ import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
 import { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import { GridEditor } from "../../editors/grid/GridEditor";
-import { NotebookEditor } from "../../editors/notebook/NotebookEditor";
 import { EnvVarsEditor } from "../../editors/env-vars/EnvVarsEditor";
 import { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
 import { LinkEditor } from "../../editors/link-editor/LinkEditor";
@@ -37,7 +36,6 @@ import { AboutEditorFacade } from "./AboutEditorFacade";
 import type { IAiCallContext } from "../ai-vision/root";
 import { McpInspectorFacade } from "./McpInspectorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
-import { NotebookEditorFacade } from "./NotebookEditorFacade";
 import { EnvVarsEditorFacade } from "./EnvVarsEditorFacade";
 import { ArchiveEditorFacade } from "./ArchiveEditorFacade";
 import { PageEditorSwitchesNode } from "../ai-vision/page-editor-switches";
@@ -68,7 +66,7 @@ import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils
 
 type EditorOrHost = EditorModel | TextFileModel;
 type EditorFacade =
-    | TextEditorFacade | GridEditorFacade | NotebookEditorFacade | LinkEditorFacade
+    | TextEditorFacade | GridEditorFacade | LinkEditorFacade
     | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
     | BrowserEditorFacade | McpInspectorFacade
     | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade
@@ -90,7 +88,6 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "grid-json": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
     "grid-csv": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
     "grid-jsonl": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
-    "notebook-view": (editor, id, name) => new NotebookEditorFacade(editor as NotebookEditor, id, name),
     "env-vars-view": (editor, id, name) => new EnvVarsEditorFacade(editor as EnvVarsEditor, id as "env-vars-view", name),
     "archive-view": (editor, id, name) => new ArchiveEditorFacade(editor as ArchiveEditor, id as "archive-view", name),
     "link-view": (editor, id, name) => new LinkEditorFacade(editor as LinkEditor, id, name),
@@ -146,7 +143,7 @@ tab is this page's tab-strip entry and its curated controls; its title remains a
 pinned tab hides title text. Use pages.showPage, closePage, pinTab, unpinTab, and moveTab for tab
 actions. The panels node is a live view of the page's sidebar. Grouped is a side-by-side page and
 creates one when none exists. A successful content read or assignment reports the raw source, not
-that a structured editor rendered it successfully. Parse JSON before writing notebook or links,
+that a structured editor rendered it successfully. Parse JSON before writing structured content,
 or REST content, then activate the page and use window.screen.snapshot() when you need to verify the
 rendered editor. A page can have NO editor: a tab stays open when its editor is closed under it (for
 example after its board is deleted), rendering as an "Empty" tab. Such a page is listed here like any

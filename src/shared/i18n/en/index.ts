@@ -15,7 +15,6 @@ import { mnemeCatalog } from "./mneme";
 import { aboutCatalog } from "./about";
 import { toolsCatalog } from "./tools";
 import { uikitCatalog } from "./uikit";
-import { notebookCatalog } from "./notebook";
 import { logViewCatalog } from "./logView";
 import { voiceTypingCatalog } from "./voiceTyping";
 import { transcriptCatalog } from "./transcript";
@@ -40,7 +39,6 @@ export const englishCatalog = {
     about: Object.fromEntries(Object.entries(aboutCatalog).map(([key, entry]) => [key, entry.message])),
     tools: Object.fromEntries(Object.entries(toolsCatalog).map(([key, entry]) => [key, entry.message])),
     uikit: Object.fromEntries(Object.entries(uikitCatalog).map(([key, entry]) => [key, entry.message])),
-    notebook: Object.fromEntries(Object.entries(notebookCatalog).map(([key, entry]) => [key, entry.message])),
     logView: Object.fromEntries(Object.entries(logViewCatalog).map(([key, entry]) => [key, entry.message])),
     voiceTyping: Object.fromEntries(Object.entries(voiceTypingCatalog).map(([key, entry]) => [key, entry.message])),
     transcript: Object.fromEntries(Object.entries(transcriptCatalog).map(([key, entry]) => [key, entry.message])),
@@ -63,7 +61,6 @@ export const englishCatalog = {
     about: MessagesOf<typeof aboutCatalog>;
     tools: MessagesOf<typeof toolsCatalog>;
     uikit: MessagesOf<typeof uikitCatalog>;
-    notebook: MessagesOf<typeof notebookCatalog>;
     logView: MessagesOf<typeof logViewCatalog>;
     voiceTyping: MessagesOf<typeof voiceTypingCatalog>;
     transcript: MessagesOf<typeof transcriptCatalog>;

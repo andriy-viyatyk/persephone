@@ -9,7 +9,7 @@ graph TB
     EBB --> ED["editor module Editor component<br/><i>e.g. MonacoBody / GridBody / ImageView</i>"]
 
     ED -->|"text-bearing editors compose"| TC["TextChrome<br/><i>shared toolbar / script-panel / footer</i>"]
-    TC --> EB["Editor body<br/><i>MonacoBody / GridBody / NotebookBody / etc.</i>"]
+    TC --> EB["Editor body<br/><i>MonacoBody / GridBody / MarkdownBody / etc.</i>"]
 
     ED -->|"non-text editors render directly"| DE["Direct body<br/><i>ImageView / BrowserView / ArchiveView / etc.</i>"]
 

@@ -90,7 +90,7 @@ The only unattended answer exception is a low-privilege inline Log View question
 
 ### What to Check
 
-For **structured editors** (notebook, links, graph):
+For **structured editors** (links, graph):
 - Did the agent read the dedicated resource guide BEFORE creating/updating?
 - Is the JSON structure correct (all required fields present)?
 - Does the editor render without crashes?

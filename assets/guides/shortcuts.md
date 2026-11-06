@@ -197,12 +197,6 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | `Alt+Home` | Go to tab's home page |
 | `Escape` | Close find bar / stop loading unless the page handles it / revert URL bar |
 
-## Notebook Editor
-
-| Shortcut | Action |
-|----------|--------|
-| `Escape` | Collapse expanded note / cancel editing |
-
 ## File Explorer Panel
 
 ### Navigation

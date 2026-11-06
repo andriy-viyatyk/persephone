@@ -284,7 +284,7 @@ the queue is for transient DOM or view operations, not a second state store.
 
 ## EditorModel Pattern
 
-Located in `/src/renderer/editors/base/`. Every editor (Monaco, Grid, Markdown, Notebook, Link, Log View, SVG, HTML, Mermaid, Draw, Browser, PDF, Image, Video, Board, etc.) subclasses `EditorModel<TState>`.
+Located in `/src/renderer/editors/base/`. Every editor (Monaco, Grid, Markdown, Link, Log View, SVG, HTML, Mermaid, Draw, Browser, PDF, Image, Video, Board, etc.) subclasses `EditorModel<TState>`.
 
 ### EditorModel\<TState\>
 
@@ -312,7 +312,6 @@ class GridEditor extends EditorModel<GridState> {
 Minimal interface for "something that owns editable text content". Two concrete implementations ship today:
 
 - `TextFileModel` — file-backed (owns file I/O, encryption, pipe, cache)
-- `NoteItemEditModel` — notebook-note-backed (no file I/O; state lives in the notebook's JSON)
 
 Editors compose one via `this.contentHost` and read content through it. Switching editor types is a host-ownership transfer — the new editor inherits the existing host (and its content + I/O + encryption state) untouched.
 

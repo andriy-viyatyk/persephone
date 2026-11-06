@@ -29,8 +29,6 @@ const PANEL_NODE_MEMBERS: readonly IAiMember[] = [
     { name: "search", kind: "property", node: true, summary: "The live Search panel node, when present on this page." },
     { name: "boards", kind: "property", node: true, summary: "The live Boards panel node, when present on this page." },
     { name: "git", kind: "property", node: true, summary: "The live merged Git panel node, when present on this page." },
-    { name: "notebookCategories", kind: "property", node: true, summary: "The live Notebook Categories panel node, when present on this page." },
-    { name: "notebookTags", kind: "property", node: true, summary: "The live Notebook Tags panel node, when present on this page." },
     { name: "rest", kind: "property", node: true, summary: "The live REST panel node, when present on this page." },
     { name: "archive", kind: "property", node: true, summary: "The live Archive panel node, when present on this page." },
     { name: "fileHistory", kind: "property", node: true, summary: "The live File History panel node, when present on this page." },
@@ -45,7 +43,6 @@ const SIDEBAR_ELEMENTS: readonly IAiElementDeclaration[] = [
 
 const ALIAS_TO_PANEL_ID: Readonly<Record<string, string>> = {
     explorer: "explorer", search: "search", boards: "boards", git: "git-changes",
-    notebookCategories: "notebook-categories", notebookTags: "notebook-tags",
     archive: "archive-tree", fileHistory: "git-diff-revisions",
 };
 

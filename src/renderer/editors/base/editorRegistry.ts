@@ -35,9 +35,7 @@ type EditorModuleCommon = {
      *  the Explorer-named directory rather than an encoded link. */
     newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
     /** Chrome-free body — the editor content WITHOUT `<TextChrome>`. Supplied
-     *  by editors that can be embedded inside another editor — notebook per-note
-     *  dispatch mounts `module.BodyView` so each note's editor has no page
-     *  chrome. Only the language-gated embeddable editors (Grid, Markdown, Svg,
+     *  by editors that can be embedded without page chrome. Only the language-gated embeddable editors (Grid, Markdown, Svg,
      *  Html, Mermaid) provide it. */
     BodyView?: VanillaViewCtor<{ model: EditorModel; editorConfig?: EditorConfig }>;
 };
@@ -221,8 +219,7 @@ class EditorRegistry {
         return this.resolve(fileName)?.id;
     }
 
-    /** Editor switch options for a language/file — the switch widget + notebook
-     *  note toolbar. Editors whose `match.switchOption` ≥ 0, sorted ascending
+    /** Editor switch options for a language/file — the switch widget. Editors whose `match.switchOption` ≥ 0, sorted ascending
      *  (monaco = 0 first), labelled by editor name. Empty list when ≤ 1 option
      *  applies. Mirrors the legacy `getSwitchOptions`. */
     getSwitchOptions(
@@ -348,9 +345,7 @@ class EditorRegistry {
     }
 
     /** Public module accessor — loads (and caches) the module for an id so
-     *  callers can read `module.BodyView` / `module.createEditor` directly. Used
-     *  by the notebook per-note dispatch to mount an embedded editor's
-     *  chrome-free body view. */
+     *  callers can read `module.BodyView` / `module.createEditor` directly, including a chrome-free body view. */
     getModule(id: string): Promise<EditorModule> {
         return this.loadModule(id);
     }

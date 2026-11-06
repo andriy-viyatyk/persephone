@@ -20,7 +20,6 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 |---|---|---|---|
 | Text Editor | `monaco` | Text, code, scripts, and unknown files | [Text Editor](./monaco.md) |
 | Grid Editor | `grid-json`, `grid-csv`, `grid-jsonl` | JSON, CSV, and JSONL tables | [Grid Editor](./grid.md) |
-| Notebook Editor | `notebook-view` | Structured `.note.json` notes | [Notebook](./notebook.md) |
 | Link Editor | `link-view` | `.link.json` link collections | [Links](./links.md) |
 | REST Client board | `board-editor:<root>` | `.rest.json` HTTP collections | [REST Client](./rest-client.md) |
 | Environment Variables | `env-vars-view` | Board environment profiles | [Environment Variables](./env-vars.md) |
@@ -51,17 +50,17 @@ The [screen catalogue](../screens/index.md) documents the surrounding Explorer, 
 [Menu Bar](../screens/menu-bar.md) chrome. Window-owned [Screen Snip](../screens/header.md) is
 documented with the header; the [Excalidraw Board guide](./draw.md) covers drawing and snip handoff.
 
+The catalog Notebook board opens `.note.json` files and provides its own guides. Install it from the catalog, then open an existing file or create an empty one. To create from a new text page, rename its tab to `untitled.note.json`, select Notebook in the editor switch, and save. There is no dedicated New Notebook entry.
+
 ## Switching editors
 
-The default and switchable combinations include JSON with Grid, Markdown with Preview, `.note.json`
-with Notebook, `.link.json` with Links, `.rest.json` with REST Client,
+The default and switchable combinations include JSON with Grid, Markdown with Preview, `.link.json` with Links, `.rest.json` with REST Client,
 `.excalidraw` with the bundled Excalidraw board, `.svg` and `.html` with Preview, and
 `.mmd`/`.mermaid` with Mermaid.
 CSV, JSONL, and NDJSON can use Grid; Git Diff is offered for text files in a repository when Git
 integration is enabled. Archives, images, and audio/video normally have one specialized editor.
 
-Content detection can add a switch without a special filename: Notebook requires JSON with
-`"type": "note-editor"` and `"notes"`; Links requires `"type": "link-editor"` and `"links"`;
+Content detection can add a switch without a special filename: Links requires `"type": "link-editor"` and `"links"`.
 The REST Client board recognizes `.rest.json` files and JSON content with `"type": "rest-client"` and `"requests"`. Log View is narrower: it accepts `.log.jsonl`, or JSONL
 content carrying a `"type": "log.*"` marker, not arbitrary JSONL.
 

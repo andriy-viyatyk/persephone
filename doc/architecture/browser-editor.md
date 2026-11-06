@@ -878,7 +878,7 @@ URL paths are case folded).
 
 ### Markdown Link Context Menu
 
-Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https) via the shared `appendLinkOpenMenuItems()` helper:
+Right-clicking a link in Markdown Preview shows additional items for external URLs (http/https) via the shared `appendLinkOpenMenuItems()` helper:
 - "Open in Default Browser" — `shell.openExternal(href)`
 - "Open in Internal Browser" — `openUrlInBrowserTab(href)`
 - Per-profile items — `openUrlInBrowserTab(href, { profileName })` for each configured browser profile

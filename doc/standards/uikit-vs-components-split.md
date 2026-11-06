@@ -31,7 +31,7 @@
 
 - A new `Slider` → `uikit/Slider/`.
 - A new file-picker that uses `app.fs` → `components/file-search/` (extend existing) or a new persephone-coupled folder if the existing ones don't fit.
-- A new editor-specific panel that only the Notebook editor uses → `editors/notebook/components/` (private to that editor — not reusable).
+- A new editor-specific panel that only the Link editor uses → `editors/link-editor/` (private to that editor — not reusable).
 - A new dialog or settings panel — reusable UI built from UIKit primitives → consumer code under `editors/`, `ui/`, or wherever it's used. Compose UIKit primitives by props; do not create new wrappers in `uikit/` just to hold a layout.
 
 ### Edge case: "this could be persephone-coupled, but doesn't need to be"

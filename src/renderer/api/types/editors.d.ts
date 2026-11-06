@@ -9,7 +9,7 @@ export interface IEditorInfo {
     /** Human-readable editor name (e.g. "Text Editor", "JSON Grid"). */
     readonly name: string;
     /**
-     * `true` for text-bearing editors (Monaco, Grid, Markdown, Notebook, Todo,
+     * `true` for text-bearing editors (Monaco, Grid, Markdown, Todo,
      * Link, SVG, HTML, Mermaid, Log View) — share a
      * common text content and can switch between each other.
      * `false` for standalone editors (PDF, Image, Browser, Archive, Video, MCP

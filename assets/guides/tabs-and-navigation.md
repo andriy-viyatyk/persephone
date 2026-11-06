@@ -275,7 +275,7 @@ Persephone shows the corresponding “No … editor is registered” message.
 
 **Open Folder** — The first entry in the default Top category. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**.
 
-Items include all standard editors (Script, Grid, Notebook, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always available regardless of the clipboard-history setting.
+Items include all standard editors (Script, Grid, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always available regardless of the clipboard-history setting.
 
 **Clipboard** — Opens one dedicated page whose sidebar contains the Clipboard history panel. If
 history is disabled, the panel shows a **Disabled** badge, an explanation, and an **Open Settings**
@@ -304,7 +304,6 @@ The page sidebar is shared across editors. Different editors contribute their ow
 - **Archive** — Appears when a file inside a ZIP-based archive is open. Shows the archive's file tree.
 - **Link Editor panels** — When a `.link.json` file is open, the sidebar is always open and shows **Collections**, **Tags**, and **Hostnames** panels for filtering links. The sidebar cannot be closed while a link file is open. Click a panel header to expand it; click an item to filter the link list. The breadcrumb in the Link Editor toolbar shows the current filter path. A File Explorer panel is also added automatically for the link file's folder.
 - **Links panel** — When a standalone link collection page is open (created by multi-file drop, `app.pages.openLinks()`, or "Show Resources"), a **Collections** panel appears in the sidebar. Click a link to navigate the page's main area to that file or URL. Hover a non-directory link to see a rich tooltip with title, URL, and image preview. Right-click a non-directory link for an **Edit Link** context menu.
-- **Notebook panels** — When a `.note.json` file is open, the sidebar shows **Categories** and **Tags** panels.
 - **REST Client board Requests view** — The bundled REST Client board provides its request collection tree as a board secondary view.
 
 ## File Explorer Panel

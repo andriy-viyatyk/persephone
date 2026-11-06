@@ -356,7 +356,7 @@ uikit/ListBox/
 ```
 
 Model classes are suffixed `Model` (matching the rest of the codebase — `GridPageModel`,
-`NotebookViewModel`, `ImageViewModel`).
+`ImageViewModel`).
 
 ### Why this matters in UIKit specifically
 

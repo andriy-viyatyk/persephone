@@ -21,7 +21,7 @@ This separation provides:
 Editor views have three intentional shapes:
 
 - **Chrome-free**: a standalone root with no shared shell, or a `BodyView` intended for
-  embedding. This is the only shape suitable for notebook note dispatch.
+  embedding.
 - **`PageToolbarView`**: a non-text editor's page root plus the standard toolbar. Use it when the
   editor needs toolbar actions but not text-host controls, script panel, footer, or overlay.
 - **`TextChromeView`**: the native host-aware shell for text editors. It owns the toolbar, focus/key
@@ -33,10 +33,9 @@ Export a native main view as `EditorModule.View`, or an embeddable native body a
 native child views and DOM slots.
 
 The native main-view shape is used by the text-bearing editor set, including `svg`, `html`,
-`markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the env-vars, board, and
+`markdown`, `grid`, `mermaid`, and `log-view`; the env-vars, board, and
 file-diff bodies follow the same `VanillaView` shape. The five embeddable
-bodies (`svg`, `html`, `markdown`, `grid`, and `mermaid`) also expose `BodyView`, so notebook note
-dispatch can mount them without page chrome.
+bodies (`svg`, `html`, `markdown`, `grid`, and `mermaid`) also expose `BodyView` for mounting without page chrome.
 
 ## When to Use
 
@@ -483,11 +482,7 @@ updates each record. Use `SubtreeSwap` for one conditional branch: the same key 
 changed key is created detached, inserted before the old root, then the old branch is disposed and
 detached. Both helpers own the structural operation and its lifetime.
 
-The idempotency guard in
-[`NotebookBodyView.ts:262-284`](../../src/renderer/editors/notebook/NotebookBodyView.ts#L262-L284)
-is the worked reference: when the grid root is already the notes list's only child, it returns
-instead of calling `replaceChildren` again. Full-DOM clear-and-rebuild in an update path is the
-anti-pattern. `replaceChildren` remains appropriate for a region the view owns outright, but not
+Full-DOM clear-and-rebuild in an update path is an anti-pattern. `replaceChildren` remains appropriate for a region the view owns outright, but not
 as a substitute for keyed collection reconciliation or conditional subtree swapping.
 
 ### The `update()` contract and the rejected gate
