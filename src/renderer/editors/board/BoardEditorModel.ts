@@ -943,7 +943,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Resolve the pipe used by `board://…/__pipe/…`. A live first-open pipe always wins;
      * only a restored stream-host without one is rebuilt from persisted source state. */
     async resolveStreamPipe(): Promise<IContentPipe> {
-        const host = this.contentHost as unknown as { pipe?: IContentPipe | null } | null;
+        const host = this.contentHost;
         if (host?.pipe) return host.pipe;
         if (this.pipe) return this.pipe;
         if (this.editorKind !== "stream-host") {

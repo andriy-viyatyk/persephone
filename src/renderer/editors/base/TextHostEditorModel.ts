@@ -1,6 +1,5 @@
 import { EditorModel, type EditorRestoreOptions, type EditorStateBase, type RestoreData } from "./EditorModel";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "./editor-traits";
-import type { IContentHost } from "./IContentHost";
 import type { ComponentQueueEvent } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
 import type { IContentPipe } from "../../api/types/io.pipe";
@@ -12,10 +11,6 @@ import { fpBasename } from "../../core/utils/file-path";
 import { createEchoGuard } from "../../core/utils/echo-guard";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
-
-function isLegacyTextFileHost(host: unknown): host is TextFileModel {
-    return (host as { type?: string } | null)?.type === "textFile";
-}
 
 /**
  * Base class for every editor that wraps a `TextFileModel` content host.
@@ -71,7 +66,7 @@ export abstract class TextHostEditorModel<
     ) {
         super(modelState, defaultState);
         const trait: IContentHostTrait = {
-            extractContentHost: (): IContentHost => {
+            extractContentHost: (): TextFileModel => {
                 const host = this._host;
                 if (!host) {
                     throw new Error(
@@ -81,7 +76,7 @@ export abstract class TextHostEditorModel<
                 this.teardownHostSubscriptions();
                 this.onHostExtracted();
                 this._host = null;
-                return host as unknown as IContentHost;
+                return host;
             },
         };
         this.traits.add(CONTENT_HOST_TRAIT, trait);
@@ -126,19 +121,18 @@ export abstract class TextHostEditorModel<
 
     // ── Host accessors ────────────────────────────────────────────────────
 
-    get contentHost(): IContentHost | null {
-        return (this._host as unknown as IContentHost) ?? null;
+    get contentHost(): TextFileModel | null {
+        return this._host;
     }
 
-    /** Typed host accessor for body + toolbar + facade consumption (avoids
-     *  the `IContentHost`→`TextFileModel` cast at every read site). */
+    /** Host accessor for body, toolbar and facade consumption. */
     get host(): TextFileModel | null {
         return this._host;
     }
 
     findCompatibleEditors(): string[] {
         if (!this._host) return [];
-        return editorRegistry.findEditorsAccepting(this._host as unknown as IContentHost);
+        return editorRegistry.findEditorsAccepting(this._host);
     }
 
     getNavigatorTarget(): { pipe?: IContentPipe | null; filePath?: string | null } | null {
@@ -187,12 +181,7 @@ export abstract class TextHostEditorModel<
                 `${this.displayName} editor switchFrom: ${oldEditor.editorId} has no CONTENT_HOST_TRAIT`,
             );
         }
-        const host = trait.extractContentHost() as unknown as TextFileModel;
-        if (!isLegacyTextFileHost(host)) {
-            throw new Error(
-                `${this.displayName} editor switchFrom: extracted host is not a TextFileModel`,
-            );
-        }
+        const host = trait.extractContentHost();
         // Preserve cache-file id across the swap.
         this.state.update((s) => {
             s.id = oldEditor.id;

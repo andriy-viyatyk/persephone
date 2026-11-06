@@ -244,7 +244,7 @@ export const htmlModule: EditorModule = {
     createEditor: () =>
         new HtmlEditor(new TComponentState({ ...defaultHtmlEditorState })),
     View: HtmlEditorView,
-    BodyView: HtmlBodyView,
+
 };
 
 export { HtmlEditor, defaultHtmlEditorState };

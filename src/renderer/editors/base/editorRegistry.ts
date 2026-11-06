@@ -1,6 +1,5 @@
 import type { EditorModel } from "./EditorModel";
-import type { IContentHost } from "./IContentHost";
-import type { EditorConfig } from "./EditorConfig";
+import type { TextFileModel } from "../text/TextEditorModel";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import type { ContentRepresentation } from "../../api/types/capabilities";
@@ -13,7 +12,7 @@ export type EditorCapabilityDeclaration =
 export interface AcceptanceInput {
     fileName?: string;
     language?: string;
-    host?: IContentHost;
+    host?: TextFileModel;
     /** Resolution mode (walkthrough 02 / S5). Scales priority:
      *    - "edit" prefers Monaco; preview editors fall back.
      *    - "view" prefers dedicated viewers; Monaco falls back.
@@ -34,10 +33,6 @@ type EditorModuleCommon = {
     /** Folder-open factory for standalone editors whose construction depends on
      *  the Explorer-named directory rather than an encoded link. */
     newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
-    /** Chrome-free body — the editor content WITHOUT `<TextChrome>`. Supplied
-     *  by editors that can be embedded without page chrome. Only the language-gated embeddable editors (Grid, Markdown, Svg,
-     *  Html, Mermaid) provide it. */
-    BodyView?: VanillaViewCtor<{ model: EditorModel; editorConfig?: EditorConfig }>;
 };
 
 export type EditorModule = EditorModuleCommon & {
@@ -183,7 +178,7 @@ class EditorRegistry {
     /** All editor ids that accept the current host. Used by the page-level
      *  switch widget. Mode-agnostic by design — `accepts()` returns -1 only
      *  when truly incompatible. */
-    findEditorsAccepting(host: IContentHost): string[] {
+    findEditorsAccepting(host: TextFileModel): string[] {
         const out: { id: string; p: number }[] = [];
         const language = host.state.get().language;
         const fileName = (host as unknown as { filePath?: string }).filePath
@@ -274,7 +269,7 @@ class EditorRegistry {
      *  call before the host finishes loading simply yields no suggestion and
      *  re-runs once content arrives. Mirrors the legacy `detectContentEditor`,
      *  now host-driven (/ C581-3). */
-    detectContentEditor(host: IContentHost): string | undefined {
+    detectContentEditor(host: TextFileModel): string | undefined {
         const s = host.state.get() as { content?: string; language?: string };
         const content = s.content ?? "";
         if (!content) return undefined;
@@ -344,8 +339,7 @@ class EditorRegistry {
         }
     }
 
-    /** Public module accessor — loads (and caches) the module for an id so
-     *  callers can read `module.BodyView` / `module.createEditor` directly, including a chrome-free body view. */
+    /** Public module accessor - loads and caches the module for an id. */
     getModule(id: string): Promise<EditorModule> {
         return this.loadModule(id);
     }

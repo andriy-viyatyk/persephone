@@ -20,22 +20,20 @@ This separation provides:
 
 Editor views have three intentional shapes:
 
-- **Chrome-free**: a standalone root with no shared shell, or a `BodyView` intended for
-  embedding.
+- **Chrome-free**: a standalone root with no shared shell.
 - **`PageToolbarView`**: a non-text editor's page root plus the standard toolbar. Use it when the
   editor needs toolbar actions but not text-host controls, script panel, footer, or overlay.
 - **`TextChromeView`**: the native host-aware shell for text editors. It owns the toolbar, focus/key
   handling, script panel, content-host footer, and editor overlay; the editor-specific body sits in
   its `SlotContent` children slot.
 
-Export a native main view as `EditorModule.View`, or an embeddable native body as `BodyView`;
-`AsyncEditorView` mounts a main `View` directly. `TextChromeView` and `PageToolbarView` compose
+Export a native main view as `EditorModule.View`; `AsyncEditorView` mounts it directly.
+Page views compose their body views directly. `TextChromeView` and `PageToolbarView` compose
 native child views and DOM slots.
 
 The native main-view shape is used by the text-bearing editor set, including `svg`, `html`,
 `markdown`, `grid`, `mermaid`, and `log-view`; the env-vars, board, and
-file-diff bodies follow the same `VanillaView` shape. The five embeddable
-bodies (`svg`, `html`, `markdown`, `grid`, and `mermaid`) also expose `BodyView` for mounting without page chrome.
+file-diff bodies follow the same `VanillaView` shape. About guides also construct the Markdown body directly.
 
 ## When to Use
 

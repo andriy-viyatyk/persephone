@@ -3,11 +3,10 @@ import { EditorModel } from "../base/EditorModel";
 import type { EditorRestoreOptions } from "../base/EditorModel";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "../base/editor-traits";
-import type { IContentHost } from "../base/IContentHost";
 import { editorRegistry } from "../base/editorRegistry";
 import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
-import { TextFileModel, newTextFileModel, isTextFileModel } from "../text/TextEditorModel";
+import { TextFileModel, newTextFileModel } from "../text/TextEditorModel";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { boardEditorId } from "./custom-editor-registry";
 import { errMessage } from "../../../shared/utils";
@@ -37,7 +36,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
         super(state);
         this.own(() => this._hostStateUnsub?.());
         const trait: IContentHostTrait = {
-            extractContentHost: (): IContentHost => {
+            extractContentHost: (): TextFileModel => {
                 const host = this._host;
                 if (!host) {
                     throw new Error("Host already extracted from BoardContentEditorModel");
@@ -45,7 +44,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
                 this._hostStateUnsub?.();
                 this._hostStateUnsub = null;
                 this._host = null;
-                return host as unknown as IContentHost;
+                return host;
             },
         };
         this.traits.add(CONTENT_HOST_TRAIT, trait);
@@ -53,8 +52,8 @@ export class BoardContentEditorModel extends BoardEditorModel {
 
     // ── Host accessors ──────────────────────────────────────────────────
 
-    override get contentHost(): IContentHost | null {
-        return (this._host as unknown as IContentHost) ?? null;
+    override get contentHost(): TextFileModel | null {
+        return this._host;
     }
 
     /** A content-host board is ALWAYS a custom file editor (it owns a content host) — even on an
@@ -79,7 +78,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
         const root = this.state.get().boardRoot;
         if (!root) return [];
         const builtins = this._host
-            ? editorRegistry.findEditorsAccepting(this._host as unknown as IContentHost)
+            ? editorRegistry.findEditorsAccepting(this._host)
             : [editorRegistry.resolveId(this.currentFilePath() ?? this.title) ?? "monaco"];
         return [...builtins, boardEditorId(root)];
     }
@@ -93,12 +92,8 @@ export class BoardContentEditorModel extends BoardEditorModel {
                 `BoardContentEditorModel.switchFrom: ${oldEditor.editorId} has no CONTENT_HOST_TRAIT`,
             );
         }
-        const host = trait.extractContentHost() as unknown as TextFileModel;
-        if (!isTextFileModel(host)) {
-            throw new Error(
-                "BoardContentEditorModel.switchFrom: extracted host is not a TextFileModel",
-            );
-        }
+        const host = trait.extractContentHost();
+
         // Preserve the editor id across the host swap so editor-owned cache files remain associated.
         this.state.update((s) => { s.id = oldEditor.id; });
         // `host.state.editor` is stamped "board-view" inside `adoptHost` (Concern C1).

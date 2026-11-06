@@ -7,9 +7,8 @@ export type PipeDescriptor = {
     encoding?: string;
 };
 
-/** Persisted state for an `IContentHost`. Text-bearing editors carry one;
- *  no-host editors (PDF, Browser, …) don't. `kind` discriminates the host
- *  class — only `"textFile"` exists today; future host types add cases. */
+/** Persisted state for a `TextFileModel` content host. Text-bearing editors carry one;
+ *  no-host editors (PDF, Browser, …) do not. The `kind` field remains `"textFile"`. */
 export interface HostDescriptor {
     kind: "textFile";
     state: Record<string, unknown>;

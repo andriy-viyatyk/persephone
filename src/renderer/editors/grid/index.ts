@@ -297,7 +297,7 @@ function makeModule(id: GridEditorId): EditorModule {
         createEditor: () =>
             new GridEditor(new TComponentState({ ...defaultGridEditorState }), id),
         View: GridEditorView,
-        BodyView: GridBodyView,
+
     };
 }
 

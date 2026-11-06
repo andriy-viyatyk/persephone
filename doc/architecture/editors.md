@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every editor in Persephone is a top-level `EditorModel` subclass. There is one uniform editor architecture — no separation between "content-views" and "standalone" editors. Text-bearing editors (Monaco, Grid, Markdown, etc.) compose an `IContentHost` for content I/O and expose a `CONTENT_HOST_TRAIT` so any owner (page or future container) can switch editor types by transferring host ownership.
+Every editor in Persephone is a top-level `EditorModel` subclass. There is one uniform editor architecture — no separation between "content-views" and "standalone" editors. Text-bearing editors (Monaco, Grid, Markdown, etc.) compose a `TextFileModel` for content I/O and expose a `CONTENT_HOST_TRAIT` so the page can switch editor types by transferring host ownership.
 
 Each editor:
 - Subclasses `EditorModel<TState>` (`/src/renderer/editors/base/EditorModel.ts`)
@@ -316,28 +316,9 @@ The menu items themselves live in [`editors/shared/editor-menu-items.ts`](../../
 
 ## IContentHost
 
-The shared abstraction for "something that owns editable text content". Two concrete implementations ship today:
+`IContentHost` and `IContentHostState` describe the retained content and settings surface implemented by `TextFileModel`. It owns file I/O, encryption and the content pipe, including cache-backed auto-save.
 
-```typescript
-interface IContentHost {
-    readonly id: string;
-    readonly type: "textFile";
-    readonly state: TOneState<IContentHostState>;  // { content, language, editor, filePath, ... }
-    readonly stateStorage: EditorStateStorage;
-    readonly pipe: IContentPipe | null;
-    changeContent(content: string, byUser?: boolean): void;
-    changeLanguage(language: string | undefined): void;
-    confirmRelease(closing?: boolean): Promise<boolean>;
-    getDescriptor(): HostDescriptor;
-    dispose(): void;
-}
-```
-
-| Implementation | Backing | I/O |
-|----------------|---------|-----|
-| `TextFileModel` | Local file (or archive entry, HTTP URL) | File-backed via content pipe, with debounced auto-save to cache |
-
-Text-bearing editors (Monaco, Grid, Markdown, ...) hold a reference to an `IContentHost` via `this.contentHost` and read content through it. The host outlives the editor — when a user switches a JSON file from text view to grid view, the same `TextFileModel` host transfers to the new `GridEditor` instance.
+Text-bearing editors hold a `TextFileModel` through `contentHost`. The trait transfers that same model between editors without re-reading or disposing it.
 
 ### Markdown and Mermaid rendering security
 
@@ -354,7 +335,7 @@ Switchable text-bearing editors expose `CONTENT_HOST_TRAIT` so any owner can tra
 const CONTENT_HOST_TRAIT = new TraitKey<IContentHostTrait>("content-host");
 
 interface IContentHostTrait {
-    extractContentHost(): IContentHost;     // detach — old editor must NOT dispose it
+    extractContentHost(): TextFileModel;     // detach — old editor must NOT dispose it
 }
 ```
 
@@ -441,12 +422,10 @@ interface EditorModule {
         // the editor derives its own state from the verified folder anchor
     // The required native main editor arm.
     View: VanillaViewCtor<{ model: EditorModel }>;
-    // Chrome-free embedded arm: vanilla BodyView.
-    BodyView?: VanillaViewCtor<{ model: EditorModel }>;
 }
 ```
 
-`View` is required and `BodyView` is optional for embeddable editors. The registry stores and
+`View` is required. Page views compose their body views directly. The registry stores and
 returns the native constructor as-is; it has no React arm and no normalization shim. All chrome
 callers use native views, and `AsyncEditorView` mounts the module's `View` directly.
 
@@ -648,7 +627,7 @@ So a board has **no source-specific code at all** — one `getFilePath()` → `r
 A custom-editor board can go one step further and let Persephone own the file the way it does for every built-in editor. The `board-manifest.json` field `editorKind` selects the variant:
 
 - **`"simple"`** (default, or absent) — the direct-`filePath` case above: the board gets a path and reads/writes it itself.
-- **`"content-host"`** — Persephone builds the board **with an `IContentHost`** (a `TextFileModel`, the same host that backs Monaco/Grid). Persephone keeps the file, the content pipe, encoding detection, encryption, the auto-save cache, and dirty tracking; the board works with the content through the injected `persephone.host.*` bridge instead of a raw path. `editorKind` is honored only for a trusted board and is carried through `getBoardEditorAssociation` → `CustomEditorMatch` so construction can pick the model without re-reading the manifest.
+- **`"content-host"`** — Persephone builds the board **with a `TextFileModel`** (the same host that backs Monaco/Grid). Persephone keeps the file, the content pipe, encoding detection, encryption, the auto-save cache, and dirty tracking; the board works with the content through the injected `persephone.host.*` bridge instead of a raw path. `editorKind` is honored only for a trusted board and is carried through `getBoardEditorAssociation` → `CustomEditorMatch` so construction can pick the model without re-reading the manifest.
 
 **The model — `BoardContentEditorModel`** (`editors/board/BoardContentEditorModel.ts`) subclasses `BoardEditorModel`, inheriting the iframe / trust / toolbar / automation / icon machinery unchanged and adding only the host composition (template: `MonacoEditor`). It composes a private `_host: TextFileModel` and registers `CONTENT_HOST_TRAIT`, so it **switches with the built-in editors by transferring the same host** — no reload, no data loss — exactly like Monaco↔Grid:
 

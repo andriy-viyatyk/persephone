@@ -252,7 +252,7 @@ See [state-management.md](./state-management.md).
 See [editors.md](./editors.md).
 
 - All editors in `/editors/` — every editor is an `EditorModel` subclass (32 editor IDs as of current catalog)
-- Text-bearing editors compose an `IContentHost` (`TextFileModel` for file-backed content) and expose `CONTENT_HOST_TRAIT` for owner-orchestrated switching
+- Text-bearing editors compose a `TextFileModel` (which implements `IContentHost`) and expose `CONTENT_HOST_TRAIT` for owner-orchestrated switching
 - Dynamic loading via `import()` for code splitting
 - Scripting facades expose the current editor API through `page.editor`; `page.editorSwitches` mirrors
   the page toolbar's editor choices and performs verified editor switches
@@ -648,7 +648,7 @@ Every editor follows the same pattern:
 /editors/[name]/
 ├── index.ts              # EditorModule registration (factory + matchers; required native View)
 ├── [Name]Editor.ts       # EditorModel subclass — state, lifecycle, business logic
-├── [Name]BodyView.ts      # Native body (when the editor has an embeddable body)
+??? [Name]BodyView.ts      # Native body composed by the page view
 ├── [Name]BodyView.ts       # Native embeddable body, when the editor has one
 └── components/           # Editor-specific (optional)
 ```

@@ -1,10 +1,9 @@
 import { EditorOrHost } from "./base";
-import type { IContentHost } from "./base/IContentHost";
 import type { VanillaViewCtor } from "../uikit/shared/vanilla-view";
 
 export interface EditorViewModule {
     View: FileEditorView;
 }
 
-export type FileEditorView<T extends EditorOrHost | IContentHost = EditorOrHost | IContentHost> =
+export type FileEditorView<T extends EditorOrHost = EditorOrHost> =
     VanillaViewCtor<{ model: T }>;

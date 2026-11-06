@@ -17,14 +17,12 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { t } from "../../../shared/i18n/t";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { DEFAULT_PROFILE } from "../../api/board-vars/types";
-import type { EditorConfig } from "../base/EditorConfig";
 import type { EnvVarsEditor, EnvVarsEditorState } from "./EnvVarsEditor";
 import "../../uikit/Button/Button.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 
 type EnvVarsBodyProps = {
     model: EnvVarsEditor;
-    editorConfig?: EditorConfig;
 };
 
 type EnvVarsBodyProjection = Pick<
@@ -312,7 +310,7 @@ class VariablesGridView extends VanillaView<{
     namespace: string;
     profile: string;
     data: Record<string, string>;
-    editorConfig?: EditorConfig;
+
 }> {
     private readonly depsGate: DepsGate = createDepsGate();
     private rowCounter = 0;
@@ -331,7 +329,7 @@ class VariablesGridView extends VanillaView<{
         namespace: string;
         profile: string;
         data: Record<string, string>;
-        editorConfig?: EditorConfig;
+
     }) {
         super(props, createPanelElement({ direction: "column", flex: 1, minWidth: 0 }));
     }
@@ -358,7 +356,7 @@ class VariablesGridView extends VanillaView<{
         contentPanel.append(dataGridView.root);
         dataGridView.mount();
 
-        if (!this.props.editorConfig?.disableAutoFocus && !isFocusInSidebar()) {
+        if (!isFocusInSidebar()) {
             this.grid?.focus();
         }
         this.depsGate.prime(this.dependencies(this.props));
@@ -369,7 +367,7 @@ class VariablesGridView extends VanillaView<{
         namespace: string;
         profile: string;
         data: Record<string, string>;
-        editorConfig?: EditorConfig;
+
     }): void {
         const seeded = this.syncSeed(props);
         this.dataGridView?.update(this.gridProps(seeded ? this.seedRows : this.rowsForGrid()));
@@ -492,7 +490,6 @@ type ProfilePaneProps = {
     profile: string;
     profiles: string[];
     data: Record<string, string>;
-    editorConfig?: EditorConfig;
 };
 
 class ProfilePaneView extends VanillaView<ProfilePaneProps> {
@@ -583,7 +580,7 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
                     namespace: this.props.namespace,
                     profile: this.props.profile,
                     data: this.props.data,
-                    editorConfig: this.props.editorConfig,
+
                 }));
                 this.variablesGrid = variablesGrid;
                 this.contentRegion.append(variablesGrid.root);
@@ -610,7 +607,6 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
             namespace: this.props.namespace,
             profile: this.props.profile,
             data: this.props.data,
-            editorConfig: this.props.editorConfig,
         };
     }
 
@@ -634,7 +630,6 @@ class ProfilePaneView extends VanillaView<ProfilePaneProps> {
 
 type NormalStateProps = EnvVarsBodyProjection & {
     model: EnvVarsEditor;
-    editorConfig?: EditorConfig;
 };
 
 class NormalStateView extends VanillaView<NormalStateProps> {
@@ -683,7 +678,6 @@ class NormalStateView extends VanillaView<NormalStateProps> {
             profile: this.props.selectedProfile,
             profiles,
             data,
-            editorConfig: this.props.editorConfig,
         };
     }
 
@@ -769,9 +763,9 @@ export class EnvVarsBodyView extends VanillaView<EnvVarsBodyProps> {
         branch.mount();
     };
 
-    private branchProps(projection: EnvVarsBodyProjection | EnvVarsBodyProps): EnvVarsBodyProjection & { model: EnvVarsEditor; editorConfig?: EditorConfig } {
+    private branchProps(projection: EnvVarsBodyProjection | EnvVarsBodyProps): EnvVarsBodyProjection & { model: EnvVarsEditor } {
         const current = "status" in projection ? projection : selectBodyProjection(projection.model.state.get());
-        return { ...current, model: this.model, editorConfig: this.props.editorConfig };
+        return { ...current, model: this.model };
     }
 
     private createBranch(

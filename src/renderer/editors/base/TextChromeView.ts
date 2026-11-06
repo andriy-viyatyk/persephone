@@ -2,7 +2,6 @@ import { t } from "../../../shared/i18n/t";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
-import type { IContentHost } from "./IContentHost";
 import { EditorStatusBarView } from "./EditorStatusBarView";
 import { PageToolbarView } from "./PageToolbarView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -252,8 +251,7 @@ class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
 
 export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private model: EditorModel;
-    private host: IContentHost | null = null;
-    private textHost: TextFileModel | null = null;
+    private host: TextFileModel | null = null;
     private branchActive = false;
     private focusTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -263,7 +261,6 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private showResourcesButton: ShowResourcesButtonView | undefined;
     private scriptPanel: ScriptPanelView | undefined;
     private footer: EditorStatusBarView | undefined;
-    private overlay: HTMLDivElement | undefined;
 
     private childrenHost: HTMLSpanElement | undefined;
     private toolbarContent: HTMLSpanElement | undefined;
@@ -309,11 +306,11 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
 
         this.updateSlots(props);
         this.pageToolbar?.setSlots(this.toolbarContent, this.rightContent);
-        if (this.footer && this.textHost) {
+        if (this.footer && this.host) {
             this.footer.update({
                 name: "text-chrome-footer",
                 model: this.model,
-                host: this.textHost,
+                host: this.host,
                 contributions: props.footerContributions,
             });
         }
@@ -322,16 +319,13 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     protected onDispose(): void {
         this.branchActive = false;
         this.clearFocusTimer();
-        this.textHost?.setEditorOverlayRef(null);
         this.host = null;
-        this.textHost = null;
         this.pageToolbar = undefined;
         this.compareButton = undefined;
         this.runButtons = undefined;
         this.showResourcesButton = undefined;
         this.scriptPanel = undefined;
         this.footer = undefined;
-        this.overlay = undefined;
         this.childrenHost = undefined;
         this.toolbarContent = undefined;
         this.rightContent = undefined;
@@ -340,11 +334,10 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.root.replaceChildren();
     }
 
-    private buildBranch(host: IContentHost | null): void {
+    private buildBranch(host: TextFileModel | null): void {
         if (!host) return;
 
         this.host = host;
-        this.textHost = isTextFileHost(host) ? host : null;
         this.branchActive = true;
 
         const toolbarContent = createContentsPart("text-toolbar-content");
@@ -366,39 +359,28 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
             rightContributions: rightContent,
         }));
 
-        if (this.textHost) {
-            this.compareButton = this.child(new CompareButtonView({ model: this.model }));
-            this.runButtons = this.child(new RunButtonsView({ model: this.model, host: this.textHost }));
-            this.showResourcesButton = this.child(new ShowResourcesButtonView({ host: this.textHost }));
-            toolbarContent.append(this.compareButton.root, this.runButtons.root, toolbarContributionsHost);
-            rightContent.append(this.showResourcesButton.root, rightContributionsHost);
+        this.compareButton = this.child(new CompareButtonView({ model: this.model }));
+        this.runButtons = this.child(new RunButtonsView({ model: this.model, host: this.host }));
+        this.showResourcesButton = this.child(new ShowResourcesButtonView({ host: this.host }));
+        toolbarContent.append(this.compareButton.root, this.runButtons.root, toolbarContributionsHost);
+        rightContent.append(this.showResourcesButton.root, rightContributionsHost);
 
-            if (this.textHost.script) {
-                this.scriptPanel = this.child(new ScriptPanelView({ model: this.textHost }));
-            }
-            this.footer = this.child(new EditorStatusBarView({
-                name: "text-chrome-footer",
-                model: this.model,
-                host: this.textHost,
-                contributions: this.props.footerContributions,
-            }));
-        } else {
-            toolbarContent.append(toolbarContributionsHost);
-            rightContent.append(rightContributionsHost);
+        if (this.host.script) {
+            this.scriptPanel = this.child(new ScriptPanelView({ model: this.host }));
         }
-
-        this.overlay = this.textHost ? document.createElement("div") : undefined;
-        if (this.overlay) this.overlay.className = "editor-overlay";
+        this.footer = this.child(new EditorStatusBarView({
+            name: "text-chrome-footer",
+            model: this.model,
+            host: this.host,
+            contributions: this.props.footerContributions,
+        }));
 
         this.root.append(
             this.pageToolbar.root,
             childrenHost,
             ...(this.scriptPanel ? [this.scriptPanel.root] : []),
             ...(this.footer ? [this.footer.root] : []),
-            ...(this.overlay ? [this.overlay] : []),
         );
-
-        if (this.textHost && this.overlay) this.textHost.setEditorOverlayRef(this.overlay);
 
         this.pageToolbar.mount();
         this.compareButton?.mount();
@@ -446,7 +428,6 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private releaseBranch(): void {
         this.branchActive = false;
         this.clearFocusTimer();
-        this.textHost?.setEditorOverlayRef(null);
         this.releaseSlotResources();
 
         if (this.pageToolbar) {
@@ -476,8 +457,6 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
 
         this.root.replaceChildren();
         this.host = null;
-        this.textHost = null;
-        this.overlay = undefined;
         this.childrenHost = undefined;
         this.toolbarContent = undefined;
         this.rightContent = undefined;
@@ -505,20 +484,15 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     };
 
     private readonly handleRootKeyDown = (event: KeyboardEvent): void => {
-        if (event.code === "F5" && !this.textHost?.script.state.get().open) {
+        if (event.code === "F5" && !this.host?.script.state.get().open) {
             if (hasScriptRunner(this.model)) {
                 event.preventDefault();
                 void this.model.runScript();
                 return;
             }
         }
-        this.host?.handleKeyDown?.(event);
+        this.host?.handleKeyDown(event);
     };
-}
-
-// TextFileModel owns the overlay and text-file chrome; other content hosts may not.
-function isTextFileHost(host: IContentHost): host is TextFileModel {
-    return typeof (host as unknown as { setEditorOverlayRef?: unknown }).setEditorOverlayRef === "function";
 }
 
 async function showHtmlResources(host: TextFileModel): Promise<void> {

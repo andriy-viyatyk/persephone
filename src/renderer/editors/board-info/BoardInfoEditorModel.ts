@@ -2,10 +2,9 @@ import { Subscription } from "../../core/state/events";
 import type { TComponentState } from "../../core/state/state";
 import { EditorModel, type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "../base/editor-traits";
-import type { IContentHost } from "../base/IContentHost";
 import { editorRegistry } from "../base/editorRegistry";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
-import { TextFileModel, isTextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import {
     boardEditorId,
     customEditorRegistry,
@@ -249,13 +248,13 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             });
         }));
         const trait: IContentHostTrait = {
-            extractContentHost: (): IContentHost => {
+            extractContentHost: (): TextFileModel => {
                 const host = this._host;
                 if (!host) throw new Error("Host already extracted from BoardInfoEditorModel");
                 this._hostStateUnsub?.();
                 this._hostStateUnsub = null;
                 this._host = null;
-                return host as unknown as IContentHost;
+                return host;
             },
         };
         this.traits.add(CONTENT_HOST_TRAIT, trait);
@@ -263,8 +262,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     // ── Host accessors / holder (mirrors BoardContentEditorModel) ────────
 
-    override get contentHost(): IContentHost | null {
-        return (this._host as unknown as IContentHost) ?? null;
+    override get contentHost(): TextFileModel | null {
+        return this._host;
     }
 
     /** Adopt a host: wire host state → `descriptorChanged`, copy title/id, forward page. */
@@ -313,10 +312,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             }
             return;
         }
-        const host = trait.extractContentHost() as unknown as TextFileModel;
-        if (!isTextFileModel(host)) {
-            throw new Error("BoardInfoEditorModel.switchFrom: extracted host is not a TextFileModel");
-        }
+        const host = trait.extractContentHost();
+
         // Preserve the editor id across the host swap so editor-owned cache files remain associated.
         this.state.update((s) => { s.id = oldEditor.id; });
         this.adoptHost(host);

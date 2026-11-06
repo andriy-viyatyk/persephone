@@ -36,16 +36,15 @@ export interface IContentHost {
      *  as the `host` field of the wrapping editor's `EditorDescriptor`. */
     getDescriptor(): HostDescriptor;
 
-    /** Optional root-level keystroke handler. Called by `<TextChrome>`'s
-     *  outer panel `onKeyDown` so the chrome doesn't need to know the host
-     *  class. `TextFileModel` will delegate Ctrl+S / Ctrl+Shift+S / F5 / F2
-     *  to its actions submodel; other hosts may implement a subset. */
-    handleKeyDown?(e: KeyboardEvent): void;
+    /** Root-level keystroke handler. Called by `<TextChrome>`'s
+     *  outer panel `onKeyDown`. `TextFileModel` delegates Ctrl+S / Ctrl+Shift+S / F5 / F2
+     *  to its actions submodel. */
+    handleKeyDown(e: KeyboardEvent): void;
 
-    /** Optional context-menu items contributed to the page tab on behalf of the
+    /** Context-menu items contributed to the page tab on behalf of the
      *  wrapping editor. `TextFileModel` returns the Save / Rename / encryption
      *  group; surfaced through `EditorModel.onGetMenuItems()`. */
-    onGetMenuItems?(): MenuItem[];
+    onGetMenuItems(): MenuItem[];
 
     getEditorState<T>(editorId: string): T | undefined;
 

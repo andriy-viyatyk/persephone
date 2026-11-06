@@ -376,7 +376,7 @@ export class PagesLifecycleModel {
         const language = getLanguageByExtension(fpExtname(fileName))?.id ?? "plaintext";
         const title = options?.title ?? fileName;
         const editor = await this.buildEditorById(editorId);
-        const host = (editor as EditorModel).contentHost as unknown as TextFileModel | null;
+        const host = (editor as EditorModel).contentHost;
         if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
         host.state.update((state) => {
             state.language = language;
@@ -479,7 +479,7 @@ export class PagesLifecycleModel {
         if (page.retainedDescriptor) return;
         const failedEditor = page.mainEditorInstance;
         const filePath = options?.filePath ?? failedEditor?.filePath;
-        const host = failedEditor?.contentHost as unknown as TextFileModel | null | undefined;
+        const host = failedEditor?.contentHost;
         const sourceLink = options?.sourceLink
             ?? host?.state.get().sourceLink as ILinkData | undefined
             ?? failedEditor?.state.get().sourceLink as ILinkData | undefined;
@@ -805,7 +805,7 @@ export class PagesLifecycleModel {
                 .applyDiffRevisions?.(options?.diffFrom, options?.diffTo);
             // The editor's view may not be mounted yet; implementations queue the anchor request.
             if (options?.fragment) currentEditor.revealFragment?.(options.fragment);
-            const textHost = currentEditor.contentHost as unknown as TextFileModel | null;
+            const textHost = currentEditor.contentHost;
             if (options?.revealLine) textHost?.revealLine(options.revealLine);
             if (options?.highlightText) textHost?.setHighlightText(options.highlightText);
             // A preselected comparison is a File Diff; expand its registered first panel instead

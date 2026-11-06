@@ -86,7 +86,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
             width: "100%",
         }));
         this.model = props.model;
-        this.host = props.model.contentHost as unknown as TextFileModel | null;
+        this.host = props.model.contentHost;
         this.statusItems = new BoardStatusBarItems({
             model: props.model,
             onAction: (event, generation) => this.webview.sendStatusBarAction(event, generation),

@@ -235,8 +235,8 @@ export async function navigatePageTo(
         if (page.mainEditorInstance?.editorId !== "monaco") {
             await page.switchMainEditor("monaco");
         }
-        const textHost = page.mainEditor as TextFileModel | null;
-        if (!textHost || textHost.type !== "textFile") return false;
+        const textHost = page.mainEditorInstance?.contentHost;
+        if (!textHost) return false;
         if (options?.revealLine) textHost.revealLine(options.revealLine);
         if (options?.highlightText) textHost.setHighlightText(options.highlightText);
         finishNavigation(model, page);

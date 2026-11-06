@@ -21,10 +21,7 @@ classDiagram
     class IContentHost {
         <<interface>>
         +id: string
-        +type: "textFile"
-        +state: TOneState~IContentHostState~
-        +stateStorage: EditorStateStorage
-        +pipe: IContentPipe?
+        +state: IState~IContentHostState~
         +changeContent(content, byUser?)
         +changeLanguage(language)
         +getDescriptor(): HostDescriptor
@@ -33,8 +30,7 @@ classDiagram
 
     class IContentHostTrait {
         <<interface>>
-        +extractContentHost(): IContentHost
-        +inheritContentHost(host)
+        +extractContentHost(): TextFileModel
     }
 
     class TextFileModel {
@@ -73,6 +69,6 @@ classDiagram
     LinkEditor ..|> IContentHostTrait
     LogViewEditor ..|> IContentHostTrait
 
-    MonacoEditor o-- IContentHost : composes
-    GridEditor o-- IContentHost : composes
-    MarkdownEditor o-- IContentHost : composes
+    MonacoEditor o-- TextFileModel : composes
+    GridEditor o-- TextFileModel : composes
+    MarkdownEditor o-- TextFileModel : composes

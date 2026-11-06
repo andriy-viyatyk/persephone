@@ -158,20 +158,6 @@ function buildGlobalStyles(): string {
             height: 0;
         }
 
-        /* Portal mount target for full-area overlays. Hidden when no portal content is present so the
-         * background color does not blanket the editor. */
-        .editor-overlay {
-            position: absolute;
-            inset: 0;
-            z-index: 5;
-            background-color: ${color.background.default};
-            display: flex;
-            flex-direction: column;
-        }
-        .editor-overlay:empty {
-            display: none;
-        }
-
         /* TextFooter portal target — hidden when the secondary view pushes
          * no footer content. The :has() rule also hides the leading Divider
          * so the user does not see two adjacent dividers with nothing

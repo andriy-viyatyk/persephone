@@ -14,7 +14,6 @@ import { TextFileEncryptionModel } from "./TextFileEncryptionModel";
 import { TextFileIOModel } from "./TextFileIOModel";
 import { TextFileActionsModel } from "./TextFileActionsModel";
 import type { IContentHost } from "../base/IContentHost";
-import type { EditorStateStorage } from "../base/EditorStateStorage";
 import type { HostDescriptor } from "../../../shared/persistence";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
@@ -156,15 +155,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         });
     };
 
-    // =========================================================================
-    // IContentHost storage hookup (cache-file passthrough).
-    // =========================================================================
-
-    readonly stateStorage: EditorStateStorage = {
-        getState: async (id, name) => appFs.getCacheFile(id, name),
-        setState: async (id, name, state) => { await appFs.saveCacheFile(id, state, name); },
-    };
-
 
     focusEditor(): void {
         this.page?.mainEditorInstance?.focus();
@@ -204,7 +194,7 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
 
     /** Run content detection immediately and update state if changed. */
     private detectContentEditor = () => {
-        const detected = editorRegistry.detectContentEditor(this as unknown as IContentHost);
+        const detected = editorRegistry.detectContentEditor(this);
         if (detected !== this.state.get().detectedContentEditor) {
             this.state.update((s) => { s.detectedContentEditor = detected as EditorView | undefined; });
         }
@@ -243,12 +233,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         if (cur?.root !== next?.root || cur?.branch !== next?.branch) {
             this.state.update((s) => { s.gitRepo = next; });
         }
-    };
-
-    editorOverlayRef: HTMLDivElement | null = null;
-
-    setEditorOverlayRef = (ref: HTMLDivElement | null) => {
-        this.editorOverlayRef = ref;
     };
 
     // =========================================================================

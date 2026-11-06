@@ -19,7 +19,7 @@ import type { ILinkData } from "../../../shared/link-data";
 
 function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {
     return (editor.state.get() as { sourceLink?: ILinkData }).sourceLink
-        ?? (editor.contentHost?.state.get() as { sourceLink?: ILinkData } | undefined)?.sourceLink;
+        ?? editor.contentHost?.state.get().sourceLink;
 }
 
 async function boardSwitchSourceLink(
@@ -205,7 +205,7 @@ export async function switchMainEditor(
                 : !!editorRegistry.getById(newEditorId)?.hasContentHost;
 
         const filePath =
-            (oldEditor.contentHost as { filePath?: string } | null)?.filePath
+            oldEditor.contentHost?.filePath
             ?? oldEditor.filePath;
         const sourceLink = newBoardRoot !== null && filePath
             ? await boardSwitchSourceLink(page, oldEditor, newEditorId, filePath)
@@ -220,7 +220,7 @@ export async function switchMainEditor(
                     "../board/BoardContentEditorModel"
                 );
                 const filePath =
-                    (oldEditor.contentHost as { filePath?: string } | null)?.filePath
+                    oldEditor.contentHost?.filePath
                     ?? oldEditor.filePath;
                 const model = new BoardContentEditorModel(
                     new TComponentState(getDefaultBoardEditorState()),

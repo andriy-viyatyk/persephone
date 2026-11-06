@@ -251,7 +251,7 @@ export const mermaidModule: EditorModule = {
     createEditor: () =>
         new MermaidEditor(new TComponentState({ ...defaultMermaidEditorState })),
     View: MermaidEditorView,
-    BodyView: MermaidBodyView,
+
 };
 
 export { MermaidEditor, defaultMermaidEditorState };

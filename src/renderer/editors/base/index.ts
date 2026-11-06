@@ -25,10 +25,7 @@ export function getDefaultEditorModelState(): IEditorState {
     };
 }
 
-export type { EditorConfig } from './EditorConfig';
-export { EMPTY_EDITOR_CONFIG } from './EditorConfig';
 export type { IContentHost, IContentHostState } from './IContentHost';
-export type { EditorStateStorage } from './EditorStateStorage';
 export { CONTENT_HOST_TRAIT } from './editor-traits';
 export type { IContentHostTrait } from './editor-traits';
 export { editorRegistry } from './editorRegistry';

@@ -2,30 +2,25 @@ import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
 import { t } from "../../../shared/i18n/t";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import {
-    applyPanelAttributes,
     createPanelElement,
-    resolvePanelAttributes,
     type PanelStyleProps,
 } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorConfig } from "../base/EditorConfig";
 import type { SvgEditor } from "./SvgEditor";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 
 export interface SvgBodyViewProps {
     model: SvgEditor;
-    editorConfig?: EditorConfig;
+
 }
 
-function rootPanelProps(editorConfig?: EditorConfig): PanelStyleProps {
-    const maxH = editorConfig?.maxEditorHeight;
-    const embedded = maxH !== undefined;
+function rootPanelProps(): PanelStyleProps {
     return {
         name: "svg-root",
         direction: "column",
-        flex: embedded ? undefined : true,
-        height: embedded ? maxH : 0,
+        flex: true,
+        height: 0,
     };
 }
 
@@ -45,13 +40,12 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
     private queueSubscription: (() => void) | undefined;
 
     public constructor(props: SvgBodyViewProps) {
-        super(props, createPanelElement(rootPanelProps(props.editorConfig)));
+        super(props, createPanelElement(rootPanelProps()));
         this.model = props.model;
     }
 
     protected onMount(): void {
         this.model = this.props.model;
-        applyPanelAttributes(this.root, resolvePanelAttributes(rootPanelProps(this.props.editorConfig)));
         const content = this.model.host?.state.get().content ?? "";
         this.viewport = this.child(new ImageViewportView(
             viewportProps(content),
@@ -65,7 +59,6 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
     }
 
     protected onUpdate(props: SvgBodyViewProps): void {
-        applyPanelAttributes(this.root, resolvePanelAttributes(rootPanelProps(props.editorConfig)));
 
         const modelChanged = this.model !== props.model;
         if (modelChanged) {

@@ -5,23 +5,20 @@ import {
     type DataGridProps,
 } from "../../uikit/DataGrid";
 import {
-    applyPanelAttributes,
     createPanelElement,
-    resolvePanelAttributes,
     type PanelStyleProps,
 } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
-import type { EditorConfig } from "../base/EditorConfig";
 import type { GridEditor, GridEditorState, GridQueueEvent } from "./GridEditor";
 import { getRowKey } from "./utils/grid-utils";
 
 export interface GridBodyViewProps {
     model: GridEditor;
     onModel?: (model: DataGridInstance<any> | null) => void;
-    editorConfig?: EditorConfig;
+
 }
 
 interface GridProjection {
@@ -35,13 +32,13 @@ interface GridSnapshot {
     rows: readonly any[];
 }
 
-function rootPanelProps(editorConfig?: EditorConfig): PanelStyleProps {
+function rootPanelProps(): PanelStyleProps {
     return {
         name: "grid-editor-root",
         direction: "column",
         flex: true,
         position: "relative",
-        height: editorConfig?.maxEditorHeight !== undefined ? "fit-content" : 200,
+        height: 200,
     };
 }
 
@@ -59,9 +56,8 @@ function readGridSnapshot(model: GridEditor): GridSnapshot {
 }
 
 function gridProps(props: GridBodyViewProps, onGrid: DataGridProps["onGrid"]): DataGridProps<any> {
-    const { model, editorConfig } = props;
+    const { model } = props;
     const { state, rows } = readGridSnapshot(model);
-    const maxEditorHeight = editorConfig?.maxEditorHeight;
 
     return {
         name: `grid-editor-${model.editorId}`,
@@ -74,7 +70,6 @@ function gridProps(props: GridBodyViewProps, onGrid: DataGridProps["onGrid"]): D
         // now retains its key set, so a cleared option is representable either way — but the
         // semantic reason stands on its own.
         searchString: state.search,
-        highlightString: editorConfig?.highlightText,
         // Only filters naming a live column reach av-grid — it validates the option loudly and
         // takes the whole grid down over a filter whose column is gone. Persisted filters outlive
         // their columns routinely: toggling the CSV header row renames every column, and US-1436
@@ -103,13 +98,6 @@ function gridProps(props: GridBodyViewProps, onGrid: DataGridProps["onGrid"]): D
         onVisibleRowsChange: model.onVisibleRowsChange,
         onGetOptions: model.onGetOptions,
         onGridContextMenu: showGridContextMenu,
-        // Conditional, so an embedded-to-non-embedded repoint now pushes `growToHeight:
-        // undefined` after US-1109. That is inert: av-grid's `setOptions` forwards only
-        // className/rowHeight/fitToWidth/overscan*/whiteSpaceY to its render layer, so a late
-        // growToHeight never reaches the object that sizes the grid.
-        growToHeight: maxEditorHeight !== undefined
-            ? `${maxEditorHeight}px`
-            : undefined,
     };
 }
 
@@ -122,8 +110,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
     private modelSubscription: (() => void) | undefined;
     private queueSubscription: (() => void) | undefined;
     private liveGrid: DataGridInstance<any> | null = null;
-    private lastDisableAutoFocus: boolean | undefined;
-    private appliedEmbeddedMode: boolean;
     private publishedModel: GridEditor | undefined;
     private publishedOnModel: GridBodyViewProps["onModel"] | undefined;
     private hasPublishedGrid = false;
@@ -160,11 +146,9 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
     };
 
     public constructor(props: GridBodyViewProps) {
-        super(props, createPanelElement(rootPanelProps(props.editorConfig)));
+        super(props, createPanelElement(rootPanelProps()));
 
         this.model = props.model;
-        this.lastDisableAutoFocus = props.editorConfig?.disableAutoFocus;
-        this.appliedEmbeddedMode = props.editorConfig?.maxEditorHeight !== undefined;
     }
 
     protected onMount(): void {
@@ -208,8 +192,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
         const modelChanged = previousModel !== props.model;
         const hasHost = !!props.model.contentHost;
 
-        this.applyRootAttributes(props.editorConfig);
-
         if (modelChanged) {
             this.unsubscribeFromModel();
             this.releaseGridHandles();
@@ -234,15 +216,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
             }
         }
 
-        const disableAutoFocus = props.editorConfig?.disableAutoFocus;
-        if (
-            disableAutoFocus !== this.lastDisableAutoFocus &&
-            !disableAutoFocus &&
-            !isFocusInSidebar()
-        ) {
-            this.liveGrid?.focus();
-        }
-        this.lastDisableAutoFocus = disableAutoFocus;
     }
 
     protected onDispose(): void {
@@ -346,13 +319,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
         this.publishedOnModel = this.props.onModel;
     }
 
-    private applyRootAttributes(editorConfig?: EditorConfig): void {
-        const embedded = editorConfig?.maxEditorHeight !== undefined;
-        if (embedded === this.appliedEmbeddedMode) return;
-        applyPanelAttributes(this.root, resolvePanelAttributes(rootPanelProps(editorConfig)));
-        this.appliedEmbeddedMode = embedded;
-    }
-
     private setHostVisibility(visible: boolean): void {
         if (!visible) {
             this.setHidden(this.root, true);
@@ -366,7 +332,7 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
     }
 
     private focusIfAllowed(): void {
-        if (!this.props.editorConfig?.disableAutoFocus && !isFocusInSidebar()) {
+        if (!isFocusInSidebar()) {
             this.liveGrid?.focus();
         }
     }

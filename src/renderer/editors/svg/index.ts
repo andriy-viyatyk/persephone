@@ -153,7 +153,7 @@ export const svgModule: EditorModule = {
     createEditor: () =>
         new SvgEditor(new TComponentState({ ...defaultSvgEditorState })),
     View: SvgEditorView,
-    BodyView: SvgBodyView,
+
 };
 
 export { SvgEditor, defaultSvgEditorState };

@@ -5,7 +5,7 @@ import { Subscription } from "../../core/state/events";
 import { TOneState } from "../../core/state/state";
 import { ComponentQueue, ComponentQueueEvent } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
-import type { IContentHost } from "./IContentHost";
+import type { TextFileModel } from "../text/TextEditorModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
@@ -269,10 +269,10 @@ export abstract class EditorModel<
 
     // ── Content-host accessor (walkthrough 08 / T2 / B2) ──────────────────
 
-    /** Returns the `IContentHost` this editor wraps, or null. Text-bearing
+    /** Returns the `TextFileModel` this editor wraps, or null. Text-bearing
      *  editors override to return their `_host`. Cross-cutting primitive
      *  consumed by tab strip, toolbar, switch widget, and `<TextChrome>`. */
-    get contentHost(): IContentHost | null {
+    get contentHost(): TextFileModel | null {
         return null;
     }
 
@@ -285,7 +285,7 @@ export abstract class EditorModel<
      *  returns `[]`. The tab keeps only tab-level items (Close / Pin / …) and
      *  appends these below a separator. */
     onGetMenuItems(): MenuItem[] {
-        return this.contentHost?.onGetMenuItems?.() ?? [];
+        return this.contentHost?.onGetMenuItems() ?? [];
     }
 
     // ── Navigation-source accessor (sidebar-owning navigation survival) ───

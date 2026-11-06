@@ -9,7 +9,7 @@ import {
     resolveEditorIdForFile,
 } from "../board/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
-import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
 import { hostOwnsPipe } from "../board/board-manifest";
@@ -222,5 +222,5 @@ export function getEditorSwitchFileName(model: EditorModel): string {
 }
 
 function getTextHost(model: EditorModel): TextFileModel | null {
-    return isTextFileModel(model.contentHost) ? model.contentHost : null;
+    return model.contentHost;
 }

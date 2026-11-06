@@ -1,11 +1,10 @@
 import { t } from "../../../shared/i18n/t";
 import type { MermaidEditor, MermaidEditorState } from "./MermaidEditor";
-import { createPanelElement, applyPanelAttributes, resolvePanelAttributes, type PanelStyleProps } from "../../uikit/Panel/panel-style";
+import { createPanelElement, type PanelStyleProps } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
-import type { EditorConfig } from "../base/EditorConfig";
 import { guard } from "../../core/utils/guard";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -14,7 +13,7 @@ import { errMessage } from "../../../shared/utils";
 
 export interface MermaidBodyViewProps {
     model: MermaidEditor;
-    editorConfig?: EditorConfig;
+
 }
 
 interface MermaidProjection {
@@ -33,16 +32,14 @@ function selectMermaidProjection(state: MermaidEditorState): MermaidProjection {
     };
 }
 
-function rootPanelProps(editorConfig?: EditorConfig): PanelStyleProps {
-    const maxH = editorConfig?.maxEditorHeight;
-    const embedded = maxH !== undefined;
+function rootPanelProps(): PanelStyleProps {
     return {
         name: "mermaid-root",
         direction: "column",
-        flex: embedded ? undefined : true,
+        flex: true,
         overflow: "hidden",
         position: "relative",
-        height: embedded ? maxH : 0,
+        height: 0,
     };
 }
 
@@ -79,7 +76,7 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
     private activeViewport: ImageViewportView | undefined;
 
     public constructor(props: MermaidBodyViewProps) {
-        super(props, createPanelElement(rootPanelProps(props.editorConfig)));
+        super(props, createPanelElement(rootPanelProps()));
         this.model = props.model;
 
         this.errorText = createTextElement("", { color: "warning", preWrap: true });
@@ -115,8 +112,6 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
     }
 
     protected onUpdate(props: MermaidBodyViewProps): void {
-        applyPanelAttributes(this.root, resolvePanelAttributes(rootPanelProps(props.editorConfig)));
-
         const modelChanged = this.model !== props.model;
 
         if (modelChanged) {

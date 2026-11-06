@@ -410,7 +410,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── EditorModel.ts            # Abstract base class for all editors
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror
 │   │   ├── IContentHost.ts           # Interface for text-content hosting (TextFileModel)
-│   │   ├── EditorStateStorage.ts     # Per-editor view-state storage interface (id, name → state)
 │   │   ├── editor-traits.ts          # CONTENT_HOST_TRAIT — owner-orchestrated editor switching
 │   │   ├── editor-matchers.ts        # Acceptance / resolution priority helpers
 │   │   ├── editorRegistry.ts         # Native editor registry — resolve, register, switch options
@@ -420,7 +419,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── EditorToolbarView.ts      # Native toolbar root used by individual editors
 │   │   ├── EditorStatusBarView.ts    # Shared editor status bar (footer): pipe status, provider, text-host parts
 │   │   ├── EditorStatusBar.css       # Status bar styles
-│   │   ├── EditorConfig.ts            # Editor configuration value and empty default
 │   │   └── index.ts
 │   │
 │   ├── text/               # Text file content host (file I/O + encryption + script panel)
@@ -433,7 +431,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── paste-rich-text.ts        # Rich-text paste handler
 │   │   └── index.ts
 │   ├── monaco/             # Monaco text editor (text-bearing, IContentHost + TRAIT)
-│   │   ├── MonacoEditor.ts           # EditorModel subclass — composes IContentHost, hosts Monaco
+│   │   ├── MonacoEditor.ts           # EditorModel subclass — composes TextFileModel, hosts Monaco
 │   │   ├── MonacoBodyView.ts         # Native Monaco body, project binding and per-page diagnostics
 │   │   └── index.ts
 │   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, IContentHost + TRAIT)

@@ -11,7 +11,6 @@ import { MinimapView } from "../../uikit/Minimap/MinimapView";
 import type { MinimapProps } from "../../uikit/Minimap/MinimapView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
-import type { EditorConfig } from "../base/EditorConfig";
 import { FindBarView, type FindBarProps } from "../shared/FindBarView";
 import { MarkdownBlockView, type MarkdownBlockProps } from "./MarkdownBlockView";
 import type {
@@ -24,7 +23,7 @@ import { isGuideHref, isLocalMarkdownHref } from "./markdown-nav";
 
 export interface MarkdownBodyViewProps {
     model: MarkdownBodyModel;
-    editorConfig?: EditorConfig;
+
 }
 
 interface MarkdownProjection {
@@ -53,16 +52,13 @@ function selectHostProjection(state: MarkdownBodyHostState): HostProjection {
     return { content: state.content, filePath: state.filePath, title: state.title };
 }
 
-function rootPanelProps(editorConfig?: EditorConfig): PanelStyleProps {
-    const maxHeight = editorConfig?.maxEditorHeight;
-    const embedded = maxHeight !== undefined;
+function rootPanelProps(): PanelStyleProps {
     return {
         name: "markdown-view-root",
         direction: "row",
-        flex: embedded ? undefined : 1,
-        height: embedded ? undefined : 0,
+        flex: 1,
+        height: 0,
         overflow: "hidden",
-        maxHeight,
     };
 }
 
@@ -76,21 +72,16 @@ function findColumnProps(): PanelStyleProps {
 }
 
 function scrollPanelProps(
-    editorConfig: EditorConfig | undefined,
     compact: boolean,
-    showMinimap: boolean,
 ): PanelStyleProps {
-    const maxHeight = editorConfig?.maxEditorHeight;
-    const embedded = maxHeight !== undefined;
     return {
         name: "markdown-scroll",
         direction: "column",
-        flex: embedded ? undefined : 1,
-        height: embedded ? undefined : 0,
-        maxHeight: embedded ? maxHeight : undefined,
+        flex: 1,
+        height: 0,
         overflowY: "auto",
         overflowX: "hidden",
-        scrollbar: showMinimap ? "hidden" : "auto",
+        scrollbar: "hidden",
         paddingX: compact ? "md" : "xxl",
     };
 }
@@ -123,13 +114,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     private hostProjection: HostProjection;
     private lastProjection: MarkdownProjection | undefined;
     private lastBlockProps: MarkdownBlockProps | undefined;
-    private appliedRootMaxHeight: number | undefined;
-    private rootLayoutApplied = false;
-    private appliedScrollLayout: {
-        maxHeight: number | undefined;
-        compact: boolean;
-        showMinimap: boolean;
-    } | undefined;
+    private appliedCompact: boolean | undefined;
     private scrollTop = 0;
     private anchorRetry: Cleanup | null = null;
     private lifecycleGeneration = 0;
@@ -170,9 +155,6 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     };
 
     private readonly onLinkClickCapture = (event: MouseEvent): void => {
-        // Embedded bodies leave link handling to their host. Check this at event
-        // time because the same view can be updated between clicks.
-        if (this.props.editorConfig?.maxEditorHeight !== undefined) return;
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
             || event.button !== 0) return;
         if (!(event.target instanceof Element)) return;
@@ -228,12 +210,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     };
 
     public constructor(props: MarkdownBodyViewProps) {
-        const root = createPanelElement(rootPanelProps(props.editorConfig));
+        const root = createPanelElement(rootPanelProps());
 
         super(props, root);
         this.model = props.model;
-        this.appliedRootMaxHeight = props.editorConfig?.maxEditorHeight;
-        this.rootLayoutApplied = true;
         this.hostProjection = props.model.host
             ? selectHostProjection(props.model.host.state.get())
             : EMPTY_HOST;
@@ -241,11 +221,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
 
     protected onMount(): void {
         this.model = this.props.model;
-        const compact = this.props.editorConfig?.compact || this.model.state.get().compactMode;
-        const showMinimap = !this.props.editorConfig?.hideMinimap;
+        const compact = this.model.state.get().compactMode;
         this.findColumn = createPanelElement(findColumnProps());
         this.scrollPanel = createPanelElement(
-            scrollPanelProps(this.props.editorConfig, compact, showMinimap),
+            scrollPanelProps(compact),
         );
         this.hostProjection = this.model.host
             ? selectHostProjection(this.model.host.state.get())
@@ -262,8 +241,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.findColumn.append(this.scrollPanel);
         this.root.append(this.findColumn);
         this.root.tabIndex = -1;
-        this.appliedScrollLayout = undefined;
-        this.applyRootLayout(this.props.editorConfig);
+        this.appliedCompact = undefined;
         this.markdownBlock.mount();
         this.lastBlockProps = this.blockProps();
         this.reconcileMinimap();
@@ -282,8 +260,6 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     }
 
     protected onUpdate(props: MarkdownBodyViewProps): void {
-        this.applyRootLayout(props.editorConfig);
-
         if (this.model !== props.model) {
             this.replaceModel(props.model);
             return;
@@ -414,8 +390,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     }
 
     private reconcileSearchBar(projection: MarkdownProjection): void {
-        const editorConfig = this.props.editorConfig;
-        const visible = projection.searchVisible && !editorConfig?.highlightText;
+        const visible = projection.searchVisible;
         if (!visible) {
             if (this.findBar) {
                 this.releaseChild(this.findBar);
@@ -436,28 +411,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     }
 
     private reconcileMinimap(): void {
-        const showMinimap = !this.props.editorConfig?.hideMinimap;
-        const compact = this.props.editorConfig?.compact || this.model.state.get().compactMode;
-        const maxHeight = this.props.editorConfig?.maxEditorHeight;
-        const previousLayout = this.appliedScrollLayout;
-        if (!previousLayout
-            || previousLayout.maxHeight !== maxHeight
-            || previousLayout.compact !== compact
-            || previousLayout.showMinimap !== showMinimap
-        ) {
-            applyPanelAttributes(
-                this.scrollPanel,
-                resolvePanelAttributes(scrollPanelProps(this.props.editorConfig, compact, showMinimap)),
-            );
-            this.appliedScrollLayout = { maxHeight, compact, showMinimap };
-        }
-
-        if (!showMinimap) {
-            if (this.minimap) {
-                this.releaseChild(this.minimap);
-                this.minimap = undefined;
-            }
-            return;
+        const compact = this.model.state.get().compactMode;
+        if (this.appliedCompact !== compact) {
+            applyPanelAttributes(this.scrollPanel, resolvePanelAttributes(scrollPanelProps(compact)));
+            this.appliedCompact = compact;
         }
 
         if (!this.minimap) {
@@ -470,14 +427,6 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             this.minimap = minimap;
             minimap.mount();
         }
-    }
-
-    private applyRootLayout(editorConfig?: EditorConfig): void {
-        const maxHeight = editorConfig?.maxEditorHeight;
-        if (this.rootLayoutApplied && this.appliedRootMaxHeight === maxHeight) return;
-        applyPanelAttributes(this.root, resolvePanelAttributes(rootPanelProps(editorConfig)));
-        this.appliedRootMaxHeight = maxHeight;
-        this.rootLayoutApplied = true;
     }
 
     private findBarProps(projection: MarkdownProjection): FindBarProps {
@@ -494,8 +443,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
 
     private getHighlightText(): string {
         const state = this.model.state.get();
-        const externalHighlight = this.props.editorConfig?.highlightText || "";
-        return state.searchVisible && state.searchText ? state.searchText : externalHighlight;
+        return state.searchVisible && state.searchText ? state.searchText : "";
     }
 
     private blockProps(): MarkdownBlockProps {
@@ -504,7 +452,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             commandQueue: this.model.typedQueue,
             content: this.hostProjection.content,
             highlightText: this.getHighlightText(),
-            compact: !!(this.props.editorConfig?.compact || state.compactMode),
+            compact: state.compactMode,
             filePath: this.hostProjection.filePath,
             onMatchCountChange: this.onMatchCountChange,
         };

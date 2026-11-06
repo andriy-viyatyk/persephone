@@ -174,11 +174,7 @@ export class PagesQueryModel {
         const page = this.findPage(pageId);
         const main = page?.mainEditorInstance;
         if (!main) return null;
-        const host = main.contentHost as unknown as { type?: string } | null;
-        if (host && host.type === "textFile") {
-            return host as unknown as TextFileModel;
-        }
-        return null;
+        return main.contentHost;
     };
 
     /** True if both pages exist, are grouped together, and both have a TextFileModel host. */

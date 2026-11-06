@@ -14,7 +14,7 @@ Three questions decide the shape of your editor:
 
 1. **Does it work on editable text content?** (e.g. JSON, CSV, Markdown — yes; PDF, Image, Browser — no)
    - **Yes** → extend `TextHostEditorModel` (`editors/base/TextHostEditorModel.ts`). It composes
-     the `TextFileModel` host, registers `CONTENT_HOST_TRAIT` (so the editor participates in
+     the `TextFileModel` host (the sole `IContentHost` implementation), registers `CONTENT_HOST_TRAIT` (so the editor participates in
      switching automatically), and owns the whole host lifecycle. Skip to step 2.
    - **No** → extend `EditorModel` directly; your editor stores its own state. Skip to "Step 1:
      Folder structure" below.
@@ -165,9 +165,7 @@ The lifecycle hook order during a switch is:
 
 Choose the page chrome before writing the view:
 
-- **Chrome-free** — use a plain root for standalone content that needs no shared toolbar, or
-  expose `BodyView` for an editor embedded inside another editor.
-  An embedded body must not add `PageToolbarView` or `TextChromeView`.
+- **Chrome-free**: use a plain root for standalone content that needs no shared toolbar.
 - **`PageToolbarView`** — use for a non-text editor that needs the standard page toolbar but does not
   need text-host actions, script panel, footer, or editor overlay. The Image editor is the native
   toolbar example. The page toolbar's native view is the canonical implementation for converted
@@ -184,7 +182,7 @@ Choose the page chrome before writing the view:
   composes it directly; the body is a native slot in its `children` slot.
 
 Every editor module requires a native `View` arm. A converted or new DOM-heavy view should use
-`VanillaView` and export it as `View` (or `BodyView` when embeddable). Keep the root stable and
+`VanillaView` and export it as `View`. Compose body views directly in the page view. Keep the root stable and
 pass DOM nodes through native slots. Editor chrome is native and owns its host element, model
 bindings, and disposal.
 
@@ -277,8 +275,6 @@ export const myEditorModule: EditorModule = {
     // newEditorModel: async (filePath?: string) => { ... },
     // Only for standalone editors that claim a filesystem folder:
     // newEditorModelForFolder: async (anchorFolder: string) => { ... },
-    // Only for embeddable editors :
-    // BodyView: MyEditorEmbeddedView,
 };
 ```
 
@@ -416,7 +412,7 @@ the editor explicitly owns that panel. Do not register a replaced record view wi
 - [ ] `getRestoreData()` returns persisted state (stripped of runtime-only fields) — text-bearing editors inherit the identity-only base and extend it only for extra durable fields
 - [ ] `dispose()` calls `super.dispose()` and cleans up domain-only resources (host subscriptions registered via `registerHostSubscription` are torn down by the base)
 - [ ] For text-bearing editors: `displayName` set; host content writes go through `writeToHost`; view settings ride `mirrorHostSettings`
-- [ ] `EditorModule` exports `createEditor` + required native `View` (plus `newEditorModel` for standalone file-open editors, `newEditorModelForFolder` for standalone folder editors, and `BodyView` for embeddable ones)
+- [ ] `EditorModule` exports `createEditor` + required native `View` (plus `newEditorModel` for standalone file-open editors, `newEditorModelForFolder` for standalone folder editors)
 - [ ] Row added to the `EDITORS` table in `register-editors.ts`; matcher added to `EDITOR_MATCHERS` in `editor-matchers.ts` if the editor matches files/languages
 - [ ] User-facing editor has a guide page under `assets/guides/editors/` or the appropriate screen guide and the row's `guidePath` points to its canonical path; development-only editors may omit the mapping
 - [ ] The row's `load` keeps a literal `import("./…")` — preserves code splitting

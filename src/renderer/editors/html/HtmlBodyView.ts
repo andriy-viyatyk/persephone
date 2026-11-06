@@ -1,5 +1,4 @@
 import { t } from "../../../shared/i18n/t";
-import type { EditorConfig } from "../base/EditorConfig";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import type { HtmlEditor } from "./HtmlEditor";
@@ -42,7 +41,7 @@ function withInjectedScripts(content: string): string {
 
 export interface HtmlBodyViewProps {
     model: HtmlEditor;
-    editorConfig?: EditorConfig;
+
 }
 
 export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
@@ -69,7 +68,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
 
     protected onMount(): void {
         this.applyContent(this.model.host?.state.get().content ?? "", this.model.resourceRoot());
-        this.applyFrameStyle(this.props.editorConfig);
+        this.applyFrameStyle();
         this.model.setCaptureElement(this.iframe);
         this.bindToHostIfNeeded();
         this.installMessageListener();
@@ -79,7 +78,6 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     }
 
     protected onUpdate(props: HtmlBodyViewProps): void {
-        this.applyFrameStyle(props.editorConfig);
 
         const modelChanged = this.model !== props.model;
         if (modelChanged) {
@@ -121,18 +119,9 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
         }, (error: unknown) => console.warn(`HTML preview update failed: ${errMessage(error)}`));
     }
 
-    private applyFrameStyle(editorConfig?: EditorConfig): void {
-        const maxH = editorConfig?.maxEditorHeight;
+    private applyFrameStyle(): void {
         this.iframe.style.border = "none";
-        if (maxH !== undefined) {
-            this.iframe.style.flex = "";
-            this.iframe.style.height = `${maxH}px`;
-            this.iframe.style.width = "100%";
-        } else {
-            this.iframe.style.flex = "1";
-            this.iframe.style.height = "";
-            this.iframe.style.width = "";
-        }
+        this.iframe.style.flex = "1";
     }
 
     private bindToHostIfNeeded(): void {
@@ -161,22 +150,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
         const onMessage = (event: MessageEvent): void => {
             if (event.source !== this.iframe.contentWindow) return;
             const data = event.data as { __persephone?: string } | undefined;
-            if (data?.__persephone === "html:interact") {
-                dismissOverlays(this.iframe);
-                // Clicking inside a sandboxed iframe makes it the host document's `activeElement`
-                // but dispatches no focus event here, so nothing bubbles to an ancestor that tracks
-                // focus when a preview is embedded in another view.
-                //
-                // `focus()` alone is not enough: by then the iframe usually *is* the activeElement,
-                // and focusing an already-focused element is specified as a no-op that emits
-                // nothing. So announce the transition ourselves in exactly that case. Listeners are
-                // expected to be idempotent about focus they already believe they have.
-                const alreadyFocused = document.activeElement === this.iframe;
-                this.iframe.focus();
-                if (alreadyFocused) {
-                    this.iframe.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-                }
-            }
+            if (data?.__persephone === "html:interact") dismissOverlays(this.iframe);
         };
 
         window.addEventListener("message", onMessage);
