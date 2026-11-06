@@ -1,6 +1,6 @@
 ---
 name: persephone-codex-dev
-description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (Terra/medium or Luna/high, picked by remaining plan limits; completion skills always Luna/high); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
+description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (Terra/high or Luna/high, picked by remaining plan limits; completion skills always Luna/high); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
 allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
