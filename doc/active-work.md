@@ -8,6 +8,17 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-139** — [Voice assistant — talk to Persephone and let an agent act](epics/EPIC-139.md)
+  - [ ] [US-1783: Research: wake-word engine and the microphone-plus-loopback rule](tasks/US-1783-wake-word-research/README.md)
+  - [ ] [US-1789: Research: local text-to-speech model and voices (English, Ukrainian)](tasks/US-1789-tts-research/README.md)
+  - [ ] [US-1784: Reserve `speech.synthesize` and `speech.wake` and publish v1 contract guides](tasks/US-1784-speech-interfaces/README.md)
+  - [ ] BT-082: Text to Speech board — `speech.synthesize` provider (persephone-boards)
+  - [ ] BT-083: Wake Word board — `speech.wake` provider: enrollment, template matching, stop words (persephone-boards)
+  - [ ] [US-1785: `agent.session@1` host service channel and app-side session client](tasks/US-1785-agent-session-host/README.md)
+  - [ ] US-1786: Voice assistant core: settings, state machine, beeps, indicator, microphone owner
+  - [ ] US-1787: Agent turn wiring: session lifecycle, instructions, `full-auto` mode, `voice.say`
+  - [ ] US-1788: TV polish: media muting, voice interrupts, guides
+
 ## Planned
 
 ## Scheduled

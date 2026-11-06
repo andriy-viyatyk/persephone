@@ -63,7 +63,10 @@ function delay(milliseconds: number): Promise<void> {
 }
 
 const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; version: number; openTypes: ReadonlySet<string>; boardIdPrefix: string }>([
+    ["agent.session@1", { interfaceId: "agent.session", version: 1, openTypes: new Set(["describe", "list-sessions", "open"]), boardIdPrefix: "agent-session:" }],
     ["speech.transcribe@1", { interfaceId: "speech.transcribe", version: 1, openTypes: new Set(["describe", "transcribe"]), boardIdPrefix: "voice-typing:" }],
+    ["speech.synthesize@1", { interfaceId: "speech.synthesize", version: 1, openTypes: new Set(["describe", "speak"]), boardIdPrefix: "speech-synthesize:" }],
+    ["speech.wake@1", { interfaceId: "speech.wake", version: 1, openTypes: new Set(["describe", "enroll", "list", "delete", "listen"]), boardIdPrefix: "speech-wake:" }],
     ["text.translate@1", { interfaceId: "text.translate", version: 1, openTypes: new Set(["describe", "detect", "translate", "download"]), boardIdPrefix: "text-translation:" }],
 ]);
 

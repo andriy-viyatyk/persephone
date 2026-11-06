@@ -228,8 +228,8 @@ Full-access `service` grant, and must treat messages as untrusted. Use
 `persephone.services.list(id)` to choose among current providers, then
 `persephone.services.connect(id, { provider, version }, openMessage?)`. Version selection is an
 exact positive integer match, and main rechecks both boards when connecting. Provider
-cross-board calls are page-only; use `persephone.service.openChannel(openMessage)` when the
-consumer and provider are the same board. Provider
+cross-board calls from boards are page-only; use `persephone.service.openChannel(openMessage)` when the
+consumer and provider are the same board. The app also consumes reserved interfaces. Provider
 `onChannel(channel, openMessage, info)` receives `info.interface` and a descriptive `info.caller`;
 local caller ids use a hash instead of exposing the board path. Refuse with
 `channel.close({ code: "connection-refused", message: "..." })`. Cross-board channels keep the
@@ -239,13 +239,14 @@ For a streaming coding-agent provider and consumer protocol over this channel, s
 [`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`). The
 Agent Chat board uses this platform contract for its coding-agent sessions.
 
-`agent.session`, `speech.transcribe`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
+`agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
 For recording audio and getting text back from an installed speech-to-text board, see the normative
 [`speech.transcribe` v1 contract](./agents/speech-transcribe.md) (`guides.agents["speech-transcribe"]`).
 The **Speech to Text** catalog board in `persephone-boards` provides this service. When a provider is
 installed, **Agent Chat** shows a voice button for dictating a message. Both boards require
 Persephone 5.0.15 or later. Agent Chat dictation can stop after silence using the shared setting in
 [Settings > General > Voice Typing](./screens/settings.md#voice-typing).
+The [`speech.synthesize` v1 contract](./agents/speech-synthesize.md) and [`speech.wake` v1 contract](./agents/speech-wake.md) define synthesis and enrolled phrase detection.
 For detection, keyed text/HTML translation, and explicit model downloads, see the normative
 [`text.translate` v1 contract](./agents/text-translate.md) (`guides.agents["text-translate"]`).
 Bridge `1.41.0` adds `persephone.trashFile(path)`, which

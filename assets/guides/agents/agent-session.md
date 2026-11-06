@@ -31,6 +31,10 @@ channels. For a provider's own chat page, `persephone.service.openChannel(openMe
 same operation. See the [Boards guide](./boards.md)
 for channel trust and lifecycle details.
 
+The app may call with `info.interface` set and `info.caller` equal to
+`{ id: "persephone", name: "Persephone" }`. This is a cross-board caller subject to the
+provider ceiling. The host allows `describe`, `list-sessions`, and `open` as opening requests.
+
 Closing the channel ends the live session: the provider interrupts and kills the CLI process tree
 and revokes any per-session MCP endpoint. It does **not** delete the CLI's stored session. A later
 `open` may resume it by id. A channel closing because of `renderer-reloaded`, `untrusted`,

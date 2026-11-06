@@ -91,6 +91,8 @@ export const resourceFiles: IGuideResource[] = [
         file: "guides/agents/speech-transcribe.md",
         description: "Normative provider and consumer contract for speech transcription over board service channels.",
     },
+    { name: "speech-synthesize-guide", uri: "persephone://guides/speech-synthesize", file: "guides/agents/speech-synthesize.md", description: "Normative provider and consumer contract for streamed speech synthesis over board service channels." },
+    { name: "speech-wake-guide", uri: "persephone://guides/speech-wake", file: "guides/agents/speech-wake.md", description: "Normative provider and consumer contract for enrolled wake and stop phrases over board service channels." },
     {
         name: "text-translate-guide",
         uri: "persephone://guides/text-translate",

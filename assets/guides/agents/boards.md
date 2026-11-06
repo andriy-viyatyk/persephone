@@ -41,11 +41,12 @@ must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use pr
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted
-messages. `agent.session`, `speech.transcribe`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
+messages. `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
 Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
-Only board pages can make these cross-board calls in this release; use
-`persephone.service.openChannel(openMessage)` for same-board communication.
+Boards use these cross-board calls from board pages; use
+`persephone.service.openChannel(openMessage)` for same-board communication. The app also consumes
+reserved interfaces, including [`agent.session@1`](./agent-session.md).
 The provider's existing `onChannel` callback receives `info.interface = { id, version }` and
 `info.caller = { id, name }`. Refuse with the normal close reason `connection-refused`. Main
 rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle
@@ -54,9 +55,12 @@ must declare `minBridgeVersion: "1.42.0"`. The reserved `speech.transcribe` inte
 [normative v1 contract](./speech-transcribe.md): consumers stream record-then-transcribe PCM audio
 and providers return one result or error per channel. The **Speech to Text** catalog board in
 `persephone-boards` provides it; **Agent Chat** gains a voice button when a provider is installed.
+Both boards require Persephone 5.0.15.
+The [speech synthesis](./speech-synthesize.md) and [wake and stop phrase](./speech-wake.md) guides define their normative v1 contracts.
+
 The reserved `text.translate` interface has a [normative v1 contract](./text-translate.md) for
 detection, keyed text/HTML translation, and explicit model downloads.
-Both boards require Persephone 5.0.15. Bridge `1.41.0` adds
+Bridge `1.41.0` adds
 `persephone.trashFile(path)`, which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
 `singleInstanceMasks` manifest masks to choose which claimed file names route to a singleton board page,
 `persephone.source.navigate(href)` to navigate the hosting page to an item in its initial source context,
