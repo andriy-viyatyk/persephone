@@ -1,3 +1,17 @@
+## EPIC-140 — Capabilities: one registry for boards, Persephone and agents
+
+Completed 2026-11-07. Boards and Persephone register capabilities in one main-process registry,
+and boards, the app and agents all use them the same way: `persephone.getCapability(id)` in
+board pages and services, `app.capabilities.get(id)` in the app, and `capabilities["id"]` in the
+agent `call` tree. Epic document: [EPIC-140](EPIC-140.md).
+
+- [x] **Inventory and contract (US-1792, US-1793).** One concept with three method kinds (`call`, `channel`, `open`), declared under `methods` in the manifest; normative guide `assets/guides/agents/capabilities.md`.
+- [x] **Main-process registry and routing (US-1794).** One index for platform and board providers; `call` and `channel` go to board services, `open` to renderers; legacy declarations and service interfaces are projected into it.
+- [x] **Client API (US-1795).** `persephone.getCapability` for board pages (gated by `uses`) and board services, `app.capabilities.get` for the app; the old `invoke`/`list`/`services` APIs are wrappers; bridge 1.51.0.
+- [x] **Agent surface (US-1796).** Per-capability nodes with generated `$help`, callable `call`/`open` methods, hidden `agent: false` methods, refused channels, and MCP timeouts derived from method timeouts.
+- [x] **Migration (US-1797).** Excalidraw, REST Client and the Demo board declare `open` methods; `doc/architecture/capabilities.md` replaces the capability-bus page. Fixed on the way: subframe navigation aborting board opens, legacy invoke without a version, and cold opens on boards with secondary views.
+- [x] **persephone-boards (BT-087).** Certificate Viewer, Theme Editor, Translate and Speech to Text use the `methods` form; Translate adds `translateText` and Speech to Text `transcribeFile` for agents. `speak`/`stop` move to EPIC-139 BT-084, and `record` waits for US-1790. Fixed on the way: the service host masked provider error messages.
+
 ## EPIC-137 — Notebook moves to a published board
 
 Completed 2026-11-06. The built-in Notebook editor was rebuilt as the published persephone-boards

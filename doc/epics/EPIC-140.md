@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Draft — design for user review
+**Status:** Completed 2026-11-07
 **Created:** 2026-11-07
 **Completed:** —
 
@@ -44,7 +44,7 @@ records a minute of speech and writes the text to a file.
 
 ## Background
 
-See [US-1792](../tasks/US-1792-capabilities-inventory/README.md) for the verified inventory. The
+See US-1792 for the verified inventory. The
 facts the design rests on:
 
 - **Capability bus** ([capability-bus.md](../architecture/capability-bus.md)). Each renderer
@@ -185,13 +185,13 @@ facts the design rests on:
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| US-1792 | persephone | Research: inventory of capability-like mechanisms | Done (pending epic review) |
-| US-1793 | persephone | Capability contract: manifest schema, method kinds, resolution, authorization, wire messages — the normative guide `assets/guides/agents/capabilities.md` | Implemented (pending epic review) |
-| [US-1794](../tasks/US-1794-capability-registry/README.md) | persephone | Main-process registry and routing: one index (platform + boards), `call` / `channel` to services, `open` to renderers, legacy declarations mapped | Implemented (pending epic review) |
-| [US-1795](../tasks/US-1795-capability-client-api/README.md) | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Implemented (pending epic review) |
-| [US-1796](../tasks/US-1796-capability-agent-surface/README.md) | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Implemented (pending epic review) |
-| [US-1797](../tasks/US-1797-capability-migration/README.md) | persephone | Migrate bundled boards and capability documentation | Planned (documented) |
-| BT-087 | persephone-boards | Migrate the declarations of Certificate Viewer, Theme Editor, Speech to Text and Translate; add agent-shaped `transcribeFile` and `translateText` (plan: `persephone-boards/doc/tasks/BT-087-capability-migration/`) | Implemented (pending epic review) |
+| US-1792 | persephone | Research: inventory of capability-like mechanisms | Done |
+| US-1793 | persephone | Capability contract: manifest schema, method kinds, resolution, authorization, wire messages — the normative guide `assets/guides/agents/capabilities.md` | Done |
+| US-1794 | persephone | Main-process registry and routing: one index (platform + boards), `call` / `channel` to services, `open` to renderers, legacy declarations mapped | Done |
+| US-1795 | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Done |
+| US-1796 | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Done |
+| US-1797 | persephone | Migrate bundled boards and capability documentation | Done |
+| BT-087 | persephone-boards | Migrate the declarations of Certificate Viewer, Theme Editor, Speech to Text and Translate; add agent-shaped `transcribeFile` and `translateText` | Done |
 
 **Order:** US-1793 → US-1794 → US-1795 and US-1796 in parallel → US-1797 and BT-087. EPIC-139
 then resumes: its `audio` capability (US-1790) becomes a platform capability, and its US-1791 is

@@ -24,8 +24,9 @@ export function createCapabilityChannel(port: MessagePortMain, onEnd: () => void
         messages.clear();
     };
     port.on("message", ({ data }: { data: { kind?: string; sequence?: number; value?: unknown; reason?: Reason } }) => {
-        if (data?.kind === "ack" && Number.isSafeInteger(data.sequence)) {
-            acknowledged = Math.max(acknowledged, Math.min(data.sequence!, sent));
+        const sequence = data?.sequence;
+        if (data?.kind === "ack" && Number.isSafeInteger(sequence)) {
+            acknowledged = Math.max(acknowledged, Math.min(sequence, sent));
             for (const waiter of waiters) waiter.resolve();
             waiters.clear();
         } else if (data?.kind === "data" && data.sequence === received + 1) {

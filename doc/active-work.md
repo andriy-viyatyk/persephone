@@ -8,15 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-140** — [Capabilities: one registry for boards, Persephone and agents](epics/EPIC-140.md)
-  - [ ] [US-1792: Research: inventory of capability-like mechanisms](tasks/US-1792-capabilities-inventory/README.md)
-  - [ ] [US-1793: Capability contract — manifest schema, method kinds, resolution, authorization, wire messages](tasks/US-1793-capability-contract/README.md)
-  - [ ] [US-1794: Main-process capability registry and routing](tasks/US-1794-capability-registry/README.md)
-  - [ ] [US-1795: Client API — `persephone.getCapability` for board pages and services, `app.capabilities.get`](tasks/US-1795-capability-client-api/README.md)
-  - [ ] [US-1796: Agent surface — per-capability nodes in the `call` tree](tasks/US-1796-capability-agent-surface/README.md)
-  - [ ] [US-1797: Migrate bundled boards and docs](tasks/US-1797-capability-migration/README.md)
-  - [ ] BT-087: Migrate persephone-boards declarations; add `translateText` and `transcribeFile` (persephone-boards, `doc/tasks/BT-087-capability-migration/`)
-
 - **EPIC-139** — [Voice assistant — talk to an agent by name](epics/EPIC-139.md)
   - [ ] [US-1783: Research: wake-word engine and the microphone-plus-loopback rule](tasks/US-1783-wake-word-research/README.md)
   - [ ] [US-1789: Research: local text-to-speech model and voices (English, Ukrainian)](tasks/US-1789-tts-research/README.md)

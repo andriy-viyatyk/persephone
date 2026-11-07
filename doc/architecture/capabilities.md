@@ -74,6 +74,12 @@ still present. Agent method visibility is also rechecked. Registry changes revok
 this authorization no longer holds. A stale, changed or revoked binding cannot continue calling an
 old provider.
 
+The `ctx.caller.id` value passed to board service handlers is descriptive caller metadata, not an
+authorization identity. For ordinary boards it is derived from manifest `author/name`, which is
+chosen by the board author and may be shared by multiple trusted boards. Providers must not
+authorize a caller by this id alone; use the authenticated capability grants and any provider-owned
+approval policy.
+
 ## Method routing
 
 The main router sends each method kind to its owner:
@@ -86,6 +92,9 @@ The main router sends each method kind to its owner:
 
 Calls and channel setup inherit caller identity, cancellation, deadlines and request ancestry. A
 board service may call another provider only when its own `uses` grant permits that id/version.
+Service-to-service calls propagate the handler chain for cycle detection. A page intent does not
+propagate its parent chain back to main for later calls made by that page, so cycle detection does
+not currently span that page-intent hop; this remains deferred unless a real cycle is observed.
 Channel methods use the service protocol's `type` field and retain the v1 streaming lifecycle. The
 capability channel limits each message to 1 MiB and allows 256 messages in flight; service and
 channel counts are bounded as specified in

@@ -54,7 +54,7 @@ export function initializeCapabilityIndex(): Promise<void> {
     let fetching: Promise<void> | undefined;
     const refresh = (): Promise<void> => {
         if (!fetching) fetching = (async () => {
-            do { accept(await api.getCapabilityIndex()); } while (mainIndexSnapshot!.revision < latestRevision);
+            do { accept(await api.getCapabilityIndex()); } while (mainIndexSnapshot && mainIndexSnapshot.revision < latestRevision);
         })().finally(() => { fetching = undefined; });
         return fetching;
     };

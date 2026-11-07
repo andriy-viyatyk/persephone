@@ -410,7 +410,7 @@ class ModuleServiceSupervisor {
             const pending = { record, process: undefined as UtilityProcess | undefined, generation: undefined as number | undefined,
                 reject: (error: unknown) => finish(error), resolve: (result: unknown) => finish(undefined, result) };
             const abort = () => {
-                if (pending.process && isCurrent(record, pending.process, pending.generation!)) {
+                if (pending.process && typeof pending.generation === "number" && isCurrent(record, pending.process, pending.generation)) {
                     const reason = (signal.reason as { code?: string } | undefined)?.code;
                     try { pending.process.postMessage({ kind: "capability-cancel", requestId: message.requestId, reason: reason === "timeout" || reason === "untrusted" ? reason : "cancelled" } satisfies ServiceParentMessage); } catch { /* Service exited. */ }
                 }
