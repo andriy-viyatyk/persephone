@@ -26,7 +26,7 @@ Each method is an object with these fields; unknown fields are ignored.
 | `kind` | Required: `call`, `channel`, or `open`. |
 | `summary` | Required nonempty string, at most 512 characters. |
 | `args` | Optional ordered array, default `[]`, at most 16 descriptors. Each is `{ name, type, optional?, description? }`: `name` matches `[A-Za-z][A-Za-z0-9_]*` and is unique; `type` is a nonempty human-readable TypeScript type expression, at most 512 characters; `optional` is boolean, default `false`; `description` is an optional string of at most 512 characters. Required arguments precede optional arguments. |
-| `returns` | Optional human-readable string, at most 512 characters; absent means unspecified. |
+| `returns` | Optional human-readable string, at most 512 characters; absent means unspecified. For `open`, this describes the method's `result` value only; the agent surface wraps it with the optional `pageId`. |
 | `timeoutMs` | Positive safe integer milliseconds, default 10,000, maximum 600,000. End-to-end deadline for `call` and `open`, and channel establishment only for `channel`. |
 | `agent` | Boolean, default `true`; `false` hides the method from agent discovery and invocation. Channels are never callable by agents. |
 

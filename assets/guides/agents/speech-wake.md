@@ -21,7 +21,7 @@ Declare the exact interface version in `board-manifest.json`:
 
 `uses` grants messaging access only, not the provider's permissions. The provider must be trusted, have its own `service` permission, and apply its caller approval policy to every request. Refuse a caller with the platform close code `connection-refused`. The Persephone host caller is `{ id: "persephone", name: "Persephone" }`, with `info.interface = { id: "speech.wake", version: 1 }`. The `accept-granted` policy accepts this reserved interface; `same-board-only` refuses the host. The app needs no board `uses` declaration; its capture permission is granted separately.
 
-Discover with `persephone.services.list("speech.wake")`, connect with `persephone.services.connect("speech.wake", selector, openMessage)`, and handle opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants and channel lifecycle.
+For unified declarations and clients see [Capabilities](capabilities.md). Discover with `persephone.services.list("speech.wake")`, connect with `persephone.services.connect("speech.wake", selector, openMessage)`, and handle opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants and channel lifecycle.
 
 ## Opening requests
 

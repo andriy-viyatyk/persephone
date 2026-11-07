@@ -13,8 +13,8 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1793: Capability contract — manifest schema, method kinds, resolution, authorization, wire messages](tasks/US-1793-capability-contract/README.md)
   - [ ] [US-1794: Main-process capability registry and routing](tasks/US-1794-capability-registry/README.md)
   - [ ] [US-1795: Client API — `persephone.getCapability` for board pages and services, `app.capabilities.get`](tasks/US-1795-capability-client-api/README.md)
-  - [ ] US-1796: Agent surface — per-capability nodes in the `call` tree
-  - [ ] US-1797: Migrate bundled boards and docs
+  - [ ] [US-1796: Agent surface — per-capability nodes in the `call` tree](tasks/US-1796-capability-agent-surface/README.md)
+  - [ ] [US-1797: Migrate bundled boards and docs](tasks/US-1797-capability-migration/README.md)
   - [ ] BT-087: Migrate persephone-boards declarations and add agent-shaped methods (persephone-boards)
 
 - **EPIC-139** — [Voice assistant — talk to an agent by name](epics/EPIC-139.md)

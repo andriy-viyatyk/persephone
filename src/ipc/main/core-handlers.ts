@@ -101,7 +101,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const closed = () => controller.abort();
         event.sender.once("destroyed", closed);
         event.sender.once("render-process-gone", closed);
-        event.sender.once("did-start-navigation", closed);
+        event.sender.once("did-navigate", closed);
         try {
             const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: event.sender, target: event.sender });
             try {
@@ -113,7 +113,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
             active.delete(request.requestId);
             event.sender.removeListener("destroyed", closed);
             event.sender.removeListener("render-process-gone", closed);
-            event.sender.removeListener("did-start-navigation", closed);
+            event.sender.removeListener("did-navigate", closed);
         }
     });
     capabilityCancel = async (event: IpcMainEvent, requestId: string): Promise<void> => {

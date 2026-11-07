@@ -29,11 +29,20 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
 | Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
 | Built-in app capabilities (`app.capabilities`) | `/src/renderer/api/capabilities.ts`               |
+| Unified capability architecture (registry, router, clients, agent surface and legacy projections) | `/doc/architecture/capabilities.md` |
 | Missing image/diagram capability feedback (user-facing no-handler messages) | `/src/renderer/api/capability-feedback.ts` |
-| Capability-bus lifecycle (single renderer `CapabilityError`, `invoke` request ids/deadlines, typed settlement, cancellation, page-chain cycle checks, payload/outstanding limits, trust/window teardown) | `/src/renderer/api/capability-bus.ts` |
-| Capability-bus registry and invoke paths (manifest registration/release, D4 ordering, discovery, platform direct calls, `invokeCapabilityOutcome()` for unflattened outcomes, script result projection) | `/src/renderer/api/capabilities.ts` |
-| Capability-bus wire contract and limits (single-sourced `CAPABILITY_ERROR_CODES`/guard, `IntentEnvelope`, `CapabilityOutcome`, declarations, registrations, intent request/settlement, transport seam) | `/src/ipc/capability-bus-channels.ts` |
-| Board capability transport (caller-window page reuse/open, per-root/page FIFO route reservations, dispatch after frame readiness, intent delivery/cancel, `CapabilityOutcome` assembly, active per-page chain state, handler-page subscriptions; shares `CapabilityError` with the bus) | `/src/renderer/api/board-capability-transport.ts` |
+| Renderer capability clients, legacy projection and open dispatch | `/src/renderer/api/capabilities.ts` |
+| Legacy renderer capability lifecycle (legacy invoke request ids/deadlines, typed settlement, cancellation, page-chain cycle checks and teardown) | `/src/renderer/api/capability-bus.ts` |
+| Legacy capability wire transport and shared intent types | `/src/ipc/capability-bus-channels.ts` |
+| Board intent dispatch (caller-window page reuse/open, FIFO routes, frame readiness, cancellation and result assembly) | `/src/renderer/api/board-capability-transport.ts` |
+| Main capability registry (platform and eligible board provider index) | `/src/main/capability-registry.ts` |
+| Main capability authorization, resolution and routing | `/src/main/capability-router.ts` |
+| Main capability service-channel adapter | `/src/main/capability-channel.ts` |
+| Capability declarations, normalization and shared contract | `/src/shared/capability-contract.ts` |
+| Capability deadlines, payload and concurrency limits | `/src/shared/capability-limits.ts` |
+| Named capability proxy builder | `/src/shared/capability-client.ts` |
+| Platform capability provider metadata | `/src/shared/platform-capabilities.ts` |
+| Agent capability discovery and method nodes | `/src/renderer/scripting/ai-vision/namespaces/capabilities.ts` |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, media-pipe owner readiness, and deferred restore readiness/cancellation) | `/src/renderer/api/pages/PageModel.ts` |
@@ -617,7 +626,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Renderer trust bootstrap (subscribes to main trust broadcasts, hydrates authoritative paths, and pushes the disabled-bundled-board setting) | `/src/renderer/api/board-trust-sync.ts` |
 | Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
-| Shared board bridge-version source of truth used by the board shim and compatibility gate (`1.49.0` adds toolbar breadcrumbs; `1.48.0` adds authorized `openBoard(folder)` and hardens `openRawLink` to absolute paths plus file/http/https/mailto/PNG-data/torrent links; `1.47.0` adds TypeScript project registration for Monaco; `1.46.0` adds awaitable openRawLink navigation and reusable Run pages; `1.44.0` adds the shared Voice Typing auto-stop setting API; `1.43.0` adds searchable multi-select string settings; `1.42.0` adds multiline settings, private MCP endpoints for authorized services, bounded service channels, and trusted cross-board service interfaces; `1.41.0` adds `trashFile(path)`; `1.40.0` adds singleton file-mask routing; `1.39.0` adds permission-scoped file and folder watches; `1.38.0` adds paged folder listing and persistent folder/exact-file grants; `1.37.0` adds source-panel snapshots; `1.36.0` adds locale and board-pack translation APIs; `1.32.0` adds hosted-document reads without general file-system permission; `1.29.0` adds the permission-enforced manifest/trust contract; `1.28.0` adds segmented toolbar controls; `1.27.0` adds the footer status-bar catalog; `1.26.0` adds live service-provider status; `1.23.0` unifies extension-to-MIME lookup; `1.22.0` adds host-managed service lifecycle; `1.21.0` adds capability representations; `1.19.0` adds intent resolution and the `alwaysOpensNewPage` capability field) | `/src/shared/board-bridge-version.ts` |
+| Shared board bridge-version source of truth (`1.51.0` adds board page/service `getCapability`; `1.50.0` adds service-host `handle`; earlier bridge additions include `1.49.0` toolbar breadcrumbs and `1.48.0` authorized `openBoard(folder)`) | `/src/shared/board-bridge-version.ts` |
 | Board TypeScript project file selection (tsconfig include/exclude/files matching, recursive enumeration and bounded source/JSON reads) | `/src/renderer/api/ts-project-files.ts` |
 | Renderer TypeScript project registry (board-owned roots, authorization results, lazy project file metadata and file-to-project lookup) | `/src/renderer/api/ts-project-registry.ts`, `/src/renderer/api/mcp/board-ts-project.ts` |
 | Monaco project IntelliSense (file-backed model URIs, shared extra-library loading, change watching and page bindings) | `/src/renderer/editors/shared/monaco-project-intellisense.ts` |

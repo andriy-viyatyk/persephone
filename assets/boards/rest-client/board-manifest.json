@@ -31,7 +31,9 @@
       "version": 1,
       "priority": 50,
       "title": "Open HTTP request",
-      "alwaysOpensNewPage": true
+      "alwaysOpensNewPage": true,
+      "methods": { "open": { "kind": "open", "summary": "Create a REST Client page containing a request; does not send it.",
+        "args": [{ "name": "payload", "type": "{ url: string; method?: string; headers?: Record<string, string>; body?: string; title?: string }", "description": "url must be nonempty; headers map names to string values." }] } }
     }
   ],
   "standalone": true,

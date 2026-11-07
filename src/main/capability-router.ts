@@ -128,7 +128,7 @@ class CapabilityRouter {
         const ownerClosed = () => controller.abort(capabilityError("cancelled"));
         ownerContents?.once("destroyed", ownerClosed);
         ownerContents?.once("render-process-gone", ownerClosed);
-        ownerContents?.once("did-start-navigation", ownerClosed);
+        ownerContents?.once("did-navigate", ownerClosed);
         const ancestry = input.chain ?? [];
         const depth = input.depth ?? ancestry.length;
         if (depth > MAX_INTENT_DEPTH) throw capabilityError("cycle");
@@ -139,7 +139,7 @@ class CapabilityRouter {
             input.signal?.removeEventListener("abort", abort);
             ownerContents?.removeListener("destroyed", ownerClosed);
             ownerContents?.removeListener("render-process-gone", ownerClosed);
-            ownerContents?.removeListener("did-start-navigation", ownerClosed);
+            ownerContents?.removeListener("did-navigate", ownerClosed);
         } };
     }
 
@@ -366,11 +366,11 @@ class CapabilityRouter {
                 context.signal?.removeEventListener("abort", cancel);
                 target.removeListener("destroyed", closed);
                 target.removeListener("render-process-gone", crashed);
-                target.removeListener("did-start-navigation", crashed);
+                target.removeListener("did-navigate", crashed);
                 if (context.owner !== target) {
                     context.owner?.removeListener("destroyed", cancel);
                     context.owner?.removeListener("render-process-gone", cancel);
-                    context.owner?.removeListener("did-start-navigation", cancel);
+                    context.owner?.removeListener("did-navigate", cancel);
                 }
                 app.removeListener("before-quit", cancel);
                 untrackOwner?.();
@@ -396,11 +396,11 @@ class CapabilityRouter {
             context.signal?.addEventListener("abort", cancel, { once: true });
             target.once("destroyed", closed);
             target.once("render-process-gone", crashed);
-            target.once("did-start-navigation", crashed);
+            target.once("did-navigate", crashed);
             if (context.owner !== target) {
                 context.owner?.once("destroyed", cancel);
                 context.owner?.once("render-process-gone", cancel);
-                context.owner?.once("did-start-navigation", cancel);
+                context.owner?.once("did-navigate", cancel);
             }
             app.once("before-quit", cancel);
             if (context.signal?.aborted) { cancel(); return; }
@@ -432,7 +432,7 @@ class CapabilityRouter {
         if (context.signal !== controller.signal) context.signal?.addEventListener("abort", abort, { once: true });
         context.owner?.once("destroyed", abort);
         context.owner?.once("render-process-gone", abort);
-        context.owner?.once("did-start-navigation", abort);
+        context.owner?.once("did-navigate", abort);
         const unsubscribe = capabilityRegistry.onChange(() => {
             try { this.authorize(bound, method); } catch (error) { controller.abort(error); }
         });
@@ -442,7 +442,7 @@ class CapabilityRouter {
             if (context.signal !== controller.signal) context.signal?.removeEventListener("abort", abort);
             context.owner?.removeListener("destroyed", abort);
             context.owner?.removeListener("render-process-gone", abort);
-            context.owner?.removeListener("did-start-navigation", abort);
+            context.owner?.removeListener("did-navigate", abort);
         };
         try {
             const { moduleServiceSupervisor } = await import("./module-service-supervisor");

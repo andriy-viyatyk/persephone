@@ -29,8 +29,13 @@
     "notifications": false
   },
   "capabilities": [
-    { "id": "image.edit", "version": 1, "priority": 50, "title": "Edit image", "alwaysOpensNewPage": true },
-    { "id": "diagram.edit", "version": 1, "priority": 50, "title": "Edit diagram", "alwaysOpensNewPage": true }
+    { "id": "image.edit", "version": 1, "priority": 50, "title": "Edit image", "alwaysOpensNewPage": true,
+      "methods": { "open": { "kind": "open", "summary": "Open an image for editing in Excalidraw.",
+        "args": [{ "name": "payload", "type": "{ dataUrl: string; title: string; mimeType?: string; naturalWidth?: number; naturalHeight?: number }", "description": "dataUrl and title must be nonempty; mimeType, if supplied, must be nonempty. Supply both dimensions together as positive numbers, or omit both." }] } } },
+    { "id": "diagram.edit", "version": 1, "priority": 50, "title": "Edit diagram", "alwaysOpensNewPage": true,
+      "methods": { "open": { "kind": "open", "summary": "Convert a Mermaid diagram and open it for editing in Excalidraw.",
+        "args": [{ "name": "payload", "type": "{ source: string; title: string }", "description": "Nonempty Mermaid source and title." }],
+        "returns": "{ status: 'opened', imageOnly: boolean } | { status: 'conversion-failed', message: string }" } } }
   ],
   "fileMasks": ["*.excalidraw"],
   "editorKind": "content-host",

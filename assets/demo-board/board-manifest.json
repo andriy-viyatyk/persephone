@@ -33,7 +33,10 @@
     "notifications": false
   },
   "capabilities": [
-    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" }
+    { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting",
+      "methods": { "open": { "kind": "open", "summary": "Open the demo board and return a greeting.",
+        "args": [{ "name": "payload", "type": "{ name?: string }", "description": "A missing or blank name defaults to board friend." }],
+        "returns": "{ greeting: string; requestId: string; received: { name: string } }" } } }
   ],
   "service": "scripts/service.mjs",
   "contentProviders": [

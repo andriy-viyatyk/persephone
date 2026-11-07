@@ -219,7 +219,9 @@ There are at most 16 channels per frame and 128 per service. Use
 `channel-message-too-large`. `close()` without a reason reports `channel-closed` to the other side. Channels close on page reload, service exit or stop, trust loss, and
 app quit (`renderer-reloaded`, `service-exited`, `untrusted`, and `quit`). Boards using this API
 must declare `minBridgeVersion: "1.42.0"`.
-The same release also supports cross-board service interfaces. A provider declares
+The same release also supports cross-board service interfaces. The following legacy compatibility
+example uses `serviceInterfaces` and `services.connect`; for new `methods`, `getCapability` and
+`uses` declarations, see [Capabilities](./agents/capabilities.md). A provider declares
 `serviceInterfaces: [{ id: "agent.session", version: 1, title: "Agent Chat" }]`; a consumer
 declares `uses: [{ id: "agent.session", version: 1 }]`. The trust dialog treats every non-empty
 `uses` list as Full access because it grants messaging access to providers trusted now or later.
@@ -473,10 +475,13 @@ described above.
 
 ### Capability handlers and in-memory intents
 
-A board can provide named work without making callers know which board handles it. Declare the
+A board can provide named work without making callers know which board handles it. For new `methods`,
+`getCapability` and `uses` declarations, see [Capabilities](./agents/capabilities.md). Declare the
 capability in `board-manifest.json`; the declaration array controls registration. A handler that
 calls Persephone scripts, object model APIs, or agent tools also needs `appScripting: true`; declare
 only the permissions its code uses.
+
+The following manifest is a legacy compatibility example:
 
 ```json
 {
@@ -555,16 +560,16 @@ Persephone reused an existing page. **Settlement is mandatory:** a handler that 
 calls either method leaves its caller waiting until the deadline. The platform then sends a
 best-effort cancel, but cannot stop the handler's work.
 
-`persephone.capabilities.list()` discovers registrations without opening a handler. The
-`handlerKey` field distinguishes multiple handlers for one id:
+`persephone.capabilities.list()` discovers unified providers for granted id/version pairs without
+opening a handler or requiring `appScripting`. The following replaces the legacy list projection;
+`handlerKey` distinguishes registrations:
 
 ```js
 const handlers = await persephone.capabilities.list();
-// [{ id: "demo.greet", version: 1, priority: 60,
-//    handlerKey: "board:/work/Demo", origin: "board", title: "Demo greeting" }]
+// Entries include id, version, provider, handlerKey, origin, priority and methods.
 ```
 
-`persephone.capabilities.invoke(id, payload, options?)` resolves by id; options may pin `version`
+The legacy `persephone.capabilities.invoke(id, payload, options?)` wrapper resolves by id; options may pin `version`
 or set `deadlineMs`. A board result is `{ pageId, result }` (the page id is optional for handlers
 that resolve without a page); `result` preserves the handler's exact value, including primitives,
 arrays, and empty objects. Handle the ten typed rejection codes as follows:
@@ -598,7 +603,7 @@ Scripts running in Persephone can discover or invoke the same indexed handlers t
 [`app.capabilities`](./scripting/api/app.md#capabilities). Board pages use the asynchronous
 `persephone.capabilities` bridge documented above.
 
-Scripts should use `app.capabilities.invoke()` for capability calls.
+For new declarations and clients, see [Capabilities](./agents/capabilities.md); `app.capabilities.invoke()` remains a legacy wrapper.
 
 ---
 

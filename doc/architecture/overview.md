@@ -111,7 +111,7 @@ The **Object Model** is the central architectural concept. It provides a single,
 | `app.menuFolders` | `IMenuFolders` | Sidebar folder shortcuts |
 | `app.pages` | `PagesModel` | Page/tab collection, lifecycle |
 | `app.proc` | `IProc` | Spawn external processes + stream output (scripts, boards) |
-| `app.capabilities` | `ICapabilities` | Built-in content-opening and editing handoffs |
+| `app.capabilities` | `ICapabilities` | Unified capability client for platform and board providers |
 
 ### App service descriptors
 
@@ -128,15 +128,18 @@ initialization failures are recorded per service and reported after the pass; on
 does not prevent the remaining descriptors from being loaded. This generic path is why a service
 with startup work does not require a special case in `App` (the current example is `downloads`).
 
-`app.capabilities` is the built-in handoff surface. Its handlers are seeded from capability
-declarations on the editor registry, so callers can request a page/editor without importing an
-editor module or duplicating page construction. The supported ids are `text.open`,
+`app.capabilities` is the renderer client for the unified capability system. A main-process
+registry and router unify board and platform providers; renderer open dispatch retains
+caller-window intent routing. Callers can request a page/editor without importing an editor module
+or duplicating page construction. The supported ids are `text.open`,
 `content.view` (with `svg`, `html`, `markdown`, `mermaid`, `grid`, or `log` representations),
 `image.edit`, and `diagram.edit`. Page-producing calls return a `pageId`; diagram editing may
 also return a conversion-failed result. The draw editor owns the image/diagram handlers, while
 the other handlers create the declared built-in editor page. Enabled board declarations may own
-editing handlers too; bundled declarations are loaded from shipped manifests without trust-file
-entries.
+editing handlers too; enabled bundled declarations are loaded from shipped manifests and use
+manifest grants.
+
+See [Capabilities](capabilities.md) for provider eligibility, client routes and legacy wrappers.
 
 Type definitions live in `/src/renderer/api/types/*.d.ts` and serve triple duty:
 1. TypeScript compilation contracts
@@ -576,16 +579,13 @@ Bridge version **1.44.0** adds `persephone.voiceTyping.autoStopSilenceMs` and
 Its options may carry display labels, while defaults and persisted values remain comma-separated
 strings; boards that use the control should declare `minBridgeVersion: "1.43.0"`.
 
-### Capability bus
+### Capabilities
 
-The capability bus is the renderer-local request counterpart to the content pipeline. A derived
-index combines built-in editor declarations with trusted and bundled boards' manifest `capabilities` arrays;
-`list()`/`handlers()` discover candidates without opening pages, and `invoke()` resolves by version,
-filter, priority, and origin tie rules. Board requests are served in the caller's window through
-the transient `intent` host-frame protocol, with request ids, deadlines, best-effort cancel, typed
-failures, cycle limits, and an 8 MiB inline payload cap. See the [Capability Bus](./capability-bus.md)
-architecture page for registration, settlement, the renderer-local trade-off, and the complete
-failure taxonomy.
+The main capability registry and router unify platform and eligible board providers. Unified
+clients bind a provider key and main reauthorizes it for each request. `call` and `channel` methods
+route to board services; `open` methods dispatch through the renderer and retain caller-window
+board intent routing, request deadlines, cancellation and typed failures. See
+[Capabilities](./capabilities.md) for client paths, lifecycle and limits.
 
 **Reload & failure reporting:** Boards do not auto-reload; the manual **Reload board** action in the toolbar's **…** menu and `pages[i].editor.reload()` remount the iframe to pick up edited files. Each main-frame load appends a `----- board loaded -----` separator to `ui.log`; earlier service output and diagnostics remain available across reloads. All board-log writes are serialized by the main-process writer in `src/main/board-log.ts`, and the file is bounded at 256 KiB by trimming toward its last ~128 KiB on overflow. Ordinary boards keep `ui.log` under their board root; bundled boards use `<userData>/board-logs/<id>/ui.log` (on Windows, `%APPDATA%\persephone\board-logs\<id>\ui.log`). Load failures funnel into that log and a toast; the main process reports navigation failures, the shim reports CSP and uncaught author errors, and a handshake watchdog flags a board whose bridge never connects.
 

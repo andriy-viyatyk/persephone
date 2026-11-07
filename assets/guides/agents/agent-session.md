@@ -23,7 +23,7 @@ Declare the exact interface version in `board-manifest.json`:
 {"uses":[{"id":"agent.session","version":1}]}
 ```
 
-Use a board service channel. A channel represents exactly one live session. For a
+Use a board service channel; see [Capabilities](capabilities.md) for unified declarations and clients. The v1 channel contract below remains valid. A channel represents exactly one live session. For a
 consumer, `persephone.services.connect("agent.session", selector, openMessage)` sends
 `openMessage` to the provider as the session's opening request. The provider uses the same
 `persephone.service.onChannel((channel, openMessage, info) => ...)` handler used for local

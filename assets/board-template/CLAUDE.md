@@ -26,7 +26,8 @@ permission because MCP provides full app control. Service boards using this API 
 `persephone.settings.onChange(callback)` for their own board's declared settings; changes include
 effective defaults after reset, and the returned disposer removes the shared subscription when the
 last callback is removed. This settings access uses the existing trust and `service` permission.
-Cross-board service interfaces use provider
+For new declarations and clients, see the [unified capability contract](../guides/agents/capabilities.md).
+The following legacy cross-board service compatibility example uses provider
 `serviceInterfaces: [{ id: "agent.session", version: 1 }]` and consumer
 `uses: [{ id: "agent.session", version: 1 }]` manifest declarations. Every non-empty consumer
 grant is Full access and applies to currently or later trusted providers; it grants messaging only,
@@ -376,9 +377,10 @@ migration, copying, merging, or pruning; any deliberate migration is the user's 
 
 ### Capability handlers
 
-A board that can answer named requests declares handlers in the `capabilities` array. The array
-registers handlers; `appScripting: true` grants access to `persephone.call()` and capability
-invocation from the board frame.
+Declare methods in `capabilities`; see the [unified capability contract](../guides/agents/capabilities.md) for new providers and consumers.
+`appScripting: true` grants access to `persephone.call()` from the board frame.
+
+The following manifest is a legacy compatibility example:
 
 ```json
 {
@@ -467,16 +469,16 @@ cancel; it does not stop the handler. Agents may retry, so work that needs idemp
 
 ### Discovering and invoking capabilities
 
-`persephone.capabilities.list()` returns the registrations visible in this renderer without opening
-a handler. Each entry includes `handlerKey`, which distinguishes handlers that share one id:
+`persephone.capabilities.list()` returns unified providers filtered by the board's granted id/version
+pairs without opening a handler or requiring `appScripting`. This replaces the legacy list
+projection; each entry includes `handlerKey` to distinguish registrations:
 
 ```js
 const available = await persephone.capabilities.list();
-// [{ id: "content.view", representation: "pdf", version: 1, priority: 70,
-//    handlerKey: "board:/work/acme", origin: "board" }]
+// Entries include id, version, provider, handlerKey, origin, priority and methods.
 ```
 
-Call `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
+Call the legacy compatibility wrapper `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
 than naming a handler. A board-originated result has `{ pageId, result }`; `pageId` is optional for
 handlers that resolve without opening a page, and `result` preserves the handler's exact value,
 including primitives, arrays, and empty objects. The ten typed rejection codes are:

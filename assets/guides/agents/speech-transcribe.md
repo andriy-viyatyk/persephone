@@ -28,7 +28,7 @@ accepts this reserved interface; `same-board-only` refuses the host caller with
 `connection-refused`. The app consumer does not need a board `uses` declaration or microphone
 permission because capture is granted separately to the Persephone window.
 
-Use `persephone.services.list("speech.transcribe")` to discover providers and `persephone.services.connect("speech.transcribe", selector, openMessage)` to open a cross-board channel. The provider handles cross-board and same-board opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants, channel limits, and lifecycle behavior.
+For unified declarations and clients see [Capabilities](capabilities.md). Use `persephone.services.list("speech.transcribe")` to discover providers and `persephone.services.connect("speech.transcribe", selector, openMessage)` to open a cross-board channel. The provider handles cross-board and same-board opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants, channel limits, and lifecycle behavior.
 
 ## Opening requests
 

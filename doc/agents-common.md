@@ -146,6 +146,7 @@ complete (`N/N`) with no stale hashes. Work that changed no catalog messages ski
 | Address a UI element / add `data-name` | [architecture/ui-element-contract.md](architecture/ui-element-contract.md) |
 | Add sidebar panels            | [architecture/secondary-views.md](architecture/secondary-views.md) |
 | Work with scripting system    | [architecture/scripting.md](architecture/scripting.md) |
+| Work with capabilities (board/platform/agent) | [architecture/capabilities.md](architecture/capabilities.md) |
 | Check coding style            | [standards/coding-style.md](standards/coding-style.md) |
 | Add or update translated UI text | [standards/localization.md](standards/localization.md) |
 | Styling / inline-style inventory | [architecture/styling-inventory.md](architecture/styling-inventory.md) |

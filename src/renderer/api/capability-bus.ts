@@ -272,7 +272,7 @@ class CapabilityBus {
         const request: IntentRequest = {
             requestId,
             id: registration.id,
-            ...(options?.version === undefined ? {} : { version: options.version }),
+            version: options?.version ?? registration.version,
             payload,
             chain: [...chainState.chain],
             depth: chainState.depth,

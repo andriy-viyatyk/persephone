@@ -270,7 +270,7 @@ and saved files are copied at the API boundary so callers cannot mutate registry
 
 The board bridge exposes corresponding asynchronous `persephone.themes.*` methods to boards that
 request the `themes` manifest permission. The permission gates theme operations only; platform
-capability dispatch for `theme.edit` is a separate route. See [Capability bus](capability-bus.md#well-known-capability-themeedit)
+capability dispatch for `theme.edit` is a separate route. See [Capabilities](capabilities.md#well-known-capability-themeedit)
 and the [board authoring guide](../../assets/guides/agents/boards.md#the-persephonethemes-bridge).
 
 `IFetchOptions` controls the Node.js HTTP request: `method`, `headers`, `body`, `timeout`,
@@ -293,25 +293,26 @@ explicit because it removes a notification the user may not have read. The imple
 `/src/renderer/api/ui.ts`; the AiVision projection is in
 `/src/renderer/scripting/ai-vision/namespaces/ui-alerts.ts`.
 
-### `app.capabilities` — Built-in content handoffs
+### `app.capabilities` — Unified capability client
 
-`app.capabilities` is the script-facing capability registry and request surface. Its built-in
-handlers are seeded from editor declarations rather than editor-specific imports: `text.open`
+`app.capabilities` is the script-facing capability client. The main registry includes platform
+providers backed by editor declarations rather than editor-specific imports: `text.open`
 opens a text editor; `content.view` selects a built-in representation (`svg`, `html`, `markdown`,
 `mermaid`, `grid`, or `log`); `image.edit` opens the registered image-edit board for an image
 payload; and `diagram.edit` converts diagram source for the registered diagram-edit board. Trusted
-and enabled bundled board declarations are indexed beside those platform handlers, so `list()` and
-`handlers(id, filter?)` discover both origins without activation. The optional `handlers` filter can
-match MIME type or representation; `content.view` invocation resolves only candidates matching the
-payload's requested representation. `invoke(id, payload, options?)` can resolve a board handler by id.
+and enabled bundled board declarations are indexed beside those platform handlers.
+`providers(id)` and `get(id, options?)` use the unified main index; `list()` and `handlers(id,
+filter?)` are synchronous legacy projections. The optional legacy `handlers` filter can match MIME
+type or representation. Unified resolution can pin a provider and filter by MIME or
+representation; `content.view` is selected by the requested representation.
 
-Platform handlers remain direct in-process calls. Board requests use the renderer-local capability
-bus, caller-window page routing, transient structured-clone intents, deadlines, typed failures,
-cycle checks, and teardown settlement. See [Capability Bus](./capability-bus.md) for the wire and
-lifecycle contract. A board handler reuses any open page for its root or opens one in the caller's
-window; simultaneous first requests for the same root wait for the initial opening request and
-page lifecycle operation to settle before dispatching through the reused page. Page-producing
-calls return a `pageId`; diagram conversion and board handlers may return a result without one.
+Main resolves unified providers; open methods dispatch through the renderer, while service calls
+and channels route through main. Board open methods use caller-window routing, transient intents,
+deadlines, typed failures, cycle checks and teardown settlement. A board handler reuses an open
+page for its root or opens one in the caller's window; routes to that page are FIFO and wait for
+frame readiness. A declaration with `alwaysOpensNewPage` always opens a fresh page. See
+[Capabilities](./capabilities.md) for routing and lifecycle details. Legacy `invoke()` remains
+available with its compatibility trust gate and script result projection.
 
 The service is loaded through the same app-service descriptor table as the other `app.*` members.
 Its type contract is [`api/types/capabilities.d.ts`](../../src/renderer/api/types/capabilities.d.ts),
@@ -332,9 +333,10 @@ Both operations require an absolute board root containing `board-manifest.json` 
 bundled; they reject untrusted boards without showing a trust dialog. The host `boards.*` MCP
 namespace exposes the same operations.
 
-Scripts call `app.capabilities.invoke(id, payload)` for capability dispatch so the request follows
-the capability bus lifecycle and returns its result. The legacy `openBoard` intent option and
-`ILinkData.intent` input have been removed.
+Use `app.capabilities.get(id, options?)` for the unified named-method client; main resolves and
+reauthorizes its provider. `app.capabilities.invoke(id, payload, options?)` remains a legacy wrapper
+with its existing result projection. The legacy `openBoard` intent option and `ILinkData.intent`
+input have been removed.
 
 The `boards` AiVision node exposes the same currently known roots as synchronous indexed `[i]`
 children for hints and `index()` reads. Those hints perform no disk, manifest, network, or async

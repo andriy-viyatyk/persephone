@@ -372,10 +372,12 @@ not discover boards from the remote catalog.
 
 ## capabilities
 
-Discover and invoke named handlers supplied by Persephone or trusted Boards. Discovery is
+Discover and invoke capabilities supplied by Persephone or eligible Boards; see [Capabilities](../../agents/capabilities.md) for `app.capabilities.get`, providers and method kinds. Discovery is
 read-only and does not open a handler page. The same handler-selection rules used by Board pages
 apply to script calls; see [Boards — capability handlers and in-memory intents](../../boards.md#capability-handlers-and-in-memory-intents)
 for the manifest and handler-side contract.
+
+The following `handlers`, `list` and `invoke` examples use legacy discovery and wrappers:
 
 ```javascript
 const handlers = app.capabilities.handlers("content.view", { representation: "markdown" });

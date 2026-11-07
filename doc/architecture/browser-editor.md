@@ -1159,7 +1159,7 @@ certificate again.
 
 When a `certificate.view` capability handler is available, the popover sends the chain to it. If
 there is no handler, the browser opens a PEM bundle in the text editor. See
-[`capability-bus.md`](capability-bus.md#well-known-capability-certificateview) for the capability
+[`capabilities.md`](capabilities.md#well-known-capability-certificateview) for the capability
 payload and validation contract.
 
 ### Site extensions
