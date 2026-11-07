@@ -41,7 +41,7 @@ must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use pr
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted
-messages. `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
+messages. `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; legacy interface ids otherwise use `author/name`. For new declarations and consumers, see [Capabilities](capabilities.md).
 Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
 Boards use these cross-board calls from board pages; use
@@ -131,7 +131,7 @@ user-facing wording:
 | `fileSystem: "board"` | Board folder and files picked in its dialogs. “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
 | `fileSystem: "full"` | Any accessible file. “Read and write any file you can access.” — **Full access** |
 | `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Opening links inside Persephone remains available without it. Without this permission, an HTTP(S) link using the OS-default-browser setting falls back to an internal Browser tab and is noted in the board log; other external schemes are blocked. |
-| `appScripting: true` | `persephone.call`, capabilities and app scripts/agent tools. “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
+| `appScripting: true` | `persephone.call` and app scripts/agent tools. Capability access has separate grant rules; see [Capabilities](capabilities.md). “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
 | `network: false` | Denies `persephone.fetch()`. |
 | `network: "internet"` | Public services; local/private network addresses blocked. “Connect to public internet services; local and private network addresses are blocked.” |
 | `network: "full"` | Internet, this computer and LAN. “Connect to the internet, this computer, and your local network.” — **Full access** |
@@ -929,8 +929,11 @@ bounded `Uint8Array` replies (at most 1 MiB), never a stream.
 
 ### Capability handlers and in-memory intents
 
-Use the manifest's `capabilities` array to register named work. The array registers handlers;
-`appScripting: true` grants board-frame access to `persephone.call()` and capability invocation.
+Use the manifest's `capabilities` array to register named work. For new providers and consumers,
+see [Capabilities](capabilities.md) for method declarations, `getCapability`, discovery and grants.
+`appScripting` gates `persephone.call()`; a trusted board's unified capability access instead
+requires an exact `uses` id/version grant. Legacy `persephone.capabilities.invoke` requires trust
+only. The example below is a legacy page-intent declaration.
 
 ```json
 {
@@ -947,9 +950,10 @@ Each declaration may provide `id`, integer major `version` (default `1`), `prior
 `50`), `accepts`, `payloadSchema`, `title`, `headless`, and the optional boolean
 `alwaysOpensNewPage`. Set it when every request needs a fresh handler page; otherwise an open page
 is reused. IDs cannot contain whitespace or `@`; use a vendor
-prefix for board-owned ids. Multiple boards can compete for one id: strict priority wins, platform
-handlers win ties, and trusted-board registration order breaks board ties. Discovery never opens a
-handler page.
+prefix for board-owned ids. Multiple boards can compete for one id. An explicit provider or the
+user's eligible `capabilities.preferredProviders` choice takes precedence; otherwise priority wins,
+platform handlers win ties, and trusted-board registration order breaks board ties. Discovery never
+opens a handler page.
 `representation` is an open string. A `content.view` declaration requires a non-empty value; add
 one entry for every format the board supports and set `minBridgeVersion` to `1.21.0`. Other
 capability ids may omit it.
@@ -1003,9 +1007,11 @@ settles, its caller
 waits until the deadline. The platform sends cancel after that deadline, but cannot stop the
 handler's work.
 
-`persephone.capabilities.list()` discovers the registrations visible in this renderer without
-activation. Include `handlerKey` when identifying a candidate because several handlers may share an
-id:
+`persephone.capabilities.list()` discovers unified, grant-filtered registrations without activation;
+`persephone.capabilities.providers(id)` lists candidates for one id. Use
+`await persephone.getCapability(id, { version, provider, filter })` to bind a proxy, or omit the
+options to use normal resolution. It returns `null` when no candidate matches. Include `handlerKey`
+when identifying a candidate because several handlers may share an id:
 
 ```js
 const entries = await persephone.capabilities.list();
@@ -1013,7 +1019,7 @@ const entries = await persephone.capabilities.list();
 //    handlerKey: "board:/work/Demo", origin: "board" }]
 ```
 
-Invoke by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
+The legacy wrapper invokes by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
 result is `{ pageId, result }`; `pageId` is optional when a handler resolves without a page, and
 `result` preserves the handler's exact value, including primitives, arrays, and empty objects. The
 caller can receive these ten typed rejection codes:

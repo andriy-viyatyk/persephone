@@ -85,7 +85,7 @@ export interface CapabilityTransport {
 }
 
 export interface CapabilityKey { id: string; version: number; provider: string; handlerKey: string }
-export interface CapabilityClientOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string } }
+export interface CapabilityClientOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string }; asAgent?: boolean }
 export type CapabilityProvider = CapabilityKey & { name: string; origin: "board" | "platform"; title?: string; priority: number; accepts?: readonly string[]; representation?: string; methods: Readonly<Record<string, CapabilityMethod>> };
-export interface CapabilityClientInvoke { requestId: string; key: CapabilityKey; method: string; args: unknown[]; filter?: CapabilityClientOptions["filter"] }
+export interface CapabilityClientInvoke { requestId: string; key: CapabilityKey; method: string; args: unknown[]; filter?: CapabilityClientOptions["filter"]; asAgent?: boolean }
 export type CapabilityClientResult<T> = { ok: true; value: T } | { ok: false; error: { code: ClientErrorCode; message: string } };

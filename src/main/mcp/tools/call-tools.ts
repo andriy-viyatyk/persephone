@@ -8,6 +8,8 @@ import { MainAiRoot, WINDOW_MEMBER_NAMES } from "../ai-vision/main-root";
 import { formatPath, HintMode, ICallResult, parsePath, PathSegment, PathSyntaxError, resolveCall } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 import { getNativeDialogAttention } from "../../native-dialog-tracker";
+import { capabilityRouter } from "../../capability-router";
+import { CAPABILITY_AGENT_BRIDGE_ALLOWANCE_MS } from "../../../shared/capability-limits";
 
 /**
  * `call` — one path into Persephone's live object model (EPIC-083).
@@ -158,6 +160,40 @@ export function remoteAppBridgeTimeout(path: string, perCallTimeoutMs: unknown):
     return requested + 5_000;
 }
 
+/** Inspect agent-visible declarations only; the renderer resolves the provider when it invokes. */
+export function capabilityAgentBridgeTimeout(path: string, hasArgs: boolean): number | undefined {
+    let segments: PathSegment[];
+    try { segments = parsePath(path); }
+    catch { return undefined; }
+
+    if (segments[0]?.type !== "member" || segments[0].name !== "capabilities"
+        || segments[1]?.type !== "index" || typeof segments[1].key !== "string") return undefined;
+    const capabilityId = segments[1].key;
+
+    let methodSegment: PathSegment | undefined;
+    let pinnedProvider: string | undefined;
+    if (segments.length === 3 && (segments[2].type === "member" || segments[2].type === "call")) {
+        methodSegment = segments[2];
+    } else if (segments.length === 5
+        && segments[2]?.type === "member" && segments[2].name === "providers"
+        && segments[3]?.type === "index" && typeof segments[3].key === "string"
+        && (segments[4]?.type === "member" || segments[4]?.type === "call")) {
+        pinnedProvider = segments[3].key;
+        methodSegment = segments[4];
+    }
+    if (!methodSegment || methodSegment.type !== "member" && methodSegment.type !== "call") return undefined;
+    if (methodSegment.type === "member" && !hasArgs) return undefined;
+    const methodName = methodSegment.name;
+    if (methodName === "$help" || methodName === "$describe" || methodName === "providers" || methodName === "list" || methodName === "handlers") return undefined;
+
+    const candidates = capabilityRouter.providers({ kind: "agent" }, capabilityId)
+        .filter((candidate) => !pinnedProvider || candidate.provider === pinnedProvider || candidate.name === pinnedProvider)
+        .map((candidate) => candidate.methods[methodName])
+        .filter((method) => method?.agent);
+    if (!candidates.length) return undefined;
+    return Math.max(...candidates.map((method) => method.timeoutMs)) + CAPABILITY_AGENT_BRIDGE_ALLOWANCE_MS;
+}
+
 /** Event text is renderer-relative until a forwarded response is returned to the caller. */
 function prefixEventPaths(text: string, prefix: string): string {
     return text.replaceAll("pages[", `${prefix}pages[`);
@@ -240,7 +276,8 @@ export function callTools(ctx: IToolContext, tips: AgentTipsRegistry): IMcpToolD
                         : eventCursors.get(targetWindowIndex) ?? 0;
                     const bridgeTimeoutMs = isBlockingRendererCall(forward.path)
                         ? 125_000
-                        : remoteAppBridgeTimeout(forward.path, params.timeoutMs)
+                        : capabilityAgentBridgeTimeout(forward.path, Array.isArray(params.args))
+                            ?? remoteAppBridgeTimeout(forward.path, params.timeoutMs)
                             ?? automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
                     response = await sendToRenderer(
                         "call",

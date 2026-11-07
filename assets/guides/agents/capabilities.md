@@ -1,8 +1,8 @@
 # Capabilities
 
-**Draft — not yet implemented (EPIC-140)**
+**Status:** The unified registry, client API and agent surface are implemented. Bundled board and documentation migrations remain in US-1797; external board migration remains in BT-087 (EPIC-140).
 
-This is the normative contract for the unified capability registry when EPIC-140 is implemented. A capability has an id, a major version and named methods. A provider can be a trusted board or `persephone`. A consumer can be a board page, board service, Persephone or an agent. Method-specific contracts, including [speech synthesis](speech-synthesize.md), [transcription](speech-transcribe.md), [wake](speech-wake.md) and [translation](text-translate.md), continue to define their data and behavior. The examples below illustrate new methods, not a replacement for those v1 streaming contracts.
+This is the normative contract for the unified capability registry. A capability has an id, a major version and named methods. A provider can be a trusted board or `persephone`. A consumer can be a board page, board service, Persephone or an agent. Method-specific contracts, including [speech synthesis](speech-synthesize.md), [transcription](speech-transcribe.md), [wake](speech-wake.md) and [translation](text-translate.md), continue to define their data and behavior. The examples below illustrate new methods, not a replacement for those v1 streaming contracts.
 
 ## Manifest
 
@@ -41,7 +41,7 @@ Descriptors describe positional JSON arguments, generate signatures and typed di
 | Both declarations for the same board/id/version | Merge distinct methods; explicit new `methods` win on name collision. Preserve legacy `services.connect` behavior, including a colliding open type. |
 | `uses` | Existing `{ id, version }` entries grant that exact capability major version, including platform providers; the trust dialog displays them. Existing entries and slash ids retain their meaning. New grants use the new id grammar. |
 
-Existing `persephone.capabilities.invoke`, `persephone.services.list/connect`, `app.capabilities.invoke`, and `handlers` remain wrappers, preserving their signatures, discovery and result projections, legacy board bus gates, `deadlineMs`, filters, and existing error codes. `services.connect` forwards the original open object unchanged. The legacy board bus `list` requires `appScripting`; legacy `invoke` requires trust only. Existing board intent FIFO, request-bound settlement, `discardPage`, caller-window page reuse and fresh-page rules remain intact. Board page and service `persephone.capabilities.list()` instead returns the unified, grant-filtered provider list without `appScripting`; no bundled board or surveyed persephone-boards board calls the former board list API. Bundled manifests and prose guide migrations are tracked in US-1797, and external manifests in BT-087; publication follows later.
+Existing `persephone.capabilities.invoke`, `persephone.services.list/connect`, `app.capabilities.invoke`, and `handlers` remain wrappers, preserving their signatures, discovery and result projections, legacy board bus gates, `deadlineMs`, filters, and existing error codes. `services.connect` forwards the original open object unchanged. The legacy board bus `list` requires `appScripting`; legacy `invoke` requires trust only. Existing board intent FIFO, request-bound settlement, `discardPage`, caller-window page reuse and fresh-page rules remain intact. Board page and service `persephone.capabilities.list()` instead returns the unified, grant-filtered provider list without `appScripting`; no bundled board or surveyed persephone-boards board calls the former board list API. Bundled manifests and prose guide migrations are tracked in US-1797, and external manifests in BT-087.
 
 ## Resolution and discovery
 
@@ -95,7 +95,7 @@ The following logical messages are normative across the main routing boundary; i
 | `channel` | Main sends the existing `{ kind: "channel-open", channelId, boardId, generation, openMessage, info }` plus a transferred port. `openMessage` is `{ ...argument, type: method }`; `info.interface` is `{ id, version }`, and `info.caller` identifies the authenticated caller. The service receives it through existing `persephone.service.onChannel(channel, openMessage, info)`. The returned handle is the existing ordered bidirectional channel. Data and acknowledgements carry monotonically increasing sequence numbers; close carries `{ code, message }`. Establishment timeout closes a late port. |
 | `open` | Route to the existing page intent `{ id, version, requestId, payload }`, with chain, depth and deadline, and settle as `{ pageId?, result }`. Board pages use `persephone.intent.onRequest`, `resolve` and `reject`; platform editors use their existing handlers. |
 
-Deadlines start at invocation, include startup and queueing, and use the method timeout. On deadline, send `{ kind: "capability-cancel", requestId, reason: "timeout" }`, abort `ctx.signal`, and reject `timeout`. Caller cancellation, an interrupted agent turn, closed caller page/service or renderer shutdown similarly send cancellation and reject `cancelled`. Revocation rejects `untrusted`; a closed handler is `handler-closed`, a crashed service/frame `crashed`. Cancellation is best effort: providers must observe the signal and release work; side effects already performed are not rolled back. Ignore late settlements. Apply the existing 8 MiB board-bound intent limit, depth 8 and 32 outstanding per handler; calls also count against the existing 32 outstanding service requests. Reject cycles across service and page calls using the inherited chain. For channels retain 16 per consumer board, 128 per service, 256 unacknowledged messages per direction and 1 MiB per serialized message. `send` throws `channel-backpressure` when full; wait for `whenWritable()` and retry. Register listeners promptly; messages are not replayed. Closing is idempotent; caller closure, provider exit, revocation and explicit close notify both ends, reject writable waiters and release resources. Provider-specific channel protocol errors remain message payloads; legacy wrapper close reasons retain their existing codes.
+Deadlines start at invocation, include startup and queueing, and use the method timeout. On deadline, send `{ kind: "capability-cancel", requestId, reason: "timeout" }`, abort `ctx.signal`, and reject `timeout`. Caller cancellation, closed caller page/service or renderer shutdown similarly send cancellation and reject `cancelled`. MCP client interruption does not currently cancel an in-flight capability call; its method deadline still applies. Revocation rejects `untrusted`; a closed handler is `handler-closed`, a crashed service/frame `crashed`. Cancellation is best effort: providers must observe the signal and release work; side effects already performed are not rolled back. Ignore late settlements. Apply the existing 8 MiB board-bound intent limit, depth 8 and 32 outstanding per handler; calls also count against the existing 32 outstanding service requests. Reject cycles across service and page calls using the inherited chain. For channels retain 16 per consumer board, 128 per service, 256 unacknowledged messages per direction and 1 MiB per serialized message. `send` throws `channel-backpressure` when full; wait for `whenWritable()` and retry. Register listeners promptly; messages are not replayed. Closing is idempotent; caller closure, provider exit, revocation and explicit close notify both ends, reject writable waiters and release resources. Provider-specific channel protocol errors remain message payloads; legacy wrapper close reasons retain their existing codes.
 
 ## Authorization
 
@@ -132,7 +132,7 @@ All new kinds reject with the same closed union; `CapabilityError` has a readabl
 
 ## Agent calls
 
-The MCP `call` root retains `capabilities.list()` and `capabilities.handlers(id)`. Each id is addressed by bracket notation. `capabilities["speech.synthesize"].$help` lists id, selected provider and version, all eligible provider keys/titles/versions, then each visible method's signature, summary, returns and timeout; channel entries say `channel (not callable by agents)`. Hidden methods are omitted entirely. Root `capabilities.$help` lists every capability visible to agents (id, version, title, selected provider name, agent-callable method names), then points to `tools` and `pages[i].editor.app`, which remain separate. Explicit provider selection uses `capabilities["speech.synthesize"].providers["<provider-key-or-name>"].speak` and its `$help`; this pins the provider without changing the setting. The node's default method resolves using the normal rule on each invocation. Agent bridge deadline is the resolved method's timeout plus 5,000 ms transport allowance; resolve the provider before starting that timer, and propagate interruption to main. The outer timeout must not preempt the method deadline.
+The MCP `call` root retains `capabilities.list()` and `capabilities.handlers(id)` with their legacy discovery behavior. Each id is addressed by bracket notation. `capabilities["speech.synthesize"].$help` lists id, selected provider and version, eligible provider keys/titles/versions, then each visible method's signature and summary; callable methods include returns when declared and timeout, while channel entries say `channel (not callable by agents)`. Hidden methods are omitted entirely. Root `capabilities.$help` lists every capability visible to agents (id, version, title, selected provider name, agent-callable method names); when there are only channels it says `channels only (not callable by agents)`. It then points to `tools` and `pages[i].editor.app`, which remain separate. Explicit provider selection uses `capabilities["speech.synthesize"].providers["<provider-key-or-name>"].speak` and its `$help`; this pins the provider without changing the setting. Unknown ids and providers throw `no-handler`. The node's default method resolves using the normal rule on each invocation. The agent bridge uses the largest eligible declaration's method timeout plus 5,000 ms transport allowance, restricted to matching providers when pinned; the renderer resolves the provider at invocation time.
 
 An agent `open` runs through the renderer of the window targeted by MCP `call`: the default window or the specified `windows[i]`. Its `pageId` identifies a page in that window.
 
@@ -142,9 +142,13 @@ Example rendered `capabilities["speech.synthesize"].$help`:
 speech.synthesize v1 — selected: text-to-speech (Text to speech)
 Providers: text-to-speech — key 3fa2…c901 (Text to speech, v1)
 speak(text: string, options?: { lang?: string; voice?: string; speed?: number }) — Speak until finished or interrupted.
-  Returns: Completion status; timeout: 600000 ms
-stop() — Stop current speech. Returns: null; timeout: 10000 ms
-stream(open: { text: string }) — Stream PCM synthesis. channel (not callable by agents); timeout: 10000 ms
+  Returns: Completion status
+  Timeout: 600000 ms
+stop() — Stop current speech.
+  Returns: null
+  Timeout: 10000 ms
+stream(open: { text: string }) — Stream PCM synthesis.
+  channel (not callable by agents)
 ```
 
 Example rendered `capabilities.$help`:
@@ -154,6 +158,7 @@ capabilities — registered capabilities; open one with capabilities["<id>"].$he
   speech.synthesize v1 — Text to speech (text-to-speech): speak, stop
   speech.transcribe v1 — Speech to text (speech-to-text): record, transcribeFile
   image.edit v1 — Edit image (excalidraw): open
+  agent.session v1 — Agent Chat (agent-chat): channels only (not callable by agents)
   ...
 list() — list registrations; handlers(id) — list candidates for an id
 Other surfaces: tools (registered scripts); pages[i].editor.app (open board models)

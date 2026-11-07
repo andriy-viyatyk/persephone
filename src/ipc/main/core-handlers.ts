@@ -67,17 +67,17 @@ export async function capabilityResult<T>(operation: () => T | Promise<T>): Prom
 }
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
-    capabilityList = async (event: IpcMainEvent) => capabilityResult(() => {
+    capabilityList = async (event: IpcMainEvent, asAgent?: boolean) => capabilityResult(() => {
         checkCapabilitySender(event);
-        return capabilityRouter.list({ kind: "platform" }).map(publicCapabilityProvider);
+        return capabilityRouter.list(asAgent ? { kind: "agent" } : { kind: "platform" }).map(publicCapabilityProvider);
     });
-    capabilityProviders = async (event: IpcMainEvent, id: string) => capabilityResult(() => {
+    capabilityProviders = async (event: IpcMainEvent, id: string, asAgent?: boolean) => capabilityResult(() => {
         checkCapabilitySender(event);
-        return capabilityRouter.providers({ kind: "platform" }, id).map(publicCapabilityProvider);
+        return capabilityRouter.providers(asAgent ? { kind: "agent" } : { kind: "platform" }, id).map(publicCapabilityProvider);
     });
     capabilityGet = async (event: IpcMainEvent, id: string, options?: CapabilityClientOptions) => capabilityResult(() => {
         checkCapabilitySender(event);
-        const bound = capabilityRouter.resolve({ kind: "platform" }, id, options);
+        const bound = capabilityRouter.resolve(options?.asAgent ? { kind: "agent" } : { kind: "platform" }, id, options);
         return bound ? publicCapabilityProvider(bound.registration) : null;
     });
     capabilityLegacyResolve = async (event: IpcMainEvent, id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => capabilityResult(() => {
@@ -92,7 +92,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         let active = activeCapabilityRequests.get(event.sender);
         if (!active) { active = new Map(); activeCapabilityRequests.set(event.sender, active); }
         if (active.has(request.requestId)) throw Object.assign(new Error("Duplicate capability request id."), { code: "rejected" });
-        const bound = capabilityRouter.bindKey({ kind: "platform" }, request.key, request.filter);
+        const bound = capabilityRouter.bindKey(request.asAgent ? { kind: "agent" } : { kind: "platform" }, request.key, request.filter);
         if (!bound || !bound.registration.methods[request.method] || bound.registration.methods[request.method].kind === "channel") {
             throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
         }

@@ -188,8 +188,8 @@ facts the design rests on:
 | US-1792 | persephone | Research: inventory of capability-like mechanisms | Done (pending epic review) |
 | US-1793 | persephone | Capability contract: manifest schema, method kinds, resolution, authorization, wire messages — the normative guide `assets/guides/agents/capabilities.md` | Implemented (pending epic review) |
 | [US-1794](../tasks/US-1794-capability-registry/README.md) | persephone | Main-process registry and routing: one index (platform + boards), `call` / `channel` to services, `open` to renderers, legacy declarations mapped | Implemented (pending epic review) |
-| [US-1795](../tasks/US-1795-capability-client-api/README.md) | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Planned (documented) |
-| US-1796 | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Planned |
+| [US-1795](../tasks/US-1795-capability-client-api/README.md) | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Implemented (pending epic review) |
+| [US-1796](../tasks/US-1796-capability-agent-surface/README.md) | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Planned (documented) |
 | US-1797 | persephone | Migrate bundled boards (Excalidraw, REST Client) and the docs (`capability-bus.md` → `capabilities.md`) | Planned |
 | BT-087 | persephone-boards | Migrate the boards' declarations (Certificate Viewer, Theme Editor, Speech to Text, Text to Speech, Wake Word, Translate, Agent Chat) and add agent-shaped methods (`record`, `transcribeFile`, `speak`, `stop`, `translate`) | Planned |
 

@@ -310,8 +310,8 @@ class ApiCalls implements Api {
     setMainScriptsEnabled = async (enabled: boolean) => {
         return executeOnce<void>(Endpoint.setMainScriptsEnabled, enabled);
     }
-    capabilityList = () => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityList);
-    capabilityProviders = (id: string) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityProviders, id);
+    capabilityList = (asAgent?: boolean) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityList, asAgent);
+    capabilityProviders = (id: string, asAgent?: boolean) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityProviders, id, asAgent);
     capabilityGet = (id: string, options?: CapabilityClientOptions) => executeOnce<CapabilityClientResult<CapabilityProvider | null>>(Endpoint.capabilityGet, id, options);
     capabilityLegacyResolve = (id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => executeOnce<CapabilityClientResult<import("../capability-bus-channels").CapabilityRegistration | null>>(Endpoint.capabilityLegacyResolve, id, options);
     capabilityInvoke = (request: CapabilityClientInvoke) => executeOnce<CapabilityClientResult<CapabilityJson>>(Endpoint.capabilityInvoke, request);
