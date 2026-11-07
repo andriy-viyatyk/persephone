@@ -1,0 +1,28 @@
+@layer app {
+    [data-type="voice-assistant-overlay"] {
+        position: fixed;
+        z-index: 10000;
+        right: 16px;
+        bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: max-content;
+        max-width: min(420px, calc(100vw - 32px));
+        max-height: 40vh;
+        overflow: auto;
+        padding: 10px 14px;
+        border: 1px solid var(--color-border-active);
+        border-radius: 12px;
+        background: var(--color-bg-default);
+        color: var(--color-text-default);
+        font-size: 13px;
+        overflow-wrap: anywhere;
+    }
+
+    [data-type="voice-assistant-overlay"][hidden] { display: none; }
+    [data-type="voice-assistant-overlay"] [data-part="label"] { font-weight: 600; }
+    [data-type="voice-assistant-overlay"] [data-part="notice"] { color: var(--color-text-light); }
+    [data-type="voice-assistant-overlay"] [data-part="request"],
+    [data-type="voice-assistant-overlay"] [data-part="reply"] { white-space: pre-wrap; }
+}

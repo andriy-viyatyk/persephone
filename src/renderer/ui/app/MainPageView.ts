@@ -18,6 +18,8 @@ import { PageTabsView } from "../tabs/PageTabsView";
 import { RightPageTabsView } from "../tabs/RightPageTabsView";
 import { VoiceTypingController } from "../voice-typing/VoiceTypingController";
 import { VoiceTypingOverlayView } from "../voice-typing/VoiceTypingOverlayView";
+import { VoiceAssistantController } from "../voice-assistant/VoiceAssistantController";
+import { VoiceAssistantOverlayView } from "../voice-assistant/VoiceAssistantOverlayView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
 import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
@@ -108,6 +110,13 @@ export class MainPageView extends VanillaView<object> {
         this.voiceTypingOverlay.updateState({ status: "idle", binding: "Alt+V", translating: false, level: 0, durationMs: 0 });
         this.voiceTypingController = new VoiceTypingController((state) => this.voiceTypingOverlay?.updateState(state));
         this.voiceTypingController.start();
+        if (!appWindow.isBoardMode) {
+            const overlay = this.child(new VoiceAssistantOverlayView({}));
+            overlay.mount();
+            const controller = new VoiceAssistantController();
+            controller.start();
+            this.own(() => controller.dispose());
+        }
         this.own(() => {
             this.voiceTypingController?.dispose();
             this.voiceTypingController = undefined;

@@ -29,6 +29,11 @@ export class SpeechTranscriptionProvider {
         return features?.includes("live");
     }
 
+    public async open(provider: BoardServiceProvider, live: boolean): Promise<SpeechServiceChannel> {
+        const channelId = await api.connectHostServiceChannel({ interfaceId: "speech.transcribe", provider: provider.provider, version: 1, openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 }, ...(live ? { live: true } : {}) } });
+        return createSpeechServiceChannel(await this.waitForPort(channelId));
+    }
+
     public async describeFeatures(provider: BoardServiceProvider, refresh = false): Promise<string[] | undefined> {
         const key = `${provider.provider}@${provider.version}`;
         const cached = this.describeCache.get(key);

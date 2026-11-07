@@ -41,6 +41,14 @@ export interface CreateBoardShortcutRequest {
     iconDataUrl: string;
 }
 
+export interface VoiceAssistantStatus {
+    state: "off" | "waiting" | "listening" | "thinking" | "speaking";
+    requestText?: string;
+    replyText?: string;
+    notice?: string;
+}
+export interface VoiceAssistantPause { reason: "enrollment"; active: boolean }
+
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
     getAssetsPath = "getAssetsPath",
@@ -69,6 +77,9 @@ export enum Endpoint {
     showItemInFolder = "showItemInFolder",
     showFolder = "showFolder",
     openPath = "openPath",
+    voiceAssistantGetOwner = "voiceAssistantGetOwner",
+    voiceAssistantStatus = "voiceAssistantStatus",
+    voiceAssistantPause = "voiceAssistantPause",
     windowReady = "windowReady",
     getStartupInputs = "getStartupInputs",
     getWindowIndex = "getWindowIndex",
@@ -318,6 +329,9 @@ export type Api = {
     [Endpoint.showFolder]: (path: string) => Promise<void>;
     /** Resolves to Electron's error string — empty when the shell accepted the path. */
     [Endpoint.openPath]: (path: string, boardRoot?: string) => Promise<string>;
+    [Endpoint.voiceAssistantGetOwner]: () => Promise<{ windowId: number; ownerWindowId: number | null; paused: boolean; status: VoiceAssistantStatus | null }>;
+    [Endpoint.voiceAssistantStatus]: (status: VoiceAssistantStatus) => Promise<void>;
+    [Endpoint.voiceAssistantPause]: (pause: VoiceAssistantPause) => Promise<void>;
     [Endpoint.windowReady]: () => Promise<void>;
     [Endpoint.getStartupInputs]: () => Promise<LaunchInput[]>;
     [Endpoint.getWindowIndex]: () => Promise<number>;
@@ -528,6 +542,9 @@ export enum EventEndpoint {
     eBoardTrustChanged = "eBoardTrustChanged",
     eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
     ePathWatchBatch = "ePathWatchBatch",
+    eVoiceAssistantOwnerChanged = "eVoiceAssistantOwnerChanged",
+    eVoiceAssistantStatus = "eVoiceAssistantStatus",
+    eVoiceAssistantPause = "eVoiceAssistantPause",
     eVoiceTypingShortcut = "eVoiceTypingShortcut",
 }
 
@@ -537,6 +554,9 @@ export interface EventObject<T> {
 }
 
 export type EventApi = {
+    [EventEndpoint.eVoiceAssistantOwnerChanged]: EventObject<{ windowId: number | null }>;
+    [EventEndpoint.eVoiceAssistantStatus]: EventObject<VoiceAssistantStatus | null>;
+    [EventEndpoint.eVoiceAssistantPause]: EventObject<VoiceAssistantPause>;
     [EventEndpoint.eVoiceTypingShortcut]: EventObject<{
         sessionId: string;
         action: "start" | "stop" | "cancel";

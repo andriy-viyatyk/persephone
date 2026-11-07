@@ -7,7 +7,7 @@ import { windowStates } from "./window-states";
 import { getDataFolder, preparePath } from "./utils";
 import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
-import type { WindowCloseResolution } from "../ipc/api-types";
+import type { VoiceAssistantStatus, VoiceAssistantPause, WindowCloseResolution } from "../ipc/api-types";
 
 interface OpenWindowData {
     window?: OpenWindow;
@@ -15,6 +15,7 @@ interface OpenWindowData {
     whenReady?: Promise<void>;
     ready?: () => void;
     boardRoot?: string;
+    rendererReady?: boolean;
 }
 
 const windowsFileName = "openWindows.json";
@@ -22,6 +23,71 @@ const windowsFileName = "openWindows.json";
 class OpenWindows {
     windows: OpenWindowData[] = [];
     doQuit = false;
+    private voiceAssistantOwner: number | null = null;
+    private voiceAssistantStatus: VoiceAssistantStatus | null = null;
+    private readonly enrollmentSenders = new Set<number>();
+
+    private updateVoiceAssistantOwner = (): void => {
+        const owner = this.windows.find((record) => !record.boardRoot && record.rendererReady && record.window?.window?.isVisible())?.window;
+        const id = owner?.window.id ?? null;
+        if (id === this.voiceAssistantOwner) return;
+        this.voiceAssistantOwner = id;
+        this.voiceAssistantStatus = null;
+        for (const record of this.windows) {
+            if (!record.boardRoot) record.window?.send(EventEndpoint.eVoiceAssistantOwnerChanged, { windowId: id });
+        }
+        this.relayVoiceAssistantStatus();
+        owner?.send(EventEndpoint.eVoiceAssistantPause, { reason: "enrollment", active: this.enrollmentSenders.size > 0 });
+    };
+
+    private relayVoiceAssistantStatus = (): void => {
+        const focused = this.windows.find((record) => !record.boardRoot && record.window?.window?.isVisible() && record.window.window.isFocused());
+        focused?.window?.send(EventEndpoint.eVoiceAssistantStatus, this.voiceAssistantStatus);
+    };
+
+    private configureVoiceAssistantWindow = (window: OpenWindow): void => {
+        window.onVisibilityOrFocusChanged = () => { this.updateVoiceAssistantOwner(); this.relayVoiceAssistantStatus(); };
+        window.onRendererUnavailable = () => {
+            const record = this.findWindowDataByOpenWindow(window);
+            if (record) record.rendererReady = false;
+            this.clearEnrollmentSender(window.window?.webContents.id);
+            this.updateVoiceAssistantOwner();
+        };
+    };
+
+    markRendererReady = (window: BrowserWindow): void => {
+        const record = this.findWindowDataByWindow(window);
+        if (!record) return;
+        record.rendererReady = true;
+        record.ready?.();
+        this.updateVoiceAssistantOwner();
+    };
+
+    getVoiceAssistantOwner = (window: BrowserWindow) => ({
+        windowId: window.id, ownerWindowId: this.voiceAssistantOwner, paused: this.enrollmentSenders.size > 0,
+        status: window.isVisible() && window.isFocused() ? this.voiceAssistantStatus : null,
+    });
+
+    setVoiceAssistantStatus = (window: BrowserWindow, status: VoiceAssistantStatus): void => {
+        if (window.id !== this.voiceAssistantOwner) return;
+        this.voiceAssistantStatus = status.state === "off" && !status.notice ? null : status;
+        this.relayVoiceAssistantStatus();
+    };
+
+    setVoiceAssistantPause = (senderId: number, pause: VoiceAssistantPause): void => {
+        if (pause.active) this.enrollmentSenders.add(senderId);
+        else this.enrollmentSenders.delete(senderId);
+        this.sendVoiceAssistantPause();
+    };
+
+    private clearEnrollmentSender = (senderId: number | undefined): void => {
+        if (senderId !== undefined && this.enrollmentSenders.delete(senderId)) this.sendVoiceAssistantPause();
+    };
+
+    private sendVoiceAssistantPause = (): void => {
+        const owner = this.windows.find((record) => record.window?.window?.id === this.voiceAssistantOwner)?.window;
+        owner?.send(EventEndpoint.eVoiceAssistantPause, { reason: "enrollment", active: this.enrollmentSenders.size > 0 });
+    };
 
     get mainWindow(): OpenWindow | undefined {
         return this.windows.find((w) => !w.boardRoot && w.window)?.window;
@@ -38,6 +104,7 @@ class OpenWindows {
         const newWindow = new OpenWindow(dropPosition);
         newWindow.index = wIndex;
         newWindow.onClose = this.windowOnClose;
+        this.configureVoiceAssistantWindow(newWindow);
         let windowData = this.windows.find((w) => w.index === index);
         if (!windowData) {
             windowData = { index: wIndex };
@@ -72,6 +139,7 @@ class OpenWindows {
         const win = new OpenWindow(undefined, root);
         win.index = data.index;
         win.onClose = this.windowOnClose;
+        this.configureVoiceAssistantWindow(win);
         data.window = win;
         data.whenReady = new Promise<void>((resolve) => { data.ready = () => { resolve(); data.ready = undefined; }; });
         this.windows.push(data);
@@ -80,10 +148,12 @@ class OpenWindows {
 
     windowOnClose = (window: OpenWindow) => {
         const record = this.findWindowDataByOpenWindow(window);
+        if (record) record.rendererReady = false;
         if (record?.boardRoot) {
             this.windows = this.windows.filter((item) => item !== record);
             windowStates.deleteState(record.index);
             this.saveState();
+            this.updateVoiceAssistantOwner();
             return;
         }
         let removeWindow = false;
@@ -105,6 +175,7 @@ class OpenWindows {
                 }
             });
         }
+        this.updateVoiceAssistantOwner();
     };
 
     private findWindowDataByOpenWindow = (openWindow: OpenWindow): OpenWindowData | undefined => this.windows.find((w) => w.window === openWindow);

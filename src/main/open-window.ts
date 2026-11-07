@@ -57,6 +57,8 @@ export class OpenWindow {
     canQuit = false;
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
+    onVisibilityOrFocusChanged?: (window: OpenWindow) => void;
+    onRendererUnavailable?: (window: OpenWindow) => void;
     private voiceTypingShortcut = "Alt+V";
     private voiceTypingTranslateShortcut = "Alt+Shift+V";
     private rightCtrlTap: { target: WebContents; shift: boolean } | undefined;
@@ -151,6 +153,15 @@ export class OpenWindow {
         this.window.once("ready-to-show", () => {
             this.window?.setSize(windowState.width, windowState.height);
             this.window?.show();
+        });
+
+        this.window.on("show", () => this.onVisibilityOrFocusChanged?.(this));
+        this.window.on("hide", () => this.onVisibilityOrFocusChanged?.(this));
+        this.window.on("focus", () => this.onVisibilityOrFocusChanged?.(this));
+        this.window.on("closed", () => this.onVisibilityOrFocusChanged?.(this));
+        this.window.webContents.on("render-process-gone", () => this.onRendererUnavailable?.(this));
+        this.window.webContents.on("did-start-navigation", (_event, _url, _inPlace, isMainFrame) => {
+            if (isMainFrame && !_inPlace) this.onRendererUnavailable?.(this);
         });
 
         this.window.on("close", (event) => {

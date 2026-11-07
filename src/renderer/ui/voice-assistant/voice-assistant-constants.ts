@@ -1,0 +1,12 @@
+export const LOOPBACK_LEAD_MAX_MS = 1500;
+export const LOOPBACK_LAG_MAX_MS = 300;
+export const DELIVERY_ALLOWANCE_MS = 300;
+export const STOP_HOLDBACK_MS = 3000;
+export const LONGEST_PHRASE_MS = 2500;
+export const LOOPBACK_GATE_OPEN_RMS = 0.01;
+export const LOOPBACK_GATE_CLOSE_RMS = 0.006;
+export const LOOPBACK_PREROLL_MS = 400;
+export const LOOPBACK_TAIL_MS = 500;
+export const PROVIDER_RETRY_MS = 1500;
+export const MAX_QUEUED_CHUNKS = 32;
+export const CHANNEL_OPEN_TIMEOUT_MS = 15000;

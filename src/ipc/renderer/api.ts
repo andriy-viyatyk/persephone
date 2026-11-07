@@ -665,6 +665,15 @@ class ApiCalls implements Api {
     clearVoiceTypingMicrophone = async () => executeOnce<void>(Endpoint.clearVoiceTypingMicrophone);
     armTranscriptLoopback = async () => executeOnce<void>(Endpoint.armTranscriptLoopback);
     clearTranscriptLoopback = async () => executeOnce<void>(Endpoint.clearTranscriptLoopback);
+    voiceAssistantGetOwner = async () => executeOnce<{ windowId: number; ownerWindowId: number | null; paused: boolean; status: import("../api-types").VoiceAssistantStatus | null }>(Endpoint.voiceAssistantGetOwner);
+    voiceAssistantStatus = async (status: import("../api-types").VoiceAssistantStatus) => executeOnce<void>(Endpoint.voiceAssistantStatus, status);
+    voiceAssistantPause = async (pause: import("../api-types").VoiceAssistantPause) => executeOnce<void>(Endpoint.voiceAssistantPause, pause);
+    onVoiceAssistantOwnerChanged = (callback: (value: { windowId: number | null }) => void) =>
+        window.electron.ipcRenderer.on(EventEndpoint.eVoiceAssistantOwnerChanged, callback as (...args: unknown[]) => void);
+    onVoiceAssistantStatus = (callback: (value: import("../api-types").VoiceAssistantStatus | null) => void) =>
+        window.electron.ipcRenderer.on(EventEndpoint.eVoiceAssistantStatus, callback as (...args: unknown[]) => void);
+    onVoiceAssistantPause = (callback: (value: import("../api-types").VoiceAssistantPause) => void) =>
+        window.electron.ipcRenderer.on(EventEndpoint.eVoiceAssistantPause, callback as (...args: unknown[]) => void);
     setVoiceTypingConfig = async (request: { shortcut: string; translateShortcut: string }) => executeOnce<void>(Endpoint.setVoiceTypingConfig, request);
     setVoiceTypingState = async (request: { state: "idle" | "recording" | "transcribing" }) => executeOnce<void>(Endpoint.setVoiceTypingState, request);
 

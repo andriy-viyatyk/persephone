@@ -31,7 +31,7 @@ Discover with `persephone.services.list("speech.wake")`, connect with `persephon
 | `{ type: "enroll", phrase: string, kind: "wake" \| "stop", person: string, format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 } }` | Ordered `{ type: "audio", data: ArrayBuffer }`, then `{ type: "end" }` | `{ type: "enrolled", sampleId: string, quality: { accepted: boolean, reason?: string }, match: number \| null }`, then close. |
 | `{ type: "list" }` | None | `{ type: "enrollments", phrases: { phrase: string, kind: "wake" \| "stop", person: string, samples: { sampleId: string }[] }[] }`, then close. |
 | `{ type: "delete", target: { phrase: string, kind: "wake" \| "stop" } \| { person: string } \| { sampleId: string } }` | None | `{ type: "deleted", count: number }`, then close. |
-| `{ type: "listen", format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 }, threshold?: number }` | Ordered `audio` messages, then `{ type: "end" }` | Zero or more `{ type: "wake" \| "stop", phrase: string, person: string, score: number, time: number }`, then `{ type: "done" }` and close after `end`. |
+| `{ type: "listen", format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 }, threshold?: number }` | Ordered `audio` messages, then `{ type: "end" }` | Zero or more `{ type: "wake" \| "stop", phrase: string, person: string, score: number, time: number, start?: number }`, then `{ type: "done" }` and close after `end`. |
 
 `local: true` means audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. The assistant must reject a provider advertising `local: false`. `maxEnrollMs` is the finite enrollment clip limit in milliseconds. `features` advertises optional behavior; use `[]` when none is supported.
 
@@ -40,6 +40,8 @@ Phrase and person are nonempty, exact, case-sensitive strings; `kind` is part of
 Phrase deletion removes that phrase and kind across people; person deletion removes all that person's samples; sample ID deletion removes exactly one. A zero count is a successful no-op. List returns metadata only. No response contains sample audio or embeddings.
 
 `score` and `match` are finite normalized similarities in [0, 1], higher is closer. A detection meets `score >= threshold`; omitted threshold uses `defaultThreshold`, on the same scale. If an engine measures a distance where lower is closer, the provider converts it to this scale and publishes a `defaultThreshold` on the same scale. Detection `time` is milliseconds from the first input sample to the end of the detected phrase.
+
+Both wake and stop detections may include `start`, the milliseconds from the first input sample to the matched phrase's start, clamped between zero and `time`. Consumers must tolerate its absence. For stop detections without it, the assistant uses `max(0, time - 2500)` as a conservative fallback; that heuristic does not guarantee removal of unusually long phrases or late detections.
 
 ## Consumer to provider
 

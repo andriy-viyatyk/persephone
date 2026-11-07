@@ -8,7 +8,7 @@ const WORKLET_SOURCE = `class PersephoneSpeechProcessor extends AudioWorkletProc
         const mono = new Float32Array(channels[0].length); let energy = 0;
         for (let i = 0; i < mono.length; i++) { let sum = 0; for (const channel of channels) sum += channel[i] || 0; mono[i] = sum / channels.length; energy += mono[i] * mono[i]; }
         this.port.postMessage({ type: "level", value: Math.sqrt(energy / Math.max(1, mono.length)), durationMs: mono.length / sampleRate * 1000 });
-        this.port.postMessage({ type: "samples", data: mono }, [mono.buffer]);
+        this.port.postMessage({ type: "samples", data: mono, frame: currentFrame }, [mono.buffer]);
         if (this.flushRequested) { this.port.postMessage({ type: "flushed" }); return false; } return true;
     }
 }
@@ -27,9 +27,11 @@ export class PcmAudioCapture {
     private remainder: number[] = [];
     private stopped = false;
     private flushResolve: (() => void) | undefined;
-    private onChunk: ((data: ArrayBuffer) => void) | undefined;
+    private onChunk: ((data: ArrayBuffer, captureTimeMs: number) => void) | undefined;
+    private originMs: number | undefined;
+    private emittedSamples = 0;
 
-    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer) => void, onLevel: (level: number, durationMs: number) => void): Promise<void> {
+    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void): Promise<void> {
         this.stream = stream;
         this.onChunk = onChunk;
         try {
@@ -45,6 +47,12 @@ export class PcmAudioCapture {
             catch (error: unknown) { await this.context.close().catch(() => {}); throw error; }
             finally { URL.revokeObjectURL(url); }
         }
+        if (this.stopped) {
+            stream.getTracks().forEach((track) => track.stop());
+            await this.context.close().catch(() => {});
+            this.context = undefined;
+            return;
+        }
         this.source = this.context.createMediaStreamSource(stream);
         this.node = new AudioWorkletNode(this.context, "persephone-speech-capture", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
         this.mute = this.context.createGain();
@@ -52,10 +60,16 @@ export class PcmAudioCapture {
         this.source.connect(this.node);
         this.node.connect(this.mute);
         this.mute.connect(this.context.destination);
-        this.node.port.onmessage = ({ data }: MessageEvent<{ type: string; value?: number; data?: Float32Array; durationMs?: number }>): void => {
+        this.node.port.onmessage = ({ data }: MessageEvent<{ type: string; value?: number; data?: Float32Array; durationMs?: number; frame?: number }>): void => {
             if (data.type === "flushed") { this.flushResolve?.(); this.flushResolve = undefined; return; }
             if (data.type === "level" && typeof data.value === "number") onLevel(data.value, data.durationMs ?? 0);
-            if (data.type === "samples" && data.data && !this.stopped) this.consume(data.data, onChunk);
+            if (data.type === "samples" && data.data && !this.stopped) {
+                if (this.originMs === undefined && data.frame !== undefined && this.context) {
+                    const timestamp = this.context.getOutputTimestamp();
+                    this.originMs = timestamp.performanceTime + (data.frame / this.context.sampleRate - timestamp.contextTime) * 1000;
+                }
+                this.consume(data.data, onChunk);
+            }
         };
     }
 
@@ -90,7 +104,7 @@ export class PcmAudioCapture {
         this.remainder = [];
     }
 
-    private consume(input: Float32Array, onChunk: (data: ArrayBuffer) => void): void {
+    private consume(input: Float32Array, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void): void {
         const context = this.context;
         if (!context) return;
         const merged = new Float32Array(this.samples.length + input.length);
@@ -111,7 +125,7 @@ export class PcmAudioCapture {
         this.sampleBase += discard;
     }
 
-    private emit(onChunk: (data: ArrayBuffer) => void, count: number): void {
+    private emit(onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, count: number): void {
         const data = this.remainder.splice(0, count);
         const buffer = new ArrayBuffer(data.length * 2);
         const view = new DataView(buffer);
@@ -119,6 +133,8 @@ export class PcmAudioCapture {
             const bounded = Math.max(-1, Math.min(1, sample));
             view.setInt16(index * 2, bounded < 0 ? bounded * 0x8000 : bounded * 0x7fff, true);
         });
-        onChunk(buffer);
+        const captureTimeMs = (this.originMs ?? performance.now()) + this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
+        this.emittedSamples += data.length;
+        onChunk(buffer, captureTimeMs);
     }
 }

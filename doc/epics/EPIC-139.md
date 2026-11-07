@@ -297,7 +297,7 @@ decided for speech to text. Any installed board that provides the interfaces wor
 | BT-082 | persephone-boards | Text to Speech board — `speech.synthesize` provider | Planned |
 | BT-083 | persephone-boards | Wake Word board — `speech.wake` provider: enrollment, template matching, stop words | Planned |
 | US-1785 | persephone | `agent.session@1` host service channel and an app-side session client | In progress |
-| US-1786 | persephone | Voice assistant core: settings, state machine, beeps, indicator, microphone owner | Planned |
+| US-1786 | persephone | Voice assistant core: settings, state machine, beeps, indicator, microphone owner | Planned (documented) |
 | US-1787 | persephone | Agent turn wiring: session lifecycle, instructions, `full-auto` mode, `voice.say` | Planned |
 | US-1788 | persephone | TV polish: media muting, voice interrupts, guides | Planned |
 

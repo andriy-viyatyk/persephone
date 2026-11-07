@@ -18,8 +18,7 @@ export function takeBoardStartupInput(): Extract<LaunchInput, { kind: "board" }>
 }
 
 export async function windowReady(window: BrowserWindow): Promise<void> {
-    const openWindow = openWindows.findWindowDataByWindow(window);
-    openWindow?.ready?.();
+    openWindows.markRendererReady(window);
     return;
 }
 

@@ -20,6 +20,7 @@ import { FileSearchSectionView } from "./sections/FileSearchSection";
 import { McpSectionView } from "./sections/McpSection";
 import { ThemeSectionView } from "./sections/ThemeSection";
 import { LanguageSectionView } from "./sections/LanguageSection";
+import { VoiceAssistantSectionView } from "./sections/VoiceAssistantSection";
 import { BoardSettingsSectionView } from "./sections/BoardSettingsSection";
 import {
     BoardVarsSectionView,
@@ -82,6 +83,7 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     "git-integration": () => new GitIntegrationSectionView({}),
     "board-vars": () => new BoardVarsSectionView({}),
     "voice-typing": () => new VoiceTypingSettingsSectionView({}),
+    "voice-assistant": () => new VoiceAssistantSectionView({}),
 };
 
 const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {

@@ -15,7 +15,7 @@ Overview of all active and planned epics and tasks.
   - [ ] BT-082: Text to Speech board — `speech.synthesize` provider (persephone-boards)
   - [ ] BT-083: Wake Word board — `speech.wake` provider: enrollment, template matching, stop words (persephone-boards)
   - [ ] [US-1785: `agent.session@1` host service channel and app-side session client](tasks/US-1785-agent-session-host/README.md)
-  - [ ] US-1786: Voice assistant core: settings, state machine, beeps, indicator, microphone owner
+  - [ ] [US-1786: Voice assistant core: settings, state machine, beeps, indicator, microphone owner](tasks/US-1786-voice-assistant-core/README.md)
   - [ ] US-1787: Agent turn wiring: session lifecycle, instructions, `full-auto` mode, `voice.say`
   - [ ] US-1788: TV polish: media muting, voice interrupts, guides
 

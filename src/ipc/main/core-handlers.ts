@@ -42,6 +42,7 @@ import type { SiteExtensionEndpoint } from "./site-extension-handlers";
 import type { PathWatchEndpoint } from "./path-watch-handlers";
 
 let siteExtensionRuntime: string | null = null;
+const voiceAssistantPauseSenders = new WeakSet<Electron.WebContents>();
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
@@ -251,6 +252,32 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
     windowReady = async (event: IpcMainEvent): Promise<void> => {
         const window = BrowserWindow.fromWebContents(event.sender);
         return windowReady(window);
+    }
+
+    voiceAssistantGetOwner = async (event: IpcMainEvent) => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        return openWindows.getVoiceAssistantOwner(window);
+    }
+
+    voiceAssistantStatus = async (event: IpcMainEvent, status: import("../api-types").VoiceAssistantStatus): Promise<void> => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        if (!status || !["off", "waiting", "listening", "thinking", "speaking"].includes(status.state)
+            || [status.requestText, status.replyText, status.notice].some((value) => value !== undefined && typeof value !== "string")) throw new TypeError("Invalid voice assistant status.");
+        openWindows.setVoiceAssistantStatus(window, status);
+    }
+
+    voiceAssistantPause = async (event: IpcMainEvent, pause: import("../api-types").VoiceAssistantPause): Promise<void> => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        if (!pause || pause.reason !== "enrollment" || typeof pause.active !== "boolean") throw new TypeError("Invalid voice assistant pause.");
+        openWindows.setVoiceAssistantPause(event.sender.id, pause);
+        if (pause.active && !voiceAssistantPauseSenders.has(event.sender)) {
+            voiceAssistantPauseSenders.add(event.sender);
+            const senderId = event.sender.id;
+            event.sender.once("destroyed", () => openWindows.setVoiceAssistantPause(senderId, { reason: "enrollment", active: false }));
+        }
     }
 
     setVoiceTypingConfig = async (event: IpcMainEvent, request: { shortcut: string; translateShortcut: string }): Promise<void> => {
@@ -585,6 +612,9 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.closeWindow, controllerInstance.closeWindow);
     bindEndpoint(Endpoint.setCanQuit, controllerInstance.setCanQuit);
     bindEndpoint(Endpoint.resolveWindowClose, controllerInstance.resolveWindowClose);
+    bindEndpoint(Endpoint.voiceAssistantGetOwner, controllerInstance.voiceAssistantGetOwner);
+    bindEndpoint(Endpoint.voiceAssistantStatus, controllerInstance.voiceAssistantStatus);
+    bindEndpoint(Endpoint.voiceAssistantPause, controllerInstance.voiceAssistantPause);
     bindEndpoint(Endpoint.setVoiceTypingConfig, controllerInstance.setVoiceTypingConfig);
     bindEndpoint(Endpoint.setVoiceTypingState, controllerInstance.setVoiceTypingState);
     bindEndpoint(Endpoint.armVoiceTypingMicrophone, controllerInstance.armVoiceTypingMicrophone);
