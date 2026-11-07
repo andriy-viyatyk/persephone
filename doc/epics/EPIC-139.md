@@ -213,9 +213,9 @@ to boards:
 | US-1786 | persephone | Voice assistant core in the app | Superseded; removed by US-1790 |
 | US-1787 | persephone | Agent turn wiring in the app | Superseded (planned only) |
 | US-1788 | persephone | TV polish in the app | Superseded |
-| [US-1790](../tasks/US-1790-audio-service/README.md) | persephone | Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core | Planned |
+| [US-1790](../tasks/US-1790-audio-service/README.md) | persephone | Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core | Done (pending epic review) |
 | US-1791 | persephone | Capabilities: manifest method declarations, `persephone.getCapability()`, `capabilities` branch in the `call` tree; `speech.wake` / `speech.synthesize` contract revisions | Replaced by [EPIC-140](EPIC-140.md); the `speech.*` contract revisions move to BT-087 / BT-084 / BT-085 |
-| BT-084 | persephone-boards | Text to Speech: play through the audio service; `speak` / `stop` operations | Planned |
+| BT-084 | persephone-boards | Text to Speech: play through the audio service; `speak` / `stop` operations | Implemented, awaiting user test |
 | BT-085 | persephone-boards | Wake Word: capture through the audio service, phrase filter, consumer-named phrases, film suppression | Planned |
 | BT-086 | persephone-boards | Agent Chat: Wake mode, wake session, Wake words page, listening flow, interrupts, sample instructions | Planned |
 

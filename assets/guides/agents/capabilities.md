@@ -141,7 +141,7 @@ Example rendered `capabilities["speech.synthesize"].$help`:
 ```text
 speech.synthesize v1 — selected: text-to-speech (Text to speech)
 Providers: text-to-speech — key 3fa2…c901 (Text to speech, v1)
-speak(text: string, options?: { lang?: string; voice?: string; speed?: number }) — Speak until finished or interrupted.
+speak(text: string, options?: { lang?: string; voice?: number; speed?: number }) — Speak until finished or interrupted.
   Returns: Completion status
   Timeout: 600000 ms
 stop() — Stop current speech.
@@ -181,7 +181,7 @@ Provider manifest excerpt (helper functions in the service are provider-owned):
     "methods": {
       "speak": { "kind": "call", "summary": "Speak until finished or interrupted.", "args": [
         { "name": "text", "type": "string" },
-        { "name": "options", "type": "{ lang?: string; voice?: string; speed?: number }", "optional": true }
+        { "name": "options", "type": "{ lang?: string; voice?: number; speed?: number }", "optional": true }
       ], "returns": "Completion status", "timeoutMs": 600000 },
       "stop": { "kind": "call", "summary": "Stop current speech.", "returns": "null" },
       "stream": { "kind": "channel", "summary": "Stream PCM synthesis.",
