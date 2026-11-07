@@ -19,10 +19,11 @@ contract.
 
 ## Methods
 
-The platform provider is `persephone`, version 1, with two agent-visible channel declarations:
+The platform provider is `persephone`, version 1:
 
 | Method | `open` argument | Use |
 |---|---|---|
+| `devices()` | none | List microphone inputs; a call with a 10-second timeout, hidden from agents. |
 | `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }` | Receive shared PCM capture chunks. |
 | `play` | `{ sampleRate: number }` | Send mono float32 PCM for playback. |
 
@@ -34,6 +35,7 @@ audio method. Page and service code use the standard `getCapability` API:
 const audio = await persephone.getCapability("audio", { version: 1 });
 if (!audio) throw new Error("audio@1 is unavailable");
 
+const devices = await audio.devices();
 const capture = await audio.capture({ source: "microphone", echoCancel: true });
 capture.onMessage(message => {
   if (message.type === "chunk") consumePcm(message);
@@ -41,6 +43,14 @@ capture.onMessage(message => {
 // Closing this channel releases only this consumer's subscription.
 capture.close();
 ```
+
+`devices()` returns an array of `{ deviceId: string, label: string, isDefault: boolean }` for
+browser-reported audio inputs. `isDefault` identifies the browser's `default` entry. The list can
+be empty or limited, and labels can be empty, especially before an authorized microphone capture.
+Listing does not open a stream or grant capture. IDs come from the audio window's origin and can be
+passed to `capture`; IDs from a board page's own enumeration may not work. Device changes and
+Chromium's ID lifetime and privacy behavior can invalidate them, so refresh on demand and use the
+default input when labels or IDs are unavailable.
 
 `capture` accepts only `source`, optional `deviceId`, and optional `echoCancel`. `source` is
 required. `deviceId` must be a nonempty device id and applies only to microphone capture. If omitted,
@@ -120,12 +130,12 @@ indicator reflects active capture channels; gated silence still counts as captur
 
 | Caller | Capture and playback requirements |
 |---|---|
-| Board page | Trusted and enabled board; exact `audio@1` in `uses`; `microphone` permission for microphone capture or explicit `computerAudio` permission for computer capture. Playback needs `uses` only. |
+| Board page | Trusted and enabled board; exact `audio@1` in `uses`; `microphone` permission for `devices()` and microphone capture or explicit `computerAudio` permission for computer capture. Playback needs `uses` only. |
 | Board service | Same requirements as a page, and the board's service must be eligible and `permissions.service` granted. |
-| Persephone platform caller | May capture or play without board grants. |
-| Agent | Cannot invoke either channel, despite their visibility in help. |
+| Persephone platform caller | May list devices, capture or play without board grants. |
+| Agent | Cannot invoke `devices()` or either channel, despite channel visibility in help. |
 
-Permissions are rechecked at channel setup and while it is active. Revoking trust, `uses`, or the
+Permissions are rechecked during device listing, at channel setup and while it is active. Revoking trust, `uses`, or the
 source permission closes affected channels. A channel grants access only to that caller's own
 stream; it cannot stop another caller's playback or capture. Board services and pages must not
 infer identity from `caller.id`, which is author-chosen metadata.

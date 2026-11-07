@@ -232,7 +232,8 @@ class CapabilityRouter {
         const declaration = registration.methods[method];
         if (declaration.kind === "channel") return this.invokeChannel(bound, method, args, context);
         if (declaration.kind === "open") return this.invokeOpen(bound, method, args, context);
-        if (declaration.kind !== "call" || registration.origin !== "board") throw capabilityError("no-handler");
+        const mainOwnedAudio = registration.origin === "platform" && registration.id === "audio" && registration.handlerKey === "audio";
+        if (declaration.kind !== "call" || (registration.origin !== "board" && !mainOwnedAudio)) throw capabilityError("no-handler");
         if (!Array.isArray(args)) throw capabilityError("rejected", "Arguments must be an array.");
         const jsonArgs = checkedJson(args) as CapabilityJson[];
         const chain = invocation.chain;
@@ -240,7 +241,7 @@ class CapabilityRouter {
         const count = this.handlerCounts.get(registration.handlerKey) ?? 0;
         if (count >= MAX_OUTSTANDING_INTENTS_PER_HANDLER) throw capabilityError("busy");
         const provider = capabilityRegistry.board(registration.provider);
-        if (!provider) throw capabilityError("untrusted");
+        if (!provider && !mainOwnedAudio) throw capabilityError("untrusted");
         const caller = invocation.caller;
         const deadlineAt = Math.min(Date.now() + declaration.timeoutMs, context.deadlineAt ?? Infinity);
         if (deadlineAt <= Date.now()) throw capabilityError("timeout");
@@ -263,6 +264,16 @@ class CapabilityRouter {
         try {
             const operation = (async () => {
                 const { moduleServiceSupervisor } = await import("./module-service-supervisor");
+                if (mainOwnedAudio) {
+                    const untrackOwner = invocation.owner.kind === "service"
+                        ? moduleServiceSupervisor.trackServiceOwner(invocation.owner.boardRoot, () => controller.abort(capabilityError("handler-closed")))
+                        : undefined;
+                    try {
+                        const { audioService } = await import("./audio-service");
+                        return await audioService.callDevices(bound, method, jsonArgs, invocation, () => { this.authorize(bound, method); });
+                    } finally { untrackOwner?.(); invocation.dispose(); }
+                }
+                if (!provider) throw capabilityError("untrusted");
                 const requestId = randomUUID();
                 const callContext: MainCapabilityInvocationContext = {
                     caller,

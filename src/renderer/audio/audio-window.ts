@@ -4,6 +4,7 @@ import { PcmAudioCapture } from "../ui/speech/PcmAudioCapture";
 import { ComputerAudioGate } from "../ui/speech/ComputerAudioGate";
 import type { CapabilityChannel, CapabilityErrorCode } from "../api/types/capabilities";
 import { MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../../shared/capability-limits";
+import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, type AudioDevicesRequest, type AudioDevicesReply } from "../../ipc/audio-channels";
 
 const { ipcRenderer } = require("electron") as typeof import("electron");
 const CONTROL_CHANNEL = "persephone:audio-control";
@@ -43,6 +44,19 @@ interface ActiveChannel { channelId: string; channel: CapabilityChannel; kind: "
 const sources = new Map<string, SharedSource>();
 const channels = new Map<string, ActiveChannel>();
 const sharedContext = new AudioContext();
+
+ipcRenderer.on(AUDIO_DEVICES_REQUEST, (_event: Electron.IpcRendererEvent, request: AudioDevicesRequest) => {
+    if (!request || typeof request.requestId !== "string" || request.epoch !== epoch) return;
+    void enumerateDevices().then((devices) => {
+        const reply: AudioDevicesReply = { requestId: request.requestId, epoch, devices: devices
+            .filter((device) => device.kind === "audioinput")
+            .map((device) => ({ deviceId: device.deviceId, label: device.label || "", isDefault: device.deviceId === "default" })) };
+        ipcRenderer.send(AUDIO_DEVICES_REPLY, reply);
+    }).catch((error: unknown) => {
+        const reply: AudioDevicesReply = { requestId: request.requestId, epoch, error: errMessage(error, "Device enumeration failed.") };
+        ipcRenderer.send(AUDIO_DEVICES_REPLY, reply);
+    });
+});
 
 function sourceKey(options: CaptureOptions): string {
     return options.source === "computer"
@@ -97,6 +111,21 @@ let streamRequests: Promise<unknown> = Promise.resolve();
 
 function requestStream(options: CaptureOptions): Promise<MediaStream> {
     const request = streamRequests.then(() => requestStreamNow(options));
+    streamRequests = request.catch((): undefined => undefined);
+    return request;
+}
+
+// Chromium hides device ids and labels unless the media permission check passes, which it does
+// only while main has armed the microphone grant; queued with stream requests so grants never overlap.
+function enumerateDevices(): Promise<MediaDeviceInfo[]> {
+    const request = streamRequests.then(async () => {
+        try {
+            await ipcRenderer.invoke(ARM_CHANNEL, "microphone");
+            return await navigator.mediaDevices.enumerateDevices();
+        } finally {
+            await ipcRenderer.invoke(CLEAR_CHANNEL).catch(() => {});
+        }
+    });
     streamRequests = request.catch((): undefined => undefined);
     return request;
 }

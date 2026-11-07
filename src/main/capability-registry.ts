@@ -18,6 +18,8 @@ export interface CapabilityRegistration extends BoardCapabilityDeclaration {
 }
 
 const audioMethods: Record<string, CapabilityMethod> = {
+    devices: { kind: "call", summary: "List available microphone inputs.", args: [],
+        returns: "{ deviceId: string; label: string; isDefault: boolean }[]", timeoutMs: 10000, agent: false },
     capture: { kind: "channel", summary: "Board-only streaming: capture shared PCM.",
         args: [{ name: "open", type: '{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }' }],
         returns: "CapabilityChannel", timeoutMs: 15000, agent: true },

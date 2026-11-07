@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, MessageChannelMain, type MessagePortMain, 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EventEndpoint } from "../ipc/api-types";
+import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
 import { MAX_SERVICE_CHANNELS_PER_BOARD } from "../shared/capability-limits";
 import { boardPermissionAllows } from "../shared/board-manifest-utils";
 import { errMessage } from "../shared/utils";
@@ -64,6 +65,7 @@ class AudioService {
     private readyResolve: (() => void) | undefined;
     private startupReject: ((error: unknown) => void) | undefined;
     private readonly channels = new Map<string, ChannelRecord>();
+    private readonly deviceRequests = new Map<string, { generation: number; resolve: (devices: AudioDevice[]) => void; reject: (error: unknown) => void }>();
     private pendingOpens = 0;
     private initialized = false;
 
@@ -71,6 +73,15 @@ class AudioService {
         if (this.initialized) return;
         this.initialized = true;
         setAudioWindowTargetResolver(() => this.window && !this.window.isDestroyed() ? this.window.webContents : undefined);
+        ipcMain.on(AUDIO_DEVICES_REPLY, (event, reply: AudioDevicesReply) => {
+            const window = this.window;
+            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
+                || !reply || typeof reply.requestId !== "string" || reply.epoch !== this.epoch) return;
+            const request = this.deviceRequests.get(reply.requestId);
+            if (!request || request.generation !== this.generation) return;
+            if ("error" in reply) request.reject(capabilityError("rejected", reply.error));
+            else request.resolve(reply.devices);
+        });
         ipcMain.on(CONTROL_CHANNEL, (event, message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) return;
@@ -114,6 +125,39 @@ class AudioService {
             }
         });
         app.on("before-quit", () => this.dispose());
+    }
+
+    async callDevices(bound: BoundCapability, method: string, args: unknown[], invocation: MainCapabilityInvocationContext, reauthorize: () => void): Promise<AudioDevice[]> {
+        if (method !== "devices") throw capabilityError("no-handler");
+        if (args.length !== 0) throw capabilityError("rejected", "devices takes no arguments.");
+        const authorize = (): void => { reauthorize(); this.authorize(bound, "microphone"); };
+        authorize();
+        if (invocation.signal.aborted) throw invocation.signal.reason ?? capabilityError("cancelled");
+        this.pendingOpens++;
+        const unsubscribe = capabilityRegistry.onChange(() => {
+            try { authorize(); } catch (error) { invocation.controller.abort(error); }
+        });
+        let requestId: string | undefined;
+        try {
+            const opened = await this.ensureWindow(invocation.signal);
+            if (invocation.signal.aborted) throw invocation.signal.reason ?? capabilityError("cancelled");
+            if (opened.generation !== this.generation || opened.window.isDestroyed()) throw capabilityError("handler-closed");
+            authorize();
+            requestId = crypto.randomUUID();
+            const response = new Promise<AudioDevice[]>((resolve, reject) => {
+                this.deviceRequests.set(requestId!, { generation: opened.generation, resolve, reject });
+            });
+            const message: AudioDevicesRequest = { requestId, epoch: this.epoch };
+            opened.window.webContents.send(AUDIO_DEVICES_REQUEST, message);
+            const devices = await withAbort(response, invocation.signal);
+            authorize();
+            return devices;
+        } finally {
+            if (requestId) this.deviceRequests.delete(requestId);
+            unsubscribe();
+            this.pendingOpens--;
+            this.destroyIdleWindow();
+        }
     }
 
     async openCapabilityChannel(
@@ -289,6 +333,7 @@ class AudioService {
 
     private failWindow(generation: number, error: unknown): void {
         if (generation !== this.generation) return;
+        for (const request of this.deviceRequests.values()) request.reject(error);
         this.startupReject?.(error);
         this.startupReject = undefined;
         for (const record of [...this.channels.values()]) this.finishChannel(record, "crashed", errMessage(error, "Audio window failed."), false);
@@ -331,6 +376,7 @@ class AudioService {
     }
 
     dispose(): void {
+        for (const request of this.deviceRequests.values()) request.reject(capabilityError("handler-closed", "Audio service is shutting down."));
         for (const record of [...this.channels.values()]) this.finishChannel(record, "handler-closed", "Audio service is shutting down.", true);
         this.startupReject?.(capabilityError("handler-closed", "Audio service is shutting down."));
         this.generation++;

@@ -89,7 +89,7 @@ The main router sends each method kind to its owner:
 
 | Method kind | Route | Result |
 | --- | --- | --- |
-| `call` | Main authorizes and sends a JSON request to the provider's board service through the module-service supervisor. | JSON result from the service. |
+| `call` | Main authorizes and sends a JSON request to the provider's board service through the module-service supervisor, or dispatches platform-owned audio device enumeration to the audio window. | JSON result from the provider. |
 | `channel` | Main opens a provider service channel or dispatches the platform-owned `audio@1` channel to its hidden audio window, then returns a bounded message channel to the caller. | Channel with ordered messages, acknowledgement-based backpressure and close reasons. |
 | `open` | Main authorizes and dispatches through the selected renderer, which runs a platform handler or sends a transient intent to the board page. | JSON result, optionally paired with the opened page id for agent calls. |
 
@@ -103,14 +103,16 @@ capability channel limits each message to 1 MiB and allows 256 messages in fligh
 channel counts are bounded as specified in
 [`src/shared/capability-limits.ts`](../../src/shared/capability-limits.ts).
 
-## Platform-owned `audio@1` channels
+## Platform-owned `audio@1` methods
 
-`audio` is a reserved platform registration with `capture` and `play` channel methods. Unlike a
+`audio` is a reserved platform registration with a `devices()` call and `capture` and `play` channel methods. Unlike a
 board capability channel, its provider is not a utility-process service: `CapabilityRouter`
 authorizes the caller and delegates to the main-owned `AudioService`. Main lazily creates one
 hidden, local-only `BrowserWindow`; it rejects navigation, popups and webviews, validates every
 control message against that exact window and main frame, and destroys the window after the final
-channel closes. Audio ports are transferred directly between the caller and this window. Main
+channel closes and pending device calls finish. Correlated device replies are accepted only from the
+current window's main frame and generation; cancellation, deadlines, revocation and window failure
+end pending calls. Audio ports are transferred directly between the caller and this window. Main
 retains lifecycle and authorization state, but does not relay PCM.
 
 The hidden window owns one `AudioContext`, shared microphone/computer source streams, the PCM
@@ -129,12 +131,15 @@ thresholds 0.01/0.006 with 400 ms pre-roll and 500 ms tail. It suppresses delive
 while preserving source timestamps across gaps. Microphone capture remains continuous.
 
 Board pages and services need trusted status, exact `audio@1` `uses`, and the source grant:
-`microphone` for microphone capture or explicit `computerAudio` for Windows loopback. A service
+`microphone` for device listing and microphone capture or explicit `computerAudio` for Windows loopback. A service
 must also have its service permission. Playback requires `uses` only. Platform callers need no board
-grant, while agents can discover the channel declarations but cannot invoke channels. Authorization
+grant, while agents can discover the channel declarations but cannot invoke channels or the hidden device call. Authorization
 is repeated while active; revocation closes the stream. The audio window receives independent,
 one-use, expiry- and frame-bound microphone and loopback permission grants from main. It never
 reuses or weakens the existing Transcript loopback grant.
+
+Device enumeration runs in the capture origin without arming a grant or opening a stream. Chromium
+may return an empty or limited list and empty labels; IDs can change and should be refreshed on demand.
 
 The normative payloads, timestamp and gate contract, permissions, caller shapes and resource limits
 are in the [audio capability guide](../../assets/guides/agents/audio.md). Echo cancellation follows

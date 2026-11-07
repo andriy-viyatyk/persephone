@@ -215,8 +215,8 @@ to boards:
 | US-1788 | persephone | TV polish in the app | Superseded |
 | [US-1790](../tasks/US-1790-audio-service/README.md) | persephone | Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core | Done (pending epic review) |
 | US-1791 | persephone | Capabilities: manifest method declarations, `persephone.getCapability()`, `capabilities` branch in the `call` tree; `speech.wake` / `speech.synthesize` contract revisions | Replaced by [EPIC-140](EPIC-140.md); the `speech.*` contract revisions move to BT-087 / BT-084 / BT-085 |
-| BT-084 | persephone-boards | Text to Speech: play through the audio service; `speak` / `stop` operations | Implemented, awaiting user test |
-| BT-085 | persephone-boards | Wake Word: capture through the audio service, phrase filter, consumer-named phrases, film suppression | Planned |
+| BT-084 | persephone-boards | Text to Speech: play through the audio service; `speak` / `stop` operations | Done (pending epic review) |
+| BT-085 | persephone-boards | Wake Word: capture through the audio service, phrase filter, consumer-named phrases, film suppression; `audio.devices()` | Done (pending epic review) |
 | BT-086 | persephone-boards | Agent Chat: Wake mode, wake session, Wake words page, listening flow, interrupts, sample instructions | Planned |
 
 **Order:** EPIC-140 (capabilities) → US-1790 (audio, registered as a capability) → BT-084 and BT-085 in parallel → BT-086. Board releases follow the

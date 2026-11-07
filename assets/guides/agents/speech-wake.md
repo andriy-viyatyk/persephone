@@ -1,147 +1,167 @@
 ---
 title: "Speech Wake — the speech.wake v1 contract"
 audience: both
-summary: "Normative provider and consumer contract for enrolled wake and stop phrases over board service channels."
+summary: "Provider-owned audio capture and enrolled wake and stop phrase detection."
 ---
 
 # Speech Wake — the `speech.wake` v1 contract
 
-This is the normative contract for boards that provide or consume `speech.wake` version 1. One channel handles one operation; only `listen` is long-lived. An enrollment is one clip, never an open-ended session. The provider owns its engine, enrollment data and caller approval policy; the consumer owns capture and assistant state.
+`speech.wake@1` detects consumer-named phrases using locally enrolled examples. The provider
+owns capture, matching, enrollment data and caller approval. A listener sends no audio; one
+channel represents one enrollment or one long-lived listener. The provider's `describe()`
+reports whether processing is local; consumers requiring local processing must check `local`.
+This contract replaces the earlier PCM-channel shape: providers reject `format` and incoming
+PCM rather than treating them as a new request.
 
-## Declarations and transport
+## Declarations and permissions
 
-Declare the exact interface version in `board-manifest.json`:
+A provider declares `speech.wake@1` with `describe`, `list` and `delete` call methods
+(10-second timeouts) and `enroll` and `listen` channel methods (15-second establishment
+timeouts). `describe` and `list` are agent-visible; `delete`, `enroll` and `listen`
+have `agent: false`. Channels are never agent-callable. An agent can read local enrollment metadata,
+including person names, using `list`; this is an intentional disclosure to the user's agent.
+Call results contain metadata, never audio or embeddings.
 
-```json
-// Provider
-{"minAppVersion":"5.0.18","permissions":{"service":true},"serviceInterfaces":[{"id":"speech.wake","version":1,"title":"Speech Wake"}]}
-// Consumer; declare microphone permission if the board captures audio
-{"minAppVersion":"5.0.18","uses":[{"id":"speech.wake","version":1}],"permissions":{"microphone":true}}
-```
+The Wake Word provider retains its legacy `serviceInterfaces` declaration alongside explicit
+methods. It requires Persephone 5.0.18, bridge 1.51.0, service, microphone and computerAudio
+permissions, and `uses: [{ "id": "audio", "version": 1 }]`. A consumer board declares
+`uses: [{ "id": "speech.wake", "version": 1 }]`; listening itself does not require that
+consumer to hold audio permissions. A consumer choosing a microphone via `audio.devices()`
+separately declares `audio@1` and the microphone grant. See [Audio](audio.md) and
+[Capabilities](capabilities.md) for the declarations, proxy and authorization.
 
-`uses` grants messaging access only, not the provider's permissions. The provider must be trusted, have its own `service` permission, and apply its caller approval policy to every request. Refuse a caller with the platform close code `connection-refused`. The Persephone host caller is `{ id: "persephone", name: "Persephone" }`, with `info.interface = { id: "speech.wake", version: 1 }`. The `accept-granted` policy accepts this reserved interface; `same-board-only` refuses the host. The app needs no board `uses` declaration; its capture permission is granted separately.
+The provider applies its caller policy on every route. The Wake Word board's `accept-granted`
+accepts authorized external callers; `same-board-only` refuses external board, platform and
+agent calls and channels. Its own page uses private service channels to the same implementation.
+Denied calls reject with `permission-denied`; denied channels close with `connection-refused`.
+Authenticated caller context comes from the host. An author-selected caller ID is not proof of
+board identity.
 
-For unified declarations and clients see [Capabilities](capabilities.md). Discover with `persephone.services.list("speech.wake")`, connect with `persephone.services.connect("speech.wake", selector, openMessage)`, and handle opens with `persephone.service.onChannel((channel, openMessage, info) => ...)`. Versions match exactly. See the [Boards guide](./boards.md) for trust, grants and channel lifecycle.
+## Methods
 
-## Opening requests
-
-| Opening request | Consumer messages | Provider replies |
-|---|---|---|
-| `{ type: "describe" }` | None | `{ type: "description", local: boolean, features: string[], defaultThreshold: number, maxEnrollMs: number }`, then close. |
-| `{ type: "enroll", phrase: string, kind: "wake" \| "stop", person: string, format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 } }` | Ordered `{ type: "audio", data: ArrayBuffer }`, then `{ type: "end" }` | `{ type: "enrolled", sampleId: string, quality: { accepted: boolean, reason?: string }, match: number \| null }`, then close. |
-| `{ type: "list" }` | None | `{ type: "enrollments", phrases: { phrase: string, kind: "wake" \| "stop", person: string, samples: { sampleId: string }[] }[] }`, then close. |
-| `{ type: "delete", target: { phrase: string, kind: "wake" \| "stop" } \| { person: string } \| { sampleId: string } }` | None | `{ type: "deleted", count: number }`, then close. |
-| `{ type: "listen", format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 }, threshold?: number }` | Ordered `audio` messages, then `{ type: "end" }` | Zero or more `{ type: "wake" \| "stop", phrase: string, person: string, score: number, time: number, start?: number }`, then `{ type: "done" }` and close after `end`. |
-
-`local: true` means audio is processed on the user's machine and does not leave it; `local: false` means audio leaves the machine and consumers should disclose that before recording. The assistant must reject a provider advertising `local: false`. `maxEnrollMs` is the finite enrollment clip limit in milliseconds. `features` advertises optional behavior; use `[]` when none is supported.
-
-Phrase and person are nonempty, exact, case-sensitive strings; `kind` is part of phrase identity. `sampleId` is a provider-generated opaque stable ID unique within that provider. An enrollment's `match` is the best score against earlier samples of the same phrase, kind and person, or null when none exist. A rejected clip has no stored sample and returns an empty `sampleId`.
-
-Phrase deletion removes that phrase and kind across people; person deletion removes all that person's samples; sample ID deletion removes exactly one. A zero count is a successful no-op. List returns metadata only. No response contains sample audio or embeddings.
-
-`score` and `match` are finite normalized similarities in [0, 1], higher is closer. A detection meets `score >= threshold`; omitted threshold uses `defaultThreshold`, on the same scale. If an engine measures a distance where lower is closer, the provider converts it to this scale and publishes a `defaultThreshold` on the same scale. Detection `time` is milliseconds from the first input sample to the end of the detected phrase.
-
-Both wake and stop detections may include `start`, the milliseconds from the first input sample to the matched phrase's start, clamped between zero and `time`. Consumers must tolerate its absence. For stop detections without it, the assistant uses `max(0, time - 2500)` as a conservative fallback; that heuristic does not guarantee removal of unusually long phrases or late detections.
-
-## Consumer to provider
-
-Use mono signed 16-bit little-endian PCM at 16 kHz, as in [Speech Transcription](./speech-transcribe.md). Send small ordered `ArrayBuffer` chunks, then `end`. Honor `writable` and `whenWritable()` before sending. Callers must avoid retaining enrollment audio after sending it; transient capture needed to send a clip is permitted. Store recordings and templates in the provider's own board data, never app storage.
-
-## Provider to consumer
-
-All messages are structured-cloneable objects. A provider sends terminal `{ type: "error", code, message }` and closes on failure:
-
-| Code | Meaning |
+| Method | Arguments and result |
 |---|---|
-| `not-ready` | The engine or model is not installed. |
-| `no-enrollments` | No samples are enrolled; send at `listen` open before accepting audio, then close. |
-| `unsupported-format` | The input format is unsupported. |
-| `too-long` | An enrollment exceeds `maxEnrollMs`. |
-| `invalid-argument` | A request or input is invalid. |
-| `engine-failed` | The engine failed. |
+| `describe()` | Returns `{ local, features, defaultThreshold, maxEnrollMs }`. The Wake Word board reports `true`, `[]`, `0.85` and `3000`. |
+| `list(phrase)` | Requires a nonempty exact phrase ID. Returns groups `{ phrase, kind, person, samples }`; each sample includes `sampleId`, `createdAt`, `frontendVersion`, `echoCancel` and `legacyCapture`. |
+| `delete(target)` | Requires `{ phrase, kind?, person?, sampleId? }` and returns `{ count }`. All supplied fields intersect; even a sample ID must belong to the supplied phrase. A zero count is a successful no-op. |
+| `enroll(open)` | Opens an enrollment channel as described below. |
+| `listen(open)` | Opens a listener channel as described below. |
 
-Provider refusal uses the platform close reason `connection-refused`. Requests never start a model download.
+Phrase and person are nonempty, exact, case-sensitive strings. A phrase ID is a consumer-selected
+name, not an authenticated ownership or isolation boundary; consumers must coordinate distinct
+names. Agent Chat uses `agent-wake` and `agent-stop`. Kind is `wake` or `stop` and is part
+of the enrollment identity together with phrase and person. Scores and thresholds are finite
+similarities from 0 to 1; higher means closer, not a probability.
 
-## Lifecycle and limits
+## Enrollment
 
-Register message and close handlers at the start of `onChannel`, before any await, and buffer early messages while accepting the request or loading an installed engine. Messages without a registered handler are not replayed. Enforce the advertised finite `maxEnrollMs` as audio arrives: immediately send `too-long` and close when exceeded; never truncate. A `listen` channel has no total-duration cap, but bounds retained audio and queued work. It emits both wake and stop events regardless of assistant state; the consumer decides which matter. V1 has no kind filter and the provider has no assistant-state model.
-
-Closing cancels either operation and releases resources. Honor `writable` and `whenWritable()` in both directions. Service-to-page serialized messages are limited to 1 MiB and each direction permits 256 unacknowledged messages. Separate `listen` channels support microphone and loopback detection. Comparing event times requires aligned capture origins and is the consumer's responsibility.
-
-## Forward compatibility
-
-Consumers ignore unknown message types and fields. Providers preserve v1 field meanings and required behavior. Advertise new optional behavior through `features`; incompatible changes require a new interface version and guide.
-
-## Minimal consumer
-
-```js
-const provider = (await persephone.services.list("speech.wake")).find(p => p.version === 1);
-if (!provider) throw new Error("No wake provider");
-const selector = { provider: provider.provider, version: 1 };
-const format = { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 };
-// receiveOne registers message and close handlers and rejects terminal errors or refusal.
-const describe = await receiveOne(await persephone.services.connect("speech.wake", selector, { type: "describe" }));
-if (!describe.local) throw new Error("A local provider is required");
-const enrolled = await openStream({ type: "enroll", phrase: "Hello", kind: "wake", person: "Alex", format });
-await sendCapture(enrolled, enrollmentChunks); // discard each clip chunk after sending
-await waitForOperation(enrolled); // wait for enrolled or reject on error/close
-const listing = await receiveOne(await persephone.services.connect("speech.wake", selector, { type: "list" }));
-const microphone = await openStream({ type: "listen", format });
-const loopback = await openStream({ type: "listen", format });
-// Capture origins must be aligned before comparing events between these independent streams.
-void sendCapture(microphone, microphoneChunks);
-void sendCapture(loopback, loopbackChunks);
-
-async function openStream(open) {
-  const channel = await persephone.services.connect("speech.wake", selector, open);
-  channel.onMessage(message => {
-    if (message.type === "wake" || message.type === "stop") handleDetection(message);
-    if (message.type === "enrolled" || message.type === "done") finishOperation(message);
-    if (message.type === "error") { stopCapture(channel); showError(message.code, message.message); }
-  });
-  channel.onClose(() => stopCapture(channel));
-  return channel;
-}
-async function sendCapture(channel, chunks) {
-  for await (const data of chunks) {
-    if (!channel.writable) await channel.whenWritable();
-    channel.send({ type: "audio", data });
-  }
-  if (!channel.writable) await channel.whenWritable();
-  channel.send({ type: "end" });
-}
-// On cancellation: stopCapture(channel); channel.close();
-// When removing a sample, after listening has ended:
-const deleted = await receiveOne(await persephone.services.connect("speech.wake", selector,
-  { type: "delete", target: { sampleId: listing.phrases[0].samples[0].sampleId } }));
+```ts
+{ phrase: string; kind: "wake" | "stop"; person: string;
+  deviceId?: string; echoCancel?: boolean }
 ```
 
-## Minimal provider
+The provider captures 2.5 seconds of microphone audio with a 3-second safety limit, processes it
+locally, and sends one message then closes:
+
+```ts
+{ type: "enrolled"; sampleId: string;
+  quality: { accepted: boolean; reason?: string }; match: number | null }
+```
+
+`match` is the best score against earlier current samples with the same phrase, kind and person,
+or `null` when there are none. A rejected sample has an empty ID and is not stored. Closing the
+channel cancels capture and discards transient audio. Samples store embeddings and metadata, not
+raw audio. Embeddings contain voice information and should be treated as sensitive.
+
+`deviceId` must come from the audio service's `devices()`, not the board page's browser
+enumeration. IDs may change and labels can be empty; refresh the list and fall back to the default
+device when needed. `echoCancel` defaults to `true` and is recorded on new samples. Use the same
+value for enrollment and listening. Migrated pre-change samples are marked `legacyCapture: true`
+and `echoCancel: false`; current-version legacy templates remain matchable with echo cancellation
+on, although changed processing can reduce their scores. Older incompatible frontend versions stay
+listable and deletable but are not matched.
+
+## Listening
+
+```ts
+{ phrases: string[]; sources: ("microphone" | "computer")[];
+  deviceId?: string; threshold?: number; echoCancel?: boolean }
+```
+
+Both lists must be nonempty and unique; unknown fields are rejected. The threshold is in [0, 1]
+and defaults to 0.85. Microphone options are invalid without `microphone`. With microphone
+selected, the provider also captures and spots computer audio internally for suppression, even
+when `computer` is not selected for reporting. Computer-only listening does not capture the
+microphone. Missing current templates for the requested phrases yields `no-enrollments`; the
+provider does not expand the filter.
+
+Once required capture and spotters are ready, the channel sends
+`{ type: "status", status: "listening" }`, then accepted detections:
+
+```ts
+{ type: "detection"; phrase: string; kind: "wake" | "stop"; person: string;
+  score: number; time: { epoch: number; timeMs: number };
+  start: { epoch: number; timeMs: number } }
+```
+
+Both times use the shared audio-service clock in milliseconds; `start` is a conservative onset
+estimate, clamped to available contiguous input and no later than `time`. Compare times only
+within the same epoch. They are not exact physical sound-arrival measurements. Capture gaps reset
+matching history rather than joining unrelated segments. When the epoch changes the provider
+discards pending detections and matching/suppression history, sends
+`{ type: "status", status: "reset", epoch }`, and rebuilds alignment or fails closed. Consumers
+must discard in-flight request timing and begin anew on reset.
+
+The detection message does not identify its source. When both sources are selected, detections
+from either source use the same message shape.
+
+For each microphone hit, the provider suppresses it if a same-phrase computer hit meeting that
+listener's threshold occurs in the inclusive interval from 1500 ms before to 300 ms after the
+microphone detection, regardless of kind or person. Computer-only internal hits are not reported.
+Computer audio is gated and can arrive with 400 ms pre-roll. A microphone detection is held for
+300 + 400 + 200 ms past its audio time, typically adding about 0.8–1 second of delivery latency.
+The consumer must retain request audio by audio-clock timestamp across this delay so it does not
+lose the beginning of a request. The provider releases a hit when the deadline and already queued
+computer work have passed without a match. Late computer audio, missed detections and imperfect
+echo cancellation can defeat suppression; independent speech with the same phrase can be
+suppressed. Threshold, onset and processing margin need real-environment calibration.
+
+## Lifecycle and errors
+
+Register channel message and close listeners immediately after opening; messages are not replayed.
+Status and error objects are protocol messages. A terminal
+`{ type: "error", code, message }` is followed by close on capture or engine failure; examples
+include `no-enrollments`, `rejected`, `no-handler`, `permission-denied` and
+`channel-backpressure`. Channel close reasons also report provider refusal, revocation or
+transport failure. Close cancels enrollment or listening without a `done` message. Each capture
+is reference-counted, so closing one dependent does not stop other listeners or enrollment.
+Providers bound queues, respect channel writability, and fail affected operations visibly on
+overflow or loss of synchronization. No operation downloads a model.
+
+## Consumer example
 
 ```js
-persephone.service.onChannel(async (channel, open, info) => {
-  const early = [];
-  const stopEarly = channel.onMessage(message => early.push(message));
-  channel.onClose(() => cancelWorkAndReleaseResources());
-  if (!approvalPolicyAllows(info)) {
-    channel.close({ code: "connection-refused", message: "Caller refused." }); return;
-  }
-  try {
-    // Validate, check installed readiness and enrollment availability before accepting audio.
-    const operation = await prepareOperation(open); // never downloads
-    const handle = message => operation.enqueueInOrder(message); // enforce maxEnrollMs immediately
-    stopEarly();
-    channel.onMessage(handle);
-    for (const message of early) handle(message);
-    for await (const reply of operation.replies()) {
-      if (!channel.writable) await channel.whenWritable();
-      channel.send(reply); // description, enrolled, enrollments, deleted, detection or done
-    }
-  } catch (error) {
-    if (!channel.writable) await channel.whenWritable();
-    channel.send(toContractError(error));
-  } finally { channel.close(); }
+const wake = await persephone.getCapability("speech.wake", { version: 1 });
+if (!wake) throw new Error("No wake provider");
+const description = await wake.describe();
+if (!description.local) throw new Error("A local provider is required");
+const samples = await wake.list("agent-wake");
+const channel = await wake.listen({
+  phrases: ["agent-wake", "agent-stop"],
+  sources: ["microphone"],
+  echoCancel: true,
 });
+channel.onMessage(message => {
+  if (message.type === "status" && message.status === "reset") discardRequestTiming();
+  if (message.type === "detection") handleDetection(message);
+  if (message.type === "error") reportError(message.code, message.message);
+});
+channel.onClose(reason => releaseListener(reason));
+// Later: channel.close();
+// To remove one sample: await wake.delete({ phrase: "agent-wake", sampleId: samples[0].samples[0].sampleId });
 ```
 
-Helper names represent provider-owned validation, storage, engine, cancellation, and error mapping. Production code must stop sending after close and handle cancellation races.
+The helper functions are consumer-owned. To enroll, call `wake.enroll({ phrase, kind, person,
+echoCancel: true })`, immediately register listeners, and wait for `enrolled` or an error.
+Consumers ignore unknown message types and fields; incompatible semantic changes require a new
+major version.
