@@ -798,7 +798,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const pageId = this.props.model.page?.id;
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
         if (pageId) void api.registerBoardPipePage(pageId, host, this.props.boardRoot, this.props.model.pipeUrlEnabled);
-        const initialIntent = pageId ? takeInitialIntent(pageId) : undefined;
+        // Secondary views share the page id; only the main frame owns the page's intent handler.
+        const initialIntent = pageId && this.isMain ? takeInitialIntent(pageId) : undefined;
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
             busy: !!this.props.model.state.get().busy,
