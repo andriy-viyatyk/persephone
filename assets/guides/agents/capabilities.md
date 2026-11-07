@@ -1,6 +1,6 @@
 # Capabilities
 
-**Status:** The unified registry, client API and agent surface are implemented. Bundled board and documentation migrations remain in US-1797; external board migration remains in BT-087 (EPIC-140).
+**Status:** The unified registry, client API and agent surface are implemented, and bundled boards use the `methods` form. External board migration remains in BT-087 (EPIC-140).
 
 This is the normative contract for the unified capability registry. A capability has an id, a major version and named methods. A provider can be a trusted board or `persephone`. A consumer can be a board page, board service, Persephone or an agent. Method-specific contracts, including [speech synthesis](speech-synthesize.md), [transcription](speech-transcribe.md), [wake](speech-wake.md) and [translation](text-translate.md), continue to define their data and behavior. The examples below illustrate new methods, not a replacement for those v1 streaming contracts.
 
@@ -91,7 +91,7 @@ The following logical messages are normative across the main routing boundary; i
 
 | Kind | Messages and behavior |
 |---|---|
-| `call` | Main sends `{ kind: "capability-call", requestId, id, version, method, args, caller, deadlineAt }` to the host, which invokes the registered handler. Host replies `{ kind: "capability-result", requestId, result }` or `{ kind: "capability-result", requestId, error: { code, message } }`. The router checks JSON/size, and delivers exactly one settlement. Unregistered handlers reject `no-handler`; thrown errors become `rejected` unless they carry a recognized code. |
+| `call` | Main sends `{ kind: "capability-call", requestId, id, version, method, args, caller, deadlineAt }` to the host, which invokes the registered handler. Host replies `{ kind: "capability-result", requestId, result }` or `{ kind: "capability-result", requestId, error: { code, message } }`. The router checks JSON/size, and delivers exactly one settlement. Unregistered handlers reject `no-handler`. A thrown error with a recognized `code` keeps its code and message, so set `code` (for example `rejected`) when the message is meant for the caller; any other thrown error becomes `rejected` with a generic message. |
 | `channel` | Main sends the existing `{ kind: "channel-open", channelId, boardId, generation, openMessage, info }` plus a transferred port. `openMessage` is `{ ...argument, type: method }`; `info.interface` is `{ id, version }`, and `info.caller` identifies the authenticated caller. The service receives it through existing `persephone.service.onChannel(channel, openMessage, info)`. The returned handle is the existing ordered bidirectional channel. Data and acknowledgements carry monotonically increasing sequence numbers; close carries `{ code, message }`. Establishment timeout closes a late port. |
 | `open` | Route to the existing page intent `{ id, version, requestId, payload }`, with chain, depth and deadline, and settle as `{ pageId?, result }`. Board pages use `persephone.intent.onRequest`, `resolve` and `reject`; platform editors use their existing handlers. |
 

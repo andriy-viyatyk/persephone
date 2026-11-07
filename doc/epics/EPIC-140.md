@@ -191,7 +191,7 @@ facts the design rests on:
 | [US-1795](../tasks/US-1795-capability-client-api/README.md) | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Implemented (pending epic review) |
 | [US-1796](../tasks/US-1796-capability-agent-surface/README.md) | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Implemented (pending epic review) |
 | [US-1797](../tasks/US-1797-capability-migration/README.md) | persephone | Migrate bundled boards and capability documentation | Planned (documented) |
-| BT-087 | persephone-boards | Migrate the boards' declarations (Certificate Viewer, Theme Editor, Speech to Text, Text to Speech, Wake Word, Translate, Agent Chat) and add agent-shaped methods (`record`, `transcribeFile`, `speak`, `stop`, `translate`) | Planned |
+| BT-087 | persephone-boards | Migrate the declarations of Certificate Viewer, Theme Editor, Speech to Text and Translate; add agent-shaped `transcribeFile` and `translateText` (plan: `persephone-boards/doc/tasks/BT-087-capability-migration/`) | Implemented (pending epic review) |
 
 **Order:** US-1793 → US-1794 → US-1795 and US-1796 in parallel → US-1797 and BT-087. EPIC-139
 then resumes: its `audio` capability (US-1790) becomes a platform capability, and its US-1791 is
@@ -226,3 +226,21 @@ replaced by this epic.
   redesigned into it.
 - The user added that capabilities may be shaped for agents. Example: record a time interval
   with speech to text and write the text to a file, instead of the agent building its own tool.
+- BT-087 scope narrowed after its investigation (Claude's decision):
+  - `speak` and `stop` stay with BT-084 after US-1790, as EPIC-139 decision 7 already plans: the
+    Text to Speech service can't play audio, and `speak` is already a channel name, which the
+    `speech.synthesize` revision resolves.
+  - `record` waits for US-1790's `audio` capability.
+  - Wake Word (contract revised in BT-085) and Agent Chat (`list-sessions` isn't a valid method
+    name; its channels are private) keep their legacy declarations.
+  - New calls are named `translateText` and `transcribeFile`, because `translate` is already a
+    channel.
+  - `transcribeFile` accepts agent and platform callers only. A board never reads a file for
+    another board, so the board's grants don't change.
+- Found while verifying BT-087: the board service host replaced the message of every `rejected`
+  error, so an agent saw "Capability handler rejected the request." instead of "Install the
+  required en → de model…". Fixed in `assets/module-service-host.mjs`:
+  - an error thrown with a recognized `code` keeps its message;
+  - an error without one still gets the generic message, since it may carry internals.
+
+  The contract's `call` row in `capabilities.md` now says so.

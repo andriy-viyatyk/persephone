@@ -813,8 +813,10 @@ async function runCapabilityCall(message) {
     } catch (error) {
         if (capabilityRequests.get(requestId) === controller) {
             const codes = ["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"];
-            const code = codes.includes(error?.code) ? error.code : "rejected";
-            try { parentPort.postMessage({ kind: "capability-result", requestId, error: { code, message: code === "rejected" ? "Capability handler rejected the request." : errorMessage(error, code) } }); } catch { /* Parent exited. */ }
+            // A recognized code means the provider chose the message for its caller; anything else may carry internals.
+            const coded = codes.includes(error?.code);
+            const code = coded ? error.code : "rejected";
+            try { parentPort.postMessage({ kind: "capability-result", requestId, error: { code, message: coded ? errorMessage(error, code) : "Capability handler rejected the request." } }); } catch { /* Parent exited. */ }
         }
     } finally {
         if (capabilityRequests.get(requestId) === controller) capabilityRequests.delete(requestId);
