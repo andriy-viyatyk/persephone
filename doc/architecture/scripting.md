@@ -451,10 +451,6 @@ The optional v1 `translate: true` opening field asks for English text from spoke
 that implement it settle the spoken language before English decoding, while older providers may
 ignore it. The provider's advertised `translate` feature is the signal that it handles this mode.
 
-The host consumes [`agent.session@1`](../../assets/guides/agents/agent-session.md) for discovery
-and resumable streamed sessions. Its app client requests full-auto subject to the provider ceiling
-and automatically denies every interactive approval with a reason.
-
 The host also permits `speech.synthesize@1` for streamed sentence audio and `speech.wake@1` for enrollment and detection. Their normative contracts are the [Speech Synthesis guide](../../assets/guides/agents/speech-synthesize.md) and [Speech Wake guide](../../assets/guides/agents/speech-wake.md).
 
 The `text.translate` v1 interface describes supported language pairs, detects a source language,

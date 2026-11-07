@@ -46,7 +46,7 @@ Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
 Boards use these cross-board calls from board pages; use
 `persephone.service.openChannel(openMessage)` for same-board communication. The app also consumes
-reserved interfaces, including [`agent.session@1`](./agent-session.md).
+some reserved interfaces (`speech.transcribe`, `speech.synthesize`, `speech.wake`, `text.translate`).
 The provider's existing `onChannel` callback receives `info.interface = { id, version }` and
 `info.caller = { id, name }`. Refuse with the normal close reason `connection-refused`. Main
 rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle

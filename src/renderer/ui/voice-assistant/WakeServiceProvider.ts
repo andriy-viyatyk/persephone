@@ -17,6 +17,8 @@ export interface WakeListenHandle {
 }
 
 const format = { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 } as const;
+/** Half a second of 16 kHz mono s16le: well under the one-second message limit. */
+const ENROLL_CHUNK_BYTES = 16000;
 const pendingPorts = new Map<string, MessagePort>();
 const portWaiters = new Map<string, (port: MessagePort) => void>();
 let users = 0;
@@ -59,8 +61,11 @@ export class WakeServiceProvider {
         const result = this.receive<WakeEnrollment>(channel, "enrolled");
         void result.catch(() => {});
         try {
-            await channel.whenWritable();
-            channel.send({ type: "audio", data: pcm });
+            // The contract limits each audio message to one second of PCM (32,000 bytes).
+            for (let offset = 0; offset < pcm.byteLength; offset += ENROLL_CHUNK_BYTES) {
+                await channel.whenWritable();
+                channel.send({ type: "audio", data: pcm.slice(offset, Math.min(pcm.byteLength, offset + ENROLL_CHUNK_BYTES)) });
+            }
             await channel.whenWritable();
             channel.send({ type: "end" });
             return await result;

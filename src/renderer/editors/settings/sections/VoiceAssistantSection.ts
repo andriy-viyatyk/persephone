@@ -134,8 +134,11 @@ export class VoiceAssistantSectionView extends VanillaView<Record<string, never>
     }
     private renderStatus(): void {
         this.status.replaceChildren();
-        const notices = [this.providerError, this.ttsMissing ? t("settings.voiceAssistantTtsMissing") : "", this.loopbackUnavailable ? t("settings.voiceAssistantLoopbackUnavailable") : "", this.deviceError, this.description && !this.phrases.some((phrase) => phrase.samples.length) ? t("settings.voiceAssistantNoEnrollments") : ""];
-        notices.filter(Boolean).forEach((message) => this.status.append(panel({ paddingBottom: "md" }, text(message, { color: "light", size: "xs" }))));
+        // Errors stand out; informational notices stay muted.
+        const errors = [this.providerError, this.deviceError];
+        const notices = [this.ttsMissing ? t("settings.voiceAssistantTtsMissing") : "", this.loopbackUnavailable ? t("settings.voiceAssistantLoopbackUnavailable") : "", this.description && !this.phrases.some((phrase) => phrase.samples.length) ? t("settings.voiceAssistantNoEnrollments") : ""];
+        errors.filter(Boolean).forEach((message) => this.status.append(panel({ paddingBottom: "md" }, text(message, { color: "error", size: "sm" }))));
+        notices.filter(Boolean).forEach((message) => this.status.append(panel({ paddingBottom: "md" }, text(message, { color: "warning", size: "xs" }))));
     }
     private addButton(host: HTMLElement, label: string, onClick: () => void, disabled = false, title?: string): void {
         const button = this.child(new ButtonView({ size: "sm", variant: "default", children: label, onClick, disabled, title }));

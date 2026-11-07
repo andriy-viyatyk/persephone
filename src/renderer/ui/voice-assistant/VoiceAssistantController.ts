@@ -11,7 +11,7 @@ import { getVoiceRequestHandler } from "./VoiceAssistantHooks";
 import { playVoiceAssistantTone } from "./VoiceAssistantTones";
 import type { WakeEvent } from "./VoiceAssistantTypes";
 import { WakeServiceProvider, type WakeListenHandle } from "./WakeServiceProvider";
-import { CHANNEL_OPEN_TIMEOUT_MS, DELIVERY_ALLOWANCE_MS, LONGEST_PHRASE_MS, LOOPBACK_GATE_CLOSE_RMS, LOOPBACK_GATE_OPEN_RMS, LOOPBACK_LAG_MAX_MS, LOOPBACK_LEAD_MAX_MS, LOOPBACK_PREROLL_MS, LOOPBACK_TAIL_MS, MAX_QUEUED_CHUNKS, PROVIDER_RETRY_MS, STOP_HOLDBACK_MS } from "./voice-assistant-constants";
+import { CHANNEL_OPEN_TIMEOUT_MS, DELIVERY_ALLOWANCE_MS, LONGEST_PHRASE_MS, LOOPBACK_GATE_CLOSE_RMS, LOOPBACK_GATE_OPEN_RMS, LOOPBACK_LAG_MAX_MS, LOOPBACK_LEAD_MAX_MS, LOOPBACK_PREROLL_MS, LOOPBACK_TAIL_MS, MAX_HELD_CHUNKS, MAX_QUEUED_CHUNKS, PROVIDER_RETRY_MS, STOP_HOLDBACK_MS } from "./voice-assistant-constants";
 
 const RATE = 16000;
 interface Chunk { data: ArrayBuffer; time: number }
@@ -182,7 +182,7 @@ export class VoiceAssistantController {
         const request = this.request;
         if (request && !request.ending) {
             request.held.push(chunk); this.drainHeld(request, chunk.time - STOP_HOLDBACK_MS);
-            if (request.held.length > MAX_QUEUED_CHUNKS) this.requestFailed(request, new Error("Transcription capture buffer full"));
+            if (request.held.length > MAX_HELD_CHUNKS) this.requestFailed(request, new Error("Transcription capture buffer full"));
         }
     }
     private onLoopChunk(chunk: Chunk): void {
