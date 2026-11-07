@@ -104,6 +104,8 @@ export enum Endpoint {
     clearCompletedDownloads = "clearCompletedDownloads",
     setMcpEnabled = "setMcpEnabled",
     setMainScriptsEnabled = "setMainScriptsEnabled",
+    getCapabilityIndex = "getCapabilityIndex",
+    setCapabilityPreferences = "setCapabilityPreferences",
     setWindowsSsoEnabled = "setWindowsSsoEnabled",
     getMcpStatus = "getMcpStatus",
     setMnemeEnabled = "setMnemeEnabled",
@@ -356,6 +358,8 @@ export type Api = {
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
     [Endpoint.setMcpEnabled]: (enabled: boolean, port?: number) => Promise<void>;
     [Endpoint.setMainScriptsEnabled]: (enabled: boolean) => Promise<void>;
+    [Endpoint.getCapabilityIndex]: () => Promise<ReturnType<typeof import("../main/capability-registry").capabilityRegistry.snapshot>>;
+    [Endpoint.setCapabilityPreferences]: (preferences: Record<string, string>) => Promise<void>;
     [Endpoint.setWindowsSsoEnabled]: (enabled: boolean) => Promise<void>;
     [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
     [Endpoint.setMnemeEnabled]: (enabled: boolean, port?: number) => Promise<MnemeStatus>;
@@ -540,6 +544,11 @@ export enum EventEndpoint {
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
     eBoardTrustChanged = "eBoardTrustChanged",
+    eCapabilityIndexSnapshot = "eCapabilityIndexSnapshot",
+    eCapabilityIndexChanged = "eCapabilityIndexChanged",
+    eCapabilityOpen = "eCapabilityOpen",
+    eCapabilityOpenCancel = "eCapabilityOpenCancel",
+    eCapabilityOpenResult = "eCapabilityOpenResult",
     eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
     ePathWatchBatch = "ePathWatchBatch",
     eVoiceAssistantOwnerChanged = "eVoiceAssistantOwnerChanged",
@@ -608,6 +617,8 @@ export type EventApi = {
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
     [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
+    [EventEndpoint.eCapabilityIndexSnapshot]: EventObject<ReturnType<typeof import("../main/capability-registry").capabilityRegistry.snapshot>>;
+    [EventEndpoint.eCapabilityIndexChanged]: EventObject<number>;
     [EventEndpoint.eSiteExtensionTrustChanged]: EventObject<SiteExtensionTrustSnapshot>;
     [EventEndpoint.ePathWatchBatch]: EventObject<PathWatchEvent>;
 };

@@ -23,7 +23,8 @@ export interface ISettings {
     /** Get a setting value by key. Returns `undefined` for unknown keys. */
     get<T = any>(key: string): T;
 
-    /** Set a setting value. Persisted automatically (debounced). */
+    /** Set a setting value. Persisted automatically (debounced). `capabilities.preferredProviders`
+     * maps capability IDs to preferred provider keys. */
     set<T = any>(key: string, value: T): void;
 
     /** Fires when any setting changes via `set()`. */

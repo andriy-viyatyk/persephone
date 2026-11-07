@@ -303,6 +303,7 @@ class App {
         const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");
         await settingsInstance.wait();
         api.setMainScriptsEnabled(!!services.settings.get("main.scripting.enabled"));
+        void api.setCapabilityPreferences(services.settings.get("capabilities.preferredProviders"));
         void api.setWindowsSsoEnabled(!!services.settings.get("browser-windows-sso"));
 
         // Defer MCP auto-start and autoload scripts to not block window rendering
@@ -359,6 +360,7 @@ class App {
         // Keep these subscriptions alive until the renderer process exits.
         // Watch for mcp.enabled setting changes
         services.settings.onChanged.subscribe(({ key, value }) => {
+            if (key === "capabilities.preferredProviders") void api.setCapabilityPreferences(value as Record<string, string>);
             if (key === "main.scripting.enabled") {
                 api.setMainScriptsEnabled(!!value);
             }

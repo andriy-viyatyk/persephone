@@ -186,8 +186,8 @@ facts the design rests on:
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
 | US-1792 | persephone | Research: inventory of capability-like mechanisms | Done (pending epic review) |
-| US-1793 | persephone | Capability contract: manifest schema, method kinds, resolution, authorization, wire messages — the normative guide `assets/guides/agents/capabilities.md` | Planned |
-| US-1794 | persephone | Main-process registry and routing: one index (platform + boards), `call` / `channel` to services, `open` to renderers, legacy declarations mapped | Planned |
+| US-1793 | persephone | Capability contract: manifest schema, method kinds, resolution, authorization, wire messages — the normative guide `assets/guides/agents/capabilities.md` | Planned (documented) |
+| [US-1794](../tasks/US-1794-capability-registry/README.md) | persephone | Main-process registry and routing: one index (platform + boards), `call` / `channel` to services, `open` to renderers, legacy declarations mapped | Planned (documented) |
 | US-1795 | persephone | Client API: `persephone.getCapability` for board pages and board services, `app.capabilities.get`; legacy APIs as wrappers; bridge version bump | Planned |
 | US-1796 | persephone | Agent surface: per-capability nodes in the `call` tree, generated `$help`, callable `call` / `open` methods, derived timeouts; guides | Planned |
 | US-1797 | persephone | Migrate bundled boards (Excalidraw, REST Client) and the docs (`capability-bus.md` → `capabilities.md`) | Planned |

@@ -26,6 +26,7 @@ class OpenWindows {
     private voiceAssistantOwner: number | null = null;
     private voiceAssistantStatus: VoiceAssistantStatus | null = null;
     private readonly enrollmentSenders = new Set<number>();
+    private lastFocusedNormalWindow: number | undefined;
 
     private updateVoiceAssistantOwner = (): void => {
         const owner = this.windows.find((record) => !record.boardRoot && record.rendererReady && record.window?.window?.isVisible())?.window;
@@ -46,6 +47,9 @@ class OpenWindows {
     };
 
     private configureVoiceAssistantWindow = (window: OpenWindow): void => {
+        window.window.on("focus", () => {
+            if (!window.boardRoot) this.lastFocusedNormalWindow = window.window.id;
+        });
         window.onVisibilityOrFocusChanged = () => { this.updateVoiceAssistantOwner(); this.relayVoiceAssistantStatus(); };
         window.onRendererUnavailable = () => {
             const record = this.findWindowDataByOpenWindow(window);
@@ -91,6 +95,25 @@ class OpenWindows {
 
     get mainWindow(): OpenWindow | undefined {
         return this.windows.find((w) => !w.boardRoot && w.window)?.window;
+    }
+
+    getLastFocusedNormalRenderer(): Electron.WebContents | undefined {
+        const candidates = this.windows.filter((item) => !item.boardRoot && item.rendererReady && item.window && !item.window.window.isDestroyed());
+        const selected = candidates.find((item) => item.window?.window.id === this.lastFocusedNormalWindow)
+            ?? candidates.find((item) => item.window?.window.isFocused());
+        return selected?.window?.window.webContents;
+    }
+
+    getNormalRendererByWindowId(windowId: number): Electron.WebContents | undefined {
+        const record = this.windows.find((item) => !item.boardRoot && item.window?.window.id === windowId
+            && item.rendererReady && !item.window.window.isDestroyed());
+        return record?.window?.window.webContents;
+    }
+
+    getRendererByWindowId(windowId: number): Electron.WebContents | undefined {
+        const record = this.windows.find((item) => item.window?.window.id === windowId
+            && item.rendererReady && !item.window.window.isDestroyed());
+        return record?.window?.window.webContents;
     }
 
     send = (eventName: EventEndpoint, data: unknown) => {

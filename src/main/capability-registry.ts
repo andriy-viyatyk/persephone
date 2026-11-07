@@ -1,0 +1,54 @@
+import type { BoardServiceTrustSnapshot } from "../ipc/module-service-channels";
+import type { BoardCapabilityDeclaration, CapabilityMethod } from "../shared/capability-contract";
+import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
+import { PLATFORM_CAPABILITIES } from "../shared/platform-capabilities";
+import { boardRootKey } from "./board-root-key";
+import { EventEndpoint } from "../ipc/api-types";
+import { openWindows } from "./open-windows";
+
+export interface CapabilityRegistration extends BoardCapabilityDeclaration {
+    version: number;
+    priority: number;
+    provider: string;
+    name: string;
+    handlerKey: string;
+    origin: "platform" | "board";
+    methods: Record<string, CapabilityMethod>;
+}
+
+const platform: CapabilityRegistration[] = PLATFORM_CAPABILITIES.map((entry) => ({
+    ...entry, provider: "persephone", name: "persephone", handlerKey: entry.editorId,
+    origin: "platform", methods: { open: { kind: "open", summary: "Open", args: [{ name: "payload", type: "unknown" }], timeoutMs: CAPABILITY_DEFAULT_TIMEOUT_MS, agent: true } },
+}));
+
+class CapabilityRegistry {
+    private boards: CapabilityRegistration[] = [];
+    private boardSnapshot: BoardServiceTrustSnapshot = { trustedPaths: [], boards: [] };
+    private revision = 0;
+    private readonly listeners = new Set<() => void>();
+
+    replace(snapshot: BoardServiceTrustSnapshot): void {
+        this.boardSnapshot = snapshot;
+        const previous = this.boards;
+        this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => !declaration.id.startsWith("system.")).map((declaration, index) => ({
+            ...declaration, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
+            provider: boardRootKey(board.boardRoot), name: board.boardName ?? "", handlerKey: `${boardRootKey(board.boardRoot)}:${index}`,
+            origin: "board" as const, methods: Object.fromEntries(Object.entries(declaration.methods ?? {}).filter(([, method]) =>
+                method.kind === "open" || (!!board.service && board.canStartService))),
+        })).filter((entry) => Object.keys(entry.methods).length > 0)).map((entry) => {
+            const old = previous.find((item) => item.handlerKey.startsWith(`${entry.handlerKey}:`));
+            const comparable = old && { ...old, handlerKey: entry.handlerKey };
+            return { ...entry, handlerKey: comparable && JSON.stringify(comparable) === JSON.stringify(entry)
+                ? old.handlerKey : `${entry.handlerKey}:${this.revision + 1}` };
+        });
+        this.revision++;
+        for (const listener of this.listeners) listener();
+        openWindows.send(EventEndpoint.eCapabilityIndexChanged, this.revision);
+    }
+
+    snapshot() { return { revision: this.revision, registrations: [...platform, ...this.boards] }; }
+    onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+    board(provider: string) { return this.boardSnapshot.boards.find((entry) => boardRootKey(entry.boardRoot) === provider); }
+}
+
+export const capabilityRegistry = new CapabilityRegistry();

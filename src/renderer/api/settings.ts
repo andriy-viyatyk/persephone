@@ -56,6 +56,7 @@ export type AppSettingsKey =
     | "clipboard.enabled"
     | "clipboard.max-items"
     | "main.scripting.enabled"
+    | "capabilities.preferredProviders"
     | "mneme.enabled"
     | "mneme.port"
     | "script-library.path"
@@ -153,6 +154,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "editor-categories": "Ordered editor categories for the '+' new-page menu. Each entry has id, name, and item refs; Top is fixed first and Other is derived from eligible items not assigned to a category.",
     "editor-categories-popover-size": "Size of the '+' new-page popover, saved when you resize it by its corner.\nObject { width, height } in pixels, or null for the default size. The popover never opens larger than the window.",
     "disabled-bundled-boards": "Bundled boards disabled in Tools & Editors.\nArray of stable bundled board folder ids; changes apply live without restarting. Default: [].",
+    "capabilities.preferredProviders": "Preferred capability provider keys, indexed by capability id. Default: {}.",
     "tor.exe-path": "Absolute path to tor.exe. Required for Browser (Tor) mode; empty disables it.\nGet it from the Tor Expert Bundle, or reuse the tor.exe inside a Tor Browser installation.",
     "tor.socks-port": "SOCKS proxy port for Tor.\nNumber. Default: 9050; named application profiles (--profile): 9052.\nChange if the port is already in use on this machine.",
     "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
@@ -204,6 +206,7 @@ const defaultAppSettingsState = {
         "clipboard.enabled": false,
         "clipboard.max-items": 100,
         "main.scripting.enabled": import.meta.env.DEV,
+        "capabilities.preferredProviders": {} as Record<string, string>,
         "mneme.enabled": false,
         "mneme.port": profileDefaultPort(7700, rendererProfileName()),
         "script-library.path": "",
@@ -251,6 +254,11 @@ function normalizeAssistantSilence(value: unknown): number {
 
 function normalizeAssistantThreshold(value: unknown): number | null {
     return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+}
+
+function normalizeCapabilityPreferences(value: unknown): Record<string, string> {
+    if (!value || typeof value !== "object" || Array.isArray(value) || Object.values(value).some((item) => typeof item !== "string")) return {};
+    return { ...value } as Record<string, string>;
 }
 
 /**
@@ -375,6 +383,7 @@ class Settings implements ISettings {
     set<K extends AppSettingsKey>(key: K, value: AppSettingsState["settings"][K]): void;
     set<T = unknown>(key: string, value: T): void;
     set(key: string, value: unknown): void {
+        if (key === "capabilities.preferredProviders") value = normalizeCapabilityPreferences(value);
         if (key === "voice-typing.shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+V";
         if (key === "voice-typing.translate-shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+Shift+V";
         if (key === "voice-typing.auto-stop-silence-ms") value = normalizeVoiceTypingAutoStopSilence(value);
@@ -447,6 +456,7 @@ class Settings implements ISettings {
             newSettings["voice-assistant.microphone"] = typeof newSettings["voice-assistant.microphone"] === "string" ? newSettings["voice-assistant.microphone"] : "";
             newSettings["voice-assistant.silence-ms"] = normalizeAssistantSilence(newSettings["voice-assistant.silence-ms"]);
             newSettings["voice-assistant.threshold"] = normalizeAssistantThreshold(newSettings["voice-assistant.threshold"]);
+            newSettings["capabilities.preferredProviders"] = normalizeCapabilityPreferences(newSettings["capabilities.preferredProviders"]);
             const categoriesAbsent = !Object.prototype.hasOwnProperty.call(content, "editor-categories");
             const rawCategories = content["editor-categories"];
             const categories = normalizeEditorCategories(rawCategories, (content as Record<string, unknown>)["pinned-editors"]);

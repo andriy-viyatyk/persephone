@@ -335,7 +335,9 @@ function collectCapabilityAxis(
         for (const issue of source.manifest?.issues ?? []) {
             if (issue.kind === "capability") addRegistrationIssue(issues, source.root, issue.kind, issue.name, issue.reason, undefined);
         }
-        for (const declaration of source.manifest?.capabilities ?? []) intents.push({ boardRoot: source.root, boardName, declaration });
+        for (const declaration of source.manifest?.capabilities ?? []) {
+            if (!declaration.methods || Object.values(declaration.methods).some((method) => method.kind === "open")) intents.push({ boardRoot: source.root, boardName, declaration });
+        }
     }
     return intents;
 }

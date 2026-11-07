@@ -1,4 +1,5 @@
 import { editorRegistry } from "./base/editorRegistry";
+import { PLATFORM_CAPABILITIES } from "../../shared/platform-capabilities";
 import { seedPlatformCapabilities } from "../api/capabilities";
 import type {
     EditorCapabilityDeclaration,
@@ -134,7 +135,6 @@ interface EditorRow {
     hasContentHost?: boolean;
     mcpHint?: string;
     folderIcon?: string;
-    capabilities?: readonly EditorCapabilityDeclaration[];
     /** Explicit acceptance override (monaco, file-diff). */
     accepts?: EditorDefinition["accepts"];
     load: () => Promise<EditorModule>;
@@ -156,17 +156,16 @@ const EDITORS: EditorRow[] = [
             if (input.mode === "view") return 10;
             return 50;
         },
-        capabilities: [{ id: "text.open" }],
         load: async () => (await import("./monaco")).monacoModule,
     },
-    { id: "grid-json", nameKey: "editors.gridJson", guidePath: "editors/grid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "grid" }], load: async () => (await import("./grid")).gridJsonModule },
+    { id: "grid-json", nameKey: "editors.gridJson", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
     { id: "grid-csv", nameKey: "editors.gridCsv", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
     { id: "grid-jsonl", nameKey: "editors.gridJsonl", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
-    { id: "log-view", nameKey: "editors.logView", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', capabilities: [{ id: "content.view", representation: "log" }], load: async () => (await import("./log-view")).logViewModule },
-    { id: "md-view", nameKey: "editors.preview", guidePath: "editors/markdown", hasContentHost: true, capabilities: [{ id: "content.view", representation: "markdown" }], load: async () => (await import("./markdown")).markdownModule },
-    { id: "svg-view", nameKey: "editors.preview", guidePath: "editors/svg", hasContentHost: true, capabilities: [{ id: "content.view", representation: "svg" }], load: async () => (await import("./svg")).svgModule },
-    { id: "html-view", nameKey: "editors.preview", guidePath: "editors/html", hasContentHost: true, capabilities: [{ id: "content.view", representation: "html" }], load: async () => (await import("./html")).htmlModule },
-    { id: "mermaid-view", nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, capabilities: [{ id: "content.view", representation: "mermaid" }], load: async () => (await import("./mermaid")).mermaidModule },
+    { id: "log-view", nameKey: "editors.logView", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
+    { id: "md-view", nameKey: "editors.preview", guidePath: "editors/markdown", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
+    { id: "svg-view", nameKey: "editors.preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
+    { id: "html-view", nameKey: "editors.preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
+    { id: "mermaid-view", nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
     { id: "link-view", nameKey: "editors.links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
     { id: "env-vars-view", nameKey: "editors.envVars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
     { id: "browser-view", nameKey: "editors.browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
@@ -224,7 +223,7 @@ for (const e of EDITORS) {
         hasContentHost: e.hasContentHost ?? false,
         mcpHint: e.mcpHint,
         folderIcon: e.folderIcon,
-        capabilities: e.capabilities,
+        capabilities: PLATFORM_CAPABILITIES.filter((item) => item.editorId === e.id) as readonly EditorCapabilityDeclaration[],
         accepts: e.accepts ?? (match ? makeAccepts(match) : () => -1),
         match,
         loadModule: e.load,

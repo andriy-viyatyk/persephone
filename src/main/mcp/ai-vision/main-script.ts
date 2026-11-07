@@ -8,6 +8,7 @@ import { downloadService } from "../../download-service";
 import { openWindows } from "../../open-windows";
 import { publishedBoardsService } from "../../published-boards-service";
 import { torService } from "../../tor-service";
+import { capabilityRouter } from "../../capability-router";
 
 export const MAIN_SCRIPT_TIMEOUT_MS = 10_000;
 
@@ -129,6 +130,7 @@ function createScope(consoleLogs: MainConsoleLogEntry[]): Record<string, unknown
         publishedBoardsService,
         boardProtocol,
         networkLogger,
+        capabilityRouter,
         console: createConsole(consoleLogs),
     };
 }

@@ -243,6 +243,9 @@ export async function installVersion(
             installedAt: Date.now(),
         });
         invalidateBoardDisplayText(root);
+        await boardTrust.refreshPermissionSnapshot();
+        const { customEditorRegistry } = await import("../editors/board/custom-editor-registry");
+        await customEditorRegistry.refresh();
         return root;
     } finally {
         // Reap any staging dir left behind (failed/aborted swap; a successful swap already

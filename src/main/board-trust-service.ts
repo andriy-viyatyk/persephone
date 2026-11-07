@@ -4,6 +4,7 @@ import path from "node:path";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
 import type { BoardServiceTrustSnapshot, TrustedBoardSnapshotEntry } from "../ipc/module-service-channels";
 import { BOARD_BRIDGE_VERSION } from "../shared/board-bridge-version";
+import { mergeCapabilityDeclarations, normalizeCapabilityDeclarations } from "../shared/capability-contract";
 import { OwnershipRegistry } from "../shared/ownership-registry";
 import {
     BOARD_MANIFEST_FILE,
@@ -32,6 +33,7 @@ interface BoardManifestData {
     browserUrlMasks?: unknown;
     minBridgeVersion?: unknown;
     serviceInterfaces?: unknown;
+    capabilities?: unknown;
     uses?: unknown;
 }
 
@@ -461,8 +463,13 @@ class BoardTrustService {
             const callerId = author && name ? `${author}/${name}` : source.bundledId
                 ? `bundled:${source.bundledId}`
                 : `local:${createHash("sha256").update(normalizePathForCompare(source.root)).digest("hex")}`;
+            const compatible = getBoardCompatibility({
+                minBridgeVersion: source.manifest?.minBridgeVersion,
+                requiresMinBridgeVersion: normalizePermissions(source.manifest?.permissions).kind === "flags",
+            }, { bridgeVersion: BOARD_BRIDGE_VERSION }).compatible;
             boards.push({
                 boardRoot: source.root,
+                capabilities: compatible ? mergeCapabilityDeclarations(normalizeCapabilityDeclarations(source.manifest?.capabilities, undefined, { service: source.manifest?.service, permissions: source.manifest?.permissions }), manifestInterfaces) : [],
                 canStartService: granted.kind === "legacy" ? granted.service : granted.flags.service,
                 permissions: granted,
                 manifestPermissions: normalizePermissions(source.manifest?.permissions),

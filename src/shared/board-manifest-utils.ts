@@ -1,18 +1,20 @@
 import { normalizeBoardRelativePath } from "./guides/mounted-source";
+import { MAX_CAPABILITY_DECLARATIONS, MAX_CAPABILITY_ID_LENGTH, MAX_CAPABILITY_TITLE_LENGTH } from "./capability-limits";
 
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
 
 export const PLATFORM_SERVICE_INTERFACE_IDS = new Set(["agent.session", "speech.transcribe", "speech.synthesize", "speech.wake", "text.translate"]);
-export const MAX_SERVICE_INTERFACE_DECLARATIONS = 32;
-export const MAX_SERVICE_INTERFACE_ID_LENGTH = 160;
-export const MAX_SERVICE_INTERFACE_TITLE_LENGTH = 120;
+export const MAX_SERVICE_INTERFACE_DECLARATIONS = MAX_CAPABILITY_DECLARATIONS;
+export const MAX_SERVICE_INTERFACE_ID_LENGTH = MAX_CAPABILITY_ID_LENGTH;
+export const MAX_SERVICE_INTERFACE_TITLE_LENGTH = MAX_CAPABILITY_TITLE_LENGTH;
 
-export interface BoardServiceInterfaceDeclaration { id: string; version: number; title?: string }
+export interface BoardServiceInterfaceDeclaration { id: string; version: number; title?: string; openTypes?: string[] }
 export interface BoardServiceUseDeclaration { id: string; version: number }
 
-function validServiceInterfaceId(id: string): boolean {
+function validServiceInterfaceId(id: string, provider: boolean): boolean {
     if (id.length > MAX_SERVICE_INTERFACE_ID_LENGTH || /\s/.test(id)) return false;
     if (PLATFORM_SERVICE_INTERFACE_IDS.has(id)) return true;
+    if (!provider && /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(id)) return true;
     const parts = id.split("/");
     return parts.length === 2 && parts.every((part) => part.length > 0 && !/\s/.test(part));
 }
@@ -34,8 +36,10 @@ function normalizeServiceDeclarations(raw: unknown, provider: boolean, issue?: (
         const candidate = entry as Record<string, unknown>;
         const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
         const version = candidate.version;
-        if (!id || !validServiceInterfaceId(id)) {
-            issue?.(id || "service interface", "id must be a reserved platform id or author/name with two non-empty whitespace-free segments");
+        if (!id || !validServiceInterfaceId(id, provider)) {
+            issue?.(id || "service interface", provider
+                ? "id must be a reserved platform id or author/name with two non-empty whitespace-free segments"
+                : "id must be a dot-separated capability id or author/name with two non-empty whitespace-free segments");
             continue;
         }
         if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
@@ -53,7 +57,8 @@ function normalizeServiceDeclarations(raw: unknown, provider: boolean, issue?: (
         const key = `${id}\u0000${version}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        result.push(provider ? { id, version, ...(title ? { title } : {}) } : { id, version });
+        const openTypes = provider ? normalizeStringList(candidate.openTypes, { map: (value) => value }) : [];
+        result.push(provider ? { id, version, ...(title ? { title } : {}), ...(openTypes.length ? { openTypes } : {}) } : { id, version });
         if (result.length >= MAX_SERVICE_INTERFACE_DECLARATIONS) break;
     }
     return result.sort((left, right) => left.id.localeCompare(right.id) || left.version - right.version);

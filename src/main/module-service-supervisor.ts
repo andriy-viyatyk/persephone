@@ -10,6 +10,7 @@ import {
     utilityProcess,
 } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
+import { capabilityRegistry } from "./capability-registry";
 import { BoardServiceSettingsChannel, type BoardServiceSettingsReply, type BoardServiceSettingsRequest } from "../ipc/board-service-settings-channels";
 import { guardedIpcOn } from "./ipc-sender-guard";
 import {
@@ -48,6 +49,8 @@ import { RestartBudget, RESTART_BUDGET } from "./module-service-restart-budget";
 import { Handshake, routeProcessMessage } from "./module-service-handshake";
 import { failLease, transferRendererLease, type LeaseCallbacks } from "./module-service-leases";
 import { issuePrivateMcpEndpoint, revokePrivateMcpEndpointForBoard, revokePrivateMcpEndpointsForBoard } from "./mcp/private-session-endpoints";
+import { createCapabilityChannel } from "./capability-channel";
+import type { CapabilityCallerIdentity } from "../shared/capability-contract";
 
 function normalizeRoot(boardRoot: string): string {
     const normalized = path.resolve(boardRoot).replace(/\\/g, "/").replace(/\/+$/, "");
@@ -71,6 +74,9 @@ const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; ver
 
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
+    private readonly capabilityRequests = new Map<string, { record: ServiceRecord; process?: UtilityProcess; generation?: number; reject: (error: unknown) => void; resolve: (value: unknown) => void }>();
+    private readonly capabilityChannels = new Map<string, { record: ServiceRecord; consumer: string; close: (reason: { code: string; message: string }) => void }>();
+    private readonly serviceOwnerClosures = new Map<string, Set<() => void>>();
     private readonly leaseCallbacks: LeaseCallbacks = {
         getProcess: (record) => record.process,
         postMessage: (process, message, ports) => process.postMessage(message, ports),
@@ -147,6 +153,7 @@ class ModuleServiceSupervisor {
 
     async applyBoardServiceTrustSnapshot(snapshot: BoardServiceTrustSnapshot): Promise<void> {
         if (this.disposing) return;
+        capabilityRegistry.replace(snapshot);
         const previousSnapshot = this.trustedSnapshot;
         const previouslyUntrusted = new Set(
             [...this.records.values()]
@@ -280,6 +287,17 @@ class ModuleServiceSupervisor {
         return record ? this.statusOf(record) : undefined;
     }
 
+    trackServiceOwner(boardRoot: string, onClosed: () => void): () => void {
+        const key = normalizeRoot(boardRoot);
+        const closures = this.serviceOwnerClosures.get(key) ?? new Set<() => void>();
+        closures.add(onClosed);
+        this.serviceOwnerClosures.set(key, closures);
+        return () => {
+            closures.delete(onClosed);
+            if (closures.size === 0) this.serviceOwnerClosures.delete(key);
+        };
+    }
+
     getStatuses(): BoardServiceStatus[] {
         return [...this.records.values()].map((record) => this.statusOf(record));
     }
@@ -364,6 +382,48 @@ class ModuleServiceSupervisor {
                 record.requests.delete(requestId);
                 reject(new ServiceError("service-exited", errMessage(error)));
             }
+        });
+    }
+
+    async callCapability(boardRoot: string, message: Extract<ServiceParentMessage, { kind: "capability-call" }>, signal: AbortSignal, reauthorize: () => void): Promise<unknown> {
+        await this.awaitTrustReady();
+        reauthorize();
+        const record = this.requireRecord(boardRoot);
+        if (record.pendingRequestSlots + record.requests.size >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) throw new ServiceError("busy");
+        if (signal.aborted) throw signal.reason;
+        record.pendingRequestSlots++;
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (error?: unknown, result?: unknown) => {
+                if (settled) return;
+                settled = true;
+                signal.removeEventListener("abort", abort);
+                this.capabilityRequests.delete(message.requestId);
+                record.pendingRequestSlots--;
+                if (error !== undefined) reject(error); else resolve(result);
+            };
+            const pending = { record, process: undefined as UtilityProcess | undefined, generation: undefined as number | undefined,
+                reject: (error: unknown) => finish(error), resolve: (result: unknown) => finish(undefined, result) };
+            const abort = () => {
+                if (pending.process && isCurrent(record, pending.process, pending.generation!)) {
+                    const reason = (signal.reason as { code?: string } | undefined)?.code;
+                    try { pending.process.postMessage({ kind: "capability-cancel", requestId: message.requestId, reason: reason === "timeout" || reason === "untrusted" ? reason : "cancelled" } satisfies ServiceParentMessage); } catch { /* Service exited. */ }
+                }
+                finish(signal.reason ?? new ServiceError("cancelled"));
+            };
+            this.capabilityRequests.set(message.requestId, pending);
+            signal.addEventListener("abort", abort, { once: true });
+            void (async () => {
+                try {
+                    await this.start(boardRoot, "request");
+                    if (settled) return;
+                    reauthorize();
+                    if (!record.process || record.state !== "running") throw new ServiceError("handler-closed");
+                    pending.process = record.process;
+                    pending.generation = record.generation;
+                    record.process.postMessage(message);
+                } catch (error) { finish(error); }
+            })();
         });
     }
 
@@ -636,6 +696,45 @@ class ModuleServiceSupervisor {
     private detachBoardSettingsPending(pending: { lifecycleListeners: Array<() => void> }): void {
         for (const dispose of pending.lifecycleListeners) dispose();
         pending.lifecycleListeners = [];
+    }
+
+    async openCapabilityChannel(boardRoot: string, consumer: string, consumerServiceRoot: string | undefined, openMessage: unknown,
+        info: { interface: { id: string; version: number }; caller: CapabilityCallerIdentity }, signal: AbortSignal,
+        reauthorize: () => void) {
+        await this.awaitTrustReady();
+        if (signal.aborted) throw signal.reason;
+        reauthorize();
+        const record = this.requireRecord(boardRoot);
+        if (consumerServiceRoot) consumer = `service:${normalizeRoot(consumerServiceRoot)}`;
+        const consumerCount = [...this.capabilityChannels.values()].filter((item) => item.consumer === consumer).length;
+        const serviceCount = [...this.capabilityChannels.values()].filter((item) => item.record === record).length;
+        if (consumerCount >= MAX_SERVICE_CHANNELS_PER_BOARD || serviceCount + record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) throw new ServiceError("busy");
+        const channelId = crypto.randomUUID();
+        let channel: ReturnType<typeof createCapabilityChannel> | undefined;
+        let cancelStartup: ((error: unknown) => void) | undefined;
+        const abort = () => {
+            const error = signal.reason ?? new ServiceError("cancelled");
+            if (channel) channel.close({ code: (error as { code?: string }).code ?? "cancelled", message: errMessage(error) });
+            else cancelStartup?.(error);
+        };
+        const cleanup = () => { this.capabilityChannels.delete(channelId); signal.removeEventListener("abort", abort); };
+        this.capabilityChannels.set(channelId, { record, consumer, close: (reason) => {
+            if (channel) channel.close(reason); else cancelStartup?.(new ServiceError(reason.code, reason.message));
+        } });
+        signal.addEventListener("abort", abort, { once: true });
+        try {
+            await Promise.race([this.start(boardRoot, "request"), new Promise<never>((_resolve, reject) => { cancelStartup = reject; if (signal.aborted) abort(); })]);
+            if (signal.aborted) throw signal.reason;
+            reauthorize();
+            if (!record.process || record.state !== "running") throw new ServiceError("handler-closed");
+            const { port1, port2 } = new MessageChannelMain();
+            channel = createCapabilityChannel(port1, cleanup);
+            try {
+                record.process.postMessage({ kind: "channel-open", channelId, boardId: consumer, generation: record.generation,
+                    openMessage, info: { page: { boardId: consumer }, ...info } } satisfies ServiceParentMessage, [port2]);
+            } catch (error) { channel.close({ code: "handler-closed", message: "Channel delivery failed." }); port2.close(); throw error; }
+            return channel;
+        } catch (error) { cleanup(); throw error; }
     }
 
     async transferRendererPort(boardRoot: string, target: WebContents): Promise<void> {
@@ -1014,6 +1113,19 @@ class ModuleServiceSupervisor {
             record.cancelAttempt = (error: ServiceError) => fail(error, false);
 
             process.on("message", (rawMessage: unknown) => {
+                const capabilityMessage = rawMessage as Extract<import("../ipc/module-service-channels").ServiceMainMessage, { kind: "capability-result" }>;
+                if (capabilityMessage?.kind === "capability-result") {
+                    const pending = this.capabilityRequests.get(capabilityMessage.requestId);
+                    if (pending?.record === record && pending.process === process && pending.generation === generation && isCurrent(record, process, generation)) {
+                        if ("error" in capabilityMessage) {
+                            const error = capabilityMessage.error;
+                            if (!error || typeof error.code !== "string" || typeof error.message !== "string") pending.reject(new ServiceError("rejected"));
+                            else pending.reject(new ServiceError(error.code, error.message));
+                        }
+                        else pending.resolve(capabilityMessage.result);
+                    }
+                    return;
+                }
                 routeProcessMessage(record, process, generation, rawMessage, handshake, {
                     isTrusted: (boardRoot) => this.isEffectivelyTrusted(boardRoot),
                     onStorageRequest: (message) => record.storageAdapter?.handle(message),
@@ -1096,6 +1208,8 @@ class ModuleServiceSupervisor {
                     ]),
                 ) as ServiceHostConfig["providerRequestClasses"];
                 const config: ServiceHostConfig = {
+                    capabilityCalls: (this.trustedSnapshot?.boards.find((board) => normalizeRoot(board.boardRoot) === record.key)?.capabilities ?? []).flatMap((declaration) =>
+                        Object.entries(declaration.methods ?? {}).filter(([, method]) => method.kind === "call").map(([method]) => ({ id: declaration.id, version: declaration.version ?? 1, method }))),
                     serviceRequestDeadlineMs: SERVICE_REQUEST_DEADLINE_MS,
                     maxOutstandingRequestsPerService: MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
                     maxBufferedPipeBytes: MAX_BUFFERED_PIPE_BYTES,
@@ -1252,6 +1366,9 @@ class ModuleServiceSupervisor {
     }
 
     private rejectRequests(record: ServiceRecord, code: string): void {
+        for (const pending of this.capabilityRequests.values()) {
+            if (pending.record === record) pending.reject(new ServiceError(code === "untrusted" ? "untrusted" : code === "service-exited" ? "crashed" : "handler-closed"));
+        }
         for (const [requestId, request] of record.requests) {
             clearTimeout(request.timer);
             request.reject(new ServiceError(code));
@@ -1270,6 +1387,11 @@ class ModuleServiceSupervisor {
     }
 
     private closeRecordChannels(record: ServiceRecord, reason: { code: string; message: string }): void {
+        for (const closeOwner of this.serviceOwnerClosures.get(record.key) ?? []) closeOwner();
+        this.serviceOwnerClosures.delete(record.key);
+        for (const channel of this.capabilityChannels.values()) {
+            if (channel.record === record || channel.consumer === `service:${record.key}`) channel.close(reason);
+        }
         for (const [channelId] of record.channels) {
             try { record.process?.postMessage({ kind: "channel-close", channelId, reason } satisfies ServiceParentMessage); } catch { /* exiting */ }
         }

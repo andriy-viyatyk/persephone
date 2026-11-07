@@ -16,6 +16,8 @@ import { versionService } from "../../main/version-service";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
+import { capabilityRegistry } from "../../main/capability-registry";
+import { capabilityRouter } from "../../main/capability-router";
 import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { getPrivateMcpClientCount } from "../../main/mcp/private-session-endpoints";
@@ -45,6 +47,16 @@ let siteExtensionRuntime: string | null = null;
 const voiceAssistantPauseSenders = new WeakSet<Electron.WebContents>();
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
+    getCapabilityIndex = async (event: IpcMainEvent) => {
+        if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) throw new Error("permission-denied");
+        return capabilityRegistry.snapshot();
+    }
+
+    setCapabilityPreferences = async (event: IpcMainEvent, preferences: Record<string, string>): Promise<void> => {
+        if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) throw new Error("permission-denied");
+        if (!preferences || typeof preferences !== "object" || Array.isArray(preferences) || Object.values(preferences).some((value) => typeof value !== "string")) throw new Error("Invalid capability preferences.");
+        capabilityRouter.setPreferences(preferences);
+    }
     getAppRootPath = async (_event: IpcMainEvent): Promise<string> => {
         return getAppRootPath();
     }
@@ -251,7 +263,9 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
 
     windowReady = async (event: IpcMainEvent): Promise<void> => {
         const window = BrowserWindow.fromWebContents(event.sender);
-        return windowReady(window);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        await windowReady(window);
+        event.sender.send(EventEndpoint.eCapabilityIndexSnapshot, capabilityRegistry.snapshot());
     }
 
     voiceAssistantGetOwner = async (event: IpcMainEvent) => {
@@ -656,6 +670,8 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
     bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
     bindEndpoint(Endpoint.setMainScriptsEnabled, controllerInstance.setMainScriptsEnabled);
+    bindEndpoint(Endpoint.getCapabilityIndex, controllerInstance.getCapabilityIndex);
+    bindEndpoint(Endpoint.setCapabilityPreferences, controllerInstance.setCapabilityPreferences);
     bindEndpoint(Endpoint.setWindowsSsoEnabled, controllerInstance.setWindowsSsoEnabled);
     bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
     bindEndpoint(Endpoint.setMnemeEnabled, controllerInstance.setMnemeEnabled);

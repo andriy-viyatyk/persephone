@@ -307,6 +307,10 @@ class ApiCalls implements Api {
     setMainScriptsEnabled = async (enabled: boolean) => {
         return executeOnce<void>(Endpoint.setMainScriptsEnabled, enabled);
     }
+    getCapabilityIndex = async () => executeOnce<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(Endpoint.getCapabilityIndex);
+    setCapabilityPreferences = async (preferences: Record<string, string>) => executeOnce<void>(Endpoint.setCapabilityPreferences, preferences);
+    onCapabilityIndexSnapshot = (callback: (snapshot: ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>) => void) => window.electron.ipcRenderer.on(EventEndpoint.eCapabilityIndexSnapshot, callback as (...args: unknown[]) => void);
+    onCapabilityIndexChanged = (callback: (revision: number) => void) => window.electron.ipcRenderer.on(EventEndpoint.eCapabilityIndexChanged, callback as (...args: unknown[]) => void);
 
     setWindowsSsoEnabled = async (enabled: boolean) => {
         return executeOnce<void>(Endpoint.setWindowsSsoEnabled, enabled);

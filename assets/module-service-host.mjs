@@ -207,8 +207,11 @@ async function issueSessionEndpoint() {
 const providers = new Map();
 const rendererLeases = new Map();
 let serviceEntryLoaded = false;
+let capabilityStartupComplete = false;
 let serviceRequestHandler;
 let serviceChannelHandler;
+const capabilityHandlers = new Map();
+const capabilityRequests = new Map();
 const serviceChannels = new Map();
 const shutdownHandlers = [];
 let initNonce;
@@ -321,6 +324,19 @@ persephone.storage = {
     keys: () => storageRequest("keys", []),
 };
 persephone.providers = { register: registerProvider };
+persephone.capabilities = {
+    handle(id, method, handler) {
+        if (capabilityStartupComplete) throw new Error("Capability handlers must be registered before the service entry module finishes startup.");
+        if (typeof handler !== "function") throw new TypeError("Capability handler must be a function.");
+        if (!hostConfig.capabilityCalls.some((entry) => entry.id === id && entry.method === method)) {
+            throw new Error("Capability call method is not declared.");
+        }
+        const key = JSON.stringify([id, method]);
+        if (capabilityHandlers.has(key)) throw new Error("Capability handler is already registered.");
+        capabilityHandlers.set(key, handler);
+        return () => { if (capabilityHandlers.get(key) === handler) capabilityHandlers.delete(key); };
+    },
+};
 globalThis.persephone = persephone;
 
 function validProviderRequest(message) {
@@ -718,6 +734,38 @@ async function runServiceRequest(message) {
     }
 }
 
+async function runCapabilityCall(message) {
+    const { requestId, id, version, method } = message;
+    if (typeof requestId !== "string" || capabilityRequests.has(requestId)) return;
+    const declared = hostConfig.capabilityCalls.some((entry) => entry.id === id && entry.version === version && entry.method === method);
+    const handler = declared && capabilityHandlers.get(JSON.stringify([id, method]));
+    if (!handler) {
+        parentPort.postMessage({ kind: "capability-result", requestId, error: { code: "no-handler", message: "Capability handler is not registered." } });
+        return;
+    }
+    const controller = new AbortController();
+    capabilityRequests.set(requestId, controller);
+    try {
+        const result = await handler(message.args, {
+            signal: controller.signal,
+            caller: message.caller,
+            requestId: message.context?.requestId,
+            chain: message.context?.chain,
+            depth: message.context?.depth,
+            originatingWindowId: message.context?.originatingWindowId,
+        });
+        if (capabilityRequests.get(requestId) === controller) parentPort.postMessage({ kind: "capability-result", requestId, result });
+    } catch (error) {
+        if (capabilityRequests.get(requestId) === controller) {
+            const codes = ["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"];
+            const code = codes.includes(error?.code) ? error.code : "rejected";
+            try { parentPort.postMessage({ kind: "capability-result", requestId, error: { code, message: code === "rejected" ? "Capability handler rejected the request." : errorMessage(error, code) } }); } catch { /* Parent exited. */ }
+        }
+    } finally {
+        if (capabilityRequests.get(requestId) === controller) capabilityRequests.delete(requestId);
+    }
+}
+
 async function runShutdown(message) {
     if (shutdownStarted) return;
     shutdownStarted = true;
@@ -853,7 +901,9 @@ function validateHostConfig(config) {
         || !Number.isInteger(config.maxServiceChannelInFlight) || config.maxServiceChannelInFlight <= 0
         || !Number.isInteger(config.maxServiceChannelMessageBytes) || config.maxServiceChannelMessageBytes <= 0
         || !Number.isInteger(config.serviceChannelAckBatch) || config.serviceChannelAckBatch <= 0
-        || !isRecord(config.providerRequestClasses)) return false;
+        || !isRecord(config.providerRequestClasses)
+        || !Array.isArray(config.capabilityCalls)
+        || !config.capabilityCalls.every((entry) => isRecord(entry) && typeof entry.id === "string" && Number.isSafeInteger(entry.version) && typeof entry.method === "string")) return false;
     const entries = Object.entries(config.providerRequestClasses);
     return entries.length > 0 && entries.every(([, requestClass]) =>
         requestClass === "content-read" || requestClass === "control",
@@ -957,6 +1007,15 @@ function forwardEntryEvent(event, message) {
 originalPortMethods.on("message", (event) => {
     const message = eventData(event);
     if (!isRecord(message)) return;
+    if (message.kind === "capability-call") {
+        void runCapabilityCall(message);
+        return;
+    }
+    if (message.kind === "capability-cancel") {
+        const controller = capabilityRequests.get(message.requestId);
+        if (controller) { capabilityRequests.delete(message.requestId); controller.abort(message.reason); }
+        return;
+    }
     if (message.kind === "locale-changed") {
         if (typeof message.locale === "string") process.env.PERSEPHONE_LOCALE = message.locale;
         return;
@@ -1081,6 +1140,8 @@ persephone.service = {
 persephone.mcp = { issueSessionEndpoint };
 
 process.on("exit", () => {
+    for (const controller of capabilityRequests.values()) controller.abort();
+    capabilityRequests.clear();
     for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
     for (const request of storagePending.values()) clearTimeout(request.timer);
     storagePending.clear();
@@ -1095,7 +1156,9 @@ process.on("exit", () => {
 });
 
 try {
+    await configReady;
     await import(pathToFileURL(serviceEntry).href);
+    capabilityStartupComplete = true;
     serviceEntryLoaded = true;
     importSettled = true;
     protocolMode = rawProtocolDetected ? "raw" : "host";

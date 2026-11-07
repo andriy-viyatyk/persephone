@@ -1,7 +1,5 @@
-export const MAX_INTENT_PAYLOAD_BYTES = 8 * 1024 * 1024;
-export const MAX_INTENT_DEPTH = 8;
-export const INTENT_DEADLINE_MS = 10_000;
-export const MAX_OUTSTANDING_INTENTS_PER_HANDLER = 32;
+export { MAX_INTENT_PAYLOAD_BYTES, MAX_INTENT_DEPTH, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
+export { CAPABILITY_DEFAULT_TIMEOUT_MS as INTENT_DEADLINE_MS } from "../shared/capability-limits";
 
 export const CAPABILITY_ERROR_CODES = [
     "no-handler", "untrusted", "handler-closed", "crashed", "cancelled",
@@ -56,6 +54,17 @@ export interface IntentRequest extends IntentEnvelope {
     chain: string[];
     depth: number;
     deadlineAt: number;
+}
+
+export interface BoundOpenDispatch {
+    registration: CapabilityRegistration;
+    request: IntentRequest;
+}
+
+export interface BoundOpenSettlement {
+    requestId: string;
+    result?: unknown;
+    error?: { code: string; message: string };
 }
 
 export interface IntentSettlement {

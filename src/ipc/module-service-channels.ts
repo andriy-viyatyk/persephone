@@ -6,22 +6,20 @@
  */
 
 import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration, NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+import type { BoardCapabilityDeclaration, CapabilityCallerIdentity, CapabilityErrorCode, CapabilityJson } from "../shared/capability-contract";
+import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
 
 export const SERVICE_HANDSHAKE_TIMEOUT_MS = 5000;
 export const SERVICE_SHUTDOWN_TIMEOUT_MS = 2000;
 export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
-export const MAX_OUTSTANDING_REQUESTS_PER_SERVICE = 32;
-export const SERVICE_REQUEST_DEADLINE_MS = 10_000;
-export const MAX_SERVICE_CHANNELS_PER_BOARD = 16;
-export const MAX_SERVICE_CHANNELS_PER_SERVICE = 128;
-export const MAX_SERVICE_CHANNEL_IN_FLIGHT = 256;
-export const MAX_SERVICE_CHANNEL_MESSAGE_BYTES = 1024 * 1024;
+export { MAX_OUTSTANDING_REQUESTS_PER_SERVICE, MAX_SERVICE_CHANNELS_PER_BOARD, MAX_SERVICE_CHANNELS_PER_SERVICE, MAX_SERVICE_CHANNEL_IN_FLIGHT, MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../shared/capability-limits";
+export const SERVICE_REQUEST_DEADLINE_MS = CAPABILITY_DEFAULT_TIMEOUT_MS;
 export const SERVICE_CHANNEL_ACK_BATCH = 32;
 /** Tail-ack delay: each port message is its own task, so a microtask would ack every message. */
 export const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
 /** How long an opened channel waits for its port to reach the board frame. */
-export const SERVICE_CHANNEL_OPEN_TIMEOUT_MS = 10_000;
+export { CAPABILITY_DEFAULT_TIMEOUT_MS as SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../shared/capability-limits";
 
 export interface ServiceChannelCloseReason { code: string; message: string }
 export type ServiceChannelWireMessage =
@@ -66,6 +64,7 @@ export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
 export interface ServiceErrorPayload { code: string; message: string }
 export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };
 export interface ServiceHostConfig {
+    capabilityCalls: Array<{ id: string; version: number; method: string }>;
     serviceRequestDeadlineMs: number;
     maxOutstandingRequestsPerService: number;
     maxBufferedPipeBytes: number;
@@ -74,6 +73,13 @@ export interface ServiceHostConfig {
     maxServiceChannelMessageBytes: number;
     serviceChannelAckBatch: number;
     providerRequestClasses: Record<ProviderOperation, "content-read" | "control">;
+}
+
+export interface CapabilityInvocationWireContext {
+    requestId: string;
+    chain: string[];
+    depth: number;
+    originatingWindowId?: number;
 }
 
 export interface BoardServiceStatus {
@@ -92,6 +98,7 @@ export interface StartResult {
 }
 
 export interface TrustedBoardSnapshotEntry {
+    capabilities?: BoardCapabilityDeclaration[];
     boardRoot: string;
     /** Normalized board-relative ESM entry from the US-1466 manifest contract. */
     service?: string;
@@ -118,6 +125,8 @@ export type ServiceParentMessage =
     | { kind: "probe"; nonce: number }
     | { kind: "locale-changed"; locale: string }
     | { kind: "request"; requestId: string; message: unknown }
+    | { kind: "capability-call"; requestId: string; id: string; version: number; method: string; args: CapabilityJson[]; caller: CapabilityCallerIdentity; deadlineAt: number; context: CapabilityInvocationWireContext }
+    | { kind: "capability-cancel"; requestId: string; reason: "timeout" | "cancelled" | "untrusted" }
     | {
         /** The transferred MessagePortMain arrives in `event.ports[0]`, NOT in this body —
          *  a port is not structured-cloneable as a message value. */
@@ -142,6 +151,8 @@ export type ServiceMainMessage =
     | { kind: "renderer-attached"; generation: number; leaseNonce: string }
     | { kind: "response"; requestId: string; result: unknown }
     | { kind: "response"; requestId: string; error: ServiceErrorPayload | string }
+    | { kind: "capability-result"; requestId: string; result: CapabilityJson }
+    | { kind: "capability-result"; requestId: string; error: { code: CapabilityErrorCode; message: string } }
     | {
         kind: "storage-request";
         requestId: string;

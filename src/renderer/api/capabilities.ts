@@ -1,5 +1,7 @@
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
+import { PLATFORM_CAPABILITIES } from "../../shared/platform-capabilities";
+import { validateLegacyCapabilityDeclaration } from "../../shared/capability-contract";
 import type {
     CapabilityHandlerFilter,
     CapabilityId,
@@ -20,10 +22,14 @@ import type {
     CapabilityOutcome,
     CapabilityOrigin,
     CapabilityRegistration,
+    BoundOpenDispatch,
+    BoundOpenSettlement,
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError, capabilityBus } from "./capability-bus";
 import { validateCertificateViewPayload } from "./certificate-view";
 import { validateThemeEditPayload } from "./theme-edit";
+import { EventEndpoint } from "../../ipc/api-types";
+import { boardCapabilityTransport } from "./board-capability-transport";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
@@ -136,8 +142,8 @@ export function seedPlatformCapabilities(): void {
             builtinHandlers.set(definition.id, handlers);
             addCandidate({
                 id: declaration.id,
-                version: 1,
-                priority: 50,
+                version: PLATFORM_CAPABILITIES.find((item) => item.editorId === definition.id && item.id === declaration.id)?.version ?? 1,
+                priority: PLATFORM_CAPABILITIES.find((item) => item.editorId === definition.id && item.id === declaration.id)?.priority ?? 50,
                 origin: "platform",
                 handlerKey: definition.id,
                 ...(declaration.representation !== undefined
@@ -149,32 +155,13 @@ export function seedPlatformCapabilities(): void {
     platformCandidatesSeeded = true;
 }
 
-function validateCapabilityId(id: string): string | undefined {
-    if (!id) return "Capability id must not be empty.";
-    if (/\s/.test(id)) return `Capability id "${id}" must not contain whitespace.`;
-    if (id.includes("@")) return `Capability id "${id}" must not contain "@".`;
-    return undefined;
-}
-
 function registrationFromDeclaration(
     declaration: BoardCapabilityDeclaration,
     options: CapabilityRegistrationOptions,
 ): { registration?: CapabilityRegistration; reason?: string } {
     const id = declaration.id.trim();
-    const idReason = validateCapabilityId(id);
-    if (idReason) return { reason: idReason };
-    if (declaration.version !== undefined && !Number.isInteger(declaration.version)) {
-        return { reason: `Capability "${id}" version must be an integer.` };
-    }
-    if (id === "content.view" && (
-        typeof declaration.representation !== "string"
-        || !declaration.representation.trim()
-    )) {
-        return { reason: 'Capability "content.view" requires a non-empty string representation.' };
-    }
-    if (declaration.alwaysOpensNewPage !== undefined && typeof declaration.alwaysOpensNewPage !== "boolean") {
-        return { reason: `Capability "${id}" alwaysOpensNewPage must be a boolean.` };
-    }
+    const reason = validateLegacyCapabilityDeclaration(declaration);
+    if (reason) return { reason };
 
     return {
         registration: {
@@ -333,6 +320,41 @@ class Capabilities implements ICapabilities {
 }
 
 export const capabilities = new Capabilities();
+
+/** Accept only requests dispatched by main and settle them on the originating IPC channel. */
+export function registerBoundOpenDispatch(): void {
+    const active = new Map<string, CapabilityRegistration>();
+    window.electron.ipcRenderer.on(EventEndpoint.eCapabilityOpenCancel, (value: unknown) => {
+        if (typeof value !== "string") return;
+        const registration = active.get(value);
+        if (!registration) return;
+        active.delete(value);
+        if (registration.origin === "board") boardCapabilityTransport.cancel(registration, value);
+    });
+    window.electron.ipcRenderer.on(EventEndpoint.eCapabilityOpen, (value: unknown) => {
+        const { registration, request } = value as BoundOpenDispatch;
+        if (!registration || !request || active.has(request.requestId)) return;
+        active.set(request.requestId, registration);
+        void (async () => {
+            if (registration.id === "certificate.view") validateCertificateViewPayload(request.payload);
+            if (registration.id === "theme.edit") validateThemeEditPayload(request.payload);
+            if (registration.headless) throw noHandlerError(registration.id, registration.version);
+            if (registration.origin === "board") return await boardCapabilityTransport.dispatch(registration, request);
+            seedPlatformCapabilities();
+            const handler = builtinHandlers.get(registration.handlerKey)?.get(capabilityKey(registration.id, registration.representation));
+            if (!handler) throw noHandlerError(registration.id, registration.version);
+            const result = await handler(request.payload);
+            return { pageId: result.pageId, result: null };
+        })().then((result) => {
+            if (!active.delete(request.requestId)) return;
+            window.electron.ipcRenderer.sendMessage(EventEndpoint.eCapabilityOpenResult, { requestId: request.requestId, result } satisfies BoundOpenSettlement);
+        }, (error: unknown) => {
+            if (!active.delete(request.requestId)) return;
+            const code = error instanceof CapabilityError ? error.code : "rejected";
+            window.electron.ipcRenderer.sendMessage(EventEndpoint.eCapabilityOpenResult, { requestId: request.requestId, error: { code, message: errMessage(error) } } satisfies BoundOpenSettlement);
+        });
+    });
+}
 
 export type CapabilityInvocation =
     | { readonly origin: "board"; readonly value: CapabilityOutcome }

@@ -7,6 +7,7 @@ import {
 } from "../../../shared/guides/mounted-source";
 import { normalizeVersionRequirement, OBJECT_PERMISSION_BRIDGE_VERSION } from "../../../shared/version-utils";
 import { matchesBrowserUrlMask } from "../../../shared/browser-url-masks";
+import { normalizeCapabilityDeclarations, type CapabilityMethod } from "../../../shared/capability-contract";
 import { normalizeBoardLanguages, type BoardLanguages } from "../../../shared/i18n/board-pack";
 import {
     BOARD_MANIFEST_FILE,
@@ -78,6 +79,7 @@ export interface BoardCapabilityDeclaration {
     title?: string;
     headless?: boolean;
     alwaysOpensNewPage?: boolean;
+    methods?: Record<string, CapabilityMethod>;
 }
 
 export type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration };
@@ -588,54 +590,6 @@ export function normalizeContentProviders(raw: unknown): BoardContentProviderDec
     return out;
 }
 
-/** Normalize capability declaration shape while leaving registry validation to the consumer. */
-export function normalizeCapabilities(
-    raw: unknown,
-    reportIssue?: (id: string, reason: string) => void,
-): BoardCapabilityDeclaration[] {
-    if (!Array.isArray(raw)) return [];
-    const out: BoardCapabilityDeclaration[] = [];
-    for (const entry of raw) {
-        if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
-        const candidate = entry as {
-            id?: unknown;
-            representation?: unknown;
-            version?: unknown;
-            priority?: unknown;
-            accepts?: unknown;
-            payloadSchema?: unknown;
-            title?: unknown;
-            headless?: unknown;
-            alwaysOpensNewPage?: unknown;
-        };
-        const accepts = normalizeStringList(candidate.accepts, { map: (entry) => entry.trim() });
-        const declaration: BoardCapabilityDeclaration = {
-            id: typeof candidate.id === "string" ? candidate.id.trim() : "",
-            ...(typeof candidate.representation === "string"
-                ? { representation: candidate.representation.trim() }
-                : {}),
-            ...(typeof candidate.version === "number" ? { version: candidate.version } : {}),
-            ...(typeof candidate.priority === "number" ? { priority: candidate.priority } : {}),
-            ...(accepts.length > 0 ? { accepts } : {}),
-            ...("payloadSchema" in candidate ? { payloadSchema: candidate.payloadSchema } : {}),
-            ...(typeof candidate.title === "string" ? { title: candidate.title.trim() } : {}),
-            ...(typeof candidate.headless === "boolean" ? { headless: candidate.headless } : {}),
-            ...(typeof candidate.alwaysOpensNewPage === "boolean"
-                ? { alwaysOpensNewPage: candidate.alwaysOpensNewPage }
-                : {}),
-        };
-        if ("alwaysOpensNewPage" in candidate && typeof candidate.alwaysOpensNewPage !== "boolean") {
-            reportIssue?.(
-                declaration.id || "<empty id>",
-                `Capability "${declaration.id || "<empty id>"}" alwaysOpensNewPage must be a boolean.`,
-            );
-            continue;
-        }
-        out.push(declaration);
-    }
-    return out;
-}
-
 /** Normalize the board-relative service entry path, or return null for an unsafe declaration. */
 
 /**
@@ -958,9 +912,9 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
         normalized.contentProviders = normalizeContentProviders(source.contentProviders);
     }
     if (has("capabilities") && Array.isArray(source.capabilities)) {
-        normalized.capabilities = normalizeCapabilities(source.capabilities, (name, reason) => {
+        normalized.capabilities = normalizeCapabilityDeclarations(source.capabilities, (name, reason) => {
             issues.push({ kind: "capability", name, reason });
-        });
+        }, { service: source.service, permissions: source.permissions });
     }
     if (has("settings")) {
         const declarations = normalizeBoardSettings(raw, (name, reason) => {
