@@ -138,8 +138,10 @@ is repeated while active; revocation closes the stream. The audio window receive
 one-use, expiry- and frame-bound microphone and loopback permission grants from main. It never
 reuses or weakens the existing Transcript loopback grant.
 
-Device enumeration runs in the capture origin without arming a grant or opening a stream. Chromium
-may return an empty or limited list and empty labels; IDs can change and should be refreshed on demand.
+Device enumeration runs in the capture origin without opening a stream. The audio window serializes
+the request with stream requests, arms a temporary one-use microphone grant in main so Chromium can
+expose device IDs and labels, then clears that grant in `finally`. Chromium may still return an empty
+or limited list and empty labels; IDs can change and should be refreshed on demand.
 
 The normative payloads, timestamp and gate contract, permissions, caller shapes and resource limits
 are in the [audio capability guide](../../assets/guides/agents/audio.md). Echo cancellation follows

@@ -148,6 +148,7 @@ Boards may declare `minBridgeVersion`, an object-form `permissions` set, and a b
     "clipboardRead": false,
     "camera": false,
     "microphone": false,
+    "computerAudio": false,
     "geolocation": false,
     "notifications": false,
     "themes": false
@@ -181,7 +182,7 @@ The permission list in the trust dialog uses these meanings:
 | `appScripting` | Control Persephone, run app scripts, open and change pages, and use agent tools. **Full access.** |
 | `network: "internet"` / `"full"` | Connect to public internet services, or also this computer and your local network. `"full"` is **Full access**. |
 | `clipboardRead` | Read the contents of your clipboard. |
-| `camera`, `microphone`, `geolocation` | Use your camera or microphone, or read this device's location. |
+| `camera`, `microphone`, `computerAudio`, `geolocation` | Use your camera or microphone, capture audio playing on your computer, or read this device's location. Computer audio capture is available on Windows. |
 | `notifications` | Show desktop notifications. |
 | `themes` | Create, change, delete, and apply app themes. This does not grant `appScripting`. |
 
@@ -241,7 +242,10 @@ For a streaming coding-agent provider and consumer protocol over this channel, s
 [`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`). The
 Agent Chat board uses this platform contract for its coding-agent sessions.
 
-`agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
+`audio`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
+For shared microphone and computer audio capture or PCM playback, see the normative
+[`audio@1` contract](./agents/audio.md) (`guides.agents["audio"]`). A consumer declares `audio@1`
+in `uses` and requests the matching `microphone` or `computerAudio` permission for capture.
 For recording audio and getting text back from an installed speech-to-text board, see the normative
 [`speech.transcribe` v1 contract](./agents/speech-transcribe.md) (`guides.agents["speech-transcribe"]`).
 The **Speech to Text** catalog board in `persephone-boards` provides this service. When a provider is

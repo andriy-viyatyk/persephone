@@ -143,11 +143,12 @@ class AudioService {
             if (invocation.signal.aborted) throw invocation.signal.reason ?? capabilityError("cancelled");
             if (opened.generation !== this.generation || opened.window.isDestroyed()) throw capabilityError("handler-closed");
             authorize();
-            requestId = crypto.randomUUID();
+            const currentRequestId = crypto.randomUUID();
+            requestId = currentRequestId;
             const response = new Promise<AudioDevice[]>((resolve, reject) => {
-                this.deviceRequests.set(requestId!, { generation: opened.generation, resolve, reject });
+                this.deviceRequests.set(currentRequestId, { generation: opened.generation, resolve, reject });
             });
-            const message: AudioDevicesRequest = { requestId, epoch: this.epoch };
+            const message: AudioDevicesRequest = { requestId: currentRequestId, epoch: this.epoch };
             opened.window.webContents.send(AUDIO_DEVICES_REQUEST, message);
             const devices = await withAbort(response, invocation.signal);
             authorize();
@@ -200,8 +201,8 @@ class AudioService {
 
         const channelId = crypto.randomUUID();
         const { port1: consumerPort, port2: audioPort } = new MessageChannelMain();
-        let readyResolve!: () => void;
-        let readyReject!: (error: unknown) => void;
+        let readyResolve: () => void = () => undefined;
+        let readyReject: (error: unknown) => void = () => undefined;
         const ready = new Promise<void>((resolve, reject) => { readyResolve = resolve; readyReject = reject; });
         const record: ChannelRecord = {
             id: channelId, bound, source: captureSource, method, owner, invocation, controller: invocation.controller,

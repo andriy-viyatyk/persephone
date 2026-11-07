@@ -1,3 +1,17 @@
+## EPIC-139 — Voice assistant: talk to an agent by name
+
+Completed 2026-11-07. Say an enrolled name, hear a chime, speak a request: Agent Chat sends it to
+the session marked as the wake session, and the agent answers aloud through the Text to Speech
+board's `speak()`. Persephone stays a platform (audio service, capabilities); the assistant
+itself lives in persephone-boards. Epic document: [EPIC-139](EPIC-139.md).
+
+- [x] **Research (US-1783, US-1789).** Wake and stop words enrolled in the user's own voice (speech embeddings + template matching, Apache-2.0 backbone); text spotters failed on Ukrainian. Text to speech: Supertonic 3 int8 through `sherpa-onnx-node`, English and Ukrainian.
+- [x] **Contracts (US-1784).** `speech.synthesize` and `speech.wake` v1 guides, revised in place for BT-084 / BT-085 (unreleased).
+- [x] **Audio service (US-1790).** Hidden audio window shared by all consumers: `microphone` and `computer` (loopback) capture as 16 kHz s16le on one clock, playback with end reports, `echoCancel` on by default, `devices()`; the `audio` capability for board pages and services, the `computerAudio` permission, and a capture indicator. The US-1786 in-app assistant core was removed. Measured: Chromium cancels all Persephone audio but not other apps' sound (follow-up US-1798).
+- [x] **Superseded by the redesign.** US-1785 (`agent.session` app client, removed), US-1786 (in-app core, removed by US-1790), US-1787 and US-1788 (not built), US-1791 (replaced by EPIC-140).
+- [x] **persephone-boards (BT-082..BT-086).** Text to Speech (`speak`/`stop` through the audio service, volume slider), Wake Word (enrollment, consumer-named phrases, film suppression, level gate), Agent Chat 1.4.0 (Wake mode, wake session, Wake words page, listening flow with silence or stop-word end, chimes, interrupts, hallucination filter, sample instructions).
+- [x] **Epic review.** `/review` removed non-null assertions in `src/main/audio-service.ts`; `/document` described the temporary microphone grant for device enumeration; `/userdoc` added `computerAudio` and the `audio` capability to the boards guide.
+
 ## EPIC-140 — Capabilities: one registry for boards, Persephone and agents
 
 Completed 2026-11-07. Boards and Persephone register capabilities in one main-process registry,

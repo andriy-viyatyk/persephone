@@ -8,21 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-139** — [Voice assistant — talk to an agent by name](epics/EPIC-139.md)
-  - [ ] [US-1783: Research: wake-word engine and the microphone-plus-loopback rule](tasks/US-1783-wake-word-research/README.md)
-  - [ ] [US-1789: Research: local text-to-speech model and voices (English, Ukrainian)](tasks/US-1789-tts-research/README.md)
-  - [ ] [US-1784: Reserve `speech.synthesize` and `speech.wake` and publish v1 contract guides](tasks/US-1784-speech-interfaces/README.md)
-  - [ ] BT-082: Text to Speech board — `speech.synthesize` provider (persephone-boards)
-  - [ ] BT-083: Wake Word board — `speech.wake` provider: enrollment, template matching, stop words (persephone-boards)
-  - [ ] [US-1785: `agent.session@1` host service channel and app-side session client](tasks/US-1785-agent-session-host/README.md)
-  - [ ] [US-1786: Voice assistant core in the app — superseded, removed by US-1790](tasks/US-1786-voice-assistant-core/README.md)
-  - [ ] [US-1787: Agent turn wiring in the app — superseded (planned only)](tasks/US-1787-voice-agent-turn/README.md)
-  - [ ] US-1788: TV polish in the app — superseded
-  - [ ] [US-1790: Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core](tasks/US-1790-audio-service/README.md)
-  - [ ] BT-084: Text to Speech — play through the audio service; `speak` / `stop` operations (persephone-boards)
-  - [ ] BT-085: Wake Word — audio service capture, phrase filter, consumer-named phrases, film suppression (persephone-boards)
-  - [ ] BT-086: Agent Chat — Wake mode, wake session, Wake words page, listening flow, interrupts (persephone-boards)
-
 ## Planned
 
 - *(no epic)*
