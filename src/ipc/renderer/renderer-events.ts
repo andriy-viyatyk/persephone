@@ -48,10 +48,6 @@ class RendererEventObject<T> implements EventObject<T> {
 }
 
 class RendererEvents implements EventApi {
-    [EventEndpoint.eVoiceAssistantOwnerChanged] = new RendererEventObject<{ windowId: number | null }>(EventEndpoint.eVoiceAssistantOwnerChanged);
-    [EventEndpoint.eVoiceAssistantStatus] = new RendererEventObject<import("../api-types").VoiceAssistantStatus | null>(EventEndpoint.eVoiceAssistantStatus);
-    [EventEndpoint.eVoiceAssistantPause] = new RendererEventObject<import("../api-types").VoiceAssistantPause>(EventEndpoint.eVoiceAssistantPause);
-
     [EventEndpoint.eVoiceTypingShortcut] = new RendererEventObject<{
         sessionId: string;
         action: "start" | "stop" | "cancel";
@@ -149,6 +145,9 @@ class RendererEvents implements EventApi {
 
     [EventEndpoint.eMnemeStatusChanged] = new RendererEventObject<MnemeStatus>(
         EventEndpoint.eMnemeStatusChanged
+    );
+    [EventEndpoint.eAudioCaptureCount] = new RendererEventObject<{ count: number; revision: number }>(
+        EventEndpoint.eAudioCaptureCount
     );
 
     [EventEndpoint.eClipboardHistoryChanged] = new RendererEventObject<ClipboardHistoryChanged>(

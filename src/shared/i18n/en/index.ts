@@ -17,7 +17,6 @@ import { toolsCatalog } from "./tools";
 import { uikitCatalog } from "./uikit";
 import { logViewCatalog } from "./logView";
 import { voiceTypingCatalog } from "./voiceTyping";
-import { voiceAssistantCatalog } from "./voiceAssistant";
 import { transcriptCatalog } from "./transcript";
 import { translationCatalog } from "./translation";
 
@@ -42,7 +41,6 @@ export const englishCatalog = {
     uikit: Object.fromEntries(Object.entries(uikitCatalog).map(([key, entry]) => [key, entry.message])),
     logView: Object.fromEntries(Object.entries(logViewCatalog).map(([key, entry]) => [key, entry.message])),
     voiceTyping: Object.fromEntries(Object.entries(voiceTypingCatalog).map(([key, entry]) => [key, entry.message])),
-    voiceAssistant: Object.fromEntries(Object.entries(voiceAssistantCatalog).map(([key, entry]) => [key, entry.message])),
     transcript: Object.fromEntries(Object.entries(transcriptCatalog).map(([key, entry]) => [key, entry.message])),
     translation: Object.fromEntries(Object.entries(translationCatalog).map(([key, entry]) => [key, entry.message])),
 } as unknown as {
@@ -65,7 +63,6 @@ export const englishCatalog = {
     uikit: MessagesOf<typeof uikitCatalog>;
     logView: MessagesOf<typeof logViewCatalog>;
     voiceTyping: MessagesOf<typeof voiceTypingCatalog>;
-    voiceAssistant: MessagesOf<typeof voiceAssistantCatalog>;
     transcript: MessagesOf<typeof transcriptCatalog>;
     translation: MessagesOf<typeof translationCatalog>;
 };

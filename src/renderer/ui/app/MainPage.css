@@ -46,4 +46,6 @@
     .app-root .mcp-count { margin-left: 1px; font-size: 11px; color: var(--color-misc-green); }
     .app-root .mneme-dot.warning { background-color: var(--color-misc-yellow); }
     .app-root .mneme-dot.neutral { background-color: var(--color-text-light); }
+    .app-root .audio-capture-indicator { color: var(--color-misc-red); font-size: 10px; line-height: 1; }
+    .app-root .audio-capture-indicator[hidden] { display: none; }
 }

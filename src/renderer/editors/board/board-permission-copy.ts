@@ -51,6 +51,7 @@ const FLAG_COPY: Record<keyof BoardPermissionFlags, MessageKey | ""> = {
     clipboardRead: "board.permissionClipboardRead",
     camera: "board.permissionCamera",
     microphone: "board.permissionMicrophone",
+    computerAudio: "board.permissionComputerAudio",
     geolocation: "board.permissionGeolocation",
     notifications: "board.permissionNotifications",
     themes: "board.permissionThemes",

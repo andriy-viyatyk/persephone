@@ -13,6 +13,7 @@ export interface BoardServiceUseDeclaration { id: string; version: number }
 
 function validServiceInterfaceId(id: string, provider: boolean): boolean {
     if (id.length > MAX_SERVICE_INTERFACE_ID_LENGTH || /\s/.test(id)) return false;
+    if (id === "audio") return !provider;
     if (PLATFORM_SERVICE_INTERFACE_IDS.has(id)) return true;
     if (!provider && /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(id)) return true;
     const parts = id.split("/");
@@ -39,7 +40,7 @@ function normalizeServiceDeclarations(raw: unknown, provider: boolean, issue?: (
         if (!id || !validServiceInterfaceId(id, provider)) {
             issue?.(id || "service interface", provider
                 ? "id must be a reserved platform id or author/name with two non-empty whitespace-free segments"
-                : "id must be a dot-separated capability id or author/name with two non-empty whitespace-free segments");
+                : "id must be audio, a dot-separated capability id or author/name with two non-empty whitespace-free segments");
             continue;
         }
         if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
@@ -95,6 +96,7 @@ export interface BoardPermissionFlags {
     clipboardRead: boolean;
     camera: boolean;
     microphone: boolean;
+    computerAudio: boolean;
     geolocation: boolean;
     notifications: boolean;
     themes: boolean;
@@ -125,6 +127,7 @@ export function normalizePermissions(raw: unknown): NormalizedBoardPermissions {
             clipboardRead: source.clipboardRead === true,
             camera: source.camera === true,
             microphone: source.microphone === true,
+            computerAudio: source.computerAudio === true,
             geolocation: source.geolocation === true,
             notifications: source.notifications === true,
             themes: source.themes === true,
@@ -133,7 +136,7 @@ export function normalizePermissions(raw: unknown): NormalizedBoardPermissions {
 }
 
 export function boardPermissionAllows(permissions: NormalizedBoardPermissions, flag: keyof BoardPermissionFlags): boolean {
-    if (permissions.kind === "legacy") return flag !== "service" || permissions.service;
+    if (permissions.kind === "legacy") return flag !== "computerAudio" && (flag !== "service" || permissions.service);
     const value = permissions.flags[flag];
     return value === true || value === "full" || value === "board" || value === "internet";
 }

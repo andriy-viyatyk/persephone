@@ -109,11 +109,17 @@ function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrat
                     || typeof flags.clipboardRead !== "boolean" || typeof flags.camera !== "boolean"
                     || typeof flags.microphone !== "boolean" || typeof flags.geolocation !== "boolean"
                     || typeof flags.notifications !== "boolean"
-                    || (flags.themes !== undefined && typeof flags.themes !== "boolean")) reason = "permission flags are invalid";
-                else if (flags.themes === undefined) {
-                    // Trust snapshots written before US-1639 must keep their old grant set.
-                    (flags as { themes?: boolean }).themes = false;
-                    migrated = true;
+                    || (flags.themes !== undefined && typeof flags.themes !== "boolean")
+                    || (flags.computerAudio !== undefined && typeof flags.computerAudio !== "boolean")) reason = "permission flags are invalid";
+                else {
+                    if (flags.themes === undefined) {
+                        (flags as { themes?: boolean }).themes = false;
+                        migrated = true;
+                    }
+                    if (flags.computerAudio === undefined) {
+                        (flags as { computerAudio?: boolean }).computerAudio = false;
+                        migrated = true;
+                    }
                 }
             } else if (!reason) reason = "permission kind is invalid";
             if (reason) {
@@ -329,7 +335,7 @@ class BoardTrustService {
             pathCovers(normalizePathForCompare(root), normalizePathForCompare(boardRoot)));
         if (!grant) return false;
         const permissions = grant.permissions;
-        if (permissions.kind === "legacy") return flag !== "service" || permissions.service;
+        if (permissions.kind === "legacy") return flag !== "computerAudio" && (flag !== "service" || permissions.service);
         const value = permissions.flags[flag];
         return value === true || value === "board" || value === "full" || value === "internet";
     }

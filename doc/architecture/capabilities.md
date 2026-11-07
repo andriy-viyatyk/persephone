@@ -15,7 +15,7 @@ pipeline, but `ILinkData.target` does not name a capability.
 | Owner | Responsibility |
 | --- | --- |
 | [`src/main/capability-registry.ts`](../../src/main/capability-registry.ts) | Main-process platform and board provider index, snapshots and revision notifications. |
-| [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization and dispatch for `call`, `channel` and `open`. |
+| [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization and dispatch for `call`, board-service `channel`, platform `audio@1` channels and `open`. |
 | [`src/main/capability-channel.ts`](../../src/main/capability-channel.ts) | Bounded message/acknowledgement channel returned for channel methods. |
 | [`src/shared/capability-contract.ts`](../../src/shared/capability-contract.ts) and [`capability-limits.ts`](../../src/shared/capability-limits.ts) | Declaration normalization, legacy projection, shared method types and limits. |
 | [`src/shared/capability-client.ts`](../../src/shared/capability-client.ts) | Builds named-method proxies for clients. |
@@ -23,6 +23,9 @@ pipeline, but `ILinkData.target` does not name a capability.
 | [`src/renderer/api/capabilities.ts`](../../src/renderer/api/capabilities.ts) | `app.capabilities` client, built-in open dispatch, and legacy renderer projection. |
 | [`src/renderer/scripting/ai-vision/namespaces/capabilities.ts`](../../src/renderer/scripting/ai-vision/namespaces/capabilities.ts) | Agent discovery tree and named method calls. |
 | [`src/renderer/api/board-capability-transport.ts`](../../src/renderer/api/board-capability-transport.ts) | Legacy board intent delivery and lifecycle for renderer compatibility calls. |
+| [`src/main/audio-service.ts`](../../src/main/audio-service.ts) and [`src/renderer/audio/audio-window.ts`](../../src/renderer/audio/audio-window.ts) | Main-owned `audio@1` channel lifecycle and the isolated hidden renderer that owns shared capture/playback resources. |
+| [`src/renderer/api/renderer-capability-channel.ts`](../../src/renderer/api/renderer-capability-channel.ts) | Renderer-side ordered channel and acknowledgement implementation shared by board consumers and the audio provider window. |
+| [`src/main/permission-policy-service.ts`](../../src/main/permission-policy-service.ts) | Frame-bound one-shot grants for hidden audio-window microphone and Windows loopback capture, separate from Transcript grants. |
 
 Board pages and board services use the bridge `persephone.capabilities` client. They resolve a
 provider through `getCapability(id, options?)`, then call named methods on its proxy. Board pages
@@ -87,7 +90,7 @@ The main router sends each method kind to its owner:
 | Method kind | Route | Result |
 | --- | --- | --- |
 | `call` | Main authorizes and sends a JSON request to the provider's board service through the module-service supervisor. | JSON result from the service. |
-| `channel` | Main opens a provider service channel and returns a bounded message channel to the caller. | Channel with ordered messages, acknowledgement-based backpressure and close reasons. |
+| `channel` | Main opens a provider service channel or dispatches the platform-owned `audio@1` channel to its hidden audio window, then returns a bounded message channel to the caller. | Channel with ordered messages, acknowledgement-based backpressure and close reasons. |
 | `open` | Main authorizes and dispatches through the selected renderer, which runs a platform handler or sends a transient intent to the board page. | JSON result, optionally paired with the opened page id for agent calls. |
 
 Calls and channel setup inherit caller identity, cancellation, deadlines and request ancestry. A
@@ -99,6 +102,44 @@ Channel methods use the service protocol's `type` field and retain the v1 stream
 capability channel limits each message to 1 MiB and allows 256 messages in flight; service and
 channel counts are bounded as specified in
 [`src/shared/capability-limits.ts`](../../src/shared/capability-limits.ts).
+
+## Platform-owned `audio@1` channels
+
+`audio` is a reserved platform registration with `capture` and `play` channel methods. Unlike a
+board capability channel, its provider is not a utility-process service: `CapabilityRouter`
+authorizes the caller and delegates to the main-owned `AudioService`. Main lazily creates one
+hidden, local-only `BrowserWindow`; it rejects navigation, popups and webviews, validates every
+control message against that exact window and main frame, and destroys the window after the final
+channel closes. Audio ports are transferred directly between the caller and this window. Main
+retains lifecycle and authorization state, but does not relay PCM.
+
+The hidden window owns one `AudioContext`, shared microphone/computer source streams, the PCM
+worklet, the computer-only `ComputerAudioGate`, and scheduled playback. Capture keys are source,
+device/default and echo-cancellation setting; subscribers close independently, and the source stops
+after its final subscriber. A per-subscriber 32-chunk queue isolates slow consumers. Saturation
+closes only that subscriber with `channel-backpressure`. The underlying channel still enforces 256
+unacknowledged messages and 1 MiB per message. Playback permits at most five queued seconds and
+stops with `channel-backpressure` on overflow.
+
+Capture chunks are 16 kHz mono signed 16-bit PCM in 200 ms frames. The worklet maps its first sample
+to the audio window's monotonic `performance.now()` origin using `AudioContext.getOutputTimestamp()`
+and advances timestamps from output samples. Each hidden-window creation gets a new process-local
+integer epoch; times can be compared only within an epoch. Computer capture applies RMS open/close
+thresholds 0.01/0.006 with 400 ms pre-roll and 500 ms tail. It suppresses delivery in gated silence
+while preserving source timestamps across gaps. Microphone capture remains continuous.
+
+Board pages and services need trusted status, exact `audio@1` `uses`, and the source grant:
+`microphone` for microphone capture or explicit `computerAudio` for Windows loopback. A service
+must also have its service permission. Playback requires `uses` only. Platform callers need no board
+grant, while agents can discover the channel declarations but cannot invoke channels. Authorization
+is repeated while active; revocation closes the stream. The audio window receives independent,
+one-use, expiry- and frame-bound microphone and loopback permission grants from main. It never
+reuses or weakens the existing Transcript loopback grant.
+
+The normative payloads, timestamp and gate contract, permissions, caller shapes and resource limits
+are in the [audio capability guide](../../assets/guides/agents/audio.md). Echo cancellation follows
+the browser constraint for microphone capture; its effectiveness and absolute physical timing have
+not been measured.
 
 For `open`, main binds the selected registration and sends the request to the renderer selected for
 the caller. The renderer validates platform-owned payloads where required and either invokes a

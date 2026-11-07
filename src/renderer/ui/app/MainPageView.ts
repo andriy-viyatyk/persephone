@@ -18,13 +18,12 @@ import { PageTabsView } from "../tabs/PageTabsView";
 import { RightPageTabsView } from "../tabs/RightPageTabsView";
 import { VoiceTypingController } from "../voice-typing/VoiceTypingController";
 import { VoiceTypingOverlayView } from "../voice-typing/VoiceTypingOverlayView";
-import { VoiceAssistantController } from "../voice-assistant/VoiceAssistantController";
-import { VoiceAssistantOverlayView } from "../voice-assistant/VoiceAssistantOverlayView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
 import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
 import { appWindow } from "../../api/window";
 import { api } from "../../../ipc/renderer/api";
+import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
@@ -68,6 +67,8 @@ export class MainPageView extends VanillaView<object> {
     private readonly recordingControls = document.createElement("div");
     private readonly mnemeIndicator = document.createElement("span");
     private readonly mcpIndicator = document.createElement("span");
+    private readonly audioCaptureIndicator = document.createElement("span");
+    private captureCountRevision = -1;
     private hiddenChromeState: { controlsHidden: boolean; controlsDisplay: string; mcpHidden: boolean; mcpDisplay: string } | undefined;
     private readonly snipButton = document.createElement("button");
     private readonly toggleMenuBar = (): void => app.window.toggleMenuBar();
@@ -110,13 +111,6 @@ export class MainPageView extends VanillaView<object> {
         this.voiceTypingOverlay.updateState({ status: "idle", binding: "Alt+V", translating: false, level: 0, durationMs: 0 });
         this.voiceTypingController = new VoiceTypingController((state) => this.voiceTypingOverlay?.updateState(state));
         this.voiceTypingController.start();
-        if (!appWindow.isBoardMode) {
-            const overlay = this.child(new VoiceAssistantOverlayView({}));
-            overlay.mount();
-            const controller = new VoiceAssistantController();
-            controller.start();
-            this.own(() => controller.dispose());
-        }
         this.own(() => {
             this.voiceTypingController?.dispose();
             this.voiceTypingController = undefined;
@@ -150,6 +144,17 @@ export class MainPageView extends VanillaView<object> {
             (state) => ({ enabled: state.enabled, running: state.running, modelReady: state.modelReady }),
             (state) => this.updateMneme(state),
         );
+        if (!appWindow.isBoardMode) {
+            const applyCaptureSnapshot = (snapshot: { count: number; revision: number }): void => {
+                if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision <= this.captureCountRevision) return;
+                this.captureCountRevision = snapshot.revision;
+                this.audioCaptureIndicator.hidden = snapshot.count <= 0;
+            };
+            this.own(rendererEvents.eAudioCaptureCount.subscribe(applyCaptureSnapshot));
+            void api.getAudioCaptureCount().then(applyCaptureSnapshot).catch((error: unknown) => {
+                console.error("Failed to read audio capture state:", errMessage(error));
+            });
+        }
         this.bindMenuGlyphToTheme();
         this.own(windowRecording.subscribe((state) => this.updateRecordingControls(state)));
         this.quickSettingsPopover.mount();
@@ -218,6 +223,13 @@ export class MainPageView extends VanillaView<object> {
         this.snipButton.append(createIconElement("more-horiz", { width: 28, height: 28 }));
         this.listen(this.snipButton, "click", () => this.toggleSnipMenu());
         this.statusIndicators.append(this.snipButton, this.mnemeIndicator, this.mcpIndicator);
+        this.audioCaptureIndicator.className = "audio-capture-indicator";
+        this.audioCaptureIndicator.dataset.name = "audio-capture-indicator";
+        this.audioCaptureIndicator.textContent = "●";
+        this.audioCaptureIndicator.setAttribute("aria-label", t("shell.audioCaptureActive"));
+        this.audioCaptureIndicator.title = t("shell.audioCaptureActive");
+        this.audioCaptureIndicator.hidden = true;
+        this.statusIndicators.append(this.audioCaptureIndicator);
         if (!appWindow.isBoardMode) {
             this.header.append(this.statusIndicators);
             this.root.append(this.quickSettingsPopover.root);

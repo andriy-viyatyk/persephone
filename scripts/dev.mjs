@@ -30,7 +30,7 @@ const nodeExternals = [
 
 // ── Build configs (mirror build-prod.mjs, but watch mode + dev define) ──────
 
-function mainConfig(devServerUrl) {
+function mainConfig(devServerUrl, audioWindowUrl) {
     return {
         configFile: false,
         mode: "development",
@@ -65,6 +65,7 @@ function mainConfig(devServerUrl) {
         define: {
             MAIN_WINDOW_VITE_DEV_SERVER_URL: JSON.stringify(devServerUrl),
             MAIN_WINDOW_VITE_NAME: JSON.stringify("main_window"),
+            AUDIO_WINDOW_VITE_DEV_SERVER_URL: JSON.stringify(audioWindowUrl),
         },
     };
 }
@@ -260,11 +261,12 @@ await server.listen();
 server.printUrls();
 
 const devServerUrl = server.resolvedUrls?.local?.[0] ?? "http://localhost:5273/";
+const audioWindowUrl = new URL("audio.html", devServerUrl).href;
 console.log(`\x1b[36m[dev]\x1b[0m Renderer at ${devServerUrl}`);
 
 console.log("\x1b[36m[dev]\x1b[0m Building main / preload / board-shim / site-extension-runtime / search-worker (watch)...");
 await Promise.all([
-    watchBuild("main", mainConfig(devServerUrl), { restartOnChange: true }),
+    watchBuild("main", mainConfig(devServerUrl, audioWindowUrl), { restartOnChange: true }),
     watchBuild("preload", preloadConfig({ preload: "src/preload.ts" }), { restartOnChange: true }),
     watchBuild("preload-webview", preloadConfig({ "preload-webview": "src/preload-webview.ts" }), { restartOnChange: true }),
     // board-shim is read fresh from disk by the board:// handler on each board

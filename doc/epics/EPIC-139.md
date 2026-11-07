@@ -184,6 +184,21 @@ to boards:
     `AGENTS.md` the user writes: answer by calling `capabilities["speech.synthesize"].speak(...)`, keep it
     to one or two sentences unless asked for more, prefer site-extension actions for media. Agent
     Chat's guide ships a sample. Persephone sends no instruction layer.
+11. **Echo cancellation in the audio service** *(user decision 2026-11-07)*. The microphone
+    stream takes an `echoCancel` option, on by default, so every board gets a clean microphone
+    without its own processing. Playback goes through the same hidden audio window that captures,
+    so Chromium's built-in canceller (`echoCancellation: true`) removes the assistant's own speech.
+    US-1790 measures whether it also removes other computer sound (a film in a browser tab or a
+    player). If it doesn't, a canceller that uses the `computer` stream as its reference is a
+    separate, later task, measured on the user's TV. Decision 4 stays in Wake Word as the safety
+    net for what the canceller leaves.
+    **Measured 2026-11-07 (US-1790):** on the user's speakers, a tone played through `audio.play`
+    fell from RMS 0.0248 to 0.00014 with cancellation. A tone played by another Persephone page
+    fell from 0.00385 to 0.00015. Both ended below the room floor, so Chromium cancels all
+    Persephone audio, not only the audio window's. Sound from other apps is **not** cancelled:
+    with YouTube playing in Firefox, the microphone measured 0.075 with cancellation off and 0.082
+    with it on. Film sound from other apps therefore needs the loopback-referenced follow-up ([US-1798](../tasks/US-1798-loopback-echo-canceller/README.md), outside this epic), and
+    until then decision 4 is the only defence for it.
 
 ## Linked Tasks
 
@@ -198,7 +213,7 @@ to boards:
 | US-1786 | persephone | Voice assistant core in the app | Superseded; removed by US-1790 |
 | US-1787 | persephone | Agent turn wiring in the app | Superseded (planned only) |
 | US-1788 | persephone | TV polish in the app | Superseded |
-| US-1790 | persephone | Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core | Planned |
+| [US-1790](../tasks/US-1790-audio-service/README.md) | persephone | Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core | Planned |
 | US-1791 | persephone | Capabilities: manifest method declarations, `persephone.getCapability()`, `capabilities` branch in the `call` tree; `speech.wake` / `speech.synthesize` contract revisions | Replaced by [EPIC-140](EPIC-140.md); the `speech.*` contract revisions move to BT-087 / BT-084 / BT-085 |
 | BT-084 | persephone-boards | Text to Speech: play through the audio service; `speak` / `stop` operations | Planned |
 | BT-085 | persephone-boards | Wake Word: capture through the audio service, phrase filter, consumer-named phrases, film suppression | Planned |

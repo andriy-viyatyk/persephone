@@ -18,12 +18,15 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-1786: Voice assistant core in the app — superseded, removed by US-1790](tasks/US-1786-voice-assistant-core/README.md)
   - [ ] [US-1787: Agent turn wiring in the app — superseded (planned only)](tasks/US-1787-voice-agent-turn/README.md)
   - [ ] US-1788: TV polish in the app — superseded
-  - [ ] US-1790: Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core
+  - [ ] [US-1790: Audio service: hidden capture window, shared clock, playback, the `audio` capability, `computerAudio` permission; remove the US-1786 core](tasks/US-1790-audio-service/README.md)
   - [ ] BT-084: Text to Speech — play through the audio service; `speak` / `stop` operations (persephone-boards)
   - [ ] BT-085: Wake Word — audio service capture, phrase filter, consumer-named phrases, film suppression (persephone-boards)
   - [ ] BT-086: Agent Chat — Wake mode, wake session, Wake words page, listening flow, interrupts (persephone-boards)
 
 ## Planned
+
+- *(no epic)*
+  - [ ] [US-1798: Loopback-referenced echo canceller for the audio service (cancel other apps' sound)](tasks/US-1798-loopback-echo-canceller/README.md)
 
 ## Scheduled
 

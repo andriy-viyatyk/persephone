@@ -113,6 +113,7 @@ The permission lines use the approved wording:
 | `clipboardRead: true` | “Read the contents of your clipboard.” Clipboard writes remain available. |
 | `camera: true` | “Use your camera.” |
 | `microphone: true` | “Use your microphone.” |
+| `computerAudio: true` | “Capture audio playing on your computer.” |
 | `geolocation: true` | “Read this device's location.” |
 | `notifications: true` | “Show desktop notifications.” |
 | `themes: true` | “Create, change, delete, and apply app themes.” This grants only `persephone.themes.*`, not `appScripting`. |

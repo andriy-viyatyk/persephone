@@ -17,10 +17,24 @@ export interface CapabilityRegistration extends BoardCapabilityDeclaration {
     methods: Record<string, CapabilityMethod>;
 }
 
-const platform: CapabilityRegistration[] = PLATFORM_CAPABILITIES.map((entry) => ({
-    ...entry, provider: "persephone", name: "persephone", handlerKey: entry.editorId,
-    origin: "platform", methods: { open: { kind: "open", summary: "Open", args: [{ name: "payload", type: "unknown" }], timeoutMs: CAPABILITY_DEFAULT_TIMEOUT_MS, agent: true } },
-}));
+const audioMethods: Record<string, CapabilityMethod> = {
+    capture: { kind: "channel", summary: "Board-only streaming: capture shared PCM.",
+        args: [{ name: "open", type: '{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }' }],
+        returns: "CapabilityChannel", timeoutMs: 15000, agent: true },
+    play: { kind: "channel", summary: "Board-only streaming: play mono PCM.",
+        args: [{ name: "open", type: "{ sampleRate: number }" }],
+        returns: "CapabilityChannel", timeoutMs: 15000, agent: true },
+};
+
+const platform: CapabilityRegistration[] = [
+    ...PLATFORM_CAPABILITIES.map((entry): CapabilityRegistration => ({
+        ...entry, provider: "persephone", name: "persephone", handlerKey: entry.editorId,
+        origin: "platform" as const, methods: { open: { kind: "open" as const, summary: "Open", args: [{ name: "payload", type: "unknown" }], timeoutMs: CAPABILITY_DEFAULT_TIMEOUT_MS, agent: true } },
+    })),
+    { id: "audio", version: 1, priority: 50, provider: "persephone", name: "persephone",
+        // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Protocol metadata requires the stable platform provider title.
+        handlerKey: "audio", origin: "platform", title: "Audio", methods: audioMethods },
+];
 
 class CapabilityRegistry {
     private boards: CapabilityRegistration[] = [];
@@ -31,7 +45,7 @@ class CapabilityRegistry {
     replace(snapshot: BoardServiceTrustSnapshot): void {
         this.boardSnapshot = snapshot;
         const previous = this.boards;
-        this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => !declaration.id.startsWith("system.")).map((declaration, index) => ({
+        this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => declaration.id !== "audio" && !declaration.id.startsWith("system.")).map((declaration, index) => ({
             ...declaration, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
             provider: boardRootKey(board.boardRoot), name: board.boardName ?? "", handlerKey: `${boardRootKey(board.boardRoot)}:${index}`,
             origin: "board" as const, methods: Object.fromEntries(Object.entries(declaration.methods ?? {}).filter(([, method]) =>
@@ -50,7 +64,7 @@ class CapabilityRegistry {
     snapshot() {
         const legacyRegistrations: LegacyRegistration[] = [
             ...PLATFORM_CAPABILITIES.map(({ editorId, ...entry }) => ({ ...entry, handlerKey: editorId, origin: "platform" as const })),
-            ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).map((declaration) => {
+            ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).filter((declaration) => declaration.id !== "audio").map((declaration) => {
                 const { methods: _methods, ...fields } = declaration;
                 return { ...fields, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
                     handlerKey: `board-editor:${board.boardRoot}`, origin: "board" as const,

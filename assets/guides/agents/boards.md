@@ -41,12 +41,12 @@ must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use pr
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted
-messages. `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; legacy interface ids otherwise use `author/name`. For new declarations and consumers, see [Capabilities](capabilities.md).
+messages. `audio`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; legacy interface ids otherwise use `author/name`. For new declarations and consumers, see [Capabilities](capabilities.md).
 Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
 Boards use these cross-board calls from board pages; use
 `persephone.service.openChannel(openMessage)` for same-board communication. The app also consumes
-some reserved interfaces (`speech.transcribe`, `speech.synthesize`, `speech.wake`, `text.translate`).
+some reserved interfaces (`audio`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, `text.translate`).
 The provider's existing `onChannel` callback receives `info.interface = { id, version }` and
 `info.caller = { id, name }`. Refuse with the normal close reason `connection-refused`. Main
 rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle
@@ -138,6 +138,7 @@ user-facing wording:
 | `clipboardRead: true` | Read clipboard. “Read the contents of your clipboard.” Clipboard writes remain available. |
 | `camera: true` | “Use your camera.” |
 | `microphone: true` | “Use your microphone.” |
+| `computerAudio: true` | “Capture audio playing on your computer.” |
 | `geolocation: true` | “Read this device's location.” |
 | `notifications: true` | “Show desktop notifications.” |
 | `themes: true` | “Create, change, delete, and apply app themes.” This does not grant `appScripting`. |
@@ -746,7 +747,7 @@ A manifest may declare a board-relative ESM entry and its bridge requirement:
 ```json
 {
   "minBridgeVersion": "1.30.0",
-  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false, "themes": false },
+  "permissions": { "execute": false, "service": true, "fileSystem": false, "openExternal": false, "appScripting": false, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "computerAudio": false, "geolocation": false, "notifications": false, "themes": false },
   "service": "scripts/service.mjs"
 }
 ```
@@ -938,7 +939,7 @@ only. The example below is a legacy page-intent declaration.
 ```json
 {
   "minBridgeVersion": "1.30.0",
-  "permissions": { "execute": false, "service": false, "fileSystem": false, "openExternal": false, "appScripting": true, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "geolocation": false, "notifications": false, "themes": false },
+  "permissions": { "execute": false, "service": false, "fileSystem": false, "openExternal": false, "appScripting": true, "network": false, "clipboardRead": false, "camera": false, "microphone": false, "computerAudio": false, "geolocation": false, "notifications": false, "themes": false },
   "capabilities": [
     { "id": "demo.greet", "version": 1, "priority": 60, "title": "Demo greeting" },
     { "id": "content.view", "representation": "pdf", "priority": 70 }

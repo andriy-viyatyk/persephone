@@ -532,6 +532,7 @@ export function defaultBoardManifest(name = ""): BoardManifest {
             clipboardRead: false,
             camera: false,
             microphone: false,
+            computerAudio: false,
             geolocation: false,
             notifications: false,
             themes: false,

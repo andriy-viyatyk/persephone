@@ -36,8 +36,10 @@ import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
 import { initPermissionPolicy } from "./permission-policy-service";
 import { shutdownPathWatchService } from "./path-watch-service";
+import { audioService } from "./audio-service";
 
 export function setupMainProcess() {
+    audioService.initialize();
     app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
         if (webContents === null) {
             event.preventDefault();

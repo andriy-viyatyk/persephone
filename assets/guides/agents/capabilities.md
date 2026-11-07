@@ -2,7 +2,7 @@
 
 **Status:** The unified registry, client API and agent surface are implemented, and bundled boards use the `methods` form. External board migration remains in BT-087 (EPIC-140).
 
-This is the normative contract for the unified capability registry. A capability has an id, a major version and named methods. A provider can be a trusted board or `persephone`. A consumer can be a board page, board service, Persephone or an agent. Method-specific contracts, including [speech synthesis](speech-synthesize.md), [transcription](speech-transcribe.md), [wake](speech-wake.md) and [translation](text-translate.md), continue to define their data and behavior. The examples below illustrate new methods, not a replacement for those v1 streaming contracts.
+This is the normative contract for the unified capability registry. A capability has an id, a major version and named methods. A provider can be a trusted board or `persephone`. A consumer can be a board page, board service, Persephone or an agent. Method-specific contracts, including [audio capture and playback](audio.md), [speech synthesis](speech-synthesize.md), [transcription](speech-transcribe.md), [wake](speech-wake.md) and [translation](text-translate.md), continue to define their data and behavior. The examples below illustrate new methods, not a replacement for those v1 streaming contracts.
 
 ## Manifest
 
@@ -10,7 +10,7 @@ Declare `capabilities` as an array of at most 32 declarations. A board providing
 
 | Field | Contract |
 |---|---|
-| `id` | Required string, at most 160 characters. At least two dot-separated segments matching `[a-z][a-z0-9-]*`; no `@`, slash or whitespace. Platform ids `text.open`, `content.view`, `image.edit`, `diagram.edit`, `http.request.open`, `certificate.view`, `theme.edit`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake` and `text.translate` are reserved contracts; boards may implement them only in accordance with their platform contract. The entire `system.` prefix, including `system.audio`, is reserved for Persephone itself; boards must not provide a `system.*` id. A board-owned id must not equal a reserved id or extend it with another segment. Board-owned ids should start with a vendor segment; the manifest's free-text `author` does not determine that segment. Boards declaring the same board-owned id are competing providers, resolved by the normal rules. |
+| `id` | Required string, at most 160 characters. At least two dot-separated segments matching `[a-z][a-z0-9-]*`; no `@`, slash or whitespace. Platform ids `audio`, `text.open`, `content.view`, `image.edit`, `diagram.edit`, `http.request.open`, `certificate.view`, `theme.edit`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake` and `text.translate` are reserved contracts; boards may implement them only in accordance with their platform contract. The entire `system.` prefix is reserved for Persephone itself; boards must not provide a `system.*` id. A board-owned id must not equal a reserved id or extend it with another segment. Board-owned ids should start with a vendor segment; the manifest's free-text `author` does not determine that segment. Boards declaring the same board-owned id are competing providers, resolved by the normal rules. |
 | `version` | Positive safe integer major version; default `1`. Versions match exactly. |
 | `title` | Optional string, trimmed, at most 120 characters; empty becomes absent. Display falls back to id. |
 | `priority` | Finite number; default `50`; higher wins. |
@@ -215,16 +215,4 @@ const speech = await persephone.getCapability("speech.synthesize", { version: 1 
 if (speech) await speech.speak("Hello");
 ```
 
-A transcription provider service can declare `uses: [{ "id": "system.audio", "version": 1 }]` and a `record` call. The following illustrates composition; EPIC-139 defines the actual `system.audio` methods and capture permission contract.
-
-```js
-persephone.capabilities.handle("speech.transcribe", "record", async ([options], ctx) => {
-  validateRecord(options); authorize(ctx.caller);
-  const audio = await persephone.getCapability("system.audio", { version: 1 });
-  if (!audio) throw Object.assign(new Error("Audio unavailable"), { code: "no-handler" });
-  // Provider-owned helper uses the eventual audio contract and stops capture on ctx.signal.
-  const text = await captureAndTranscribe(audio, options.seconds, ctx.signal);
-  if (options.file) await writeTranscript(options.file, text);
-  return { text };
-});
-```
+See the normative [audio@1 contract](audio.md) for channel declarations, capture permissions, PCM messages, timestamps and limits.

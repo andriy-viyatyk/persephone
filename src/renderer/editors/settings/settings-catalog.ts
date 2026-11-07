@@ -77,22 +77,6 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     {
         groupId: "general",
         groupTitleKey: "settings.groupGeneral",
-        id: "voice-assistant",
-        titleKey: "settings.voiceAssistantTitle",
-        description: "Configure voice assistant and enrollment.",
-        elementName: "settings-section-voice-assistant",
-        panelName: "settings-panel-voice-assistant",
-        where: "Settings > General > Voice Assistant",
-        rows: [
-            { key: "voice-assistant.enabled", label: "Enable voice assistant", purpose: "Enable voice assistant listening." },
-            { key: "voice-assistant.microphone", label: "Microphone", purpose: "Microphone used for listening and enrollment." },
-            { key: "voice-assistant.silence-ms", label: "Stop after silence", purpose: "Silence duration before finishing a request." },
-            { key: "voice-assistant.threshold", label: "Wake threshold", purpose: "Wake detection threshold or provider default." },
-        ],
-    },
-    {
-        groupId: "general",
-        groupTitleKey: "settings.groupGeneral",
         id: "clipboard",
         titleKey: "settings.groupTitleClipboard",
         description: "Configure the opt-in clipboard history tracker and its item limit.",

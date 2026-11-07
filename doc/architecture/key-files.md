@@ -38,6 +38,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main capability registry (platform and eligible board provider index) | `/src/main/capability-registry.ts` |
 | Main capability authorization, resolution and routing | `/src/main/capability-router.ts` |
 | Main capability service-channel adapter | `/src/main/capability-channel.ts` |
+| Main audio capability channel owner (authorization rechecks, hidden window lifecycle, per-caller channels and capture indicator count) | `/src/main/audio-service.ts`, `/src/main/audio-capture-state.ts` |
+| Hidden audio renderer (shared PCM capture/playback, source subscriptions, gate and channel protocol) | `/src/renderer/audio/audio-window.ts`, `/src/renderer/ui/speech/ComputerAudioGate.ts`, `/src/renderer/ui/speech/PcmAudioCapture.ts` |
+| Renderer capability channel transport shared by callers and the audio window | `/src/renderer/api/renderer-capability-channel.ts` |
+| Audio window's frame-bound one-shot microphone and loopback permission grants | `/src/main/permission-policy-service.ts` |
 | Capability declarations, normalization and shared contract | `/src/shared/capability-contract.ts` |
 | Capability deadlines, payload and concurrency limits | `/src/shared/capability-limits.ts` |
 | Named capability proxy builder | `/src/shared/capability-client.ts` |

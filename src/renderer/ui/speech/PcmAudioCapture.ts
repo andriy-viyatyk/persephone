@@ -14,6 +14,21 @@ const WORKLET_SOURCE = `class PersephoneSpeechProcessor extends AudioWorkletProc
 }
 registerProcessor("persephone-speech-capture", PersephoneSpeechProcessor);`;
 
+const workletModules = new WeakMap<AudioContext, Promise<void>>();
+
+function loadWorklet(context: AudioContext): Promise<void> {
+    let loading = workletModules.get(context);
+    if (!loading) {
+        const url = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: "text/javascript" }));
+        loading = context.audioWorklet.addModule(url).catch((error: unknown) => {
+            workletModules.delete(context);
+            throw error;
+        }).finally(() => URL.revokeObjectURL(url));
+        workletModules.set(context, loading);
+    }
+    return loading;
+}
+
 /** Captures one source, downmixes it and emits bounded mono s16le chunks at 16 kHz. */
 export class PcmAudioCapture {
     private context: AudioContext | undefined;
@@ -30,26 +45,26 @@ export class PcmAudioCapture {
     private onChunk: ((data: ArrayBuffer, captureTimeMs: number) => void) | undefined;
     private originMs: number | undefined;
     private emittedSamples = 0;
+    private ownsContext = true;
 
-    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void): Promise<void> {
+    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void, sharedContext?: AudioContext): Promise<void> {
         this.stream = stream;
         this.onChunk = onChunk;
+        this.ownsContext = !sharedContext;
         try {
-            this.context = new AudioContext({ sampleRate: OUTPUT_SAMPLE_RATE });
-            const url = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: "text/javascript" }));
-            try { await this.context.audioWorklet.addModule(url); }
-            finally { URL.revokeObjectURL(url); }
-        } catch {
+            this.context = sharedContext ?? new AudioContext({ sampleRate: OUTPUT_SAMPLE_RATE });
+            await loadWorklet(this.context);
+            await this.context.resume();
+        } catch (error) {
+            if (sharedContext) throw error;
             await this.context?.close().catch(() => {});
             this.context = new AudioContext();
-            const url = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: "text/javascript" }));
-            try { await this.context.audioWorklet.addModule(url); }
+            try { await loadWorklet(this.context); }
             catch (error: unknown) { await this.context.close().catch(() => {}); throw error; }
-            finally { URL.revokeObjectURL(url); }
         }
         if (this.stopped) {
             stream.getTracks().forEach((track) => track.stop());
-            await this.context.close().catch(() => {});
+            if (this.ownsContext) await this.context.close().catch(() => {});
             this.context = undefined;
             return;
         }
@@ -93,7 +108,7 @@ export class PcmAudioCapture {
         this.node?.disconnect();
         this.mute?.disconnect();
         this.stream?.getTracks().forEach((track) => track.stop());
-        await this.context?.close().catch(() => {});
+        if (this.ownsContext) await this.context?.close().catch(() => {});
         this.source = undefined;
         this.node = undefined;
         this.mute = undefined;

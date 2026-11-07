@@ -53,6 +53,7 @@ export const boardCatalog = {
     permissionClipboardRead: { message: "Read the contents of your clipboard." },
     permissionCamera: { message: "Use your camera." },
     permissionMicrophone: { message: "Use your microphone." },
+    permissionComputerAudio: { message: "Capture audio playing on your computer." },
     permissionGeolocation: { message: "Read this device's location." },
     permissionNotifications: { message: "Show desktop notifications." },
     permissionThemes: { message: "Create, change, delete, and apply app themes." },

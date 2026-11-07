@@ -38,6 +38,7 @@ editor when one is available, or the guide contents otherwise.
 - [Scripting API Reference](./scripting/api/index.md) - Complete API for `page`, `app`, `io`, and other script namespaces
 - [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
 - [Boards](./boards.md) - Build custom HTML-page apps inside a project folder, backed by local scripts and themed to match the app
+- [Agent audio capability](./agents/audio.md) - Capture and playback contract for board pages and services
 - [Agent Tools](./agent-tools.md) - Register reusable, parameterized tools (scripts in any language) that AI agents discover and run over MCP — executable memory for recurring integrations
 - [Mneme Knowledge Base](./mneme.md) - Local full-text & semantic search over folders of Markdown — browsable in-app and MCP-accessible (optional, off by default)
 - [Tabs & Navigation](./tabs-and-navigation.md) - Tab management, grouping, sidebar, and session restore

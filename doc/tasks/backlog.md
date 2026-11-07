@@ -467,6 +467,75 @@ Add complementary, analogous, and triadic palette generation plus CSS and standa
 
 ---
 
+### WhatsApp Board (messenger access for agents via ai-vision)
+
+**Goal:** A board that shows the user's WhatsApp chats inside Persephone, so an agent can read and
+reply to messages through the existing ai-vision / board automation interface instead of a
+separate MCP server.
+
+**Motivation:**
+- Recorded 2026-11-07 after a survey of existing MCP servers. Neither WhatsApp nor Viber ships an
+  official MCP server; only third-party ones exist.
+- Persephone already gives agents a structured way to operate boards and read their content, so
+  the messenger could be one more board rather than another integration to install and configure.
+- Keeps everything local and inside one tool the user already trusts and controls, with an
+  explicit place to add safeguards (see Risks).
+
+**Known open-source projects to study or reuse** (found via web search, not yet reviewed or
+verified — read the code before depending on any of them):
+
+| Project | Approach |
+|---------|----------|
+| `lharries/whatsapp-mcp` | Go bridge over the WhatsApp Web multi-device API, local SQLite message store, Python MCP server on top. QR-code login; re-authentication roughly every 20 days. |
+| `verygoodplugins/whatsapp-mcp` | Read/send messages and chats, media download; external SQLite via `WHATSAPP_DB_PATH`. |
+| `dynamolabs/whatsapp-mcp` | Broader toolset: contact list, message search, mark as read, forward, groups, archive. |
+| `seejux/waha-mcp` | Wraps the WAHA HTTP API instead of connecting directly. |
+
+Most of these are built on the same unofficial multi-device client libraries (e.g. whatsmeow in
+Go, Baileys in Node). Those libraries are the real reuse candidates, not the MCP wrappers.
+
+**Possible approaches:**
+1. **Embedded WhatsApp Web** — load `web.whatsapp.com` in a built-in browser tab/board and let the
+   agent drive it through the existing browser automation (`browser_snapshot` etc.). Least code,
+   but it depends on WhatsApp's DOM and is fragile to UI changes.
+2. **Native board over a client library** — run an unofficial client (Node/Baileys or a Go bridge)
+   as a sidecar, store messages in a local DB, and render chat list + conversation in a board.
+   Agent operates the board UI (and/or a script API exposed by the board). More work, much more
+   robust than scraping the DOM.
+3. **Wrap an existing MCP server** — run one of the servers above and put a board UI in front of
+   it. Smallest delta, but reintroduces the external-server setup this idea tries to avoid.
+
+**Possible features (first version):**
+- QR-code login screen, session persistence, logout
+- Chat list with unread counts and search
+- Conversation view with send box (text first; media later)
+- Agent-facing surface: list chats, read recent messages, send message — each send requiring user
+  confirmation by default
+- Optional per-chat allowlist so the agent can only see chats the user has chosen
+
+**Risks and open questions:**
+- **Terms of Service.** Unofficial clients violate WhatsApp's ToS; the account can be restricted
+  or banned. Needs a clear warning in the board and probably a "use at your own risk" note in docs.
+- **Prompt injection.** Incoming messages are untrusted input that an agent will read. A crafted
+  message could instruct the agent to leak other chats or send messages. Mitigations: mandatory
+  confirmation for outbound messages, allowlisted chats, marking message text as untrusted data
+  in what the agent receives.
+- **Sensitive data.** Message history can contain personal and health information. Local-only
+  storage, no logging of message bodies, and an obvious way to wipe the local store are required.
+- **Maintenance.** Unofficial protocols break when WhatsApp changes them; the dependency has to be
+  easy to update.
+- **Viber.** No comparable personal-account solution was found for Windows (the existing options
+  are bot-API, business messaging, or macOS-only OCR). Out of scope for the first version; a
+  generic "messenger board" abstraction could be considered later (Telegram has an official API
+  and might be an easier second target).
+
+**Initial next step:** a short spike (SPIKE) comparing approaches 1 and 2 — can an agent reliably
+read and reply through embedded WhatsApp Web, and what would a sidecar client cost to maintain?
+
+**Complexity:** High
+
+---
+
 ## Developer Experience
 
 | Idea | Description | Complexity |

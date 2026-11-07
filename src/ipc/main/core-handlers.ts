@@ -25,6 +25,7 @@ import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { getPrivateMcpClientCount } from "../../main/mcp/private-session-endpoints";
 import { startMneme, stopMneme, restartMneme, getMnemeStatus as getMnemeServiceStatus } from "../../main/mneme-service";
+import { getAudioCaptureCount as getAudioCaptureCountSnapshot } from "../../main/audio-capture-state";
 import type { ClipboardFileList } from "../clipboard-ipc";
 import {
     clearClipboardHistory as clearClipboardHistoryService,
@@ -47,7 +48,6 @@ import type { SiteExtensionEndpoint } from "./site-extension-handlers";
 import type { PathWatchEndpoint } from "./path-watch-handlers";
 
 let siteExtensionRuntime: string | null = null;
-const voiceAssistantPauseSenders = new WeakSet<Electron.WebContents>();
 
 const clientErrorCodes = new Set<CapabilityErrorCode>(["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"]);
 export const activeCapabilityRequests = new WeakMap<Electron.WebContents, Map<string, AbortController>>();
@@ -342,32 +342,6 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         event.sender.send(EventEndpoint.eCapabilityIndexSnapshot, capabilityRegistry.snapshot());
     }
 
-    voiceAssistantGetOwner = async (event: IpcMainEvent) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
-        return openWindows.getVoiceAssistantOwner(window);
-    }
-
-    voiceAssistantStatus = async (event: IpcMainEvent, status: import("../api-types").VoiceAssistantStatus): Promise<void> => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
-        if (!status || !["off", "waiting", "listening", "thinking", "speaking"].includes(status.state)
-            || [status.requestText, status.replyText, status.notice].some((value) => value !== undefined && typeof value !== "string")) throw new TypeError("Invalid voice assistant status.");
-        openWindows.setVoiceAssistantStatus(window, status);
-    }
-
-    voiceAssistantPause = async (event: IpcMainEvent, pause: import("../api-types").VoiceAssistantPause): Promise<void> => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
-        if (!pause || pause.reason !== "enrollment" || typeof pause.active !== "boolean") throw new TypeError("Invalid voice assistant pause.");
-        openWindows.setVoiceAssistantPause(event.sender.id, pause);
-        if (pause.active && !voiceAssistantPauseSenders.has(event.sender)) {
-            voiceAssistantPauseSenders.add(event.sender);
-            const senderId = event.sender.id;
-            event.sender.once("destroyed", () => openWindows.setVoiceAssistantPause(senderId, { reason: "enrollment", active: false }));
-        }
-    }
-
     setVoiceTypingConfig = async (event: IpcMainEvent, request: { shortcut: string; translateShortcut: string }): Promise<void> => {
         if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
         if (!request || typeof request.shortcut !== "string" || !request.shortcut || typeof request.translateShortcut !== "string" || !request.translateShortcut) throw new TypeError("Normalized voice typing shortcuts are required.");
@@ -539,6 +513,8 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return getMnemeServiceStatus();
     }
 
+    getAudioCaptureCount = async (): Promise<{ count: number; revision: number }> => getAudioCaptureCountSnapshot();
+
     setClipboardEnabled = async (_event: IpcMainEvent, enabled: boolean, maxItems: number) => {
         return setClipboardEnabledService(enabled, maxItems);
     }
@@ -700,9 +676,6 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.closeWindow, controllerInstance.closeWindow);
     bindEndpoint(Endpoint.setCanQuit, controllerInstance.setCanQuit);
     bindEndpoint(Endpoint.resolveWindowClose, controllerInstance.resolveWindowClose);
-    bindEndpoint(Endpoint.voiceAssistantGetOwner, controllerInstance.voiceAssistantGetOwner);
-    bindEndpoint(Endpoint.voiceAssistantStatus, controllerInstance.voiceAssistantStatus);
-    bindEndpoint(Endpoint.voiceAssistantPause, controllerInstance.voiceAssistantPause);
     bindEndpoint(Endpoint.setVoiceTypingConfig, controllerInstance.setVoiceTypingConfig);
     bindEndpoint(Endpoint.setVoiceTypingState, controllerInstance.setVoiceTypingState);
     bindEndpoint(Endpoint.armVoiceTypingMicrophone, controllerInstance.armVoiceTypingMicrophone);
@@ -757,6 +730,7 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setMnemeEnabled, controllerInstance.setMnemeEnabled);
     bindEndpoint(Endpoint.restartMneme, controllerInstance.restartMneme);
     bindEndpoint(Endpoint.getMnemeStatus, controllerInstance.getMnemeStatus);
+    bindEndpoint(Endpoint.getAudioCaptureCount, controllerInstance.getAudioCaptureCount);
     bindEndpoint(Endpoint.setClipboardEnabled, controllerInstance.setClipboardEnabled);
     bindEndpoint(Endpoint.getClipboardHistory, controllerInstance.getClipboardHistory);
     bindEndpoint(Endpoint.removeClipboardItem, controllerInstance.removeClipboardItem);

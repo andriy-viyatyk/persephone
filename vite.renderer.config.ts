@@ -17,7 +17,13 @@ function inlineScriptHashesPlugin(): Plugin {
     name: 'inline-script-hashes',
     transformIndexHtml: {
       order: 'post',
-      handler(html) {
+      handler(html, context) {
+        if (/audio\.html$/.test(context.filename)) {
+          // The Monaco plugin injects a worker bootstrap into every HTML entry, but the
+          // privileged audio renderer has no editor and intentionally permits no inline script.
+          return html.replace(/<script>self\["MonacoEnvironment"\][\s\S]*?<\/script>\s*/i, '');
+        }
+        if (!html.includes(INLINE_HASHES_TOKEN)) return html;
         const hashes = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
           // The browser hashes the script text after HTML parsing, which turns CRLF and lone CR into
           // LF; hash the same text, or a CRLF checkout of index.html blocks its inline scripts.
@@ -147,7 +153,7 @@ export default defineConfig({
     //   (!) Failed to run dependency scan. Skipping dependency pre-bundling.
     // That disables pre-bundling for every dependency in the app, not just the board's — and it
     // only reproduces on a cold start, because a warm `node_modules/.vite/deps` hides it.
-    entries: ["index.html"],
+    entries: ["index.html", "audio.html"],
   },
   plugins: [
     editorTypesPlugin(),

@@ -412,14 +412,15 @@ class CapabilityRouter {
     private async invokeChannel(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext) {
         const registration = this.authorize(bound, method);
         if (bound.caller.kind === "agent") throw capabilityError("permission-denied");
-        if (registration.origin !== "board" || !Array.isArray(args) || args.length > 1) throw capabilityError("rejected");
+        const mainOwnedAudio = registration.origin === "platform" && registration.id === "audio" && registration.handlerKey === "audio";
+        if ((!mainOwnedAudio && registration.origin !== "board") || !Array.isArray(args) || args.length > 1) throw capabilityError("rejected");
         const argument = args.length ? checkedJson(args[0]) : {};
         if (!argument || typeof argument !== "object" || Array.isArray(argument) || Object.hasOwn(argument, "type")) throw capabilityError("rejected");
         const invocation = context.invocation as MainCapabilityInvocationContext;
         const chain = invocation.chain;
         if (invocation.depth + 1 > MAX_INTENT_DEPTH || chain.includes(registration.handlerKey)) throw capabilityError("cycle");
-        const provider = capabilityRegistry.board(registration.provider);
-        if (!provider) throw capabilityError("untrusted");
+        const provider = registration.origin === "board" ? capabilityRegistry.board(registration.provider) : undefined;
+        if (registration.origin === "board" && !provider) throw capabilityError("untrusted");
         const consumer = "provider" in bound.caller ? capabilityRegistry.board(bound.caller.provider) : undefined;
         const caller = invocation.caller;
         const owner = "provider" in bound.caller ? `${bound.caller.kind}:${bound.caller.provider}` : "platform";
@@ -445,11 +446,15 @@ class CapabilityRouter {
             context.owner?.removeListener("did-navigate", abort);
         };
         try {
-            const { moduleServiceSupervisor } = await import("./module-service-supervisor");
-            const opening = moduleServiceSupervisor.openCapabilityChannel(provider.boardRoot, owner,
-                bound.caller.kind === "board-service" ? consumer?.boardRoot : undefined, { ...argument, type: method },
-                { interface: { id: registration.id, version: registration.version }, caller }, controller.signal,
-                () => { this.authorize(bound, method); }, context.channelDelivery);
+            const opening = mainOwnedAudio
+                ? (await import("./audio-service")).audioService.openCapabilityChannel(
+                    bound, method, argument as Record<string, unknown>, invocation, context.channelDelivery,
+                    () => { this.authorize(bound, method); },
+                )
+                : (await import("./module-service-supervisor")).moduleServiceSupervisor.openCapabilityChannel(provider!.boardRoot, owner,
+                    bound.caller.kind === "board-service" ? consumer?.boardRoot : undefined, { ...argument, type: method },
+                    { interface: { id: registration.id, version: registration.version }, caller }, controller.signal,
+                    () => { this.authorize(bound, method); }, context.channelDelivery);
             const interrupted = new Promise<never>((_resolve, reject) => {
                 if (controller.signal.aborted) reject(controller.signal.reason);
                 else controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });

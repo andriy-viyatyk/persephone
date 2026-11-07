@@ -65,6 +65,7 @@ const boundedString = (value: unknown, max: number, nonempty = false): value is 
 export function validateLegacyCapabilityDeclaration(declaration: BoardCapabilityDeclaration): string | undefined {
     const id = declaration.id.trim();
     if (!id) return "Capability id must not be empty.";
+    if (id === "audio") return 'Capability id "audio" is reserved for Persephone.';
     if (/\s/.test(id)) return `Capability id "${id}" must not contain whitespace.`;
     if (id.includes("@")) return `Capability id "${id}" must not contain "@".`;
     if (declaration.version !== undefined && !Number.isInteger(declaration.version)) return `Capability "${id}" version must be an integer.`;

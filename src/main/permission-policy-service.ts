@@ -48,6 +48,75 @@ const recordingMediaGrants = new Map<number, number>();
 const voiceTypingMediaGrants = new Map<number, number>();
 const voiceTypingGrantTargets = new Map<number, { target: WebContents; onDestroyed: () => void }>();
 const transcriptLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
+const audioWindowMicrophoneGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
+const audioWindowLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
+let audioWindowTargetResolver: () => WebContents | undefined = () => undefined;
+
+export function setAudioWindowTargetResolver(resolve: () => WebContents | undefined): void {
+    audioWindowTargetResolver = resolve;
+}
+
+function armAudioWindowGrant(target: WebContents, grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): void {
+    const current = audioWindowTargetResolver();
+    if (!current || current !== target || target.isDestroyed()) return;
+    clearAudioWindowGrant(target.id, grants);
+    const frame = target.mainFrame;
+    const expiresAt = Date.now() + 5000;
+    const onDestroyed = (): void => clearAudioWindowGrant(target.id, grants);
+    grants.set(target.id, { expiresAt, frame, target, onDestroyed });
+    target.once("destroyed", onDestroyed);
+    setTimeout(() => {
+        if ((grants.get(target.id)?.expiresAt ?? 0) <= Date.now()) clearAudioWindowGrant(target.id, grants);
+    }, 5100);
+}
+
+function clearAudioWindowGrant(webContentsId: number, grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): void {
+    const grant = grants.get(webContentsId);
+    if (!grant) return;
+    grants.delete(webContentsId);
+    grant.target.removeListener("destroyed", grant.onDestroyed);
+}
+
+export function armAudioMicrophoneGrant(target: WebContents): void {
+    armAudioWindowGrant(target, audioWindowMicrophoneGrants);
+}
+
+/** Arm a separate, one-use Windows loopback grant for the hidden audio window. */
+export function armAudioLoopbackGrant(target: WebContents): void {
+    if (process.platform !== "win32") return;
+    armAudioWindowGrant(target, audioWindowLoopbackGrants);
+}
+
+export function clearAudioCaptureGrants(target?: WebContents): void {
+    const targets = target ? [target.id] : [...new Set([...audioWindowMicrophoneGrants.keys(), ...audioWindowLoopbackGrants.keys()])];
+    for (const id of targets) {
+        clearAudioWindowGrant(id, audioWindowMicrophoneGrants);
+        clearAudioWindowGrant(id, audioWindowLoopbackGrants);
+    }
+}
+
+function hasAudioWindowGrant(webContentsId: number, frame: Electron.WebFrameMain | undefined,
+    grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): boolean {
+    const grant = grants.get(webContentsId);
+    if (!grant || grant.expiresAt <= Date.now() || grant.target.isDestroyed() || grant.target !== audioWindowTargetResolver()
+        || (frame && grant.frame !== frame) || grant.target.mainFrame !== grant.frame) {
+        clearAudioWindowGrant(webContentsId, grants);
+        return false;
+    }
+    return true;
+}
+
+function consumeAudioWindowGrant(frame: Electron.WebFrameMain | null,
+    grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): boolean {
+    if (!frame) return false;
+    for (const [id, grant] of grants) {
+        if (grant.frame === frame && hasAudioWindowGrant(id, frame, grants)) {
+            clearAudioWindowGrant(id, grants);
+            return true;
+        }
+    }
+    return false;
+}
 
 /** Arm one short-lived app-main-frame display request for Windows loopback audio. */
 export function armTranscriptLoopbackGrant(webContentsId: number): void {
@@ -320,7 +389,7 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
             if (APP_ALLOW.has(permission as string)) return true;
             if (permission !== "media" || request.webContents === null) return false;
             return details.mediaType === "audio"
-                ? hasVoiceTypingMediaGrant(request.webContents.id)
+                ? hasVoiceTypingMediaGrant(request.webContents.id) || hasAudioWindowGrant(request.webContents.id, request.webContents.mainFrame, audioWindowMicrophoneGrants)
                 : details.mediaType === "video" && hasRecordingMediaGrant(request.webContents.id);
         }
         const requestingOrigin = requesterOrigin(origin);
@@ -365,14 +434,19 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
             const types = media.mediaTypes ?? [];
             const isVoiceTypingAudio = permission === "media" && details.isMainFrame === true
                 && types.length === 1 && types[0] === "audio" && hasVoiceTypingMediaGrant(webContents.id);
+            const isAudioWindowMicrophone = permission === "media" && details.isMainFrame === true
+                && types.length === 1 && types[0] === "audio" && hasAudioWindowGrant(webContents.id, webContents.mainFrame, audioWindowMicrophoneGrants);
             const isScreenRecordingVideo = permission === "media" && types.every((type) => type === "video")
                 && hasRecordingMediaGrant(webContents.id);
             // getDisplayMedia arrives as "media" with empty mediaTypes, not "display-capture" (verified on
             // Electron 43). The display-media handler consumes the Transcript grant, so it is only checked here.
             const isTranscriptDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
                 && hasTranscriptLoopbackGrant(webContents.id, webContents.mainFrame);
-            const allowed = isVoiceTypingAudio || isScreenRecordingVideo || isTranscriptDisplay;
+            const isAudioWindowDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
+                && hasAudioWindowGrant(webContents.id, webContents.mainFrame, audioWindowLoopbackGrants);
+            const allowed = isVoiceTypingAudio || isAudioWindowMicrophone || isScreenRecordingVideo || isTranscriptDisplay || isAudioWindowDisplay;
             if (isVoiceTypingAudio) clearVoiceTypingMediaGrant(webContents.id);
+            if (isAudioWindowMicrophone) clearAudioWindowGrant(webContents.id, audioWindowMicrophoneGrants);
             if (isScreenRecordingVideo && allowed) clearRecordingMediaGrant(webContents.id);
             callback(allowed);
             return;
@@ -413,8 +487,9 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
  *  handler is registered here, once the app session is known, rather than in installSession(). */
 function installAppDisplayMedia(ses: Session): void {
     ses.setDisplayMediaRequestHandler((request, callback) => {
-        if (process.platform !== "win32" || !request.videoRequested || !request.audioRequested
-            || !consumeTranscriptLoopbackGrant(request.frame)) {
+        const transcriptGrant = request.videoRequested && request.audioRequested && consumeTranscriptLoopbackGrant(request.frame);
+        const audioGrant = request.videoRequested && request.audioRequested && consumeAudioWindowGrant(request.frame, audioWindowLoopbackGrants);
+        if (process.platform !== "win32" || !request.videoRequested || !request.audioRequested || (!transcriptGrant && !audioGrant)) {
             callback({});
             return;
         }

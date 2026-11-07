@@ -64,6 +64,7 @@ await build({
     define: {
         MAIN_WINDOW_VITE_DEV_SERVER_URL: "undefined",
         MAIN_WINDOW_VITE_NAME: JSON.stringify("main_window"),
+        AUDIO_WINDOW_VITE_DEV_SERVER_URL: "undefined",
     },
 });
 
@@ -209,6 +210,7 @@ await build({
         outDir: ".vite/renderer/main_window",
         emptyOutDir: true,
         target: "esnext",
+        rollupOptions: { input: { main: "index.html", audio: "audio.html" } },
     },
 });
 
