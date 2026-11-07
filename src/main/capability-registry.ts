@@ -1,3 +1,4 @@
+import type { CapabilityRegistration as LegacyRegistration } from "../ipc/capability-bus-channels";
 import type { BoardServiceTrustSnapshot } from "../ipc/module-service-channels";
 import type { BoardCapabilityDeclaration, CapabilityMethod } from "../shared/capability-contract";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
@@ -46,7 +47,18 @@ class CapabilityRegistry {
         openWindows.send(EventEndpoint.eCapabilityIndexChanged, this.revision);
     }
 
-    snapshot() { return { revision: this.revision, registrations: [...platform, ...this.boards] }; }
+    snapshot() {
+        const legacyRegistrations: LegacyRegistration[] = [
+            ...PLATFORM_CAPABILITIES.map(({ editorId, ...entry }) => ({ ...entry, handlerKey: editorId, origin: "platform" as const })),
+            ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).map((declaration) => {
+                const { methods: _methods, ...fields } = declaration;
+                return { ...fields, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
+                    handlerKey: `board-editor:${board.boardRoot}`, origin: "board" as const,
+                    boardRoot: board.boardRoot, boardName: board.boardName };
+            })),
+        ];
+        return { revision: this.revision, registrations: [...platform, ...this.boards], legacyRegistrations };
+    }
     onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     board(provider: string) { return this.boardSnapshot.boards.find((entry) => boardRootKey(entry.boardRoot) === provider); }
 }

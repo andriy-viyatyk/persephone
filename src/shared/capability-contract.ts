@@ -106,7 +106,7 @@ export function normalizeCapabilityDeclarations(raw: unknown, reportIssue?: (id:
         const methods: Record<string, CapabilityMethod> = Object.create(null) as Record<string, CapabilityMethod>;
         let error = "";
         for (const [name, value] of Object.entries(entry.methods)) {
-            if (!identifier.test(name) || name.length > MAX_CAPABILITY_METHOD_NAME_LENGTH || name === "providers" || name === "$help" || !record(value)) { error = "Invalid method name or definition."; break; }
+            if (!identifier.test(name) || name.length > MAX_CAPABILITY_METHOD_NAME_LENGTH || name === "providers" || name === "$help" || name === "provider" || name === "then" || !record(value)) { error = "Invalid method name or definition."; break; }
             if (value.kind !== "call" && value.kind !== "channel" && value.kind !== "open" || !boundedString(value.summary, MAX_CAPABILITY_DESCRIPTION_LENGTH, true)) { error = `Invalid method ${name}.`; break; }
             if (value.kind !== "open" && (!context || !normalizeBoardServicePath(context.service) || !record(context.permissions) || context.permissions.service !== true)) { error = `Method ${name} requires a service and service permission.`; break; }
             if (value.args !== undefined && (!Array.isArray(value.args) || value.args.length > MAX_CAPABILITY_ARGUMENTS)) { error = `Invalid arguments for ${name}.`; break; }

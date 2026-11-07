@@ -1,3 +1,5 @@
+import type { CapabilityErrorCode as ClientErrorCode, CapabilityMethod } from "../shared/capability-contract";
+
 export { MAX_INTENT_PAYLOAD_BYTES, MAX_INTENT_DEPTH, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
 export { CAPABILITY_DEFAULT_TIMEOUT_MS as INTENT_DEADLINE_MS } from "../shared/capability-limits";
 
@@ -81,3 +83,9 @@ export interface CapabilityTransport {
     /** The chain/depth currently in force for a page, for D6. 0-length when idle. */
     chainForPage(pageId: string | undefined): { chain: readonly string[]; depth: number };
 }
+
+export interface CapabilityKey { id: string; version: number; provider: string; handlerKey: string }
+export interface CapabilityClientOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string } }
+export type CapabilityProvider = CapabilityKey & { name: string; origin: "board" | "platform"; title?: string; priority: number; accepts?: readonly string[]; representation?: string; methods: Readonly<Record<string, CapabilityMethod>> };
+export interface CapabilityClientInvoke { requestId: string; key: CapabilityKey; method: string; args: unknown[]; filter?: CapabilityClientOptions["filter"] }
+export type CapabilityClientResult<T> = { ok: true; value: T } | { ok: false; error: { code: ClientErrorCode; message: string } };

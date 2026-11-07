@@ -1,3 +1,4 @@
+import { createCapabilityProxy } from "./shared/capability-client";
 /**
  * Board bridge shim (EPIC-037 / US-771) — the successor to `preload-board.ts`.
  *
@@ -43,7 +44,6 @@ import type {
     BoardCapabilityIntentRequestMsg,
     BoardCapabilityIntentResultMsg,
     BoardCapabilityInvokeResultMsg,
-    BoardCapabilityListResultMsg,
     BoardContentOpenResultMsg,
     BoardFilePathResultMsg,
     BoardBootContext,
@@ -88,7 +88,7 @@ import type {
     MainToBoard,
 } from "./ipc/board-bridge-channels";
 import type { PathWatchBatch } from "./ipc/api-types";
-import { isCapabilityErrorCode, type CapabilityErrorCode, type IntentEnvelope } from "./ipc/capability-bus-channels";
+import { isCapabilityErrorCode, type CapabilityErrorCode, type IntentEnvelope, type CapabilityClientInvoke, type CapabilityClientOptions, type CapabilityClientResult, type CapabilityProvider } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
 import type {
@@ -618,7 +618,6 @@ type BoardHostRequestReply =
     | BoardVarResultMsg
     | BoardSettingsResultMsg
     | BoardNavigationReturnUrlResultMsg
-    | BoardCapabilityListResultMsg
     | BoardCapabilityInvokeResultMsg;
 
 type BoardHostRequestPayload =
@@ -629,7 +628,6 @@ type BoardHostRequestPayload =
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:contentOpen" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:openContent" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "navigation:createReturnUrl" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:list" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:get" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:set" }>, "reqId">
@@ -803,8 +801,7 @@ function hostRequest<T>(
 
 function rejectPendingCapabilityRequests(error: BoardCapabilityError): void {
     for (const [reqId, pending] of pendingHostRequests) {
-        if (pending.requestType !== "board:capabilities:list"
-            && pending.requestType !== "board:capabilities:invoke") continue;
+        if (pending.requestType !== "board:capabilities:invoke") continue;
         pendingHostRequests.delete(reqId);
         pending.reject(error);
     }
@@ -1067,14 +1064,6 @@ function capabilityErrorFromReply(error: { code?: unknown; message?: unknown } |
     return new BoardCapabilityError(code, message);
 }
 
-function capabilityListRpc(): Promise<unknown> {
-    return hostRequest({ __persephone: "board:capabilities:list" }, "capabilities:list:result", (reply) => {
-        const data = reply as BoardCapabilityListResultMsg;
-        if (data.error) throw capabilityErrorFromReply(data.error);
-        return data.result;
-    }, (error) => new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")));
-}
-
 function capabilityInvokeRpc(
     id: string,
     payload: unknown,
@@ -1128,6 +1117,23 @@ function rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
         const id = ++rpcId;
         pendingRpc.set(id, { resolve, reject });
         post({ kind: "rpc", id, method, args });
+    });
+}
+
+async function capabilityRpc<T>(method: BoardRpcMethod, args: unknown[]): Promise<T> {
+    const result = await rpc(method, args) as CapabilityClientResult<T>;
+    if (result.ok === false) throw Object.assign(new Error(result.error.message), { code: result.error.code });
+    return result.value;
+}
+
+async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
+    const provider = await capabilityRpc<CapabilityProvider | null>("capabilityGet", [id, options]);
+    if (!provider) return null;
+    return createCapabilityProxy(provider, async (method, args) => {
+        const request: CapabilityClientInvoke = { requestId: crypto.randomUUID(), key: { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey }, method, args, filter: options?.filter };
+        const result = await capabilityRpc<unknown>("capabilityInvoke", [request]);
+        if (provider.methods[method].kind === "channel") return waitForServiceChannel((result as { channelId: string }).channelId);
+        return result;
     });
 }
 
@@ -2243,11 +2249,14 @@ function createHandle(
         },
     },
 
-    /** Discover and invoke renderer-local capability handlers from this board frame. */
+    getCapability: getCapabilityRpc,
+
+    /** Discover granted providers and invoke legacy capability handlers. */
     capabilities: {
         list(): Promise<unknown> {
-            return capabilityListRpc();
+            return capabilityRpc("capabilityList", []);
         },
+        providers(id: string): Promise<CapabilityProvider[]> { return capabilityRpc("capabilityProviders", [id]); },
         invoke(
             id: string,
             payload: unknown,

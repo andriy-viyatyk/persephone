@@ -1,3 +1,4 @@
+import type { CapabilityJson } from "../shared/capability-contract";
 /**
  * Board bridge wire types — the `persephone` integration tier carried over the
  * per-board `MessagePort` (EPIC-034 / US-724; re-homed onto a `MessageChannelMain`
@@ -33,7 +34,7 @@ import type {
     RunnerStartMsg,
     RunnerStdinMsg,
 } from "./runner-channels";
-import type { CapabilityErrorCode, IntentEnvelope } from "./capability-bus-channels";
+import type { CapabilityErrorCode, IntentEnvelope, CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
 import type { PathWatchBatch } from "./api-types";
 
 export type { BoardServiceStatus } from "./module-service-channels";
@@ -222,6 +223,7 @@ export type BoardRpcMethod =
     | "serviceOpenChannel"
     | "servicesList"
     | "servicesConnect"
+    | "capabilityList" | "capabilityProviders" | "capabilityGet" | "capabilityInvoke" | "capabilityCancel"
     | "serviceStatus"
     | "serviceStop"
     | "storageGet"
@@ -230,6 +232,14 @@ export type BoardRpcMethod =
     | "storageKeys"
     | "clipboardWriteImage"
     | "clipboardWriteText";
+
+export interface BoardCapabilityRpc {
+    capabilityList: { args: []; result: CapabilityClientResult<CapabilityProvider[]> };
+    capabilityProviders: { args: [id: string]; result: CapabilityClientResult<CapabilityProvider[]> };
+    capabilityGet: { args: [id: string, options?: CapabilityClientOptions]; result: CapabilityClientResult<CapabilityProvider | null> };
+    capabilityInvoke: { args: [request: CapabilityClientInvoke]; result: CapabilityClientResult<CapabilityJson | { channelId: string }> };
+    capabilityCancel: { args: [requestId: string]; result: CapabilityClientResult<void> };
+}
 
 export interface BoardFolderListOptions { recursive?: boolean; masks?: string[]; limit?: number; cursor?: string }
 export interface BoardServiceProvider { provider: string; title: string; version: number; boardName: string }
@@ -633,7 +643,6 @@ export type BoardToHostMsg =
     | BoardAiVisionNotifyMsg
     | BoardAiVisionResultMsg
     | BoardCapabilityIntentResultMsg
-    | BoardCapabilityListRequestMsg
     | BoardCapabilityInvokeRequestMsg
     | BoardNavigationCreateReturnUrlMsg;
 
@@ -798,20 +807,6 @@ export interface BoardCapabilityIntentCancelMsg {
     requestId: string;
 }
 
-/** Board → renderer: request the capabilities visible in this renderer. */
-export interface BoardCapabilityListRequestMsg {
-    __persephone: "board:capabilities:list";
-    reqId: number;
-}
-
-/** Renderer → board: reply to a capability-list request. */
-export interface BoardCapabilityListResultMsg {
-    __persephone: "capabilities:list:result";
-    reqId: number;
-    result?: unknown;
-    error?: { code: CapabilityErrorCode; message: string };
-}
-
 /** Board → renderer: invoke a capability from this board frame. */
 export interface BoardCapabilityInvokeRequestMsg {
     __persephone: "board:capabilities:invoke";
@@ -860,8 +855,6 @@ export type BoardHostFrameMsg =
     | BoardCapabilityIntentRequestMsg
     | BoardCapabilityIntentResultMsg
     | BoardCapabilityIntentCancelMsg
-    | BoardCapabilityListRequestMsg
-    | BoardCapabilityListResultMsg
     | BoardCapabilityInvokeRequestMsg
     | BoardCapabilityInvokeResultMsg
     | BoardNavigationCreateReturnUrlMsg

@@ -6,7 +6,7 @@ This is the normative contract for the unified capability registry when EPIC-140
 
 ## Manifest
 
-Declare `capabilities` as an array of at most 32 declarations. A board providing `call` or `channel` declares a `service` entry and `permissions.service: true`; `open` is served by its page. Providers using `persephone.capabilities.handle` must set `minBridgeVersion` to `1.50.0`. A declaration is independently rejected and reported in Board Info when invalid; other valid declarations remain available. Unknown fields are ignored. Limits below apply to new declarations; legacy normalization is specified separately.
+Declare `capabilities` as an array of at most 32 declarations. A board providing `call` or `channel` declares a `service` entry and `permissions.service: true`; `open` is served by its page. Providers using `persephone.capabilities.handle` must set `minBridgeVersion` to `1.50.0`. Board pages and services using `getCapability` must set `minBridgeVersion` to `1.51.0`. A declaration is independently rejected and reported in Board Info when invalid; other valid declarations remain available. Unknown fields are ignored. Limits below apply to new declarations; legacy normalization is specified separately.
 
 | Field | Contract |
 |---|---|
@@ -17,7 +17,7 @@ Declare `capabilities` as an array of at most 32 declarations. A board providing
 | `accepts` | Optional array of nonempty MIME strings; absent means unrestricted, an empty array matches no supplied MIME. Matching is exact and case-sensitive, with no wildcard expansion. |
 | `representation` | Optional nonempty string; absent means unrestricted. Every board `content.view` declaration must supply it. |
 | `alwaysOpensNewPage` | Optional boolean, default `false`; applies to `open`. |
-| `methods` | Required nonempty object for new declarations; at most 32 entries. Names match `[A-Za-z][A-Za-z0-9_]*`, maximum 64 characters; `providers` and `$help` are reserved. As with any JSON object, a repeated method name keeps the last definition. |
+| `methods` | Required nonempty object for new declarations; at most 32 entries. Names match `[A-Za-z][A-Za-z0-9_]*`, maximum 64 characters; `providers`, `$help`, `provider` and `then` are reserved in new declarations; synthesized legacy method names are unaffected. As with any JSON object, a repeated method name keeps the last definition. |
 
 Each method is an object with these fields; unknown fields are ignored.
 
@@ -41,7 +41,7 @@ Descriptors describe positional JSON arguments, generate signatures and typed di
 | Both declarations for the same board/id/version | Merge distinct methods; explicit new `methods` win on name collision. Preserve legacy `services.connect` behavior, including a colliding open type. |
 | `uses` | Existing `{ id, version }` entries grant that exact capability major version, including platform providers; the trust dialog displays them. Existing entries and slash ids retain their meaning. New grants use the new id grammar. |
 
-Existing `persephone.capabilities.list/invoke`, `persephone.services.list/connect`, `app.capabilities.invoke`, and `handlers` remain wrappers, preserving their signatures, discovery and result projections, legacy `appScripting` gate for board bus calls, `deadlineMs`, filters, and existing error codes. `services.connect` forwards the original open object unchanged. Existing board intent FIFO, request-bound settlement, `discardPage`, caller-window page reuse and fresh-page rules remain intact. The bridge version is bumped; boards using the new API must declare the released version in `minBridgeVersion`.
+Existing `persephone.capabilities.invoke`, `persephone.services.list/connect`, `app.capabilities.invoke`, and `handlers` remain wrappers, preserving their signatures, discovery and result projections, legacy board bus gates, `deadlineMs`, filters, and existing error codes. `services.connect` forwards the original open object unchanged. The legacy board bus `list` requires `appScripting`; legacy `invoke` requires trust only. Existing board intent FIFO, request-bound settlement, `discardPage`, caller-window page reuse and fresh-page rules remain intact. Board page and service `persephone.capabilities.list()` instead returns the unified, grant-filtered provider list without `appScripting`; no bundled board or surveyed persephone-boards board calls the former board list API. Bundled manifests and prose guide migrations are tracked in US-1797, and external manifests in BT-087; publication follows later.
 
 ## Resolution and discovery
 
@@ -101,7 +101,7 @@ Deadlines start at invocation, include startup and queueing, and use the method 
 
 | Caller | Discovery and invocation |
 |---|---|
-| Board page | Trusted, enabled consumer and exact `uses` grant; no `appScripting` for the new API. Legacy bus wrappers retain their existing `appScripting` gate. |
+| Board page | Trusted, enabled consumer and exact `uses` grant; no `appScripting` for the new API. The legacy bus keeps its existing gates: `list` requires `appScripting`, while `invoke` requires trust only. |
 | Board service | Same trust and exact `uses` grant; no `appScripting` for the new API. Its own service requires `service` permission. |
 | Persephone renderer | Platform access, no `uses` or `appScripting`; registry authorization replaces the old host allowlist for the new API. |
 | Agent via MCP `call` | No board `uses` or `appScripting`; only declared, agent-visible `call` and `open` methods. Channels are discovery-only. |

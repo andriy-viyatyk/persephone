@@ -1,3 +1,4 @@
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
 /**
  * Main/utility-process protocol for board module services.
  *
@@ -99,6 +100,7 @@ export interface StartResult {
 
 export interface TrustedBoardSnapshotEntry {
     capabilities?: BoardCapabilityDeclaration[];
+    legacyCapabilities?: BoardCapabilityDeclaration[];
     boardRoot: string;
     /** Normalized board-relative ESM entry from the US-1466 manifest contract. */
     service?: string;
@@ -126,6 +128,8 @@ export type ServiceParentMessage =
     | { kind: "locale-changed"; locale: string }
     | { kind: "request"; requestId: string; message: unknown }
     | { kind: "capability-call"; requestId: string; id: string; version: number; method: string; args: CapabilityJson[]; caller: CapabilityCallerIdentity; deadlineAt: number; context: CapabilityInvocationWireContext }
+    | { kind: "capability-client-result"; requestId: string; result: CapabilityClientResult<CapabilityProvider[] | CapabilityProvider | CapabilityJson | null> }
+    | { kind: "capability-client-port"; requestId: string }
     | { kind: "capability-cancel"; requestId: string; reason: "timeout" | "cancelled" | "untrusted" }
     | {
         /** The transferred MessagePortMain arrives in `event.ports[0]`, NOT in this body —
@@ -151,6 +155,10 @@ export type ServiceMainMessage =
     | { kind: "renderer-attached"; generation: number; leaseNonce: string }
     | { kind: "response"; requestId: string; result: unknown }
     | { kind: "response"; requestId: string; error: ServiceErrorPayload | string }
+    | { kind: "capability-client-discover"; requestId: string; id?: string }
+    | { kind: "capability-client-resolve"; requestId: string; id: string; options?: CapabilityClientOptions }
+    | { kind: "capability-client-invoke"; request: CapabilityClientInvoke; parentRequestId?: string }
+    | { kind: "capability-client-cancel"; requestId: string }
     | { kind: "capability-result"; requestId: string; result: CapabilityJson }
     | { kind: "capability-result"; requestId: string; error: { code: CapabilityErrorCode; message: string } }
     | {

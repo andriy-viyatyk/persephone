@@ -1,5 +1,5 @@
 import { BrowserWindow, type IpcMainEvent } from "electron";
-import { BOARD_CDP_TAB, Endpoint, type BoardLogLevel } from "../api-types";
+import { BOARD_CDP_TAB, Endpoint, type BoardLogLevel, type HostServiceChannelRequest } from "../api-types";
 import type {
     BoardArchiveDownloadRequest,
     PublishedBoardsResult,
@@ -8,6 +8,7 @@ import type {
 import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
+import { activeCapabilityRequests, capabilityResult } from "./core-handlers";
 import { errMessage } from "../../shared/utils";
 import { boardPermissionError } from "../../shared/board-manifest-utils";
 
@@ -153,11 +154,31 @@ export function initBoardHandlers(): void {
         await trust.getPermissionGrants();
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.listServiceProviders(interfaceId);
     });
-    bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: { interfaceId: string; provider: string; version: number; openMessage: unknown }): Promise<string> => {
+    bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: HostServiceChannelRequest): Promise<string> => {
         if (event.senderFrame !== event.sender.mainFrame) throw new Error("permission-denied");
         const window = BrowserWindow.fromWebContents(event.sender);
         if (!window || !(await import("../../main/open-windows")).openWindows.findByWindow(window)) throw new Error("permission-denied");
-        if (!request || typeof request.interfaceId !== "string" || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
+        if (request && "kind" in request) {
+            const result = await capabilityResult(async () => {
+                const input = request.request;
+                if (request.kind !== "capability" || !input || typeof input.requestId !== "string" || !input.requestId || input.requestId.length > 256 || typeof input.method !== "string" || !Array.isArray(input.args)) throw Object.assign(new Error("Invalid capability request."), { code: "rejected" });
+                let active = activeCapabilityRequests.get(event.sender);
+                if (!active) { active = new Map(); activeCapabilityRequests.set(event.sender, active); }
+                if (active.has(input.requestId)) throw Object.assign(new Error("Duplicate capability request id."), { code: "rejected" });
+                const controller = new AbortController();
+                active.set(input.requestId, controller);
+                try {
+                    const { capabilityRouter } = await import("../../main/capability-router");
+                    const bound = capabilityRouter.bindKey({ kind: "platform" }, input.key, input.filter);
+                    if (!bound || bound.registration.methods[input.method]?.kind !== "channel") throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
+                    const channel = await capabilityRouter.invoke(bound, input.method, input.args, { signal: controller.signal, owner: event.sender, target: event.sender, channelDelivery: { target: event.sender, requestId: input.requestId } });
+                    if (!channel || typeof channel !== "object" || !("channelId" in channel) || typeof channel.channelId !== "string") throw Object.assign(new Error("Capability channel unavailable."), { code: "no-handler" });
+                    return channel.channelId;
+                } finally { active.delete(input.requestId); }
+            });
+            return JSON.stringify(result);
+        }
+        if (!request || !("interfaceId" in request) || typeof request.interfaceId !== "string" || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.connectHostServiceChannel(event.sender, request, request.openMessage);
     });
     bindEndpoint(Endpoint.insertVoiceTypingText, async (event: IpcMainEvent, request: { sessionId: string; text: string; deferClipboard?: boolean }): Promise<{ copied: boolean }> => {

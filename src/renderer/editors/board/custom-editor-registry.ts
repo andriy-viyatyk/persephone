@@ -56,10 +56,7 @@ import {
     type NormalizedBoardManifest,
 } from "./board-manifest";
 import type { BoardSettingDeclaration } from "../../api/board-settings/types";
-import {
-    registerCapability,
-    unregisterBoardCapabilities,
-} from "../../api/capabilities";
+import { validateLegacyCapabilityDeclaration } from "../../../shared/capability-contract";
 
 /** Prefix marking a virtual custom-editor id. The remainder is the board root VERBATIM
  *  (original case, may contain ':' and '\\' on Windows — parse by prefix, never by split). */
@@ -342,27 +339,13 @@ function collectCapabilityAxis(
     return intents;
 }
 
-function commitCapabilityAxis(
+function commitCapabilityIssues(
     intents: readonly BoardCapabilityRegistrationIntent[],
     issues: CustomEditorRegistrationIssue[],
 ): void {
-    for (const { boardRoot, boardName, declaration } of intents) {
-        const result = registerCapability(declaration, {
-            boardRoot,
-            boardName,
-            handlerKey: boardEditorId(boardRoot),
-            origin: "board",
-        });
-        if (!result.accepted) {
-            addRegistrationIssue(
-                issues,
-                boardRoot,
-                "capability",
-                declaration.id || "<empty id>",
-                result.reason,
-                undefined,
-            );
-        }
+    for (const { boardRoot, declaration } of intents) {
+        const reason = validateLegacyCapabilityDeclaration(declaration);
+        if (reason) addRegistrationIssue(issues, boardRoot, "capability", declaration.id || "<empty id>", reason, undefined);
     }
 }
 
@@ -559,10 +542,9 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const dependentSchemeIssues = new Set<CustomEditorRegistrationIssue>();
         unregisterBoardProviders();
         unregisterBoardSchemes();
-        unregisterBoardCapabilities();
         replaceProviderDeclarations(providerAxis.declarations);
         commitUrlMaskAxis(urlMaskIssues, registrationIssues);
-        commitCapabilityAxis(capabilityAxis, registrationIssues);
+        commitCapabilityIssues(capabilityAxis, registrationIssues);
         commitProviderAxis(providerAxis, registrationIssues, dependentSchemeIssues);
 
         this.state.update((state) => {

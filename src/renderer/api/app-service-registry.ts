@@ -99,8 +99,9 @@ export const appServiceDescriptors = [
                 import("./board-capability-transport"),
             ]);
             registerCapabilityTransport(boardCapabilityTransport);
-            const { registerBoundOpenDispatch } = await import("./capabilities");
+            const { registerBoundOpenDispatch, initializeCapabilityIndex } = await import("./capabilities");
             registerBoundOpenDispatch();
+            await initializeCapabilityIndex();
         },
     }),
 ] as const satisfies readonly AppServiceDescriptorUnion[];

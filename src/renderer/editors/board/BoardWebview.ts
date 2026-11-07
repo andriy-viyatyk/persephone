@@ -14,8 +14,6 @@ import type {
     BoardCapabilityIntentResultMsg,
     BoardCapabilityInvokeRequestMsg,
     BoardCapabilityInvokeResultMsg,
-    BoardCapabilityListRequestMsg,
-    BoardCapabilityListResultMsg,
     BoardContentOpenRequestMsg,
     BoardContentOpenResultMsg,
     BoardFileIconsResultMsg,
@@ -334,7 +332,6 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         },
         "board:aiResult": { handle: (message, current) => this.handleAiVisionResult(message, current.frame) },
         "capabilities:intent:result": { handle: (message, current) => this.handleCapabilityResult(message, current.frame) },
-        "board:capabilities:list": { handle: (message, current) => { void this.resolveCapabilityList(message, current.frame); } },
         "board:capabilities:invoke": {
             handle: (message, current) => { void this.resolveCapabilityInvoke(message, current.model, current.frame); },
         },
@@ -1404,28 +1401,6 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.pendingSaveRequests.delete(requestId);
             pending.resolve({ success: false, error });
         }
-    }
-
-    private async resolveCapabilityList(
-        message: BoardCapabilityListRequestMsg,
-        frame: HTMLIFrameElement,
-    ): Promise<void> {
-        const generation = this.generation;
-        let reply: BoardCapabilityListResultMsg;
-        try {
-            if (!isBoardPermitted(this.props.boardRoot)) {
-                throw new CapabilityError("untrusted", "The board is no longer trusted.");
-            }
-            if (!(await boardTrust.allows(this.props.boardRoot, "appScripting"))) throw boardPermissionError("appScripting");
-            reply = { __persephone: "capabilities:list:result", reqId: message.reqId, result: app.capabilities.list() };
-        } catch (error: unknown) {
-            reply = {
-                __persephone: "capabilities:list:result",
-                reqId: message.reqId,
-                error: capabilityError(error),
-            };
-        }
-        this.replyToFrame(frame, generation, reply);
     }
 
     private async resolveCapabilityInvoke(

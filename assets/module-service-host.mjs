@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { serialize } from "node:v8";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 const parentPort = process.parentPort;
 const [serviceEntry] = process.argv.slice(-1);
@@ -212,6 +213,8 @@ let serviceRequestHandler;
 let serviceChannelHandler;
 const capabilityHandlers = new Map();
 const capabilityRequests = new Map();
+const capabilityContext = new AsyncLocalStorage();
+const capabilityClientRequests = new Map();
 const serviceChannels = new Map();
 const shutdownHandlers = [];
 let initNonce;
@@ -301,6 +304,49 @@ function registerProvider(type, implementation) {
     for (const lease of rendererLeases.values()) announceCapabilities(lease);
 }
 
+// Keep this builder in parity with src/shared/capability-client.ts.
+function createCapabilityProxy(provider, invoke) {
+    const proxy = { provider: Object.freeze(provider) };
+    for (const method of Object.keys(provider.methods)) {
+        if (method === "then") continue;
+        proxy[method] = (...args) => invoke(method, args);
+    }
+    return Object.freeze(proxy);
+}
+
+function capabilityClientRequest(kind, fields = {}, channel = false) {
+    const requestId = `capability-client-${++requestNumber}`;
+    const context = capabilityContext.getStore();
+    return new Promise((resolve, reject) => {
+        const pending = { resolve, reject, channel, result: undefined, port: undefined };
+        const cancel = () => {
+            if (!capabilityClientRequests.delete(requestId)) return;
+            try { parentPort.postMessage({ kind: "capability-client-cancel", requestId }); } catch { /* Parent exited. */ }
+            pending.port?.close();
+            reject(Object.assign(new Error("Capability request cancelled."), { code: "cancelled" }));
+        };
+        pending.cleanup = () => context?.signal.removeEventListener("abort", cancel);
+        capabilityClientRequests.set(requestId, pending);
+        context?.signal.addEventListener("abort", cancel, { once: true });
+        if (context?.signal.aborted) { cancel(); return; }
+        try {
+            if (kind === "capability-client-invoke") parentPort.postMessage({ kind, request: { ...fields, requestId }, ...(context ? { parentRequestId: context.parentRequestId } : {}) });
+            else parentPort.postMessage({ kind, requestId, ...fields });
+        } catch (error) { capabilityClientRequests.delete(requestId); pending.cleanup(); reject(error); }
+    });
+}
+
+function settleCapabilityClient(requestId) {
+    const pending = capabilityClientRequests.get(requestId);
+    if (!pending || !pending.result || (pending.result.ok && pending.channel && !pending.port)) return;
+    capabilityClientRequests.delete(requestId);
+    pending.cleanup();
+    if (!pending.result.ok) {
+        pending.port?.close();
+        pending.reject(Object.assign(new Error(pending.result.error.message), { code: pending.result.error.code }));
+    } else pending.resolve(pending.channel ? makeServiceChannel(`client:${requestId}`, pending.port) : pending.result.value);
+}
+
 const persephone = globalThis.persephone ?? {};
 persephone.settings = {
     get(id) {
@@ -324,7 +370,16 @@ persephone.storage = {
     keys: () => storageRequest("keys", []),
 };
 persephone.providers = { register: registerProvider };
+persephone.getCapability = async (id, options) => {
+    const provider = await capabilityClientRequest("capability-client-resolve", { id, options });
+    if (!provider) return null;
+    const key = { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey };
+    const filter = options?.filter && { ...options.filter };
+    return createCapabilityProxy(provider, (method, args) => capabilityClientRequest("capability-client-invoke", { key, filter, method, args }, provider.methods[method].kind === "channel"));
+};
 persephone.capabilities = {
+    list: () => capabilityClientRequest("capability-client-discover"),
+    providers: (id) => capabilityClientRequest("capability-client-discover", { id }),
     handle(id, method, handler) {
         if (capabilityStartupComplete) throw new Error("Capability handlers must be registered before the service entry module finishes startup.");
         if (typeof handler !== "function") throw new TypeError("Capability handler must be a function.");
@@ -746,14 +801,14 @@ async function runCapabilityCall(message) {
     const controller = new AbortController();
     capabilityRequests.set(requestId, controller);
     try {
-        const result = await handler(message.args, {
+        const result = await capabilityContext.run({ parentRequestId: requestId, signal: controller.signal }, () => handler(message.args, {
             signal: controller.signal,
             caller: message.caller,
             requestId: message.context?.requestId,
             chain: message.context?.chain,
             depth: message.context?.depth,
             originatingWindowId: message.context?.originatingWindowId,
-        });
+        }));
         if (capabilityRequests.get(requestId) === controller) parentPort.postMessage({ kind: "capability-result", requestId, result });
     } catch (error) {
         if (capabilityRequests.get(requestId) === controller) {
@@ -1007,6 +1062,18 @@ function forwardEntryEvent(event, message) {
 originalPortMethods.on("message", (event) => {
     const message = eventData(event);
     if (!isRecord(message)) return;
+    if (message.kind === "capability-client-result") {
+        const pending = capabilityClientRequests.get(message.requestId);
+        if (pending) { pending.result = message.result; settleCapabilityClient(message.requestId); }
+        return;
+    }
+    if (message.kind === "capability-client-port") {
+        const port = event.ports?.[0];
+        const pending = capabilityClientRequests.get(message.requestId);
+        if (pending && pending.channel && port) { pending.port = port; settleCapabilityClient(message.requestId); }
+        else port?.close();
+        return;
+    }
     if (message.kind === "capability-call") {
         void runCapabilityCall(message);
         return;
@@ -1140,6 +1207,12 @@ persephone.service = {
 persephone.mcp = { issueSessionEndpoint };
 
 process.on("exit", () => {
+    for (const pending of capabilityClientRequests.values()) {
+        pending.cleanup();
+        pending.port?.close();
+        pending.reject(Object.assign(new Error("The service has exited."), { code: "handler-closed" }));
+    }
+    capabilityClientRequests.clear();
     for (const controller of capabilityRequests.values()) controller.abort();
     capabilityRequests.clear();
     for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");

@@ -1,3 +1,5 @@
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "../capability-bus-channels";
+import type { CapabilityJson } from "../../shared/capability-contract";
 import { PageDragData, WindowPages } from "../../shared/types";
 import type { LaunchInput } from "../../shared/launch-input";
 import {
@@ -20,6 +22,7 @@ import {
     Api,
     CaptureRect,
     type CreateBoardShortcutRequest,
+    type HostServiceChannelRequest,
     Endpoint,
     EventEndpoint,
     McpStatus,
@@ -307,6 +310,12 @@ class ApiCalls implements Api {
     setMainScriptsEnabled = async (enabled: boolean) => {
         return executeOnce<void>(Endpoint.setMainScriptsEnabled, enabled);
     }
+    capabilityList = () => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityList);
+    capabilityProviders = (id: string) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityProviders, id);
+    capabilityGet = (id: string, options?: CapabilityClientOptions) => executeOnce<CapabilityClientResult<CapabilityProvider | null>>(Endpoint.capabilityGet, id, options);
+    capabilityLegacyResolve = (id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => executeOnce<CapabilityClientResult<import("../capability-bus-channels").CapabilityRegistration | null>>(Endpoint.capabilityLegacyResolve, id, options);
+    capabilityInvoke = (request: CapabilityClientInvoke) => executeOnce<CapabilityClientResult<CapabilityJson>>(Endpoint.capabilityInvoke, request);
+    capabilityCancel = (requestId: string) => executeOnce<void>(Endpoint.capabilityCancel, requestId);
     getCapabilityIndex = async () => executeOnce<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(Endpoint.getCapabilityIndex);
     setCapabilityPreferences = async (preferences: Record<string, string>) => executeOnce<void>(Endpoint.setCapabilityPreferences, preferences);
     onCapabilityIndexSnapshot = (callback: (snapshot: ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>) => void) => window.electron.ipcRenderer.on(EventEndpoint.eCapabilityIndexSnapshot, callback as (...args: unknown[]) => void);
@@ -659,7 +668,7 @@ class ApiCalls implements Api {
     getBoardServiceProviders = async (interfaceId: string) =>
         executeOnce<import("../board-bridge-channels").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
 
-    connectHostServiceChannel = async (request: { interfaceId: string; provider: string; version: number; openMessage: unknown }) =>
+    connectHostServiceChannel = async (request: HostServiceChannelRequest) =>
         executeOnce<string>(Endpoint.connectHostServiceChannel, request);
 
     insertVoiceTypingText = async (request: { sessionId: string; text: string; deferClipboard?: boolean }) =>

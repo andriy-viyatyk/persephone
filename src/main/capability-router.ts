@@ -10,7 +10,7 @@ import { app, BrowserWindow } from "electron";
 import { guardedIpcOn } from "./ipc-sender-guard";
 import { openWindows } from "./open-windows";
 import { EventEndpoint } from "../ipc/api-types";
-import type { BoundOpenDispatch, BoundOpenSettlement, CapabilityOutcome } from "../ipc/capability-bus-channels";
+import type { BoundOpenDispatch, BoundOpenSettlement, CapabilityOutcome, CapabilityKey, CapabilityProvider } from "../ipc/capability-bus-channels";
 import { boardRootKey } from "./board-root-key";
 
 export type CapabilityCaller = { kind: "platform" | "agent" } | { kind: "board-page" | "board-service"; provider: string };
@@ -27,6 +27,7 @@ export interface CapabilityCallContext {
     originatingWindowId?: number;
     caller?: CapabilityCallerIdentity;
     invocation?: MainCapabilityInvocationContext;
+    channelDelivery?: { target: WebContents | import("electron").UtilityProcess; requestId: string };
 }
 
 export interface MainCapabilityInvocationContext {
@@ -103,12 +104,13 @@ class CapabilityRouter {
                 ? this.identityForServiceRoot(parent.owner.boardRoot)
                 : parent.caller);
             const controller = new AbortController();
-            const abort = () => controller.abort(parent.signal.reason ?? capabilityError("cancelled"));
+            const abort = () => controller.abort(parent.signal.reason ?? input.signal?.reason ?? capabilityError("cancelled"));
+            input.signal?.addEventListener("abort", abort, { once: true });
             parent.signal.addEventListener("abort", abort, { once: true });
-            if (parent.signal.aborted) abort();
+            if (parent.signal.aborted || input.signal?.aborted) abort();
             return { caller, owner, signal: controller.signal, controller, chain: [...parent.chain], depth: parent.depth,
                 originatingWindowId: parent.originatingWindowId, requestId: parent.requestId,
-                dispose: () => parent.signal.removeEventListener("abort", abort) };
+                dispose: () => { parent.signal.removeEventListener("abort", abort); input.signal?.removeEventListener("abort", abort); } };
         }
         const caller = input.caller ?? this.callerIdentity(bound.caller);
         const target = input.owner ?? input.target;
@@ -166,11 +168,12 @@ class CapabilityRouter {
     }
     providers(caller: CapabilityCaller, id: string): CapabilityRegistration[] { return this.list(caller).filter((entry) => entry.id === id); }
     resolve(caller: CapabilityCaller, id: string, options: CapabilityOptions = {}): BoundCapability | null {
-        let candidates = this.providers(caller, id).filter((entry) => entry.version === (options.version ?? 1)
+        const visible = this.providers(caller, id);
+        let candidates = visible.filter((entry) => entry.version === (options.version ?? 1)
             && (!options.filter?.mime || !entry.accepts || entry.accepts.includes(options.filter.mime))
             && (!options.filter?.representation || !entry.representation || entry.representation === options.filter.representation));
         if (options.provider) {
-            const keys = new Set(candidates.filter((entry) => entry.provider === options.provider || entry.name === options.provider).map((entry) => entry.provider));
+            const keys = new Set(visible.filter((entry) => entry.provider === options.provider || entry.name === options.provider).map((entry) => entry.provider));
             if (keys.size !== 1) return null;
             candidates = candidates.filter((entry) => keys.has(entry.provider));
         } else {
@@ -181,6 +184,25 @@ class CapabilityRouter {
         const selected = candidates[0];
         const registration = selected && capabilityRegistry.snapshot().registrations.find((entry) => entry.handlerKey === selected.handlerKey && entry.provider === selected.provider);
         return registration ? { caller, registration, ...(options.filter ? { filter: { ...options.filter } } : {}) } : null;
+    }
+    resolveLegacy(id: string, options: { version?: number; filter?: CapabilityOptions["filter"] }): import("../ipc/capability-bus-channels").CapabilityRegistration | null {
+        if (options.version !== undefined && !Number.isInteger(options.version)) return null;
+        return capabilityRegistry.snapshot().legacyRegistrations.filter((entry) => entry.id === id
+            && (options.version === undefined || entry.version === options.version)
+            && (options.filter?.mime === undefined || entry.accepts === undefined || entry.accepts.includes(options.filter.mime))
+            && (options.filter?.representation === undefined || entry.representation === undefined || entry.representation === options.filter.representation))
+            .sort((a, b) => b.priority - a.priority || Number(b.origin === "platform") - Number(a.origin === "platform"))[0] ?? null;
+    }
+    bindKey(caller: CapabilityCaller, key: CapabilityKey, filter?: CapabilityOptions["filter"]): BoundCapability | null {
+        if (!key || typeof key !== "object") return null;
+        const registration = capabilityRegistry.snapshot().registrations.find((entry) => entry.id === key.id && entry.version === key.version && entry.provider === key.provider && entry.handlerKey === key.handlerKey);
+        if (!registration) return null;
+        if (filter && (typeof filter !== "object" || Array.isArray(filter)
+            || filter.mime !== undefined && typeof filter.mime !== "string"
+            || filter.representation !== undefined && typeof filter.representation !== "string")) throw capabilityError("rejected", "Invalid capability filter.");
+        if (filter?.mime && registration.accepts && !registration.accepts.includes(filter.mime)
+            || filter?.representation && registration.representation && registration.representation !== filter.representation) return null;
+        return { caller, registration, ...(filter ? { filter: { ...filter } } : {}) };
     }
     private authorize(bound: BoundCapability, method: string): CapabilityRegistration {
         if ((bound.registration.origin === "board" && !capabilityRegistry.board(bound.registration.provider))
@@ -201,7 +223,7 @@ class CapabilityRouter {
         if (!current || JSON.stringify(current) !== JSON.stringify(bound.registration) || !current.methods[method]) throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
         return current;
     }
-    async invoke(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext = {}): Promise<CapabilityJson | ReturnType<typeof createCapabilityChannel>> {
+    async invoke(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext = {}): Promise<CapabilityJson | ReturnType<typeof createCapabilityChannel> | { channelId: string; onClose: (listener: () => void) => () => void }> {
         const registration = this.authorize(bound, method);
         const invocation = context.invocation ?? this.createInvocationContext(bound, context);
         context = { ...context, invocation, signal: invocation.signal, chain: invocation.chain, depth: invocation.depth,
@@ -296,7 +318,7 @@ class CapabilityRouter {
         if (!Array.isArray(args) || args.length !== 1) throw capabilityError("rejected");
         const payload = checkedJson(args[0]);
         const values = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : undefined;
-        const representation = registration.id === "content.view" ? values?.representation : bound.filter?.representation;
+        const representation = values?.representation ?? (registration.id === "content.view" ? undefined : bound.filter?.representation);
         const mime = typeof values?.mimeType === "string" ? values.mimeType : typeof values?.mime === "string" ? values.mime : bound.filter?.mime;
         if ((registration.id === "content.view" && (typeof representation !== "string" || !representation.trim()))
             || (typeof representation === "string" && registration.representation !== undefined && registration.representation !== representation)
@@ -427,7 +449,7 @@ class CapabilityRouter {
             const opening = moduleServiceSupervisor.openCapabilityChannel(provider.boardRoot, owner,
                 bound.caller.kind === "board-service" ? consumer?.boardRoot : undefined, { ...argument, type: method },
                 { interface: { id: registration.id, version: registration.version }, caller }, controller.signal,
-                () => { this.authorize(bound, method); });
+                () => { this.authorize(bound, method); }, context.channelDelivery);
             const interrupted = new Promise<never>((_resolve, reject) => {
                 if (controller.signal.aborted) reject(controller.signal.reason);
                 else controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });
@@ -444,3 +466,11 @@ class CapabilityRouter {
     }
 }
 export const capabilityRouter = new CapabilityRouter();
+
+/** Strip internal registration data before crossing a client boundary. */
+export function publicCapabilityProvider(registration: CapabilityRegistration): CapabilityProvider {
+    const { id, version, provider, handlerKey, name, origin, title, priority, accepts, representation, methods } = registration;
+    return { id, version, provider, handlerKey, name, origin, priority, methods,
+        ...(title !== undefined ? { title } : {}), ...(accepts !== undefined ? { accepts } : {}),
+        ...(representation !== undefined ? { representation } : {}) };
+}

@@ -1,8 +1,13 @@
+import { serialize } from "node:v8";
+import { MAX_SERVICE_CHANNEL_IN_FLIGHT, MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../../shared/capability-limits";
+import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../ipc/module-service-channels";
+import { api } from "../../ipc/renderer/api";
+import { createCapabilityProxy } from "../../shared/capability-client";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
-import { PLATFORM_CAPABILITIES } from "../../shared/platform-capabilities";
-import { validateLegacyCapabilityDeclaration } from "../../shared/capability-contract";
 import type {
+    CapabilityChannel,
+    CapabilityChannelReason,
     CapabilityHandlerFilter,
     CapabilityId,
     CapabilityInfo,
@@ -17,10 +22,10 @@ import type {
 } from "./types/capabilities";
 import { editorRegistry, type EditorCapabilityDeclaration } from "../editors/base/editorRegistry";
 import type { EditorView } from "../../shared/types";
-import type { BoardCapabilityDeclaration } from "../editors/board/board-manifest";
 import type {
+    CapabilityClientOptions,
+    CapabilityClientResult,
     CapabilityOutcome,
-    CapabilityOrigin,
     CapabilityRegistration,
     BoundOpenDispatch,
     BoundOpenSettlement,
@@ -33,27 +38,31 @@ import { boardCapabilityTransport } from "./board-capability-transport";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
-interface IndexedCapability {
-    registration: CapabilityRegistration;
-    order: number;
-}
-
-export interface CapabilityRegistrationResult {
-    readonly accepted: boolean;
-    readonly reason?: string;
-}
-
-export interface CapabilityRegistrationOptions {
-    readonly boardRoot?: string;
-    readonly boardName?: string;
-    readonly handlerKey: string;
-    readonly origin: CapabilityOrigin;
-}
-
 const builtinHandlers = new Map<string, Map<string, CapabilityHandler>>();
-const candidates = new Map<string, IndexedCapability[]>();
-let nextRegistrationOrder = 0;
 let platformCandidatesSeeded = false;
+type CapabilityIndex = Awaited<ReturnType<typeof api.getCapabilityIndex>>;
+let mainIndexSnapshot: CapabilityIndex | undefined;
+let latestRevision = -1;
+let indexInitialization: Promise<void> | undefined;
+
+export function initializeCapabilityIndex(): Promise<void> {
+    if (indexInitialization) return indexInitialization;
+    const accept = (snapshot: CapabilityIndex) => {
+        if (!mainIndexSnapshot || snapshot.revision >= mainIndexSnapshot.revision) mainIndexSnapshot = snapshot;
+        latestRevision = Math.max(latestRevision, snapshot.revision);
+    };
+    let fetching: Promise<void> | undefined;
+    const refresh = (): Promise<void> => {
+        if (!fetching) fetching = (async () => {
+            do { accept(await api.getCapabilityIndex()); } while (mainIndexSnapshot!.revision < latestRevision);
+        })().finally(() => { fetching = undefined; });
+        return fetching;
+    };
+    api.onCapabilityIndexSnapshot((snapshot) => { accept(snapshot); if (snapshot.revision < latestRevision) void refresh(); });
+    api.onCapabilityIndexChanged((revision) => { latestRevision = Math.max(latestRevision, revision); if (!mainIndexSnapshot || mainIndexSnapshot.revision < latestRevision) void refresh(); });
+    indexInitialization = refresh();
+    return indexInitialization;
+}
 
 function capabilityKey(id: CapabilityId, representation?: string): string {
     return `${id}:${representation ?? ""}`;
@@ -119,12 +128,6 @@ function createHandler(
     return createPageHandler(editorId, declaration.id, declaration.representation);
 }
 
-function addCandidate(registration: CapabilityRegistration): void {
-    const entries = candidates.get(registration.id) ?? [];
-    entries.push({ registration, order: nextRegistrationOrder++ });
-    candidates.set(registration.id, entries);
-}
-
 export function seedPlatformCapabilities(): void {
     if (platformCandidatesSeeded) return;
     const definitions = editorRegistry.getAll();
@@ -140,98 +143,21 @@ export function seedPlatformCapabilities(): void {
             }
             handlers.set(key, createHandler(definition.id, declaration));
             builtinHandlers.set(definition.id, handlers);
-            addCandidate({
-                id: declaration.id,
-                version: PLATFORM_CAPABILITIES.find((item) => item.editorId === definition.id && item.id === declaration.id)?.version ?? 1,
-                priority: PLATFORM_CAPABILITIES.find((item) => item.editorId === definition.id && item.id === declaration.id)?.priority ?? 50,
-                origin: "platform",
-                handlerKey: definition.id,
-                ...(declaration.representation !== undefined
-                    ? { representation: declaration.representation }
-                    : {}),
-            });
+
         }
     }
     platformCandidatesSeeded = true;
 }
 
-function registrationFromDeclaration(
-    declaration: BoardCapabilityDeclaration,
-    options: CapabilityRegistrationOptions,
-): { registration?: CapabilityRegistration; reason?: string } {
-    const id = declaration.id.trim();
-    const reason = validateLegacyCapabilityDeclaration(declaration);
-    if (reason) return { reason };
-
-    return {
-        registration: {
-            id,
-            version: declaration.version ?? 1,
-            priority: declaration.priority ?? 50,
-            ...(declaration.representation !== undefined
-                ? { representation: declaration.representation.trim() }
-                : {}),
-            ...(declaration.accepts !== undefined ? { accepts: [...declaration.accepts] } : {}),
-            ...(Object.prototype.hasOwnProperty.call(declaration, "payloadSchema")
-                ? { payloadSchema: declaration.payloadSchema }
-                : {}),
-            ...(declaration.title !== undefined ? { title: declaration.title } : {}),
-            ...(declaration.headless === true ? { headless: true } : {}),
-            ...(declaration.alwaysOpensNewPage !== undefined
-                ? { alwaysOpensNewPage: declaration.alwaysOpensNewPage }
-                : {}),
-            handlerKey: options.handlerKey,
-            origin: options.origin,
-            ...(options.boardRoot !== undefined ? { boardRoot: options.boardRoot } : {}),
-            ...(options.boardName !== undefined ? { boardName: options.boardName } : {}),
-        },
-    };
+function matchesFilter(registration: CapabilityRegistration, filter?: CapabilityHandlerFilter): boolean {
+    if (filter?.representation !== undefined && registration.representation !== undefined
+        && registration.representation !== filter.representation) return false;
+    return filter?.mime === undefined || registration.accepts === undefined || registration.accepts.includes(filter.mime);
 }
 
-function matchesFilter(candidate: IndexedCapability, filter?: CapabilityHandlerFilter): boolean {
-    const representation = candidate.registration.representation;
-    if (filter?.representation !== undefined && representation !== undefined
-        && representation !== filter.representation) return false;
-    if (!filter || filter.mime === undefined) return true;
-    const accepts = candidate.registration.accepts;
-    return accepts === undefined || accepts.includes(filter.mime);
-}
-
-function compareCandidates(left: IndexedCapability, right: IndexedCapability): number {
-    const priorityDifference = right.registration.priority - left.registration.priority;
-    if (priorityDifference !== 0) return priorityDifference;
-    if (left.registration.origin !== right.registration.origin) {
-        return left.registration.origin === "platform" ? -1 : 1;
-    }
-    return left.order - right.order;
-}
-
-function orderedCandidates(id: string, filter?: CapabilityHandlerFilter): IndexedCapability[] {
-    return (candidates.get(id) ?? [])
-        .filter((candidate) => matchesFilter(candidate, filter))
-        .sort(compareCandidates);
-}
-
-function copyInfo(candidate: IndexedCapability): CapabilityInfo {
-    const registration = candidate.registration;
-    return {
-        id: registration.id,
-        version: registration.version,
-        priority: registration.priority,
-        ...(registration.representation !== undefined ? { representation: registration.representation } : {}),
-        handlerKey: registration.handlerKey,
-        origin: registration.origin,
-        ...(registration.boardRoot !== undefined ? { boardRoot: registration.boardRoot } : {}),
-        ...(registration.alwaysOpensNewPage !== undefined
-            ? { alwaysOpensNewPage: registration.alwaysOpensNewPage }
-            : {}),
-        ...(registration.accepts !== undefined ? { accepts: [...registration.accepts] } : {}),
-        ...(Object.prototype.hasOwnProperty.call(registration, "payloadSchema")
-            ? { payloadSchema: registration.payloadSchema }
-            : {}),
-        ...(registration.title !== undefined ? { title: registration.title } : {}),
-        ...(registration.headless === true ? { headless: true } : {}),
-    };
+function copyInfo(registration: CapabilityRegistration): CapabilityInfo {
+    const { boardName: _boardName, ...info } = registration;
+    return { ...info, ...(registration.accepts !== undefined ? { accepts: [...registration.accepts] } : {}) };
 }
 
 function parseCapabilityId(id: string): { bareId?: string; version?: number; reason?: string } {
@@ -262,39 +188,99 @@ function projectCapabilityOutcome(outcome: CapabilityOutcome): unknown {
     return { pageId: outcome.pageId };
 }
 
-/** Register one board declaration, returning a readable refusal for Board Info diagnostics. */
-export function registerCapability(
-    declaration: BoardCapabilityDeclaration,
-    options: CapabilityRegistrationOptions,
-): CapabilityRegistrationResult {
-    const result = registrationFromDeclaration(declaration, options);
-    if (!result.registration) return { accepted: false, reason: result.reason };
-    addCandidate(result.registration);
-    return { accepted: true };
+function unwrapClientResult<T>(result: CapabilityClientResult<T>): T {
+    if (result.ok === false) throw Object.assign(new Error(result.error.message), { code: result.error.code });
+    return result.value;
 }
 
-/** Remove every board-origin capability before a trusted-board rebuild. */
-export function unregisterBoardCapabilities(): void {
-    for (const [id, entries] of candidates) {
-        const retained = entries.filter((entry) => entry.registration.origin !== "board");
-        if (retained.length > 0) candidates.set(id, retained);
-        else candidates.delete(id);
-    }
+function createRendererCapabilityChannel(port: MessagePort): CapabilityChannel {
+    const messages = new Set<(value: unknown) => void>();
+    const closes = new Set<(reason: CapabilityChannelReason) => void>();
+    const waiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
+    let reason: CapabilityChannelReason | undefined;
+    let sent = 0, acknowledged = 0, received = 0;
+    const finish = (next: CapabilityChannelReason) => {
+        if (reason) return;
+        reason = next; port.close();
+        for (const waiter of waiters) waiter.reject(Object.assign(new Error(next.message), { code: next.code }));
+        waiters.clear();
+        for (const listener of closes) listener(next);
+        closes.clear(); messages.clear();
+    };
+    port.onmessage = ({ data }) => {
+        if (data?.kind === "ack" && Number.isSafeInteger(data.sequence)) {
+            acknowledged = Math.max(acknowledged, Math.min(data.sequence, sent));
+            for (const waiter of waiters) waiter.resolve();
+            waiters.clear();
+        } else if (data?.kind === "data" && data.sequence === received + 1) {
+            received = data.sequence;
+            for (const listener of messages) listener(data.value);
+            port.postMessage({ kind: "ack", sequence: received });
+        } else if (data?.kind === "close") finish(data.reason ?? { code: "channel-closed", message: "Channel closed." });
+    };
+    port.onmessageerror = () => finish({ code: "handler-closed", message: "Channel disconnected." });
+    port.start();
+    return {
+        get writable() { return !reason && sent - acknowledged < MAX_SERVICE_CHANNEL_IN_FLIGHT; },
+        send(value) {
+            if (reason) throw Object.assign(new Error(reason.message), { code: reason.code });
+            if (sent - acknowledged >= MAX_SERVICE_CHANNEL_IN_FLIGHT) throw Object.assign(new Error("Channel send window is full."), { code: "channel-backpressure" });
+            let size: number;
+            try { size = serialize(value).byteLength; } catch { throw Object.assign(new Error("Channel message is not cloneable."), { code: "rejected" }); }
+            if (size > MAX_SERVICE_CHANNEL_MESSAGE_BYTES) throw Object.assign(new Error("Channel message is too large."), { code: "payload-too-large" });
+            port.postMessage({ kind: "data", sequence: ++sent, value });
+        },
+        onMessage(listener) { messages.add(listener); return () => { messages.delete(listener); }; },
+        onClose(listener) { if (reason) listener(reason); else closes.add(listener); return () => { closes.delete(listener); }; },
+        close(next = { code: "channel-closed", message: "Channel closed." }) {
+            if (reason) return;
+            try { port.postMessage({ kind: "close", reason: next }); } catch { /* Peer exited. */ }
+            finish(next);
+        },
+        whenWritable() {
+            if (reason) return Promise.reject(Object.assign(new Error(reason.message), { code: reason.code }));
+            if (sent - acknowledged < MAX_SERVICE_CHANNEL_IN_FLIGHT) return Promise.resolve();
+            return new Promise<void>((resolve, reject) => { waiters.add({ resolve, reject }); });
+        },
+    };
 }
 
-/** Resolve the best indexed candidate using D4 ordering and optional version/filter constraints. */
-export function resolveCapability(
-    id: string,
-    version?: number,
-    filter?: CapabilityHandlerFilter,
-): CapabilityRegistration | undefined {
-    if (version !== undefined && !Number.isInteger(version)) return undefined;
-    const candidate = orderedCandidates(id, filter)
-        .find((entry) => version === undefined || entry.registration.version === version);
-    return candidate?.registration;
+async function openRendererCapabilityChannel(request: import("../../ipc/capability-bus-channels").CapabilityClientInvoke): Promise<CapabilityChannel> {
+    let expected: string | undefined;
+    const ports = new Map<string, MessagePort>();
+    let resolvePort: ((port: MessagePort) => void) | undefined;
+    const unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
+        if (boardId !== `capability:${request.requestId}`) return;
+        if (channelId === expected && resolvePort) resolvePort(port);
+        else ports.set(channelId, port);
+    });
+    try {
+        expected = unwrapClientResult(JSON.parse(await api.connectHostServiceChannel({ kind: "capability", request })) as CapabilityClientResult<string>);
+        const port = ports.get(expected) ?? await new Promise<MessagePort>((resolve, reject) => {
+            const timer = setTimeout(() => reject(Object.assign(new Error("Channel delivery timed out."), { code: "timeout" })), SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
+            resolvePort = (value) => { clearTimeout(timer); resolve(value); };
+        });
+        ports.delete(expected);
+        return createRendererCapabilityChannel(port);
+    } finally { unsubscribe(); for (const port of ports.values()) port.close(); }
 }
 
 class Capabilities implements ICapabilities {
+    async providers(id: string) { return unwrapClientResult(await api.capabilityProviders(id)); }
+
+    async get(id: string, options?: CapabilityClientOptions) {
+        const filter = options?.filter ? { ...options.filter } : undefined;
+        const provider = unwrapClientResult(await api.capabilityGet(id, options));
+        if (!provider) return null;
+        const key = { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey };
+        const kinds = Object.fromEntries(Object.entries(provider.methods).map(([name, method]) => [name, method.kind]));
+        return createCapabilityProxy(provider, async (method, args) => {
+            const request = { requestId: crypto.randomUUID(), key, method, args, ...(filter ? { filter } : {}) };
+            if (kinds[method] === "channel") return openRendererCapabilityChannel(request);
+            return unwrapClientResult(await api.capabilityInvoke(request));
+        });
+    }
+
     invoke(id: "text.open", payload: { content: string; language: string; title: string }): Promise<CapabilityPageResult>;
     invoke(id: "content.view", payload: { representation: ContentRepresentation; content: string; language: string; title: string }): Promise<CapabilityPageResult>;
     invoke(id: "image.edit", payload: ImageEditPayload): Promise<CapabilityPageResult>;
@@ -310,12 +296,13 @@ class Capabilities implements ICapabilities {
 
     list(): readonly CapabilityInfo[] {
         return Object.freeze(
-            [...candidates.values()].flat().sort((left, right) => left.order - right.order).map(copyInfo),
+            (mainIndexSnapshot?.legacyRegistrations ?? []).map(copyInfo),
         );
     }
 
     handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[] {
-        return Object.freeze(orderedCandidates(id, filter).map(copyInfo));
+        return Object.freeze((mainIndexSnapshot?.legacyRegistrations ?? []).filter((entry) => entry.id === id && matchesFilter(entry, filter))
+            .sort((a, b) => b.priority - a.priority || Number(b.origin === "platform") - Number(a.origin === "platform")).map(copyInfo));
     }
 }
 
@@ -392,11 +379,12 @@ export async function invokeCapabilityOutcome(
         const filter = parsed.bareId === "content.view"
             ? { ...opts?.filter, representation: representation as string }
             : opts?.filter;
-        const registration = resolveCapability(parsed.bareId, version, filter);
+        const registration = unwrapClientResult(await api.capabilityLegacyResolve(parsed.bareId, { version, filter }));
         if (!registration) throw noHandlerError(id, version);
         if (registration.headless) throw noHandlerError(id, version);
 
         if (registration.origin === "platform") {
+            seedPlatformCapabilities();
             const handler = builtinHandlers.get(registration.handlerKey)?.get(
                 capabilityKey(registration.id, registration.representation),
             );

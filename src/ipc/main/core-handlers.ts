@@ -1,3 +1,6 @@
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult } from "../capability-bus-channels";
+import type { CapabilityErrorCode, CapabilityJson } from "../../shared/capability-contract";
+import { errMessage } from "../../shared/utils";
 import { applicationProfileName } from "../../main/application-profile";
 import { t } from "../../shared/i18n/t";
 import { reapplyBrowserGuestZoom } from "../../main/browser-service";
@@ -17,7 +20,7 @@ import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
 import { capabilityRegistry } from "../../main/capability-registry";
-import { capabilityRouter } from "../../main/capability-router";
+import { capabilityRouter, publicCapabilityProvider } from "../../main/capability-router";
 import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { getPrivateMcpClientCount } from "../../main/mcp/private-session-endpoints";
@@ -46,7 +49,78 @@ import type { PathWatchEndpoint } from "./path-watch-handlers";
 let siteExtensionRuntime: string | null = null;
 const voiceAssistantPauseSenders = new WeakSet<Electron.WebContents>();
 
+const clientErrorCodes = new Set<CapabilityErrorCode>(["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"]);
+export const activeCapabilityRequests = new WeakMap<Electron.WebContents, Map<string, AbortController>>();
+
+function checkCapabilitySender(event: IpcMainEvent): void {
+    if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) {
+        throw Object.assign(new Error("Permission denied."), { code: "permission-denied" });
+    }
+}
+
+export async function capabilityResult<T>(operation: () => T | Promise<T>): Promise<CapabilityClientResult<T>> {
+    try { return { ok: true, value: await operation() }; }
+    catch (error) {
+        const code = (error as { code?: unknown })?.code;
+        return { ok: false, error: { code: typeof code === "string" && clientErrorCodes.has(code as CapabilityErrorCode) ? code as CapabilityErrorCode : "rejected", message: errMessage(error) } };
+    }
+}
+
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
+    capabilityList = async (event: IpcMainEvent) => capabilityResult(() => {
+        checkCapabilitySender(event);
+        return capabilityRouter.list({ kind: "platform" }).map(publicCapabilityProvider);
+    });
+    capabilityProviders = async (event: IpcMainEvent, id: string) => capabilityResult(() => {
+        checkCapabilitySender(event);
+        return capabilityRouter.providers({ kind: "platform" }, id).map(publicCapabilityProvider);
+    });
+    capabilityGet = async (event: IpcMainEvent, id: string, options?: CapabilityClientOptions) => capabilityResult(() => {
+        checkCapabilitySender(event);
+        const bound = capabilityRouter.resolve({ kind: "platform" }, id, options);
+        return bound ? publicCapabilityProvider(bound.registration) : null;
+    });
+    capabilityLegacyResolve = async (event: IpcMainEvent, id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => capabilityResult(() => {
+        checkCapabilitySender(event);
+        return capabilityRouter.resolveLegacy(id, options);
+    });
+    capabilityInvoke = async (event: IpcMainEvent, request: CapabilityClientInvoke): Promise<CapabilityClientResult<CapabilityJson>> => capabilityResult(async () => {
+        checkCapabilitySender(event);
+        if (!request || typeof request.requestId !== "string" || !request.requestId || request.requestId.length > 256 || typeof request.method !== "string" || !Array.isArray(request.args)) {
+            throw Object.assign(new Error("Invalid capability request."), { code: "rejected" });
+        }
+        let active = activeCapabilityRequests.get(event.sender);
+        if (!active) { active = new Map(); activeCapabilityRequests.set(event.sender, active); }
+        if (active.has(request.requestId)) throw Object.assign(new Error("Duplicate capability request id."), { code: "rejected" });
+        const bound = capabilityRouter.bindKey({ kind: "platform" }, request.key, request.filter);
+        if (!bound || !bound.registration.methods[request.method] || bound.registration.methods[request.method].kind === "channel") {
+            throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
+        }
+        const controller = new AbortController();
+        active.set(request.requestId, controller);
+        const closed = () => controller.abort();
+        event.sender.once("destroyed", closed);
+        event.sender.once("render-process-gone", closed);
+        event.sender.once("did-start-navigation", closed);
+        try {
+            const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: event.sender, target: event.sender });
+            try {
+                return await capabilityRouter.invoke(bound, request.method, request.args, { invocation, target: event.sender }) as CapabilityJson;
+            } finally {
+                invocation.dispose();
+            }
+        } finally {
+            active.delete(request.requestId);
+            event.sender.removeListener("destroyed", closed);
+            event.sender.removeListener("render-process-gone", closed);
+            event.sender.removeListener("did-start-navigation", closed);
+        }
+    });
+    capabilityCancel = async (event: IpcMainEvent, requestId: string): Promise<void> => {
+        checkCapabilitySender(event);
+        if (typeof requestId === "string") activeCapabilityRequests.get(event.sender)?.get(requestId)?.abort();
+    };
+
     getCapabilityIndex = async (event: IpcMainEvent) => {
         if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) throw new Error("permission-denied");
         return capabilityRegistry.snapshot();
@@ -670,6 +744,12 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
     bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
     bindEndpoint(Endpoint.setMainScriptsEnabled, controllerInstance.setMainScriptsEnabled);
+    bindEndpoint(Endpoint.capabilityList, controllerInstance.capabilityList);
+    bindEndpoint(Endpoint.capabilityProviders, controllerInstance.capabilityProviders);
+    bindEndpoint(Endpoint.capabilityGet, controllerInstance.capabilityGet);
+    bindEndpoint(Endpoint.capabilityInvoke, controllerInstance.capabilityInvoke);
+    bindEndpoint(Endpoint.capabilityCancel, controllerInstance.capabilityCancel);
+    bindEndpoint(Endpoint.capabilityLegacyResolve, controllerInstance.capabilityLegacyResolve);
     bindEndpoint(Endpoint.getCapabilityIndex, controllerInstance.getCapabilityIndex);
     bindEndpoint(Endpoint.setCapabilityPreferences, controllerInstance.setCapabilityPreferences);
     bindEndpoint(Endpoint.setWindowsSsoEnabled, controllerInstance.setWindowsSsoEnabled);

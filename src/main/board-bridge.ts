@@ -87,6 +87,11 @@ import { BOARD_MANIFEST_FILE, boardPermissionError } from "../shared/board-manif
 import { isDeliveredSourceFile, isDialogPickedPath, recordPickedPaths, requireDialogPermission, resolveAuthorizedPath, resolveHostedReadOrAuthorizedPath, recheckWriteTarget } from "./board-file-access";
 import { t } from "../shared/i18n/t";
 import { pathWatchService } from "./path-watch-service";
+import { capabilityRouter, publicCapabilityProvider } from "./capability-router";
+import { boardRootKey } from "./board-root-key";
+import { capabilityResult } from "../ipc/main/core-handlers";
+import type { CapabilityClientInvoke, CapabilityClientOptions } from "../ipc/capability-bus-channels";
+
 
 interface FolderCursor { root: string; boardRoot: string; boardId: string; entries: BoardFolderEntry[]; offset: number; expires: number; truncated: boolean }
 const folderCursors = new Map<string, FolderCursor>();
@@ -264,6 +269,7 @@ interface BoardPortEntry {
     watchdog?: ReturnType<typeof setTimeout>;
     /** Normalized roots of the TypeScript projects this frame registered (US-1744). */
     tsProjectRoots: Set<string>;
+    capabilityRequests: Map<string, AbortController>;
 }
 
 /** Live board ports keyed by the per-mount boardId minted at the handshake. */
@@ -933,6 +939,38 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
     serviceOpenChannel: (entry, args) => moduleServiceSupervisor.openChannel(
         entry.root, entry.hostWebContents, entry.boardId, args[0],
     ),
+    capabilityList: (entry) => capabilityResult(() => capabilityRouter.list({ kind: "board-page", provider: boardRootKey(entry.root) }).map(publicCapabilityProvider)),
+    capabilityProviders: (entry, args) => capabilityResult(() => capabilityRouter.providers({ kind: "board-page", provider: boardRootKey(entry.root) }, args[0] as string).map(publicCapabilityProvider)),
+    capabilityGet: (entry, args) => capabilityResult(() => {
+        const bound = capabilityRouter.resolve({ kind: "board-page", provider: boardRootKey(entry.root) }, args[0] as string, args[1] as CapabilityClientOptions | undefined);
+        return bound ? publicCapabilityProvider(bound.registration) : null;
+    }),
+    capabilityInvoke: (entry, args) => capabilityResult(async () => {
+        const request = args[0] as CapabilityClientInvoke;
+        if (!request || typeof request.requestId !== "string" || !request.requestId || request.requestId.length > 256 || typeof request.method !== "string" || !Array.isArray(request.args)) throw rpcFailure("rejected", "Invalid capability request.");
+        if (entry.capabilityRequests.has(request.requestId)) throw rpcFailure("rejected", "Duplicate capability request id.");
+        const bound = capabilityRouter.bindKey({ kind: "board-page", provider: boardRootKey(entry.root) }, request.key, request.filter);
+        if (!bound || !bound.registration.methods[request.method]) throw rpcFailure("no-handler", "Capability handler unavailable.");
+        const controller = new AbortController();
+        entry.capabilityRequests.set(request.requestId, controller);
+        const channel = bound.registration.methods[request.method].kind === "channel";
+        let openedChannel = false;
+        try {
+            const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: entry.hostWebContents, target: entry.hostWebContents });
+            try {
+                const value = await capabilityRouter.invoke(bound, request.method, request.args, { invocation, target: entry.hostWebContents,
+                    ...(channel ? { channelDelivery: { target: entry.hostWebContents, requestId: `board-frame:${entry.boardId}` } } : {}) });
+                if (channel) {
+                    const opened = value as { channelId: string; onClose: (listener: () => void) => () => void };
+                    openedChannel = true;
+                    opened.onClose(() => entry.capabilityRequests.delete(request.requestId));
+                    return { channelId: opened.channelId };
+                }
+                return value;
+            } finally { if (!openedChannel) invocation.dispose(); }
+        } finally { if (!openedChannel) entry.capabilityRequests.delete(request.requestId); }
+    }),
+    capabilityCancel: (entry, args) => capabilityResult(() => { if (typeof args[0] === "string") entry.capabilityRequests.get(args[0])?.abort(); }),
     async servicesList(entry, args) {
         const interfaceId = args[0];
         if (typeof interfaceId !== "string") throw rpcFailure("invalid-argument", "A service interface id is required.");
@@ -983,6 +1021,7 @@ async function runRpc(entry: BoardPortEntry, method: BoardRpcMethod, args: unkno
     } else if (method === "serviceRequest" || method === "serviceOpenChannel" || method === "serviceStatus" || method === "serviceStop") {
         if (!(await boardTrustService.allows(entry.root, "service"))) throw boardPermissionError("service");
     }
+    if (method.startsWith("capability") && (boardPorts.get(entry.boardId) !== entry || !entry.token || entry.hostWebContents.isDestroyed())) throw rpcFailure("cancelled", "The board frame is closed.");
     const handler = boardRpcHandlers[method];
     if (!handler) throw new Error(`Unknown board RPC method: ${method}`);
     return handler(entry, args);
@@ -1204,7 +1243,7 @@ export function createBoardPort(
 
     const root = getBoardRootForHost(host) ?? "";
     const { port1, port2 } = new MessageChannelMain();
-    const entry: BoardPortEntry = { boardId, port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token, tsProjectRoots: new Set() };
+    const entry: BoardPortEntry = { boardId, port: port2, root, host, ownerId, hostWebContents, hostedFilePath: hostedPath, token, tsProjectRoots: new Set(), capabilityRequests: new Map() };
     boardPorts.set(boardId, entry);
     indexOwnerSink(ownerId, boardId, hostWebContents.id);
 
@@ -1252,6 +1291,8 @@ export function disposeBoardPort(boardId: string): void {
     if (!entry) return;
     entry.hostedFilePath = null;
     entry.token = "";
+    for (const controller of entry.capabilityRequests.values()) controller.abort();
+    entry.capabilityRequests.clear();
     moduleServiceSupervisor.closeBoardChannels(boardId, {
         code: "renderer-reloaded",
         message: "The board page closed or was reloaded.",

@@ -1,3 +1,5 @@
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
+import type { CapabilityJson } from "../shared/capability-contract";
 import { PageDragData, PageDescriptor, WindowPages } from "../shared/types";
 import {
     BoardArchiveDownloadRequest,
@@ -29,6 +31,10 @@ import type {
 } from "./clipboard-ipc";
 import type { BoardServiceStatus, ModuleServicePortResult } from "./module-service-channels";
 import type { LaunchInput } from "../shared/launch-input";
+
+export type HostServiceChannelRequest =
+    | { interfaceId: string; provider: string; version: number; openMessage: unknown }
+    | { kind: "capability"; request: CapabilityClientInvoke };
 
 /** Metadata carried with `eBoardServiceChannel`; the endpoint itself is `event.ports[0]`. */
 export interface BoardServiceChannelDelivery { boardId: string; channelId: string }
@@ -105,6 +111,12 @@ export enum Endpoint {
     setMcpEnabled = "setMcpEnabled",
     setMainScriptsEnabled = "setMainScriptsEnabled",
     getCapabilityIndex = "getCapabilityIndex",
+    capabilityList = "capabilityList",
+    capabilityProviders = "capabilityProviders",
+    capabilityGet = "capabilityGet",
+    capabilityLegacyResolve = "capabilityLegacyResolve",
+    capabilityInvoke = "capabilityInvoke",
+    capabilityCancel = "capabilityCancel",
     setCapabilityPreferences = "setCapabilityPreferences",
     setWindowsSsoEnabled = "setWindowsSsoEnabled",
     getMcpStatus = "getMcpStatus",
@@ -358,6 +370,12 @@ export type Api = {
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
     [Endpoint.setMcpEnabled]: (enabled: boolean, port?: number) => Promise<void>;
     [Endpoint.setMainScriptsEnabled]: (enabled: boolean) => Promise<void>;
+    [Endpoint.capabilityList]: () => Promise<CapabilityClientResult<CapabilityProvider[]>>;
+    [Endpoint.capabilityProviders]: (id: string) => Promise<CapabilityClientResult<CapabilityProvider[]>>;
+    [Endpoint.capabilityLegacyResolve]: (id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => Promise<CapabilityClientResult<import("./capability-bus-channels").CapabilityRegistration | null>>;
+    [Endpoint.capabilityGet]: (id: string, options?: CapabilityClientOptions) => Promise<CapabilityClientResult<CapabilityProvider | null>>;
+    [Endpoint.capabilityInvoke]: (request: CapabilityClientInvoke) => Promise<CapabilityClientResult<CapabilityJson>>;
+    [Endpoint.capabilityCancel]: (requestId: string) => Promise<void>;
     [Endpoint.getCapabilityIndex]: () => Promise<ReturnType<typeof import("../main/capability-registry").capabilityRegistry.snapshot>>;
     [Endpoint.setCapabilityPreferences]: (preferences: Record<string, string>) => Promise<void>;
     [Endpoint.setWindowsSsoEnabled]: (enabled: boolean) => Promise<void>;
@@ -449,7 +467,7 @@ export type Api = {
     [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
     [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
     [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge-channels").BoardServiceProvider[]>;
-    [Endpoint.connectHostServiceChannel]: (request: { interfaceId: string; provider: string; version: number; openMessage: unknown }) => Promise<string>;
+    [Endpoint.connectHostServiceChannel]: (request: HostServiceChannelRequest) => Promise<string>;
     [Endpoint.insertVoiceTypingText]: (request: { sessionId: string; text: string; deferClipboard?: boolean }) => Promise<{ copied: boolean }>;
     [Endpoint.armVoiceTypingMicrophone]: () => Promise<void>;
     [Endpoint.clearVoiceTypingMicrophone]: () => Promise<void>;

@@ -11,6 +11,9 @@ import {
 } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
 import { capabilityRegistry } from "./capability-registry";
+import { capabilityRouter, publicCapabilityProvider } from "./capability-router";
+import { boardRootKey } from "./board-root-key";
+import type { CapabilityClientResult, CapabilityProvider } from "../ipc/capability-bus-channels";
 import { BoardServiceSettingsChannel, type BoardServiceSettingsReply, type BoardServiceSettingsRequest } from "../ipc/board-service-settings-channels";
 import { guardedIpcOn } from "./ipc-sender-guard";
 import {
@@ -26,6 +29,7 @@ import {
     SERVICE_SHUTDOWN_TIMEOUT_MS,
     type BoardServiceStatus,
     type ServiceParentMessage,
+    type ServiceMainMessage,
     type ServiceStopReason,
     STOP_REASON_CODE,
     STOP_REASON_LEASE_REASON,
@@ -50,7 +54,7 @@ import { Handshake, routeProcessMessage } from "./module-service-handshake";
 import { failLease, transferRendererLease, type LeaseCallbacks } from "./module-service-leases";
 import { issuePrivateMcpEndpoint, revokePrivateMcpEndpointForBoard, revokePrivateMcpEndpointsForBoard } from "./mcp/private-session-endpoints";
 import { createCapabilityChannel } from "./capability-channel";
-import type { CapabilityCallerIdentity } from "../shared/capability-contract";
+import type { CapabilityCallerIdentity, CapabilityErrorCode, CapabilityJson } from "../shared/capability-contract";
 
 function normalizeRoot(boardRoot: string): string {
     const normalized = path.resolve(boardRoot).replace(/\\/g, "/").replace(/\/+$/, "");
@@ -75,6 +79,7 @@ const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; ver
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
     private readonly capabilityRequests = new Map<string, { record: ServiceRecord; process?: UtilityProcess; generation?: number; reject: (error: unknown) => void; resolve: (value: unknown) => void }>();
+    private readonly clientRequests = new Map<ServiceRecord, Map<string, AbortController>>();
     private readonly capabilityChannels = new Map<string, { record: ServiceRecord; consumer: string; close: (reason: { code: string; message: string }) => void }>();
     private readonly serviceOwnerClosures = new Map<string, Set<() => void>>();
     private readonly leaseCallbacks: LeaseCallbacks = {
@@ -698,9 +703,57 @@ class ModuleServiceSupervisor {
         pending.lifecycleListeners = [];
     }
 
+    private async handleCapabilityClient(record: ServiceRecord, process: UtilityProcess, generation: number,
+        message: Extract<ServiceMainMessage, { kind: "capability-client-discover" | "capability-client-resolve" | "capability-client-invoke" | "capability-client-cancel" }>): Promise<void> {
+        if (!isCurrent(record, process, generation) || record.stopRequested) return;
+        const requests = this.clientRequests.get(record) ?? new Map<string, AbortController>();
+        this.clientRequests.set(record, requests);
+        if (message.kind === "capability-client-cancel") { requests.get(message.requestId)?.abort(new ServiceError("cancelled")); return; }
+        const requestId = message.kind === "capability-client-invoke" ? message.request?.requestId : message.requestId;
+        if (typeof requestId !== "string" || !requestId || requests.has(requestId)) return;
+        const controller = new AbortController();
+        requests.set(requestId, controller);
+        const caller = { kind: "board-service" as const, provider: boardRootKey(record.boardRoot) };
+        let result: CapabilityClientResult<CapabilityProvider[] | CapabilityProvider | CapabilityJson | null>;
+        try {
+            let value: CapabilityProvider[] | CapabilityProvider | CapabilityJson | null;
+            if (message.kind === "capability-client-discover") {
+                if (message.id !== undefined && typeof message.id !== "string") throw new ServiceError("rejected");
+                value = (message.id === undefined ? capabilityRouter.list(caller) : capabilityRouter.providers(caller, message.id)).map(publicCapabilityProvider);
+            } else if (message.kind === "capability-client-resolve") {
+                if (typeof message.id !== "string") throw new ServiceError("rejected");
+                const bound = capabilityRouter.resolve(caller, message.id, message.options);
+                value = bound ? publicCapabilityProvider(bound.registration) : null;
+            } else {
+                const { request, parentRequestId } = message;
+                if (parentRequestId !== undefined) {
+                    const parent = this.capabilityRequests.get(parentRequestId);
+                    if (!parent || parent.record !== record || parent.process !== process || parent.generation !== generation) throw new ServiceError("cancelled");
+                }
+                const bound = capabilityRouter.bindKey(caller, request.key, request.filter);
+                if (!bound) throw new ServiceError("no-handler");
+                const channel = bound.registration.methods[request.method]?.kind === "channel";
+                const invoked = await capabilityRouter.invoke(bound, request.method, request.args, { signal: controller.signal, parentRequestId,
+                    ...(channel ? { channelDelivery: { target: process, requestId } } : {}) });
+                value = channel ? null : invoked as CapabilityJson;
+            }
+            result = { ok: true, value };
+        } catch (error) {
+            const codes: CapabilityErrorCode[] = ["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"];
+            const code = (error as { code?: CapabilityErrorCode })?.code;
+            result = { ok: false, error: { code: code && codes.includes(code) ? code : "rejected", message: errMessage(error) } };
+        } finally {
+            if (requests.get(requestId) === controller) requests.delete(requestId);
+            if (!requests.size && this.clientRequests.get(record) === requests) this.clientRequests.delete(record);
+        }
+        if (isCurrent(record, process, generation)) {
+            try { process.postMessage({ kind: "capability-client-result", requestId, result } satisfies ServiceParentMessage); } catch { /* Service exited. */ }
+        }
+    }
+
     async openCapabilityChannel(boardRoot: string, consumer: string, consumerServiceRoot: string | undefined, openMessage: unknown,
         info: { interface: { id: string; version: number }; caller: CapabilityCallerIdentity }, signal: AbortSignal,
-        reauthorize: () => void) {
+        reauthorize: () => void, delivery?: { target: WebContents | UtilityProcess; requestId: string }) {
         await this.awaitTrustReady();
         if (signal.aborted) throw signal.reason;
         reauthorize();
@@ -711,15 +764,18 @@ class ModuleServiceSupervisor {
         if (consumerCount >= MAX_SERVICE_CHANNELS_PER_BOARD || serviceCount + record.channels.size >= MAX_SERVICE_CHANNELS_PER_SERVICE) throw new ServiceError("busy");
         const channelId = crypto.randomUUID();
         let channel: ReturnType<typeof createCapabilityChannel> | undefined;
+        let deliveredClose: ((reason: { code: string; message: string }) => void) | undefined;
         let cancelStartup: ((error: unknown) => void) | undefined;
         const abort = () => {
             const error = signal.reason ?? new ServiceError("cancelled");
-            if (channel) channel.close({ code: (error as { code?: string }).code ?? "cancelled", message: errMessage(error) });
+            const reason = { code: (error as { code?: string }).code ?? "cancelled", message: errMessage(error) };
+            if (channel) channel.close(reason);
+            else if (deliveredClose) deliveredClose(reason);
             else cancelStartup?.(error);
         };
         const cleanup = () => { this.capabilityChannels.delete(channelId); signal.removeEventListener("abort", abort); };
         this.capabilityChannels.set(channelId, { record, consumer, close: (reason) => {
-            if (channel) channel.close(reason); else cancelStartup?.(new ServiceError(reason.code, reason.message));
+            if (channel) channel.close(reason); else if (deliveredClose) deliveredClose(reason); else cancelStartup?.(new ServiceError(reason.code, reason.message));
         } });
         signal.addEventListener("abort", abort, { once: true });
         try {
@@ -728,6 +784,35 @@ class ModuleServiceSupervisor {
             reauthorize();
             if (!record.process || record.state !== "running") throw new ServiceError("handler-closed");
             const { port1, port2 } = new MessageChannelMain();
+            if (delivery) {
+                const relay = new MessageChannelMain();
+                const listeners = new Set<() => void>();
+                let closed = false;
+                const finish = () => {
+                    if (closed) return;
+                    closed = true;
+                    port1.close(); relay.port1.close(); cleanup();
+                    for (const listener of listeners) listener();
+                    listeners.clear();
+                };
+                deliveredClose = (reason) => {
+                    try { port1.postMessage({ kind: "close", reason }); } catch { /* Peer exited. */ }
+                    try { relay.port1.postMessage({ kind: "close", reason }); } catch { /* Peer exited. */ }
+                    finish();
+                };
+                port1.on("message", ({ data }) => { try { relay.port1.postMessage(data); } catch { finish(); } if (data?.kind === "close") finish(); });
+                relay.port1.on("message", ({ data }) => { try { port1.postMessage(data); } catch { finish(); } if (data?.kind === "close") finish(); });
+                port1.on("close", () => deliveredClose?.({ code: "handler-closed", message: "Channel disconnected." }));
+                relay.port1.on("close", () => deliveredClose?.({ code: "channel-closed", message: "Channel disconnected." }));
+                port1.start(); relay.port1.start();
+                try {
+                    record.process.postMessage({ kind: "channel-open", channelId, boardId: consumer, generation: record.generation,
+                        openMessage, info: { page: { boardId: consumer }, ...info } } satisfies ServiceParentMessage, [port2]);
+                    if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId: delivery.requestId.startsWith("board-frame:") ? delivery.requestId.slice(12) : `capability:${delivery.requestId}`, channelId }, [relay.port2]);
+                    else delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId } satisfies ServiceParentMessage, [relay.port2]);
+                } catch (error) { deliveredClose({ code: "handler-closed", message: "Channel delivery failed." }); port2.close(); relay.port2.close(); throw error; }
+                return { channelId, onClose(listener: () => void) { if (closed) listener(); else listeners.add(listener); return () => { listeners.delete(listener); }; } };
+            }
             channel = createCapabilityChannel(port1, cleanup);
             try {
                 record.process.postMessage({ kind: "channel-open", channelId, boardId: consumer, generation: record.generation,
@@ -1113,7 +1198,12 @@ class ModuleServiceSupervisor {
             record.cancelAttempt = (error: ServiceError) => fail(error, false);
 
             process.on("message", (rawMessage: unknown) => {
-                const capabilityMessage = rawMessage as Extract<import("../ipc/module-service-channels").ServiceMainMessage, { kind: "capability-result" }>;
+                const clientMessage = rawMessage as ServiceMainMessage;
+                if (clientMessage?.kind === "capability-client-discover" || clientMessage?.kind === "capability-client-resolve" || clientMessage?.kind === "capability-client-invoke" || clientMessage?.kind === "capability-client-cancel") {
+                    void this.handleCapabilityClient(record, process, generation, clientMessage);
+                    return;
+                }
+                const capabilityMessage = rawMessage as Extract<ServiceMainMessage, { kind: "capability-result" }>;
                 if (capabilityMessage?.kind === "capability-result") {
                     const pending = this.capabilityRequests.get(capabilityMessage.requestId);
                     if (pending?.record === record && pending.process === process && pending.generation === generation && isCurrent(record, process, generation)) {
@@ -1366,6 +1456,8 @@ class ModuleServiceSupervisor {
     }
 
     private rejectRequests(record: ServiceRecord, code: string): void {
+        for (const controller of this.clientRequests.get(record)?.values() ?? []) controller.abort(new ServiceError(code));
+        this.clientRequests.delete(record);
         for (const pending of this.capabilityRequests.values()) {
             if (pending.record === record) pending.reject(new ServiceError(code === "untrusted" ? "untrusted" : code === "service-exited" ? "crashed" : "handler-closed"));
         }

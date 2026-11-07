@@ -467,9 +467,11 @@ class BoardTrustService {
                 minBridgeVersion: source.manifest?.minBridgeVersion,
                 requiresMinBridgeVersion: normalizePermissions(source.manifest?.permissions).kind === "flags",
             }, { bridgeVersion: BOARD_BRIDGE_VERSION }).compatible;
+            const declarations = compatible ? normalizeCapabilityDeclarations(source.manifest?.capabilities, undefined, { service: source.manifest?.service, permissions: source.manifest?.permissions }) : [];
             boards.push({
                 boardRoot: source.root,
-                capabilities: compatible ? mergeCapabilityDeclarations(normalizeCapabilityDeclarations(source.manifest?.capabilities, undefined, { service: source.manifest?.service, permissions: source.manifest?.permissions }), manifestInterfaces) : [],
+                legacyCapabilities: declarations.filter((declaration) => !declaration.methods || Object.values(declaration.methods).some((method) => method.kind === "open")),
+                capabilities: compatible ? mergeCapabilityDeclarations(declarations, manifestInterfaces) : [],
                 canStartService: granted.kind === "legacy" ? granted.service : granted.flags.service,
                 permissions: granted,
                 manifestPermissions: normalizePermissions(source.manifest?.permissions),
