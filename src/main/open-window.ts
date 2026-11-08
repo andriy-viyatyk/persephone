@@ -1,6 +1,6 @@
 import { globalMuteService } from "./global-mute-service";
 import { applicationProfileName } from "./application-profile";
-import { reapplyBrowserGuestZoom } from "./browser-service";
+import { reapplyBrowserGuestZoom, watchHostFullscreen } from "./browser-service";
 import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,6 +141,7 @@ export class OpenWindow {
             },
         });
 
+        watchHostFullscreen(this.window);
         globalMuteService.register(this.window.webContents, "window");
 
         if (boardRoot) {

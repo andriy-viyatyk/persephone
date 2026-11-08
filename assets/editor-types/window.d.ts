@@ -158,7 +158,35 @@ export interface IGlobalMuteSnapshot {
     contents: Array<{ id: number; type: string; localMuted: boolean; effectiveMuted: boolean }>;
 }
 
+/** Display geometry uses device-independent pixels; indexes are snapshot positions. */
+export interface IWindowDisplay {
+    readonly index: number;
+    readonly id: number;
+    readonly bounds: { x: number; y: number; width: number; height: number };
+    readonly workArea: { x: number; y: number; width: number; height: number };
+    readonly scaleFactor: number;
+    readonly primary: boolean;
+    readonly current: boolean;
+    readonly label?: string;
+}
+
+export type WindowDisplayTarget = number | "primary" | "largest" | "smallest" | "other";
+export interface IWindowMoveResult {
+    display: number;
+    bounds: { x: number; y: number; width: number; height: number };
+    maximized: boolean;
+    fullscreen: boolean;
+}
+
 export interface IWindow {
+    /** Read a fresh display snapshot. Indexes and IDs can change when displays are reconfigured. */
+    getDisplays(): Promise<readonly IWindowDisplay[]>;
+    /** Move using a fresh display snapshot. A video already in fullscreen goes fullscreen again on the new display. */
+    moveToDisplay(target: WindowDisplayTarget, options?: { maximize?: boolean; fullscreen?: boolean }): Promise<IWindowMoveResult>;
+    /** Set host fullscreen; false also exits guest HTML fullscreen. */
+    setFullScreen(on: boolean): Promise<{ fullscreen: boolean }>;
+    /** Read the actual native fullscreen state, including guest fullscreen. */
+    getFullScreen(): Promise<boolean>;
     /** Read global mute leases and actual managed webContents mute states across all windows. */
     getGlobalMuteSnapshot(): Promise<IGlobalMuteSnapshot>;
     /** Release all board mute leases across all application windows. */

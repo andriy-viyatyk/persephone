@@ -87,6 +87,13 @@ tab state to `BrowserTabsModel`, then focuses the URL bar when the new tab is bl
 browser page receives the same URL-bar focus as the initial blank tab. Tabs opened with a URL keep
 focus on the loading webview instead of stealing it for the URL bar.
 
+Address input is normalized by `BrowserEditor.resolveAddressInput()` before navigation or tab
+creation: blank input stays blank, Windows drive/UNC paths become `file://` URLs, bare hosts gain
+`https://`, and other scheme-less text becomes a URL from the selected search engine. The resolver
+also records search history. Browser page creation and `openUrlInBrowserTab()` use this same
+resolver, so script- or MCP-supplied search text follows the same path as text entered in the URL
+bar.
+
 ### New Window Handling
 
 | Source | Disposition | Behavior |
@@ -1053,18 +1060,39 @@ guest page receiving the key.
 The renderer and main process both track the webview's `enter-html-full-screen` and
 `leave-html-full-screen` events. If the fullscreen webview becomes hidden because the user changes
 pages or opens another tab, a `ResizeObserver` removes the fullscreen presentation and sends
-`BrowserChannel.exitHtmlFullscreen`. The main process asks the guest to exit and tracks fullscreen
-per webview registration, so it leaves the host window fullscreen only after no registered webview
-needs it. It forces the window out after a one-second fallback if the guest does not respond, and
-unregistering a fullscreen webview also releases the window. Escape requests the same exit while
-HTML fullscreen is active, whether focus is in the guest or Persephone chrome. Window bounds are not
-persisted during fullscreen, avoiding restoration of the display-sized bounds as a normal window on
-the next launch.
+`BrowserChannel.exitHtmlFullscreen`. The main process tracks guest fullscreen per webview registration
+and explicit host fullscreen intent separately. It restores the host window only after no registered
+guest needs fullscreen and no host fullscreen intent remains. If the guest does not respond, a
+one-second fallback requests the native exit while preserving guest ownership until Electron confirms
+the transition; unregistering a fullscreen webview also reconciles the host state. Escape requests
+the same exit while HTML fullscreen is active, whether focus is in the guest or Persephone chrome.
+Window bounds are not persisted during fullscreen, avoiding restoration of the display-sized bounds
+as a normal window on the next launch.
 
 The main process also tracks the last mouse press per webview registration. If focus leaves the
 guest, its host window blurs, or the press opens a new tab or popup before the matching mouse-up
 reaches the page, the service sends a mouse-up at the last pointer position. This prevents the page
 from retaining a pressed-button state after the release was routed elsewhere.
+
+The scripting facade exposes guest HTML fullscreen through
+`pages[pageId].editor.fullscreen(selector?, { tabId? })` and `exitFullscreen({ tabId? })`. These
+methods use the active internal tab by default and retain the browser page's private-page access
+checks. Without a selector, main inspects the guest main frame and descendant frames, preferring a
+visible playing video and then the largest frame-local visible area; traversal and DOM order break
+ties. A selector searches only the main frame and chooses the largest visible match. The selected
+frame makes the fullscreen request with Electron's user-gesture flag, and the operation awaits the
+guest transition and returns `{ fullscreen }`. A page's iframe permissions policy can still reject
+the request; callers can use browser automation to click the site's own fullscreen button.
+
+Host fullscreen is tracked separately from guest HTML fullscreen. `app.window.getFullScreen()`
+reports the actual native window state, while the browser methods report guest HTML fullscreen.
+`setFullScreen(false)` exits both, while an explicit host fullscreen request survives guest exit.
+Moving a window first exits guest fullscreen, relocates the native window, and re-requests the
+previously fullscreen video in its guest; `moveToDisplay()` reports the final native display,
+bounds, maximize intent, and fullscreen state. Display indexes are positions in a fresh
+`getDisplays()` snapshot, and geometry is expressed in Electron DIP coordinates. The request path
+is implemented, but gesture and iframe behavior still requires verification in the pinned Castlabs
+runtime.
 
 ### Reload and the `beforeunload` guard
 

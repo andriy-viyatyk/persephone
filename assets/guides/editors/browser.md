@@ -7,6 +7,19 @@ editorId: "browser-view"
 
 # Browser
 
+Scripts and agents can fullscreen a visible browser video using `pages[id].editor.fullscreen()`;
+`exitFullscreen()` exits it and returns `{ fullscreen: false }`. Both report guest HTML state,
+separate from host fullscreen. The active tab must be visible; private pages are protected unless
+opened by the agent. Without a selector, playing videos across frames are preferred, then largest
+frame-local area. A CSS selector matches the largest visible main-frame element only. Iframe
+permissions may reject a request; use the player's own fullscreen button when needed.
+
+TV recipe: `moveToDisplay('largest')` first, then `pages[id].editor.fullscreen()`. A video already
+in fullscreen is restored after the window moves when `fullscreen` is omitted. Use `getDisplays()` to
+inspect fresh zero-based indexes and DIP geometry; largest/smallest compare bounds area and other
+is relative to the window. Through MCP use `windows[i].window` and `windows[i].pages[id]` for a
+specific live window. Host `setFullScreen(false)` exits guest fullscreen too.
+
 A built-in Chromium browser keeps documentation, APIs, and web resources in a Persephone tab.
 
 Boards can create a private Run page with bridge **1.46.0+** by calling

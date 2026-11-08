@@ -33,6 +33,8 @@ import { hasRecentRendererRequest } from "./mcp/renderer-bridge";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
+import { randomUUID } from "node:crypto";
+import { errMessage } from "../shared/utils";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
 const CHROMIUM_NAVIGATION_PROTOCOLS = [
@@ -158,6 +160,7 @@ interface RegisteredWebview {
     /** The page is in HTML fullscreen (a video's fullscreen button), which also made the
      *  host window fullscreen. */
     htmlFullscreen: boolean;
+    navigationGeneration: number;
     /** A mouse button pressed in the page and not yet released (see releaseLostPress). */
     pressed: { x: number; y: number; button: "left" | "middle" | "right" } | null;
     /** Time (Date.now()) of the last trusted mouse or key press in the page; 0 = none or consumed. */
@@ -233,13 +236,66 @@ function sendHostEvent(sender: WebContents, endpoint: EventEndpoint, data: strin
  * Electron makes the whole window fullscreen for a guest's fullscreen request; when the guest
  * goes away or ignores an exit request, nothing else would ever restore the window.
  */
+const hostFullscreenIntent = new WeakMap<BrowserWindow, boolean>();
+const hostFullscreenRevision = new WeakMap<BrowserWindow, number>();
+const guestTransitionUntil = new WeakMap<BrowserWindow, number>();
+const postFullscreenMaximize = new WeakMap<BrowserWindow, boolean>();
+
+export function setPostFullscreenMaximize(win: BrowserWindow, maximize: boolean | undefined): void {
+    if (maximize === undefined) postFullscreenMaximize.delete(win);
+    else postFullscreenMaximize.set(win, maximize);
+}
+
+export function getPostFullscreenMaximize(win: BrowserWindow): boolean | undefined {
+    return postFullscreenMaximize.get(win);
+}
+
+/** Track native changes separately from fullscreen owned by a browser guest. */
+export function watchHostFullscreen(win: BrowserWindow): void {
+    hostFullscreenIntent.set(win, win.isFullScreen());
+    const changed = (): void => {
+        const revision = hostFullscreenRevision.get(win) ?? 0;
+        setTimeout(() => {
+            if (win.isDestroyed() || revision !== (hostFullscreenRevision.get(win) ?? 0)) return;
+            if (Date.now() < (guestTransitionUntil.get(win) ?? 0)) {
+                if (win.isFullScreen() !== getHostFullscreenIntent(win)
+                    && ![...registrations.values()].some(reg => reg.senderWebContents === win.webContents && reg.htmlFullscreen)) {
+                    win.setFullScreen(getHostFullscreenIntent(win));
+                }
+            } else if (![...registrations.values()].some(reg => reg.senderWebContents === win.webContents && reg.htmlFullscreen)) {
+                hostFullscreenIntent.set(win, win.isFullScreen());
+            }
+        }, 150);
+    };
+    win.on("enter-full-screen", changed);
+    win.on("leave-full-screen", changed);
+    win.on("leave-full-screen", () => {
+        const maximize = postFullscreenMaximize.get(win);
+        if (maximize === undefined || win.isDestroyed()) return;
+        postFullscreenMaximize.delete(win);
+        if (maximize && !win.isMaximized()) win.maximize();
+        if (!maximize && win.isMaximized()) win.unmaximize();
+    });
+}
+
+export function setHostFullscreenIntent(win: BrowserWindow, on: boolean): void {
+    hostFullscreenRevision.set(win, (hostFullscreenRevision.get(win) ?? 0) + 1);
+    hostFullscreenIntent.set(win, on);
+}
+
+export function getHostFullscreenIntent(win: BrowserWindow): boolean {
+    return hostFullscreenIntent.get(win) ?? win.isFullScreen();
+}
+
 function releaseWindowFullscreen(sender: WebContents): void {
     if (sender.isDestroyed()) return;
     for (const reg of registrations.values()) {
         if (reg.senderWebContents === sender && reg.htmlFullscreen) return;
     }
     const win = BrowserWindow.fromWebContents(sender);
-    if (win && !win.isDestroyed() && win.isFullScreen()) win.setFullScreen(false);
+    if (win && !win.isDestroyed() && win.isFullScreen() !== getHostFullscreenIntent(win)) {
+        win.setFullScreen(getHostFullscreenIntent(win));
+    }
 }
 
 /**
@@ -259,20 +315,127 @@ function releaseLostPress(reg: RegisteredWebview, reason: string): void {
 }
 
 /** Ask a fullscreen page to leave fullscreen; force the window out if it does not. */
-function exitHtmlFullscreen(key: string): void {
+async function exitHtmlFullscreen(key: string): Promise<void> {
     const reg = registrations.get(key);
     if (!reg?.htmlFullscreen || reg.webContents.isDestroyed()) return;
     const { webContents: wc, senderWebContents: sender } = reg;
-    wc.executeJavaScript("document.fullscreenElement ? document.exitFullscreen() : undefined", true)
-        .catch((): void => undefined);
-    setTimeout(() => {
+    const fallback = setTimeout(() => {
         const current = registrations.get(key);
         if (current?.webContents === wc) {
             if (!current.htmlFullscreen) return;
-            current.htmlFullscreen = false;
+            // Force the native transition, but retain guest ownership until Electron confirms exit.
+            const win = BrowserWindow.fromWebContents(sender);
+            if (win && !win.isDestroyed() && !getHostFullscreenIntent(win)) win.setFullScreen(false);
+            return;
         }
         releaseWindowFullscreen(sender);
     }, 1000);
+    try {
+        await Promise.race([
+            wc.executeJavaScript("document.fullscreenElement ? document.exitFullscreen() : undefined", true),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Browser fullscreen exit timed out")), 2500)),
+        ]);
+        const deadline = Date.now() + 2500;
+        while (reg.htmlFullscreen) {
+            if (registrations.get(key) !== reg || wc.isDestroyed()) throw new Error("Browser tab navigated or closed during fullscreen exit");
+            if (Date.now() >= deadline) throw new Error("Timed out waiting for browser fullscreen exit");
+            await new Promise(resolve => setTimeout(resolve, 25));
+        }
+    } finally {
+        clearTimeout(fallback);
+    }
+}
+
+/** Exit every guest owned by this window, waiting for the observed HTML transition. */
+/** Make a guest's element fullscreen as if the user had clicked: without a selector, the largest
+ *  visible (playing first) video in the main frame or any child frame. Shared by the
+ *  `pages[id].editor.fullscreen()` IPC and by window moves, which restore a video's fullscreen on
+ *  the new display. */
+async function enterGuestFullscreen(key: string, reg: RegisteredWebview, selector?: string): Promise<{ fullscreen: boolean }> {
+    const request = { key, selector };
+    const generation = reg.navigationGeneration;
+    const mainFrame = reg.webContents.mainFrame;
+    const frames = request.selector === undefined
+        ? [mainFrame, ...mainFrame.framesInSubtree.filter(frame => frame !== mainFrame)] : [mainFrame];
+    const token = randomUUID();
+    let best: { frame: WebFrameMain; url: string; area: number; playing: boolean } | undefined;
+    for (const frame of frames) {
+        if (registrations.get(request.key) !== reg || reg.webContents.isDestroyed() || reg.navigationGeneration !== generation) throw new Error("Browser tab navigated or closed");
+        const code = `(() => {
+            const selector = ${JSON.stringify(request.selector ?? "video")};
+            const videoMode = ${request.selector === undefined};
+            const nodes = Array.from(document.querySelectorAll(selector));
+            let best = null;
+            for (const element of nodes) {
+                const rect = element.getBoundingClientRect();
+                const style = getComputedStyle(element);
+                if (rect.width <= 0 || rect.height <= 0 || rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight || style.display === 'none' || style.visibility !== 'visible') continue;
+                const area = rect.width * rect.height;
+                const playing = videoMode && !element.paused && !element.ended;
+                if (!best || (playing && !best.playing) || (playing === best.playing && area > best.area)) best = { element, area, playing };
+            }
+            if (!best) return null;
+            globalThis[${JSON.stringify(token)}] = best.element;
+            return { area: best.area, playing: best.playing };
+        })()`;
+        let candidate: { area: number; playing: boolean } | null;
+        try { candidate = await frame.executeJavaScript(code, true) as typeof candidate; }
+        catch (error) {
+            if (request.selector !== undefined) throw new Error(`Invalid selector or unavailable frame: ${errMessage(error)}`);
+            continue;
+        }
+        if (candidate && (!best || (candidate.playing && !best.playing)
+            || (candidate.playing === best.playing && candidate.area > best.area))) {
+            best = { frame, url: frame.url, ...candidate };
+        }
+    }
+    if (!best) throw new Error(request.selector === undefined ? "No visible video found" : "No visible element matches the selector");
+    if (registrations.get(request.key) !== reg || reg.webContents.isDestroyed() || reg.navigationGeneration !== generation
+        || !reg.webContents.mainFrame.framesInSubtree.includes(best.frame) || best.frame.url !== best.url) {
+        throw new Error("Browser tab or selected frame navigated during fullscreen selection");
+    }
+    const code = `(async () => {
+        const element = globalThis[${JSON.stringify(token)}];
+        delete globalThis[${JSON.stringify(token)}];
+        if (!element || !element.isConnected || element.ownerDocument !== document) throw new Error('Selected element is no longer available');
+        if (!element.matches(${JSON.stringify(request.selector ?? "video")})) throw new Error('Selected element no longer matches');
+        const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
+        if (rect.width <= 0 || rect.height <= 0 || rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight || style.display === 'none' || style.visibility !== 'visible') throw new Error('Selected element is no longer visible');
+        await element.requestFullscreen();
+    })()`;
+    try {
+        await Promise.race([
+            best.frame.executeJavaScript(code, true),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Fullscreen request timed out")), 4000)),
+        ]);
+    } catch (error) {
+        throw new Error(`Browser fullscreen failed: ${errMessage(error)}. If iframe permission is denied, click the player's fullscreen button using browser automation.`);
+    }
+    if (registrations.get(request.key) !== reg || reg.webContents.isDestroyed() || reg.navigationGeneration !== generation) throw new Error("Browser tab navigated or closed during fullscreen");
+    const deadline = Date.now() + 3000;
+    while (!reg.htmlFullscreen) {
+        if (registrations.get(request.key) !== reg || reg.webContents.isDestroyed()) throw new Error("Browser tab navigated or closed during fullscreen");
+        if (Date.now() >= deadline) throw new Error("Timed out waiting for browser fullscreen transition");
+        await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    return { fullscreen: reg.htmlFullscreen };
+}
+
+/** Keys of this window's browser guests that are in HTML fullscreen. */
+export function windowHtmlFullscreenKeys(win: BrowserWindow): string[] {
+    return [...registrations.entries()].filter(([, reg]) => reg.senderWebContents === win.webContents && reg.htmlFullscreen).map(([key]) => key);
+}
+
+/** Re-enter a guest's video fullscreen after a window move; false when the guest is gone. */
+export async function restoreGuestFullscreen(key: string): Promise<boolean> {
+    const reg = registrations.get(key);
+    if (!reg || reg.webContents.isDestroyed()) return false;
+    return (await enterGuestFullscreen(key, reg)).fullscreen;
+}
+
+export async function exitWindowHtmlFullscreen(win: BrowserWindow): Promise<void> {
+    const owned = [...registrations.entries()].filter(([, reg]) => reg.senderWebContents === win.webContents && reg.htmlFullscreen);
+    await Promise.all(owned.map(([key]) => exitHtmlFullscreen(key)));
 }
 
 /**
@@ -390,6 +553,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     });
 
     on("did-start-navigation", (_e: Electron.Event, url: string, inPlace: boolean, isMainFrame: boolean) => {
+        const registration = registrations.get(key);
+        if (registration && !inPlace) registration.navigationGeneration++;
         if (isMainFrame) {
             settlePermissionRequestsForWebContents(wc);
             sendEvent(sender, tabId, internalTabId, "did-start-navigation", { url, isMainFrame, isSameDocument: inPlace });
@@ -459,11 +624,16 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     on("enter-html-full-screen", () => {
         const reg = registrations.get(key);
         if (reg) reg.htmlFullscreen = true;
+        const win = BrowserWindow.fromWebContents(sender);
+        if (win) guestTransitionUntil.set(win, Date.now() + 1500);
     });
 
     on("leave-html-full-screen", () => {
         const reg = registrations.get(key);
         if (reg) reg.htmlFullscreen = false;
+        const win = BrowserWindow.fromWebContents(sender);
+        if (win) guestTransitionUntil.set(win, Date.now() + 1500);
+        releaseWindowFullscreen(sender);
     });
 
     // Track the page's button state so a press whose release went elsewhere can be completed.
@@ -570,7 +740,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         // webview guest, which left a fullscreen video with no keyboard way out.
         if (input.key === "Escape" && registrations.get(key)?.htmlFullscreen) {
             _e.preventDefault();
-            exitHtmlFullscreen(key);
+            void exitHtmlFullscreen(key).catch((): void => undefined);
             return;
         }
         const keyLower = input.key.toLowerCase();
@@ -699,6 +869,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         listeners,
         bypassUnloadGuard: false,
         htmlFullscreen: false,
+        navigationGeneration: 0,
         pressed: null,
         lastUserActivation: 0,
     });
@@ -724,7 +895,11 @@ function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}
 
     registrations.delete(key);
     // A tab closed while its video is fullscreen would leave the window fullscreen for good.
-    if (reg.htmlFullscreen) releaseWindowFullscreen(reg.senderWebContents);
+    if (reg.htmlFullscreen) {
+        const win = BrowserWindow.fromWebContents(reg.senderWebContents);
+        if (win) guestTransitionUntil.set(win, Date.now() + 1500);
+        releaseWindowFullscreen(reg.senderWebContents);
+    }
     if (!options.keepCdpState) {
         clearNetworkLog(key);
         clearCdpTargetState(key);
@@ -947,6 +1122,22 @@ export function initBrowserHandlers(): void {
             || registration.webContents.isDestroyed()) return undefined;
         return registration;
     };
+    const requireFullscreenRegistration = (event: IpcMainInvokeEvent, key: unknown): RegisteredWebview => {
+        const reg = ownedRegistration(event, key);
+        if (!reg) throw new Error("Browser tab is unregistered or unavailable");
+        return reg;
+    };
+    guardedIpcHandle(BrowserChannel.fullscreen, async (event, request: { key: string; selector?: string }) => {
+        if (!request || (request.selector !== undefined && typeof request.selector !== "string")) throw new Error("Invalid fullscreen request");
+        const reg = requireFullscreenRegistration(event, request.key);
+        return enterGuestFullscreen(request.key, reg, request.selector);
+    });
+    guardedIpcHandle(BrowserChannel.exitFullscreen, async (event, request: { key: string }) => {
+        const reg = requireFullscreenRegistration(event, request?.key);
+        if (!reg.htmlFullscreen) return { fullscreen: false };
+        await exitHtmlFullscreen(request.key);
+        return { fullscreen: false };
+    });
     guardedIpcHandle(BrowserChannel.setZoom, (event, request: BrowserSetZoomRequest): boolean => {
         if (!request || !validZoomPercent(request.zoomPercent)) return false;
         const registration = ownedRegistration(event, request.registrationKey);
@@ -1032,7 +1223,7 @@ export function initBrowserHandlers(): void {
     });
 
     guardedIpcOn(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => {
-        exitHtmlFullscreen(key);
+        void exitHtmlFullscreen(key).catch((): void => undefined);
     });
 
     guardedIpcOn(BrowserChannel.allowPopups, () => {

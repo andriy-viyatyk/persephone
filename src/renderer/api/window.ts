@@ -32,6 +32,10 @@ interface WindowState {
 }
 
 export class Window implements IWindow {
+    getDisplays = api.getDisplays;
+    moveToDisplay = api.moveToDisplay;
+    setFullScreen = api.setFullScreen;
+    getFullScreen = api.getFullScreen;
     getGlobalMuteSnapshot = globalMuteClient.snapshot;
     releaseAllGlobalMute = globalMuteClient.releaseAll;
     private readonly _boardRoot: string | undefined;

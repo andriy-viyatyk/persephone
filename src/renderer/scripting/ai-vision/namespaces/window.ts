@@ -2,6 +2,10 @@ import type { IWindow } from "../../../api/types/window";
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const WINDOW_MEMBERS: readonly IAiMember[] = [
+    { name: "getDisplays", kind: "method", signature: "getDisplays(): Promise<readonly IWindowDisplay[]>", summary: "Read live displays with zero-based snapshot indexes, DIP bounds and work areas, primary and current flags." },
+    { name: "moveToDisplay", kind: "method", signature: "moveToDisplay(target: number | 'primary' | 'largest' | 'smallest' | 'other', options?: { maximize?: boolean; fullscreen?: boolean }): Promise<IWindowMoveResult>", summary: "Center this window on a display; largest/smallest use DIP bounds area and other is relative to this window. A video already in fullscreen goes fullscreen again on the new display.", caution: "moves the visible window" },
+    { name: "setFullScreen", kind: "method", signature: "setFullScreen(on: boolean): Promise<{ fullscreen: boolean }>", summary: "Set host fullscreen; false also exits browser HTML fullscreen." },
+    { name: "getFullScreen", kind: "method", signature: "getFullScreen(): Promise<boolean>", summary: "Read actual native fullscreen, including browser HTML fullscreen." },
     { name: "getGlobalMuteSnapshot", kind: "method", signature: "getGlobalMuteSnapshot()", summary: "Read global mute holders and managed webContents audio states across all windows." },
     { name: "releaseAllGlobalMute", kind: "method", signature: "releaseAllGlobalMute()", summary: "Release all global mute leases across all windows.", caution: "changes audio playback across all windows" },
     { name: "minimize", kind: "method", signature: "minimize()", summary: "Minimize this window.", caution: "changes the visible application window" },
@@ -28,7 +32,7 @@ export function describeWindow(instance: unknown): IAiVisionDescriptor {
         kind: "Window",
         summary: "Control this window's state, sidebar, zoom, and multi-window actions.",
         members: WINDOW_MEMBERS,
-        help: "Use window actions only when changing the application window or visible sidebar is intended.",
+        help: "Use getDisplays() to inspect live snapshot indexes (not window indexes); they can change when monitors reconnect. largest/smallest use DIP bounds area; other means the first display other than this window's current display. Use windows[i].window for another live window. Host fullscreen differs from browser element fullscreen. TV recipe: moveToDisplay('largest') first, then pages[id].editor.fullscreen(). To move a video that is already fullscreen, just call moveToDisplay: it stays fullscreen on the new display.",
         summarize: () => ({
             kind: "Window",
             windowIndex: window.windowIndex,

@@ -31,6 +31,7 @@ import type {
 } from "./clipboard-ipc";
 import type { BoardServiceStatus, ModuleServicePortResult } from "./module-service-channels";
 import type { LaunchInput } from "../shared/launch-input";
+import type { IWindowDisplay, IWindowMoveResult, WindowDisplayTarget } from "../renderer/api/types/window";
 
 export type HostServiceChannelRequest =
     | { interfaceId: string; provider: string; version: number; openMessage: unknown }
@@ -59,6 +60,10 @@ export enum Endpoint {
     createBoardShortcut = "createBoardShortcut",
     openBoardWindow = "openBoardWindow",
     maximizeWindow = "maximizeWindow",
+    getDisplays = "getDisplays",
+    moveToDisplay = "moveToDisplay",
+    setFullScreen = "setFullScreen",
+    getFullScreen = "getFullScreen",
     minimizeWindow = "minimizeWindow",
     restoreWindow = "restoreWindow",
     closeWindow = "closeWindow",
@@ -310,6 +315,10 @@ export type Api = {
     [Endpoint.createBoardShortcut]: (request: CreateBoardShortcutRequest) => Promise<boolean>;
     [Endpoint.openBoardWindow]: (boardRoot: string) => Promise<void>;
     [Endpoint.maximizeWindow]: () => Promise<void>;
+    [Endpoint.getDisplays]: () => Promise<readonly IWindowDisplay[]>;
+    [Endpoint.moveToDisplay]: (target: WindowDisplayTarget, options?: { maximize?: boolean; fullscreen?: boolean }) => Promise<IWindowMoveResult>;
+    [Endpoint.setFullScreen]: (on: boolean) => Promise<{ fullscreen: boolean }>;
+    [Endpoint.getFullScreen]: () => Promise<boolean>;
     [Endpoint.minimizeWindow]: () => Promise<void>;
     [Endpoint.restoreWindow]: () => Promise<void>;
     [Endpoint.closeWindow]: () => Promise<void>;

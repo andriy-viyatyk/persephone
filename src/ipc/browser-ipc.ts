@@ -76,6 +76,8 @@ export const BrowserChannel = {
     hardReload: "browser:hard-reload",
     /** Renderer → Main: take a webview out of HTML fullscreen (its page was hidden). Args: (key: string) */
     exitHtmlFullscreen: "browser:exit-html-fullscreen",
+    fullscreen: "browser:fullscreen",
+    exitFullscreen: "browser:exit-fullscreen",
 
     // Main → Renderer
     event: "browser:event",

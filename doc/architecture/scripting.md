@@ -724,6 +724,18 @@ revision, active flag and holder labels. `app.window.releaseAllGlobalMute()` rel
 mute lease across all windows and returns the resulting snapshot; it is the same global override
 used by the header mute indicator.
 
+`app.window.getDisplays()` returns a live display snapshot with zero-based indexes, Electron display
+IDs, DIP bounds/work areas, scale factors, and primary/current flags. Use an index only with a fresh
+snapshot: indexes and IDs can change when display topology changes. `moveToDisplay(target, options)`
+centers the window in the target work area and returns its actual display index, bounds, maximized
+state, and native fullscreen state. Targets are an index, `primary`, `largest`, `smallest`, or
+`other` (the first display other than the current one); largest/smallest compare DIP bounds area.
+Omitted maximize/fullscreen options preserve the prior intent, and an explicit option overrides it.
+`setFullScreen(on)` awaits the native state transition, while `getFullScreen()` reads actual native
+state, including state induced by a browser guest. Guest HTML fullscreen has separate browser editor
+methods and is exited as part of a window move; when fullscreen was guest-owned and the caller omits
+the fullscreen option, the move re-requests the previously fullscreen video after relocation.
+
 Facade source: `/src/renderer/scripting/api-wrapper/`
 
 `page.editorSwitches` is the script-facing projection of the page toolbar's editor-switch widget. It

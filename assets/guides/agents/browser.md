@@ -6,6 +6,24 @@ summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and priva
 
 # Browser automation
 
+## Video and element fullscreen
+
+TV recipe: `moveToDisplay('largest')` first, then `pages[id].editor.fullscreen()`. A video already in
+fullscreen is restored after the window moves when `fullscreen` is omitted. In MCP, target another live
+window through `windows[i].window` and `windows[i].pages[id]`. Call `getDisplays()` to inspect
+zero-based display snapshot indexes; `largest` and `smallest` compare DIP bounds area and `other`
+is relative to that window. Host fullscreen and browser element fullscreen are separate.
+
+`await pages[id].editor.fullscreen()` selects a visible video across main and descendant frames,
+preferring playing videos, then largest frame-local rendered area; traversal and DOM order break
+ties. `fullscreen(selector, { tabId? })` instead chooses the largest visible CSS selector match in
+the main frame, including an iframe element itself (which need not fullscreen its player).
+`exitFullscreen({ tabId? })` is idempotent and leaves independent host fullscreen intact. Both
+return `{ fullscreen: boolean }` for the guest. Only the active visible registered tab is accepted.
+Private pages are refused unless opened by the agent. Iframe permissions can reject fullscreen;
+use browser automation to click the player's own fullscreen button. Runtime gesture and iframe
+behavior depends on the page and pinned Electron build.
+
 Use `pages[i].editor` for browser pages and boards. Use `window.screen` for Persephone's own
 visible window. Start with a narrow snapshot, then act on its refs:
 

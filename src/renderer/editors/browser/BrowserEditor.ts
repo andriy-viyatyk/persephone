@@ -581,8 +581,27 @@ export class BrowserEditor extends EditorModel<
     };
 
     navigate = (url: string) => {
-        let normalizedUrl = url.trim();
+        const normalizedUrl = this.resolveAddressInput(url);
         if (!normalizedUrl) return;
+
+        this.state.update((s) => {
+            s.url = normalizedUrl;
+            const tab = s.tabs.find((t) => t.id === s.activeTabId);
+            if (tab) {
+                tab.url = normalizedUrl;
+                tab.homeUrl = normalizedUrl;
+            }
+        });
+    };
+
+    /** Turn what was typed in the address bar (or passed by a script) into a loadable URL: a
+     *  Windows path becomes file://, a bare host gets https://, and anything else is a search with
+     *  the selected engine (recorded in search history). Returns "" for blank input. Used by
+     *  navigate() and by every path that opens a page or tab at a URL, so search text works the
+     *  same in all of them. */
+    resolveAddressInput = (url: string): string => {
+        let normalizedUrl = url.trim();
+        if (!normalizedUrl) return "";
 
         // Convert a Windows file path (drive or UNC) pasted into the URL bar
         // into a file:// URL so the webview can load it.
@@ -618,15 +637,7 @@ export class BrowserEditor extends EditorModel<
                 );
             }
         }
-
-        this.state.update((s) => {
-            s.url = normalizedUrl;
-            const tab = s.tabs.find((t) => t.id === s.activeTabId);
-            if (tab) {
-                tab.url = normalizedUrl;
-                tab.homeUrl = normalizedUrl;
-            }
-        });
+        return normalizedUrl;
     };
 
     /** Navigate the active tab to its home URL. */

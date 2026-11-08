@@ -140,6 +140,14 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.maximizeWindow);
     };
 
+    getDisplays = async () => {
+        return executeOnce<readonly import("../../renderer/api/types/window").IWindowDisplay[]>(Endpoint.getDisplays);
+    };
+    moveToDisplay = (target: import("../../renderer/api/types/window").WindowDisplayTarget, options?: { maximize?: boolean; fullscreen?: boolean }) =>
+        executeOnce<import("../../renderer/api/types/window").IWindowMoveResult>(Endpoint.moveToDisplay, target, options);
+    setFullScreen = (on: boolean) => executeOnce<{ fullscreen: boolean }>(Endpoint.setFullScreen, on);
+    getFullScreen = () => executeOnce<boolean>(Endpoint.getFullScreen);
+
     minimizeWindow = async () => {
         return executeOnce<void>(Endpoint.minimizeWindow);
     };

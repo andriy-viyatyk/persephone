@@ -152,6 +152,10 @@ export interface IBrowserPageError {
 export interface IBrowserEditor {
     readonly id: "browser-view";
     readonly name: string;
+    /** Fullscreen the largest visible selector match in the main frame, or a playing video across frames. */
+    fullscreen(selector?: string, options?: { tabId?: string }): Promise<{ fullscreen: boolean }>;
+    /** Exit this guest's HTML fullscreen without clearing independent host fullscreen. */
+    exitFullscreen(options?: { tabId?: string }): Promise<{ fullscreen: boolean }>;
     /** Actions published by the trusted extension for the active document. */
     readonly siteActions: SiteAction[];
     /** Run page code and open its result; URLs may access local networks and redirects. */

@@ -54,6 +54,8 @@ import type { IAiCallContext } from "../ai-vision/root";
 import { errMessage } from "../../../shared/utils";
 import type { NavigationWaitOptions, NavigationWaitResult } from "../../../ipc/browser-ipc";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
+import { BrowserChannel } from "../../../ipc/browser-ipc";
+const { ipcRenderer } = require("electron");
 
 const APP_MEMBER: IAiMember = {
     name: "app",
@@ -77,6 +79,8 @@ interface WaitOption extends TabOption {
 interface BrowserNavigationOptions extends WaitOption, NavigationWaitOptions {}
 
 const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
+    { name: "fullscreen", kind: "method", signature: "fullscreen(selector?: string, options?: { tabId?: string }): Promise<{ fullscreen: boolean }>", summary: "Fullscreen the largest visible main-frame selector match or a playing video across frames. The active visible tab and browser privacy policy apply.", caution: "changes the visible browser and window" },
+    { name: "exitFullscreen", kind: "method", signature: "exitFullscreen(options?: { tabId?: string }): Promise<{ fullscreen: boolean }>", summary: "Exit guest HTML fullscreen without clearing independent host fullscreen." },
     { name: "siteActions", kind: "property", summary: "Bounded action tree published by the trusted extension for the active document." },
     { name: "runSiteAction", kind: "method", signature: "runSiteAction(id: string): Promise<SiteActionOutcome>", summary: "Run a current action; multiple videos return a choice token.", caution: "Runs page code and opens content or network URLs, including local network addresses and redirects." },
     { name: "chooseSiteActionResult", kind: "method", signature: "chooseSiteActionResult(token: string, index: number): Promise<SiteActionOutcome>", summary: "Consume a video choice returned by runSiteAction.", caution: "Opens a video URL and can cause network requests, including to local networks." },
@@ -131,6 +135,7 @@ const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const BROWSER_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "browser-view".
+TV recipe: moveToDisplay('largest') first, then pages[id].editor.fullscreen(). A video already in fullscreen stays fullscreen when the window moves. Use windows[i].window and windows[i].pages[id] for another live window. Call getDisplays() to inspect indexes; largest/smallest mean DIP bounds area and other is relative to that window. Host fullscreen is separate from browser element fullscreen. With no selector fullscreen() prefers playing visible videos across frames, then largest frame-local area; a selector matches only the main frame. Iframe permissions can deny fullscreen; use browser automation to click the player's own fullscreen button. Private pages are refused unless opened by the agent. The browser tab must be active and visible.
 Use elements for Persephone browser chrome (address bar, toolbar, tabs host, and blocked-popup bar);
 those controls are not in snapshot(). Use snapshot() for the web page inside the webview and pass its
 returned refs as { ref: "e52" } to supported target methods. Plain strings are CSS selectors or
@@ -204,6 +209,29 @@ export class BrowserEditorFacade implements IAiVisible {
         readonly name: string,
         private readonly callContext?: IAiCallContext,
     ) {}
+
+    private fullscreenKey(options?: { tabId?: string }): string {
+        if (options !== undefined && (!options || typeof options !== "object" || Array.isArray(options)
+            || (options.tabId !== undefined && typeof options.tabId !== "string"))) throw new Error("Invalid browser tab options");
+        const state = this.model.state.get();
+        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
+        const tabId = options?.tabId ?? state.activeTabId;
+        if (!tabId || tabId !== state.activeTabId || !state.tabs.some(tab => tab.id === tabId)) throw new Error("Browser tab must be active and visible");
+        const webview = this.model.webview.webviewRefs.get(tabId);
+        if (!webview?.isConnected || !webview.getClientRects().length || !webview.offsetWidth || !webview.offsetHeight) {
+            throw new Error("Browser tab is hidden or unavailable");
+        }
+        return `${this.model.id}/${tabId}`;
+    }
+
+    fullscreen(selector?: string, options?: { tabId?: string }): Promise<{ fullscreen: boolean }> {
+        if (selector !== undefined && typeof selector !== "string") throw new Error("Selector must be a CSS selector");
+        return ipcRenderer.invoke(BrowserChannel.fullscreen, { key: this.fullscreenKey(options), selector });
+    }
+
+    exitFullscreen(options?: { tabId?: string }): Promise<{ fullscreen: boolean }> {
+        return ipcRenderer.invoke(BrowserChannel.exitFullscreen, { key: this.fullscreenKey(options) });
+    }
 
     /** Capture the live target before an operation; never use the navigation destination. */
     private tipUrl(tabId?: string): string | undefined {

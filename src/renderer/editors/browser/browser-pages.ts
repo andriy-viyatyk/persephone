@@ -61,7 +61,8 @@ export async function showBrowserPage(
     }
     // After the mode flags: Incognito and Tor pages remember their own engine.
     editor.applyRememberedSearchEngine();
-    const openUrl = options?.url;
+    // Resolved after the profile and engine are set, so a search uses this page's engine and history.
+    const openUrl = options?.url ? editor.resolveAddressInput(options.url) : "";
     if (openUrl) {
         editor.state.update((s) => {
             s.url = openUrl;
@@ -163,7 +164,8 @@ export async function openUrlInBrowserTab(
         if (tabs?.length === 1 && tabs[0].url === "about:blank") {
             editor.navigate(url);
         } else {
-            editor.addTab(url);
+            // Search text ("big buck bunny") must become a search URL here too, not a raw tab URL.
+            editor.addTab(editor.resolveAddressInput(url) || undefined);
         }
         model.navigation.showPage(page.id);
         return page.id;

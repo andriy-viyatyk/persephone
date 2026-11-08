@@ -23,6 +23,11 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 ### New Features
 
 - **Global audio mute for board voice sessions:** Boards can mute Persephone playback while listening. The header indicator shows which boards hold the mute and lets you release it across all app windows.
+- **Monitors and full screen for agents:** Agents can list your monitors, move a Persephone window
+  to another one (`window.moveToDisplay("largest")`), make the window full screen, and play a
+  browser video full screen with `pages[id].editor.fullscreen()`, including videos in an embedded
+  player that allows it. A full-screen video stays full screen when the window moves. Opening a
+  browser tab with search text, rather than an address, now runs a search instead of showing a blank tab.
 - **Site extension actions:** Trusted extensions can add a **Site actions** menu to the Browser URL bar
   and open their results in Persephone. Extensions can separately request limited, cookieless text
   fetches from approved hosts. See the [Site Extensions guide](./site-extensions.md).

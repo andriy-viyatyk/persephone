@@ -5,6 +5,16 @@ summary: "Enable and connect to Persephone's built-in Model Context Protocol ser
 ---
 
 # MCP Server Setup
+
+For a browser video on a TV, use MCP `call` on `windows[0].window.moveToDisplay` with arguments
+`["largest"]`, then `windows[0].pages["<page-id>"].editor.fullscreen` with `[]`. A video already
+in fullscreen is restored after the window moves when `fullscreen` is omitted. Read
+`windows[0].window.getDisplays` first with `[]` for current zero-based display indexes and DIP
+geometry; largest/smallest use bounds area and other is relative to that window. Browser fullscreen
+is separate from host fullscreen. Only the active visible browser tab is eligible; private pages
+are refused unless opened by the agent. Iframe permission failures may require clicking the player's
+fullscreen button through browser automation. `exitFullscreen` returns guest state and preserves
+independent host fullscreen; `window.setFullScreen(false)` exits both.
 persephone includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that allows AI agents to control the application — execute scripts, create and read pages, and more.
 
 > **Two separate servers:** this page covers the **app-control** server (drive Persephone itself). The optional [Mneme knowledge base](./mneme.md) exposes its *own* MCP server on a different port for reading and maintaining a document store. They are configured independently and can both run at once.

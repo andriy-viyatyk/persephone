@@ -15,6 +15,33 @@ app.window.zoom(1);  // zoom in one step
 
 ## Window Actions
 
+### Displays and fullscreen
+
+```js
+const displays = await app.window.getDisplays();
+const moved = await app.window.moveToDisplay("largest", { fullscreen: false });
+const host = await app.window.setFullScreen(true);
+console.log(displays, moved, host.fullscreen, await app.window.getFullScreen());
+```
+
+`getDisplays()` returns a fresh array of `{ index, id, bounds, workArea, scaleFactor, primary,
+current, label? }`. Rectangles are integer device-independent pixels (DIPs); no DPI arithmetic is
+needed. Indexes are zero-based snapshot positions, not window indexes; re-read after displays change.
+IDs can change too. `moveToDisplay(target, options?)` accepts an index, `primary`, `largest`,
+`smallest`, or `other`. Largest and smallest compare DIP bounds area, with ties resolved by index;
+other is the first display other than this window's current one. A missing target or an oversized
+minimum window size rejects. The window is restored and centered within the target work area.
+Omitted `maximize` and `fullscreen` options preserve the corresponding prior state; `false` clears
+and `true` enables it. The result is `{ display, bounds, maximized, fullscreen }` with actual final
+state. Fullscreen takes visual precedence when both are enabled.
+
+`setFullScreen(on)` returns `{ fullscreen }` after the native transition. `getFullScreen()` reads
+actual native state, including fullscreen caused by a browser element. Setting false also exits
+browser HTML fullscreen; browser `exitFullscreen()` leaves independent host fullscreen intact.
+If `fullscreen` is omitted, a video already in fullscreen goes fullscreen again on the new display. TV recipe: `moveToDisplay('largest')` first, then
+`pages[id].editor.fullscreen()`; browser HTML fullscreen itself makes the host window fullscreen.
+For another live window through MCP, use `windows[i].window` and `windows[i].pages[id]`.
+
 | Method | Description |
 |--------|-------------|
 | `minimize()` | Minimize to taskbar. |

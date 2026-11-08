@@ -5,6 +5,14 @@ summary: "Find or open files, create pages, and work with page properties, edito
 ---
 
 # Pages & Windows
+
+For a TV, call `window.moveToDisplay('largest')` first, then
+`pages[id].editor.fullscreen()`. A video already in fullscreen is restored after the window moves
+when `fullscreen` is omitted. Use `windows[i].window` and `windows[i].pages[id]` to address another live
+window through MCP. `getDisplays()` returns live zero-based display indexes, DIP bounds and work
+areas; indexes may change. Largest/smallest use bounds area, and `other` is relative to that window.
+Host fullscreen is distinct from browser element fullscreen. See [Browser automation](browser.md)
+for guest selection, privacy and iframe restrictions.
 Persephone uses tabbed pages (like browser tabs). Each page has an editor and, where the editor
 supports one, a **`language`** — which throughout Persephone means the **Monaco
 syntax-highlighting mode** (`javascript`, `json`, `python`, …), never a UI locale or a spoken
