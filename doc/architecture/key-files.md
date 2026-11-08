@@ -29,6 +29,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
 | Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
 | Built-in app capabilities (`app.capabilities`) | `/src/renderer/api/capabilities.ts`               |
+| App window model (`app.window` actions, menu bar, screen automation, and global mute inspection/release) | `/src/renderer/api/window.ts`, `/src/renderer/api/window-screen.ts` |
 | Unified capability architecture (registry, router, clients, agent surface and legacy projections) | `/doc/architecture/capabilities.md` |
 | Missing image/diagram capability feedback (user-facing no-handler messages) | `/src/renderer/api/capability-feedback.ts` |
 | Renderer capability clients, legacy projection and open dispatch | `/src/renderer/api/capabilities.ts` |
@@ -39,6 +40,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main capability authorization, resolution and routing | `/src/main/capability-router.ts` |
 | Main capability service-channel adapter | `/src/main/capability-channel.ts` |
 | Main audio capability channel owner (authorization rechecks, hidden window lifecycle, per-caller channels and capture indicator count) | `/src/main/audio-service.ts`, `/src/main/audio-capture-state.ts` |
+| Global audio mute lease owner (composes board leases with local webContents mute state and applies effective mute across managed application contents) | `/src/main/global-mute-service.ts` |
 | Hidden audio renderer (shared PCM capture/playback, source subscriptions, gate and channel protocol) | `/src/renderer/audio/audio-window.ts`, `/src/renderer/ui/speech/ComputerAudioGate.ts`, `/src/renderer/ui/speech/PcmAudioCapture.ts` |
 | Renderer capability channel transport shared by callers and the audio window | `/src/renderer/api/renderer-capability-channel.ts` |
 | Audio window's frame-bound one-shot microphone and loopback permission grants | `/src/main/permission-policy-service.ts` |
@@ -630,7 +632,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Renderer trust bootstrap (subscribes to main trust broadcasts, hydrates authoritative paths, and pushes the disabled-bundled-board setting) | `/src/renderer/api/board-trust-sync.ts` |
 | Board service-start predicate (trusted root plus normalized `permissions` containing `service`) | `/src/renderer/editors/board/board-service-permission.ts` |
-| Shared board bridge-version source of truth (`1.51.0` adds board page/service `getCapability`; `1.50.0` adds service-host `handle`; earlier bridge additions include `1.49.0` toolbar breadcrumbs and `1.48.0` authorized `openBoard(folder)`) | `/src/shared/board-bridge-version.ts` |
+| Shared board bridge-version source of truth (`1.52.0` adds `audio.muteApp()`; `1.51.0` adds board page/service `getCapability`; `1.50.0` adds service-host `handle`; earlier bridge additions include `1.49.0` toolbar breadcrumbs and `1.48.0` authorized `openBoard(folder)`) | `/src/shared/board-bridge-version.ts` |
 | Board TypeScript project file selection (tsconfig include/exclude/files matching, recursive enumeration and bounded source/JSON reads) | `/src/renderer/api/ts-project-files.ts` |
 | Renderer TypeScript project registry (board-owned roots, authorization results, lazy project file metadata and file-to-project lookup) | `/src/renderer/api/ts-project-registry.ts`, `/src/renderer/api/mcp/board-ts-project.ts` |
 | Monaco project IntelliSense (file-backed model URIs, shared extra-library loading, change watching and page bindings) | `/src/renderer/editors/shared/monaco-project-intellisense.ts` |

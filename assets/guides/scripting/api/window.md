@@ -30,6 +30,21 @@ app.window.zoom(1);  // zoom in one step
 | `isMaximized` | `boolean` | Whether the window is maximized. Read-only, updated reactively. |
 | `windowIndex` | `number` | Zero-based index among all app windows. Read-only. |
 
+## Global audio mute
+
+Read the global mute state or release every board's mute across app windows. The header indicator
+does the same release action; it appears while at least one board holds a mute.
+
+```javascript
+const mute = await app.window.getGlobalMuteSnapshot();
+console.log(mute.active, mute.holders);
+await app.window.releaseAllGlobalMute();
+```
+
+The snapshot contains `revision`, `active`, `holders` (board labels holding mute leases), and
+`contents` (entries with `id`, `type`, `localMuted`, and `effectiveMuted`). Calling
+`releaseAllGlobalMute()` returns the updated snapshot.
+
 ## Menu Bar
 
 | Member | Type | Description |

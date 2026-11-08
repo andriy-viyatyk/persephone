@@ -1,6 +1,8 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const shellCatalog = {
+    globalMuteTooltip: { message: "Persephone sound is muted while {holders} listens. Click to unmute.", note: "Persephone is the product name; keep it unchanged. {holders} is a comma-separated list of board names." },
+    globalMuteReleaseFailed: { message: "Failed to unmute Persephone: {error}", note: "Persephone is the product name; keep it unchanged." },
     audioCaptureActive: { message: "Audio capture active" },
     activeMcpConnections: { message: { one: "{product} is active, {count} active connection — click to view request log", other: "{product} is active, {count} active connections — click to view request log" }, note: "Keep MCP unchanged as the protocol name. Use the product placeholder." },
     activeInAppMcpConnections: { message: { one: "{count} in-app agent connection", other: "{count} in-app agent connections" }, note: "Keep MCP unchanged as the protocol name; these connections come from board agents." },

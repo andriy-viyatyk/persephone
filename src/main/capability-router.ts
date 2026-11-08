@@ -425,6 +425,7 @@ class CapabilityRouter {
         if (bound.caller.kind === "agent") throw capabilityError("permission-denied");
         const mainOwnedAudio = registration.origin === "platform" && registration.id === "audio" && registration.handlerKey === "audio";
         if ((!mainOwnedAudio && registration.origin !== "board") || !Array.isArray(args) || args.length > 1) throw capabilityError("rejected");
+        if (mainOwnedAudio && method === "muteApp" && args.length !== 0) throw capabilityError("rejected");
         const argument = args.length ? checkedJson(args[0]) : {};
         if (!argument || typeof argument !== "object" || Array.isArray(argument) || Object.hasOwn(argument, "type")) throw capabilityError("rejected");
         const invocation = context.invocation as MainCapabilityInvocationContext;

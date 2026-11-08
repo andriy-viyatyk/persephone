@@ -1,3 +1,4 @@
+import { globalMuteService } from "./global-mute-service";
 import { applicationProfileName } from "./application-profile";
 import { reapplyBrowserGuestZoom } from "./browser-service";
 import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
@@ -139,6 +140,8 @@ export class OpenWindow {
                 spellcheck: false,
             },
         });
+
+        globalMuteService.register(this.window.webContents, "window");
 
         if (boardRoot) {
             const displayName = path.basename(boardRoot);

@@ -1,3 +1,4 @@
+import { globalMuteService } from "./global-mute-service";
 import { app, BrowserWindow, ipcMain, MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -65,6 +66,7 @@ class AudioService {
     private readyResolve: (() => void) | undefined;
     private startupReject: ((error: unknown) => void) | undefined;
     private readonly channels = new Map<string, ChannelRecord>();
+    private readonly muteChannels = new Set<() => void>();
     private readonly deviceRequests = new Map<string, { generation: number; resolve: (devices: AudioDevice[]) => void; reject: (error: unknown) => void }>();
     private pendingOpens = 0;
     private initialized = false;
@@ -169,6 +171,7 @@ class AudioService {
         delivery: { target: WebContents | UtilityProcess; requestId: string } | undefined,
         reauthorize: () => void,
     ): Promise<{ channelId: string; onClose: (listener: () => void) => () => void }> {
+        if (method === "muteApp") return this.openMuteChannel(bound, argument, invocation, delivery, reauthorize);
         if (method !== "capture" && method !== "play") throw capabilityError("no-handler", "Audio channel is unavailable.");
         if (!delivery) throw capabilityError("no-handler", "A capability channel consumer is required.");
         const request = method === "capture" ? this.validateCapture(argument) : this.validatePlayback(argument);
@@ -257,6 +260,66 @@ class AudioService {
             clearTimeout(record.readyTimer);
             record.ports = [];
         }
+    }
+
+    private async openMuteChannel(
+        bound: BoundCapability,
+        argument: Record<string, unknown>,
+        invocation: MainCapabilityInvocationContext,
+        delivery: { target: WebContents | UtilityProcess; requestId: string } | undefined,
+        reauthorize: () => void,
+    ): Promise<{ channelId: string; onClose: (listener: () => void) => () => void }> {
+        if (Object.keys(argument).length || !delivery) throw capabilityError("rejected", "muteApp takes no arguments.");
+        this.authorize(bound);
+        reauthorize();
+        if (invocation.signal.aborted) throw capabilityError("cancelled");
+        const channelId = crypto.randomUUID();
+        const { port1: consumer, port2: port } = new MessageChannelMain();
+        const listeners = new Set<() => void>();
+        let closed = false;
+        let release = (): void => undefined;
+        const finish = (): void => {
+            if (closed) return;
+            closed = true;
+            this.muteChannels.delete(finish);
+            release();
+            invocation.signal.removeEventListener("abort", finish);
+            try { port.close(); } catch { /* Already closed. */ }
+            for (const listener of listeners) listener();
+            listeners.clear();
+        };
+        const board = "provider" in bound.caller ? capabilityRegistry.board(bound.caller.provider) : undefined;
+        const label = (board?.boardName?.trim() || (board ? path.basename(board.boardRoot) : "Persephone")).slice(0, 100);
+        this.muteChannels.add(finish);
+        release = globalMuteService.acquire(label, () => {
+            try { port.postMessage({ kind: "close", reason: { code: "overridden", message: "Mute was released." } }); } catch { /* Disconnected. */ }
+            finish();
+        });
+        port.on("close", finish);
+        port.on("message", (event) => {
+            const message = event.data as { kind?: string; sequence?: number; value?: { type?: string } };
+            if (message?.kind === "close") { finish(); return; }
+            if (message?.kind === "data" && message.value?.type === "release") {
+                release();
+                try { port.postMessage({ kind: "data", sequence: 1, value: { type: "released" } }); } catch { /* Disconnected. */ }
+                finish();
+            }
+        });
+        invocation.signal.addEventListener("abort", finish, { once: true });
+        port.start();
+        try {
+            reauthorize();
+            if (invocation.signal.aborted) throw capabilityError("cancelled");
+            if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, {
+                boardId: delivery.requestId.startsWith("board-frame:") ? delivery.requestId.slice(12) : `capability:${delivery.requestId}`, channelId,
+            }, [consumer]);
+            else delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId }, [consumer]);
+            if (invocation.signal.aborted) throw capabilityError("cancelled");
+            return { channelId, onClose: (listener) => {
+                if (closed) listener(); else listeners.add(listener);
+                return () => listeners.delete(listener);
+            } };
+        } catch (error) { finish(); try { consumer.close(); } catch { /* Transferred. */ } throw error; }
     }
 
     private validateCapture(argument: Record<string, unknown>): { source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean } {
@@ -377,6 +440,7 @@ class AudioService {
     }
 
     dispose(): void {
+        for (const close of [...this.muteChannels]) close();
         for (const request of this.deviceRequests.values()) request.reject(capabilityError("handler-closed", "Audio service is shutting down."));
         for (const record of [...this.channels.values()]) this.finishChannel(record, "handler-closed", "Audio service is shutting down.", true);
         this.startupReject?.(capabilityError("handler-closed", "Audio service is shutting down."));

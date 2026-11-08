@@ -105,8 +105,14 @@ channel counts are bounded as specified in
 
 ## Platform-owned `audio@1` methods
 
-`audio` is a reserved platform registration with a `devices()` call and `capture` and `play` channel methods. Unlike a
-board capability channel, its provider is not a utility-process service: `CapabilityRouter`
+`audio` is a reserved platform registration with a `muteApp()` lease method, a `devices()` call,
+and `capture` and `play` channel methods. `muteApp()` opens a caller-owned channel whose lease mutes managed
+application playback while it remains open; each caller's lease is independent, and it is released
+when the caller channel closes. The main-process `GlobalMuteService` composes these leases with
+each webContents' local mute state and applies the effective state across registered windows,
+browser guests and popups. The active header indicator can release every lease across all windows.
+This does not stop audio capture or mute playback in the separate audio-service window. Unlike a
+board capability channel, the audio provider is not a utility-process service: `CapabilityRouter`
 authorizes the caller and delegates to the main-owned `AudioService`. Main lazily creates one
 hidden, local-only `BrowserWindow`; it rejects navigation, popups and webviews, validates every
 control message against that exact window and main frame, and destroys the window after the final
@@ -130,8 +136,9 @@ integer epoch; times can be compared only within an epoch. Computer capture appl
 thresholds 0.01/0.006 with 400 ms pre-roll and 500 ms tail. It suppresses delivery in gated silence
 while preserving source timestamps across gaps. Microphone capture remains continuous.
 
-Board pages and services need trusted status, exact `audio@1` `uses`, and the source grant:
-`microphone` for device listing and microphone capture or explicit `computerAudio` for Windows loopback. A service
+Board pages and services need trusted status and exact `audio@1` `uses`. Capture additionally needs
+the source grant: `microphone` for device listing and microphone capture or explicit `computerAudio`
+for Windows loopback. A service
 must also have its service permission. Playback requires `uses` only. Platform callers need no board
 grant, while agents can discover the channel declarations but cannot invoke channels or the hidden device call. Authorization
 is repeated while active; revocation closes the stream. The audio window receives independent,

@@ -18,6 +18,7 @@ export interface CapabilityRegistration extends BoardCapabilityDeclaration {
 }
 
 const audioMethods: Record<string, CapabilityMethod> = {
+    muteApp: { kind: "channel", summary: "Mute app playback while a board listens.", args: [], returns: "MuteLease", timeoutMs: 15000, agent: false },
     devices: { kind: "call", summary: "List available microphone inputs.", args: [],
         returns: "{ deviceId: string; label: string; isDefault: boolean }[]", timeoutMs: 10000, agent: false },
     capture: { kind: "channel", summary: "Board-only streaming: capture shared PCM.",

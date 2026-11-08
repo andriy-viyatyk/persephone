@@ -92,6 +92,7 @@ The always-visible chrome, top to bottom.
 
 | Element | Selector |
 |---|---|
+| Global mute override (visible only while active; hidden otherwise) | `[data-name="global-mute"]` |
 | Indicator cluster | `[data-name="status-indicators"]` |
 | Quick settings trigger (legacy Snip name; the green "…") | `[data-name="header-snip-button"]` |
 | Mneme indicator (only when Mneme is enabled) | `[data-name="mneme-indicator"]` |

@@ -1,3 +1,4 @@
+import { globalMuteClient } from "./global-mute";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { TOneState } from "../core/state/state";
@@ -31,6 +32,8 @@ interface WindowState {
 }
 
 export class Window implements IWindow {
+    getGlobalMuteSnapshot = globalMuteClient.snapshot;
+    releaseAllGlobalMute = globalMuteClient.releaseAll;
     private readonly _boardRoot: string | undefined;
     readonly menuBar = new MenuBarModel();
     readonly screen = new WindowScreen();

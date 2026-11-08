@@ -22,6 +22,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
+- **Global audio mute for board voice sessions:** Boards can mute Persephone playback while listening. The header indicator shows which boards hold the mute and lets you release it across all app windows.
 - **Site extension actions:** Trusted extensions can add a **Site actions** menu to the Browser URL bar
   and open their results in Persephone. Extensions can separately request limited, cookieless text
   fetches from approved hosts. See the [Site Extensions guide](./site-extensions.md).

@@ -478,6 +478,13 @@ const available = await persephone.capabilities.list();
 // Entries include id, version, provider, handlerKey, origin, priority and methods.
 ```
 
+The reserved `audio@1` capability includes `audio.muteApp()` for voice sessions that need to
+silence Persephone playback while listening. Boards using it must set
+`minBridgeVersion: "1.52.0"` and declare `{ "id": "audio", "version": 1 }` in `uses`; capture
+methods have additional source permissions. Keep the returned lease open only while listening and
+release it in `finally`. The [audio guide](../guides/agents/audio.md) documents lease cleanup,
+playback scope and the header's release-all control.
+
 Call the legacy compatibility wrapper `persephone.capabilities.invoke(id, payload, { version, deadlineMs })` to resolve by id rather
 than naming a handler. A board-originated result has `{ pageId, result }`; `pageId` is optional for
 handlers that resolve without opening a page, and `result` preserves the handler's exact value,

@@ -1,3 +1,5 @@
+import { globalMuteClient } from "../../api/global-mute";
+import type { GlobalMuteSnapshot } from "../../../ipc/global-mute-channels";
 import { rendererProfileName } from "../../../shared/application-profile";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -67,6 +69,8 @@ export class MainPageView extends VanillaView<object> {
     private readonly recordingControls = document.createElement("div");
     private readonly mnemeIndicator = document.createElement("span");
     private readonly mcpIndicator = document.createElement("span");
+    private readonly globalMuteButton = document.createElement("button");
+    private globalMuteRevision = -1;
     private readonly audioCaptureIndicator = document.createElement("span");
     private captureCountRevision = -1;
     private hiddenChromeState: { controlsHidden: boolean; controlsDisplay: string; mcpHidden: boolean; mcpDisplay: string } | undefined;
@@ -155,6 +159,17 @@ export class MainPageView extends VanillaView<object> {
                 console.error("Failed to read audio capture state:", errMessage(error));
             });
         }
+        const applyMute = (snapshot: GlobalMuteSnapshot): void => {
+            if (snapshot.revision <= this.globalMuteRevision) return;
+            this.globalMuteRevision = snapshot.revision;
+            this.globalMuteButton.hidden = !snapshot.active;
+            const holders = snapshot.holders.slice(0, 5).join(", ");
+            const title = t("shell.globalMuteTooltip", { holders });
+            this.globalMuteButton.title = title;
+            this.globalMuteButton.setAttribute("aria-label", title);
+        };
+        this.own(globalMuteClient.subscribe(applyMute));
+        void globalMuteClient.snapshot().then(applyMute).catch((error: unknown) => console.error("Failed to read global mute state:", errMessage(error)));
         this.bindMenuGlyphToTheme();
         this.own(windowRecording.subscribe((state) => this.updateRecordingControls(state)));
         this.quickSettingsPopover.mount();
@@ -198,6 +213,16 @@ export class MainPageView extends VanillaView<object> {
             this.header.append(createPanelElement({ name: "app-header-spacer", flex: 1, minWidth: 40 }));
             this.header.append(this.rightPageTabs.root);
         }
+        this.globalMuteButton.type = "button";
+        this.globalMuteButton.dataset.name = "global-mute";
+        this.globalMuteButton.className = "global-mute-button";
+        this.globalMuteButton.hidden = true;
+        this.globalMuteButton.append(createIconElement("volume-muted"));
+        this.listen(this.globalMuteButton, "click", () => {
+            void globalMuteClient.releaseAll().catch((error: unknown) => app.ui.notify(t("shell.globalMuteReleaseFailed", { error: errMessage(error) }), "error"));
+        });
+        if (appWindow.isBoardMode) this.header.insertBefore(this.globalMuteButton, this.minimizeButton);
+        else this.header.append(this.globalMuteButton);
         const profileName = rendererProfileName();
         if (profileName) {
             const label = document.createElement("span");

@@ -542,7 +542,17 @@ interface PersephoneVoiceTypingApi {
     onAutoStopSilenceChange(callback: (milliseconds: number) => void): () => void;
 }
 
+interface PersephoneMuteLease { release(): Promise<void> }
+interface PersephoneAudioCapability {
+    devices(): Promise<Array<{ deviceId: string; label: string; isDefault: boolean }>>;
+    capture(options: { source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }): Promise<PersephoneServiceChannel>;
+    play(options: { sampleRate: number }): Promise<PersephoneServiceChannel>;
+    muteApp(): Promise<PersephoneMuteLease>;
+}
+
 interface PersephoneBoardApi {
+    getCapability(id: "audio", options: { version: 1 }): Promise<PersephoneAudioCapability | null>;
+    getCapability(id: string, options?: { version?: number; provider?: string; filter?: { mime?: string; representation?: string }; asAgent?: boolean }): Promise<Record<string, (...args: unknown[]) => Promise<unknown>> | null>;
     /** The current host bridge is 1.48.0; compare `version` before using newer members. */
     /** Bridge version, e.g. "1.48.0"; 1.48.0 adds opening authorized board folders;
      *  1.47.0 adds TypeScript project registration;

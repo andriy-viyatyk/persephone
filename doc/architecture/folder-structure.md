@@ -946,6 +946,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
 ├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting
+├── global-mute-service.ts  # Main-owned mute leases and effective audio state across managed application contents
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
 ├── mcp-http-server.ts      # MCP Streamable HTTP transport — sessions (idle reaper, cap), HTTP handling, start/stop lifecycle

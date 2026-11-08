@@ -154,6 +154,7 @@ ui.log("Hello");
   - **[.window](./window.md)** — Window management
     - `.minimize()` / `.maximize()` / `.restore()` / `.close()` / `.toggleWindow()`
     - `.isMaximized` / `.windowIndex`
+    - `.getGlobalMuteSnapshot()` / `.releaseAllGlobalMute()` — inspect or release board playback mutes across app windows
     - `.menuBar` — Menu Bar folders, selection, and controls
     - `.screen` — Automation host for Persephone's own window and active page
       - `.recording.start({ region, openPlayer? })` / `.pause()` / `.resume()` / `.stop()` / `.cancel()` — video-only app-window, active-page, or editor recording; completed files are temporary until copied or saved

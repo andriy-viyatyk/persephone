@@ -151,7 +151,18 @@ export interface IWindowRecording {
     };
 }
 
+export interface IGlobalMuteSnapshot {
+    revision: number;
+    active: boolean;
+    holders: string[];
+    contents: Array<{ id: number; type: string; localMuted: boolean; effectiveMuted: boolean }>;
+}
+
 export interface IWindow {
+    /** Read global mute leases and actual managed webContents mute states across all windows. */
+    getGlobalMuteSnapshot(): Promise<IGlobalMuteSnapshot>;
+    /** Release all board mute leases across all application windows. */
+    releaseAllGlobalMute(): Promise<IGlobalMuteSnapshot>;
     // ── Window actions ───────────────────────────────────────────────
 
     /** Minimize the window to the taskbar. */

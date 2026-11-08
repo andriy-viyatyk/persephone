@@ -2,6 +2,8 @@ import type { IWindow } from "../../../api/types/window";
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const WINDOW_MEMBERS: readonly IAiMember[] = [
+    { name: "getGlobalMuteSnapshot", kind: "method", signature: "getGlobalMuteSnapshot()", summary: "Read global mute holders and managed webContents audio states across all windows." },
+    { name: "releaseAllGlobalMute", kind: "method", signature: "releaseAllGlobalMute()", summary: "Release all global mute leases across all windows.", caution: "changes audio playback across all windows" },
     { name: "minimize", kind: "method", signature: "minimize()", summary: "Minimize this window.", caution: "changes the visible application window" },
     { name: "maximize", kind: "method", signature: "maximize()", summary: "Maximize this window.", caution: "changes the visible application window" },
     { name: "restore", kind: "method", signature: "restore()", summary: "Restore this window from maximized or minimized state.", caution: "changes the visible application window" },

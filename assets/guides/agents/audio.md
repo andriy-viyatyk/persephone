@@ -12,10 +12,9 @@ wake words, transcribe, or record to disk. Board code owns downstream processing
 its own caller approval policy.
 
 The capability is reserved: boards cannot register an `audio` provider. A consumer manifest must
-declare `uses: [{ "id": "audio", "version": 1 }]`, set `minBridgeVersion: "1.51.0"`, and set
-`minAppVersion: "5.0.18"` or later. A board service also
-needs `permissions.service: true`. See [Capabilities](capabilities.md) for the bridge and channel
-contract.
+declare `uses: [{ "id": "audio", "version": 1 }]`, set `minBridgeVersion: "1.52.0"` when using `muteApp` (or `1.51.0` for the other methods), and set
+`minAppVersion: "5.0.18"` or later. A board service also needs `permissions.service: true`. See
+[Capabilities](capabilities.md) for the bridge and channel contract.
 
 ## Methods
 
@@ -23,6 +22,7 @@ The platform provider is `persephone`, version 1:
 
 | Method | `open` argument | Use |
 |---|---|---|
+| `muteApp()` | none | Acquire a global playback mute lease. |
 | `devices()` | none | List microphone inputs; a call with a 10-second timeout, hidden from agents. |
 | `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }` | Receive shared PCM capture chunks. |
 | `play` | `{ sampleRate: number }` | Send mono float32 PCM for playback. |
@@ -74,6 +74,23 @@ rate; Web Audio resamples to the shared output context. The channel closes after
 scheduled audio has played. `stop` cancels queued and scheduled audio and reports `stopped`. Closing
 the channel also cancels playback. The five-second queued-audio limit is enforced across scheduled
 audio; overflow closes the channel with `channel-backpressure`.
+
+## Global mute while listening
+
+`const lease = await audio.muteApp()` applies a global playback mute across Persephone windows,
+browser guests and their popups before resolving. Release it when listening ends:
+
+```js
+const lease = await audio.muteApp();
+try { await listen(); }
+finally { await lease.release(); }
+```
+
+Leases compose across boards and are released on frame closure, navigation, lost channels or
+revocation. `release()` is safe to repeat. The active header indicator releases all leases in all
+windows; this override does not stop capture. Direct audio in every board iframe is muted because
+it shares the application window. Playback through `audio@1`, including signals and TTS, uses a
+separate audio-service window and remains audible. Other applications are unaffected.
 
 ## Capture message
 

@@ -10,6 +10,7 @@
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per persephone page tab.
  */
+import { globalMuteService } from "./global-mute-service";
 import { app, BrowserWindow, dialog, IpcMainEvent, IpcMainInvokeEvent, session, webContents, WebContents, WebFrameMain } from "electron";
 import { openWindows } from "./open-windows";
 import * as cheerio from "cheerio";
@@ -294,6 +295,7 @@ function guardPopupWindow(
     });
 
     const childWc = childWindow.webContents;
+    globalMuteService.register(childWc, "popup");
     attachPopupNavigationGuards(childWc);
 
     childWc.setWindowOpenHandler(({ url, disposition, features }) => {
@@ -351,6 +353,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     // (which this very load is about to satisfy), page-event buffers and the dialog policy.
     const wc = webContents.fromId(webContentsId);
     if (!wc || wc.isDestroyed() || wc.hostWebContents !== event.sender) return;
+    globalMuteService.register(wc, "webview");
     const previous = registrations.get(key);
     if (previous && previous.senderWebContents !== event.sender) return;
     unregisterWebview(key, { keepCdpState: previous?.webContents.id === webContentsId });
@@ -895,6 +898,7 @@ async function collectDom(key: string): Promise<string> {
  */
 export function initBrowserHandlers(): void {
     app.on("web-contents-created", (_event, contents) => {
+        if (contents.getType() === "webview") globalMuteService.register(contents, "webview");
         contents.on("will-attach-webview", (_event, webPreferences, params) => {
             const argumentsList = webPreferences.additionalArguments || [];
             const browserPreload = typeof params.preload === "string" && params.preload.toLowerCase().includes("preload-webview");
@@ -1023,7 +1027,7 @@ export function initBrowserHandlers(): void {
     guardedIpcOn(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => {
         const reg = registrations.get(key);
         if (reg && !reg.webContents.isDestroyed()) {
-            reg.webContents.setAudioMuted(muted);
+            globalMuteService.setLocalMuted(reg.webContents, muted);
         }
     });
 

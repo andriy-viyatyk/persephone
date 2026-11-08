@@ -1,3 +1,4 @@
+import { globalMuteService } from "./global-mute-service";
 import { applicationProfileName } from "./application-profile";
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { app, components, net, protocol, session } from "electron";
@@ -131,6 +132,7 @@ export function setupMainProcess() {
 
     controller.init();
     initSearchHandlers();
+    globalMuteService.initialize();
     initBrowserHandlers();
     initTorHandlers();
     initBrowserNetworkHandlers();

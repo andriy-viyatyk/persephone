@@ -718,6 +718,12 @@ an unsaved recording discards it; startup cleanup removes leftovers after seven 
 `/src/renderer/api/window-screen.ts` and the shared capture state machine is
 `/src/renderer/api/window-recording.ts`.
 
+`app.window.getGlobalMuteSnapshot()` reads the current global mute holders and each managed
+webContents' local and effective mute states across application windows. The snapshot includes a
+revision, active flag and holder labels. `app.window.releaseAllGlobalMute()` releases every board
+mute lease across all windows and returns the resulting snapshot; it is the same global override
+used by the header mute indicator.
+
 Facade source: `/src/renderer/scripting/api-wrapper/`
 
 `page.editorSwitches` is the script-facing projection of the page toolbar's editor-switch widget. It
@@ -1315,7 +1321,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `folder-view-editor.d.ts` | `IFolderViewEditor` — provider-backed folder navigation |
 | `git-tree-editor.d.ts` | `IGitTreeEditor` — Git history, refs, and changes |
 | `log-view-editor.d.ts` | `ILogViewEditor` — Log View entries and non-blocking output |
-| `window.d.ts` | `IWindow`, `IWindowScreen`, `IMenuBar` — window, app-window automation, and Menu Bar controls |
+| `window.d.ts` | `IWindow`, `IWindowScreen`, `IMenuBar` — window, global mute inspection/release, app-window automation, and Menu Bar controls |
 | `common.d.ts` | `IDisposable`, `IEvent`, `Language`, `EditorView` |
 | `boards.d.ts` | `IBoards` — `app.boards` board lifecycle + published-catalog operations |
 | `board-editor.d.ts` | `IBoardEditor` — board metadata, trust/render state, shared automation, secondary views, and reload |

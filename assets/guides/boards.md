@@ -245,7 +245,9 @@ Agent Chat board uses this platform contract for its coding-agent sessions.
 `audio`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly `author/name`.
 For shared microphone and computer audio capture or PCM playback, see the normative
 [`audio@1` contract](./agents/audio.md) (`guides.agents["audio"]`). A consumer declares `audio@1`
-in `uses` and requests the matching `microphone` or `computerAudio` permission for capture.
+in `uses` and requests the matching `microphone` or `computerAudio` permission for capture. Voice
+boards can use `audio.muteApp()` to mute Persephone playback while listening; the header indicator
+identifies holders and releases all active mutes across app windows.
 For recording audio and getting text back from an installed speech-to-text board, see the normative
 [`speech.transcribe` v1 contract](./agents/speech-transcribe.md) (`guides.agents["speech-transcribe"]`).
 The **Speech to Text** catalog board in `persephone-boards` provides this service. When a provider is

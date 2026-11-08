@@ -39,6 +39,7 @@ every state.
 - Add page (regular windows only) → `page-tabs-add`
 - Autoload reload → `autoload-reload`
 - Zoom indicator → `zoom-indicator`
+- Global mute indicator → `global-mute`
 - Minimize → `window-minimize`
 - Restore → `window-toggle`
 - Close → `window-close`
@@ -66,6 +67,22 @@ appear as normal tabs beside it. The **+** button is absent and `Ctrl+N` is igno
 
 The page-tab strip begins flush with the left edge of the header in a board window. In a regular
 window it sits immediately to the right of the Persephone menu.
+
+### When global mute is active
+
+```
++---------------------------------------------------------------------+
+| [P] [tabs] … [+ ▾] [right-pin] [global mute] [–] [□] [×]           |  global mute indicator before window controls
++---------------------------------------------------------------------+
+```
+
+In a board window the same indicator sits immediately before Minimize:
+
+```
++---------------------------------------------------------------------+
+| [locked board tab]                              [global mute] [–][□][×] |  global mute indicator before window controls
++---------------------------------------------------------------------+
+```
 
 ### When the tabs overflow
 
@@ -162,6 +179,7 @@ Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabs
 | Autoload reload | Appears when changed autoload scripts need re-running | `[data-name="autoload-reload"]` |
 | Zoom indicator | Appears only when the window is zoomed and resets zoom on click | `[data-name="zoom-indicator"]` |
 | Window controls | Minimize, maximize/restore, and close | `[data-name="window-minimize"]`, `[data-name="window-toggle"]`, `[data-name="window-close"]` |
+| Global mute indicator | Before window controls while one or more boards mute Persephone playback; click to release every board mute across app windows | `[data-name="global-mute"]` |
 
 The `+` button creates an empty page with `Ctrl+N`; its arrow offers the editors and browser
 profiles the user can start from. `Ctrl+Shift+N` opens a new window. The tab strips' language,

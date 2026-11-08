@@ -1132,7 +1132,25 @@ async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
     return createCapabilityProxy(provider, async (method, args) => {
         const request: CapabilityClientInvoke = { requestId: crypto.randomUUID(), key: { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey }, method, args, filter: options?.filter };
         const result = await capabilityRpc<unknown>("capabilityInvoke", [request]);
-        if (provider.methods[method].kind === "channel") return waitForServiceChannel((result as { channelId: string }).channelId);
+        if (provider.methods[method].kind === "channel") {
+            let channel: BoardServiceChannel;
+            try { channel = await waitForServiceChannel((result as { channelId: string }).channelId); }
+            catch (error) { void capabilityRpc("capabilityCancel", [request.requestId]).catch((): void => undefined); throw error; }
+            if (id !== "audio" || method !== "muteApp") return channel;
+            let released = false;
+            let pending: Promise<void> | undefined;
+            channel.onClose(() => { released = true; });
+            return { release: (): Promise<void> => {
+                if (released) return Promise.resolve();
+                return pending ??= new Promise<void>((resolve) => {
+                    const done = (): void => { released = true; removeMessage(); removeClose(); resolve(); };
+                    let removeClose = (): void => undefined;
+                    const removeMessage = channel.onMessage((message) => { if ((message as { type?: string })?.type === "released") done(); });
+                    removeClose = channel.onClose(done);
+                    try { channel.send({ type: "release" }); } catch { done(); }
+                });
+            } };
+        }
         return result;
     });
 }

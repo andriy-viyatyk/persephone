@@ -1,6 +1,7 @@
 import type { IAiElementDeclaration } from "ai-vision";
 
 export const HEADER_ELEMENTS: readonly IAiElementDeclaration[] = [
+    { name: "global-mute", purpose: "Release all global audio mute leases; visible only while active.", where: "application header, including board mode" },
     { name: "app-header", purpose: "The always-present top shell strip containing tabs, status indicators, and window controls.", where: "top application strip" },
     { name: "persephone-menu", purpose: "Opens the Menu Bar, where app features not on a tab live.", where: "leftmost control in the header strip, opening the Menu Bar" },
     { name: "page-tabs", purpose: "The strip of open-page tabs; tabs can be reordered, moved, and opened into their tab menu.", where: "header tab strip, immediately right of the Persephone menu" },

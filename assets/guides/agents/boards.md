@@ -1020,6 +1020,12 @@ const entries = await persephone.capabilities.list();
 //    handlerKey: "board:/work/Demo", origin: "board" }]
 ```
 
+For voice sessions, the reserved `audio@1` capability provides `audio.muteApp()`, which returns
+a global playback-mute lease. Boards using it require `minBridgeVersion: "1.52.0"` and an exact
+`audio@1` entry in `uses`; capture methods also need their source permission. Release the lease
+when listening ends, including error paths. See the [audio guide](audio.md) for lifecycle and
+playback scope.
+
 The legacy wrapper invokes by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
 result is `{ pageId, result }`; `pageId` is optional when a handler resolves without a page, and
 `result` preserves the handler's exact value, including primitives, arrays, and empty objects. The
