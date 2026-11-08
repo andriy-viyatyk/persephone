@@ -72,6 +72,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
             { key: "voice-typing.shortcut", label: "Voice typing shortcut", purpose: "Shortcut used to start and stop speech transcription." },
             { key: "voice-typing.translate-shortcut", label: "Translate to English shortcut", purpose: "Shortcut used to start and stop speech transcription with English output." },
             { key: "voice-typing.auto-stop-silence-ms", label: "Stop voice typing and dictation boards after silence", purpose: "Milliseconds of microphone silence before voice typing and dictation-taking boards stop." },
+            { key: "voice-typing.auto-stop-inactivity-ms", label: "Stop voice typing when nothing is being transcribed", purpose: "Milliseconds without new text from the speech provider before voice typing stops. Watches transcription output rather than microphone level, so it also ends a session in a noisy room or one in which nothing was said." },
         ],
     },
     {

@@ -45,6 +45,8 @@ interface VoiceSession {
     segmentCount: number;
     levelDurationMs: number;
     quietSince?: number;
+    /** Wall clock of the last draft or segment from the provider; seeded when capture starts. */
+    lastOutputAt?: number;
     releaseLease?: () => void;
 }
 
@@ -147,6 +149,7 @@ export class VoiceTypingController {
             const status = session.finished ? "idle" : session.stopRequested ? "transcribing" : capture ? "recording" : "starting";
             this.publishState(session, status, capture ? Date.now() - capture.startedAt : 0);
             this.checkAutoStop(session);
+            this.checkInactivityStop(session);
         }, 150);
         void this.openProviderAndCapture(session);
     }
@@ -262,6 +265,7 @@ export class VoiceTypingController {
                 if (!session.live) return;
                 const utterance = this.utteranceId(value.utterance);
                 if (utterance !== undefined && !session.finished && !session.cancelled) {
+                    session.lastOutputAt = Date.now();
                     session.draftUtterances.add(utterance);
                     session.draftUtterance = utterance;
                     session.draft = value.text.length > 80 ? `…${value.text.slice(-79)}` : value.text;
@@ -281,6 +285,7 @@ export class VoiceTypingController {
                     this.recordSpeechBaseline(session, value.startMs, value.endMs);
                 }
                 this.publishState(session, session.stopRequested ? "transcribing" : "recording", this.captureDuration(session));
+                session.lastOutputAt = Date.now();
                 this.queueSegment(session, value.text);
             } else if (value.type === "result" && typeof value.text === "string") {
                 session.resultReceived = true;
@@ -336,6 +341,9 @@ export class VoiceTypingController {
                 if (session.stopRequested) return;
                 this.publishState(session, "recording", Date.now() - capture.startedAt);
             });
+            // Seeded here, not at session start: the inactivity interval should run from the moment
+            // audio actually begins, not from the shortcut press while the provider channel opens.
+            session.lastOutputAt = Date.now();
             return capture;
         } catch (error: unknown) {
             stream.getTracks().forEach((track) => track.stop());
@@ -529,6 +537,19 @@ export class VoiceTypingController {
         } else {
             session.quietSince = undefined;
         }
+    }
+
+    // Driven by provider OUTPUT, not microphone level, so it still ends a session in a room too noisy
+    // for the quiet threshold, and one in which nothing was ever said -- which checkAutoStop cannot
+    // do, because it only arms once a committed segment has produced a speech baseline.
+    private checkInactivityStop(session: VoiceSession): void {
+        if (session.finished || session.cancelled || session.stopRequested || !session.capture) return;
+        // A non-live provider sends neither draft nor segment -- only a final result after `end` -- so
+        // an output timer would fire on every such session before a word had been spoken.
+        if (!session.live) return;
+        const duration = settings.get("voice-typing.auto-stop-inactivity-ms");
+        if (!duration || session.lastOutputAt === undefined) return;
+        if (Date.now() - session.lastOutputAt >= duration) this.stopSession(session.id);
     }
 
     private async finishSession(session: VoiceSession): Promise<void> {

@@ -576,6 +576,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
     private input: InputView | undefined;
     private translateInput: InputView | undefined;
     private silenceSelect: SelectView<IListBoxItem> | undefined;
+    private inactivitySelect: SelectView<IListBoxItem> | undefined;
     private rightCtrlTapPending: { settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut"; shift: boolean } | undefined;
 
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
@@ -617,17 +618,34 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         this.silenceSelect = this.child(new SelectView(this.silenceSelectProps()));
         silenceRow.append(this.silenceSelect.root);
         this.silenceSelect.mount();
-        const silenceHelp = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingAutoStopHelp"), { color: "light", size: "xs" }));
-        this.root.append(row, help, translateRow, translateHint, silenceRow, silenceHelp);
+        const silenceHelp = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingAutoStopHelp"), { color: "light", size: "xs" }));
+        const inactivityRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
+        inactivityRow.append(settingsFieldLabel(t("settings.voiceTypingInactivityLabel")));
+        this.inactivitySelect = this.child(new SelectView(this.inactivitySelectProps()));
+        inactivityRow.append(this.inactivitySelect.root);
+        this.inactivitySelect.mount();
+        const inactivityHelp = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingInactivityHelp"), { color: "light", size: "xs" }));
+        this.root.append(row, help, translateRow, translateHint, silenceRow, silenceHelp, inactivityRow, inactivityHelp);
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
             if (key === "voice-typing.translate-shortcut") this.translateInput?.update(this.translateInputProps());
             if (key === "voice-typing.auto-stop-silence-ms") this.silenceSelect?.update(this.silenceSelectProps());
+            if (key === "voice-typing.auto-stop-inactivity-ms") this.inactivitySelect?.update(this.inactivitySelectProps());
         });
         this.own(subscription);
     }
 
-    protected onDispose(): void { this.input = undefined; this.translateInput = undefined; this.silenceSelect = undefined; }
+    protected onDispose(): void { this.input = undefined; this.translateInput = undefined; this.silenceSelect = undefined; this.inactivitySelect = undefined; }
+
+    private inactivitySelectProps(): SelectViewProps<IListBoxItem> {
+        const values = [0, 2000, 3000, 4000, 5000, 10000, 15000, 30000];
+        const items: IListBoxItem[] = values.map((value) => ({
+            value,
+            label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
+        }));
+        const current = settings.get("voice-typing.auto-stop-inactivity-ms");
+        return { items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-inactivity-ms", Number(item?.value ?? 0)) };
+    }
 
     private silenceSelectProps(): SelectViewProps<IListBoxItem> {
         const values = [0, 2000, 3000, 5000, 10000];

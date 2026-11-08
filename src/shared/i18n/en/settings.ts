@@ -34,6 +34,8 @@ export const settingsCatalog = {
     voiceTypingResetShortcut: { message: "Reset to default" },
     voiceTypingAutoStopLabel: { message: "Stop voice typing and dictation boards after silence" },
     voiceTypingAutoStopHelp: { message: "Stop voice typing and boards that take dictation (such as Agent Chat) after sustained microphone silence once speech has been committed. A pending utterance prevents auto-stop." },
+    voiceTypingInactivityLabel: { message: "Stop voice typing when nothing is being transcribed" },
+    voiceTypingInactivityHelp: { message: "Stop voice typing when no new text has arrived from the speech provider for this long, counted from when recording started. This watches the transcription rather than the microphone, so it still stops in a noisy room, and when nothing was ever said — where stopping after silence cannot, because it waits for speech first. Needs a provider that transcribes as you speak." },
     voiceTypingAutoStopOff: { message: "Off (0)" },
     voiceTypingAutoStopSeconds: { message: "{seconds} seconds" },
     pageTitle: { message: "Settings" },
