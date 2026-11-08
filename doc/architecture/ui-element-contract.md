@@ -184,6 +184,7 @@ the stack reaches its bottom.
 | MCP Server / Mneme section row | `[data-name="settings-content-section-mcp"]` |
 | Git Integration section row | `[data-name="settings-content-section-git-integration"]` |
 | Board Environment Variables section row | `[data-name="settings-content-section-board-vars"]` |
+| Microphone Audio setting controls | `[data-name="microphone.clean"]`, `[data-name="microphone.attenuation-db"]`, `[data-name="microphone.notches"]` |
 | Theme outer panel | `[data-name="settings-panel-theme"]` |
 | Window Behavior outer panel | `[data-name="settings-panel-window-behavior"]` |
 | Clipboard outer panel | `[data-name="settings-panel-clipboard"]` |

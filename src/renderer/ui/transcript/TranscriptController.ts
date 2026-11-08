@@ -5,6 +5,9 @@ import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordinator";
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
+import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
+import { resolveMicrophoneDevice } from "../speech/microphone-device";
+import { settings } from "../../api/settings";
 import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
 
@@ -183,10 +186,11 @@ export class TranscriptController {
             await api.armVoiceTypingMicrophone();
             try {
                 if (this.cancelled) return;
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: !settings.get("microphone.clean"), autoGainControl: true } });
             } finally {
                 await api.clearVoiceTypingMicrophone().catch(() => {});
             }
+            await resolveMicrophoneDevice(stream);
         }
         // Stop may have finished the session while the permission prompt was open; nothing would own this stream.
         if (this.cancelled || this.finishing || !this.sources.includes(source)) { stream.getTracks().forEach((track) => track.stop()); return; }
@@ -211,7 +215,11 @@ export class TranscriptController {
             source.level = level;
             const loudest = Math.max(...this.sources.map((item) => item.level ?? 0));
             if (!this.cancelled) this.onState({ status: this.finishing ? "transcribing" : "recording", level: loudest });
+        }, undefined, source.kind === "microphone" ? microphoneOptions(stream) : undefined, (mode, reason) => {
+            reportMicrophoneStatus(mode, reason);
+            if (mode === "failed") void this.cancel();
         });
+        if (source.kind === "microphone") watchMicrophoneSettings(source.capture, stream);
     }
 
     private waitForPort(channelId: string): Promise<MessagePort> {

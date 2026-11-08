@@ -123,6 +123,8 @@ downloads language models as needed and can translate offline after the models a
 
 ## Transcript
 
+Microphone capture follows **Settings > General > Microphone Audio**; computer audio is unaffected.
+
 Choose the microphone button in the right side of the toolbar, then select **Microphone (me)**,
 **Computer audio**, or **Both**. Computer audio and Both are available on Windows. Install and
 trust the Speech to Text board from Tools & Editors first; it must support live transcription.

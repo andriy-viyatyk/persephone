@@ -477,6 +477,9 @@ advertises support. Voice Typing captures the exact app or browser guest `WebCon
 renderer opens microphone capture in parallel with provider channel setup and buffers audio until
 the provider accepts the channel; the overlay reports startup until audio begins flowing. A
 short-lived, one-shot app-main-frame audio grant authorizes capture.
+Voice Typing can stop after a configured period without new provider text. This output-based
+inactivity stop applies only to live providers, which emit drafts or committed segments during
+recording; the existing microphone-silence stop remains a separate option.
 On result, main checks the captured
 target's focused frame and active editable element, then inserts into that same target. Main-frame
 targets use `WebContents.insertText()`; focused child frames use their own document's

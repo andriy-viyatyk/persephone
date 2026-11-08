@@ -143,7 +143,7 @@ export function setupMainProcess() {
     function registerAssetProtocol(partition: string) {
         const customSession = session.fromPartition(partition);
 
-        customSession.protocol.handle("app-asset", (request) => {
+        customSession.protocol.handle("app-asset", async (request) => {
             const parsedUrl = new URL(request.url);
 
             let relativePath = path.join(parsedUrl.host, parsedUrl.pathname);
@@ -158,7 +158,11 @@ export function setupMainProcess() {
             const file = path.join(getAssetPath(), relativePath);
             const fileUrl = pathToFileURL(file).toString();
 
-            return net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
+            const response = await net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
+            if (relativePath.replace(/\\/g, "/") !== "vendor/deepfilternet-web/df_bg.wasm") return response;
+            const headers = new Headers(response.headers);
+            headers.set("Access-Control-Allow-Origin", "*");
+            return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
         });
     }
 

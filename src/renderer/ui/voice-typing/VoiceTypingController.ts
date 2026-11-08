@@ -13,6 +13,8 @@ import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordin
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
 import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
+import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
+import { resolveMicrophoneDevice } from "../speech/microphone-device";
 
 const VOICE_BOARD_PREFIX = "voice-typing:";
 const MAX_AUDIO_MS = 300_000;
@@ -205,10 +207,11 @@ export class VoiceTypingController {
         try {
             await api.armVoiceTypingMicrophone();
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: !settings.get("microphone.clean"), autoGainControl: true } });
             } finally {
                 await api.clearVoiceTypingMicrophone().catch(() => {});
             }
+            await resolveMicrophoneDevice(stream);
             if (session.cancelled || session.finished || this.session !== session || session.stopRequested) {
                 stream.getTracks().forEach((track) => track.stop());
                 return undefined;
@@ -340,7 +343,11 @@ export class VoiceTypingController {
                 if (session.acousticLevels.length > 30_000) session.acousticLevels.splice(0, 10_000);
                 if (session.stopRequested) return;
                 this.publishState(session, "recording", Date.now() - capture.startedAt);
+            }, undefined, microphoneOptions(stream), (mode, reason) => {
+                reportMicrophoneStatus(mode, reason);
+                if (mode === "failed") void this.cancelSession(session.id, "capture-failed");
             });
+            watchMicrophoneSettings(capture.pipeline, stream);
             // Seeded here, not at session start: the inactivity interval should run from the moment
             // audio actually begins, not from the shortcut press while the provider channel opens.
             session.lastOutputAt = Date.now();

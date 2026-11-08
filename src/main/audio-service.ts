@@ -3,7 +3,8 @@ import { app, BrowserWindow, ipcMain, MessageChannelMain, type MessagePortMain, 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EventEndpoint } from "../ipc/api-types";
-import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
+import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_UPDATE, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
+import { openWindows } from "./open-windows";
 import { MAX_SERVICE_CHANNELS_PER_BOARD } from "../shared/capability-limits";
 import { boardPermissionAllows } from "../shared/board-manifest-utils";
 import { errMessage } from "../shared/utils";
@@ -12,6 +13,7 @@ import { capabilityRegistry } from "./capability-registry";
 import type { BoundCapability, MainCapabilityInvocationContext } from "./capability-router";
 import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants, setAudioWindowTargetResolver } from "./permission-policy-service";
 import { setAudioCaptureCount } from "./audio-capture-state";
+import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 
 const CONTROL_CHANNEL = "persephone:audio-control";
 const ARM_CHANNEL = "persephone:audio-arm-capture";
@@ -70,10 +72,54 @@ class AudioService {
     private readonly deviceRequests = new Map<string, { generation: number; resolve: (devices: AudioDevice[]) => void; reject: (error: unknown) => void }>();
     private pendingOpens = 0;
     private initialized = false;
+    private microphoneSettings: unknown;
+    private microphoneStatus: unknown;
 
     initialize(): void {
         if (this.initialized) return;
         this.initialized = true;
+        guardedIpcOn(AUDIO_SETTINGS_UPDATE, (event, snapshot: unknown) => {
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) return;
+            this.microphoneSettings = snapshot;
+            if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_SETTINGS_UPDATE, snapshot);
+        });
+        guardedIpcHandle(AUDIO_SETTINGS_GET, (event) => {
+            if (!this.window || event.sender !== this.window.webContents || event.senderFrame !== event.sender.mainFrame) throw capabilityError("permission-denied");
+            return this.microphoneSettings;
+        });
+        guardedIpcOn(AUDIO_STATUS, (event, status: unknown) => {
+            if (event.senderFrame !== event.sender.mainFrame || (event.sender !== this.window?.webContents
+                && !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender))) return;
+            this.microphoneStatus = status;
+            for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_STATUS, status);
+        });
+        guardedIpcHandle(AUDIO_STATUS_GET, (event) => {
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw capabilityError("permission-denied");
+            return this.microphoneStatus;
+        });
+        guardedIpcOn(AUDIO_RETRY, (event) => {
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) return;
+            if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_RETRY);
+            for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_RETRY);
+        });
+        guardedIpcHandle(AUDIO_SETTINGS_DEVICES, async (event) => {
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw capabilityError("permission-denied");
+            this.pendingOpens++;
+            let requestId: string | undefined;
+            try {
+                const signal = AbortSignal.timeout(10000);
+                const opened = await this.ensureWindow(signal);
+                const currentRequestId = crypto.randomUUID();
+                requestId = currentRequestId;
+                const response = new Promise<AudioDevice[]>((resolve, reject) => this.deviceRequests.set(currentRequestId, { generation: opened.generation, resolve, reject }));
+                opened.window.webContents.send(AUDIO_DEVICES_REQUEST, { requestId, epoch: this.epoch } satisfies AudioDevicesRequest);
+                return await withAbort(response, signal);
+            } finally {
+                if (requestId) this.deviceRequests.delete(requestId);
+                this.pendingOpens--;
+                this.destroyIdleWindow();
+            }
+        });
         setAudioWindowTargetResolver(() => this.window && !this.window.isDestroyed() ? this.window.webContents : undefined);
         ipcMain.on(AUDIO_DEVICES_REPLY, (event, reply: AudioDevicesReply) => {
             const window = this.window;
@@ -322,17 +368,20 @@ class AudioService {
         } catch (error) { finish(); try { consumer.close(); } catch { /* Transferred. */ } throw error; }
     }
 
-    private validateCapture(argument: Record<string, unknown>): { source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean } {
+    private validateCapture(argument: Record<string, unknown>): { source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw" } {
         const keys = Object.keys(argument);
-        if (keys.some((key) => !["source", "deviceId", "echoCancel"].includes(key))) throw capabilityError("rejected", "Invalid audio capture options.");
+        if (keys.some((key) => !["source", "deviceId", "echoCancel", "processing"].includes(key))) throw capabilityError("rejected", "Invalid audio capture options.");
         if (argument.source !== "microphone" && argument.source !== "computer") throw capabilityError("rejected", "Audio source must be microphone or computer.");
         if (argument.deviceId !== undefined && (typeof argument.deviceId !== "string" || !argument.deviceId.trim())) throw capabilityError("rejected", "Invalid audio device id.");
         if (argument.echoCancel !== undefined && typeof argument.echoCancel !== "boolean") throw capabilityError("rejected", "echoCancel must be a boolean.");
-        if (argument.source === "computer" && (argument.deviceId !== undefined || argument.echoCancel !== undefined)) throw capabilityError("rejected", "Computer capture does not accept deviceId or echoCancel.");
+        if (argument.processing !== undefined && argument.processing !== "default" && argument.processing !== "raw") throw capabilityError("rejected", "Invalid microphone processing mode.");
+        if (argument.processing === "raw" && argument.echoCancel === true) throw capabilityError("rejected", "Raw capture cannot enable echo cancellation.");
+        if (argument.source === "computer" && (argument.deviceId !== undefined || argument.echoCancel !== undefined || argument.processing !== undefined)) throw capabilityError("rejected", "Computer capture does not accept microphone options.");
         if (argument.source === "computer" && process.platform !== "win32") throw capabilityError("no-handler", "Computer audio capture is supported on Windows only.");
         return { source: argument.source as "microphone" | "computer",
             ...(argument.deviceId !== undefined ? { deviceId: argument.deviceId as string } : {}),
-            ...(argument.echoCancel !== undefined ? { echoCancel: argument.echoCancel as boolean } : {}) };
+            ...(argument.echoCancel !== undefined ? { echoCancel: argument.echoCancel as boolean } : {}),
+            ...(argument.processing !== undefined ? { processing: argument.processing as "default" | "raw" } : {}) };
     }
 
     private validatePlayback(argument: Record<string, unknown>): { sampleRate: number } {

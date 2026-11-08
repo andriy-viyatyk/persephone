@@ -6,6 +6,11 @@ summary: "Release notes, newest first — the last 10 releases in full, older on
 
 # What's New
 
+Managed microphone capture now offers local noise suppression and an optional per-device resonance
+cut in Microphone Audio settings. Boards can request raw capture through `audio@1`. Voice Typing
+also has an optional timer that stops when a live transcription provider sends no new text, even if
+background noise keeps the microphone active.
+
 Release notes and changelog for Persephone (formerly js-notepad).
 
 ---

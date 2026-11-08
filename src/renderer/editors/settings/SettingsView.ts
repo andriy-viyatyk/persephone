@@ -31,6 +31,7 @@ import {
     VideoPlayerSectionView,
     WindowBehaviorSectionView,
     VoiceTypingSettingsSectionView,
+    MicrophoneAudioSectionView,
 } from "./sections/SettingsSections";
 import { panel, text } from "./sections/settings-native";
 import "./settings.css";
@@ -82,6 +83,7 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     "git-integration": () => new GitIntegrationSectionView({}),
     "board-vars": () => new BoardVarsSectionView({}),
     "voice-typing": () => new VoiceTypingSettingsSectionView({}),
+    "microphone-audio": () => new MicrophoneAudioSectionView({}),
 };
 
 const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {

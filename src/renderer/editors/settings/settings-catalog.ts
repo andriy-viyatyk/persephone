@@ -76,6 +76,17 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         ],
     },
     {
+        groupId: "general", groupTitleKey: "settings.groupGeneral", id: "microphone-audio",
+        titleKey: "settings.microphoneTitle", description: "Microphone cleaning and device resonance settings.",
+        elementName: "settings-section-microphone-audio", panelName: "settings-panel-microphone-audio",
+        where: "Settings > General > Microphone Audio",
+        rows: [
+            { key: "microphone.clean", label: "Clean microphone audio", purpose: "Enable local neural noise suppression." },
+            { key: "microphone.attenuation-db", label: "Attenuation limit", purpose: "Limit suppression in dB; zero is unlimited." },
+            { key: "microphone.notches", label: "Microphone resonance", purpose: "Per-device resonance reduction frequency, Q and cut." },
+        ],
+    },
+    {
         groupId: "general",
         groupTitleKey: "settings.groupGeneral",
         id: "clipboard",

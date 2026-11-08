@@ -8,6 +8,18 @@ summary: "Normative provider and consumer contract for record-then-transcribe au
 
 This is the normative contract for boards that provide or consume `speech.transcribe` version 1. One channel represents one transcription or one provider-description request. The consumer records and streams audio; the provider returns one result or error and closes the channel. The provider owns its engine, data handling, and caller approval policy.
 
+For Persephone-managed microphone cleaning, use the [`audio@1` capture service](audio.md) and
+forward its PCM chunks to the speech provider. Direct browser `getUserMedia` capture, including
+the example below, is outside that service and does not use its cleaning settings.
+
+```js
+const audio = await persephone.getCapability("audio", { version: 1 });
+const microphone = await audio.capture({ source: "microphone" });
+microphone.onMessage(message => {
+  if (message.type === "chunk") speechChannel.send({ type: "audio", data: message.data });
+});
+```
+
 ## Declarations and transport
 
 Declare the exact interface version in `board-manifest.json`:

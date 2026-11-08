@@ -38,6 +38,8 @@ it opens the About page at the guide contents.
 
 ### Voice Typing
 
+Managed microphone cleaning is configured in **Settings > General > Microphone Audio**.
+
 Install and trust the Speech to Text board from Tools & Editors. Use `Alt+V` to start language-
 preserving dictation in the focused input, or `Alt+Shift+V` to ask the provider to translate speech
 to English. Wait for **Recording** if the overlay first shows **Starting microphone…**. Press either

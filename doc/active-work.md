@@ -9,7 +9,6 @@ Overview of all active and planned epics and tasks.
 ## Active
 
 - *(no epic)*
-  - [ ] [US-1801: Voice typing — stop on transcription inactivity, not only microphone silence](tasks/US-1801-voice-typing-inactivity-stop/README.md)
 
 ## Planned
 

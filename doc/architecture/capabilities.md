@@ -105,6 +105,10 @@ channel counts are bounded as specified in
 
 ## Platform-owned `audio@1` methods
 
+Microphone capture accepts `processing: "raw"` as of bridge 1.53.0. Raw and default requests use
+separate source keys; direct browser capture remains outside the audio service. Managed default
+capture uses the microphone cleaning worker when enabled in settings.
+
 `audio` is a reserved platform registration with a `muteApp()` lease method, a `devices()` call,
 and `capture` and `play` channel methods. `muteApp()` opens a caller-owned channel whose lease mutes managed
 application playback while it remains open; each caller's lease is independent, and it is released
@@ -123,7 +127,7 @@ retains lifecycle and authorization state, but does not relay PCM.
 
 The hidden window owns one `AudioContext`, shared microphone/computer source streams, the PCM
 worklet, the computer-only `ComputerAudioGate`, and scheduled playback. Capture keys are source,
-device/default and echo-cancellation setting; subscribers close independently, and the source stops
+device/default, processing mode and echo-cancellation setting; subscribers close independently, and the source stops
 after its final subscriber. A per-subscriber 32-chunk queue isolates slow consumers. Saturation
 closes only that subscriber with `channel-backpressure`. The underlying channel still enforces 256
 unacknowledged messages and 1 MiB per message. Playback permits at most five queued seconds and

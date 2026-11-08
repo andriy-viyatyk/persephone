@@ -101,9 +101,11 @@ export default defineConfig({
   // undefined in the packaged app only: the language loader's APPDATA path threw at module
   // load and left a blank window, the saved language and custom themes were never read, and
   // MCP Inspector spawned stdio servers with an empty environment. Vite's own, more specific
-  // `process.env.NODE_ENV` replacement still applies.
+  // `process.env.NODE_ENV` replacement still applies. The optional chain matters for Web Workers
+  // (the microphone cleaning worker): they have no `process`, and in dev Vite injects this
+  // define into every worker module, so a plain `globalThis.process.env` threw on load.
   define: {
-    'process.env': 'globalThis.process.env',
+    'process.env': 'globalThis.process?.env',
   },
   // Pin a dedicated dev-server port (Vite's default 5173 conflicts with another
   // local React app whose redirect URI is locked to that port in its app

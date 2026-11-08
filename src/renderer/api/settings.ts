@@ -12,6 +12,8 @@ import { wrapSubscription } from "./internal";
 import type { BrowserNetwork } from "../../ipc/browser-network-ipc";
 import type { ISettings } from "./types/settings";
 import { normalizeVoiceTypingShortcut } from "../../shared/voice-typing-shortcut";
+import { MICROPHONE_TUNING, type MicrophoneNotch } from "../ui/speech/microphone-cleaning-types";
+import { AUDIO_SETTINGS_UPDATE } from "../../ipc/audio-channels";
 
 // =============================================================================
 // Types
@@ -78,6 +80,9 @@ export type AppSettingsKey =
     | "voice-typing.translate-shortcut"
     | "voice-typing.auto-stop-silence-ms"
     | "voice-typing.auto-stop-inactivity-ms"
+    | "microphone.clean"
+    | "microphone.attenuation-db"
+    | "microphone.notches"
     | "boards.excalidraw-library-migrated";
 
 // =============================================================================
@@ -166,6 +171,9 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "voice-typing.translate-shortcut": "Shortcut used to start and stop voice typing with translation to English. Default: Alt+Shift+V.",
     "voice-typing.auto-stop-silence-ms": "Stop voice typing and boards that take dictation after this many milliseconds of microphone silence once a committed speech segment exists and no utterance is pending. Allowed: 0 (off), 2000, 3000, 5000, 10000. Default: 0.",
     "voice-typing.auto-stop-inactivity-ms": "Stop voice typing after this many milliseconds in which the transcription provider produced no new draft or committed text, measured from when recording started. Unlike the silence setting this ignores microphone level, so it still ends a session in a noisy room, or one in which nothing was ever said and so no committed segment exists for silence detection to arm on. Only applies to providers that support live transcription, because a provider without it sends no text until the session ends. The short values suit a fast machine, where a draft arrives within a second of speech; allow more on a slow one or when transcription runs on the CPU. Allowed: 0 (off), 2000, 3000, 4000, 5000, 10000, 15000, 30000. Default: 0.",
+    "microphone.clean": "Enable microphone noise cleaning. Default: true.",
+    "microphone.attenuation-db": "Maximum neural suppression in dB; 0 means unlimited. Default: 30.",
+    "microphone.notches": "Device-specific resonance cuts keyed by resolved microphone device ID. Device IDs are stored locally and may change.",
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
@@ -222,11 +230,31 @@ const defaultAppSettingsState = {
         "voice-typing.translate-shortcut": "Alt+Shift+V",
         "voice-typing.auto-stop-silence-ms": 0,
         "voice-typing.auto-stop-inactivity-ms": 0,
+        "microphone.clean": true,
+        "microphone.attenuation-db": MICROPHONE_TUNING.attenuationDb as number,
+        "microphone.notches": {} as Record<string, MicrophoneNotch>,
         "boards.excalidraw-library-migrated": false,
     },
 };
 
 type AppSettingsState = typeof defaultAppSettingsState;
+
+function normalizeMicrophoneSetting(key: string, value: unknown): unknown {
+    if (key === "microphone.clean") return typeof value === "boolean" ? value : true;
+    if (key === "microphone.attenuation-db") return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : MICROPHONE_TUNING.attenuationDb;
+    if (key !== "microphone.notches") return value;
+    const result: Record<string, MicrophoneNotch> = Object.create(null) as Record<string, MicrophoneNotch>;
+    if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+    for (const [id, raw] of Object.entries(value)) {
+        if (!id || id === "default" || !raw || typeof raw !== "object") continue;
+        const n = raw as Partial<MicrophoneNotch>;
+        if (typeof n.enabled === "boolean" && typeof n.frequency === "number" && n.frequency >= 20 && n.frequency <= 20000
+            && typeof n.q === "number" && n.q >= 0.1 && n.q <= 50 && typeof n.gainDb === "number" && n.gainDb >= -60 && n.gainDb <= 0) {
+            result[id] = { enabled: n.enabled, frequency: n.frequency, q: n.q, gainDb: n.gainDb };
+        }
+    }
+    return result;
+}
 
 export function normalizeClipboardMaxItems(value: unknown): number {
     return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 1000
@@ -334,6 +362,14 @@ class Settings implements ISettings {
     constructor() {
         this.onChanged = wrapSubscription(this._onChanged);
         this._initPromise = this.init();
+        void this._initPromise.then(() => this.publishMicrophoneSettings());
+    }
+
+    private publishMicrophoneSettings(): void {
+        const { ipcRenderer } = require("electron") as typeof import("electron");
+        ipcRenderer.send(AUDIO_SETTINGS_UPDATE, {
+            enabled: this.get("microphone.clean"), attenuationDb: this.get("microphone.attenuation-db"), notches: this.get("microphone.notches"),
+        });
     }
 
     /** Wait until settings are loaded from disk. */
@@ -369,6 +405,7 @@ class Settings implements ISettings {
     set<K extends AppSettingsKey>(key: K, value: AppSettingsState["settings"][K]): void;
     set<T = unknown>(key: string, value: T): void;
     set(key: string, value: unknown): void {
+        if (key.startsWith("microphone.")) value = normalizeMicrophoneSetting(key, value);
         if (key === "capabilities.preferredProviders") value = normalizeCapabilityPreferences(value);
         if (key === "voice-typing.shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+V";
         if (key === "voice-typing.translate-shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+Shift+V";
@@ -378,6 +415,7 @@ class Settings implements ISettings {
             (s.settings as Record<string, unknown>)[key] = value;
         });
         this._onChanged.send({ key, value });
+        if (key.startsWith("microphone.")) this.publishMicrophoneSettings();
         this.saveSettingsDebounced();
     }
 
@@ -436,6 +474,9 @@ class Settings implements ISettings {
             newSettings["voice-typing.translate-shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.translate-shortcut"]) ?? "Alt+Shift+V";
             newSettings["voice-typing.auto-stop-silence-ms"] = normalizeVoiceTypingAutoStopSilence(newSettings["voice-typing.auto-stop-silence-ms"]);
             newSettings["voice-typing.auto-stop-inactivity-ms"] = normalizeVoiceTypingAutoStopInactivity(newSettings["voice-typing.auto-stop-inactivity-ms"]);
+            newSettings["microphone.clean"] = normalizeMicrophoneSetting("microphone.clean", newSettings["microphone.clean"]) as boolean;
+            newSettings["microphone.attenuation-db"] = normalizeMicrophoneSetting("microphone.attenuation-db", newSettings["microphone.attenuation-db"]) as number;
+            newSettings["microphone.notches"] = normalizeMicrophoneSetting("microphone.notches", newSettings["microphone.notches"]) as Record<string, MicrophoneNotch>;
             const migratedSettings = newSettings as Record<string, unknown>;
             for (const key of ["voice-assistant.enabled", "voice-assistant.microphone", "voice-assistant.silence-ms", "voice-assistant.threshold"]) delete migratedSettings[key];
             newSettings["capabilities.preferredProviders"] = normalizeCapabilityPreferences(newSettings["capabilities.preferredProviders"]);
@@ -456,6 +497,7 @@ class Settings implements ISettings {
             applyThemePreservingPreview(newSettings["theme"]);
 
             if (emitChanges) {
+                this.publishMicrophoneSettings();
                 const next = newSettings as Record<string, unknown>;
                 // Union of both key sets: a key deleted from the file reverts to its default,
                 // which is as much a change as an edited one.

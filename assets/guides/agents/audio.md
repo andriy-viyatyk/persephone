@@ -24,7 +24,7 @@ The platform provider is `persephone`, version 1:
 |---|---|---|
 | `muteApp()` | none | Acquire a global playback mute lease. |
 | `devices()` | none | List microphone inputs; a call with a 10-second timeout, hidden from agents. |
-| `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean }` | Receive shared PCM capture chunks. |
+| `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw" }` | Receive shared PCM capture chunks. |
 | `play` | `{ sampleRate: number }` | Send mono float32 PCM for playback. |
 
 Both channels have a 15-second establishment timeout. The declaration has `agent: true` so MCP
@@ -52,11 +52,20 @@ passed to `capture`; IDs from a board page's own enumeration may not work. Devic
 Chromium's ID lifetime and privacy behavior can invalidate them, so refresh on demand and use the
 default input when labels or IDs are unavailable.
 
-`capture` accepts only `source`, optional `deviceId`, and optional `echoCancel`. `source` is
+`capture` accepts `source`, optional `deviceId`, `echoCancel`, and `processing`. `source` is
 required. `deviceId` must be a nonempty device id and applies only to microphone capture. If omitted,
 the browser's current default input is used. `echoCancel` must be boolean when supplied; it defaults
-to `true` for microphone capture. Computer capture rejects both `deviceId` and `echoCancel` and is
+to `true` for microphone capture. `processing: "raw"` requests capture without Chromium noise
+suppression, automatic gain control, or echo cancellation; hardware or OS processing may remain.
+It cannot be combined with `echoCancel: true`. The default processing mode is `"default"`.
+Boards using `processing` must declare `minBridgeVersion: "1.53.0"`. Computer capture rejects
+these microphone options and is
 available on Windows only. Unsupported systems reject with `no-handler`.
+
+Default microphone capture follows the user's Microphone Audio settings. The local model runs in
+a worker, with an optional device-specific resonance cut. A board's own `getUserMedia` stream is
+outside this service and is not cleaned by Persephone. Raw mode requests that Chromium disable
+its processing; hardware and operating-system processing may still apply.
 
 `play` accepts only an integer `sampleRate` from 8,000 through 192,000 Hz. Its channel sends these
 messages:
@@ -120,7 +129,7 @@ effectiveness from `echoCancel` alone.
 
 ## Sharing, gate and lifecycle
 
-Microphone sources are shared by `(source, deviceId-or-default, echoCancel)`; omitted
+Microphone sources are shared by `(source, deviceId-or-default, processing, echoCancel)`; omitted
 `echoCancel` and `true` share the same source. Computer capture has one shared source key. Each
 consumer receives its own independently closable channel. Closing one consumer does not stop other
 subscribers; the underlying stream and worklet stop after the final subscriber closes. Playback

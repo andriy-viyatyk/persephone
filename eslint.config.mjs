@@ -596,6 +596,7 @@ export default tseslint.config(
     {
         ignores: [
             "scratches/**",
+            ".persephone/**",
             "assets/editor-types/**",
             "out/**",
             ".vite/**",

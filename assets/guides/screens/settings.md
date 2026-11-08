@@ -8,6 +8,11 @@ editorId: "settings-view"
 
 # Settings
 
+**Microphone Audio** controls local cleaning of managed microphone capture. The attenuation limit
+is in dB; zero means unlimited. Resonance cuts are disabled by default and saved per identified
+microphone. The device list is selected to the current Windows default microphone when available.
+Changing capture settings can affect Wake Word recognition; re-record enrollments.
+
 Settings opens as an ordinary page from the Menu Bar gear icon, `[data-name="menubar-settings"]`.
 The page has a fixed two-level **Content** tree on the left and a scrollable stack of outlined
 panels on the right. Built-in sections appear in the General, Editors, Browser, and Integrations
@@ -29,6 +34,7 @@ not through `app.settings`.
 |     Language                | [Language panel]                      |
 |     Window Behavior         | [Browser Profiles panel]               |
 |     Voice Typing            | [Voice Typing panel]                  |
+|     Microphone Audio        | [Microphone Audio panel]              |
 |     Clipboard               | [Links panel]                          |
 |     Terminal                | [MCP Server / Mneme panel]             |
 |   Editors                   | ...                                     |
@@ -59,7 +65,8 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Theme → `theme`
 - Language → `language`
 - Window Behavior → `window.close-to-tray`
-- Voice Typing → `voice-typing.shortcut`, `voice-typing.translate-shortcut`, `voice-typing.auto-stop-silence-ms`
+- Voice Typing → `voice-typing.shortcut`, `voice-typing.translate-shortcut`, `voice-typing.auto-stop-silence-ms`, `voice-typing.auto-stop-inactivity-ms`
+- Microphone Audio → `microphone.clean`, `microphone.attenuation-db`, `microphone.notches`
 - Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
 - Links → `link-open-behavior`
@@ -136,6 +143,24 @@ utterance is pending. The setting applies to Voice Typing and dictation boards t
 setting, including Agent Chat. See [Keyboard Shortcuts](../shortcuts.md#voice-typing) for how to use
 dictation and the Speech to Text board requirement.
 
+**Stop voice typing when nothing is being transcribed** defaults to **Off (0)**. Choose 2, 3, 4, 5,
+10, 15, or 30 seconds with no new draft or committed text from the provider. This timer starts when
+recording begins and ignores microphone level, so it can stop a session when the room is noisy or
+you never speak. It applies only to providers that return live transcription; slower computers or
+CPU transcription may need a longer interval. This setting applies to Voice Typing; the silence
+setting above is the one shared with compatible dictation boards.
+
+## Microphone Audio
+
+In **General > Microphone Audio**, **Clean microphone audio** enables local noise suppression for
+Persephone-managed microphone capture. **Attenuation limit** sets the maximum suppression in dB;
+enter `0` for unlimited attenuation. Select a microphone under **Resonance settings for** to manage
+its profile. The current Windows default is selected when it can be identified; profiles are saved
+per microphone and resonance reduction is off by default. Enabling it exposes frequency, Q, and cut
+controls for that microphone. These settings affect the managed audio service and local dictation
+capture; direct microphone capture started by a board is outside this service. Wake Word recognition
+may change when the capture processing changes, so re-record its enrollment afterward.
+
 ## Clipboard history
 
 The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
@@ -188,6 +213,10 @@ file. Section names are containers for highlighting rather than individual setti
 | Theme | `[data-name="settings-section-theme"]` |
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
 | Voice Typing | `[data-name="settings-section-voice-typing"]` |
+| Microphone Audio | `[data-name="settings-section-microphone-audio"]` |
+| Clean microphone audio | `[data-name="microphone.clean"]` |
+| Attenuation limit | `[data-name="microphone.attenuation-db"]` |
+| Per-device resonance controls | `[data-name="microphone.notches"]` |
 | Editor Behavior | `[data-name="settings-section-editor"]` |
 | Browser Profiles | `[data-name="settings-section-browser-profiles"]` |
 | Site Extensions section | `[data-name="settings-section-site-extensions"]` |
@@ -236,6 +265,10 @@ example.
 | `voice-typing.shortcut` | Defaults to `Alt+V`; starts and stops voice typing, and can be changed under General |
 | `voice-typing.translate-shortcut` | Defaults to `Alt+Shift+V`; starts and stops voice typing with translation to English |
 | `voice-typing.auto-stop-silence-ms` | Defaults to `0` (off); `2000`, `3000`, `5000`, or `10000` stops voice typing and compatible dictation boards after microphone silence |
+| `voice-typing.auto-stop-inactivity-ms` | Defaults to `0` (off); `2000`, `3000`, `4000`, `5000`, `10000`, `15000`, or `30000` stops voice typing when a live provider sends no new text |
+| `microphone.clean` | Enables local noise suppression for Persephone-managed microphone capture; on by default |
+| `microphone.attenuation-db` | Sets the suppression limit in dB; `0` means unlimited |
+| `microphone.notches` | Stores optional frequency, Q, and cut settings per microphone; off by default |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |
