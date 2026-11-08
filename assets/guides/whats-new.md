@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.18 (Upcoming)
+## Version 5.0.19 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.18
 
 ### Breaking change: Notebook moves to a board
 
@@ -262,40 +268,12 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Choose an editor before opening a file:** right-click a file in Explorer or Recent Files and choose **Open with**. Compatible built-in editors and matching boards appear beneath the default choice; **Default App** hands the file to Windows.
-- **View HTTPS certificates in Browser:** open the site-info popover and choose **View certificate**.
-  Install the **Certificate Viewer** board from the Boards catalog to see decoded certificate details;
-  without it, Persephone opens the certificate chain as PEM text.
+- **Open with:** choose an editor or board for a file from Explorer or Recent Files.
+- **HTTPS certificates in Browser:** view a site's certificate from the site-info popover.
 
 ### Breaking Changes
 
-- **REST Client is now a bundled board:** scripts that used `pages[i].editor.id === "rest-client"`
-  must select the REST Client board page (whose editor id starts with `board-editor:`) and use
-  `pages[i].editor.app` for its model. The old built-in editor id and facade are removed; the
-  `.rest.json` collection format remains supported. Tabs saved by an older version may restore
-  empty or be dropped, and old REST Client pins are ignored; reopen the collection file to continue.
-
-### Improvements
-
-- **Agents can automate Persephone more reliably:** script execution returns a pollable run ID when
-  it is waiting on a dialog or a long-running script, and shared UI automation supports text
-  locators plus coordinate clicks and drags. Scripts can resize the sidebar, expand Explorer
-  folders, set a Board Info install directory, and hide recording controls and the MCP indicator
-  during capture. See the [Page API](./scripting/api/page.md), [window API](./scripting/api/window.md),
-  and [editor API](./scripting/api/editors.md).
-- **New installations start with Open Folder and Open File pinned:** the **+** new-page menu now
-  opens with **Open Folder**, **Open File**, TypeScript script, **Excalidraw**, CSV grid, and Browser.
-  An existing pinned list is kept; pin the new items from **Tools & Editors**.
-
-### Bug Fixes
-
-- **Automation and navigation edge cases are fixed:** board paths work with either slash style,
-  local folder labels use canonical Windows paths, search results stay visible below sticky scroll,
-  and switching away from Archive no longer leaves an empty sidebar. Tooltips no longer block
-  automation clicks, and Explorer folders can be expanded by path.
-- **Slow board methods no longer time out at 30 seconds over MCP:** an agent's `call` into a board's
-  or web page's `.app` model now honors its `timeoutMs` and the method's declared timeout, so a
-  board can offer waits such as "wait for the user's move".
+- **REST Client is now a bundled board:** scripts must use the board page's `editor.app`; old REST Client tabs and pins are not migrated.
 
 ---
 
