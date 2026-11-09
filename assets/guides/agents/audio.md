@@ -13,7 +13,7 @@ its own caller approval policy.
 
 The capability is reserved: boards cannot register an `audio` provider. A consumer manifest must
 declare `uses: [{ "id": "audio", "version": 1 }]`, set `minBridgeVersion: "1.52.0"` when using `muteApp` (or `1.51.0` for the other methods), and set
-`minAppVersion: "5.0.18"` or later. A board service also needs `permissions.service: true`. See
+`minAppVersion: "5.0.18"` or later. Boards using `cancelComputerAudio` require `minBridgeVersion: "1.54.0"` and `minAppVersion: "5.0.19"` or later. A board service also needs `permissions.service: true`. See
 [Capabilities](capabilities.md) for the bridge and channel contract.
 
 ## Methods
@@ -24,7 +24,7 @@ The platform provider is `persephone`, version 1:
 |---|---|---|
 | `muteApp()` | none | Acquire a global playback mute lease. |
 | `devices()` | none | List microphone inputs; a call with a 10-second timeout, hidden from agents. |
-| `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw" }` | Receive shared PCM capture chunks. |
+| `capture` | `{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw"; cancelComputerAudio?: boolean }` | Receive shared PCM capture chunks. |
 | `play` | `{ sampleRate: number }` | Send mono float32 PCM for playback. |
 
 Both channels have a 15-second establishment timeout. The declaration has `agent: true` so MCP
@@ -52,7 +52,7 @@ passed to `capture`; IDs from a board page's own enumeration may not work. Devic
 Chromium's ID lifetime and privacy behavior can invalidate them, so refresh on demand and use the
 default input when labels or IDs are unavailable.
 
-`capture` accepts `source`, optional `deviceId`, `echoCancel`, and `processing`. `source` is
+`capture` accepts `source`, optional `deviceId`, `echoCancel`, `processing`, and `cancelComputerAudio`. `source` is
 required. `deviceId` must be a nonempty device id and applies only to microphone capture. If omitted,
 the browser's current default input is used. `echoCancel` must be boolean when supplied; it defaults
 to `true` for microphone capture. `processing: "raw"` requests capture without Chromium noise
@@ -61,6 +61,14 @@ It cannot be combined with `echoCancel: true`. The default processing mode is `"
 Boards using `processing` must declare `minBridgeVersion: "1.53.0"`. Computer capture rejects
 these microphone options and is
 available on Windows only. Unsupported systems reject with `no-handler`.
+
+`cancelComputerAudio: true` requests DTLN loopback cancellation on Windows. It defaults to false;
+on other systems true returns `no-handler`. The option is rejected on computer capture and with
+raw processing, including when explicitly false. `echoCancel` controls Chromium's echo
+cancellation; a loopback request disables Chromium AEC even when `echoCancel` is true. If the
+reference fails, DTLN continues with a zero reference and Settings reports the failure. DTLN noise
+removal, the attenuation limit and enabled device notch run for a loopback request even when
+`microphone.clean` is off. A failed model falls back to unfiltered microphone audio.
 
 Default microphone capture follows the user's Microphone Audio settings. The local model runs in
 a worker, with an optional device-specific resonance cut. A board's own `getUserMedia` stream is
@@ -129,7 +137,7 @@ effectiveness from `echoCancel` alone.
 
 ## Sharing, gate and lifecycle
 
-Microphone sources are shared by `(source, deviceId-or-default, processing, echoCancel)`; omitted
+Microphone sources are shared by `(source, deviceId-or-default, processing, echoCancel, cancelComputerAudio)`; omitted
 `echoCancel` and `true` share the same source. Computer capture has one shared source key. Each
 consumer receives its own independently closable channel. Closing one consumer does not stop other
 subscribers; the underlying stream and worklet stop after the final subscriber closes. Playback
@@ -140,6 +148,13 @@ keeps 400 ms of pre-roll and 500 ms of tail, and suppresses chunk delivery durin
 It does not stop OS capture or the worklet. Original `timeMs` values are retained across the gaps;
 a timestamp gap therefore represents gated silence. Microphone chunks are continuous and are never
 gated by this service.
+
+The cancellation reference uses the same computer source before the gate, including audio played
+by other apps and Persephone. Its samples stay inside Persephone and are not sent to the board.
+The reference is shared with computer subscribers and retains the source while needed. The capture
+indicator remains visible while it runs. Requesting an option does not itself start recording;
+capture begins only when a channel opens. The alignment target is 64 ms plus 24 ms model latency
+and up to 200 ms chunk accumulation, plus device and scheduling delays.
 
 Install a message listener immediately after opening a channel. Channels do not replay earlier
 chunks. Each subscriber has a separate 32-chunk pending queue; if that queue fills, only that slow
@@ -170,4 +185,6 @@ Persephone uses separate, one-use, short-lived, frame-bound grants for the hidde
 microphone and Windows loopback requests. These grants are armed only by main immediately before
 the browser request, consumed by that exact live frame, and never exposed through the board bridge.
 Computer capture requests Windows display audio and discards the video track. Normal browser,
-Transcript and voice-typing permission paths remain separate.
+Transcript and voice typing use the guarded app-frame loopback grant for their internal references.
+Only microphone permission is needed for an internal reference; direct computer capture requires
+`computerAudio`.

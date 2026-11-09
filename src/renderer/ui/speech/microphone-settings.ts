@@ -24,7 +24,14 @@ export function watchMicrophoneSettings(capture: PcmAudioCapture, stream: MediaS
         else if (key === "microphone.attenuation-db" || key === "microphone.notches") capture.updateCleaning(microphoneOptions(stream));
     }));
     const { ipcRenderer } = require("electron") as typeof import("electron");
-    const retry = (): void => { const options = microphoneOptions(stream); if (options.enabled) void capture.reconfigureMicrophone(options); };
+    const retry = (): void => capture.retryMicrophone(microphoneOptions(stream));
     ipcRenderer.on(AUDIO_RETRY, retry);
     capture.onStop(() => ipcRenderer.removeListener(AUDIO_RETRY, retry));
+    let deviceTimer: ReturnType<typeof setTimeout> | undefined;
+    const deviceChanged = (): void => {
+        clearTimeout(deviceTimer);
+        deviceTimer = setTimeout(retry, 300);
+    };
+    navigator.mediaDevices.addEventListener("devicechange", deviceChanged);
+    capture.onStop(() => { clearTimeout(deviceTimer); navigator.mediaDevices.removeEventListener("devicechange", deviceChanged); });
 }

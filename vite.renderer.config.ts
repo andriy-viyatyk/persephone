@@ -134,8 +134,14 @@ export default defineConfig({
       // `doc/` is the same: developer docs are never imported, but agents (Codex) create and
       // rewrite task documents there while the dev server runs, and a file that is still locked
       // by the writer fails the watch with the same EBUSY.
+      //
+      // `assets/vendor/` holds large third-party binaries (ONNX models, WASM runtimes) that are
+      // copied in while the dev server runs; a multi-megabyte file still being written fails the
+      // watch with EBUSY and kills the dev server. They change only when a dependency is updated,
+      // and a module imported from there still bundles without being watched.
       ignored: [
         '**/doc/**',
+        '**/assets/vendor/**',
         '**/snip-tool/target/**',
         '**/mneme/target/**',
         '**/launcher/target/**',

@@ -1,4 +1,5 @@
-import { MicrophoneAudioPipeline } from "./MicrophoneAudioPipeline";
+import { DtlnAudioPipeline } from "./DtlnAudioPipeline";
+import { LoopbackReference, type LoopbackLease } from "./LoopbackReference";
 import type { MicrophoneCleaningOptions } from "./microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
 
@@ -53,7 +54,12 @@ export class PcmAudioCapture {
     private originMs: number | undefined;
     private emittedSamples = 0;
     private ownsContext = true;
-    private cleaning: MicrophoneAudioPipeline | undefined;
+    private ownsStream = true;
+    private cleaning: DtlnAudioPipeline | undefined;
+    private alignment: LoopbackReference | undefined;
+    private referenceAcquire: (() => Promise<LoopbackLease>) | undefined;
+    private loopbackRequested = false;
+    private readonly rawListeners = new Set<(samples: Float32Array, frame: number) => void>();
     private inputRate = 0;
     private disposers: Array<() => void> = [];
     private onLevel: ((level: number, durationMs: number) => void) | undefined;
@@ -62,14 +68,15 @@ export class PcmAudioCapture {
     private reconfiguring = false;
     private removeTrackListener: (() => void) | undefined;
     private discontinuity = false;
-    private currentInputFrame: number | undefined;
-
-    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void, sharedContext?: AudioContext, cleaning?: MicrophoneCleaningOptions, onStatus?: (mode: string, reason: string) => void): Promise<void> {
+    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void, sharedContext?: AudioContext, cleaning?: MicrophoneCleaningOptions, onStatus?: (mode: string, reason: string) => void, referenceAcquire?: () => Promise<LoopbackLease>, ownsStream = true): Promise<void> {
         this.stream = stream;
         this.onChunk = onChunk;
         this.onLevel = onLevel;
         this.status = onStatus;
+        this.referenceAcquire = referenceAcquire;
+        this.loopbackRequested = Boolean(referenceAcquire);
         this.ownsContext = !sharedContext;
+        this.ownsStream = ownsStream;
         this.removeTrackListener?.();
         const track = stream.getAudioTracks()[0];
         if (track && cleaning) {
@@ -91,18 +98,22 @@ export class PcmAudioCapture {
             catch (error: unknown) { await this.context.close().catch(() => {}); throw error; }
         }
         if (this.stopped) {
-            stream.getTracks().forEach((track) => track.stop());
+            if (this.ownsStream) stream.getTracks().forEach((track) => track.stop());
             if (this.ownsContext) await this.context.close().catch(() => {});
             this.context = undefined;
             return;
         }
-        if (cleaning?.enabled) {
-            this.cleaning = new MicrophoneAudioPipeline(this.context.sampleRate, cleaning, (samples, rate) => {
-                this.resetAfterDiscontinuity(this.currentInputFrame, onChunk);
-                this.consume(samples, onChunk, rate);
-            }, onStatus, () => { this.discontinuity = true; });
-            await this.cleaning.start();
-            if (this.stopped) { this.cleaning.stop(); return; }
+        if (cleaning && (cleaning.enabled || this.loopbackRequested)) {
+            const context = this.context;
+            this.cleaning = new DtlnAudioPipeline(cleaning, (samples, frame) => {
+                this.resetAfterDiscontinuity(frame * context.sampleRate / OUTPUT_SAMPLE_RATE, onChunk);
+                this.consume(samples, onChunk, OUTPUT_SAMPLE_RATE);
+            }, onStatus ?? (() => {}), () => { this.discontinuity = true; });
+            this.cleaning.start();
+            this.alignment = LoopbackReference.start({ context, acquire: referenceAcquire,
+                onPair: (microphone, reference, frame, count) => this.cleaning?.push(microphone, reference, frame, count),
+                onStatus: onStatus ?? (() => {}), onReset: () => { this.discontinuity = true; this.cleaning?.reset(); } });
+            if (this.stopped) { this.alignment.stop(); this.cleaning.stop(); return; }
         }
         this.source = this.context.createMediaStreamSource(stream);
         this.node = new AudioWorkletNode(this.context, "persephone-speech-capture", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
@@ -115,20 +126,20 @@ export class PcmAudioCapture {
             if (data.type === "flushed") { this.flushResolve?.(); this.flushResolve = undefined; return; }
             if (data.type === "discontinuity") {
                 this.discontinuity = true;
-                this.cleaning?.fallbackToNotch("Microphone input queue overflow; audio was dropped");
+                this.cleaning?.reset();
+                this.status?.("unfiltered", "Microphone input queue overflow; audio was dropped");
                 return;
             }
             if (data.type === "level" && typeof data.value === "number") onLevel(data.value, data.durationMs ?? 0);
             if (data.type === "samples" && data.data && !this.stopped) {
                 this.node?.port.postMessage({ type: "ack" });
-                this.currentInputFrame = data.frame;
+                if (data.frame !== undefined) for (const listener of this.rawListeners) listener(data.data, data.frame);
                 if (this.originMs === undefined && data.frame !== undefined && this.context) {
                     const timestamp = this.context.getOutputTimestamp();
                     this.originMs = timestamp.performanceTime + (data.frame / this.context.sampleRate - timestamp.contextTime) * 1000 - this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
                 }
-                if (this.cleaning) { this.cleaning.push(data.data); this.resetAfterDiscontinuity(data.frame, onChunk); }
+                if (this.alignment && data.frame !== undefined) this.alignment.pushMicrophone(data.data, data.frame);
                 else { this.resetAfterDiscontinuity(data.frame, onChunk); this.consume(data.data, onChunk, this.context?.sampleRate ?? OUTPUT_SAMPLE_RATE); }
-                this.currentInputFrame = undefined;
             }
         };
     }
@@ -142,6 +153,7 @@ export class PcmAudioCapture {
             this.flushResolve = finish;
             try { this.node?.port.postMessage({ type: "flush" }); } catch { finish(); }
         });
+        await this.alignment?.flush();
         await this.cleaning?.flush();
         if (this.remainder.length) this.emit(this.onChunk ?? (() => {}), this.remainder.length);
     }
@@ -149,6 +161,14 @@ export class PcmAudioCapture {
     public updateCleaning(options: MicrophoneCleaningOptions): void {
         if (this.reconfiguring) this.requestedCleaning = options;
         else this.cleaning?.update(options);
+    }
+
+    public retryMicrophone(options: MicrophoneCleaningOptions): void {
+        if (this.loopbackRequested && this.cleaning) {
+            this.cleaning.update(options);
+            this.cleaning.reset();
+            this.alignment?.retry();
+        } else if (options.enabled) void this.reconfigureMicrophone(options);
     }
 
     private resetAfterDiscontinuity(frame: number | undefined, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void): void {
@@ -162,8 +182,14 @@ export class PcmAudioCapture {
 
     public onStop(dispose: () => void): void { if (this.stopped) dispose(); else this.disposers.push(dispose); }
 
+    public subscribeRaw(listener: (samples: Float32Array, frame: number) => void): () => void {
+        this.rawListeners.add(listener);
+        return () => this.rawListeners.delete(listener);
+    }
+
     /** Restart a private microphone capture while preserving the stream and consumer callbacks. */
     public async reconfigureMicrophone(options: MicrophoneCleaningOptions): Promise<void> {
+        if (this.loopbackRequested && this.cleaning) { this.cleaning.update(options); return; }
         this.requestedCleaning = options;
         if (this.reconfiguring || this.stopped) return;
         this.reconfiguring = true;
@@ -172,20 +198,22 @@ export class PcmAudioCapture {
                 const next = this.requestedCleaning;
                 this.requestedCleaning = undefined;
                 const stream = this.stream, chunk = this.onChunk, level = this.onLevel;
-                if (!stream || !chunk || !level || !this.ownsContext) return;
+                if (!stream || !chunk || !level) return;
                 this.status?.("restart", "");
                 await this.flush();
                 if (this.stopped) return;
                 try { this.node?.port.close(); } catch { /* already closed */ }
                 this.source?.disconnect(); this.node?.disconnect(); this.mute?.disconnect();
+                this.alignment?.stop(); this.alignment = undefined;
                 this.cleaning?.stop(); this.cleaning = undefined;
-                await this.context?.close().catch(() => {});
+                const sharedContext = this.ownsContext ? undefined : this.context;
+                if (this.ownsContext) await this.context?.close().catch(() => {});
                 this.context = undefined; this.source = undefined; this.node = undefined; this.mute = undefined;
                 this.samples = new Float32Array(0); this.sampleBase = 0; this.nextSample = 0; this.inputRate = 0; this.originMs = undefined;
                 if (this.stopped) return;
-                await stream.getAudioTracks()[0]?.applyConstraints({ channelCount: 1, echoCancellation: true, noiseSuppression: !next.enabled, autoGainControl: true });
+                await stream.getAudioTracks()[0]?.applyConstraints({ channelCount: 1, echoCancellation: !this.loopbackRequested, noiseSuppression: !(next.enabled || this.loopbackRequested), autoGainControl: true });
                 if (this.stopped) return;
-                await this.start(stream, chunk, level, undefined, next, this.status);
+                await this.start(stream, chunk, level, sharedContext, next, this.status, this.referenceAcquire);
             }
         } catch (error) {
             this.status?.("failed", errMessage(error, "Microphone restart failed"));
@@ -198,13 +226,14 @@ export class PcmAudioCapture {
         this.stopped = true;
         this.removeTrackListener?.(); this.removeTrackListener = undefined;
         for (const dispose of this.disposers.splice(0)) dispose();
+        this.alignment?.stop(); this.alignment = undefined;
         this.cleaning?.stop();
         this.cleaning = undefined;
         try { this.node?.port.close(); } catch { /* already closed */ }
         this.source?.disconnect();
         this.node?.disconnect();
         this.mute?.disconnect();
-        this.stream?.getTracks().forEach((track) => track.stop());
+        if (this.ownsStream) this.stream?.getTracks().forEach((track) => track.stop());
         if (this.ownsContext) await this.context?.close().catch(() => {});
         this.source = undefined;
         this.node = undefined;
@@ -213,6 +242,7 @@ export class PcmAudioCapture {
         this.stream = undefined;
         this.onChunk = undefined;
         this.onLevel = undefined;
+        this.rawListeners.clear();
         this.samples = new Float32Array(0);
         this.remainder = [];
     }

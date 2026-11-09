@@ -200,6 +200,9 @@ to boards:
     with it on. Film sound from other apps therefore needs the loopback-referenced follow-up ([US-1798](../tasks/US-1798-loopback-echo-canceller/README.md), outside this epic), and
     until then decision 4 is the only defence for it.
 
+    US-1798 adds an opt-in DTLN loopback reference for managed microphone capture. Wake Word's
+    matching computer-detection rule remains a safety net for sound the cancellation leaves.
+
 ## Linked Tasks
 
 | Task | Repo | Title | Status |

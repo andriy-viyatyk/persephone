@@ -136,13 +136,21 @@ setting above is the one shared with compatible dictation boards.
 ## Microphone Audio
 
 In **General > Microphone Audio**, **Clean microphone audio** enables local noise suppression for
-Persephone-managed microphone capture. **Attenuation limit** sets the maximum suppression in dB;
-enter `0` for unlimited attenuation. Select a microphone under **Resonance settings for** to manage
+Persephone-managed microphone capture with DTLN. A consumer requesting computer sound cancellation
+also runs DTLN noise removal when cleaning is off. **Attenuation limit** bounds suppression using
+each frame's RMS in dB; enter `0` for unlimited attenuation. Select a microphone under **Resonance settings for** to manage
 its profile. The current Windows default is selected when it can be identified; profiles are saved
 per microphone and resonance reduction is off by default. Enabling it exposes frequency, Q, and cut
-controls for that microphone. These settings affect the managed audio service and local dictation
+controls for that microphone. New frequencies range from 20 to 7,999 Hz; stored frequencies at or
+above 8,000 Hz remain saved but are bypassed. These settings affect the managed audio service and local dictation
 capture; direct microphone capture started by a board is outside this service. Wake Word recognition
 may change when the capture processing changes, so re-record its enrollment afterward.
+
+On Windows, Transcript microphone capture and voice typing request an internal computer-audio
+reference. Transcript Both reuses its computer capture and leaves the separately labelled computer
+stream unchanged. If the reference fails, cleaning
+continues without echo cancellation and Settings reports the failure; if the model fails, audio
+continues unfiltered. The active recording UI indicates these private captures.
 
 ## Clipboard history
 
@@ -256,9 +264,9 @@ example.
 | `voice-typing.translate-shortcut` | Defaults to `Alt+Shift+V`; starts and stops voice typing with translation to English |
 | `voice-typing.auto-stop-silence-ms` | Defaults to `0` (off); `2000`, `3000`, `5000`, or `10000` stops voice typing and compatible dictation boards after microphone silence |
 | `voice-typing.auto-stop-inactivity-ms` | Defaults to `0` (off); `2000`, `3000`, `4000`, `5000`, `10000`, `15000`, or `30000` stops voice typing when a live provider sends no new text |
-| `microphone.clean` | Enables local noise suppression for Persephone-managed microphone capture; on by default |
-| `microphone.attenuation-db` | Sets the suppression limit in dB; `0` means unlimited |
-| `microphone.notches` | Stores optional frequency, Q, and cut settings per microphone; off by default |
+| `microphone.clean` | Enables local DTLN noise suppression for managed microphone capture; on by default. A consumer requesting computer sound cancellation also runs DTLN noise removal when this is off |
+| `microphone.attenuation-db` | Bounds suppression by frame RMS in dB; `0` means unlimited. Applies whenever DTLN runs |
+| `microphone.notches` | Stores optional frequency, Q, and cut settings per microphone; off by default. New frequencies range from 20 to 7,999 Hz; saved values at or above 8,000 Hz are preserved but bypassed |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |

@@ -10,6 +10,7 @@ import { resolveMicrophoneDevice } from "../speech/microphone-device";
 import { settings } from "../../api/settings";
 import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
+import { openPrivateLoopback } from "../speech/private-loopback";
 
 export type TranscriptSource = "microphone" | "computer" | "both";
 export interface TranscriptState { status: "idle" | "starting" | "recording" | "transcribing"; level: number }
@@ -18,6 +19,7 @@ interface SourceSession {
     kind: "microphone" | "computer";
     channel?: SpeechServiceChannel;
     capture?: PcmAudioCapture;
+    stream?: MediaStream;
     sendQueue: Promise<void>;
     ended: boolean;
     terminal?: Promise<void>;
@@ -38,6 +40,7 @@ export class TranscriptController {
     private readonly pendingPorts = new Map<string, MessagePort>();
     private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
     private channelSubscription: (() => void) | undefined;
+    private audioContext: AudioContext | undefined;
 
     public constructor(getEditor: () => monaco.editor.IStandaloneCodeEditor | undefined, onState: (state: TranscriptState) => void) {
         this.getEditor = getEditor;
@@ -82,6 +85,7 @@ export class TranscriptController {
                 }
             }
             if (this.finishing) { await Promise.all(this.sources.map((item) => item.terminal)); await this.finish(); return; }
+            this.audioContext = new AudioContext();
             for (const item of this.sources) {
                 await this.openCapture(item);
                 if (this.cancelled) return;
@@ -99,14 +103,15 @@ export class TranscriptController {
         this.finishing = true;
         this.onState({ status: "transcribing", level: 0 });
         try {
-            await Promise.all(this.sources.map(async (source) => {
-                if (source.ended) return;
+            const ordered = [...this.sources].sort((left, right) => left.kind === right.kind ? 0 : left.kind === "microphone" ? -1 : 1);
+            for (const source of ordered) {
+                if (source.ended) continue;
                 await source.capture?.flush();
                 await source.sendQueue;
                 await source.capture?.stop();
                 source.ended = true;
                 source.channel?.send({ type: "end" });
-            }));
+            }
             await Promise.all(this.sources.map((source) => source.terminal));
             await this.finish();
         } catch (error: unknown) {
@@ -186,7 +191,7 @@ export class TranscriptController {
             await api.armVoiceTypingMicrophone();
             try {
                 if (this.cancelled) return;
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: !settings.get("microphone.clean"), autoGainControl: true } });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: process.platform !== "win32", noiseSuppression: !(settings.get("microphone.clean") || process.platform === "win32"), autoGainControl: true } });
             } finally {
                 await api.clearVoiceTypingMicrophone().catch(() => {});
             }
@@ -194,7 +199,10 @@ export class TranscriptController {
         }
         // Stop may have finished the session while the permission prompt was open; nothing would own this stream.
         if (this.cancelled || this.finishing || !this.sources.includes(source)) { stream.getTracks().forEach((track) => track.stop()); return; }
+        source.stream = stream;
         source.capture = new PcmAudioCapture();
+        const context = this.audioContext;
+        const computerStream = this.sources.find((item) => item.kind === "computer")?.stream;
         await source.capture.start(stream, (data) => {
             source.queuedChunks++;
             if (source.queuedChunks > 32) {
@@ -215,10 +223,11 @@ export class TranscriptController {
             source.level = level;
             const loudest = Math.max(...this.sources.map((item) => item.level ?? 0));
             if (!this.cancelled) this.onState({ status: this.finishing ? "transcribing" : "recording", level: loudest });
-        }, undefined, source.kind === "microphone" ? microphoneOptions(stream) : undefined, (mode, reason) => {
+        }, context, source.kind === "microphone" ? microphoneOptions(stream) : undefined, (mode, reason) => {
             reportMicrophoneStatus(mode, reason);
             if (mode === "failed") void this.cancel();
-        });
+        }, source.kind === "microphone" && process.platform === "win32" && context
+            ? () => openPrivateLoopback(context, computerStream) : undefined);
         if (source.kind === "microphone") watchMicrophoneSettings(source.capture, stream);
     }
 
@@ -261,10 +270,12 @@ export class TranscriptController {
     }
 
     private async finish(): Promise<void> {
-        for (const source of this.sources.splice(0)) {
+        for (const source of this.sources.splice(0).sort((left, right) => left.kind === right.kind ? 0 : left.kind === "microphone" ? -1 : 1)) {
             await source.capture?.stop();
             source.channel?.close();
         }
+        await this.audioContext?.close().catch(() => {});
+        this.audioContext = undefined;
         this.channelSubscription?.();
         this.channelSubscription = undefined;
         this.portWaiters.clear();

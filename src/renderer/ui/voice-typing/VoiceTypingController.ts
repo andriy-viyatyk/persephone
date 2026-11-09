@@ -15,6 +15,7 @@ import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
 import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
 import { resolveMicrophoneDevice } from "../speech/microphone-device";
+import { openPrivateLoopback } from "../speech/private-loopback";
 
 const VOICE_BOARD_PREFIX = "voice-typing:";
 const MAX_AUDIO_MS = 300_000;
@@ -54,6 +55,7 @@ interface VoiceSession {
 
 interface AudioCapture {
     pipeline: PcmAudioCapture;
+    context: AudioContext;
     pending: ArrayBuffer[];
     sentSamples: number;
     sendQueue: Promise<void>;
@@ -207,7 +209,7 @@ export class VoiceTypingController {
         try {
             await api.armVoiceTypingMicrophone();
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: !settings.get("microphone.clean"), autoGainControl: true } });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: process.platform !== "win32", noiseSuppression: !(settings.get("microphone.clean") || process.platform === "win32"), autoGainControl: true } });
             } finally {
                 await api.clearVoiceTypingMicrophone().catch(() => {});
             }
@@ -318,6 +320,7 @@ export class VoiceTypingController {
     private async startCapture(stream: MediaStream, session: VoiceSession): Promise<AudioCapture> {
         const capture: AudioCapture = {
             pipeline: new PcmAudioCapture(),
+            context: new AudioContext(),
             pending: [],
             sentSamples: 0,
             sendQueue: Promise.resolve(),
@@ -343,10 +346,10 @@ export class VoiceTypingController {
                 if (session.acousticLevels.length > 30_000) session.acousticLevels.splice(0, 10_000);
                 if (session.stopRequested) return;
                 this.publishState(session, "recording", Date.now() - capture.startedAt);
-            }, undefined, microphoneOptions(stream), (mode, reason) => {
+            }, capture.context, microphoneOptions(stream), (mode, reason) => {
                 reportMicrophoneStatus(mode, reason);
                 if (mode === "failed") void this.cancelSession(session.id, "capture-failed");
-            });
+            }, process.platform === "win32" ? () => openPrivateLoopback(capture.context) : undefined);
             watchMicrophoneSettings(capture.pipeline, stream);
             // Seeded here, not at session start: the inactivity interval should run from the moment
             // audio actually begins, not from the shortcut press while the provider channel opens.
@@ -355,6 +358,7 @@ export class VoiceTypingController {
         } catch (error: unknown) {
             stream.getTracks().forEach((track) => track.stop());
             await capture.pipeline.stop();
+            await capture.context.close().catch(() => {});
             throw error;
         }
     }
@@ -402,6 +406,7 @@ export class VoiceTypingController {
     private async stopCapture(capture: AudioCapture): Promise<void> {
         capture.stopped = true;
         await capture.pipeline.stop();
+        await capture.context.close().catch(() => {});
     }
 
     private async cancelSession(sessionId: string, reason = "cancelled"): Promise<void> {

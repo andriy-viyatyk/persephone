@@ -13,7 +13,6 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1798: Loopback-referenced echo canceller for the audio service (cancel other apps' sound)](tasks/US-1798-loopback-echo-canceller/README.md)
 
 ## Scheduled
 

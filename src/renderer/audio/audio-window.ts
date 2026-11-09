@@ -7,6 +7,7 @@ import { MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../../shared/capability-limit
 import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_UPDATE, AUDIO_STATUS, AUDIO_RETRY, type AudioDevicesRequest, type AudioDevicesReply } from "../../ipc/audio-channels";
 import { microphoneDeviceId, resolveMicrophoneDevice } from "../ui/speech/microphone-device";
 import { MICROPHONE_TUNING, type MicrophoneNotch, type MicrophoneCleaningOptions } from "../ui/speech/microphone-cleaning-types";
+import type { LoopbackLease } from "../ui/speech/LoopbackReference";
 
 const { ipcRenderer } = require("electron") as typeof import("electron");
 const CONTROL_CHANNEL = "persephone:audio-control";
@@ -21,6 +22,7 @@ interface CaptureOptions {
     deviceId?: string;
     echoCancel?: boolean;
     processing?: "default" | "raw";
+    cancelComputerAudio?: boolean;
 }
 
 interface SharedSource {
@@ -28,6 +30,7 @@ interface SharedSource {
     source: CaptureOptions["source"];
     capture: PcmAudioCapture;
     subscribers: Set<ActiveChannel>;
+    referenceLeases: Set<symbol>;
     gate?: ComputerAudioGate;
     starting: Promise<void>;
     active: boolean;
@@ -60,7 +63,7 @@ ipcRenderer.on(AUDIO_SETTINGS_UPDATE, (_event, value: SettingsSnapshot) => {
     for (const source of sources.values()) {
         if (source.source !== "microphone" || source.options.processing === "raw") continue;
         if (source.restarting) { source.restartPending = true; continue; }
-        if (!source.stream || source.cleaning?.enabled !== value.enabled) { void restartSource(source); continue; }
+        if (!source.stream || (!source.options.cancelComputerAudio && source.cleaning?.enabled !== value.enabled)) { void restartSource(source); continue; }
         source.cleaning = cleaningOptions(source.stream);
         source.capture.updateCleaning(source.cleaning);
     }
@@ -73,7 +76,7 @@ navigator.mediaDevices.addEventListener("devicechange", () => {
     clearTimeout(deviceChangeTimer);
     deviceChangeTimer = setTimeout(() => {
         for (const source of sources.values()) {
-            if (source.source === "microphone" && !source.options.deviceId && source.options.processing !== "raw") void restartSource(source);
+            if (source.source === "computer" || (source.source === "microphone" && !source.options.deviceId && source.options.processing !== "raw")) void restartSource(source);
         }
     }, 300);
 });
@@ -100,7 +103,7 @@ ipcRenderer.on(AUDIO_DEVICES_REQUEST, (_event: Electron.IpcRendererEvent, reques
 function sourceKey(options: CaptureOptions): string {
     return options.source === "computer"
         ? "computer\u0000default\u0000na"
-        : `microphone\u0000${options.deviceId ?? "default"}\u0000${options.processing ?? "default"}\u0000${options.processing === "raw" ? false : options.echoCancel ?? true}`;
+        : `microphone\u0000${options.deviceId ?? "default"}\u0000${options.processing ?? "default"}\u0000${options.processing === "raw" ? false : options.echoCancel ?? true}\u0000${options.cancelComputerAudio ?? false}`;
 }
 
 function publishCaptureCount(): void {
@@ -180,9 +183,9 @@ async function requestStreamNow(options: CaptureOptions): Promise<MediaStream> {
         if (options.source === "microphone") {
             return await navigator.mediaDevices.getUserMedia({ audio: {
                 channelCount: 1,
-                noiseSuppression: options.processing === "raw" ? false : !microphoneSettings.enabled,
+                noiseSuppression: options.processing === "raw" ? false : !(microphoneSettings.enabled || options.cancelComputerAudio),
                 autoGainControl: options.processing !== "raw",
-                echoCancellation: options.processing === "raw" ? false : options.echoCancel ?? true,
+                echoCancellation: options.processing === "raw" || options.cancelComputerAudio ? false : options.echoCancel ?? true,
                 ...(options.deviceId ? { deviceId: { exact: options.deviceId } } : {}),
             } });
         }
@@ -199,19 +202,22 @@ async function requestStreamNow(options: CaptureOptions): Promise<MediaStream> {
     }
 }
 
-async function acquireSource(options: CaptureOptions): Promise<SharedSource> {
+async function acquireSource(options: CaptureOptions, reservation?: symbol): Promise<SharedSource> {
     await settingsReady;
     const key = sourceKey(options);
     const existing = sources.get(key);
     if (existing) {
-        await existing.starting;
+        if (reservation) existing.referenceLeases.add(reservation);
+        try { await existing.starting; }
+        catch (error) { if (reservation) existing.referenceLeases.delete(reservation); throw error; }
         return existing;
     }
     const source: SharedSource = {
-        key, source: options.source, capture: new PcmAudioCapture(), subscribers: new Set(),
+        key, source: options.source, capture: new PcmAudioCapture(), subscribers: new Set(), referenceLeases: new Set(),
         ...(options.source === "computer" ? { gate: new ComputerAudioGate() } : {}),
         starting: Promise.resolve(), active: false, options,
     };
+    if (reservation) source.referenceLeases.add(reservation);
     sources.set(key, source);
     source.starting = (async () => {
         const stream = await requestStream(options);
@@ -221,10 +227,12 @@ async function acquireSource(options: CaptureOptions): Promise<SharedSource> {
         try {
             await source.capture.start(stream, (data, timeMs) => onCaptureChunk(source, data, timeMs), () => undefined, sharedContext,
                 source.cleaning,
-                (mode, reason) => reportSourceStatus(source, mode, reason));
+                (mode, reason) => reportSourceStatus(source, mode, reason), options.cancelComputerAudio ? acquireReference : undefined);
+            watchComputerTrack(source, stream);
             source.active = true;
             publishCaptureCount();
         } catch (error) {
+            await source.capture.stop();
             stream.getTracks().forEach((track) => track.stop());
             throw error;
         }
@@ -244,25 +252,37 @@ async function restartSource(source: SharedSource): Promise<void> {
     source.restarting = (async () => {
         await source.starting;
         if (sources.get(source.key) !== source) return;
-        ipcRenderer.send(AUDIO_STATUS, { mode: "restart", reason: "" });
+        if (source.source === "microphone") ipcRenderer.send(AUDIO_STATUS, { mode: "restart", reason: "" });
         await source.capture.flush();
         await source.capture.stop();
         if (sources.get(source.key) !== source) return;
         const stream = await requestStream(source.options);
         if (sources.get(source.key) !== source) { stream.getTracks().forEach((track) => track.stop()); return; }
         source.capture = new PcmAudioCapture();
-        await resolveMicrophoneDevice(stream, enumerateDevices);
+        if (source.source === "microphone") await resolveMicrophoneDevice(stream, enumerateDevices);
         source.stream = stream;
-        source.cleaning = cleaningOptions(stream);
+        source.cleaning = source.source === "microphone" ? cleaningOptions(stream) : undefined;
+        if (source.source === "computer") source.gate = new ComputerAudioGate();
         await source.capture.start(stream, (data, timeMs) => onCaptureChunk(source, data, timeMs), () => undefined, sharedContext, source.cleaning,
-            (mode, reason) => reportSourceStatus(source, mode, reason));
-    })().catch((error: unknown) => {
+            (mode, reason) => reportSourceStatus(source, mode, reason), source.options.cancelComputerAudio ? acquireReference : undefined);
+        watchComputerTrack(source, stream);
+    })().catch(async (error: unknown) => {
+        await source.capture.stop();
+        source.active = false;
+        publishCaptureCount();
         for (const record of source.subscribers) record.channel.close({ code: "handler-closed", message: errMessage(error, "Microphone restart failed.") });
     }).finally(() => {
         source.restarting = undefined;
         if (source.restartPending && sources.get(source.key) === source) { source.restartPending = false; void restartSource(source); }
     });
     await source.restarting;
+}
+
+function watchComputerTrack(source: SharedSource, stream: MediaStream): void {
+    if (source.source !== "computer") return;
+    stream.getAudioTracks()[0]?.addEventListener("ended", () => {
+        if (sources.get(source.key) === source && source.stream === stream) void restartSource(source);
+    }, { once: true });
 }
 
 async function attach(record: ActiveChannel, options: CaptureOptions): Promise<void> {
@@ -285,12 +305,38 @@ async function attach(record: ActiveChannel, options: CaptureOptions): Promise<v
 }
 
 async function releaseSource(source: SharedSource): Promise<void> {
-    if (source.subscribers.size) return;
+    if (source.subscribers.size || source.referenceLeases.size) return;
     if (sources.get(source.key) === source) sources.delete(source.key);
     await source.starting.catch(() => {});
     await source.capture.stop();
     source.active = false;
     publishCaptureCount();
+}
+
+async function acquireReference(): Promise<LoopbackLease> {
+    const token = Symbol("loopback reference");
+    const source = await acquireSource({ source: "computer" }, token);
+    if (source.stream?.getAudioTracks()[0]?.readyState !== "live") {
+        source.referenceLeases.delete(token);
+        void releaseSource(source);
+        throw new Error("Computer audio is unavailable");
+    }
+    let released = false;
+    return {
+        context: sharedContext,
+        subscribe: (callback, ended) => {
+            const unsubscribe = source.capture.subscribeRaw(callback);
+            const track = source.stream?.getAudioTracks()[0];
+            track?.addEventListener("ended", ended);
+            return () => { unsubscribe(); track?.removeEventListener("ended", ended); };
+        },
+        release: () => {
+            if (released) return;
+            released = true;
+            source.referenceLeases.delete(token);
+            void releaseSource(source);
+        },
+    };
 }
 
 function stopPlayback(record: ActiveChannel): void {
@@ -388,7 +434,6 @@ function finish(record: ActiveChannel, code: CapabilityErrorCode, message: strin
     if (record.closed) return;
     record.closed = true;
     stopPlayback(record);
-    void ipcRenderer.invoke(CLEAR_CHANNEL).catch(() => {});
     channels.delete(record.channelId);
     if (record.source) {
         record.source.subscribers.delete(record);

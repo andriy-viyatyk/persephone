@@ -922,8 +922,9 @@ group or to the selected section, and the scroll-spy selects the topmost visible
 scrolling the Content pane. The Clipboard section owns
 `clipboard.enabled` and `clipboard.max-items`; the Microphone Audio section exposes the
 `microphone.clean`, `microphone.attenuation-db`, and `microphone.notches` setting rows to
-`elements` and `highlight(key)`. The clipboard root is exposed to AiVision only while
-history is enabled. Three real settings have no Settings-page row (`tab-recent-languages`,
+`elements` and `highlight(key)`. Consumer-requested loopback also runs DTLN noise cleaning when
+`microphone.clean` is off; there is no separate loopback setting. The clipboard root is exposed to
+AiVision only while history is enabled. Three real settings have no Settings-page row (`tab-recent-languages`,
 `search-max-file-size`, and `editor-categories`) and remain available through `get`/`set`. The
 `editor-categories` value is an ordered `{ id, name, items }[]`; Top is fixed first and Other is
 derived from eligible unassigned refs. The old `pinned-editors` array migrates losslessly into Top

@@ -22,7 +22,7 @@ const audioMethods: Record<string, CapabilityMethod> = {
     devices: { kind: "call", summary: "List available microphone inputs.", args: [],
         returns: "{ deviceId: string; label: string; isDefault: boolean }[]", timeoutMs: 10000, agent: false },
     capture: { kind: "channel", summary: "Board-only streaming: capture shared PCM.",
-        args: [{ name: "open", type: '{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw" }' }],
+        args: [{ name: "open", type: '{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw"; cancelComputerAudio?: boolean }' }],
         returns: "CapabilityChannel", timeoutMs: 15000, agent: true },
     play: { kind: "channel", summary: "Board-only streaming: play mono PCM.",
         args: [{ name: "open", type: "{ sampleRate: number }" }],

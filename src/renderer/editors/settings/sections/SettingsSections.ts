@@ -767,15 +767,19 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.root.append(panel({ paddingTop: "sm", paddingBottom: "md" }, text(t("settings.microphoneEnrollment"), { color: "light", size: "xs" })));
 
         const { ipcRenderer } = require("electron") as typeof import("electron");
+        const statuses = new Map<string, string>();
         const status = (_event: Electron.IpcRendererEvent, value: { mode: string; reason: string }): void => {
             if (!this.status) return;
-            this.status.textContent = value.mode === "restart" ? t("settings.microphoneRestart") : value.mode === "failed" ? t("settings.microphoneFailed", { reason: value.reason })
-                : value.mode === "load" ? t("settings.microphoneLoad", { ratio: value.reason }) : value.mode === "neural" ? t("settings.microphoneNeural") : value.mode === "notch"
-                ? t("settings.microphoneFallback", { reason: value.reason }) : t("settings.microphoneUnfiltered", { reason: value.reason });
+            const message = value.mode === "reference-ready" ? t("settings.microphoneReferenceReady") : value.mode === "reference-unavailable" ? t("settings.microphoneReferenceUnavailable", { reason: value.reason })
+                : value.mode === "restart" ? t("settings.microphoneRestart") : value.mode === "failed" ? t("settings.microphoneFailed", { reason: value.reason })
+                : value.mode === "load" ? t("settings.microphoneLoad", { ratio: value.reason }) : value.mode === "neural" ? t("settings.microphoneNeural")
+                : t("settings.microphoneUnfiltered", { reason: value.reason });
+            statuses.set(value.mode.startsWith("reference-") ? "reference" : "cleaning", message);
+            this.status.textContent = [...statuses.values()].join(" · ");
         };
         ipcRenderer.on(AUDIO_STATUS, status);
         this.own(() => ipcRenderer.removeListener(AUDIO_STATUS, status));
-        void ipcRenderer.invoke(AUDIO_STATUS_GET).then((value: { mode: string; reason: string } | undefined) => { if (value) status({} as Electron.IpcRendererEvent, value); });
+        void ipcRenderer.invoke(AUDIO_STATUS_GET).then((values: Array<{ mode: string; reason: string }>) => { for (const value of values ?? []) status({} as Electron.IpcRendererEvent, value); });
         const retry = this.child(new ButtonView({ size: "sm", variant: "default", children: t("settings.microphoneRetry"), onClick: () => ipcRenderer.send(AUDIO_RETRY) }));
         this.root.append(retry.root);
         retry.mount();
@@ -873,7 +877,7 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
 
         const fields = panel({ direction: "row", align: "center", gap: "lg", paddingLeft: "xxl" });
         for (const [key, title, min, max] of [
-            ["frequency", t("settings.microphoneFrequency"), 20, 20000],
+            ["frequency", t("settings.microphoneFrequency"), 20, 7999],
             ["q", t("settings.microphoneQ"), 0.1, 50],
             ["gainDb", t("settings.microphoneGain"), -60, 0],
         ] as const) {

@@ -107,7 +107,11 @@ channel counts are bounded as specified in
 
 Microphone capture accepts `processing: "raw"` as of bridge 1.53.0. Raw and default requests use
 separate source keys; direct browser capture remains outside the audio service. Managed default
-capture uses the microphone cleaning worker when enabled in settings.
+capture uses the DTLN cleaning worker when enabled in settings. A default processed capture may
+also request shared loopback cancellation: while that reference is requested, capture runs DTLN
+noise cleaning even if the cleaning setting is off, and Chromium echo cancellation stays disabled.
+If the reference is unavailable, DTLN continues with a zero reference and reports the reference
+status separately from cleaning status. Raw capture bypasses both stages.
 
 `audio` is a reserved platform registration with a `muteApp()` lease method, a `devices()` call,
 and `capture` and `play` channel methods. `muteApp()` opens a caller-owned channel whose lease mutes managed
@@ -155,9 +159,10 @@ expose device IDs and labels, then clears that grant in `finally`. Chromium may 
 or limited list and empty labels; IDs can change and should be refreshed on demand.
 
 The normative payloads, timestamp and gate contract, permissions, caller shapes and resource limits
-are in the [audio capability guide](../../assets/guides/agents/audio.md). Echo cancellation follows
-the browser constraint for microphone capture; its effectiveness and absolute physical timing have
-not been measured.
+are in the [audio capability guide](../../assets/guides/agents/audio.md). The requested loopback
+reference is timestamp-aligned with microphone audio before DTLN processing; Chromium echo
+cancellation remains the browser constraint for captures without that request. Absolute physical
+timing has not been measured.
 
 For `open`, main binds the selected registration and sends the request to the renderer selected for
 the caller. The renderer validates platform-owned payloads where required and either invokes a

@@ -159,7 +159,9 @@ export function setupMainProcess() {
             const fileUrl = pathToFileURL(file).toString();
 
             const response = await net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
-            if (relativePath.replace(/\\/g, "/") !== "vendor/deepfilternet-web/df_bg.wasm") return response;
+            if (!["vendor/dtln-aec/dtln_aec_128_1.onnx",
+                "vendor/dtln-aec/dtln_aec_128_2.onnx", "vendor/onnxruntime-web/ort-wasm-simd-threaded.wasm"]
+                .includes(relativePath.replace(/\\/g, "/"))) return response;
             const headers = new Headers(response.headers);
             headers.set("Access-Control-Allow-Origin", "*");
             return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
