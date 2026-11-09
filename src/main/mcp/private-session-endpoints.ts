@@ -8,8 +8,10 @@ import { createMcpServer } from "./server-factory";
 const MAX_ENDPOINTS = 64;
 const MAX_TRANSPORTS = 64;
 const MAX_TRANSPORTS_PER_TOKEN = 4;
-const SESSION_IDLE_MS = 30 * 60_000;
-const SESSION_SWEEP_MS = 60_000;
+// No idle expiry (US-1804). Unlike the public server (US-797), every session here belongs to a grant
+// that its board revokes when the agent session closes or the service stops, which closes the
+// session too; MAX_TRANSPORTS_PER_TOKEN and MAX_ENDPOINTS bound the rest. An idle timeout only broke
+// agents waiting in Wake mode: after 30 quiet minutes their next tool call failed with "Invalid session".
 
 interface PrivateSession {
     owner: string;
@@ -26,7 +28,6 @@ const pendingTransports = new Map<string, number>();
 let server: http.Server | undefined;
 let startPromise: Promise<string> | undefined;
 let endpointUrl: string | undefined;
-let sweepTimer: ReturnType<typeof setInterval> | undefined;
 let statusChanged: (() => void) | undefined;
 let shuttingDown = false;
 
@@ -192,11 +193,6 @@ async function ensureServer(): Promise<string> {
             const address = nextServer.address();
             if (!address || typeof address === "string") { reject(new Error("Private MCP listener did not bind an IP port")); return; }
             endpointUrl = `http://127.0.0.1:${address.port}/mcp`;
-            sweepTimer = setInterval(() => {
-                const now = Date.now();
-                for (const [id, session] of sessions) if (now - session.lastActivity > SESSION_IDLE_MS) void closeSession(id);
-            }, SESSION_SWEEP_MS);
-            sweepTimer.unref?.();
             broadcast();
             resolve(endpointUrl);
         });
@@ -255,8 +251,6 @@ export async function shutdownPrivateMcpEndpoint(): Promise<void> {
         catch { /* Listener startup failed; continue shutdown cleanup. */ }
     }
     for (const id of [...sessions.keys()]) await closeSession(id);
-    if (sweepTimer) clearInterval(sweepTimer);
-    sweepTimer = undefined;
     const current = server;
     server = undefined;
     endpointUrl = undefined;
