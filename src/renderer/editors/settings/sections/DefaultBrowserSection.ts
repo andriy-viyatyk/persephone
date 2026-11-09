@@ -62,11 +62,6 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        this.root.append(panel(
-            { paddingBottom: "md" },
-            text(t("settings.defaultBrowserDescription"), { color: "light", size: "xs" }),
-        ));
-
         if (rendererProfileName()) {
             this.root.append(text(t("settings.profileBrowserRegistration"), { size: "sm", color: "light" }));
             return;

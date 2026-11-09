@@ -1,6 +1,7 @@
 import type { EnglishCatalogEntry } from "./common";
 
 export const settingsCatalog = {
+    moreInformation: { message: "More information about {label}" },
     microphoneTitle: { message: "Microphone Audio" },
     microphoneDescription: { message: "Clean managed microphone audio with local noise suppression." },
     microphoneClean: { message: "Clean microphone audio" },

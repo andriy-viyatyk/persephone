@@ -3,7 +3,7 @@ import { TextareaView } from "../../../uikit/Textarea/TextareaView";
 import { t } from "../../../../shared/i18n/t";
 import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { createSectionRoot, panel, text } from "./settings-native";
+import { createSectionRoot, helpIcon, panel, sectionTitle, settingsFieldLabel } from "./settings-native";
 import "../../../uikit/Textarea/Textarea.css";
 
 export class FileSearchSectionView extends VanillaView<Record<string, never>> {
@@ -23,31 +23,22 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         this.excludeValue = searchExclude.join(", ");
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.fileSearchTitle"), { bold: true, size: "sm" })),
-            panel(
-                { paddingBottom: "md" },
-                text(t("settings.fileSearchExtensionsDescription"), { color: "light", size: "xs" }),
-            ),
+            sectionTitle(t("settings.fileSearchTitle")),
+            panel({ paddingBottom: "md" }, settingsFieldLabel(t("settings.fileSearchExtensionsLabel")), helpIcon(t("settings.fileSearchExtensionsLabel"), t("settings.fileSearchExtensionsDescription"), (cleanup) => this.own(cleanup)).root),
         );
 
         this.extensionsTextarea = this.child(new TextareaView(this.textareaProps(
-            this.extensionsValue,
+            t("settings.fileSearchExtensionsLabel"), this.extensionsValue,
             (value) => { this.extensionsValue = value; },
             () => this.saveExtensions(),
         )));
         this.root.append(this.extensionsTextarea.root);
         this.extensionsTextarea.mount();
 
-        this.root.append(panel(
-            { paddingTop: "lg", paddingBottom: "md" },
-            text(
-                t("settings.fileSearchExclusionsDescription"),
-                { color: "light", size: "xs" },
-            ),
-        ));
+        this.root.append(panel({ paddingTop: "lg", paddingBottom: "md" }, settingsFieldLabel(t("settings.fileSearchExclusionsLabel")), helpIcon(t("settings.fileSearchExclusionsLabel"), t("settings.fileSearchExclusionsDescription"), (cleanup) => this.own(cleanup)).root));
 
         this.excludeTextarea = this.child(new TextareaView(this.textareaProps(
-            this.excludeValue,
+            t("settings.fileSearchExclusionsLabel"), this.excludeValue,
             (value) => { this.excludeValue = value; },
             () => this.saveExclude(),
         )));
@@ -66,8 +57,9 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         this.excludeTextarea = undefined;
     }
 
-    private textareaProps(value: string, onChange: (value: string) => void, onBlur: () => void): TextareaProps {
+    private textareaProps(label: string, value: string, onChange: (value: string) => void, onBlur: () => void): TextareaProps {
         return {
+            "aria-label": label,
             value,
             onChange,
             onBlur,
@@ -80,7 +72,7 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
     private syncExtensions(): void {
         this.extensionsValue = settings.get("search-extensions").join(", ");
         this.extensionsTextarea?.update(this.textareaProps(
-            this.extensionsValue,
+            t("settings.fileSearchExtensionsLabel"), this.extensionsValue,
             (value) => { this.extensionsValue = value; },
             () => this.saveExtensions(),
         ));
@@ -89,7 +81,7 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
     private syncExclude(): void {
         this.excludeValue = settings.get("search-exclude").join(", ");
         this.excludeTextarea?.update(this.textareaProps(
-            this.excludeValue,
+            t("settings.fileSearchExclusionsLabel"), this.excludeValue,
             (value) => { this.excludeValue = value; },
             () => this.saveExclude(),
         ));

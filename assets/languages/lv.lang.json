@@ -4,6 +4,7 @@
   "name": "Latviešu",
   "englishName": "Latvian",
   "messages": {
+    "settings.moreInformation": "Papildinformācija par {label}",
     "settings.microphoneTitle": "Mikrofona audio",
     "settings.microphoneDescription": "Tīriet pārvaldīta mikrofona audio ar lokālu trokšņu slāpēšanu.",
     "settings.microphoneClean": "Tīrīt mikrofona audio",
@@ -1869,6 +1870,7 @@
     "voiceTyping.translatingTranscribing": "Notiek transkribēšana angļu valodā — Esc, lai atceltu"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

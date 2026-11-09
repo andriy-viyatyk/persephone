@@ -4,6 +4,7 @@
   "name": "简体中文",
   "englishName": "Chinese (Simplified)",
   "messages": {
+    "settings.moreInformation": "有关 {label} 的更多信息",
     "settings.microphoneTitle": "麦克风音频",
     "settings.microphoneDescription": "使用本地降噪清理受管理的麦克风音频。",
     "settings.microphoneClean": "清理麦克风音频",
@@ -1773,6 +1774,7 @@
     "voiceTyping.translatingTranscribing": "正在转录为英语 — 按 Esc 取消"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

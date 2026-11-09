@@ -818,6 +818,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── Menu/               # Portal menu + WithMenu wrapper (replaces PopupMenu)
 │   ├── Popover/            # Portal-based floating element (replaces Popper)
 │   ├── Tooltip/            # Hover tooltip
+│   ├── HelpIcon/           # Focusable question-mark help with tooltip and accessible description
 │   ├── Dialog/             # Modal dialog
 │   ├── Notification/       # Alert / toast notification state, views, and AlertsBar
 │   ├── Progress/           # Progress overlay + screen lock

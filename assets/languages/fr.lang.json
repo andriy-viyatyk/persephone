@@ -4,6 +4,7 @@
   "name": "Français",
   "englishName": "French",
   "messages": {
+    "settings.moreInformation": "Plus d’informations sur {label}",
     "settings.microphoneTitle": "Audio du microphone",
     "settings.microphoneDescription": "Réduisez localement le bruit de l’audio du microphone géré.",
     "settings.microphoneClean": "Nettoyer l’audio du microphone",
@@ -1869,6 +1870,7 @@
     "voiceTyping.translatingTranscribing": "Transcription en anglais — Échap pour annuler"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

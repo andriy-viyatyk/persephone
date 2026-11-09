@@ -4,6 +4,7 @@
   "name": "Italiano",
   "englishName": "Italian",
   "messages": {
+    "settings.moreInformation": "Ulteriori informazioni su {label}",
     "settings.microphoneTitle": "Audio del microfono",
     "settings.microphoneDescription": "Pulisci l’audio gestito con la riduzione locale del rumore.",
     "settings.microphoneClean": "Pulisci audio del microfono",
@@ -1869,6 +1870,7 @@
     "voiceTyping.translatingTranscribing": "Trascrizione in inglese — Esc per annullare"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

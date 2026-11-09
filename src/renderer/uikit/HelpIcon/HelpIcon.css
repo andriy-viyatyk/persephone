@@ -1,0 +1,7 @@
+@layer uikit {
+    [data-type="help-icon"] { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; flex-shrink: 0; transform: translateY(-2px); margin-left: var(--space-xs, 4px); padding: 0; border: 0; background: transparent; color: var(--color-text-light, currentColor); cursor: help; }
+    [data-type="help-icon"]:hover, [data-type="help-icon"]:focus-visible { color: var(--color-text-default, currentColor); }
+    [data-type="help-icon"]:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+    [data-type="help-icon"] > [data-part="description"] { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    [data-type="help-icon"][hidden] { display: none; }
+}

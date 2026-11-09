@@ -4,6 +4,7 @@
   "name": "Deutsch",
   "englishName": "German",
   "messages": {
+    "settings.moreInformation": "Weitere Informationen zu {label}",
     "settings.microphoneTitle": "Mikrofon-Audio",
     "settings.microphoneDescription": "Verarbeitetes Mikrofon-Audio lokal entrauschen.",
     "settings.microphoneClean": "Mikrofon-Audio entrauschen",
@@ -1821,6 +1822,7 @@
     "voiceTyping.translatingTranscribing": "Transkription auf Englisch — Esc zum Abbrechen"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

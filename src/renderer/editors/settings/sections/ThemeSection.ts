@@ -13,7 +13,7 @@ import { applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Pan
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import "../../../uikit/IconButton/IconButton.css";
-import { createSectionRoot, panel, text } from "./settings-native";
+import { createSectionRoot, panel, sectionTitle, text } from "./settings-native";
 
 interface ThemePreviewProps {
     bgDefault: string;
@@ -146,7 +146,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             option.element.remove();
             this.options.delete(id);
         }
-        this.root.replaceChildren(panel({ paddingBottom: "lg" }, text(t("settings.groupTitleTheme"), { bold: true, size: "sm" })));
+        this.root.replaceChildren(sectionTitle(t("settings.groupTitleTheme")));
         groups.forEach(({ key, name, themes: groupThemes }) => {
             this.root.append(panel({ paddingBottom: "md" }, text(t(key), { variant: "uppercased", color: "light", bold: true, size: "xs" })));
             const grid = this.createGrid();

@@ -4,6 +4,7 @@
   "name": "Lietuvių",
   "englishName": "Lithuanian",
   "messages": {
+    "settings.moreInformation": "Daugiau informacijos apie {label}",
     "settings.microphoneTitle": "Mikrofono garsas",
     "settings.microphoneDescription": "Valykite mikrofono garsą vietiniu triukšmo slopinimu.",
     "settings.microphoneClean": "Valyti mikrofono garsą",
@@ -1917,6 +1918,7 @@
     "voiceTyping.translatingTranscribing": "Transkribuojama anglų kalba — atšaukti galite paspaudę „Esc“"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

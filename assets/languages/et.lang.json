@@ -4,6 +4,7 @@
   "name": "Eesti",
   "englishName": "Estonian",
   "messages": {
+    "settings.moreInformation": "Lisateave: {label}",
     "settings.microphoneTitle": "Mikrofoni heli",
     "settings.microphoneDescription": "Puhastage hallatava mikrofoni heli kohaliku müravähendusega.",
     "settings.microphoneClean": "Puhasta mikrofoni heli",
@@ -1821,6 +1822,7 @@
     "voiceTyping.translatingTranscribing": "Transkribeerimine inglise keeles — tühistamiseks Esc"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

@@ -9,7 +9,7 @@ import { fs } from "../../../api/fs";
 import { ui } from "../../../api/ui";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { createSectionRoot, panel, settingsPath, text } from "./settings-native";
+import { createSectionRoot, helpHeader, panel, settingsPath, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 
 /**
@@ -47,11 +47,7 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         this.problems.hidden = true;
         this.folderRow.append(this.folderValue, this.browseButton.root, this.resetButton.root);
         root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.siteExtensionsTitle"), { bold: true, size: "sm" })),
-            panel({ flex: true, paddingBottom: "md" }, text(
-                t("settings.siteExtensionsAgentDescription"),
-                { color: "light", size: "xs" },
-            )),
+            helpHeader(t("settings.siteExtensionsTitle"), t("settings.siteExtensionsAgentDescription"), (cleanup) => this.own(cleanup)),
             this.folderRow,
             panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" },
                 panel({ direction: "column", flex: true }, this.summary, this.problems),

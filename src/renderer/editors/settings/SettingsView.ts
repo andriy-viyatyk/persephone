@@ -33,7 +33,7 @@ import {
     VoiceTypingSettingsSectionView,
     MicrophoneAudioSectionView,
 } from "./sections/SettingsSections";
-import { panel, text } from "./sections/settings-native";
+import { helpHeader } from "./sections/settings-native";
 import "./settings.css";
 import "../../uikit/Button/Button.css";
 
@@ -86,15 +86,6 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
     "microphone-audio": () => new MicrophoneAudioSectionView({}),
 };
 
-const SECTION_INTRODUCTIONS: Readonly<Record<string, () => Node[]>> = {
-    "link-behavior": () => [
-        panel({ paddingBottom: "lg" }, text(t("settings.groupTitleLinks"), { bold: true, size: "sm" })),
-        panel({ paddingBottom: "md" }, text(t("settings.linksIntroduction"), { color: "light", size: "xs" })),
-    ],
-    "default-browser": () => [
-        panel({ paddingBottom: "lg" }, text(t("settings.groupTitleDefaultBrowser"), { bold: true, size: "sm" })),
-    ],
-};
 
 function createSettingsContentItems(
     sections: readonly SettingsSectionDescriptor[],
@@ -314,14 +305,20 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         wrapper.dataset.name = section.elementName;
         wrapper.dataset.part = "section-wrapper";
         wrapper.className = "settings-section-wrapper";
-        wrapper.append(...(SECTION_INTRODUCTIONS[section.id]?.() ?? []), view.root);
+        if (section.id === "link-behavior") wrapper.append(helpHeader(t("settings.groupTitleLinks"), t("settings.linksIntroduction"), (cleanup) => this.own(cleanup)));
+        if (section.id === "default-browser") wrapper.append(helpHeader(t("settings.groupTitleDefaultBrowser"), t("settings.defaultBrowserDescription"), (cleanup) => this.own(cleanup)));
+        wrapper.append(view.root);
 
         const sectionPanel = createPanelElement({
             name: section.panelName,
             direction: "column",
             width: "100%",
             shrink: false,
+            // Less space above the title and below the content than at the sides; the title's own bottom space
+            // (sectionTitle) separates it from the content.
             padding: "xxl",
+            paddingTop: "lg",
+            paddingBottom: "lg",
             // Outlined rather than filled: `border: true` alone resolves to the subtle token
             // (#2b2b2b), which is nearly invisible against the page background (#1f1f1f), so the
             // panel edge is stated explicitly.

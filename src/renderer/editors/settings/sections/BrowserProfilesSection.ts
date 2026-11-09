@@ -47,7 +47,7 @@ function profileColorLabel(name: string): string {
 function profileColorMenuId(name: string): string {
     return `profile-color-${name.toLowerCase().replace(/\s+/g, "-")}`;
 }
-import { createSectionRoot, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
+import { createSectionRoot, helpHeader, helpIcon, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -469,8 +469,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.browserProfilesTitle"), { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text(t("settings.browserProfilesDescription"), { color: "light", size: "xs" })),
+            helpHeader(t("settings.browserProfilesTitle"), t("settings.browserProfilesDescription"), (cleanup) => this.own(cleanup)),
         );
         const profilePanel = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
         this.translateTarget = this.child(new SelectView(this.translateTargetProps()));
@@ -561,11 +560,11 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         addPanel.append(colorPanel);
         this.root.append(addPanel);
 
-        const ssoPanel = panel({ direction: "column", gap: "xs", paddingTop: "lg" });
+        const ssoPanel = panel({ direction: "row", align: "center", paddingTop: "lg" });
         this.windowsSso = this.child(new CheckboxView(this.windowsSsoProps()));
         ssoPanel.append(
             this.windowsSso.root,
-            text(t("settings.windowsSsoExplanation"), { color: "light", size: "xs" }),
+            helpIcon(t("settings.allowWindowsSso"), t("settings.windowsSsoExplanation"), (cleanup) => this.own(cleanup)).root,
         );
         this.windowsSso.mount();
         this.root.append(ssoPanel);

@@ -78,3 +78,6 @@ export type { TreeItemProps, TreeSectionItemProps } from "./Tree";
 
 // Truncated text (overflow-ellipsis with hover title)
 export type { TruncatedTextProps } from "./TruncatedText";
+
+export { HelpIconView } from "./HelpIcon/HelpIconView";
+export type { HelpIconProps } from "./HelpIcon/HelpIconView";

@@ -4,6 +4,7 @@
   "name": "Polski",
   "englishName": "Polish",
   "messages": {
+    "settings.moreInformation": "Więcej informacji o {label}",
     "settings.microphoneTitle": "Dźwięk mikrofonu",
     "settings.microphoneDescription": "Oczyszczaj dźwięk zarządzanego mikrofonu przez lokalną redukcję szumów.",
     "settings.microphoneClean": "Oczyszczaj dźwięk mikrofonu",
@@ -1917,6 +1918,7 @@
     "voiceTyping.translatingTranscribing": "Transkrypcja na angielski — Esc, aby anulować"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

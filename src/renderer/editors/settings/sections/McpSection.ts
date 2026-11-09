@@ -12,7 +12,7 @@ import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
 import { McpSectionModel, defaultMcpSectionState, type McpSectionProps, type McpSectionState } from "./McpSectionModel";
-import { createSectionRoot, panel, text } from "./settings-native";
+import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -120,8 +120,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.mcpTitle"), { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text(t("settings.mcpDescription"), { color: "light", size: "xs" })),
+            helpHeader(t("settings.mcpTitle"), t("settings.mcpDescription"), (cleanup) => this.own(cleanup)),
         );
         const mcpRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.mcpEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
@@ -166,8 +165,7 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.root.append(mcpStatusHost);
         this.mcpStatusSwap = new SubtreeSwap(mcpStatusHost);
         this.root.append(
-            panel({ paddingTop: "sm", paddingBottom: "lg" }, text(t("settings.mnemeTitle"), { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text(t("settings.mnemeDescription"), { color: "light", size: "xs" })),
+            helpHeader(t("settings.mnemeTitle"), t("settings.mnemeDescription"), (cleanup) => this.own(cleanup)),
         );
         const mnemeRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.mnemeEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(

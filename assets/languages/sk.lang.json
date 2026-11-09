@@ -4,6 +4,7 @@
   "name": "Slovenčina",
   "englishName": "Slovak",
   "messages": {
+    "settings.moreInformation": "Ďalšie informácie o {label}",
     "settings.microphoneTitle": "Zvuk mikrofónu",
     "settings.microphoneDescription": "Čistite zvuk mikrofónu lokálnym potlačením šumu.",
     "settings.microphoneClean": "Čistiť zvuk mikrofónu",
@@ -1917,6 +1918,7 @@
     "voiceTyping.translatingTranscribing": "Prepis do angličtiny — zrušíte klávesom Esc"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

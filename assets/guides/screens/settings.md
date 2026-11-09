@@ -28,28 +28,13 @@ not through `app.settings`.
 
 ```
 +---------------------------------------------------------------------+
-| [Content]                  | [Theme panel]                         |  fixed tree at left; panels scroll at right
-|   General                   | [Window Behavior panel]               |  one outlined panel per section
-|     Theme                   | [Editor Behavior panel]               |
-|     Language                | [Language panel]                      |
-|     Window Behavior         | [Browser Profiles panel]               |
-|     Voice Typing            | [Voice Typing panel]                  |
-|     Microphone Audio        | [Microphone Audio panel]              |
-|     Clipboard               | [Links panel]                          |
-|     Terminal                | [MCP Server / Mneme panel]             |
-|   Editors                   | ...                                     |
-|     Editor Behavior         |                                         |
-|     Script Library          |                                         |
-|     Video Player            |                                         |
-|     Excalidraw (when enabled)|                                        |
-|   Browser                   |                                         |
-|     Browser Profiles        |                                         |
-|     Default Browser         |                                         |
-|     Links                   |                                         |
-|     Site Extensions         |                                         |
-|   Integrations              |                                         |
-|     MCP Server / Mneme      | [View Settings File] in the left footer
-|   Boards                    | board panels for standalone boards      |
+| [Content tree]             | [section panels]                       |  fixed tree at left; panels scroll at right
+|   General                  | [section panels]                       |  one outlined panel per section
+|   Editors                  | ...                                    |
+|   Browser                  |                                        |
+|   Integrations             |                                        |
+|   Boards (when available)  |                                        |
+| [View Settings File]       |                                        |  bottom of Settings content
 +---------------------------------------------------------------------+
 ```
 
@@ -68,15 +53,13 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 - Voice Typing → `voice-typing.shortcut`, `voice-typing.translate-shortcut`, `voice-typing.auto-stop-silence-ms`, `voice-typing.auto-stop-inactivity-ms`
 - Microphone Audio → `microphone.clean`, `microphone.attenuation-db`, `microphone.notches`
 - Editor Behavior → `editor.word-wrap`
-- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-default-network`, `browser-incognito-bookmarks-file`, `browser-incognito-network`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`, `browser-profile-permissions` (site-permissions review button on each regular profile, including Default)
+- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-translate-target`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
 - Links → `link-open-behavior`
-- Site Extensions folder → `site-extensions-folder`, `site-extensions-folder-browse`, `site-extensions-folder-reset`
-- Installed/trusted counts → `site-extensions-summary`
-- Open site extensions → `site-extensions-open`
+- Site Extensions → `site-extensions.path`, `site-extensions`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`
 - Clipboard → `clipboard.enabled`, `clipboard.max-items`
-- MCP Server / Mneme → `mcp.enabled`, `mcp.port`, `main.scripting.enabled`, `mneme.enabled`, `mneme.port`
+- MCP Server / Mneme → `agent-tips.enabled`, `mcp.enabled`, `mcp.port`, `main.scripting.enabled`, `mneme.enabled`, `mneme.port`
 - Git Integration → `git.enabled`
 - Board Environment Variables → `board-vars.file`
 - Script Library → `script-library.path`
@@ -90,7 +73,7 @@ updates the selected section automatically, so the tree acts as a scroll-spy whi
 +---------------------------------------------------------------------+
 | [Content tree]             | [section panel]                         |  tree remains fixed while panels scroll
 |                            | [section panel]                         |
-| [View Settings File]       | [section panel]                         |  action stays in the tree pane footer
+| [View Settings File]       | [section panel]                         |  bottom of Settings content
 +---------------------------------------------------------------------+
 ```
 
@@ -134,7 +117,7 @@ translation to English. Press a shortcut with at least one modifier while its fi
 tap right `Ctrl` for normal dictation and `Shift` + right `Ctrl` for translation. Shift can be held
 before or after right `Ctrl`; another key during the tap cancels capture. The two settings cannot
 use the same shortcut. Each field's **Reset to default** restores `Alt+V` or `Alt+Shift+V`,
-respectively. The translation field includes a quality hint: the Speech to Text model may leave
+respectively. The translation field's help button explains the quality hint: the Speech to Text model may leave
 parts of long or mixed-language phrases untranslated.
 
 **Stop voice typing and dictation boards after silence** defaults to **Off (0)**. Choose 2, 3, 5,
@@ -196,6 +179,9 @@ details.
   elements list exposes catalog keys and the page action.
 - Section roots — no entry as separate Settings elements: generated key entries use each section
   root's selector and inherit its section phrase.
+- Site Extensions folder, Browse, Use default, counts and Open site extensions — no separate
+  entries: the catalogue points to their containing section.
+- Browser profile site-permissions buttons — no separate Settings elements entry.
 
 ## Settings sections and stable targets
 
@@ -239,12 +225,16 @@ Board panels use a generated selector based on the board's stable `author`/`name
 section selectors identify containing panels; read the live catalogue and board manifest for the
 rows and labels instead of relying on a visual position that may change.
 
+Settings labels and section titles may have a **?** help button. Hover over it or focus it with Tab to read the explanation; press Escape to dismiss it. Assistive technology can read the description without opening the tooltip. Agents can read the trigger's `aria-description` attribute; the Settings section and highlight selectors remain unchanged.
+
 ## Board settings
 
 A trusted or bundled board can declare user-editable settings in its `board-manifest.json`. Its
 settings appear as a board-named panel in Settings, with controls for the declared type and a
 **Reset** action that returns the value to the manifest default. The panel is grouped under
 **Editors** for boards that are custom editors and under **Boards** for other boards.
+
+Board-supplied descriptions appear on the help buttons beside their setting labels.
 
 Persephone owns the values in the application profile's `data\board-settings.json` (normally
 `%APPDATA%\persephone\data\board-settings.json`); a board can only

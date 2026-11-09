@@ -15,7 +15,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
 import { LibraryPathSectionView } from "./SettingsSections";
-import { createSectionRoot, panel, settingsFieldLabel, text } from "./settings-native";
+import { createSectionRoot, helpHeader, helpIcon, panel, settingsFieldLabel } from "./settings-native";
 import { boardDisplayText, boardMetadataKeys } from "../../board/board-display-text";
 import "../../../uikit/Textarea/Textarea.css";
 
@@ -37,6 +37,9 @@ interface BoardSettingControl {
     readGeneration: number;
 }
 
+// Board inputs, selects and multi-selects sit on the label's line at this width.
+const CONTROL_WIDTH = 280;
+
 function settingText(value: BoardSettingValue): string {
     return typeof value === "string" ? value : String(value);
 }
@@ -51,8 +54,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
 
     protected onMount(): void {
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(this.props.displayName, { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text(t("settings.boardSettingsDescription"), { color: "light", size: "xs" })),
+            helpHeader(this.props.displayName, t("settings.boardSettingsDescription"), (cleanup) => this.own(cleanup)),
         );
 
         for (const declaration of this.props.declarations) this.mountDeclaration(declaration);
@@ -131,13 +133,21 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             return;
         }
 
-        const row = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
-        if (declaration.type !== "boolean") row.append(settingsFieldLabel(this.settingLabel(declaration)));
+        // Label, control and Reset share one line; only a multiline textarea gets a line of its own
+        // below its label row (which then carries the Reset button).
+        const multiline = declaration.type === "string" && declaration.format === "multiline";
+        const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: multiline ? "none" : "md" });
         const description = this.settingDescription(declaration);
-        if (description) row.append(text(description, { color: "light", size: "xs" }));
+        const help = description ? helpIcon(this.settingLabel(declaration), description, (cleanup) => this.own(cleanup)).root : undefined;
+        if (declaration.type !== "boolean") {
+            const label = panel({ direction: "row", align: "center", shrink: false }, settingsFieldLabel(this.settingLabel(declaration)));
+            if (help) label.append(help);
+            row.append(label);
+        }
 
+        let below: HTMLElement | undefined;
         if (declaration.type === "boolean") {
-            const checkboxRow = panel({ direction: "row", align: "center", gap: "md" });
+            const checkboxRow = panel({ direction: "row", align: "center" });
             const checkbox = this.child(new CheckboxView({
                 checked: declaration.default === true,
                 onChange: (value) => { void this.writeValue(control, value); },
@@ -145,6 +155,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             }));
             control.checkbox = checkbox;
             checkboxRow.append(checkbox.root);
+            if (help) checkboxRow.append(help);
             checkbox.mount();
             row.append(checkboxRow);
         } else if (declaration.type === "enum") {
@@ -157,10 +168,10 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             control.multiSelect = multiSelect;
             row.append(multiSelect.root);
             multiSelect.mount();
-        } else if (declaration.type === "string" && declaration.format === "multiline") {
+        } else if (multiline) {
             const textarea = this.child(new TextareaView(this.textareaProps(control)));
             control.textarea = textarea;
-            row.append(textarea.root);
+            below = textarea.root;
             textarea.mount();
         } else {
             const input = this.child(new InputView(this.inputProps(control)));
@@ -176,12 +187,13 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
             onClick: () => void this.resetValue(control),
             children: t("settings.reset"),
         }));
-        // A row keeps the button at its natural width; the column would stretch it.
-        const resetRow = panel({ direction: "row" });
-        resetRow.append(reset.root);
+        row.append(reset.root);
         reset.mount();
-        row.append(resetRow);
-        this.root.append(row);
+        if (below) {
+            this.root.append(row, panel({ direction: "column", paddingTop: "sm", paddingBottom: "md" }, below));
+        } else {
+            this.root.append(row);
+        }
     }
 
     private inputProps(control: BoardSettingControl): InputProps {
@@ -189,6 +201,8 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         return {
             name: `board-setting-${declaration.id}`,
             type: "text" as const,
+            size: "sm",
+            width: CONTROL_WIDTH,
             value: control.draft ?? settingText(declaration.default),
             onChange: (value: string) => {
                 control.draft = value;
@@ -218,6 +232,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         const selectedValue = typeof control.draft === "string" ? control.draft : settingText(declaration.default);
         return {
             name: `board-setting-${declaration.id}`,
+            width: CONTROL_WIDTH,
             items,
             value: items.find((item) => item.value === selectedValue) ?? null,
             onChange: (item: IListBoxItem): void => { void this.writeValue(control, item.value); },
@@ -242,6 +257,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
 
         return {
             name: `board-setting-${declaration.id}`,
+            width: CONTROL_WIDTH,
             items,
             value,
             formatSelection: (selection) => selection.map((item) => item.value).join(", "),

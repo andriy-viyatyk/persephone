@@ -4,6 +4,7 @@
   "name": "Magyar",
   "englishName": "Hungarian",
   "messages": {
+    "settings.moreInformation": "További információ: {label}",
     "settings.microphoneTitle": "Mikrofon hangja",
     "settings.microphoneDescription": "A kezelt mikrofon hangjának helyi zajcsökkentése.",
     "settings.microphoneClean": "Mikrofonhang tisztítása",
@@ -1821,6 +1822,7 @@
     "voiceTyping.translatingTranscribing": "Átírás angolul — megszakítás: Esc"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

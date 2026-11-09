@@ -10,7 +10,7 @@ import { t } from "../../../../shared/i18n/t";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { createSectionRoot, panel, text } from "./settings-native";
+import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
 import "../../../uikit/Select/Select.css";
 
 interface LanguageOption extends Omit<IListBoxItem, "label"> {
@@ -98,8 +98,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
 
     protected onMount(): void {
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.languageTitle"), { bold: true, size: "sm" })),
-            panel({ paddingBottom: "md" }, text(t("settings.languageDescription"), { color: "light", size: "xs" })),
+            helpHeader(t("settings.languageTitle"), t("settings.languageDescription"), (cleanup) => this.own(cleanup)),
         );
         this.select = this.child(new SelectView(this.selectProps()));
         this.root.append(panel({ maxWidth: 420, paddingBottom: "sm" }, this.select.root));
@@ -131,6 +130,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
                 }),
         }));
         return {
+            "aria-label": t("settings.languageTitle"),
             items,
             value: items.find((option) => option.value === selectedValue) ?? items[0] ?? null,
             onChange: (item) => { void this.handleLanguageChange(item.value); },

@@ -17,7 +17,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.19 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
+  its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
 
 ---
 

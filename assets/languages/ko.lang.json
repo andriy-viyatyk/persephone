@@ -4,6 +4,7 @@
   "name": "한국어",
   "englishName": "Korean",
   "messages": {
+    "settings.moreInformation": "{label}에 대한 자세한 정보",
     "settings.microphoneTitle": "마이크 오디오",
     "settings.microphoneDescription": "관리되는 마이크 오디오를 로컬 소음 억제로 정리합니다.",
     "settings.microphoneClean": "마이크 오디오 정리",
@@ -1773,6 +1774,7 @@
     "voiceTyping.translatingTranscribing": "영어로 텍스트 변환 중 — 취소: Esc"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

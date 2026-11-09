@@ -4,6 +4,7 @@
   "name": "Українська",
   "englishName": "Ukrainian",
   "messages": {
+    "settings.moreInformation": "Докладніше про {label}",
     "settings.microphoneTitle": "Аудіо мікрофона",
     "settings.microphoneDescription": "Очищайте кероване аудіо мікрофона локальним шумозаглушенням.",
     "settings.microphoneClean": "Очищати аудіо мікрофона",
@@ -1917,6 +1918,7 @@
     "voiceTyping.translatingTranscribing": "Транскрибування англійською — Esc, щоб скасувати"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

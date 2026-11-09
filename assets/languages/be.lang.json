@@ -4,6 +4,7 @@
   "name": "Беларуская",
   "englishName": "Belarusian",
   "messages": {
+    "settings.moreInformation": "Дадатковая інфармацыя пра {label}",
     "settings.microphoneTitle": "Аўдыё мікрафона",
     "settings.microphoneDescription": "Лакальнае шумапрыглушэнне для кіраванага аўдыё мікрафона.",
     "settings.microphoneClean": "Ачышчаць аўдыё мікрафона",
@@ -1917,6 +1918,7 @@
     "voiceTyping.translatingTranscribing": "Транскрыбоўванне на англійскай мове — Esc, каб скасаваць"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

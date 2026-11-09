@@ -4,6 +4,7 @@
   "name": "Português (Brasil)",
   "englishName": "Portuguese (Brazil)",
   "messages": {
+    "settings.moreInformation": "Mais informações sobre {label}",
     "settings.microphoneTitle": "Áudio do microfone",
     "settings.microphoneDescription": "Limpe o áudio gerenciado com redução de ruído local.",
     "settings.microphoneClean": "Limpar áudio do microfone",
@@ -1869,6 +1870,7 @@
     "voiceTyping.translatingTranscribing": "Transcrevendo em inglês — Esc para cancelar"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",

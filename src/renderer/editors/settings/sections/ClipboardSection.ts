@@ -13,7 +13,7 @@ import {
     type ClipboardSectionProps,
     type ClipboardSectionState,
 } from "./ClipboardSectionModel";
-import { createSectionRoot, panel, text } from "./settings-native";
+import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Input/Input.css";
 
@@ -40,11 +40,7 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.own(() => driver.dispose());
 
         this.root.append(
-            panel({ paddingBottom: "lg" }, text(t("settings.clipboardTitle"), { bold: true, size: "sm" })),
-            panel(
-                { paddingBottom: "md" },
-                text(t("settings.clipboardDescription"), { color: "light", size: "xs" }),
-            ),
+            helpHeader(t("settings.clipboardTitle"), t("settings.clipboardDescription"), (cleanup) => this.own(cleanup)),
         );
 
         const enabledRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });

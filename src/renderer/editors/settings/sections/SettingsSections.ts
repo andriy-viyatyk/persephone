@@ -8,6 +8,7 @@ import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
+import { HelpIconView } from "../../../uikit/HelpIcon/HelpIconView";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
@@ -16,7 +17,7 @@ import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
-import { createSectionRoot, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
+import { createSectionRoot, helpHeader, helpIcon, helpLabel, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
 import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
@@ -42,10 +43,6 @@ const TERMINAL_ITEMS: readonly { value: string; key: "settings.autoDetectTermina
     { value: "wt", key: "settings.windowsTerminal" },
 ];
 
-function sectionHeader(root: Node, title: string, description: string): void {
-    root.appendChild(panel({ paddingBottom: "lg" }, text(title, { bold: true, size: "sm" })));
-    root.appendChild(panel({ paddingBottom: "md" }, text(description, { color: "light", size: "xs" })));
-}
 
 export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> {
     private select: SelectView<IListBoxItem> | undefined;
@@ -74,29 +71,27 @@ export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> 
     private selectProps(): SelectViewProps<IListBoxItem> {
         const value = settings.get("link-open-behavior");
         const items = LINK_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
-        return { items, value: items.find((item) => item.value === value) ?? null, onChange: (item) => settings.set("link-open-behavior", item.value as "default-browser" | "internal-browser") };
+        return { "aria-label": t("settings.groupTitleLinks"), items, value: items.find((item) => item.value === value) ?? null, onChange: (item) => settings.set("link-open-behavior", item.value as "default-browser" | "internal-browser") };
     }
 }
 
 export class WindowBehaviorSectionView extends VanillaView<Record<string, never>> {
     private checkbox: CheckboxView | undefined;
-    private description: HTMLSpanElement | undefined;
+    private description: HelpIconView | undefined;
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.groupTitleWindowBehavior"), t("settings.windowBehaviorDescription"));
-        const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
+        this.root.append(helpHeader(t("settings.groupTitleWindowBehavior"), t("settings.windowBehaviorDescription"), (cleanup) => this.own(cleanup)));
+        const row = panel({ direction: "row", align: "center", paddingBottom: "md" });
         this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
         row.append(this.checkbox.root);
         this.checkbox.mount();
+        this.description = helpIcon(t("settings.keepRunningTray"), t("settings.lastWindowTray"), (cleanup) => this.own(cleanup));
+        row.append(this.description.root);
         this.root.append(row);
-        const descriptionPanel = panel({ paddingBottom: "lg" });
-        this.description = text("", { color: "light", size: "xs" });
-        descriptionPanel.append(this.description);
-        this.root.append(descriptionPanel);
         this.sync();
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "window.close-to-tray") this.sync();
@@ -118,9 +113,7 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
         const closeToTray = settings.get("window.close-to-tray");
         this.checkbox?.update(this.checkboxProps());
         if (this.description) {
-            this.description.textContent = closeToTray
-                ? t("settings.lastWindowTray")
-                : t("settings.lastWindowQuit");
+            this.description.update({ label: t("settings.moreInformation", { label: t("settings.keepRunningTray") }), text: closeToTray ? t("settings.lastWindowTray") : t("settings.lastWindowQuit") });
         }
     }
 }
@@ -133,7 +126,7 @@ export class EditorBehaviorSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.groupTitleEditorBehavior"), t("settings.editorBehaviorDescription"));
+        this.root.append(helpHeader(t("settings.groupTitleEditorBehavior"), t("settings.editorBehaviorDescription"), (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
         row.append(this.checkbox.root);
@@ -226,7 +219,7 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.groupTitleGitIntegration"), t("settings.gitHelp"));
+        this.root.append(helpHeader(t("settings.groupTitleGitIntegration"), t("settings.gitHelp"), (cleanup) => this.own(cleanup)));
         const driver = createComponentModelDriver(
             { gitEnabled: settings.get("git.enabled") },
             GitIntegrationModel,
@@ -289,7 +282,7 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.boardVarsTitle"), t("settings.boardVarsDescription"));
+        this.root.append(helpHeader(t("settings.boardVarsTitle"), t("settings.boardVarsDescription"), (cleanup) => this.own(cleanup)));
         this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         this.row = row;
@@ -362,9 +355,11 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
     }
 
     protected onMount(): void {
-        sectionHeader(this.root, this.config.title, this.config.description);
+        this.root.append(helpHeader(this.config.title, this.config.description, (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", gap: "md" });
         this.row = row;
+        row.setAttribute("role", "group");
+        row.setAttribute("aria-label", this.config.title);
         this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
         row.append(this.valuePanel);
         const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: t("settings.browse") }));
@@ -471,7 +466,7 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.videoPlayerTitle"), t("settings.videoPlayerDescription"));
+        this.root.append(helpHeader(t("settings.videoPlayerTitle"), t("settings.videoPlayerDescription"), (cleanup) => this.own(cleanup)));
         const driver = createComponentModelDriver(
             { videoStreamPort: settings.get("video-stream.port") },
             VideoPlayerModel,
@@ -556,7 +551,7 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.terminalTitle"), t("settings.terminalDescription"));
+        this.root.append(helpHeader(t("settings.terminalTitle"), t("settings.terminalDescription"), (cleanup) => this.own(cleanup)));
         const host = panel({ maxWidth: 360 });
         this.select = this.child(new SelectView(this.selectProps()));
         host.append(this.select.root); this.select.mount(); this.root.append(host);
@@ -570,7 +565,7 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
         const command = settings.get("terminal.command");
         const items: IListBoxItem[] = TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
         if (command && !items.some((item) => item.value === command)) items.push({ value: command, label: command });
-        return { items, value: items.find((item) => item.value === command) ?? items[0], onChange: (item) => settings.set("terminal.command", (item?.value as string) ?? "") };
+        return { "aria-label": t("settings.terminalTitle"), items, value: items.find((item) => item.value === command) ?? items[0], onChange: (item) => settings.set("terminal.command", (item?.value as string) ?? "") };
     }
 }
 
@@ -584,9 +579,9 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.voiceTypingSettingTitle"), t("settings.voiceTypingSettingDescription"));
+        this.root.append(helpHeader(t("settings.voiceTypingSettingTitle"), t("settings.voiceTypingSettingDescription"), (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        row.append(settingsFieldLabel(t("settings.voiceTypingShortcutLabel")));
+        row.append(helpLabel(t("settings.voiceTypingShortcutLabel"), t("settings.voiceTypingShortcutHelp"), (cleanup) => this.own(cleanup)));
         this.input = this.child(new InputView(this.inputProps()));
         this.input.root.addEventListener("keyup", (event) => this.captureRightCtrlTap(event));
         row.append(this.input.root);
@@ -599,9 +594,8 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         }));
         row.append(reset.root);
         reset.mount();
-        const help = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingShortcutHelp"), { color: "light", size: "xs" }));
         const translateRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        translateRow.append(settingsFieldLabel(t("settings.voiceTypingTranslateShortcutLabel")));
+        translateRow.append(helpLabel(t("settings.voiceTypingTranslateShortcutLabel"), t("settings.voiceTypingTranslateHint"), (cleanup) => this.own(cleanup)));
         this.translateInput = this.child(new InputView(this.translateInputProps()));
         this.translateInput.root.addEventListener("keyup", (event) => this.captureRightCtrlTap(event));
         translateRow.append(this.translateInput.root);
@@ -614,20 +608,17 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         }));
         translateRow.append(translateReset.root);
         translateReset.mount();
-        const translateHint = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingTranslateHint"), { color: "light", size: "xs" }));
         const silenceRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        silenceRow.append(settingsFieldLabel(t("settings.voiceTypingAutoStopLabel")));
+        silenceRow.append(helpLabel(t("settings.voiceTypingAutoStopLabel"), t("settings.voiceTypingAutoStopHelp"), (cleanup) => this.own(cleanup)));
         this.silenceSelect = this.child(new SelectView(this.silenceSelectProps()));
         silenceRow.append(this.silenceSelect.root);
         this.silenceSelect.mount();
-        const silenceHelp = panel({ paddingBottom: "md" }, text(t("settings.voiceTypingAutoStopHelp"), { color: "light", size: "xs" }));
         const inactivityRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        inactivityRow.append(settingsFieldLabel(t("settings.voiceTypingInactivityLabel")));
+        inactivityRow.append(helpLabel(t("settings.voiceTypingInactivityLabel"), t("settings.voiceTypingInactivityHelp"), (cleanup) => this.own(cleanup)));
         this.inactivitySelect = this.child(new SelectView(this.inactivitySelectProps()));
         inactivityRow.append(this.inactivitySelect.root);
         this.inactivitySelect.mount();
-        const inactivityHelp = panel({ paddingBottom: "lg" }, text(t("settings.voiceTypingInactivityHelp"), { color: "light", size: "xs" }));
-        this.root.append(row, help, translateRow, translateHint, silenceRow, silenceHelp, inactivityRow, inactivityHelp);
+        this.root.append(row, translateRow, silenceRow, inactivityRow);
         const subscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
             if (key === "voice-typing.translate-shortcut") this.translateInput?.update(this.translateInputProps());
@@ -646,7 +637,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
             label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
         }));
         const current = settings.get("voice-typing.auto-stop-inactivity-ms");
-        return { items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-inactivity-ms", Number(item?.value ?? 0)) };
+        return { width: 180, items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-inactivity-ms", Number(item?.value ?? 0)) };
     }
 
     private silenceSelectProps(): SelectViewProps<IListBoxItem> {
@@ -656,7 +647,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
             label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
         }));
         const current = settings.get("voice-typing.auto-stop-silence-ms");
-        return { items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-silence-ms", Number(item?.value ?? 0)) };
+        return { width: 180, items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-silence-ms", Number(item?.value ?? 0)) };
     }
 
     private inputProps(): InputProps {
@@ -666,7 +657,6 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
             value: settings.get("voice-typing.shortcut"),
             readOnly: true,
             "aria-label": t("settings.voiceTypingShortcutLabel"),
-            placeholder: t("settings.voiceTypingShortcutHelp"),
             onKeyDown: (event) => this.captureShortcut(event, "voice-typing.shortcut"),
         };
     }
@@ -678,7 +668,6 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
             value: settings.get("voice-typing.translate-shortcut"),
             readOnly: true,
             "aria-label": t("settings.voiceTypingTranslateShortcutLabel"),
-            placeholder: t("settings.voiceTypingShortcutHelp"),
             onKeyDown: (event) => this.captureShortcut(event, "voice-typing.translate-shortcut"),
         };
     }
@@ -740,7 +729,7 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        sectionHeader(this.root, t("settings.microphoneTitle"), t("settings.microphoneDescription"));
+        this.root.append(helpHeader(t("settings.microphoneTitle"), t("settings.microphoneDescription"), (cleanup) => this.own(cleanup)));
 
         const cleanRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         cleanRow.dataset.name = "microphone.clean";
@@ -762,8 +751,8 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.deviceSelect = this.child(new SelectView(this.deviceProps()));
         deviceHost.append(this.deviceSelect.root);
         this.deviceSelect.mount();
-        deviceRow.append(settingsFieldLabel(t("settings.microphoneDevice")), deviceHost);
-        this.root.append(panel({ paddingBottom: "sm" }, text(t("settings.microphoneDeviceHelp"), { color: "light", size: "xs" })), deviceRow);
+        deviceRow.append(helpLabel(t("settings.microphoneDevice"), t("settings.microphoneDeviceHelp"), (cleanup) => this.own(cleanup)), deviceHost);
+        this.root.append(deviceRow);
         // Connecting or removing a headset changes the list and the Windows default.
         const onDeviceChange = (): void => { void this.loadDevices(); };
         navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);

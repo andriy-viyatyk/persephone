@@ -4,6 +4,7 @@
   "name": "日本語",
   "englishName": "Japanese",
   "messages": {
+    "settings.moreInformation": "{label} の詳細情報",
     "settings.microphoneTitle": "マイク音声",
     "settings.microphoneDescription": "管理対象のマイク音声をローカルのノイズ抑制でクリアにします。",
     "settings.microphoneClean": "マイク音声をクリア",
@@ -1773,6 +1774,7 @@
     "voiceTyping.translatingTranscribing": "英語で文字起こし中 — キャンセル: Esc"
   },
   "source": {
+    "settings.moreInformation": "cc9b9183",
     "settings.microphoneTitle": "29d499c7",
     "settings.microphoneDescription": "1d090653",
     "settings.microphoneClean": "108d76e4",
