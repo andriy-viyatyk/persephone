@@ -3,12 +3,8 @@ import { registeredTools } from "../../../api/tools/registered-tools";
 import type { RegisteredToolset } from "../../../api/tools/registered-tools";
 import { executeToolById } from "../../../api/tools/tool-executor";
 import type { ToolRunResult } from "../../../api/tools/tool-executor";
-import {
-    handleCreateToolset,
-    handleRefreshToolset,
-    handleSearchTools,
-} from "../../../api/mcp/tool-commands";
-import type { McpResponse } from "../../../api/mcp/types";
+import { searchTools } from "../../../api/tools/tool-search";
+import { createToolsetWithConsent, refreshToolsets } from "../../../api/tools/toolset-operations";
 import type { IAiChild, IAiMember, IAiVisionDescriptor } from "ai-vision";
 import { choiceRule, stringRule, validateCallArguments } from "ai-vision";
 
@@ -62,11 +58,6 @@ function cloneWithoutUndefined(value: unknown): unknown {
         if (item !== undefined) cloned[key] = cloneWithoutUndefined(item);
     }
     return cloned;
-}
-
-function unwrapResponse(response: McpResponse): unknown {
-    if (response.error) throw new Error(response.error.message);
-    return response.result;
 }
 
 function projectTool(tool: unknown): Record<string, unknown> {
@@ -172,7 +163,7 @@ class ToolsetsNode {
 
     async refresh(): Promise<unknown> {
         requireInitialized();
-        return cloneWithoutUndefined(unwrapResponse(await handleRefreshToolset({}))) as unknown;
+        return cloneWithoutUndefined(await refreshToolsets());
     }
 
     get aiVision(): IAiVisionDescriptor {
@@ -209,10 +200,7 @@ export class ToolsNode {
             }
         }
 
-        const params: Record<string, unknown> = {};
-        if (validQuery !== undefined) params.query = validQuery;
-        if (maxResults !== undefined) params.maxResults = maxResults;
-        return cloneWithoutUndefined(unwrapResponse(await handleSearchTools(params))) as unknown;
+        return cloneWithoutUndefined(await searchTools(validQuery, maxResults));
     }
 
     async execute(toolId: string, args?: unknown): Promise<ToolRunResult> {
@@ -240,7 +228,7 @@ export class ToolsNode {
     }
 
     async createToolset(name: string, dir: string): Promise<unknown> {
-        return cloneWithoutUndefined(unwrapResponse(await handleCreateToolset({ name, dir }))) as unknown;
+        return cloneWithoutUndefined(await createToolsetWithConsent(name, dir));
     }
 
     get aiVision(): IAiVisionDescriptor {

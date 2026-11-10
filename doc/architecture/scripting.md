@@ -1080,7 +1080,7 @@ and `close()`. The password dialog adapter deliberately exposes no value. The re
 entry collects these surfaces before returning and races a newly opened blocking dialog, returning
 an `ICallResult` with `pending: true` and `attention` while the underlying action remains in
 progress; a subsequent call answers the live `dialogs[i]` node. Main merges tracked native-dialog
-attention into forwarded renderer results and turns only the renderer-bridge timeout sentinel
+attention into forwarded renderer results and turns only the typed renderer-RPC timeout error
 into a pending result while a native dialog is still active. Native dialogs are never driven by
 AiVision: asynchronous file/folder/message-box calls are reported per window, while synchronous
 native calls block main's event loop and cannot be reported in real time. `app.call()` and the
@@ -1237,7 +1237,7 @@ When output is suppressed and the script throws an error, the error is displayed
 | F5 (script panel open) | `TextFileActionsModel` | Always `"typescript"` | Script panel content |
 | F5 (script panel closed, JS/TS file) | `TextFileActionsModel` | From page state | Page content (or selection) |
 | Run button (script panel) | `ScriptPanelView.ts` | Always `"typescript"` | Script panel content |
-| MCP `script.execute` | `mcp-handler.ts` | Caller-specified (optional) | Script from an MCP call path |
+| MCP `script.execute` | `mcp-call-rpc.ts` | Caller-specified (optional) | Script from an MCP call path |
 | Autoload (window open) | `AutoloadRunner.ts` | Determined by file extension | Registration scripts from `library/autoload/` |
 
 ## Autoload Scripts

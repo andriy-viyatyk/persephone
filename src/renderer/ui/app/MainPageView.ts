@@ -14,7 +14,7 @@ import { mnemeStatusModel } from "../../api/mneme-status";
 import { pagesModel } from "../../api/pages";
 import { windowRecording, type WindowRecordingState } from "../../api/window-recording";
 import type { RecordingRegion } from "../../../ipc/api-param-types";
-import { showMcpRequestLog } from "../../api/mcp-handler";
+import { showMcpRequestLog } from "../../api/mcp/request-log";
 import { errMessage } from "../../../shared/utils";
 import { SerialQueue } from "../../../shared/serial-queue";
 import { PageTabsView } from "../tabs/PageTabsView";

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { openWindows } from "./open-windows";
 import { EventEndpoint } from "../ipc/api-types";
-import { cancelPendingRequests, initMcpIpc } from "./mcp/renderer-bridge";
+import { cancelRendererRequests } from "./renderer-rpc";
 import { loadSdk, McpTransportInstance, requireSdk, McpServerInstance } from "./mcp/sdk";
 import { createMcpServer } from "./mcp/server-factory";
 import { getPrivateMcpClientCount, setPrivateMcpStatusChanged } from "./mcp/private-session-endpoints";
@@ -239,7 +239,6 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
 
     await loadSdk();
     currentPort = port ?? DEFAULT_PORT;
-    initMcpIpc();
 
     startPromise = new Promise<void>((resolve, reject) => {
         const server = http.createServer(handleHttpRequest);
@@ -286,7 +285,7 @@ export async function stopMcpHttpServer(): Promise<void> {
     }
     sessions.clear();
 
-    cancelPendingRequests("Server shutting down");
+    cancelRendererRequests("Server shutting down");
 
     return new Promise<void>((resolve) => {
         httpServer.close(() => {

@@ -10,12 +10,13 @@ import {
     utilityProcess,
 } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
-import { capabilityRegistry } from "./capability-registry";
+import type { RendererRpcMethods } from "../ipc/renderer-rpc";
+import { boardTrustService } from "./board-trust-service";
 import { capabilityRouter, publicCapabilityProvider } from "./capability-router";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardLocalCallerId, boardRootDigest } from "./board-root-hashes";
 import type { CapabilityClientResult, CapabilityProvider } from "../ipc/capability-bus-channels";
-import { BoardServiceSettingsChannel, type BoardServiceSettingsReply, type BoardServiceSettingsRequest } from "../ipc/board-service-settings-channels";
+import { BoardServiceSettingsChannel } from "../ipc/board-service-settings-channels";
 import { guardedIpcOn } from "./ipc-sender-guard";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
@@ -57,10 +58,10 @@ import { issuePrivateMcpEndpoint, revokePrivateMcpEndpointForBoard, revokePrivat
 import { isServiceChannelClose, serviceChannelCloseFrame, type ServiceChannel } from "../shared/service-channel";
 import { openElectronServiceChannel } from "../shared/service-channel-node";
 import type { CapabilityCallerIdentity, CapabilityErrorCode, CapabilityJson } from "../shared/capability-contract";
-import { isKeyInside } from "../shared/path-containment";
 import { onWebContentsGone } from "./webcontents-lifetime";
 import { PendingRequests } from "../shared/pending-requests";
-import { toWireError, wireError } from "../shared/wire-error";
+import { isCoded } from "../shared/coded-error";
+import { requestRenderer } from "./renderer-rpc";
 import { deliverConsumerPort, type ChannelDelivery } from "./channel-delivery";
 
 function delay(milliseconds: number): Promise<void> {
@@ -73,13 +74,6 @@ const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; ver
     ["speech.wake@1", { interfaceId: "speech.wake", version: 1, openTypes: new Set(["describe", "enroll", "list", "delete", "listen"]), ownerLabel: "speech-wake" }],
     ["text.translate@1", { interfaceId: "text.translate", version: 1, openTypes: new Set(["describe", "detect", "translate", "download"]), ownerLabel: "text-translation" }],
 ]);
-
-interface BoardSettingsMeta {
-    record: ServiceRecord;
-    process: UtilityProcess;
-    generation: number;
-    webContents?: WebContents;
-}
 
 class ModuleServiceSupervisor {
     private readonly records = new Map<string, ServiceRecord>();
@@ -95,10 +89,7 @@ class ModuleServiceSupervisor {
     private readonly providerKeys = new Map<string, string>();
     private providerIndex = new Map<string, TrustedBoardSnapshotEntry[]>();
     private disposing = false;
-    private readonly boardSettingsPending = new PendingRequests<BoardServiceSettingsReply, BoardSettingsMeta, string>({
-        nextId: () => crypto.randomUUID(),
-        timeoutError: () => new ServiceError("service-timeout", "Service request timed out."),
-    });
+    private readonly boardSettingsAborts = new Map<ServiceRecord, Set<AbortController>>();
     private readonly boardSettingsSubscriptions = new Map<string, {
         record: ServiceRecord;
         process: UtilityProcess;
@@ -120,16 +111,6 @@ class ModuleServiceSupervisor {
                 }
             });
         });
-        for (const replyChannel of [
-            BoardServiceSettingsChannel.getReply,
-            BoardServiceSettingsChannel.subscribeReply,
-            BoardServiceSettingsChannel.unsubscribeReply,
-        ]) {
-            guardedIpcOn(replyChannel, (event, reply: BoardServiceSettingsReply) => {
-                if (!reply || typeof reply.requestId !== "string") return;
-                this.boardSettingsPending.settle(reply.requestId, reply, (meta) => meta.webContents === event.sender);
-            });
-        }
         guardedIpcOn(BoardServiceSettingsChannel.changed, (event, change: { subscriptionId: string; id: string; value: unknown }) => {
             if (!change || typeof change.subscriptionId !== "string" || typeof change.id !== "string"
                 || !(typeof change.value === "string" || typeof change.value === "boolean"
@@ -151,7 +132,6 @@ class ModuleServiceSupervisor {
 
     async applyBoardServiceTrustSnapshot(snapshot: BoardServiceTrustSnapshot): Promise<void> {
         if (this.disposing) return;
-        capabilityRegistry.replace(snapshot);
         const previousSnapshot = this.trustedSnapshot;
         const previouslyUntrusted = new Set(
             [...this.records.values()]
@@ -232,7 +212,7 @@ class ModuleServiceSupervisor {
 
         // A board that STOPS declaring a service must lose its record entirely. Without this a
         // stale entry survives forever and `boards.list()` keeps reporting a `service` for a
-        // manifest that no longer has one â€” which breaks the contract that the key is absent for
+        // manifest that no longer has one — which breaks the contract that the key is absent for
         // boards with no service, and shows an agent something that does not exist. A record
         // still holding a live process is stopped first so the declaration cannot be dropped
         // while its `utilityProcess` keeps running.
@@ -441,13 +421,12 @@ class ModuleServiceSupervisor {
             if (!this.isBoardSettingsAllowed(record)) throw new ServiceError("untrusted");
             if (message.kind === "board-settings-get") {
                 if (typeof message.id !== "string" || !message.id.trim()) throw new ServiceError("service-error", "Board setting id must be a non-empty string.");
-                const reply = await this.requestBoardSettingsRenderer(record, process, generation, BoardServiceSettingsChannel.get, { id: message.id.trim() });
-                if (!reply.ok) throw new ServiceError(reply.error?.code ?? "service-error", reply.error?.message ?? "Board settings request failed.");
-                if (!(typeof reply.result === "string" || typeof reply.result === "boolean"
-                    || (typeof reply.result === "number" && Number.isFinite(reply.result)))) {
+                const result = await this.requestBoardSettingsRenderer(record, process, generation, "serviceSettingsGet", { boardRoot: record.boardRoot, id: message.id.trim() });
+                if (!(typeof result === "string" || typeof result === "boolean"
+                    || (typeof result === "number" && Number.isFinite(result)))) {
                     throw new ServiceError("service-error", "Board setting result must be a finite scalar.");
                 }
-                post("board-settings-response", { result: reply.result });
+                post("board-settings-response", { result });
                 return;
             }
             if (typeof message.subscriptionId !== "string" || !message.subscriptionId) throw new ServiceError("service-error", "Malformed board settings subscription.");
@@ -468,8 +447,8 @@ class ModuleServiceSupervisor {
             const subscription = this.boardSettingsSubscriptions.get(record.key);
             if (subscription?.subscriptionId === message.subscriptionId) {
                 try {
-                    await this.sendBoardSettingsToWebContents(record, process, generation, subscription.webContents, BoardServiceSettingsChannel.unsubscribe,
-                        { boardRoot: record.boardRoot, subscriptionId: message.subscriptionId });
+                    await this.sendBoardSettingsToWebContents(record, process, generation, subscription.webContents, "serviceSettingsUnsubscribe",
+                        { boardRoot: record.boardRoot, subscriptionId: message.subscriptionId }).catch((): undefined => undefined);
                 } finally {
                     this.removeBoardSettingsSubscription(subscription);
                 }
@@ -483,54 +462,56 @@ class ModuleServiceSupervisor {
         }
     }
 
-    private async requestBoardSettingsRenderer(
+    private async requestBoardSettingsRenderer<M extends "serviceSettingsGet" | "serviceSettingsSubscribe" | "serviceSettingsUnsubscribe">(
         record: ServiceRecord,
         process: UtilityProcess,
         generation: number,
-        channel: string,
-        request: Pick<BoardServiceSettingsRequest, "id"> | Omit<BoardServiceSettingsRequest, "requestId">,
-    ): Promise<BoardServiceSettingsReply> {
-        return this.requestBoardSettings(record, process, generation, () => this.selectBoardSettingsRenderer(), channel,
-            { ...request, boardRoot: record.boardRoot });
+        method: M,
+        params: RendererRpcMethods[M]["params"],
+    ): Promise<RendererRpcMethods[M]["result"]> {
+        return this.requestBoardSettings(record, process, generation, () => this.selectBoardSettingsRenderer(), method, params);
     }
 
-    private async requestBoardSettings(
+    private async requestBoardSettings<M extends "serviceSettingsGet" | "serviceSettingsSubscribe" | "serviceSettingsUnsubscribe">(
         record: ServiceRecord,
         process: UtilityProcess,
         generation: number,
         getRenderer: () => Promise<WebContents | undefined> | WebContents | undefined,
-        channel: string,
-        request: Omit<BoardServiceSettingsRequest, "requestId">,
-    ): Promise<BoardServiceSettingsReply> {
-        const meta: BoardSettingsMeta = { record, process, generation };
-        const { id: requestId, promise } = this.boardSettingsPending.create(SERVICE_REQUEST_DEADLINE_MS, undefined, { meta });
-        const outcome = promise.then(
-            (reply): BoardServiceSettingsReply => isCurrent(record, process, generation) ? reply
-                : { requestId, ok: false, error: wireError("The service has exited.", "service-exited") },
-            (error: unknown): BoardServiceSettingsReply => ({ requestId, ok: false, error: toWireError(error, "Renderer is unavailable.", "service-exited") }),
-        );
+        method: M,
+        params: RendererRpcMethods[M]["params"],
+    ): Promise<RendererRpcMethods[M]["result"]> {
+        const deadlineAt = Date.now() + SERVICE_REQUEST_DEADLINE_MS;
+        const abort = new AbortController();
+        this.trackBoardSettingsAbort(record, abort);
         let stopWatching: (() => void) | undefined;
         try {
             const renderer = await getRenderer();
-            if (!this.boardSettingsPending.has(requestId)) return await outcome;
-            if (!renderer || renderer.isDestroyed()) {
-                this.boardSettingsPending.fail(requestId, new ServiceError("service-exited", "No renderer window is available."));
-                return await outcome;
-            }
-            if (!isCurrent(record, process, generation)) {
-                this.boardSettingsPending.fail(requestId, new ServiceError("service-exited", "The service has exited."));
-                return await outcome;
-            }
-            meta.webContents = renderer;
-            stopWatching = onWebContentsGone(renderer, () => this.boardSettingsPending.fail(requestId,
-                new ServiceError("service-exited", "The renderer became unavailable.")), { repeat: true });
-            try { renderer.send(channel, { ...request, requestId, boardRoot: record.boardRoot }); }
-            catch (error: unknown) { this.boardSettingsPending.fail(requestId, new ServiceError("service-exited", errMessage(error, "Renderer is unavailable."))); }
-            return await outcome;
+            abort.signal.throwIfAborted();
+            if (!renderer || renderer.isDestroyed()) throw new ServiceError("service-exited", "No renderer window is available.");
+            if (!isCurrent(record, process, generation)) throw new ServiceError("service-exited", "The service has exited.");
+            const remainingMs = deadlineAt - Date.now();
+            if (remainingMs <= 0) throw new ServiceError("service-timeout", "Service request timed out.");
+            stopWatching = onWebContentsGone(renderer, () => abort.abort(new ServiceError("service-exited", "The renderer became unavailable.")), { repeat: true });
+            const result = await requestRenderer(method, params, { webContents: renderer }, remainingMs, abort.signal);
+            if (!isCurrent(record, process, generation)) throw new ServiceError("service-exited", "The service has exited.");
+            return result;
         } catch (error: unknown) {
-            this.boardSettingsPending.fail(requestId, new ServiceError("service-exited", errMessage(error, "Renderer is unavailable.")));
-            return await outcome;
-        } finally { stopWatching?.(); }
+            throw this.toBoardSettingsError(error);
+        } finally {
+            stopWatching?.();
+            this.untrackBoardSettingsAbort(record, abort);
+        }
+    }
+
+    private toBoardSettingsError(error: unknown): ServiceError {
+        if (error instanceof ServiceError) return error;
+        if (isCoded(error)) {
+            if (error.code === "timeout") return new ServiceError("service-timeout", "Service request timed out.");
+            if (error.code === "window-unavailable") return new ServiceError("service-exited", errMessage(error, "Renderer is unavailable."));
+            if (error.code === "method-not-found" || error.code === "invalid-params" || error.code === "cancelled") return new ServiceError("service-error", errMessage(error));
+            return new ServiceError(error.code, errMessage(error));
+        }
+        return new ServiceError("service-error", errMessage(error, "Board settings request failed."));
     }
 
     private async selectBoardSettingsRenderer(excluded?: WebContents): Promise<WebContents | undefined> {
@@ -561,9 +542,8 @@ class ModuleServiceSupervisor {
             || !this.isBoardSettingsAllowed(subscription.record)) throw new ServiceError("untrusted");
         const renderer = await this.selectBoardSettingsRenderer(excluded);
         if (!renderer) throw new ServiceError("service-exited", "No renderer window is available.");
-        const reply = await this.sendBoardSettingsToWebContents(subscription.record, subscription.process, subscription.generation, renderer, BoardServiceSettingsChannel.subscribe,
+        await this.sendBoardSettingsToWebContents(subscription.record, subscription.process, subscription.generation, renderer, "serviceSettingsSubscribe",
             { boardRoot: subscription.record.boardRoot, subscriptionId: subscription.subscriptionId });
-        if (!reply.ok) throw new ServiceError(reply.error?.code ?? "service-error", reply.error?.message ?? "Board settings subscription failed.");
         if (!isCurrent(subscription.record, subscription.process, subscription.generation)) throw new ServiceError("service-exited");
         this.detachBoardSettingsRenderer(subscription);
         subscription.webContents = renderer;
@@ -615,22 +595,23 @@ class ModuleServiceSupervisor {
         lifecycleListeners: Array<() => void>;
     }): void {
         if (subscription.webContents && !subscription.webContents.isDestroyed()) {
-            try { subscription.webContents.send(BoardServiceSettingsChannel.unsubscribe, { requestId: crypto.randomUUID(), boardRoot: subscription.record.boardRoot, subscriptionId: subscription.subscriptionId }); } catch { /* renderer exited */ }
+            void requestRenderer("serviceSettingsUnsubscribe", { boardRoot: subscription.record.boardRoot, subscriptionId: subscription.subscriptionId },
+                { webContents: subscription.webContents }, SERVICE_REQUEST_DEADLINE_MS).catch((): undefined => undefined);
         }
         this.detachBoardSettingsRenderer(subscription);
         if (this.boardSettingsSubscriptions.get(subscription.record.key) === subscription) this.boardSettingsSubscriptions.delete(subscription.record.key);
     }
 
-    private sendBoardSettingsToWebContents(
+    private sendBoardSettingsToWebContents<M extends "serviceSettingsGet" | "serviceSettingsSubscribe" | "serviceSettingsUnsubscribe">(
         record: ServiceRecord,
         process: UtilityProcess,
         generation: number,
         webContents: WebContents | undefined,
-        channel: string,
-        request: Omit<BoardServiceSettingsRequest, "requestId">,
-    ): Promise<BoardServiceSettingsReply> {
-        if (!webContents || webContents.isDestroyed()) return Promise.resolve({ requestId: "", ok: false, error: { code: "service-exited", message: "The renderer is unavailable." } });
-        return this.requestBoardSettings(record, process, generation, () => webContents, channel, request);
+        method: M,
+        params: RendererRpcMethods[M]["params"],
+    ): Promise<RendererRpcMethods[M]["result"]> {
+        if (!webContents || webContents.isDestroyed()) throw new ServiceError("service-exited", "The renderer is unavailable.");
+        return this.requestBoardSettings(record, process, generation, () => webContents, method, params);
     }
 
     private async handleCapabilityClient(record: ServiceRecord, process: UtilityProcess, generation: number,
@@ -967,7 +948,6 @@ class ModuleServiceSupervisor {
     }
 
     private async awaitTrustReady(): Promise<void> {
-        const { boardTrustService } = await import("./board-trust-service");
         await boardTrustService.ready();
     }
 
@@ -994,7 +974,7 @@ class ModuleServiceSupervisor {
     }
 
     /**
-     * Storage is available while the service PROCESS is alive and its board is trusted â€” which
+     * Storage is available while the service PROCESS is alive and its board is trusted — which
      * includes `starting`, before the handshake has completed.
      *
      * Requiring `running` here deadlocks the normal startup shape: a service that loads persisted
@@ -1021,10 +1001,7 @@ class ModuleServiceSupervisor {
 
     private isEffectivelyTrusted(boardRoot: string): boolean {
         if (!this.trustedSnapshot) return false;
-        const key = BoardRoot.from(boardRoot).key;
-        return this.trustedSnapshot.trustedPaths.some((trustedPath) =>
-            isKeyInside(BoardRoot.from(trustedPath).key, key),
-        );
+        return this.trustedSnapshot.trustedPaths.some((trustedPath) => BoardRoot.from(trustedPath).equals(boardRoot));
     }
 
     private async runStartAttempts(record: ServiceRecord, firstFailureAlreadyCounted: boolean): Promise<StartResult> {
@@ -1387,7 +1364,20 @@ class ModuleServiceSupervisor {
     }
 
     private settleBoardSettings(record: ServiceRecord, code: string): void {
-        this.boardSettingsPending.failWhere((meta) => meta.record === record, new ServiceError(code));
+        for (const controller of this.boardSettingsAborts.get(record) ?? []) controller.abort(new ServiceError(code));
+    }
+
+    private trackBoardSettingsAbort(record: ServiceRecord, controller: AbortController): void {
+        const controllers = this.boardSettingsAborts.get(record) ?? new Set<AbortController>();
+        controllers.add(controller);
+        this.boardSettingsAborts.set(record, controllers);
+    }
+
+    private untrackBoardSettingsAbort(record: ServiceRecord, controller: AbortController): void {
+        const controllers = this.boardSettingsAborts.get(record);
+        if (!controllers) return;
+        controllers.delete(controller);
+        if (controllers.size === 0) this.boardSettingsAborts.delete(record);
     }
 
     private closeRecordChannels(record: ServiceRecord, reason: { code: string; message: string }): void {

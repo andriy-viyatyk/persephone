@@ -7,6 +7,7 @@ import { getDataFolder } from "./utils";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardRootDigest, bundledBoardDigest } from "./board-root-hashes";
 import { bundledBoardId } from "./bundled-boards";
+import { readBoardManifest } from "./board-manifest-reader";
 
 export type JsonValue = BoardJsonValue;
 export type BoardStorageState = Record<string, JsonValue>;
@@ -21,6 +22,7 @@ const METADATA_FILE = "board.json";
 const BOARD_KEY_PATTERN = /^[0-9a-f]{64}$/;
 
 interface BoardStorageContext {
+    root: BoardRoot;
     boardRoot: string;
     boardKey: string;
     bundledId?: string;
@@ -131,6 +133,7 @@ function contextForRoot(boardRoot: string): BoardStorageContext {
     }
 
     return {
+        root,
         boardRoot: root.digestInputs.storage,
         boardKey,
         bundledId,
@@ -196,19 +199,6 @@ function serializeStore(state: BoardStorageState): string {
     return content;
 }
 
-async function readManifestName(boardRoot: string): Promise<string | undefined> {
-    try {
-        const content = await fs.promises.readFile(path.join(boardRoot, "board-manifest.json"), "utf8");
-        const manifest: unknown = JSON.parse(content);
-        if (typeof manifest !== "object" || manifest === null || !isPlainObject(manifest)) return undefined;
-        const name = (manifest as Record<string, unknown>).name;
-        if (typeof name !== "string" || !name.trim()) return undefined;
-        return name.trim();
-    } catch {
-        return undefined;
-    }
-}
-
 async function ensureMetadata(context: BoardStorageContext): Promise<void> {
     try {
         await fs.promises.mkdir(context.folderPath, { recursive: true });
@@ -225,7 +215,7 @@ async function ensureMetadata(context: BoardStorageContext): Promise<void> {
     }
 
     try {
-        const name = await readManifestName(context.boardRoot);
+        const name = (await readBoardManifest(context.root))?.name?.trim() || undefined;
         const metadata = {
             boardRoot: context.boardRoot,
             name: name ?? path.basename(context.boardRoot),

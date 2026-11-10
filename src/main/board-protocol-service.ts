@@ -10,8 +10,8 @@ import { mimeTypeForPath } from "../shared/mime-types";
 import { errMessage } from "../shared/utils";
 import * as boardLog from "./board-log";
 import { boardTrustService } from "./board-trust-service";
-import { resolveAuthorizedPath } from "./board-file-access";
-import { BoardGrant } from "../shared/board/board-grant";
+import { boardFileAccess } from "./board-file-access";
+import { readBoardManifest } from "./board-manifest-reader";
 import { resolveBoardDialogFrame } from "./cdp-service";
 import { requestBoardDialog } from "./board-dialog-service";
 import { BoardRoot } from "../shared/board/board-root";
@@ -307,7 +307,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
     if (!root) return new Response("No board registered", { status: 404 });
 
     const grant = await boardTrustService.getGrant(root);
-    const confined = grant?.isDeclared() || await currentManifestIsObject(root);
+    const confined = grant?.isDeclared() || (await readBoardManifest(BoardRoot.from(root)))?.permissions.kind === "flags";
     let rel: string;
     try {
         rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
@@ -318,12 +318,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
     if (confined) {
         if (/%(?:2f|5c)/i.test(pathname) || rel.includes("\\")) return new Response("Not found", { status: 404 });
         try {
-            resolved = await resolveAuthorizedPath({
-                boardRoot: root,
-                requestedPath: rel,
-                rootOnly: true,
-                intent: "read",
-            });
+            resolved = await boardFileAccess.authorizeInsideRoot(root, rel);
         } catch {
             return new Response("Not found", { status: 404 });
         }
@@ -371,15 +366,6 @@ async function serveBoardFile(request: Request): Promise<Response> {
         statusText: response.statusText,
         headers,
     });
-}
-
-async function currentManifestIsObject(root: string): Promise<boolean> {
-    try {
-        const manifest = JSON.parse(await fs.promises.readFile(path.join(root, "board-manifest.json"), "utf8")) as { permissions?: unknown };
-        return BoardGrant.fromManifest(manifest?.permissions).isDeclared();
-    } catch {
-        return false;
-    }
 }
 
 /** Register the single `board://` handler on the host renderer's shared session.

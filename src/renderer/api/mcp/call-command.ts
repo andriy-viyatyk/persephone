@@ -1,4 +1,5 @@
-import type { McpParams, McpResponse } from "./types";
+import { codedError } from "../../../shared/coded-error";
+import type { McpCallParams } from "../../../ipc/renderer-rpc";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import type { HintMode } from "ai-vision";
 
@@ -7,14 +8,14 @@ import type { HintMode } from "ai-vision";
  * The main process peels `windows[i]` off the path before forwarding and passes the kinds whose
  * member lists this session has already seen, so hint dedupe survives the process boundary.
  */
-export async function handleCall(params: McpParams): Promise<McpResponse> {
+export async function handleCall(params: McpCallParams): Promise<unknown> {
     const path = typeof params?.path === "string" ? params.path : "";
     const args = Array.isArray(params?.args) ? (params.args as unknown[]) : undefined;
     const hints = params?.hints as HintMode | undefined;
     const maxLength = typeof params?.maxLength === "number" ? params.maxLength : undefined;
     const timeoutMs = params?.timeoutMs === undefined ? undefined : params.timeoutMs;
     if (timeoutMs !== undefined && !isPositiveIntegerTimeout(timeoutMs)) {
-        return { error: { code: -32602, message: "timeoutMs must be a positive integer." } };
+        throw codedError("invalid-params", "timeoutMs must be a positive integer.");
     }
     const seenKinds = new Set(Array.isArray(params?.seenKinds) ? (params.seenKinds as string[]) : []);
     const eventCursor = typeof params?.eventCursor === "number"
@@ -26,5 +27,5 @@ export async function handleCall(params: McpParams): Promise<McpResponse> {
 
     const { aiCall } = await import("../../scripting/ai-vision/call");
     const result = await aiCall(request, seenKinds, eventCursor, params?.collectAgentTips === true);
-    return { result };
+    return result;
 }

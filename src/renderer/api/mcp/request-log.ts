@@ -1,20 +1,22 @@
 import { pagesModel } from "../pages";
 import { LogViewEditor } from "../../editors/log-view";
 import type { McpRequestEntry } from "../../editors/log-view/logTypes";
-import type { McpParams, McpResponse } from "./types";
+
+type McpCallOutcome = { result: unknown } | { error: string };
 
 const MAX_REQUEST_LOG_ENTRIES = 200;
 const requestHistory: McpRequestEntry[] = [];
 
 export function logIncomingRequest(
     method: string,
-    params: McpParams,
-    response: McpResponse,
+    params: unknown,
+    outcome: McpCallOutcome,
     durationMs: number,
 ): void {
-    const result = response.result && typeof response.result === "object"
-        ? Object.fromEntries(Object.entries(response.result).filter(([key]) => key !== "_tipObservations"))
-        : response.result;
+    const responseResult = "result" in outcome ? outcome.result : undefined;
+    const result = responseResult && typeof responseResult === "object"
+        ? Object.fromEntries(Object.entries(responseResult).filter(([key]) => key !== "_tipObservations"))
+        : responseResult;
     requestHistory.push({
         type: "output.mcp-request",
         id: crypto.randomUUID(),
@@ -23,7 +25,7 @@ export function logIncomingRequest(
         method,
         params,
         result: result ?? null,
-        error: response.error?.message ?? null,
+        error: "error" in outcome ? outcome.error : null,
         durationMs,
     });
     if (requestHistory.length > MAX_REQUEST_LOG_ENTRIES) {

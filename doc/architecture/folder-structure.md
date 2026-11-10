@@ -166,16 +166,15 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
 │   ├── autoload-service.ts # Thin wrapper exposing AutoloadRunner to app lifecycle
 │   ├── pages.ts            # PagesModel singleton export
-│   ├── mcp-handler.ts      # Thin MCP IPC shell (receives commands from main, logs and returns results)
-│   ├── mcp/                # Renderer MCP command dispatch and focused command handlers
-│   │   ├── command-registry.ts # Built-in call, board_call, and private board openRawLink registry
-│   │   ├── call-command.ts  # Renderer-side MCP call command; creates a ScriptContext and resolves AiVision
-│   │   ├── board-call-command.ts # Page-scoped Board bridge calls; owner-page and trust checks
-│   │   ├── board-ts-project.ts # Board TypeScript project registration MCP handlers
-│   │   ├── board-open-raw-link.ts # Awaitable board navigation through the normal link pipeline
-│   │   ├── tool-commands.ts # Shared Agent Tools search/execute/create handlers used by the tools node
-│   │   ├── request-log.ts   # Bounded MCP request history and server-log page integration
-│   │   └── types.ts         # Shared renderer MCP request/response types
+│   ├── renderer-rpc-bootstrap.ts # Registers renderer RPC handlers and starts the server
+│   ├── renderer-rpc.ts     # Renderer RPC server (in api/)
+│   ├── mcp/                # MCP call adapter and request history/log
+│   │   ├── mcp-call-rpc.ts # MCP call RPC handler; creates a ScriptContext and resolves AiVision
+│   │   └── request-log.ts  # Bounded MCP request history and server-log page integration
+│   ├── boards/board-host-rpc.ts # Typed board-call/theme/open and TS-project RPC handlers
+│   ├── tools/              # Internal Agent Tools registry and plain typed operations
+│   │   ├── tool-search.ts  # Search registered tools
+│   │   └── toolset-operations.ts # Refresh and create/register toolsets
 │   ├── mneme-connection.ts # Shared, persistent Mneme MCP client — one auto-reconnecting connection; refcounted resource subscriptions fanned out to per-document watchers
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
@@ -929,6 +928,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
+├── json-file-store.ts       # Validated JSON persistence with serialized atomic writes
+├── renderer-rpc.ts          # Typed main-to-renderer RPC client and request lifecycle
 ├── application-profile.ts  # Profile argument validation and main-process profile identity
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
 ├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion
@@ -937,12 +938,16 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
 ├── mcp-http-server.ts      # MCP Streamable HTTP transport — sessions (idle reaper, cap), HTTP handling, start/stop lifecycle
+├── board-manifest-reader.ts # Main-owned normalized board manifest reader and mtime cache
+├── board-trust-store.ts    # Persisted trusted-board grant store
+├── board-trust-snapshot-builder.ts # Pure derivation of service and browser-claim snapshots
+├── board-trust-subscribers.ts # Wires trust snapshots to main-process consumers
+├── board-file-access.ts    # Board file-access grants, sessions and authorization
 ├── mcp/private-session-endpoints.ts # Lazy loopback MCP listener and revocable per-service bearer endpoints for private agent sessions
 ├── mcp/                    # What the MCP server offers, separate from how it is served
 │   ├── server-factory.ts   # createMcpServer() — assembles manifest + tool groups + guide resources
 │   ├── manifest.ts         # Server identity, client instructions, guide resource list, mtime-cached guide reader
 │   ├── register-tools.ts   # Generic registrar + the pass-through that implements most tools
-│   ├── renderer-bridge.ts  # MCP_EXECUTE/MCP_RESULT IPC — sendToRenderer with per-call timeout
 │   ├── sdk.ts              # Lazy MCP SDK + zod loader (loadSdk / requireSdk)
 │   ├── tool-results.ts     # Response → MCP content mappers (text, page content with image, screenshot)
 │   ├── types.ts            # IMcpToolDef and friends
@@ -972,9 +977,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-log.ts              # Single main-owned ui.log path resolver and serialized writer; bounded at 256 KiB with tail trimming
 ├── board-pipe-service.ts     # Main-side board pipe page/resource ownership and renderer range request correlation
 ├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
-├── board-file-access.ts     # Canonical path validation and manifest-permission-scoped board file access
+├── board-file-access.ts     # Persisted/session file grants and authorization through shared path containment
 ├── board-bridge.ts         # Per-board MessagePort bridge (manifest permissions enforced) — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
-├── board-trust-service.ts # Main owner of persisted trust grants, manifest permission snapshots, derived service eligibility and Browser URL claims, and cross-window trust broadcasts
+├── board-trust-service.ts # Main owner of trust mutations, refresh, current snapshots and subscriptions
 ├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, direct board channels, status, and teardown
 ├── module-service-record.ts # Per-service state and request/lease/channel records, generation checks, and utility-process cleanup
 ├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing

@@ -17,7 +17,7 @@ declare global {
                     ...args: unknown[]
                 ): void;
                 on(
-                    channel: Endpoint | typeof ENDPOINT_REPLY_CHANNEL | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName,
+                    channel: Endpoint | typeof ENDPOINT_REPLY_CHANNEL | EventEndpoint | BoardPipeChannel,
                     func: (...args: unknown[]) => void
                 ): () => void;
                 once(

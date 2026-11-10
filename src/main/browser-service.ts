@@ -30,7 +30,7 @@ import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
-import { hasRecentRendererRequest } from "./mcp/renderer-bridge";
+import { hasRecentRendererRequest } from "./renderer-rpc";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";

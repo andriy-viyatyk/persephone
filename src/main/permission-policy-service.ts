@@ -1,9 +1,7 @@
 import { app, session, webContents, type Session, type WebContents } from "electron";
-import fs from "node:fs";
-import path from "node:path";
 import { appPartition, fileAccessPersistPartition } from "./constants";
-import { getDataFolder } from "./utils";
 import { errMessage } from "../shared/utils";
+import { JsonFileStore } from "./json-file-store";
 import type { BrowserSitePermissionKey } from "../ipc/browser-ipc";
 import { boardTrustService } from "./board-trust-service";
 import { getBoardRootForHost } from "./board-protocol-service";
@@ -40,6 +38,32 @@ const sessionProfiles = new WeakMap<Session, string | null>();
 const installedSessions = new WeakSet<Session>();
 const pending = new Map<string, { callback: (allowed: boolean) => void; session: Session; webContents: WebContents; profileName: string | null; origin: string; keys: BrowserPermissionKey[] }>();
 const store: PermissionStore = { version: 1, profiles: Object.create(null) as PermissionStore["profiles"] };
+function sanitizePermissionStore(raw: unknown): PermissionStore | null {
+    if (!raw || typeof raw !== "object" || (raw as PermissionStore).version !== 1
+        || !(raw as PermissionStore).profiles || typeof (raw as PermissionStore).profiles !== "object") return null;
+    const profiles = Object.create(null) as PermissionStore["profiles"];
+    for (const [profile, origins] of Object.entries((raw as PermissionStore).profiles)) {
+        if (!profile || !isSafeProfileName(profile) || !origins || typeof origins !== "object") continue;
+        const validOrigins = Object.create(null) as PermissionStore["profiles"][string];
+        for (const [origin, permissions] of Object.entries(origins)) {
+            if (normalizeOrigin(origin) !== origin || !permissions || typeof permissions !== "object") continue;
+            const validPermissions = Object.create(null) as Record<string, PermissionDecision>;
+            for (const [key, decision] of Object.entries(permissions)) {
+                const supportedKey = PROMPTABLE.has(key as BrowserPermissionKey)
+                    || Array.from(EXTERNAL_SCHEMES).some((scheme) => key === `openExternal:${scheme}`);
+                if (supportedKey && (decision === "allow" || decision === "block")) validPermissions[key] = decision;
+            }
+            if (Object.keys(validPermissions).length) validOrigins[origin] = validPermissions;
+        }
+        if (Object.keys(validOrigins).length) profiles[profile] = validOrigins;
+    }
+    return { version: 1, profiles };
+}
+const permissionStore = new JsonFileStore<PermissionStore>("browser-permissions.json", {
+    validate: sanitizePermissionStore,
+    defaultValue: () => ({ version: 1, profiles: Object.create(null) as PermissionStore["profiles"] }),
+    onSaveError: "warn",
+});
 let appSession: Session;
 let fileAccessSession: Session;
 let promptHandler: PermissionPromptHandler | undefined;
@@ -258,40 +282,11 @@ function getDecision(ses: Session, profileName: string | null, origin: string, k
 }
 
 function writeStore(): void {
-    const filename = path.join(getDataFolder(), "browser-permissions.json");
-    const temp = `${filename}.${process.pid}.tmp`;
-    try {
-        fs.mkdirSync(path.dirname(filename), { recursive: true });
-        fs.writeFileSync(temp, JSON.stringify(store, null, 2), "utf8");
-        fs.renameSync(temp, filename);
-    } catch (error: unknown) {
-        try { fs.rmSync(temp, { force: true }); } catch { /* best effort cleanup */ }
-        console.warn(`Failed to save browser permission decisions: ${errMessage(error)}`);
-    }
+    permissionStore.saveSync(store);
 }
 
 function hydrateStore(): void {
-    try {
-        const raw: unknown = JSON.parse(fs.readFileSync(path.join(getDataFolder(), "browser-permissions.json"), "utf8"));
-        if (!raw || typeof raw !== "object" || (raw as PermissionStore).version !== 1 || !(raw as PermissionStore).profiles || typeof (raw as PermissionStore).profiles !== "object") return;
-        const profiles = Object.create(null) as PermissionStore["profiles"];
-        for (const [profile, origins] of Object.entries((raw as PermissionStore).profiles)) {
-            if (!profile || !isSafeProfileName(profile) || !origins || typeof origins !== "object") continue;
-            const validOrigins = Object.create(null) as PermissionStore["profiles"][string];
-            for (const [origin, permissions] of Object.entries(origins)) {
-                if (normalizeOrigin(origin) !== origin || !permissions || typeof permissions !== "object") continue;
-                const validPermissions = Object.create(null) as Record<string, PermissionDecision>;
-                for (const [key, decision] of Object.entries(permissions)) {
-                    const supportedKey = PROMPTABLE.has(key as BrowserPermissionKey)
-                        || Array.from(EXTERNAL_SCHEMES).some((scheme) => key === `openExternal:${scheme}`);
-                    if (supportedKey && (decision === "allow" || decision === "block")) validPermissions[key] = decision;
-                }
-                if (Object.keys(validPermissions).length) validOrigins[origin] = validPermissions;
-            }
-            if (Object.keys(validOrigins).length) profiles[profile] = validOrigins;
-        }
-        store.profiles = profiles;
-    } catch { /* Missing or invalid store means all sites are undecided. */ }
+    store.profiles = permissionStore.loadSync().value.profiles;
 }
 
 function saveDecision(ses: Session, profileName: string | null, origin: string, key: BrowserPermissionKey, decision: PermissionDecision): void {

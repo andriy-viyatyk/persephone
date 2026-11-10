@@ -1,10 +1,8 @@
-import path from "node:path";
-import fs from "node:fs";
 import { BrowserWindow } from "electron";
 import { EventEndpoint } from "../ipc/api-types";
 import { OpenWindow } from "./open-window";
 import { windowStates } from "./window-states";
-import { getDataFolder, preparePath } from "./utils";
+import { JsonFileStore } from "./json-file-store";
 import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
 import type { WindowCloseResolution } from "../ipc/api-types";
@@ -19,7 +17,19 @@ interface OpenWindowData {
     rendererReady?: boolean;
 }
 
-const windowsFileName = "openWindows.json";
+interface PersistedOpenWindow { index: number }
+
+function validateOpenWindows(raw: unknown): PersistedOpenWindow[] | null {
+    if (!Array.isArray(raw) || raw.some((window) => !window || typeof window !== "object"
+        || !Number.isFinite((window as { index?: unknown }).index))) return null;
+    return raw.map((window) => ({ index: (window as PersistedOpenWindow).index }));
+}
+
+const windowsStore = new JsonFileStore<PersistedOpenWindow[]>("openWindows.json", {
+    validate: validateOpenWindows,
+    defaultValue: () => [],
+    indent: 0,
+});
 
 class OpenWindows {
     windows: OpenWindowData[] = [];
@@ -257,38 +267,15 @@ class OpenWindows {
     };
 
     private saveState = (): void => {
-        const state: OpenWindowData[] = this.windows.filter((w) => !w.boardRoot).map((w) => ({
-            index: w.index,
-        }));
-        const dataFolder = getDataFolder();
-        if (!preparePath(dataFolder)) {
-            return;
-        }
-        const filePath = path.join(getDataFolder(), windowsFileName);
-        fs.writeFileSync(filePath, JSON.stringify(state), {
-            encoding: "utf-8",
-        });
+        windowsStore.saveSync(this.windows.filter((w) => !w.boardRoot).map((w) => ({ index: w.index })));
     };
 
     private loadState = (): OpenWindowData[] => {
-        const filePath = path.join(getDataFolder(), windowsFileName);
-        if (!fs.existsSync(filePath)) {
-            return [];
-        }
-        try {
-            const data = fs.readFileSync(filePath, { encoding: "utf-8" });
-            return JSON.parse(data);
-        } catch (e) {
-            console.error("Failed to load open windows state:", e);
-            return [];
-        }
+        return windowsStore.loadSync().value;
     };
 
     restoreState = (constructNormalWindow = true): void => {
-        let windows = this.loadState();
-        if (!Array.isArray(windows) || windows.some(w => !(typeof w.index === "number"))) {
-            windows = [];
-        }
+        const windows = this.loadState();
         if (windows.length === 1 && windows[0].index !== 0) {
             windowStates.changeIndex(windows[0].index, 0);
             windows[0].index = 0;

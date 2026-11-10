@@ -1,5 +1,7 @@
 import { AgentTipsRegistry, type AgentTipObservation } from "../agent-tips";
-import { RENDERER_REQUEST_TIMEOUT_MESSAGE, sendToRenderer } from "../renderer-bridge";
+import { RENDERER_REQUEST_TIMEOUT_MESSAGE } from "../../renderer-rpc";
+import { callRendererForMcp } from "../renderer-call";
+import type { McpCallParams } from "../../../ipc/renderer-rpc";
 import { toToolResult } from "../tool-results";
 import { IMcpToolDef, IMcpToolResult, McpResponse, ToolArgs } from "../types";
 import { IToolContext } from "./params";
@@ -104,7 +106,7 @@ function prefixAttentionPaths(text: string, prefix: string): string {
 /**
  * Renderer calls that deliberately block until the user acts. They need a bridge timeout longer
  * than the renderer's own wait bound, so `{ pending: true }` is always the host's decision and
- * never `sendToRenderer`'s 30 s default firing first. The invariant the whole long-poll rests on
+ * never the RPC's 30 s default firing first. The invariant the whole long-poll rests on
  * is: renderer bound for script.execute/script.result (25 s) < default bridge timeout (30 s).
  * The 125-second bridge timeout remains only for the blocking paths declared below.
  *
@@ -279,9 +281,8 @@ export function callTools(ctx: IToolContext, tips: AgentTipsRegistry): IMcpToolD
                         : capabilityAgentBridgeTimeout(forward.path, Array.isArray(params.args))
                             ?? remoteAppBridgeTimeout(forward.path, params.timeoutMs)
                             ?? automationWaitBridgeTimeout(forward.path, Array.isArray(params.args) ? params.args : []);
-                    response = await sendToRenderer(
-                        "call",
-                        { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor, collectAgentTips: true },
+                    response = await callRendererForMcp(
+                        { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor, collectAgentTips: true } as McpCallParams,
                         forward.windowIndex,
                         bridgeTimeoutMs,
                     );

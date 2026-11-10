@@ -1,3 +1,18 @@
+## EPIC-143 — Refactoring Phase 1.5, 1.6 and 3.1: persistence, the renderer RPC and main's board ownership
+
+Completed 2026-11-10. Roadmap Phase 1.5, 1.6 and 3.1: one JSON store in main, one typed main→renderer RPC separate from
+MCP, and main as the single owner of board manifests, trust snapshots and file-access grants. Plans were written by
+Sonnet subagents and reviewed against the roadmap guardrails; Codex implemented. Epic document: [EPIC-143](EPIC-143.md).
+
+- [x] **`JsonFileStore` (US-1825).** `src/main/json-file-store.ts` (atomic temp-file + rename, serialized writes, one corrupt-file policy) replaces the hand-written writers of the two trust files, browser permissions, UI preferences, open windows and recent downloads; formats unchanged. The electron-store rule is in `overview.md`.
+- [x] **Typed main→renderer RPC (US-1826).** `src/ipc/renderer-rpc.ts` + `src/main/renderer-rpc.ts` + one renderer server replace the MCP command channel (`MCP_EXECUTE`/`MCP_RESULT` deleted). MCP `call` is one client and is unchanged for agents; the six board methods (plus a typed `boardThemes`) moved to `api/boards/board-host-rpc.ts` and out of the MCP request log.
+- [x] **Settings on the RPC (US-1827).** Board-service-settings get/subscribe/unsubscribe are RPC methods; the supervisor's private correlator is gone. Board-pipe read and capability open are deferred (see the epic notes).
+- [x] **Plain tool functions (US-1828).** `api/tools/tool-search.ts` and `toolset-operations.ts` replace `tool-commands.ts`; the renderer `McpResponse` type is gone.
+- [x] **One manifest reader, exact-root trust (US-1829).** `src/main/board-manifest-reader.ts` (mtime-keyed cache) replaces five main readers; `listBundledBoards()` owns the bundled folder; trust, the supervisor and the renderer mirror use exact `BoardRoot` lookup (D6).
+- [x] **Trust snapshot subscribers (US-1830).** `board-trust-store.ts`, `board-trust-snapshot-builder.ts` and `board-trust-subscribers.ts` split the trust service (517 → 255 lines); consumers subscribe; `getPermissionGrants()` is a pure read.
+- [x] **`BoardFileAccessService` (US-1831).** One owner for persisted and session file grants with one coverage rule; no dynamic imports between trust, file access and the pipe service; untrusting a board denies file access at once.
+- [x] **Epic review.** `/review` (no findings), `/document` (overview, key-files, folder-structure, scripting) and `/userdoc` (trust applies to the exact board root in three board guides) ran on Codex Luna. No catalog messages changed.
+
 ## EPIC-142 — Refactoring Phase 1: shared primitives and the board core
 
 Completed 2026-11-10. Roadmap Phase 1.1 to 1.4 and 2.1: one implementation of each cross-process primitive, one shared

@@ -42,9 +42,7 @@ export function initBoardPipeHandlers(): void {
                 const permissions = await boardTrustService.getGrant(boardRoot);
                 if (!permissions) throw new Error("This board is not trusted.");
                 if (filePath !== undefined) {
-                    await (await import("../../main/board-file-access")).resolveAuthorizedPath({
-                        boardRoot, requestedPath: filePath, grant: permissions, intent: "read",
-                    });
+                    await (await import("../../main/board-file-access")).boardFileAccess.authorize(boardRoot, filePath, "read");
                 }
             }
             boardPipeService.registerResource(resourceId, event.sender, host, boardRoot, filePath);

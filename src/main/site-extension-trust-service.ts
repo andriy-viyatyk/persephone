@@ -1,13 +1,13 @@
 import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../shared/site-extension-validation";
 import { validateSiteExtensionFetchHosts } from "../shared/site-extension-hosts";
-import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
 import path from "node:path";
 import type { SiteExtensionTrustSnapshot } from "../ipc/api-types";
 import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
-import { getDataFolder } from "./utils";
 import { SerialQueue } from "../shared/serial-queue";
+import { JsonFileStore } from "./json-file-store";
+
+interface SiteExtensionTrustFile { version: 1; folder?: string; extensions: SiteExtensionTrustSnapshot }
 
 /** Folder identity for comparison: Windows paths are case-insensitive. */
 function folderKey(folder: string): string {
@@ -15,8 +15,7 @@ function folderKey(folder: string): string {
     return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
-function parseTrustFile(text: string): { folder?: string; snapshot: SiteExtensionTrustSnapshot } {
-    const parsed: unknown = JSON.parse(text);
+function parseTrustFile(parsed: unknown): SiteExtensionTrustFile {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid site extension trust file.");
     const root = parsed as { version?: unknown; folder?: unknown; extensions?: unknown };
     if (root.version !== 1 || !root.extensions || typeof root.extensions !== "object" || Array.isArray(root.extensions)
@@ -33,8 +32,13 @@ function parseTrustFile(text: string): { folder?: string; snapshot: SiteExtensio
         if (!fetchHosts) throw new Error("Invalid site extension trust record.");
         snapshot[id] = { hosts: [...new Set(record.hosts)].sort(), fetchHosts: fetchHosts.sort(), enabled: record.enabled };
     }
-    return { folder: root.folder as string | undefined, snapshot };
+    return { version: 1, folder: root.folder as string | undefined, extensions: snapshot };
 }
+
+const trustStore = new JsonFileStore<SiteExtensionTrustFile>("trustedSiteExtensions.json", {
+    validate: parseTrustFile,
+    defaultValue: () => ({ version: 1, extensions: {} }),
+});
 
 class SiteExtensionTrustService {
     private snapshot: SiteExtensionTrustSnapshot = {};
@@ -47,13 +51,9 @@ class SiteExtensionTrustService {
 
     init(): Promise<void> {
         this.initialization ??= this.queue.run(async () => {
-            const file = path.join(getDataFolder(), "trustedSiteExtensions.json");
-            try { ({ folder: this.folder, snapshot: this.snapshot } = parseTrustFile(await fs.readFile(file, "utf8"))); }
-            catch (error) {
-                if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.warn("Site extension trust file is invalid; starting with no grants.");
-                this.snapshot = {};
-                this.folder = undefined;
-            }
+            const { value } = await trustStore.load();
+            this.folder = value.folder;
+            this.snapshot = value.extensions;
         });
         return this.initialization;
     }
@@ -105,7 +105,7 @@ class SiteExtensionTrustService {
             if (change(next) === false) return this.copy();
             // Read the folder inside the queue: a bind queued earlier may have changed it.
             const nextFolder = folder ?? this.folder;
-            await this.writeAtomically(next, nextFolder);
+            await trustStore.save({ version: 1, folder: nextFolder, extensions: next });
             this.snapshot = next;
             this.folder = nextFolder;
             for (const listener of this.listeners) listener();
@@ -121,23 +121,6 @@ class SiteExtensionTrustService {
     }
     private copy(): SiteExtensionTrustSnapshot {
         return Object.fromEntries(Object.entries(this.snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], fetchHosts: [...grant.fetchHosts], enabled: grant.enabled }]));
-    }
-    private async writeAtomically(snapshot: SiteExtensionTrustSnapshot, folder: string | undefined): Promise<void> {
-        const directory = getDataFolder();
-        await fs.mkdir(directory, { recursive: true });
-        const destination = path.join(directory, "trustedSiteExtensions.json");
-        const temporary = path.join(directory, `trustedSiteExtensions.${process.pid}.${randomUUID()}.tmp`);
-        let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
-        try {
-            handle = await fs.open(temporary, "wx");
-            await handle.writeFile(JSON.stringify({ version: 1, folder, extensions: snapshot }, null, 2), "utf8");
-            await handle.close(); handle = undefined;
-            await fs.rename(temporary, destination);
-        } catch (error) {
-            await handle?.close().catch((): undefined => undefined);
-            await fs.rm(temporary, { force: true }).catch((): undefined => undefined);
-            throw error;
-        }
     }
 }
 

@@ -38,7 +38,7 @@ the HTML.
 | `persephone.readFile` / `writeFile` | Requires `fileSystem: "board"` for the board folder and files selected in its dialogs, or `"full"` for any accessible file. `"full"` is **Full access**. With `false`, `readFile()` can read only the exact currently hosted document; writes and dialogs remain unavailable. |
 | `persephone.watch` | Folders require `list` authorization and files require `read` authorization. Events are restricted to the authorized canonical folder or exact file; `fileSystem: false` allows only the exact hosted document. Watching adds no permission. |
 | `persephone.call(path, options)` | The **renderer** Persephone object model, gated by `appScripting: true`: `fs`, `proc`, `shell`, `settings`, `tools.execute`, `boardVars` (administration of stored environment variables and secrets across namespaces), and `script.execute` — arbitrary JavaScript in the renderer with Node access. It cannot reach the process-owned `main` or `windows` roots. A board rarely needs most of this. |
-| Trust scope | Per board-root folder, remembered across restarts, and **inherited**: trusting a folder trusts every board nested inside it, including ones added later. |
+| Trust scope | Per exact board-root folder, remembered across restarts. Trusting a parent folder does not trust a board inside it; each board root needs its own approval. |
 
 So the review question is not "is the UI honest?" It is: **what can run, what grants does it need,
 what does it reach, and can it change after the user clicks Trust?**
@@ -241,8 +241,8 @@ failed review, it is the finding.
 
 - **An update.** A board update runs under the board's **existing** trust — the folder contents
   are replaced and no dialog appears. The code the user trusted is not the code now on disk.
-- **Inherited trust.** Because trusting a folder trusts every board nested inside it, a board
-  placed into that folder later is trusted with no prompt. Review the folder, not just the board.
+- **A separate board root.** Trust does not carry from a parent folder. A board in a nested folder
+  still needs its own approval, so review that board before the user trusts it.
 - **A board that writes to its own folder.** Legitimate for saving state; worth confirming it only
   writes data files, not code it will later run.
 

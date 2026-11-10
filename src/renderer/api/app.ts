@@ -200,13 +200,10 @@ class App {
         const { fs: appFs } = await import("./fs");
         await appFs.wait();
 
-        const { initBoardServiceSettings } = await import("./board-service-settings");
-        initBoardServiceSettings();
-
         // Listen for main-process requests before restoring pages: a restored board calls the bridge
         // at once. Requests queue until initEvents() marks the handler ready.
-        const { initMcpHandler } = await import("./mcp-handler");
-        initMcpHandler();
+        const { initRendererRpc } = await import("./renderer-rpc-bootstrap");
+        initRendererRpc();
 
         const { pages } = await import("./pages");
         this._pages = pages;
@@ -271,13 +268,13 @@ class App {
             { KeyboardService },
             { WindowStateService },
             { RendererEventsService },
-            { initMcpHandler, markMcpHandlerReady },
+            { initRendererRpc, markRendererRpcReady },
         ] = await Promise.all([
             import("./internal/GlobalEventService"),
             import("./internal/KeyboardService"),
             import("./internal/WindowStateService"),
             import("./internal/RendererEventsService"),
-            import("./mcp-handler"),
+            import("./renderer-rpc-bootstrap"),
         ]);
 
         // Create service instances
@@ -295,10 +292,9 @@ class App {
             rendererEvents.init(),
         ]);
 
-        // Initialize MCP command handler (listens for IPC from main process; already registered by
-        // initPages() unless that was skipped) and start serving requests queued during startup.
-        initMcpHandler();
-        markMcpHandlerReady();
+        // Initialize main-process request handling and start serving requests queued during startup.
+        initRendererRpc();
+        markRendererRpcReady();
 
         // Ensure settings are loaded from disk before checking mcp.enabled
         const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");

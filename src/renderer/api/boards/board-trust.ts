@@ -20,7 +20,6 @@
 import { BoardRoot } from "../../../shared/board/board-root";
 import { api } from "../../../ipc/renderer/api";
 import { TGlobalState } from "../../core/state/state";
-import { isKeyInside } from "../../../shared/path-containment";
 import { BoardGrant, type BoardPermissionChange } from "../../../shared/board/board-grant";
 import type { NormalizedBoardPermissions, BoardPermissionFlags } from "../../../shared/board/board-permissions";
 import { type BoardServiceUseDeclaration } from "../../../shared/board/board-service-declarations";
@@ -111,7 +110,7 @@ class BoardTrust {
         try {
             await this.loadGrants();
             const key = BoardRoot.from(boardRoot).key;
-            const grant = [...this.grants].find(([root]) => isKeyInside(root, key))?.[1];
+            const grant = this.grants.get(key);
             if (!grant) return false;
             return BoardGrant.from(grant).allows(flag);
         } catch { return false; }
@@ -121,7 +120,7 @@ class BoardTrust {
         try {
             await this.loadGrants();
             const key = BoardRoot.from(boardRoot).key;
-            const permissions = [...this.grants].find(([root]) => isKeyInside(root, key))?.[1];
+            const permissions = this.grants.get(key);
             return permissions ? BoardGrant.from(permissions) : undefined;
         } catch { return undefined; }
     }
@@ -130,9 +129,7 @@ class BoardTrust {
         try {
             await this.loadGrants();
             const root = BoardRoot.from(boardRoot).key;
-            const matchedRoot = this.grants.has(root)
-                ? root
-                : [...this.grants.keys()].find((candidate) => isKeyInside(candidate, root));
+            const matchedRoot = this.grants.has(root) ? root : undefined;
             if (!matchedRoot) return undefined;
             const permissions = this.grants.get(matchedRoot);
             const manifestPermissions = this.manifests.get(matchedRoot);
@@ -182,10 +179,10 @@ class BoardTrust {
         }
     }
 
-    /** Sync check against loaded state. Ancestor-aware: parent trust is inherited. */
+    /** Sync check against loaded state for this exact root. */
     isTrusted(boardRoot: string): boolean {
         const key = BoardRoot.from(boardRoot).key;
-        return this.state.get().paths.some((root) => isKeyInside(BoardRoot.from(root).key, key));
+        return this.state.get().paths.some((root) => BoardRoot.from(root).key === key);
     }
 
     /** All trusted paths (sync, non-reactive). Call `load()` first. */

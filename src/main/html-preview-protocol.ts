@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { errMessage } from "../shared/utils";
 import { mimeTypeForPath } from "../shared/mime-types";
-import { resolveAuthorizedPath } from "./board-file-access";
+import { boardFileAccess } from "./board-file-access";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
 /** Each preview's current HTML, keyed by its random id (the URL host). */
@@ -76,12 +76,7 @@ export function initHtmlPreviewProtocol(partition: string): void {
 
         let resolvedPath: string;
         try {
-            resolvedPath = await resolveAuthorizedPath({
-                boardRoot: preview.resourceRoot,
-                requestedPath: relativePath,
-                rootOnly: true,
-                intent: "read",
-            });
+            resolvedPath = await boardFileAccess.authorizeInsideRoot(preview.resourceRoot, relativePath);
         } catch {
             return new Response("Not found", { status: 404 });
         }

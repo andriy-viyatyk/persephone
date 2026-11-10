@@ -10,6 +10,8 @@ import {
 import type { ByteRange } from "../shared/range-utils";
 import { onWebContentsGone } from "./webcontents-lifetime";
 import { PendingRequests } from "../shared/pending-requests";
+import { boardTrustService } from "./board-trust-service";
+import { boardFileAccess } from "./board-file-access";
 
 interface PipeOwner {
     webContents: WebContents;
@@ -105,13 +107,9 @@ class BoardPipeService {
         const { boardRoot, filePath, hostedDocument } = owner;
         if (boardRoot && filePath !== undefined && !hostedDocument) {
             return (async () => {
-                const { boardTrustService } = await import("./board-trust-service");
                 const permissions = await boardTrustService.getGrant(boardRoot);
                 if (!permissions) throw new BoardPipeError(404, "Board pipe resource not found.");
-                const { resolveAuthorizedPath } = await import("./board-file-access");
-                await resolveAuthorizedPath({
-                    boardRoot, requestedPath: filePath, grant: permissions, intent: "read",
-                });
+                await boardFileAccess.authorize(boardRoot, filePath, "read");
                 return this.requestRead(owner, host, pipeKind, pipeId, rangeHeader, range, signal);
             })();
         }

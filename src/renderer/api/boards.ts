@@ -13,7 +13,6 @@ import { isBoardFolder, readBoardManifest } from "./boards/board-manifest-io";
 import { LEGACY_BOARD_AGENT_DEPRECATION_NOTE } from "./boards/board-permission-copy";
 import { boardTrust } from "./boards/board-trust";
 import { BoardGrant } from "../../shared/board/board-grant";
-import { isKeyInside } from "../../shared/path-containment";
 import { boardInstallRegistry, InstalledBoardEntry } from "./boards/board-install-registry";
 import { publishedBoards } from "./boards/published-boards";
 import { boardPagesForRoot } from "./boards/board-idle";
@@ -164,7 +163,7 @@ async function readBoardSources(): Promise<BoardSourceSnapshot> {
 
 function isTrustedRoot(root: string, trustPaths: readonly string[]): boolean {
     const key = BoardRoot.from(root).key;
-    return trustPaths.some((path) => isKeyInside(BoardRoot.from(path).key, key));
+    return trustPaths.some((path) => BoardRoot.from(path).key === key);
 }
 
 function mergeBoardSources(sources: BoardSourceSnapshot): BoardListingSource[] {

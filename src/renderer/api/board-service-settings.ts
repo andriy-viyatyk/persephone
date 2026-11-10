@@ -1,14 +1,13 @@
-import { BoardServiceSettingsChannel, type BoardServiceSettingsRequest, type BoardServiceSettingsReply } from "../../ipc/board-service-settings-channels";
+import { BoardServiceSettingsChannel, type BoardServiceSettingsChange } from "../../ipc/board-service-settings-channels";
 import { getBoardSetting, initializeBoardSettings, subscribeBoardSettings } from "./board-settings/board-settings-bridge";
 import { boardTrust } from "./boards/board-trust";
 import { bundledBoardRegistry } from "./boards/bundled-board-registry";
 import { readBoardManifest } from "./boards/board-manifest-io";
 import { BoardRoot } from "../../shared/board/board-root";
-import { codedError } from "../../shared/coded-error";
-import { toWireError } from "../../shared/wire-error";
+import { codedError, toCodedError } from "../../shared/coded-error";
+import type { RendererRpcServer } from "./renderer-rpc";
 
 const subscriptions = new Map<string, () => void>();
-let initialized = false;
 
 function isScalar(value: unknown): value is string | number | boolean {
     return typeof value === "string" || typeof value === "boolean"
@@ -26,58 +25,37 @@ async function validateBoardRoot(boardRoot: unknown): Promise<string> {
     return boardRoot;
 }
 
-function reply(channel: typeof BoardServiceSettingsChannel.getReply | typeof BoardServiceSettingsChannel.subscribeReply | typeof BoardServiceSettingsChannel.unsubscribeReply, requestId: string, values: Omit<BoardServiceSettingsReply, "requestId">): void {
-    window.electron.ipcRenderer.sendMessage(channel, { requestId, ...values });
-}
-
-/** Install the main-only service settings IPC adapter once per renderer process. */
-export function initBoardServiceSettings(): void {
-    if (initialized) return;
-    initialized = true;
-    window.electron.ipcRenderer.on(BoardServiceSettingsChannel.get, (request: BoardServiceSettingsRequest) => {
-        void (async () => {
-            try {
-                const boardRoot = await validateBoardRoot(request.boardRoot);
-                if (typeof request.id !== "string" || !request.id.trim()) {
-                    throw new Error("Board setting id must be a non-empty string.");
-                }
-                const result = await getBoardSetting(boardRoot, request.id.trim());
-                if (!isScalar(result)) throw new Error("Board setting result must be a finite scalar.");
-                reply(BoardServiceSettingsChannel.getReply, request.requestId, { ok: true, result });
-            } catch (error: unknown) {
-                reply(BoardServiceSettingsChannel.getReply, request.requestId, { ok: false, error: toWireError(error, "Board settings request failed.", "service-error") });
+export function registerBoardServiceSettingsRpc(server: RendererRpcServer): void {
+    server.register("serviceSettingsGet", ({ boardRoot, id }) => asSettingsRequest(async () => {
+        const root = await validateBoardRoot(boardRoot);
+        if (typeof id !== "string" || !id.trim()) throw new Error("Board setting id must be a non-empty string.");
+        const result = await getBoardSetting(root, id.trim());
+        if (!isScalar(result)) throw new Error("Board setting result must be a finite scalar.");
+        return result;
+    }));
+    server.register("serviceSettingsSubscribe", (params: { boardRoot: string; subscriptionId: string }): Promise<null> => {
+        const { boardRoot, subscriptionId } = params;
+        return asSettingsRequest(async (): Promise<null> => {
+            const root = await validateBoardRoot(boardRoot);
+            if (typeof subscriptionId !== "string" || !subscriptionId) throw new Error("Malformed board settings subscription.");
+            if (!subscriptions.has(subscriptionId)) {
+                await initializeBoardSettings();
+                subscriptions.set(subscriptionId, subscribeBoardSettings(root, ({ id, value }) => {
+                    if (!isScalar(value)) return;
+                    window.electron.ipcRenderer.sendMessage(BoardServiceSettingsChannel.changed, { subscriptionId, id, value } satisfies BoardServiceSettingsChange);
+                }));
             }
-        })();
+            return null;
+        });
     });
-    window.electron.ipcRenderer.on(BoardServiceSettingsChannel.subscribe, (request: BoardServiceSettingsRequest) => {
-        void (async () => {
-            try {
-                const boardRoot = await validateBoardRoot(request.boardRoot);
-                if (typeof request.subscriptionId !== "string" || !request.subscriptionId) throw new Error("Malformed board settings subscription.");
-                if (!subscriptions.has(request.subscriptionId)) {
-                    await initializeBoardSettings();
-                    const stop = subscribeBoardSettings(boardRoot, ({ id, value }) => {
-                        if (!isScalar(value)) return;
-                        window.electron.ipcRenderer.sendMessage(BoardServiceSettingsChannel.changed, {
-                            subscriptionId: request.subscriptionId,
-                            id,
-                            value,
-                        });
-                    });
-                    subscriptions.set(request.subscriptionId, stop);
-                }
-                reply(BoardServiceSettingsChannel.subscribeReply, request.requestId, { ok: true });
-            } catch (error: unknown) {
-                reply(BoardServiceSettingsChannel.subscribeReply, request.requestId, { ok: false, error: toWireError(error, "Board settings request failed.", "service-error") });
-            }
-        })();
-    });
-    window.electron.ipcRenderer.on(BoardServiceSettingsChannel.unsubscribe, (request: BoardServiceSettingsRequest) => {
-        if (typeof request.subscriptionId === "string") {
-            subscriptions.get(request.subscriptionId)?.();
-            subscriptions.delete(request.subscriptionId);
-        }
-        reply(BoardServiceSettingsChannel.unsubscribeReply, request.requestId, { ok: true });
+    server.register("serviceSettingsUnsubscribe", (params: { boardRoot: string; subscriptionId: string }): null => {
+        const { subscriptionId } = params;
+        if (typeof subscriptionId === "string") { subscriptions.get(subscriptionId)?.(); subscriptions.delete(subscriptionId); }
+        return null;
     });
 }
 
+/** Keeps the pre-RPC error contract: a coded error keeps its code, anything else becomes `service-error`. */
+function asSettingsRequest<T>(work: () => Promise<T>): Promise<T> {
+    return work().catch((error: unknown) => { throw toCodedError(error, "service-error", { fallbackMessage: "Board settings request failed." }); });
+}

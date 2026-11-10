@@ -8,7 +8,8 @@ import { EventEndpoint } from "../ipc/api-types";
 import type { BoardNotifyMsg } from "../ipc/board-bridge-channels";
 import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
-import { getDataFolder, preparePath } from "./utils";
+import { preparePath } from "./utils";
+import { JsonFileStore } from "./json-file-store";
 import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
 import { withNativeDialog } from "./native-dialog-tracker";
 import { isRegisteredBrowserWebContents } from "./browser-service";
@@ -17,7 +18,6 @@ import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 
-const PERSIST_FILE = "recentDownloads.json";
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
 const TEMP_DOWNLOAD_FOLDER = "persephone-downloads";
@@ -32,6 +32,21 @@ interface DownloadRecord {
     referrerUrl?: string;
     hostUrl?: string;
 }
+
+function validateRecentDownloads(raw: unknown): DownloadEntry[] | null {
+    if (!Array.isArray(raw)) return null;
+    const statuses = new Set<DownloadEntry["status"]>(["downloading", "awaitingPath", "completed", "failed", "cancelled"]);
+    return raw.filter((entry): entry is DownloadEntry => Boolean(entry && typeof entry === "object"
+        && typeof entry.id === "string" && typeof entry.filename === "string" && typeof entry.url === "string"
+        && Number.isFinite(entry.totalBytes) && Number.isFinite(entry.receivedBytes) && Number.isFinite(entry.startTime)
+        && statuses.has(entry.status)));
+}
+
+const recentStore = new JsonFileStore<DownloadEntry[]>("recentDownloads.json", {
+    validate: validateRecentDownloads,
+    defaultValue: () => [],
+    onSaveError: "warn",
+});
 function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, data: unknown): void {
     const hostContents = (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
     try {
@@ -319,39 +334,19 @@ class DownloadService {
     }
 
     private loadPersisted(): void {
-        try {
-            const filePath = path.join(getDataFolder(), PERSIST_FILE);
-            if (!fs.existsSync(filePath)) return;
-
-            const data = fs.readFileSync(filePath, { encoding: "utf-8" });
-            const entries: DownloadEntry[] = JSON.parse(data);
-            for (const entry of entries) {
-                this.downloads.set(entry.id, {
-                    entry,
-                    tempPath: "",
-                    transferDone: true,
-                    finishing: false,
-                });
-            }
-        } catch {
-            // Ignore corrupted data
+        for (const entry of recentStore.loadSync().value) {
+            this.downloads.set(entry.id, {
+                entry,
+                tempPath: "",
+                transferDone: true,
+                finishing: false,
+            });
         }
     }
 
     private persist(): void {
-        try {
-            const completed = this.getDownloads()
-                .filter(d => d.status === "completed")
-                .slice(0, MAX_PERSISTED);
-
-            const dataFolder = getDataFolder();
-            if (!preparePath(dataFolder)) return;
-
-            const filePath = path.join(dataFolder, PERSIST_FILE);
-            fs.writeFileSync(filePath, JSON.stringify(completed, null, 2), { encoding: "utf-8" });
-        } catch {
-            // Non-critical
-        }
+        const completed = this.getDownloads().filter((download) => download.status === "completed").slice(0, MAX_PERSISTED);
+        void recentStore.save(completed);
     }
 }
 

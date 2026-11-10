@@ -10,7 +10,6 @@ import type { BoardServiceStatus, ModuleServicePortResult } from "../module-serv
 import { bindEndpoint } from "./endpoint-registry";
 import { activeCapabilityRequests, capabilityResult } from "./core-handlers";
 import { errMessage } from "../../shared/utils";
-import { BoardGrant } from "../../shared/board/board-grant";
 
 export type BoardEndpoint =
     | Endpoint.connectHostServiceChannel
@@ -133,25 +132,14 @@ export function initBoardHandlers(): void {
         return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
     });
     bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
-        const grants = await (await import("../../main/board-trust-service")).boardTrustService.getPermissionGrants();
-        return grants.map(({ root, permissions, manifestPermissions, manifestChanged, uses, manifestUses, service, serviceInterfaces, boardName, callerId }) => ({
-            boardRoot: root,
-            permissions,
-            manifestPermissions,
-            ...(manifestChanged ? { manifestChanged: true } : {}),
-            canStartService: BoardGrant.from(permissions).canRunService(),
-            uses,
-            manifestUses,
-            service,
-            serviceInterfaces: serviceInterfaces ?? [],
-            boardName,
-            callerId,
-        }));
+        const trust = (await import("../../main/board-trust-service")).boardTrustService;
+        await trust.refresh();
+        return trust.getPermissionGrants();
     });
     bindEndpoint(Endpoint.getBoardServiceProviders, async (_event, interfaceId: string): Promise<import("../board-bridge-channels").BoardServiceProvider[]> => {
         if (typeof interfaceId !== "string") throw new TypeError("A service interface id is required.");
         const trust = (await import("../../main/board-trust-service")).boardTrustService;
-        await trust.getPermissionGrants();
+        await trust.refresh();
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.listServiceProviders(interfaceId);
     });
     bindEndpoint(Endpoint.connectHostServiceChannel, async (event: IpcMainEvent, request: HostServiceChannelRequest): Promise<string> => {
@@ -190,31 +178,20 @@ export function initBoardHandlers(): void {
         return openWindow.insertVoiceTypingText(request.sessionId, request.text, request.deferClipboard);
     });
     bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
-        return (await import("../../main/board-trust-service")).boardTrustService.getFileAccessGrants(boardRoot);
+        return (await import("../../main/board-file-access")).boardFileAccess.getPersistedGrants(boardRoot);
     });
     bindEndpoint(Endpoint.revokeBoardFileAccessGrant, async (_event: IpcMainEvent, boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> => {
         if (kind !== "folder" && kind !== "file") throw new TypeError("Invalid board file-access grant kind.");
-        await (await import("../../main/board-trust-service")).boardTrustService.revokeFileAccessGrant(boardRoot, kind, canonicalPath);
+        await (await import("../../main/board-file-access")).boardFileAccess.revoke(boardRoot, kind, canonicalPath);
     });
     bindEndpoint(Endpoint.grantBoardSourceReads, async (_event: IpcMainEvent, boardRoot: string, sourcePaths: string[], contextPaths: string[] = []): Promise<void> => {
-        const { boardTrustService } = await import("../../main/board-trust-service");
-        const grant = await boardTrustService.getGrant(boardRoot);
-        if (!grant) throw new Error("This board is not trusted.");
-        const mode = grant.fileSystemMode();
-        await (await import("../../main/board-file-access")).grantBoardSourceReads(
-            boardRoot, sourcePaths, mode === "board" ? contextPaths : [],
-        );
+        await (await import("../../main/board-file-access")).boardFileAccess.grantSourceReads(boardRoot, sourcePaths, contextPaths);
     });
     bindEndpoint(Endpoint.getBoardMcpEndpoint, async (): Promise<string> => {
         return (await import("../../main/mcp-http-server")).getMcpUrl();
     });
     bindEndpoint(Endpoint.authorizeBoardFilePath, async (_event, boardRoot: string, requestedPath: string, intent: "read" | "write" = "read"): Promise<string> => {
-        const { boardTrustService } = await import("../../main/board-trust-service");
-        const grant = await boardTrustService.getGrant(boardRoot);
-        if (!grant) throw BoardGrant.deny("fileSystem");
-        return (await import("../../main/board-file-access")).resolveAuthorizedPath({
-            boardRoot, requestedPath, grant, intent,
-        });
+        return (await import("../../main/board-file-access")).boardFileAccess.authorize(boardRoot, requestedPath, intent);
     });
     bindEndpoint(Endpoint.bindBoardSessionSource, async (_event, handle: string, boardRoot: string): Promise<string> => {
         const { boardTrustService } = await import("../../main/board-trust-service");

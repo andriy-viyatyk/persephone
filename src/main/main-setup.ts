@@ -31,6 +31,7 @@ import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { boardTrustService } from "./board-trust-service";
+import { subscribeBoardTrustConsumers } from "./board-trust-subscribers";
 import { siteExtensionTrustService } from "./site-extension-trust-service";
 import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
@@ -52,6 +53,7 @@ export function setupMainProcess() {
     // Likewise the fallback User-Agent: a renderer process reads it when it starts.
     initBrowserUserAgent();
     // Load the main-owned board trust state before restored renderer windows can request services.
+    subscribeBoardTrustConsumers();
     void boardTrustService.init().catch((error: unknown) => {
         console.error(`Board trust initialization failed: ${errMessage(error)}`);
     });

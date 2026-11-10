@@ -1,11 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
-import { getDataFolder, preparePath } from "./utils";
+import { JsonFileStore } from "./json-file-store";
 
 export type UiPreferenceValue = string | number | boolean;
 export type UiPreferences = Record<string, UiPreferenceValue>;
 
-const fileName = "uiPreferences.json";
 let preferences: UiPreferences | undefined;
 
 function isUiPreferenceValue(value: unknown): value is UiPreferenceValue {
@@ -16,48 +13,29 @@ function isUiPreferenceValue(value: unknown): value is UiPreferenceValue {
     );
 }
 
-function loadPreferences(): UiPreferences {
-    try {
-        const content = fs.readFileSync(path.join(getDataFolder(), fileName), "utf-8");
-        const parsed: unknown = JSON.parse(content);
-        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-            return {};
-        }
-
-        const loaded: UiPreferences = {};
-        for (const [key, value] of Object.entries(parsed)) {
-            if (!isUiPreferenceValue(value)) continue;
-            Object.defineProperty(loaded, key, {
-                configurable: true,
-                enumerable: true,
-                value,
-                writable: true,
-            });
-        }
-        return loaded;
-    } catch {
-        return {};
+function filterPreferences(parsed: unknown): UiPreferences | null {
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const loaded: UiPreferences = {};
+    for (const [key, value] of Object.entries(parsed)) {
+        if (!isUiPreferenceValue(value)) continue;
+        Object.defineProperty(loaded, key, { configurable: true, enumerable: true, value, writable: true });
     }
+    return loaded;
 }
 
+const store = new JsonFileStore<UiPreferences>("uiPreferences.json", {
+    validate: filterPreferences,
+    defaultValue: () => ({}),
+    onSaveError: "warn",
+});
+
 function getPreferences(): UiPreferences {
-    preferences ??= loadPreferences();
+    preferences ??= store.loadSync().value;
     return preferences;
 }
 
 function savePreferences(): void {
-    const dataFolder = getDataFolder();
-    if (!preparePath(dataFolder)) return;
-
-    try {
-        fs.writeFileSync(
-            path.join(dataFolder, fileName),
-            JSON.stringify(getPreferences(), null, 2),
-            "utf-8",
-        );
-    } catch {
-        // Learned layout preferences are non-critical application state.
-    }
+    store.saveSync(getPreferences());
 }
 
 export function getUiPreferences(): UiPreferences {

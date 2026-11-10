@@ -27,6 +27,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Shared request/reply correlation with timeout, abort and metadata-filtered settlement | `/src/shared/pending-requests.ts` |
 | Shared serialized asynchronous mutation queue | `/src/shared/serial-queue.ts` |
 | Shared error code and wire-error conversion helpers | `/src/shared/coded-error.ts`, `/src/shared/wire-error.ts` |
+| Typed main-to-renderer RPC method map and channels | `/src/ipc/renderer-rpc.ts` |
+| Main-to-renderer RPC request lifecycle (readiness, pending requests, timeout, renderer lifetime) | `/src/main/renderer-rpc.ts` |
+| Renderer RPC server and bootstrap | `/src/renderer/api/renderer-rpc.ts`, `/src/renderer/api/renderer-rpc-bootstrap.ts` |
 | Shared path containment check | `/src/shared/path-containment.ts` |
 | First-owner claim registry shared by main and renderer; callers normalize keys and clear claims by origin | `/src/shared/ownership-registry.ts` |
 | Renderer Vite configuration (preserves Node `process.env` in renderer builds and sets the dev-server port/watch exclusions) | `/vite.renderer.config.ts` |
@@ -396,7 +399,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process AiVision roots and service descriptors, including read-only path-watch diagnostics and the settings-gated main script node | `/src/main/mcp/ai-vision/` |
 | MCP tool definitions (the `call` tool — the whole manifest — as data) | `/src/main/mcp/tools/` |
 | MCP server factory (manifest assembly and guide-resource registration) | `/src/main/mcp/server-factory.ts` |
-| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, pending script results, path prefixing, native image content blocks, and recent-request tracking for beforeunload handling; renderer reply IPC is initialized before first send, including board bridge requests) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
+| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, pending script results, path prefixing, and native image content blocks) | `/src/main/mcp/tools/call-tools.ts` |
+| Main-process JSON persistence (validated load, serialized atomic async writes, synchronous save path) | `/src/main/json-file-store.ts` |
 | Per-window native dialog tracking, attention snapshots, and cancellation through the native dialog helper | `/src/main/native-dialog-tracker.ts` |
 | Video/audio player editor view | `/src/renderer/editors/video/VideoView.ts` |
 | Video playback view (video.js + hls.js and stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |
@@ -408,7 +412,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process board guide mounts (trusted-board discovery and isolated guide roots for MCP) | `/src/main/mcp/ai-vision/board-guide-mounts.ts` |
 | Renderer board guide mounts (trusted-board discovery and isolated guide roots for About/F1) | `/src/renderer/guides/board-guide-mounts.ts` |
 | Packaged guide corpus and MCP resource aliases | `/assets/guides/`, `/src/main/mcp/manifest.ts` |
-| Board security-review guide (trust capabilities, code-review checklist, and update/inherited-trust cautions) | `/assets/guides/agents/board-review.md` |
+| Board security-review guide (trust capabilities, code-review checklist, and safe update cautions) | `/assets/guides/agents/board-review.md` |
 | Renderer AiVision event log (one 200-entry ring per renderer window; producer helpers for shape changes, navigation, page activation, dialogs, guide buttons, remote notifications, and error/warning alert events) | `/src/renderer/scripting/ai-vision/event-log.ts` |
 | Renderer alert watcher (mount-time subscription that forwards each new error/warning toast into the AiVision event log) | `/src/renderer/scripting/ai-vision/alert-watch.ts` |
 | Renderer AiVision `events` namespace (`recent`, `since`, `count`, and bounded cursor-based `wait`) | `/src/renderer/scripting/ai-vision/namespaces/events.ts` |
@@ -418,11 +422,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer AiVision UI walkthrough (`ui.guide.step` / `end`) and its curated-control provider | `/src/renderer/scripting/ai-vision/namespaces/ui-guide.ts`, `/src/renderer/scripting/ai-vision/namespaces/ui.ts` |
 | Agent highlight overlay (the package's dependency-free ring and explanation card; `window.__aiVisionHighlight`; fixed accent palette; visibility-based removal keeps rings from surviving hidden controls; the source remains ASCII-only for injection into contexts without a module graph) | `ai-vision/dom` |
 | Highlight API (`app.ui.highlightElement` / `clearHighlights`; lazily installs and caches the package overlay, resetting the loader promise on failure so a retry is possible) | `/src/renderer/api/ui.ts` |
-| Renderer MCP IPC shell (receives main-process commands, dispatches, times, logs, and returns results) | `/src/renderer/api/mcp-handler.ts` |
-| Renderer MCP command registry for `call`, `board_call`, and private board open-link/open-board requests | `/src/renderer/api/mcp/command-registry.ts` |
-| Renderer MCP `call` command, page-scoped Board call command, and board `openRawLink` / `openBoard` handlers | `/src/renderer/api/mcp/call-command.ts`, `/src/renderer/api/mcp/board-call-command.ts`, `/src/renderer/api/mcp/board-open-raw-link.ts`, `/src/renderer/api/mcp/board-open-board.ts` |
-| Agent Tools call-tree node and shared search/execute/create handlers | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/mcp/tool-commands.ts` |
-| Renderer MCP request history and server-log page integration | `/src/renderer/api/mcp/request-log.ts` |
+| Renderer MCP `call` RPC handler and request history/log | `/src/renderer/api/mcp/mcp-call-rpc.ts`, `/src/renderer/api/mcp/request-log.ts` |
+| Board-host RPC handlers (board calls/themes, link and board opening, TypeScript project registration) | `/src/renderer/api/boards/board-host-rpc.ts`, `/src/renderer/api/ts-project-registry.ts` |
+| Board service-settings RPC registration and renderer client | `/src/renderer/api/board-service-settings.ts` |
+| Agent Tools call-tree node and typed search/toolset operations | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/tools/tool-search.ts`, `/src/renderer/api/tools/toolset-operations.ts` |
 | Shared browser-like automation operations (target-neutral snapshot, navigation waits, CSS/text locator actionability, input, screenshot, locator/coordinate drag, coordinate click, forms, and event reads) | `/src/renderer/automation/operations.ts` |
 | Shared browser-like AiVision members (common automation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
 | Browser input dispatch   | `/src/renderer/automation/input.ts`                |
@@ -623,7 +626,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Trusted-toolsets sidebar tab (native list with open/remove actions) | `/src/renderer/ui/sidebar/TrustedToolsListView.ts` |
 | Toolset authoring guide (manifest, stdin/stdout contract, `.env`, requirements) | `/assets/tool-template/CLAUDE.md` |
 | Agent-facing tools resource | `/assets/guides/agents/tools.md` |
-| Main-owned board trust and claim service (loads and atomically persists trusted roots with normalized permission grants, migrates the legacy path list, defaults the new `themes` grant to false when loading older snapshots, derives service eligibility and browser URL-mask claims from board manifests, and broadcasts authoritative trust snapshots) | `/src/main/board-trust-service.ts` |
+| Main-owned board manifest reader (shared-schema normalization, exact-root input, mtime-keyed cache) | `/src/main/board-manifest-reader.ts` |
+| Main-owned persisted board trust store (`trustedBoards.json` schema and migration) | `/src/main/board-trust-store.ts` |
+| Board trust snapshot derivation (trusted and bundled manifests, grants, disabled bundled boards, service and URL-mask claims) | `/src/main/board-trust-snapshot-builder.ts` |
+| Board trust subscriber wiring and consumer order | `/src/main/board-trust-subscribers.ts` |
+| Main-owned board trust mutations, refresh, current snapshot and subscriptions | `/src/main/board-trust-service.ts` |
+| Board file-access grants and authorization (persisted and session grants; shared path-containment policy) | `/src/main/board-file-access.ts` |
 | Module-service supervisor (main orchestration for lazy Electron `utilityProcess` services, derived-trust gating, ordinary requests, direct board channels and the reserved `speech.transcribe@1`, `speech.synthesize@1`, `speech.wake@1`, and `text.translate@1` host channels, locale propagation, status publication, and teardown) | `/src/main/module-service-supervisor.ts` |
 | Typed main-process consumer port delivery and delivery owner selection | `/src/main/channel-delivery.ts` |
 | Private MCP session endpoint manager (lazy loopback listener, per-service bearer grants, bounded transport lifecycle, revocation, and private client count) | `/src/main/mcp/private-session-endpoints.ts` |

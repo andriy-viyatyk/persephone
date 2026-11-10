@@ -99,8 +99,9 @@ app scripting, or full file/network access are marked **Full access**. With all 
 board can still show its own pages, work with its currently opened document, copy to the clipboard,
 and open links inside Persephone. Bundled boards supplied by Persephone skip the trust gate.
 
-Trust is remembered per folder and inherited by boards inside a trusted folder. If a trusted board
-adds a permission or raises an access level, opening or reloading it shows **Board permissions
+Trust is remembered per board root. A trusted parent folder does not trust boards inside it; each
+board must pass its own trust gate. If a trusted board adds a permission or raises an access level,
+opening or reloading it shows **Board permissions
 changed**: the kept (check), added (**+**) and removed (struck-through **−**) permissions in one list,
 with **Accept** or **Unregister board** (a catalog install is uninstalled). Closing the dialog takes
 the board off its page and asks again next time. Permission reductions
